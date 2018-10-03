@@ -1,6 +1,6 @@
 # Apps for Hubitat Elevation
-Apps for use with the Hubitat Elevation Smarthome Hub
+Apps for use with the Hubitat Elevation Smarthome Hub.<br>
 www.hubitat.com
 
-Bryan
+Bryan<br>
 @BPTWorld
