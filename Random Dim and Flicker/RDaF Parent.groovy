@@ -1,13 +1,12 @@
 /**
- *  Design Usage:
- *  This is the 'Parent' app for 'Random Dim and Flicker'
+ *  ****************  Random Dim and Flicker  ****************
  *
  *  Design Usage:
  *  Designed to make lights dim randomly. Creating a spooky or sparkly effect.
  *
- *  Copyright 2018 Bryan Turcotte
+ *  Copyright 2018 @BPTWorld - Bryan Turcotte
  *  Major contributions from @Cobra - Andrew Parker
- *  
+ *
  *  This App is free!
  *
  *-------------------------------------------------------------------------------------------------------------------
@@ -25,13 +24,11 @@
  *
  *-------------------------------------------------------------------------------------------------------------------
  *
- *  Last Update: 10/03/2018
- *
  *  Changes:
  *  
  *  
- *  V1.0.1 - Added in some instructions
- *  V1.0.0 - Converted to Parent/Child using code developed by @Cobra - Andrew Parker
+ *  V1.0.1 - 10/03/18 - Added in some instructions
+ *  V1.0.0 - 10/03/18 - Converted to Parent/Child using code developed by @Cobra - Andrew Parker
  *
  */
 
