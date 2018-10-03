@@ -8,7 +8,7 @@ Designed to make lights dim randomly. Creating a spooky or sparkly effect.<br><b
 * Click ‘Load New Apps’
 * Select ‘Random Dim and Flicker’ under ‘User Apps’ (Not the child app)
 * Click 'Done'
-* Go back to Apps and open Random Dim and Flicker
+* Go back to Apps and open 'Random Dim and Flicker'
 <br>
 You can now create new child apps directly from here.<br><br>
 A big <b>'Thank You!'</b> to @cobra for working with me on this app.  Without his help, this would not of been possible.
