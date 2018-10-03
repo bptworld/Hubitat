@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Designed to make lights dim randomly. Creating a spooky or sparkly effect.
  *
- *  Copyright 2018 Bryan Turcotte
+ *  Copyright 2018 @BPTWorld - Bryan Turcotte
  *  Major contributions from @Cobra - Andrew Parker
  *
  *  This App is free!
@@ -24,15 +24,13 @@
  *
  *-------------------------------------------------------------------------------------------------------------------
  *
- *  Last Update: 10/03/2018
- *
  *  Changes:
  *  
  *  
- *  V1.0.3 - Added Debug code and Sleep Timer - Thanks again to @Cobra - Andrew Parker (notice a trend here ;))
- *  V1.0.2 - Converted to Parent/Child using code developed by @Cobra - Andrew Parker
- *  V1.0.1 - Modified to dim instead of flicker with the help of @Cobra - Andrew Parker
- *  V1.0.0 - Hubitat Port of ST app 'Candle Flicker' - 2015 Kristopher Kubicki
+ *  V1.0.3 - 10/03/18 - Added Debug code and Sleep Timer - Thanks again to @Cobra - Andrew Parker (notice a trend here ;))
+ *  V1.0.2 - 10/03/18 - Converted to Parent/Child using code developed by @Cobra - Andrew Parker
+ *  V1.0.1 - 10/02/18 - Modified to dim instead of flicker with the help of @Cobra - Andrew Parker
+ *  V1.0.0 - 10/01/18 - Hubitat Port of ST app 'Candle Flicker' - 2015 Kristopher Kubicki
  *
  */
  
