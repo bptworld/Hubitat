@@ -86,8 +86,8 @@ def mainPage() {
 if(state.appInstalled == 'COMPLETE'){
 			display()
     section ("For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."){}
-    section ("To create a random effect, put each deivce in a seperate Child App, using the same switch to turn them on."){}
-    section ("Be sure to turn off 'Enable descriptionText logging' for each device. Log will get BIG fast!"){}
+    section ("To create a random effect, put each device in a separate Child App, using the same switch to turn them on."){}
+    section ("Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"){}
   section ("Child Apps"){
 		app(name: "anyOpenApp", appName: "Random Dim and Flicker Child", namespace: "BPTWorld", title: "<b>Add a new set of devices to dim</b>", multiple: true)
             }
