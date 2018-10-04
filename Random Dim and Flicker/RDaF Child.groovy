@@ -54,7 +54,7 @@ parent: "BPTWorld:Random Dim and Flicker",
 	preferences {
         display()
         
-        section("Remember to turn off 'Enable descriptionText logging' for each device. Log will get BIG fast!"){}
+        section("Remember to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"){}
         
 		section("Select Dimmable Lights") {
 		input "dimmers", "capability.switchLevel", title: "Lights", required: true, multiple: true
