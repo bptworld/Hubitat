@@ -2,7 +2,7 @@
  *  ****************  Random Dim and Flicker Child ****************
  *
  *  Design Usage:
- *  Designed to make lights dim randomly. Creating a spooky or sparkly effect.
+ *  Designed to make normally static holiday decorations/lights dim randomly. Creating a spooky or sparkly effect.
  *
  *  Copyright 2018 @BPTWorld - Bryan Turcotte
  *  Major contributions from @Cobra - Andrew Parker
