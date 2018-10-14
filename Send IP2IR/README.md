@@ -11,6 +11,7 @@ This app is designed to send commands to an iTach IP2IR device.<br><br>
 * Go back to Apps and open 'Send IP2IR'
 <br>
 You can now create new child apps directly from here.<br><br>
+Remember, you can find over 200,000 IR codes at: https://irdb.globalcache.com/
 
 <br><br>
 Bryan<br>
