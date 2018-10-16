@@ -1,5 +1,5 @@
 # Send IP2IR
-***  This does not work yet!  ***
+This does not work yet!<br><br>
 <b>Design Usage:</b><br>
 This app is designed to send commands to an iTach IP2IR device.<br><br>
 <b>Install:</b><br>
