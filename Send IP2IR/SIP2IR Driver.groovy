@@ -8,12 +8,16 @@
  *
  *  Copyright 2018 Bryan Turcotte (@bptworld)
  *
- *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code
- *  Originally based on: Mike Maxwell's and Allan Klein's code
+ *  Special thanks to Andrew Parker (@Cobra) for use of his Parent/Child code and various other bits and pieces.
+ *  Also thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
+ *  
+ *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
+ *  people know that it exists!  Thanks.
  *
- *  Usage:
- *  1. Add this code in the Hubitat 'Drivers Code' section.
- *  2. Add the 'Send IP2IR' code to the 'Apps Code' section.
+ *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
+ *
+ *  Paypal at: https://paypal.me/bptworld
  *
  ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -32,7 +36,9 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- * 
+ *
+ *  
+ *   
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
@@ -41,10 +47,11 @@ metadata {
 	capability "Initialize"
     capability "Telnet"
     capability "Notification"
+    capability "Speech Synthesis"
 }
     
     preferences() {
-    
+    	
         section(""){
             input "ipaddress", "text", required: true, title: "iTach IP2IR IP Address", defaultValue: "0.0.0.0"
             input "debugMode", "bool", title: "Enable logging", required: true, defaultValue: true
@@ -52,13 +59,16 @@ metadata {
     }
 }
 
-def deviceNotification(message) {
+def speak(message) {
     LOGDEBUG("Sending Message: ${message}")
     
     def code = message
     return new hubitat.device.HubAction("""$code\r\n""",hubitat.device.Protocol.TELNET)
 }
 
+def deviceNotification(message) {
+    speak(message)
+}
 
 def initialize(){
     telnetClose() 
