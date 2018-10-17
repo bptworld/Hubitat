@@ -9,12 +9,12 @@
  *  Copyright 2018 Bryan Turcotte (@bptworld)
  *
  *  Special thanks to Andrew Parker (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Also thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based mine off of.
+ *  Also thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
@@ -79,7 +79,7 @@ preferences {
             }
             if(triggerMode == "Channel"){
                 section("Select a 'Virtual Button Device' to Activate the Channel") {
-					input "button2", "capability.pushableButton", title: "Select Button Device", required: true, multiple: false
+					input "button1", "capability.pushableButton", title: "Select Button Device", required: true, multiple: false
             		input "buttonNumber", "enum", title: "Enter Button Number", required: true, options: ["1", "2", "3", "4", "5"]
 
             		input "Digit1", "text", required: true, title: "First Digit", defaultValue: "0"
@@ -90,11 +90,14 @@ preferences {
 
             		input "Digit3", "text", required: true, title: "Third Digit", defaultValue: "0"
            			input "msgToSend3", "text", required: true, title: "IR Code to Send - Third Digit", defaultValue: "sendir..."
+                    
+                    input "enterKey", "text", required: true, title: "IR Code to Send - Enter Key", defaultValue: "sendir..."
         		}
             }
     }
 	
     	section() {
+            input "speaker", "capability.speechSynthesis", title: "Select the 'IP2IR Telnet' device created during initial setup/install.", required: true, multiple: false
     		input "ipaddress", "text", required: true, title: "iTach IP2IR IP Adress", defaultValue: "0.0.0.0"
     	}
 		section() {
@@ -138,95 +141,120 @@ def switching = evt.value
     if(switching == "on"){
         LOGDEBUG("Switch is turned on")
         LOGDEBUG("Msg to send Switch On: ${msgToSendOn}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSendOn)
         
     }
         
     if(switching == "off"){
         LOGDEBUG("Switch is turned off")
         LOGDEBUG("Msg to send Switch Off: ${msgToSendOff}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSendOff)
     }         
 }
 
 def buttonHandler1(evt){
     	LOGDEBUG("You pressed button 1")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		//*****   sent data to the driver  *****        
+		speaker.speak(msgToSendPushed)        
 }
 
 def buttonHandler2(evt){
     	LOGDEBUG("You pressed button 2")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		//*****   sent data to the driver  *****        
+		speaker.speak(msgToSendPushed)        
 }
 
 def buttonHandler3(evt){
     	LOGDEBUG("You pressed button 3")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		//*****   sent data to the driver  *****        
+		speaker.speak(msgToSendPushed)        
 }
 
 def buttonHandler4(evt){
     	LOGDEBUG("You pressed button 4")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		//*****   sent data to the driver  *****        
+		speaker.speak(msgToSendPushed)        
 }
 
 def buttonHandler5(evt){
     	LOGDEBUG("You pressed button 5")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		//*****   sent data to the driver  *****        
+		speaker.speak(msgToSendPushed)        
 }
 
 def channelHandler1(evt) {
         LOGDEBUG("You pressed Channel button 1")
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend1)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend2)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend3)
+    	pauseExecution(500)
+    	LOGDEBUG("Msg to send Enter")
+    	speaker.speak(enterKey)
 }
 
 def channelHandler2(evt) {
         LOGDEBUG("You pressed Channel button 2")
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend1)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend2)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend3)
+    	pauseExecution(500)
+    	LOGDEBUG("Msg to send Enter")
+    	speaker.speak(enterKey)
 }
 
 def channelHandler3(evt) {
         LOGDEBUG("You pressed Channel button 3")
     	LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend1)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend2)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend3)
+    	pauseExecution(500)
+    	LOGDEBUG("Msg to send Enter")
+    	speaker.speak(enterKey)
 }
 
 def channelHandler4(evt) {
         LOGDEBUG("You pressed Channel button 4")
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend1)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend2)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend3)
+    	pauseExecution(500)
+    	LOGDEBUG("Msg to send Enter")
+    	speaker.speak(enterKey)
 }
 
 def channelHandler5(evt) {
         LOGDEBUG("You pressed Channel button 5")
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend1)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend2)
+    	pauseExecution(500)
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		//*****   sent data to the driver  *****
+		speaker.speak(msgToSend3)
+    	pauseExecution(500)
+    	LOGDEBUG("Msg to send Enter")
+    	speaker.speak(enterKey)
 }
 
 // define debug action
@@ -257,3 +285,4 @@ def display(){
 def setVersion(){
 		state.InternalName = "SendIP2IRChild"
 }
+    
