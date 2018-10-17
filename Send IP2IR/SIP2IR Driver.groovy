@@ -33,6 +33,8 @@
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *
+ *  App and Driver updates can be found at https://github.com/bptworld/Hubitat/tree/master/Send%20IP2IR
+ *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
