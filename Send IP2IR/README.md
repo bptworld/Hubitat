@@ -4,7 +4,7 @@ This app is designed to send commands to an iTach IP2IR device.<br><br>
 <b>Install:</b><br>
 1. Copy the Driver code from GitHub into a 'New Driver' under the 'Drivers Code' menu then click 'Done'
 2. Copy the Parent code from GitHub into a ‘New App’ under the ‘Apps Code’ menu then click ‘Done’
-3. Copy the Child code from GitHub into a second ‘New App’ and then clik 'Done'
+3. Copy the Child code from GitHub into a second ‘New App’ and then click 'Done'
 4. Go to 'Devices' and 'Add Virtual Device'. 'Device Name'=IP2IR Telnet , 'Type'=IP2IR Telnet (created in step one)
 5. Go to ‘Apps’
 6. Click ‘Load New Apps’
