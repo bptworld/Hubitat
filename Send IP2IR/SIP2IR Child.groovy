@@ -42,7 +42,7 @@
  *  
  *  V1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
  *			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
- *			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for teaching
+ *			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
  *			me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
