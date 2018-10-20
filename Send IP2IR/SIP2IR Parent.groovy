@@ -40,7 +40,10 @@
  *  Changes:
  *
  *  
- *   
+ *  V1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
+ *			 			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
+ *			 			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for teaching
+ *						me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
@@ -73,6 +76,40 @@ def updated() {
 }
 
 def initialize() {
+    if(msgDigit1) childApps.each { child ->
+		child.myMsgDigit1(msgDigit1)
+	}
+    if(msgDigit2) childApps.each { child ->
+		child.myMsgDigit2(msgDigit2)
+	}
+    if(msgDigit3) childApps.each { child ->
+		child.myMsgDigit3(msgDigit3)
+	}
+    if(msgDigit4) childApps.each { child ->
+		child.myMsgDigit4(msgDigit4)
+	}
+    if(msgDigit5) childApps.each { child ->
+		child.myMsgDigit5(msgDigit5)
+	}
+    if(msgDigit6) childApps.each { child ->
+		child.myMsgDigit6(msgDigit6)
+	}
+    if(msgDigit7) childApps.each { child ->
+		child.myMsgDigit7(msgDigit7)
+	}
+    if(msgDigit8) childApps.each { child ->
+		child.myMsgDigit8(msgDigit8)
+	}
+    if(msgDigit9) childApps.each { child ->
+		child.myMsgDigit9(msgDigit9)
+	}
+    if(msgDigit0) childApps.each { child ->
+		child.myMsgDigit0(msgDigit0)
+	}
+    if(msgDigitE) childApps.each { child ->
+		child.myMsgDigitE(msgDigitE)
+	}
+    
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
     log.info "Child app: ${child.label}"
@@ -87,13 +124,28 @@ def mainPage() {
 		if(state.appInstalled == 'COMPLETE'){
 			display()
 				section("This app is designed to send commands to an iTach IP2IR device.") {}
-  				section("Child Apps"){
+            	section("Be sure to enter in the Preset Values in Advanced Config before creating Child Apps") {}
+  				section("Child Apps", hideable: true, hidden: true){
 					app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR'</b>", multiple: true)
   			    }
    				 section(" "){}
  			 	section("App Name"){
        				label title: "Enter a name for parent app (optional)", required: false
- 				}    
+ 				}  
+            	section("Be sure to enter in the Preset Values in Advanced Config before creating Child Apps") {}
+            	section("Advanced Config:", hideable: true, hidden: true) {
+            		input "msgDigit1", "text", required: true, title: "IR Code to Send - 1", defaultValue: ""
+                    input "msgDigit2", "text", required: true, title: "IR Code to Send - 2", defaultValue: ""
+                    input "msgDigit3", "text", required: true, title: "IR Code to Send - 3", defaultValue: ""
+                    input "msgDigit4", "text", required: true, title: "IR Code to Send - 4", defaultValue: ""
+                    input "msgDigit5", "text", required: true, title: "IR Code to Send - 5", defaultValue: ""
+                    input "msgDigit6", "text", required: true, title: "IR Code to Send - 6", defaultValue: ""
+                    input "msgDigit7", "text", required: true, title: "IR Code to Send - 7", defaultValue: ""
+                    input "msgDigit8", "text", required: true, title: "IR Code to Send - 8", defaultValue: ""
+                    input "msgDigit9", "text", required: true, title: "IR Code to Send - 9", defaultValue: ""
+                    input "msgDigit0", "text", required: true, title: "IR Code to Send - 0", defaultValue: ""
+                    input "msgDigitE", "text", required: true, title: "IR Code to Send - Enter", defaultValue: ""
+                }
 		}
 	}
 }
@@ -109,13 +161,12 @@ section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
 	}
 
 def display(){
-	section{paragraph "Version: 1.0.0<br>@BPTWorld"}     
+	section{paragraph "Version: 1.1.0<br>@BPTWorld"}     
 }         
 
 def setVersion(){
 		state.InternalName = "SendIP2IRParent"  
 }
-
 
 
 
