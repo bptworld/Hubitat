@@ -40,7 +40,10 @@
  *  Changes:
  *
  *  
- *   
+ *  V1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
+ *			 			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
+ *			 			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for teaching
+ *						me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
  
@@ -80,20 +83,14 @@ preferences {
                 }
             }
             if(triggerMode == "Channel"){
+                
                 section("Select a 'Virtual Button Device' to Activate the Channel") {
 					input "button1", "capability.pushableButton", title: "Select Button Device", required: true, multiple: false
             		input "buttonNumber", "enum", title: "Enter Button Number", required: true, options: ["1", "2", "3", "4", "5"]
-
-            		input "Digit1", "text", required: true, title: "First Digit", defaultValue: "0"
-            		input "msgToSend1", "text", required: true, title: "IR Code to Send - First Digit", defaultValue: "sendir..."
-
-            		input "Digit2", "text", required: true, title: "Second Digit", defaultValue: "0"
-            		input "msgToSend2", "text", required: true, title: "IR Code to Send - Second Digit", defaultValue: "sendir..."
-
-            		input "Digit3", "text", required: true, title: "Third Digit", defaultValue: "0"
-           			input "msgToSend3", "text", required: true, title: "IR Code to Send - Third Digit", defaultValue: "sendir..."
-                    
-                    input "enterKey", "text", required: true, title: "IR Code to Send - Enter Key", defaultValue: "sendir..."
+					
+            		input "Digit1", "text", required: true, title: "Channel - First Digit", defaultValue: ""
+            		input "Digit2", "text", required: true, title: "Channel - Second Digit", defaultValue: ""
+            		input "Digit3", "text", required: true, title: "Channel - Third Digit", defaultValue: ""
         		}
             }
     }
@@ -103,7 +100,7 @@ preferences {
     		input "ipaddress", "text", required: true, title: "iTach IP2IR IP Adress", defaultValue: "0.0.0.0"
     	}
 		section() {
-            input "debugMode", "bool", title: "Enable logging", required: true, defaultValue: false
+            input "debugMode", "bool", title: "Enable logging", required: true, defaultValue: true
   	    }
 }
 
@@ -118,7 +115,19 @@ def updated() {
 }
 
 def initialize(){
-  
+    
+    myMsgDigit1()
+    myMsgDigit2()
+    myMsgDigit3()
+    myMsgDigit4()
+    myMsgDigit5()
+    myMsgDigit6()
+    myMsgDigit7()
+    myMsgDigit8()
+    myMsgDigit9()
+    myMsgDigit0()
+    myMsgDigitE()
+    
     if(triggerMode == "Switch"){subscribe(switch1, "switch", switchHandler1)}
  
     if(triggerMode == "Button"){
@@ -143,8 +152,7 @@ def switching = evt.value
     if(switching == "on"){
         LOGDEBUG("Switch is turned on")
         LOGDEBUG("Msg to send Switch On: ${msgToSendOn}")
-		speaker.speak(msgToSendOn)
-        
+		speaker.speak(msgToSendOn)   
     }
         
     if(switching == "off"){
@@ -184,8 +192,173 @@ def buttonHandler5(evt){
 		speaker.speak(msgToSendPushed)        
 }
 
+def myMsgDigit1(msgDigit1) {}
+
+def myMsgDigit2(msgDigit2) {}
+
+def myMsgDigit3(msgDigit3) {}
+
+def myMsgDigit4(msgDigit4) {}
+
+def myMsgDigit5(msgDigit5) {}
+
+def myMsgDigit6(msgDigit6) {}
+
+def myMsgDigit7(msgDigit7) {}
+
+def myMsgDigit8(msgDigit8) {}
+
+def myMsgDigit9(msgDigit9) {}
+
+def myMsgDigit0(msgDigit0) {}
+
+def myMsgDigitE(msgDigitE) {}
+
+def PresetToSend1(){
+    if(Digit1 == "1") {
+       myMsgDigit1()
+       msgToSend1 = parent.msgDigit1
+    }
+    if(Digit1 == "2") {
+       myMsgDigit2()
+       msgToSend1 = parent.msgDigit2
+    }
+    if(Digit1 == "3") {
+       myMsgDigit3()
+       msgToSend1 = parent.msgDigit3
+    }
+    if(Digit1 == "4") {
+       myMsgDigit4()
+       msgToSend1 = parent.msgDigit4
+    }
+    if(Digit1 == "5") {
+       myMsgDigit5()
+       msgToSend1 = parent.msgDigit5
+    }
+	if(Digit1 == "6") {
+       myMsgDigit6()
+       msgToSend1 = parent.msgDigit6
+    }
+	if(Digit1 == "7") {
+       myMsgDigit7()
+       msgToSend1 = parent.msgDigit7
+    }
+	if(Digit1 == "8") {
+       myMsgDigit8()
+       msgToSend1 = parent.msgDigit8
+    }
+	if(Digit1 == "9") {
+       myMsgDigit9()
+       msgToSend1 = parent.msgDigit9
+    }
+	if(Digit1 == "0") {
+       myMsgDigit0()
+       msgToSend1 = parent.msgDigit0
+    }
+    LOGDEBUG("Getting Digit 1...${Digit1} - ${msgToSend1}")
+}
+
+def PresetToSend2(){
+    if(Digit2 == "1") {
+       myMsgDigit1()
+       msgToSend2 = parent.msgDigit1
+    }
+    if(Digit2 == "2") {
+       myMsgDigit2()
+       msgToSend2 = parent.msgDigit2
+    }
+    if(Digit2 == "3") {
+       myMsgDigit3()
+       msgToSend2 = parent.msgDigit3
+    }
+    if(Digit2 == "4") {
+       myMsgDigit4()
+       msgToSend2 = parent.msgDigit4
+    }
+    if(Digit2 == "5") {
+       myMsgDigit5()
+       msgToSend2 = parent.msgDigit5
+    }
+	if(Digit2 == "6") {
+       myMsgDigit6()
+       msgToSend2 = parent.msgDigit6
+    }
+	if(Digit2 == "7") {
+       myMsgDigit7()
+       msgToSend2 = parent.msgDigit7
+    }
+	if(Digit2 == "8") {
+       myMsgDigit8()
+       msgToSend2 = parent.msgDigit8
+    }
+	if(Digit2 == "9") {
+       myMsgDigit9()
+       msgToSend2 = parent.msgDigit9
+    }
+	if(Digit2 == "0") {
+       myMsgDigit0()
+       msgToSend2 = parent.msgDigit0
+    }
+    LOGDEBUG("Getting Digit 2...${Digit2} - ${msgToSend2}")
+}
+
+def PresetToSend3(){
+    if(Digit3 == "1") {
+       myMsgDigit1()
+       msgToSend3 = parent.msgDigit1
+    }
+    if(Digit3 == "2") {
+       myMsgDigit2()
+       msgToSend3 = parent.msgDigit2
+    }
+    if(Digit3 == "3") {
+       myMsgDigit3()
+       msgToSend3 = parent.msgDigit3
+    }
+    if(Digit3 == "4") {
+       myMsgDigit4()
+       msgToSend3 = parent.msgDigit4
+    }
+    if(Digit3 == "5") {
+       myMsgDigit5()
+       msgToSend3 = parent.msgDigit5
+    }
+	if(Digit3 == "6") {
+       myMsgDigit6()
+       msgToSend3 = parent.msgDigit6
+    }
+	if(Digit3 == "7") {
+       myMsgDigit7()
+       msgToSend3 = parent.msgDigit7
+    }
+	if(Digit3 == "8") {
+       myMsgDigit8()
+       msgToSend3 = parent.msgDigit8
+    }
+	if(Digit3 == "9") {
+       myMsgDigit9()
+       msgToSend3 = parent.msgDigit9
+    }
+	if(Digit3 == "0") {
+       myMsgDigit0()
+       msgToSend3 = parent.msgDigit0
+    }
+    LOGDEBUG("Getting Digit 3...${Digit3} - ${msgToSend3}")
+}
+
+def PresetToSendS(){
+    myMsgDigitE()
+    msgToSendE = parent.msgDigitE
+    LOGDEBUG("Getting Digit E...${PresetToSendS} - ${msgToSendE}")
+}
+
 def channelHandler1(evt) {
         LOGDEBUG("You pressed Channel button 1")
+    	PresetToSend1()
+    	PresetToSend2()
+    	PresetToSend3()
+    	PresetToSendS()
+    	
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
     	pauseExecution(500)
@@ -195,12 +368,17 @@ def channelHandler1(evt) {
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
 		speaker.speak(msgToSend3)
     	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter")
-    	speaker.speak(enterKey)
+    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
+    	speaker.speak(msgToSendE)
 }
 
 def channelHandler2(evt) {
         LOGDEBUG("You pressed Channel button 2")
+    	PresetToSend1()
+    	PresetToSend2()
+    	PresetToSend3()
+    	PresetToSendS()
+    	
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
     	pauseExecution(500)
@@ -210,12 +388,17 @@ def channelHandler2(evt) {
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
 		speaker.speak(msgToSend3)
     	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter")
-    	speaker.speak(enterKey)
+    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
+    	speaker.speak(msgToSendE)
 }
 
 def channelHandler3(evt) {
         LOGDEBUG("You pressed Channel button 3")
+    	PresetToSend1()
+    	PresetToSend2()
+    	PresetToSend3()
+    	PresetToSendS()
+    	
     	LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
     	pauseExecution(500)
@@ -225,12 +408,17 @@ def channelHandler3(evt) {
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
 		speaker.speak(msgToSend3)
     	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter")
-    	speaker.speak(enterKey)
+    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
+    	speaker.speak(msgToSendE)
 }
 
 def channelHandler4(evt) {
         LOGDEBUG("You pressed Channel button 4")
+    	PresetToSend1()
+    	PresetToSend2()
+    	PresetToSend3()
+    	PresetToSendS()
+    	
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
     	pauseExecution(500)
@@ -240,12 +428,17 @@ def channelHandler4(evt) {
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
 		speaker.speak(msgToSend3)
     	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter")
-    	speaker.speak(enterKey)
+    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
+    	speaker.speak(msgToSendE)
 }
 
 def channelHandler5(evt) {
         LOGDEBUG("You pressed Channel button 5")
+    	PresetToSend1()
+    	PresetToSend2()
+    	PresetToSend3()
+    	PresetToSendS()
+    	
         LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
     	pauseExecution(500)
@@ -255,8 +448,8 @@ def channelHandler5(evt) {
     	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
 		speaker.speak(msgToSend3)
     	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter")
-    	speaker.speak(enterKey)
+        LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
+    	speaker.speak(msgToSendE)
 }
 
 // define debug action
@@ -274,14 +467,14 @@ log.info "Further Logging Disabled"
 // logging...
 def LOGDEBUG(txt){
     try {
-    	if (settings.debugMode) { log.debug("${app.label.replace(" ","_").toUpperCase()} - ${txt}") }
+    	if (settings.debugMode) { log.debug("${txt}") }
     } catch(ex) {
     	log.error("LOGDEBUG unable to output requested data!")
     }
 }
 
 def display(){
-	section{paragraph "Version: 1.0.0<br>@BPTWorld"}     
+	section{paragraph "Version: 1.1.0<br>@BPTWorld"}     
 }
 
 def setVersion(){
