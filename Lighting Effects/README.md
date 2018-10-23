@@ -1,18 +1,17 @@
-# Random Dim and Flicker
+# Lighting Effects
 <b>Design Usage:</b><br>
-Designed to make lights dim randomly. Creating a spooky or sparkly effect.<br><br>
+Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br><br>
 <b>Install:</b><br>
 * Copy the Parent code from GitHub into a ‘New App’ under the ‘Apps Code’ menu then click ‘Done’
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
 * Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘Random Dim and Flicker’ under ‘User Apps’ (Not the child app)
+* Select ‘Lighting Effects’ under ‘User Apps’ (Not the child app)
 * Click 'Done'
-* Go back to Apps and open 'Random Dim and Flicker'
+* Go back to Apps and open 'Lighting Effects'
 <br>
 You can now create new child apps directly from here.<br><br>
-A big <b>'Thank You!'</b> to @cobra for working with me on this app.  Without his help, this would not of been possible.
 
-<br><br>
+<br>
 Bryan<br>
 @BPTWorld
