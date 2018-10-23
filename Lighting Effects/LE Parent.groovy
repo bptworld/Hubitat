@@ -3,7 +3,7 @@
  *
  *  Design Usage:
  *  Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change
- *  bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.
+ *  bulbs, completely separate or all together. Creating a spooky, sparkly or party effect.
  *
  *  Copyright 2018 @BPTWorld - Bryan Turcotte
  *
@@ -86,7 +86,7 @@ def mainPage() {
         
 	if(state.appInstalled == 'COMPLETE'){
 		display()
-        	section ("Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect."){}
+        	section ("Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely separate or all together. Creating a spooky, sparkly or party effect."){}
         	section("Instructions:", hideable: true, hidden: true) {
         		paragraph "Dimming:"
     			paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
