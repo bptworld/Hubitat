@@ -35,6 +35,7 @@
  *
  *  Changes:
  * 
+ *  V1.1.2 - 10/23/18 - Minor fixes and adjustments
  *  V1.1.1 - 10/23/18 - Color changing can now be random or cycle through.
  *  V1.1.0 - 10/22/18 - MAJOR UPDATE - Added random color changing for color changing bulbs! Based on code from ST app - Holiday
  *                      Color Lights 2016 by ygelfand, thank you. Took a major redesign but the end result was well worth it!
@@ -96,6 +97,7 @@ def mainPage() {
         		paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app."
         		paragraph "Important:"
         		paragraph "Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"
+                paragraph "Also remember that the more devices you add and the faster you send commands, the more your flooding the network. If you see 'normal' devices not responded as quickly, be sure to scale back the lighting effects."
         	}
   			section ("Child Apps"){
 				app(name: "anyOpenApp", appName: "Lighting Effects Child", namespace: "BPTWorld", title: "<b>Add a new lighting effect</b>", multiple: true)
@@ -119,7 +121,7 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.1.1<br>@BPTWorld"}
+	section{paragraph "Version: 1.1.2<br>@BPTWorld"}
 }         
 
 def setVersion(){
