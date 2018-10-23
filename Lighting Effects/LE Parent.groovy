@@ -119,7 +119,7 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.1.0<br>@BPTWorld"}
+	section{paragraph "Version: 1.1.1<br>@BPTWorld"}
 }         
 
 def setVersion(){
