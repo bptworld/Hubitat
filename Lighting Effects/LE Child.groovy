@@ -35,7 +35,7 @@
  *
  *  Changes:
  *
- *  V1.1.2 - 10/24/18 - Minor fixes and adjustments
+ *  V1.1.2 - 10/23/18 - Minor fixes and adjustments
  *  V1.1.1 - 10/23/18 - Color changing can now be random or cycle through.
  *  V1.1.0 - 10/22/18 - MAJOR UPDATE - Added random color changing for color changing bulbs! Based on code from ST app - Holiday
  *                      Color Lights 2016 by ygelfand, thank you. Took a major redesign but the end result was well worth it!
