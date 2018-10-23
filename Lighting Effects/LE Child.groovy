@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.2 - 10/24/18 - Minor fixes and adjustments
  *  V1.1.1 - 10/23/18 - Color changing can now be random or cycle through.
  *  V1.1.0 - 10/22/18 - MAJOR UPDATE - Added random color changing for color changing bulbs! Based on code from ST app - Holiday
  *                      Color Lights 2016 by ygelfand, thank you. Took a major redesign but the end result was well worth it!
@@ -239,21 +240,21 @@ def sendcolor(lights,color) {
     	"Daylight": [hue: 53, saturation: 91],
     	"Soft_White": [hue: 23, saturation: 56],
     	"Warm_White": [hue: 20, saturation: 80],
-    	"Navy_Blue": [hue: 61, saturation: null],
-    	"Blue": [hue: 65, saturation: null],
-    	"Green": [hue: 33, saturation: null],
-    	"Turquoise": [hue: 47, saturation: null],
-    	"Aqua": [hue: 50, saturation: null],
-    	"Amber": [hue: 13, saturation: null],
-    	"Yellow": [hue: 17, saturation: null],
-    	"Safety_Orange": [hue: 7, saturation: null],
-    	"Orange": [hue: 10, saturation: null],
-    	"Indigo": [hue: 73, saturation: null],
+    	"Navy_Blue": [hue: 61, saturation: 100],
+    	"Blue": [hue: 65, saturation: 100],
+    	"Green": [hue: 33, saturation: 100],
+    	"Turquoise": [hue: 47, saturation: 100],
+    	"Aqua": [hue: 50, saturation: 100],
+    	"Amber": [hue: 13, saturation: 100],
+    	"Yellow": [hue: 17, saturation: 100],
+    	"Safety_Orange": [hue: 7, saturation: 100],
+    	"Orange": [hue: 10, saturation: 100],
+    	"Indigo": [hue: 73, saturation: 100],
     	"Purple": [hue: 82, saturation: 100],
-    	"Pink": [hue: 90.78, saturation: 67.84],
-    	"Raspberry": [hue: 94 , saturation: null],
-    	"Red": [hue: 0, saturation: null ],
-    	"Brick_Red": [hue: 4, saturation: null],
+    	"Pink": [hue: 91, saturation: 68],
+    	"Raspberry": [hue: 94 , saturation: 100],
+    	"Red": [hue: 0, saturation: 100],
+    	"Brick_Red": [hue: 4, saturation: 100],
     ]
 	def newcolor = colorPallet."${color}"
     LOGDEBUG(" ${color} = ${newcolor}")
@@ -284,5 +285,5 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "Child App Version: 1.1.1"}
+	section{paragraph "Child App Version: 1.1.2"}
 } 
