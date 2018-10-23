@@ -73,6 +73,7 @@ preferences {
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app."
         	paragraph "Important:"
         	paragraph "Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"
+            paragraph "Also remember that the more devices you add and the faster you send commands, the more your flooding the network. If you see 'normal' devices not responded as quickly, be sure to scale back the lighting effects."
         }
    		section() {
     	input "triggerMode", "enum", required: true, title: "Select Lights Type", submitOnChange: true,  options: ["Dimmer", "Color_Changing"] 
