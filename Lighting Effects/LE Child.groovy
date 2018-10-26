@@ -2,8 +2,12 @@
  *  ****************  Lighting Effects Child ****************
  *
  *  Design Usage:
- *  Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change
- *  bulbs, completely separate or all together. Creating a spooky, sparkly or party effect.
+ *   - Designed to make static holiday lights dim or flicker randomly.
+ *   - Randomly change colors on color change bulbs, completely separate or all together.
+ *   - Slowly dim a set of dimmable devices, great for night time routines.
+ *   - Slowly raise a set of dimmable devices, great for morning routines.
+ *   - Setup a loop to continually raise and lower dimmable devices. 
+ *   - Create a spooky, sparkly or party effect.
  *
  *  Copyright 2018 @BPTWorld - Bryan Turcotte
  *
@@ -35,6 +39,8 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 10/24/18 - Added portions of ST apps 'Slow Raiser' and 'Dimming Slowly' - 2015 Bruce Ravenel (@Bravenel). Modified
+ *                      into 'Slow Off', 'Slow On' and 'Slow Loop' routines. Thanks Bruce! 
  *  V1.1.2 - 10/23/18 - Minor fixes and adjustments
  *  V1.1.1 - 10/23/18 - Color changing can now be random or cycle through.
  *  V1.1.0 - 10/22/18 - MAJOR UPDATE - Added random color changing for color changing bulbs! Based on code from ST app - Holiday
@@ -52,7 +58,7 @@ definition(
     name: "Lighting Effects Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely separate or all together. Creating a spooky, sparkly or party effect.",
+    description: "Create a spooky, sparkly or party effect.",
     category: "",
     
 parent: "BPTWorld:Lighting Effects",
@@ -64,39 +70,37 @@ parent: "BPTWorld:Lighting Effects",
 
 preferences {
     display()
-        section ("Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely separate or all together. Creating a spooky, sparkly or party effect."){}    
+        section ("Create a spooky, sparkly or party effect. Be sure to read the instructions."){}    
         section("Instructions:", hideable: true, hidden: true) {
         	paragraph "Dimming:"
     		paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
     		paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
         	paragraph "Color Changing:"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app."
-        	paragraph "Important:"
+        	paragraph "Slow Off, On and Loop:"
+        	paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
+            paragraph "Important:"
         	paragraph "Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"
-            paragraph "Also remember that the more devices you add and the faster you send commands, the more your flooding the network. If you see 'normal' devices not responded as quickly, be sure to scale back the lighting effects."
+            paragraph "Very Important:"
+			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         }
    		section() {
-    	input "triggerMode", "enum", required: true, title: "Select Lights Type", submitOnChange: true,  options: ["Dimmer", "Color_Changing"] 
-            if(triggerMode == "Dimmer"){ 
-			section("Select Dimmable Lights") {
+    	input "triggerMode", "enum", title: "Select Lights Type", submitOnChange: true,  options: ["Dimmer","Color_Changing","Slow_Off","Slow_On","Slow_Loop"], required: true, Multiple: false
+        
+        if(triggerMode == "Dimmer"){ 
+			section("Select your options:") {
 				input "dimmers", "capability.switchLevel", title: "Select Dimmable Lights", required: false, multiple: true
 				input "sleepytime", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
         	}
         }
             
         if(triggerMode == "Color_Changing"){
-        	section("Select Color Changing Bulbs") {
-        		input "lights", "capability.colorControl", title: "Bulbs", required: false, multiple:true
+        	section("Select your options:") {
+        		input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
 				input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
             	input "sleepytime2", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
-        		input "seperate", "enum", title: "Cycle each light individually, or all together?", defaultValue: "individual", options: [
-					[individual:"Individual"],
-					[combined:"Combined"],
-				], required: true, multiple: false
-                input "pattern", "enum", title: "Cycle each color or Randomize?", defaultValue: "randomize", options: [
-					[randomize:"Randomize"],
-					[cycle:"Cycle"],
-				], required: true, multiple: false
+        		input "seperate", "enum", title: "Cycle each light individually, or all together?", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
+                input "pattern", "enum", title: "Cycle each color or Randomize?", defaultValue: "randomize", options: ["Randomize","Cycle"], required: true, multiple: false
       
            		input "colorSelection", "enum", title: "Choose your colors", options: [
                 	[White:"White"],
@@ -122,6 +126,34 @@ preferences {
         	}
         }
     }
+    
+    if(triggerMode == "Slow_On"){
+        section("Select your options:") {
+            input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
+    		input "minutes", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
+    		input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+            input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_On", Options: ["Slow_On"]
+		}
+    }
+    
+    if(triggerMode == "Slow_Off"){
+    	section("Select your options:") {
+            input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
+    		input "minutes", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
+    		input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
+            input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Off", Options: ["Slow_Off"]
+        }
+    }
+    
+    if(triggerMode == "Slow_Loop"){
+    	section("Select your options:") {
+        	input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
+    		input "minutes", "number", title: "Takes how many minutes per dim or raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
+    		input "targetLevelHigh", "number", title: "Target Level - High(1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+            input "targetLevelLow", "number", title: "Target Level - Low(1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
+            input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Loop", Options: ["Slow_Loop"]
+        }    
+    }   
     
 		section("Activate the Dimming/Color Changing when this switch is on") {
 			input "switches", "capability.switch", title: "Switch", required: true, multiple: false
@@ -149,6 +181,9 @@ def initialize() {
         subscribe(switches, "switch", changeHandler)
     	state.colorOffset=0
     }
+    if(triggerMode == "Slow_On"){subscribe(switches, "switch", slowonHandler)}
+    if(triggerMode == "Slow_Off"){subscribe(switches, "switch", slowoffHandler)}
+    if(triggerMode == "Slow_Loop"){subscribe(switches, "switch", slowonHandler)}
 }
 
 def eventHandler(evt) {
@@ -227,6 +262,87 @@ def changeHandler(evt) {
 	} else if(switches.currentValue("switch") == "off"){lights.off()}
 }
 
+def slowonHandler(evt) {
+    LOGDEBUG("In slowonHandler...")
+    if(dimmers[0].currentSwitch == "off") {
+        dimmers.setLevel(0)
+        state.currentLevel = 0
+    } else{
+        state.currentLevel = dimmers[0].currentLevel
+    }
+    if(minutes == 0) return
+    seconds = minutes * 6
+    state.dimStep = targetLevelHigh / seconds
+    state.dimLevel = state.currentLevel
+    LOGDEBUG("slowonHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+    dimStepUp()
+}
+
+def dimStepUp() {
+    LOGDEBUG("In dimStepUp...")
+    if(switches.currentValue("switch") == "on") {
+    	if(state.currentLevel < targetLevelHigh) {
+        	state.dimLevel = state.dimLevel + state.dimStep
+            if(state.dimLevel > targetLevelHigh) {state.dimLevel = targetLevelHigh}
+        	state.currentLevel = state.dimLevel.toInteger()
+    		dimmers.setLevel(state.currentLevel)
+            LOGDEBUG("dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+        	runIn(10,dimStepUp)
+    	} else{
+            LOGDEBUG("dimStepUp - tMode = ${tMode}")
+            if(tMode == "Slow_Loop") {
+                runIn(1,slowoffHandler)
+            } else{
+            	switches.off()
+        		LOGDEBUG("dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelHigh} - Target Level Reached")
+            }
+    	}
+    } else{
+        LOGDEBUG("Current Level: ${state.currentLevel} - Control Switch turned Off")
+    }
+}
+
+def slowoffHandler(evt) {
+    LOGDEBUG("In slowoffHandler...")
+    if(dimmers[0].currentSwitch == "off") {
+        dimmers.setLevel(99)
+        state.currentLevel = 99
+    } else{
+        state.currentLevel = dimmers[0].currentLevel
+    }
+    if(minutes == 0) return
+    seconds = minutes * 6
+    state.dimStep1 = (targetLevelLow / seconds) * 100
+    state.dimLevel = state.currentLevel
+    LOGDEBUG("slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+    dimStepDown()
+}
+
+def dimStepDown() {
+    LOGDEBUG("In dimStepDown...")
+    if(switches.currentValue("switch") == "on") {
+    	if(state.currentLevel > targetLevelLow) {
+            state.dimStep = state.dimStep1
+        	state.dimLevel = state.dimLevel - state.dimStep
+            if(state.dimLevel < targetLevelLow) {state.dimLevel = targetLevelLow}
+        	state.currentLevel = state.dimLevel.toInteger()
+    		dimmers.setLevel(state.currentLevel)
+            LOGDEBUG("dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+        	runIn(10,dimStepDown)
+    	} else{
+            LOGDEBUG("dimStepDown - tMode = ${tMode}")
+            if(tMode == "Slow_Loop") {
+                runIn(1,slowonHandler)
+            } else {
+            	switches.off()
+        		LOGDEBUG("dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelLow} - Target Level Reached")
+    		}
+        }    
+    } else{
+        LOGDEBUG("Current Level: ${state.currentLevel} - Control Switch turned Off")
+    }
+}
+
 def sendcolor(lights,color) {
 	LOGDEBUG("In sendcolor")
 	if (brightnessLevel<1) {
@@ -286,5 +402,5 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "Child App Version: 1.1.2"}
+	section{paragraph "Child App Version: 1.1.3"}
 } 
