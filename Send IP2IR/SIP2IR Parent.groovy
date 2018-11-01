@@ -39,11 +39,13 @@
  *
  *  Changes:
  *
- *  
+ *  V1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
+ *                      Delay between sending digits user specified and added in some instructions.
+ *  V1.1.1 - 10/29/18 - Updated Channels to be either a Button or a Switch, only Switches can be used with Google Assistant.  
  *  V1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
- *			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
- *			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
- *			me how to send code from parent to child apps.
+ *			 			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
+ *			 			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
+ *						me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
@@ -123,8 +125,24 @@ def mainPage() {
         
 		if(state.appInstalled == 'COMPLETE'){
 			display()
-				section("This app is designed to send commands to an iTach IP2IR device.") {}
-            	section("Be sure to enter in the Preset Values in Advanced Config before creating Child Apps") {}
+				section() {
+					paragraph "This app is designed to send commands to an iTach IP2IR device."
+            		paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps"
+				}
+				section("Instructions:", hideable: true, hidden: true) {
+					paragraph "There are 4 types of Triggers that can be made."
+        			paragraph "<b>Switch:</b><br>To turn anything on/off. ie. Television, Stereo, Cable Box, etc. Remember, it's okay to put the same code in box on and off if necessary."
+    			
+        			paragraph "<b>Button:</b><br>Used to send just one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
+        		
+        			paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time.  ie. Channels, Volume(x2, x3, x4), etc."
+        		
+            		paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time.  ie. Channels, Volume(x2, x3, x4), etc. Note: this can not be used with Google Assistant."
+        		
+					paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
+				
+					paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
+				}
   				section("Child Apps", hideable: true, hidden: true){
 					app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR'</b>", multiple: true)
   			    }
@@ -132,7 +150,7 @@ def mainPage() {
  			 	section("App Name"){
        				label title: "Enter a name for parent app (optional)", required: false
  				}  
-            	section("Be sure to enter in the Preset Values in Advanced Config before creating Child Apps") {}
+            	section("<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>") {}
             	section("Advanced Config:", hideable: true, hidden: true) {
             		input "msgDigit1", "text", required: true, title: "IR Code to Send - 1", defaultValue: ""
                     input "msgDigit2", "text", required: true, title: "IR Code to Send - 2", defaultValue: ""
@@ -144,24 +162,24 @@ def mainPage() {
                     input "msgDigit8", "text", required: true, title: "IR Code to Send - 8", defaultValue: ""
                     input "msgDigit9", "text", required: true, title: "IR Code to Send - 9", defaultValue: ""
                     input "msgDigit0", "text", required: true, title: "IR Code to Send - 0", defaultValue: ""
-                    input "msgDigitE", "text", required: true, title: "IR Code to Send - Enter", defaultValue: ""
+                    input "msgDigitE", "text", required: false, title: "IR Code to Send - Enter", defaultValue: ""
                 }
 		}
 	}
 }
 
 def installCheck(){         
-   state.appInstalled = app.getInstallationState() 
-  if(state.appInstalled != 'COMPLETE'){
-section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
-  }
-    else{
- //       log.info "Parent Installed OK"
-    }
-	}
+	state.appInstalled = app.getInstallationState() 
+	if(state.appInstalled != 'COMPLETE'){
+		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
+  	}
+  	else{
+    	log.info "Parent Installed OK"
+  	}
+}
 
 def display(){
-	section{paragraph "Version: 1.1.0<br>@BPTWorld"}     
+	section{paragraph "Version: 1.1.2<br>@BPTWorld"}     
 }         
 
 def setVersion(){
