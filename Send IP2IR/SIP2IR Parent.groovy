@@ -135,13 +135,13 @@ def mainPage() {
     			
         			paragraph "<b>Button:</b><br>Used to send just one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
         		
-        			paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time.  ie. Channels, Volume(x2, x3, x4), etc."
+        			paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is just used to send Channels numbers based on the Presets in the Parent app.."
         		
-            		paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time.  ie. Channels, Volume(x2, x3, x4), etc. Note: this can not be used with Google Assistant."
+            			paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is just used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
         		
-					paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
+				paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
 				
-					paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
+				paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
 				}
   				section("Child Apps", hideable: true, hidden: true){
 					app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR'</b>", multiple: true)
