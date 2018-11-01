@@ -40,7 +40,7 @@
  *  Changes:
  *
  *  
- *  V1.0.1 - 11/01/18 - Merged pull request from DTTerastar resend the command if busy is received. 
+ *  V1.0.1 - 11/01/18 - Merged pull request from DTTerastar, resend the command if busy is received. Thank you!
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
