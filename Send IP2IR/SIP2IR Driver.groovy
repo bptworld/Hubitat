@@ -50,10 +50,11 @@ metadata {
     capability "Telnet"
     capability "Notification"
     capability "Speech Synthesis"
+
+    attribute "Telnet", ""
 }
     
-    preferences() {
-    	
+preferences() {    	
         section(""){
             input "ipaddress", "text", required: true, title: "iTach IP2IR IP Address", defaultValue: "0.0.0.0"
             input "debugMode", "bool", title: "Enable logging", required: true, defaultValue: true
@@ -61,39 +62,56 @@ metadata {
     }
 }
 
-def speak(message) {
-    LOGDEBUG("Sending Message: ${message}")
-    
-    def code = message
-    return new hubitat.device.HubAction("""$code\r\n""",hubitat.device.Protocol.TELNET)
+def speak(msg) {
+    state.lastmsg = msg
+    LOGDEBUG("Sending Message: ${msg}")
+    return new hubitat.device.HubAction("${msg}\n", hubitat.device.Protocol.TELNET)
 }
 
 def deviceNotification(message) {
     speak(message)
 }
 
+def resend(){
+    LOGDEBUG("RESEND!")
+    speak(state.lastmsg)
+}
+
 def initialize(){
-    telnetClose() 
 	try {
-		LOGDEBUG("Opening telnet connection")
-        telnetConnect([terminalType: 'VT100'], "${ipaddress}", 4998, null, null)
-  		//give it a chance to start
-		pauseExecution(1000)
-   		LOGDEBUG("Telnet connection established")
+		sendEvent([name: "telnet", value: "Opening"])
+        telnetConnect([terminalType: 'VT100', termChars:[13]], "${ipaddress}", 4998, null, null)
     } catch(e) {
 		LOGDEBUG("initialize error: ${e.message}")
     }
 }
 
-def installed(){
+def installed() {
 	initialize()
 }
 
-def updated(){
+def updated() {
 	initialize()
 }
 
-def LOGDEBUG(txt){
+def parse(String msg) {
+    LOGDEBUG "parse ${msg}"
+	sendEvent([name: "telnet", value: "Connected"])
+    if (msg == "busyIR,1:1,1"){
+        runIn(1, resend)
+    }
+}
+
+def telnetStatus(String status) {
+	LOGDEBUG "telnetStatus: ${status}"
+	if (status == "receive error: Stream is closed" || status == "send error: Broken pipe (Write failed)") {
+		log.error("Telnet connection dropped...")
+        sendEvent([name: "telnet", value: "Disconnected"])
+		runIn(60, initialize)
+    }
+}
+
+def LOGDEBUG(txt) {
     try {
     	if (settings.debugMode) { log.debug("${txt}") }
     } catch(ex) {
