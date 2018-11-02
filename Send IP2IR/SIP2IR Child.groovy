@@ -39,6 +39,8 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send mutilple times with
+ *                      each push. Also Fixed some typo's.
  *  V1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
  *                      Delay between sending digits user specified and added in some instructions.
  *  V1.1.1 - 10/29/18 - Updated Channels to be either a Button or a Switch, only Switches can be used with Google Assistant.
@@ -74,13 +76,13 @@ preferences {
     			
         		paragraph "<b>Button:</b><br>Used to send just one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
         		
-        		paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is just used to send Channels numbers based on the Presets in the Parent app."
+        		paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app."
         		
-            		paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is just used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
+            	paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
         		
-			paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
+				paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
 				
-			paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
+				paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
 		}
 		section() {
 			paragraph "<b>Select the Trigger Type to Activate to send the IR command</b>"
@@ -91,6 +93,12 @@ preferences {
                 	input "switch1", "capability.switch", title: "Select Trigger Device", required: true, multiple: false
             		input "msgToSendOn", "text", required: true, title: "IR Code to Send - ON", defaultValue: "sendir..."
                 	input "msgToSendOff", "text", required: true, title: "IR Code to Send - OFF", defaultValue: "sendir..."
+					input "mCommands", "enum", required: true, title: "Send the IR Code multiple times (think volume control)", submitOnChange: true,  options: ["No", "Yes"], defaultValue: "No"
+					if(mCommands == "Yes"){
+						input "xTimesOn", "enum", title: "How many times to send 'On' IR Code", required: true, options: ["1", "2", "3", "4"]
+						input "xTimesOff", "enum", title: "How many times to send 'Off' IR Code", required: true, options: ["1", "2", "3", "4"]
+						input "Delay", "number", required: true, title: "Delay between IR Codes", defaultValue: 1000
+					}
                 }
             }
             if(triggerMode == "Button"){
@@ -98,6 +106,8 @@ preferences {
                 	input "button1", "capability.pushableButton", title: "Select Button Device", required: true, multiple: false
             		input "buttonNumber", "enum", title: "Enter Button Number", required: true, options: ["1", "2", "3", "4", "5"]
                 	input "msgToSendPushed", "text", required: true, title: "IR Code to Send on Push", defaultValue: "sendir..."
+					input "xTimes", "enum", title: "How many times to send IR Code", required: true, options: ["1", "2", "3", "4"]
+					input "Delay", "number", required: true, title: "Delay between sending IR Codes", defaultValue: 1000
                 }
             }
             if(triggerMode == "Channel_Switch"){
@@ -194,44 +204,209 @@ def switching = evt.value
     if(switching == "on"){
         LOGDEBUG("Switch is turned on")
         LOGDEBUG("Msg to send Switch On: ${msgToSendOn}")
-		speaker.speak(msgToSendOn)   
+		LOGDEBUG("mCommands = ${mCommands}")
+		if(mCommands == "No") {speaker.speak(msgToSendOn)}
+			if(xTimesOn == "1") {
+				speaker.speak(msgToSendOn)
+			}
+			if(xTimesOn == "2") {
+				speaker.speak(msgToSendOn)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOn)
+			}
+			if(xTimesOn == "3") {
+				speaker.speak(msgToSendOn)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOn)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOn)
+			}
+			if(xTimesOn == "4") {
+				speaker.speak(msgToSendOn)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOn)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOn)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOn)
+			}
     }
         
     if(switching == "off"){
         LOGDEBUG("Switch is turned off")
         LOGDEBUG("Msg to send Switch Off: ${msgToSendOff}")
-		speaker.speak(msgToSendOff)
+		LOGDEBUG("mCommands = ${mCommands}")
+		if(mCommands == "No") {speaker.speak(msgToSendOff)}
+			if(xTimesOn == "1") {
+				speaker.speak(msgToSendOff)
+			}
+			if(xTimesOff == "2") {
+				speaker.speak(msgToSendOff)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOff)
+			}
+			if(xTimesOff == "3") {
+				speaker.speak(msgToSendOff)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOff)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOff)
+			}
+			if(xTimesOff == "4") {
+				speaker.speak(msgToSendOff)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOff)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOff)
+				pauseExecution(Delay)
+				speaker.speak(msgToSendOff)
+			}
     }         
 }
 
 def buttonHandler1(evt){
     	LOGDEBUG("You pressed button 1")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		speaker.speak(msgToSendPushed)        
+		if(xTimes == "1") {
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "2") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "3") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "4") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
 }
 
 def buttonHandler2(evt){
     	LOGDEBUG("You pressed button 2")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		speaker.speak(msgToSendPushed)        
+		if(xTimes == "1") {
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "2") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "3") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "4") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}        
 }
 
 def buttonHandler3(evt){
     	LOGDEBUG("You pressed button 3")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		speaker.speak(msgToSendPushed)        
+		if(xTimes == "1") {
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "2") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "3") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "4") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}        
 }
 
 def buttonHandler4(evt){
     	LOGDEBUG("You pressed button 4")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		speaker.speak(msgToSendPushed)        
+		if(xTimes == "1") {
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "2") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "3") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "4") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}        
 }
 
 def buttonHandler5(evt){
     	LOGDEBUG("You pressed button 5")
     	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
-		speaker.speak(msgToSendPushed)        
+		if(xTimes == "1") {
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "2") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "3") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}
+		if(xTimes == "4") {
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+			pauseExecution(Delay)
+			speaker.speak(msgToSendPushed)
+		}        
 }
 
 def myMsgDigit1(msgDigit1) {}
@@ -489,124 +664,220 @@ def channelHandler1(evt) {
         LOGDEBUG("You pressed Channel button 1")
     	PresetToSend1()
     	PresetToSend2()
-    	PresetToSend3()
+		PresetToSend3()
 		PresetToSend4()
-    	PresetToSendS()
+   		PresetToSendS()
     
-	LOGDEBUG("Inside channelHandler1 Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
 	
-	LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
-	speaker.speak(msgToSend1)
-    pauseExecution(1000)
+		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		speaker.speak(msgToSend1)
+    	pauseExecution(Delay)
 
-	if(Digit2 != "null") {
-    	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		speaker.speak(msgToSend2)
-		pauseExecution(1000)
-	} else{
-		LOGDEBUG("Did not send Channel Digit 2")
-	}
-	if(Digit3 != "null") {
-    	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		speaker.speak(msgToSend3)
-    	pauseExecution(1000)
-	} else{
-		LOGDEBUG("Did not send Channel Digit 3")
-	}
-	if(Digit4 != "null") {
-    	LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
-		speaker.speak(msgToSend4)
-    	pauseExecution(1000)
-	} else{
-		LOGDEBUG("Did not send Channel Digit 4")
-	}
-				 
-	if(Delay == "true") {
-    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
-    	speaker.speak(msgToSendE)
-	} else{
-		LOGDEBUG("Did not send Channel Enter")
-	}
+		if(Digit2 != "null") {
+    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+			speaker.speak(msgToSend2)
+			pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 2")
+		}
+		if(Digit3 != "null") {
+    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+			speaker.speak(msgToSend3)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 3")
+		}
+		if(Digit4 != "null") {
+    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+			speaker.speak(msgToSend4)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 4")
+		}
+		LOGDEBUG("${EnterCode}")			 
+		if(EnterCode == true) {
+    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		speaker.speak(msgToSendE)
+		} else{
+			LOGDEBUG("Did not send Channel Enter")
+		}
 }
 
 def channelHandler2(evt) {
         LOGDEBUG("You pressed Channel button 2")
     	PresetToSend1()
     	PresetToSend2()
-    	PresetToSend3()
-    	PresetToSendS()
-    	
-        LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		PresetToSend3()
+		PresetToSend4()
+   		PresetToSendS()
+    
+		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+	
+		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		speaker.speak(msgToSend2)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		speaker.speak(msgToSend3)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
-    	speaker.speak(msgToSendE)
+    	pauseExecution(Delay)
+
+		if(Digit2 != "null") {
+    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+			speaker.speak(msgToSend2)
+			pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 2")
+		}
+		if(Digit3 != "null") {
+    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+			speaker.speak(msgToSend3)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 3")
+		}
+		if(Digit4 != "null") {
+    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+			speaker.speak(msgToSend4)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 4")
+		}
+		LOGDEBUG("${EnterCode}")			 
+		if(EnterCode == true) {
+    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		speaker.speak(msgToSendE)
+		} else{
+			LOGDEBUG("Did not send Channel Enter")
+		}
 }
 
 def channelHandler3(evt) {
         LOGDEBUG("You pressed Channel button 3")
     	PresetToSend1()
     	PresetToSend2()
-    	PresetToSend3()
-    	PresetToSendS()
-    	
-    	LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		PresetToSend3()
+		PresetToSend4()
+   		PresetToSendS()
+    
+		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+	
+		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		speaker.speak(msgToSend2)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		speaker.speak(msgToSend3)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
-    	speaker.speak(msgToSendE)
+    	pauseExecution(Delay)
+
+		if(Digit2 != "null") {
+    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+			speaker.speak(msgToSend2)
+			pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 2")
+		}
+		if(Digit3 != "null") {
+    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+			speaker.speak(msgToSend3)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 3")
+		}
+		if(Digit4 != "null") {
+    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+			speaker.speak(msgToSend4)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 4")
+		}
+		LOGDEBUG("${EnterCode}")			 
+		if(EnterCode == true) {
+    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		speaker.speak(msgToSendE)
+		} else{
+			LOGDEBUG("Did not send Channel Enter")
+		}
 }
 
 def channelHandler4(evt) {
         LOGDEBUG("You pressed Channel button 4")
     	PresetToSend1()
     	PresetToSend2()
-    	PresetToSend3()
-    	PresetToSendS()
-    	
-        LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		PresetToSend3()
+		PresetToSend4()
+   		PresetToSendS()
+    
+		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+	
+		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		speaker.speak(msgToSend2)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		speaker.speak(msgToSend3)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
-    	speaker.speak(msgToSendE)
+    	pauseExecution(Delay)
+
+		if(Digit2 != "null") {
+    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+			speaker.speak(msgToSend2)
+			pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 2")
+		}
+		if(Digit3 != "null") {
+    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+			speaker.speak(msgToSend3)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 3")
+		}
+		if(Digit4 != "null") {
+    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+			speaker.speak(msgToSend4)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 4")
+		}
+		LOGDEBUG("${EnterCode}")			 
+		if(EnterCode == true) {
+    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		speaker.speak(msgToSendE)
+		} else{
+			LOGDEBUG("Did not send Channel Enter")
+		}
 }
 
 def channelHandler5(evt) {
         LOGDEBUG("You pressed Channel button 5")
     	PresetToSend1()
     	PresetToSend2()
-    	PresetToSend3()
-    	PresetToSendS()
-    	
-        LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		PresetToSend3()
+		PresetToSend4()
+   		PresetToSendS()
+    
+		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+	
+		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
 		speaker.speak(msgToSend1)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
-		speaker.speak(msgToSend2)
-    	pauseExecution(500)
-    	LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
-		speaker.speak(msgToSend3)
-    	pauseExecution(500)
-        LOGDEBUG("Msg to send Enter: ${DigitE} - ${msgToSendE}")
-    	speaker.speak(msgToSendE)
+    	pauseExecution(Delay)
+
+		if(Digit2 != "null") {
+    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+			speaker.speak(msgToSend2)
+			pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 2")
+		}
+		if(Digit3 != "null") {
+    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+			speaker.speak(msgToSend3)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 3")
+		}
+		if(Digit4 != "null") {
+    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+			speaker.speak(msgToSend4)
+    		pauseExecution(Delay)
+		} else{
+			LOGDEBUG("Did not send Channel Digit 4")
+		}
+		LOGDEBUG("${EnterCode}")			 
+		if(EnterCode == true) {
+    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		speaker.speak(msgToSendE)
+		} else{
+			LOGDEBUG("Did not send Channel Enter")
+		}
 }
 
 // define debug action
@@ -631,7 +902,7 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "Version: 1.1.2<br>@BPTWorld"}     
+	section{paragraph "Version: 1.1.3<br>@BPTWorld"}     
 }
 
 def setVersion(){
