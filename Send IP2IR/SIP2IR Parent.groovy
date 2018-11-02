@@ -39,7 +39,7 @@
  *
  *  Changes:
  *
- *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send mutilple times with
+ *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send multiple times with
  *                      each push. Also Fixed some typo's.
  *  V1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
  *                      Delay between sending digits user specified and added in some instructions.
