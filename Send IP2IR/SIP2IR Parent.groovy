@@ -39,6 +39,8 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send mutilple times with
+ *                      each push. Also Fixed some typo's.
  *  V1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
  *                      Delay between sending digits user specified and added in some instructions.
  *  V1.1.1 - 10/29/18 - Updated Channels to be either a Button or a Switch, only Switches can be used with Google Assistant.  
@@ -133,15 +135,15 @@ def mainPage() {
 					paragraph "There are 4 types of Triggers that can be made."
         			paragraph "<b>Switch:</b><br>To turn anything on/off. ie. Television, Stereo, Cable Box, etc. Remember, it's okay to put the same code in box on and off if necessary."
     			
-        			paragraph "<b>Button:</b><br>Used to send just one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
+        			paragraph "<b>Button:</b><br>Used to send one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
         		
-        			paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is just used to send Channels numbers based on the Presets in the Parent app.."
+        			paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app."
         		
-            			paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is just used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
+            		paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
         		
-				paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
+					paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
 				
-				paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
+					paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
 				}
   				section("Child Apps", hideable: true, hidden: true){
 					app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR'</b>", multiple: true)
@@ -179,7 +181,7 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.1.2<br>@BPTWorld"}     
+	section{paragraph "Version: 1.1.3<br>@BPTWorld"}     
 }         
 
 def setVersion(){
