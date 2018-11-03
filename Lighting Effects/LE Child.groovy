@@ -39,6 +39,9 @@
  *
  *  Changes:
  *
+ *  V1.1.4 - 11/03/18 - All colors are now defined in Custom Color Presets (Parent app). Colors now include Hue, Saturation and
+ *						Level for better color control. All colors are customizable, create up to 15 colors in the Parent app. Be 
+ *                      sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app.
  *  V1.1.3 - 10/24/18 - Added portions of ST apps 'Slow Raiser' and 'Dimming Slowly' - 2015 Bruce Ravenel (@Bravenel). Modified
  *                      into 'Slow Off', 'Slow On' and 'Slow Loop' routines. Thanks Bruce! 
  *  V1.1.2 - 10/23/18 - Minor fixes and adjustments
@@ -72,16 +75,17 @@ preferences {
     display()
         section ("Create a spooky, sparkly or party effect. Be sure to read the instructions."){}    
         section("Instructions:", hideable: true, hidden: true) {
-        	paragraph "Dimming:"
+        	paragraph "<b>Dimming:</b>"
     		paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
     		paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
-        	paragraph "Color Changing:"
+        	paragraph "<b>Color Changing:</b>"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app."
-        	paragraph "Slow Off, On and Loop:"
+        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+			paragraph "<b>Slow Off, On and Loop:</b>"
         	paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
-            paragraph "Important:"
+            paragraph "<b>Important:</b>"
         	paragraph "Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"
-            paragraph "Very Important:"
+            paragraph "<b>Very Important:</b>"
 			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         }
    		section() {
@@ -96,34 +100,32 @@ preferences {
             
         if(triggerMode == "Color_Changing"){
         	section("Select your options:") {
+				paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
         		input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
 				input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
-            	input "sleepytime2", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
-        		input "seperate", "enum", title: "Cycle each light individually, or all together?", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
-                input "pattern", "enum", title: "Cycle each color or Randomize?", defaultValue: "randomize", options: ["Randomize","Cycle"], required: true, multiple: false
-      
-           		input "colorSelection", "enum", title: "Choose your colors", options: [
-                	[White:"White"],
-                	[Daylight:"Daylight"],
-                	[Soft_White:"Soft White"],
-                	[Warm_White:"Warm White"],
-                	[Navy_Bluek:"Navy Blue"],
-                	[Blue:"Blue"],
-                	[Green:"Green"],
-                	[Turquoise:"Turquoise"],
-                	[Aqua:"Aqua"],
-                	[Amber:"Amber"],
-                	[Yellow:"Yellow"],
-                	[Safety_Orange:"Safety Orange"],
-                	[Orange:"Orange"],
-                	[Indigo:"Indigo"],
-                	[Purple:"Purple"],
-                	[Pink:"Pink"],
-                	[Raspberry:"Raspberry"],
-                	[Red:"Red"],
-                	[Brick_Red:"Brick Red"],
+            	input "sleepytime2", "number", title: "Enter the delay between actions (in seconds)" , required: true, defaultValue: 300
+        		input "sleepPattern", "enum", title: "Delay constant or random", defaultValue: "constant", options: ["constant","random"], required: true, multiple: false
+        		input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
+                input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required: true, multiple: false
+
+				input "colorSelection", "enum", title: "Choose your colors", options: [
+                	[color01:"${parent.msgColor01Name}"],
+                	[color02:"${parent.msgColor02Name}"],
+                	[color03:"${parent.msgColor03Name}"],
+                	[color04:"${parent.msgColor04Name}"],
+                	[color05:"${parent.msgColor05Name}"],
+                	[color06:"${parent.msgColor06Name}"],
+                	[color07:"${parent.msgColor07Name}"],
+                	[color08:"${parent.msgColor08Name}"],
+                	[color09:"${parent.msgColor09Name}"],
+                	[color10:"${parent.msgColor10Name}"],
+					[color11:"${parent.msgColor11Name}"],
+					[color12:"${parent.msgColor12Name}"],
+					[color13:"${parent.msgColor13Name}"],
+					[color14:"${parent.msgColor14Name}"],
+					[color15:"${parent.msgColor15Name}"],
             	], required: true, multiple: true
-        	}
+			}
         }
     }
     
@@ -132,7 +134,8 @@ preferences {
             input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
     		input "minutes", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     		input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
-            input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_On", Options: ["Slow_On"]
+            //input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_On", Options: ["Slow_On"]
+			tMode = "Slow_On"
 		}
     }
     
@@ -141,7 +144,8 @@ preferences {
             input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
     		input "minutes", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     		input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-            input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Off", Options: ["Slow_Off"]
+            //input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Off", Options: ["Slow_Off"]
+			tMode = "Slow_Off"
         }
     }
     
@@ -151,7 +155,7 @@ preferences {
     		input "minutes", "number", title: "Takes how many minutes per dim or raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     		input "targetLevelHigh", "number", title: "Target Level - High(1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
             input "targetLevelLow", "number", title: "Target Level - Low(1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-            input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Loop", Options: ["Slow_Loop"]
+            tMode = "Slow_Loop"
         }    
     }   
     
@@ -170,6 +174,7 @@ def installed() {
 
 def updated() {	
     log.debug "Updated with settings: ${settings}"
+	//if(debugMode) runIn(1800,logsOff)
     unsubscribe()
 	unschedule()
 	initialize()
@@ -184,6 +189,11 @@ def initialize() {
     if(triggerMode == "Slow_On"){subscribe(switches, "switch", slowonHandler)}
     if(triggerMode == "Slow_Off"){subscribe(switches, "switch", slowoffHandler)}
     if(triggerMode == "Slow_Loop"){subscribe(switches, "switch", slowonHandler)}
+}
+
+def logsOff(){
+    //log.warn "Debug logging auto disabled"
+    //device.updateSetting("debugMode",[value:false])
 }
 
 def eventHandler(evt) {
@@ -206,19 +216,25 @@ def eventHandler(evt) {
             	pause(state.sleepTime)
             }
         }
-    	runIn(1,"eventHandler")
+    	runIn(10,"eventHandler")
     } else if(switches.currentValue("switch") == "off"){dimmers.off()}
 }
     
 def changeHandler(evt) {
     if(switches.currentValue("switch") == "on") {
+		LOGDEBUG("In changeHandler...")
+		LOGDEBUG("Color Selection = ${colorSelection}")
         lights.on()
         	if(triggerMode == "Color_Changing"){
                 for (numberoflights in lights) {
-                    state.sleepTime2 = Math.abs(new Random().nextInt() % sleepytime2)
-                    
+					if(sleepPattern == "random"){
+                    	state.sleepTime2 = Math.abs(new Random().nextInt() % sleepytime2)
+					} else{
+                    	state.sleepTime2 = sleepytime2
+					}
         			def colors = []
                 	colors = colorSelection
+					LOGDEBUG("Colors = ${colors}")
 				
                 	def offLights = lights.findAll { light -> light.currentSwitch == "off"}
                 	LOGDEBUG("offLights = ${offLights}")
@@ -227,7 +243,8 @@ def changeHandler(evt) {
                 	LOGDEBUG("onLights = ${onLights}")
     	    		def numberon = onLights.size();
 					def numcolors = colors.size();
-        		
+        			
+					LOGDEBUG("pattern = ${pattern}")
                     if (pattern == 'randomize') {
                     	randOffset = Math.abs(new Random().nextInt()%numcolors)
                     	LOGDEBUG("Pattern: ${pattern}")
@@ -244,22 +261,25 @@ def changeHandler(evt) {
 							if (state.colorOffset >= numcolors ) {
             					state.colorOffset = 0
             				}
-							if (seperate == 'combined')
+							if (seperate == 'combined') {
 								sendcolor(onLights,colors[state.colorOffset])
-            				else {
-            					LOGDEBUG("Colors: ${colors}")
+								LOGDEBUG("changeHandler-cycle-combined = onLighgts: ${onLights}, Colors: ${colors[state.colorOffset]}")
+							} else {
            						for(def i=0;i<numberon;i++) {
                 					sendcolor(onLights[i],colors[(state.colorOffset + i) % numcolors])
+									LOGDEBUG("changeHandler-cycle-randomize = onLighgts: ${onLights[i]}, Colors: ${colors[(state.colorOffset + i) % numcolors]}")
                 				}
             				}
             				state.colorOffset = state.colorOffset + 1
                         }
      				}
-                    pause(state.sleepTime2)
                 }
             }
-        	runIn(1,"changeHandler")
-	} else if(switches.currentValue("switch") == "off"){lights.off()}
+			LOGDEBUG("sleepTime2: ${state.sleepTime2}")
+        	runIn(state.sleepTime2,"changeHandler")
+	} else if(switches.currentValue("switch") == "off"){
+		lights.off()
+	}
 }
 
 def slowonHandler(evt) {
@@ -344,7 +364,7 @@ def dimStepDown() {
 }
 
 def sendcolor(lights,color) {
-	LOGDEBUG("In sendcolor")
+	LOGDEBUG("In sendcolor...")
 	if (brightnessLevel<1) {
 		brightnessLevel=1
 	}
@@ -353,32 +373,27 @@ def sendcolor(lights,color) {
 	}
 
     def colorPallet = [
-    	"White": [hue: 0, saturation: 0],
-    	"Daylight": [hue: 53, saturation: 91],
-    	"Soft_White": [hue: 23, saturation: 56],
-    	"Warm_White": [hue: 20, saturation: 80],
-    	"Navy_Blue": [hue: 61, saturation: 100],
-    	"Blue": [hue: 65, saturation: 100],
-    	"Green": [hue: 33, saturation: 100],
-    	"Turquoise": [hue: 47, saturation: 100],
-    	"Aqua": [hue: 50, saturation: 100],
-    	"Amber": [hue: 13, saturation: 100],
-    	"Yellow": [hue: 17, saturation: 100],
-    	"Safety_Orange": [hue: 7, saturation: 100],
-    	"Orange": [hue: 10, saturation: 100],
-    	"Indigo": [hue: 73, saturation: 100],
-    	"Purple": [hue: 82, saturation: 100],
-    	"Pink": [hue: 91, saturation: 68],
-    	"Raspberry": [hue: 94 , saturation: 100],
-    	"Red": [hue: 0, saturation: 100],
-    	"Brick_Red": [hue: 4, saturation: 100],
+		"color01": [hue: parent.msgColor01Hue, saturation: parent.msgColor01Sat, level: parent.msgColor01Lev],
+    	"color02": [hue: parent.msgColor02Hue, saturation: parent.msgColor02Sat, level: parent.msgColor02Lev],
+    	"color03": [hue: parent.msgColor03Hue, saturation: parent.msgColor03Sat, level: parent.msgColor03Lev],
+    	"color04": [hue: parent.msgColor04Hue, saturation: parent.msgColor04Sat, level: parent.msgColor04Lev],
+    	"color05": [hue: parent.msgColor05Hue, saturation: parent.msgColor05Sat, level: parent.msgColor05Lev],
+    	"color06": [hue: parent.msgColor06Hue, saturation: parent.msgColor06Sat, level: parent.msgColor06Lev],
+    	"color07": [hue: parent.msgColor07Hue, saturation: parent.msgColor07Sat, level: parent.msgColor07Lev],
+    	"color08": [hue: parent.msgColor08Hue, saturation: parent.msgColor08Sat, level: parent.msgColor08Lev],
+    	"color09": [hue: parent.msgColor09Hue, saturation: parent.msgColor09Sat, level: parent.msgColor09Lev],
+    	"color10": [hue: parent.msgColor10Hue, saturation: parent.msgColor10Sat, level: parent.msgColor10Lev],
+		"color11": [hue: parent.msgColor11Hue, saturation: parent.msgColor11Sat, level: parent.msgColor11Lev],
+		"color12": [hue: parent.msgColor12Hue, saturation: parent.msgColor12Sat, level: parent.msgColor12Lev],
+		"color13": [hue: parent.msgColor13Hue, saturation: parent.msgColor13Sat, level: parent.msgColor13Lev],
+		"color14": [hue: parent.msgColor14Hue, saturation: parent.msgColor14Sat, level: parent.msgColor14Lev],
+		"color15": [hue: parent.msgColor15Hue, saturation: parent.msgColor15Sat, level: parent.msgColor15Lev],
     ]
 	def newcolor = colorPallet."${color}"
-    LOGDEBUG(" ${color} = ${newcolor}")
-    if(newcolor.saturation == null) newcolor.saturation = 100
+    LOGDEBUG("${color} = ${newcolor}")
     newcolor.level = brightnessLevel
 	lights*.setColor(newcolor)
-    LOGDEBUG("Setting Color = ${color} for: ${lights}")
+    LOGDEBUG("Setting Color = ${color} on: ${lights}")
 }
 
 // define debug action
@@ -402,5 +417,5 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "Child App Version: 1.1.3"}
+	section{paragraph "Child App Version: 1.1.4"}
 } 
