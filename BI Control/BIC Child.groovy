@@ -87,7 +87,7 @@ preferences {
 			}
 			if(triggerMode == "Switch"){
 				section(){
-					paragraph "<b>Ability to change the BI Profile from a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to change the BI Profile using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
@@ -107,7 +107,7 @@ preferences {
 			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger"], required: true, Multiple: false
 			if(triggerMode == "Camera_Preset"){
 				section(){
-					paragraph "<b>Ability to move a camera to a Preset from a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to move a camera to a Preset using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: true, multiple: false
@@ -122,14 +122,14 @@ preferences {
 				}
 			}
 			if(triggerMode == "Camera_Snapshot"){
-				paragraph "<b>Ability to get a Camera Snapshot from a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+				paragraph "<b>Ability to get a Camera Snapshot using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: true, multiple: false
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
 			}
 			if(triggerMode == "Camera_Trigger"){
-				paragraph "<b>Ability to start or stop manual recording on camera from a Switch.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
+				paragraph "<b>Ability to start or stop manual recording on camera using a Switch.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
 				section(){
 					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: true, multiple: false
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
