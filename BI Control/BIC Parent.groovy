@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 11/25/18 - Added PTZ camera controls.
  *  V1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
  *						to start or stop manual recording on camera from a Switch.
  *  V1.0.1 - 11/03/18 - Changed into Parent/Child app. BI Control now works with Modes and Switches to change Profiles.
@@ -132,7 +133,7 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.0.2<br>@BPTWorld"}     
+	section{paragraph "Version: 1.0.3<br>@BPTWorld"}     
 }         
 
 def setVersion(){
