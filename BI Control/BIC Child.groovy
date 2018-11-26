@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 11/25/18 - Added PTZ camera controls.
  *  V1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
  *						to start or stop manual recording on camera from a Switch.
  *  V1.0.1 - 11/03/18 - Changed into Parent/Child app. BI Control now works with Modes and Switches to change Profiles.
@@ -104,7 +105,7 @@ preferences {
 			}
 		}
 		if(triggerType == "Camera"){
-			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger"], required: true, Multiple: false
+			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ"], required: true, Multiple: false
 			if(triggerMode == "Camera_Preset"){
 				section(){
 					paragraph "<b>Ability to move a camera to a Preset using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
@@ -135,6 +136,22 @@ preferences {
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
 			}
+			if(triggerMode == "Camera_PTZ"){
+				paragraph "<b>Ability to use PTZ commands using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+				section(){
+					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: true, multiple: false
+					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+					input "biCameraPTZ", "enum", title: "PTZ Command", options: [
+							[PTZ0:"0 - Left"],
+							[PTZ1:"1 - Right"],
+							[PTZ2:"2 - Up"],
+							[PTZ3:"3 - Down"],
+							[PTZ4:"4 - Home"],
+							[PTZ5:"5 - Zoom In"],
+							[PTZ6:"6 - Zoom Out"],
+						], required: true, multiple: false
+				}
+			}
 		}
 	}
 	section() {
@@ -162,6 +179,7 @@ def initialize() {
 	if(triggerMode == "Camera_Preset"){subscribe(switches, "switch", cameraPresetHandler)}
 	if(triggerMode == "Camera_Snapshot"){subscribe(switches, "switch", cameraSnapshotHandler)}
 	if(triggerMode == "Camera_Trigger"){subscribe(switches, "switch", cameraTriggerHandler)}
+	if(triggerMode == "Camera_PTZ"){subscribe(switches, "switch", cameraPTZHandler)}
 }
 
 def modeChangeHandler(evt) {
@@ -298,6 +316,43 @@ def cameraTriggerHandler(evt) {
 	}
 }
 
+def cameraPTZHandler(evt) {
+	LOGDEBUG("BI Control-cameraPTZHandler...")
+	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+
+	if(switches.currentValue("switch") == "on") {
+		LOGDEBUG("cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}")
+		if(biCameraPTZ == "PTZ0") {
+			def setPreset = "0"
+			biChangeProfile(setPreset)
+		} else
+		if(biCameraPTZ == "PTZ1") {
+			def setPreset = "1"
+			biChangeProfile(setPreset)
+		} else
+		if(biCameraPTZ == "PTZ2") {
+			def setPreset = "2"
+			biChangeProfile(setPreset)
+		} else
+		if(biCameraPTZ == "PTZ3") {
+			def setPreset = "3"
+			biChangeProfile(setPreset)
+		} else
+		if(biCameraPTZ == "PTZ4") {
+			def setPreset = "4"
+			biChangeProfile(setPreset)
+		} else
+		if(biCameraPTZ == "PTZ5") {
+			def setPreset = "5"
+			biChangeProfile(setPreset)
+		} else
+		if(biCameraPTZ == "PTZ6") {
+			def setPreset = "6"
+			biChangeProfile(setPreset)
+		}
+	}	
+}
+
 def biChangeProfile(num) {
     LOGDEBUG("BI Control-biChangeProfile...")
 	
@@ -325,6 +380,11 @@ def biChangeProfile(num) {
 		LOGDEBUG("I'm in Camera_Trigger")
 		biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
 		// /admin?camera=x&manrec=1
+	} else
+	if(triggerMode == "Camera_PTZ") {
+		LOGDEBUG("I'm in Camera_PTZ")
+		biRawCommand = "/cam/${biCamera}/pos=${num}"
+		// /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
 	}
 	
 	LOGDEBUG("sending GET to URL http://${biHost}/${biRawCommand}")
@@ -364,7 +424,7 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "Version: 1.0.2<br>@BPTWorld"}
+	section{paragraph "Version: 1.0.3<br>@BPTWorld"}
 }
 
 def setVersion(){
