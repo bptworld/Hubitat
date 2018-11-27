@@ -9,7 +9,7 @@ https://community.hubitat.com/
 <br><br>
 **Send IP2IR** - This app is designed to send commands to an iTach IP2IR device.
 <br><br>
-**Welcome Home** - Coming soon...
+**Welcome Home** - Coming soon...This app is designed to give a personal welcome announcement after you have entered the home.
 <br><br>
 Bryan<br>
 @BPTWorld
