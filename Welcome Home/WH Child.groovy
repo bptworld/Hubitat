@@ -39,7 +39,7 @@ import groovy.time.TimeCategory
  *
  *
  *
- *
+ *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple door, locks or motion sensors.
  *  V1.0.0 - 11/25/18 - Initial release.
  *
  */
@@ -62,20 +62,26 @@ preferences {
     display()
         section ("This app is designed to give a personal welcome announcement after you have entered the home."){}    
         section("Instructions:", hideable: true, hidden: true) {
-        	paragraph "<b>Info:</b>"
-    		paragraph "This app is pretty straight forward. Follow the prompts and you should be fine."
+        	paragraph "<b>Types of Triggers:</b>"
+    		paragraph "<b>Unlock or Door Open</b><br>Both of these work pretty much the same. When door or lock is triggered, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement."
+			paragraph "Each trigger can have multiple selections but this is an 'or' function. Meaning it only takes one device to trigger the actions. ie. Door1 or Door2 has been opened. If you require a different delay per door/lock, then separate child apps would be required - one for each door or lock."
+			paragraph "<b>Motion Sensor</b><br>When motion sensor becomes active, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement. If you require a different delay per motion sensor, then separate child apps would be required - one for each motion sensor."
+			paragraph "This trigger also works with Hubitat's built in 'Zone Motion Controllers' app. Which allows you to do some pretty cool things with motion sensors."
 			paragraph "<b>Notes:</b>"
-			paragraph "This app is designed to give a personal welcome announcement after you have entered the home."
+			paragraph "This app is designed to give a personal welcome announcement <i>after</i> you have entered the home."
 			paragraph "<b>Requirements:</b>"
 			paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
 		}
 		section() {
-    	input "triggerMode", "enum", title: "Select activation Type", submitOnChange: true,  options: ["Contact_Sensor","Door_Lock"], required: true, Multiple: false
+    	input "triggerMode", "enum", title: "Select activation Type", submitOnChange: true,  options: ["Contact_Sensor","Door_Lock","Motion_Sensor"], required: true, Multiple: false
 			if(triggerMode == "Door_Lock"){
-				input "lock1", "capability.lock", title: "Activate the welcome message when this door is unlocked", required: true, multiple: false
+				input "lock1", "capability.lock", title: "Activate the welcome message when this door is unlocked", required: true, multiple: true
 			}
 			if(triggerMode == "Contact_Sensor"){
-				input "contactSensor", "capability.contactSensor", title: "Activate the welcome message when this contact sensor is opened", required: true, multiple: false
+				input "contactSensor", "capability.contactSensor", title: "Activate the welcome message when this contact sensor is opened", required: true, multiple: true
+			}
+			if(triggerMode == "Motion_Sensor"){
+				input "motionSensor1", "capability.motionSensor", title: "Activate the welcome message when this motion sensor is activated", required: true, multiple: true
 			}
 		}			
 		section() {
@@ -133,7 +139,7 @@ def updated() {
 def initialize() {
 	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
-
+	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
 }
 
 def lockHandler(evt) {
@@ -159,6 +165,18 @@ def contactSensorHandler(evt) {
 		}
 	}
 }
+
+def motionSensorHandler(evt) {
+	state.motionStatus = evt.value
+	LOGDEBUG("motion Status: = ${state.motionStatus}")
+	if(state.motionStatus == "active") {
+		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+			LOGDEBUG("In motionSensorHandler...Pause: ${pause1}")
+			getTimeDiff()
+		}
+	}
+}
 										
 def getTimeDiff() {
 	LOGDEBUG("In getTimeDiff...")
@@ -166,11 +184,9 @@ def getTimeDiff() {
 	LOGDEBUG("Presence Sensor Status: = ${sensorStatus}")
 	if(sensorStatus == "present") {
 		// ********** Used for Testing **********
-		//def lastActivity = "2018-11-27 09:41:00"
-		//timeDiff = 8
-		//timeDiff = 12
+		def lastActivity = "2018-11-28 08:00:00"
 			
-		def lastActivity = presenceSensor1.getLastActivity()
+		//def lastActivity = presenceSensor1.getLastActivity()
 			
 		LOGDEBUG("lastActivity: ${lastActivity}")
     	long timeDiff
@@ -400,6 +416,6 @@ def LOGDEBUG(txt){
 
 def display(){
 	setDefaults()
-	section{paragraph "Child App Version: 1.0.0"}
+	section{paragraph "Child App Version: 1.0.1"}
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
