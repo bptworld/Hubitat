@@ -185,9 +185,9 @@ def getTimeDiff() {
 	LOGDEBUG("Presence Sensor Status: = ${sensorStatus}")
 	if(sensorStatus == "present") {
 		// ********** Used for Testing **********
-		def lastActivity = "2018-11-28 08:00:00"
+		//def lastActivity = "2018-11-28 08:00:00"
 			
-		//def lastActivity = presenceSensor1.getLastActivity()
+		def lastActivity = presenceSensor1.getLastActivity()
 			
 		LOGDEBUG("lastActivity: ${lastActivity}")
     	long timeDiff
