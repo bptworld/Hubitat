@@ -39,7 +39,8 @@ import groovy.time.TimeCategory
  *
  *
  *
- *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple door, locks or motion sensors.
+ *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
+ *  door, locks or motion sensors. Updated the instructions.
  *  V1.0.0 - 11/25/18 - Initial release.
  *
  */
