@@ -38,7 +38,8 @@
  *
  *
  *
- *
+ *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
+ *  door, locks or motion sensors. Updated the instructions.
  *  V1.0.0 - 11/25/18 - Initial release.
  *
  */
@@ -87,11 +88,15 @@ def mainPage() {
 					paragraph "This app is designed to give a personal welcome announcement after you have entered the home."
 				}
 				section("Instructions:", hideable: true, hidden: true) {
+        			paragraph "<b>Types of Triggers:</b>"
+    				paragraph "<b>Unlock or Door Open</b><br>Both of these work pretty much the same. When door or lock is triggered, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement."
+					paragraph "Each trigger can have multiple selections but this is an 'or' function. Meaning it only takes one device to trigger the actions. ie. Door1 or Door2 has been opened. If you require a different delay per door/lock, then separate child apps would be required - one for each door or lock."
+					paragraph "<b>Motion Sensor</b><br>When motion sensor becomes active, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement. If you require a different delay per motion sensor, then separate child apps would be required - one for each motion sensor."
+					paragraph "This trigger also works with Hubitat's built in 'Zone Motion Controllers' app. Which allows you to do some pretty cool things with motion sensors."
 					paragraph "<b>Notes:</b>"
-					paragraph "This app is designed to give a personal welcome announcement after you have entered the home."
+					paragraph "This app is designed to give a personal welcome announcement <i>after</i> you have entered the home."
 					paragraph "<b>Requirements:</b>"
 					paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
-        				
 				}
   				section("Child Apps", hideable: true, hidden: true){
 					app(name: "anyOpenApp", appName: "Welcome Home Child", namespace: "BPTWorld", title: "<b>Add a new 'Welcome Home' child</b>", multiple: true)
@@ -133,7 +138,7 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.0.0<br>@BPTWorld"}     
+	section{paragraph "Version: 1.0.1<br>@BPTWorld"}     
 }         
 
 def setVersion(){
