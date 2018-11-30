@@ -38,7 +38,7 @@ import groovy.time.TimeCategory
  *  Changes:
  *
  *
- *
+ *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
  *  door, locks or motion sensors. Updated the instructions.
  *  V1.0.0 - 11/25/18 - Initial release.
@@ -122,6 +122,9 @@ preferences {
     	section() {
         	input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false, description: ""
     	}
+		section() {
+			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
+		}
 }
 
 def installed() {
@@ -138,44 +141,70 @@ def updated() {
 }
 
 def initialize() {
+	state.enablerSwitch2 = "off"
+	state.beenHere = "no"
+	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
 }
 
+def enablerSwitchHandler(evt){
+	state.enablerSwitch2 = evt.value
+	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
+    if(state.enablerSwitch2 == "on"){
+    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+	} else {
+		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
+    }
+}
+
 def lockHandler(evt) {
-	state.lockStatus = evt.value
-	LOGDEBUG("Lock Status: = ${state.lockStatus}")
-	if(state.lockStatus == "unlocked") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-			LOGDEBUG("In lockHandler...Pause: ${pause1}")
-			getTimeDiff()
+	if(state.enablerSwitch2 == "off") {
+		state.lockStatus = evt.value
+		LOGDEBUG("Lock Status: = ${state.lockStatus}")
+		if(state.lockStatus == "unlocked") {
+			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+				LOGDEBUG("In lockHandler...Pause: ${pause1}")
+				getTimeDiff()
+			}
 		}
+	} else {
+		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	}
 }
 
 def contactSensorHandler(evt) {
-	state.contactStatus = evt.value
-	LOGDEBUG("contact Status: = ${state.contactStatus}")
-	if(state.contactStatus == "open") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-			LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-			getTimeDiff()
+	if(state.enablerSwitch2 == "off") {
+		state.contactStatus = evt.value
+		LOGDEBUG("contact Status: = ${state.contactStatus}")
+		if(state.contactStatus == "open") {
+			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+				LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+				getTimeDiff()
+			}
 		}
+	} else {
+		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	}
 }
 
 def motionSensorHandler(evt) {
-	state.motionStatus = evt.value
-	LOGDEBUG("motion Status: = ${state.motionStatus}")
-	if(state.motionStatus == "active") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-			LOGDEBUG("In motionSensorHandler...Pause: ${pause1}")
-			getTimeDiff()
+	if(state.enablerSwitch2 == "off") {
+		state.motionStatus = evt.value
+		LOGDEBUG("motion Status: = ${state.motionStatus}")
+		if(state.motionStatus == "active") {
+			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+				LOGDEBUG("In motionSensorHandler...Pause: ${pause1}")
+				getTimeDiff()
+			}
 		}
+	} else {
+		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	}
 }
 										
@@ -184,8 +213,9 @@ def getTimeDiff() {
 	def sensorStatus = presenceSensor1.currentValue("presence")
 	LOGDEBUG("Presence Sensor Status: = ${sensorStatus}")
 	if(sensorStatus == "present") {
+		LOGDEBUG("Been Here: ${state.beenHere}")
 		// ********** Used for Testing **********
-		//def lastActivity = "2018-11-28 08:00:00"
+		//def lastActivity = "2018-11-29 20:19:00"
 			
 		def lastActivity = presenceSensor1.getLastActivity()
 			
@@ -204,15 +234,21 @@ def getTimeDiff() {
 	
 		def delay1ms = delay1 * 1000	
   		if(timeDiff < timeHome) {
-			log.info "${app.label} - ${friendlyName1} just got here! Time Diff = ${timeDiff}"
-			LOGDEBUG("Wait ${delay1} seconds to Speak")
-			pauseExecution(delay1ms)
-			talkNow1()
+			if(state.beenHere == "no") {
+				state.beenHere = "yes"
+				log.info "${app.label} - ${friendlyName1} just got here! Time Diff = ${timeDiff}"
+				LOGDEBUG("Wait ${delay1} seconds to Speak")
+				pauseExecution(delay1ms)
+				talkNow1()
+			}
 		} else{
+			state.beenHere = "no"
 			log.info "${app.label} - ${friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
+		LOGDEBUG("Been Here: ${state.beenHere}")
 		LOGDEBUG("Presence Sensor: ${sensorStatus} - No announcement needed.")
+		state.beenHere = "no"
 	}
 }
 
@@ -228,10 +264,12 @@ def talkNow1() {
     		LOGDEBUG("Music Player")
     		setVolume()
     		speaker1.playTextAndRestore(state.fullMsg1)
+			LOGDEBUG("Wow, that's it!")
   		}   
 		if (speechMode == "Speech Synth"){ 
 			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
 			speaker1.speak(state.fullMsg1)
+			LOGDEBUG("Wow, that's it!")
 		}
 	} else {
 		LOGDEBUG("It's quiet time...Can't talk right now")
@@ -417,6 +455,6 @@ def LOGDEBUG(txt){
 
 def display(){
 	setDefaults()
-	section{paragraph "Child App Version: 1.0.1"}
+	section{paragraph "Child App Version: 1.0.2"}
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
