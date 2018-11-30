@@ -37,7 +37,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
- *
+ *  V1.0.3 - 11/20/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
  *  door, locks or motion sensors. Updated the instructions.
@@ -60,8 +60,13 @@ parent: "BPTWorld:Welcome Home",
     )
 
 preferences {
-    display()
-        section ("This app is designed to give a personal welcome announcement after you have entered the home."){}    
+    page(name: "pageConfig") // Doing it this way elimiates the default app name/mode options.
+}
+
+def pageConfig() {
+    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {
+		display()
+		section ("This app is designed to give a personal welcome announcement after you have entered the home."){}    
         section("Instructions:", hideable: true, hidden: true) {
         	paragraph "<b>Types of Triggers:</b>"
     		paragraph "<b>Unlock or Door Open</b><br>Both of these work pretty much the same. When door or lock is triggered, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement."
@@ -119,12 +124,16 @@ preferences {
 		section() {
 			input "timeHome", "number", required: true, title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", defaultValue: 10
 		}
-    	section() {
-        	input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false, description: ""
-    	}
+		section() {
+            label title: "Enter a name for this child app", required: true
+        }
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 		}
+        section() {
+            input(name: "debugLogging", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+		}
+	}
 }
 
 def installed() {
@@ -159,7 +168,7 @@ def enablerSwitchHandler(evt){
 		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
     }
 }
-
+	
 def lockHandler(evt) {
 	if(state.enablerSwitch2 == "off") {
 		state.lockStatus = evt.value
@@ -455,6 +464,6 @@ def LOGDEBUG(txt){
 
 def display(){
 	setDefaults()
-	section{paragraph "Child App Version: 1.0.2"}
+	section{paragraph "Child App Version: 1.0.3"}
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
