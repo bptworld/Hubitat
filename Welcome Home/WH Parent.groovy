@@ -37,7 +37,7 @@
  *  Changes:
  *
  *  V1.0.4 - 11/30/18 - Found a bad bug and fixed it ;)
- *  V1.0.3 - 11/20/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
+ *  V1.0.3 - 11/30/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
  *  door, locks or motion sensors. Updated the instructions.
