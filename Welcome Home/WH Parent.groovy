@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
+ *                      certain conditions. THE PARENT AND ALL CHILD APPS MUST BE OPENED AND SAVED AGAIN FOR THIS TO WORK.
  *  V1.0.4 - 11/30/18 - Found a bad bug and fixed it ;)
  *  V1.0.3 - 11/30/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
@@ -123,6 +125,16 @@ def mainPage() {
                     	input "msg8", "text", required: true, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
                     	input "msg9", "text", required: true, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
                     	input "msg10", "text", required: true, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
+			input "msg11", "text", required: true, title: "Message - 11", defaultValue: "Welcome home. %name%"
+                    	input "msg12", "text", required: true, title: "Message - 12", defaultValue: "Long time no see. %name%"
+                    	input "msg13", "text", required: true, title: "Message - 13", defaultValue: "Look who's home. it's %name%"
+                    	input "msg14", "text", required: true, title: "Message - 14", defaultValue: "Nice to have you back. %name%"
+                    	input "msg15", "text", required: true, title: "Message - 15", defaultValue: "%greeting%. %name%"
+                    	input "msg16", "text", required: true, title: "Message - 16", defaultValue: "%greeting%. Oh ya. %name% is home"
+                    	input "msg17", "text", required: true, title: "Message - 17", defaultValue: "How are you doing. %name%"
+                    	input "msg18", "text", required: true, title: "Message - 18", defaultValue: "%greeting%. Anything I can do for you. %name%"
+                    	input "msg19", "text", required: true, title: "Message - 19", defaultValue: "%greeting% I'm at your service, %name%"
+                    	input "msg20", "text", required: true, title: "Message - 20", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
                 	}
 				}
 		}
@@ -140,7 +152,7 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Welcome Home</b><br>App Version: 1.0.4<br>@BPTWorld"
+		paragraph "<b>Welcome Home</b><br>App Version: 1.0.5<br>@BPTWorld"
 	}        
 }
 	
