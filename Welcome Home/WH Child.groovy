@@ -37,7 +37,8 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
- *  V1.0.3 - 11/20/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
+ *  V1.0.4 - 11/30/18 - Found a bad bug and fixed it ;)
+ *  V1.0.3 - 11/30/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
  *  door, locks or motion sensors. Updated the instructions.
@@ -101,8 +102,8 @@ def pageConfig() {
 			if (speechMode == "Music Player"){ 
               	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: false, multiple: true, submitOnChange:true
               	input "volume1", "number", title: "Speaker volume", description: "0-100%", required: false
-              	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: false // defaultValue: "0",
-    		  	input "fromTime2", "time", title: "Quiet Time Start", required: false
+              	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: false // defaultValue: "0",			
+				input "fromTime2", "time", title: "Quiet Time Start", required: false
     		  	input "toTime2", "time", title: "Quiet Time End", required: false
           	}   
         	if (speechMode == "Speech Synth"){ 
@@ -124,9 +125,7 @@ def pageConfig() {
 		section() {
 			input "timeHome", "number", required: true, title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", defaultValue: 10
 		}
-		section() {
-            label title: "Enter a name for this child app", required: true
-        }
+		section(" ") {label title: "Enter a name for this automation", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 		}
@@ -150,8 +149,9 @@ def updated() {
 }
 
 def initialize() {
-	state.enablerSwitch2 = "off"
-	state.beenHere = "no"
+	logCheck()
+    setDefaults()
+	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
@@ -442,6 +442,8 @@ def setDefaults(){
     if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
+	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
+	if(state.beenHere == null){state.beenHere = "no"}
 }
 
 def logCheck(){
@@ -463,7 +465,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	setDefaults()
-	section{paragraph "Child App Version: 1.0.3"}
+	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.4<br>@BPTWorld"}      
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
