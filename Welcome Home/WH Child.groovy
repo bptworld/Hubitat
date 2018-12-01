@@ -37,6 +37,8 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
+ *                      certain conditions. THE PARENT AND ALL CHILD APPS MUST BE OPENED AND SAVED AGAIN FOR THIS TO WORK.
  *  V1.0.4 - 11/30/18 - Found a bad bug and fixed it ;)
  *  V1.0.3 - 11/30/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
@@ -117,6 +119,9 @@ def pageConfig() {
 			}
     	}
 		section() {
+			input "message1Count", "number", required: true, title: "How many random message presets to choose from (from parent app)"
+		}
+		section() {
 			input "message1", "text", title: "Message to hear - Use %random% to have a random message spoken from the list entered within the parent app",  required: false
 		}
 		section() {
@@ -153,6 +158,7 @@ def initialize() {
     setDefaults()
 	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
+	subscribe(presenceSensor1, "presence", presenceSensorHandler)
 	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
@@ -166,6 +172,18 @@ def enablerSwitchHandler(evt){
     	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	} else {
 		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
+    }
+}
+
+def presenceSensorHandler(evt){
+	state.presenceSensor2 = evt.value
+	LOGDEBUG("IN presenceSensorHandler - Presence Sensor = ${presenceSensor1}")
+	LOGDEBUG("Presence Sensor = $state.presenceSensor2")
+    if(state.presenceSensor2 == "not present"){
+    	LOGDEBUG("Present Sensor is not present - Been Here is now off.")
+		state.beenHere = "no"
+    } else {
+		LOGDEBUG("Present Sensor is not present - Let's go!")
     }
 }
 	
@@ -224,7 +242,7 @@ def getTimeDiff() {
 	if(sensorStatus == "present") {
 		LOGDEBUG("Been Here: ${state.beenHere}")
 		// ********** Used for Testing **********
-		//def lastActivity = "2018-11-29 20:19:00"
+		//def lastActivity = "2018-12-01 08:43:00"
 			
 		def lastActivity = presenceSensor1.getLastActivity()
 			
@@ -277,7 +295,7 @@ def talkNow1() {
   		}   
 		if (speechMode == "Speech Synth"){ 
 			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
-			speaker1.speak(state.fullMsg1)
+			//speaker1.speak(state.fullMsg1)
 			LOGDEBUG("Wow, that's it!")
 		}
 	} else {
@@ -387,16 +405,26 @@ private getGroup1(msgGroup1item) {
 		"${parent.msg7}", 
 		"${parent.msg8}",
         "${parent.msg9}",
-        "${parent.msg10}"
+        "${parent.msg10}",
+		"${parent.msg11}", 
+		"${parent.msg12}",
+        "${parent.msg13}",
+        "${parent.msg14}",
+        "${parent.msg15}",
+        "${parent.msg16}",
+		"${parent.msg17}", 
+		"${parent.msg18}",
+        "${parent.msg19}",
+        "${parent.msg20}"
     ]
-    if(state.group1Count>10){
-        for(int i = 10;i<state.group1Count;i++) {
+    if(state.message1Count>20){
+        for(int i = 20;i<state.message1Count;i++) {
             def group1Display = i.toInteger() + 1
             group1List.add("Group 1 - Message ${group1Display}")
         }
     }
     if(msgGroup1item == null) {
-        MaxRandom = (group1List.size() >= state.group1Count ? group1List.size() : state.group1Count)
+        MaxRandom = (group1List.size() >= state.message1Count ? group1List.size() : state.message1Count)
 		LOGDEBUG("MaxRandom = ${MaxRandom}") 
         def randomKey1 = new Random().nextInt(MaxRandom)
 		LOGDEBUG("randomKey1 = ${randomKey1}") 
@@ -465,6 +493,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.4<br>@BPTWorld"}      
+	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.5<br>@BPTWorld"}      
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
