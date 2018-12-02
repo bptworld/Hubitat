@@ -295,7 +295,7 @@ def talkNow1() {
   		}   
 		if (speechMode == "Speech Synth"){ 
 			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
-			//speaker1.speak(state.fullMsg1)
+			speaker1.speak(state.fullMsg1)
 			LOGDEBUG("Wow, that's it!")
 		}
 	} else {
