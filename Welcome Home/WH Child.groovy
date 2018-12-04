@@ -37,13 +37,14 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
  *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
  *                      certain conditions. THE PARENT AND ALL CHILD APPS MUST BE OPENED AND SAVED AGAIN FOR THIS TO WORK.
  *  V1.0.4 - 11/30/18 - Found a bad bug and fixed it ;)
  *  V1.0.3 - 11/30/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
- *  door, locks or motion sensors. Updated the instructions.
+ *  					door, locks or motion sensors. Updated the instructions.
  *  V1.0.0 - 11/25/18 - Initial release.
  *
  */
@@ -63,7 +64,7 @@ parent: "BPTWorld:Welcome Home",
     )
 
 preferences {
-    page(name: "pageConfig") // Doing it this way elimiates the default app name/mode options.
+    page(name: "pageConfig")
 }
 
 def pageConfig() {
@@ -93,11 +94,9 @@ def pageConfig() {
 				input "motionSensor1", "capability.motionSensor", title: "Activate the welcome message when this motion sensor is activated", required: true, multiple: true
 			}
 		}			
-		section() {
-				input "presenceSensor1", "capability.presenceSensor", title: "and this presence sensor has been detected for less than X minutes (set the minutes below)", required: true, multiple: false
-			} 
-		section() {
-			input "friendlyName1", "text", title: "Friendly name for presence sensor, this is what will be spoken", required: true, multiple: false
+		section("If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message.") {
+			input "presenceSensor1", "capability.presenceSensor", title: "Presence Sensor 1", required: true, multiple: false, width:6
+			input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, width:6
 		}
 		section() { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
@@ -119,23 +118,23 @@ def pageConfig() {
 			}
     	}
 		section() {
-			input "message1Count", "number", required: true, title: "How many random message presets to choose from (from parent app)"
+			input "message1Count", "number", title: "How many random message presets to choose from (default=10). Max equals 20. Be sure they are already filled out in the parent app.", required: true, defaultValue: 10
 		}
 		section() {
-			input "message1", "text", title: "Message to hear - Use %random% to have a random message spoken from the list entered within the parent app",  required: false
+			input "message1", "text", title: "Message to be spoken - Use %random% to have a random message spoken from the list entered within the parent app",  required: true, defaultValue: "%random%"
 		}
 		section() {
-			input "delay1", "number", required: true, title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", defaultValue: 10
+			input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
 		}
 		section() {
-			input "timeHome", "number", required: true, title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", defaultValue: 10
+			input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10
 		}
 		section(" ") {label title: "Enter a name for this automation", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 		}
         section() {
-            input(name: "debugLogging", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 	}
 }
@@ -180,10 +179,10 @@ def presenceSensorHandler(evt){
 	LOGDEBUG("IN presenceSensorHandler - Presence Sensor = ${presenceSensor1}")
 	LOGDEBUG("Presence Sensor = $state.presenceSensor2")
     if(state.presenceSensor2 == "not present"){
-    	LOGDEBUG("Present Sensor is not present - Been Here is now off.")
+    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
 		state.beenHere = "no"
     } else {
-		LOGDEBUG("Present Sensor is not present - Let's go!")
+		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
 }
 	
@@ -241,9 +240,6 @@ def getTimeDiff() {
 	LOGDEBUG("Presence Sensor Status: = ${sensorStatus}")
 	if(sensorStatus == "present") {
 		LOGDEBUG("Been Here: ${state.beenHere}")
-		// ********** Used for Testing **********
-		//def lastActivity = "2018-12-01 08:43:00"
-			
 		def lastActivity = presenceSensor1.getLastActivity()
 			
 		LOGDEBUG("lastActivity: ${lastActivity}")
@@ -295,7 +291,7 @@ def talkNow1() {
   		}   
 		if (speechMode == "Speech Synth"){ 
 			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
-			speaker1.speak(state.fullMsg1)
+			//speaker1.speak(state.fullMsg1)
 			LOGDEBUG("Wow, that's it!")
 		}
 	} else {
@@ -354,11 +350,8 @@ private compileMsg1() {
     msgComp = message1.toLowerCase()
 		LOGDEBUG("Changed msgComp to lowercase = ${msgComp}")
 	if (msgComp.toLowerCase().contains("%random%")) {msgComp = msgComp.toLowerCase().replace('%random%', getGroup1() )}
-		LOGDEBUG("In compileMsg...AFTER random...msgComp = ${msgComp}")
 	if (msgComp.toLowerCase().contains("%greeting%")) {msgComp = msgComp.toLowerCase().replace('%greeting%', getGreeting() )}
-		LOGDEBUG("In compileMsg...AFTER greeting...msgComp = ${msgComp}")
 	if (msgComp.toLowerCase().contains("%name%")) {msgComp = msgComp.toLowerCase().replace('%name%', getName() )}
-		LOGDEBUG("In compileMsg...AFTER name...msgComp = ${msgComp}")
 	state.msgComp = "${msgComp}"
 	return state.msgComp
 }	
@@ -417,17 +410,11 @@ private getGroup1(msgGroup1item) {
         "${parent.msg19}",
         "${parent.msg20}"
     ]
-    if(state.message1Count>20){
-        for(int i = 20;i<state.message1Count;i++) {
-            def group1Display = i.toInteger() + 1
-            group1List.add("Group 1 - Message ${group1Display}")
-        }
-    }
+	if(message1Count>20){message1Count = 20}
     if(msgGroup1item == null) {
-        MaxRandom = (group1List.size() >= state.message1Count ? group1List.size() : state.message1Count)
-		LOGDEBUG("MaxRandom = ${MaxRandom}") 
-        def randomKey1 = new Random().nextInt(MaxRandom)
-		LOGDEBUG("randomKey1 = ${randomKey1}") 
+		count = message1Count.toInteger()
+        def randomKey1 = new Random().nextInt(count)
+		LOGDEBUG("getGroup1 - randomKey1 = ${randomKey1}") 
 		msgGroup1 = group1List[randomKey1]
     } else {
         msgGroup1 = group1List[msgGroup1item]
@@ -493,6 +480,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.5<br>@BPTWorld"}      
+	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.6<br>@BPTWorld"}      
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
