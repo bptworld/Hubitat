@@ -36,13 +36,14 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
  *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
  *                      certain conditions. THE PARENT AND ALL CHILD APPS MUST BE OPENED AND SAVED AGAIN FOR THIS TO WORK.
  *  V1.0.4 - 11/30/18 - Found a bad bug and fixed it ;)
  *  V1.0.3 - 11/30/18 - Changed how the options are displayed, removed the Mode selection as it is not needed.
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
- *  door, locks or motion sensors. Updated the instructions.
+ *  					door, locks or motion sensors. Updated the instructions.
  *  V1.0.0 - 11/25/18 - Initial release.
  *
  */
@@ -110,31 +111,31 @@ def mainPage() {
  				}
 				section("<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>") {}
             		section("Advanced Config:", hideable: true, hidden: true) {
-						paragraph "Be sure to fill in each field, even if it's a duplicate message.<br>%greeting% - will return a greeting based on time of day.<br>%name% - will return the Friendly Name entered within the each Child App<br>Note: adding a . anywhere will give the message a little pause"
+						paragraph "<br>%greeting% - will return a greeting based on time of day.<br>%name% - will return the Friendly Name associcated with a Presence Sensor<br>Note: adding a . anywhere will give the message a little pause"
 						input "greeting1", "text", required: true, title: "Greeting - 1 (am)", defaultValue: "Good Morning"
                     	input "greeting2", "text", required: true, title: "Greeting - 2 (before 6pm)", defaultValue: "Good Afternoon"
                     	input "greeting3", "text", required: true, title: "Greeting - 3 (after 6pm)", defaultValue: "Good Evening"
 						paragraph "<br>"
             			input "msg1", "text", required: true, title: "Message - 1", defaultValue: "Welcome home. %name%"
-                    	input "msg2", "text", required: true, title: "Message - 2", defaultValue: "Long time no see. %name%"
-                    	input "msg3", "text", required: true, title: "Message - 3", defaultValue: "Look who's home. it's %name%"
-                    	input "msg4", "text", required: true, title: "Message - 4", defaultValue: "Nice to have you back. %name%"
-                    	input "msg5", "text", required: true, title: "Message - 5", defaultValue: "%greeting%. %name%"
-                    	input "msg6", "text", required: true, title: "Message - 6", defaultValue: "%greeting%. Oh ya. %name% is home"
-                    	input "msg7", "text", required: true, title: "Message - 7", defaultValue: "How are you doing. %name%"
-                    	input "msg8", "text", required: true, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
-                    	input "msg9", "text", required: true, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
-                    	input "msg10", "text", required: true, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
-			input "msg11", "text", required: true, title: "Message - 11", defaultValue: "Welcome home. %name%"
-                    	input "msg12", "text", required: true, title: "Message - 12", defaultValue: "Long time no see. %name%"
-                    	input "msg13", "text", required: true, title: "Message - 13", defaultValue: "Look who's home. it's %name%"
-                    	input "msg14", "text", required: true, title: "Message - 14", defaultValue: "Nice to have you back. %name%"
-                    	input "msg15", "text", required: true, title: "Message - 15", defaultValue: "%greeting%. %name%"
-                    	input "msg16", "text", required: true, title: "Message - 16", defaultValue: "%greeting%. Oh ya. %name% is home"
-                    	input "msg17", "text", required: true, title: "Message - 17", defaultValue: "How are you doing. %name%"
-                    	input "msg18", "text", required: true, title: "Message - 18", defaultValue: "%greeting%. Anything I can do for you. %name%"
-                    	input "msg19", "text", required: true, title: "Message - 19", defaultValue: "%greeting% I'm at your service, %name%"
-                    	input "msg20", "text", required: true, title: "Message - 20", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
+                    	input "msg2", "text", required: false, title: "Message - 2", defaultValue: "Long time no see. %name%"
+                    	input "msg3", "text", required: false, title: "Message - 3", defaultValue: "Look who's home. it's %name%"
+                    	input "msg4", "text", required: false, title: "Message - 4", defaultValue: "Nice to have you back. %name%"
+                    	input "msg5", "text", required: false, title: "Message - 5", defaultValue: "%greeting%. %name%"
+                    	input "msg6", "text", required: false, title: "Message - 6", defaultValue: "%greeting%. Oh ya. %name% is home"
+                    	input "msg7", "text", required: false, title: "Message - 7", defaultValue: "How are you doing. %name%"
+                    	input "msg8", "text", required: false, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
+                    	input "msg9", "text", required: false, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
+                    	input "msg10", "text", required: false, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
+			input "msg11", "text", required: false, title: "Message - 11", defaultValue: ""
+                    	input "msg12", "text", required: false, title: "Message - 12", defaultValue: ""
+                    	input "msg13", "text", required: false, title: "Message - 13", defaultValue: ""
+                    	input "msg14", "text", required: false, title: "Message - 14", defaultValue: ""
+                    	input "msg15", "text", required: false, title: "Message - 15", defaultValue: ""
+                    	input "msg16", "text", required: false, title: "Message - 16", defaultValue: ""
+                    	input "msg17", "text", required: false, title: "Message - 17", defaultValue: ""
+                    	input "msg18", "text", required: false, title: "Message - 18", defaultValue: ""
+                    	input "msg19", "text", required: false, title: "Message - 19", defaultValue: ""
+                    	input "msg20", "text", required: false, title: "Message - 20", defaultValue: ""
                 	}
 				}
 		}
@@ -152,7 +153,7 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Welcome Home</b><br>App Version: 1.0.5<br>@BPTWorld"
+		paragraph "<b>Welcome Home</b><br>App Version: 1.0.6<br>@BPTWorld"
 	}        
 }
 	
