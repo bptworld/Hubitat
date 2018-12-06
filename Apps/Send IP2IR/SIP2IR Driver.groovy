@@ -39,8 +39,8 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 12/06/18 - Minor changes and additonal error message. If the IP2IR unit is unplugged or loses connection for any
- *			 			reason, simply go into the IP2IR Telnet device and press the 'Initialize' button.
+ *  V1.0.2 - 12/06/18 - Minor changes and additional error message. If the IP2IR unit is unplugged or loses connection for any
+ *			reason, simply go into the IP2IR Telnet device and press the 'Initialize' button.
  *  V1.0.1 - 11/01/18 - Merged pull request from DTTerastar resend the command if busy is received. 
  *  V1.0.0 - 10/15/18 - Initial release
  */
