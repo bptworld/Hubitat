@@ -39,8 +39,9 @@
  *
  *  Changes:
  *
- *  
- *  V1.0.1 - 11/01/18 - Merged pull request from DTTerastar, resend the command if busy is received. Thank you!
+ *  V1.0.2 - 12/06/18 - Minor changes and additonal error message. If the IP2IR unit is unplugged or loses connection for any
+ *			 			reason, simply go into the IP2IR Telnet device and press the 'Initialize' button.
+ *  V1.0.1 - 11/01/18 - Merged pull request from DTTerastar resend the command if busy is received. 
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
@@ -79,10 +80,15 @@ def resend(){
 
 def initialize(){
 	try {
+		LOGDEBUG("Opening telnet connection")
 		sendEvent([name: "telnet", value: "Opening"])
-        telnetConnect([terminalType: 'VT100', termChars:[13]], "${ipaddress}", 4998, null, null)
+        //telnetConnect([terminalType: 'VT100', termChars:[13]], "${ipaddress}", 4998, null, null)
+		telnetConnect([terminalType: 'VT100'], "${ipaddress}", 4998, null, null)
+		//give it a chance to start
+		pauseExecution(1000)
+		LOGDEBUG("Telnet connection established")
     } catch(e) {
-		LOGDEBUG("initialize error: ${e.message}")
+		LOGDEBUG("Initialize Error: ${e.message}")
     }
 }
 
@@ -105,8 +111,9 @@ def parse(String msg) {
 def telnetStatus(String status) {
 	LOGDEBUG "telnetStatus: ${status}"
 	if (status == "receive error: Stream is closed" || status == "send error: Broken pipe (Write failed)") {
-		log.error("Telnet connection dropped...")
+		log.error("Telnet connection dropped...PLEASE OPEN THE IP2IR TELNET DEVICE IN HE AND PRESS THE 'INITIALIZE' BUTTON")
         sendEvent([name: "telnet", value: "Disconnected"])
+		telnetClose()
 		runIn(60, initialize)
     }
 }
