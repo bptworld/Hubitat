@@ -33,13 +33,15 @@
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *
- *  App and Driver updates can be found at https://github.com/bptworld/Hubitat/tree/master/Send%20IP2IR
+ *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
  *
- *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send multiple times with
+ *  V1.1.5 - 12/06/18 - Code cleanup, removal of IP Address from Child Apps as it was not needed anymore. 
+ *  V1.1.4 - 11/30/18 - Added pause button to child apps. Added an Enable/Disable by switch option. Cleaned up code.
+ *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send mutilple times with
  *                      each push. Also Fixed some typo's.
  *  V1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
  *                      Delay between sending digits user specified and added in some instructions.
@@ -50,8 +52,6 @@
  *						me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
-
-
 
 definition(
     name:"Send IP2IR",
@@ -80,40 +80,6 @@ def updated() {
 }
 
 def initialize() {
-    if(msgDigit1) childApps.each { child ->
-		child.myMsgDigit1(msgDigit1)
-	}
-    if(msgDigit2) childApps.each { child ->
-		child.myMsgDigit2(msgDigit2)
-	}
-    if(msgDigit3) childApps.each { child ->
-		child.myMsgDigit3(msgDigit3)
-	}
-    if(msgDigit4) childApps.each { child ->
-		child.myMsgDigit4(msgDigit4)
-	}
-    if(msgDigit5) childApps.each { child ->
-		child.myMsgDigit5(msgDigit5)
-	}
-    if(msgDigit6) childApps.each { child ->
-		child.myMsgDigit6(msgDigit6)
-	}
-    if(msgDigit7) childApps.each { child ->
-		child.myMsgDigit7(msgDigit7)
-	}
-    if(msgDigit8) childApps.each { child ->
-		child.myMsgDigit8(msgDigit8)
-	}
-    if(msgDigit9) childApps.each { child ->
-		child.myMsgDigit9(msgDigit9)
-	}
-    if(msgDigit0) childApps.each { child ->
-		child.myMsgDigit0(msgDigit0)
-	}
-    if(msgDigitE) childApps.each { child ->
-		child.myMsgDigitE(msgDigitE)
-	}
-    
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
     log.info "Child app: ${child.label}"
@@ -181,12 +147,5 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.1.3<br>@BPTWorld"}     
+	section{paragraph "<b>Send IP2IR</b><br>App Version: 1.1.5<br>@BPTWorld"}        
 }         
-
-def setVersion(){
-		state.InternalName = "SendIP2IRParent"  
-}
-
-
-
