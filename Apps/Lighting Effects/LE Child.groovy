@@ -39,6 +39,8 @@
  *
  *  Changes:
  *
+ *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
+ *  V1.1.5 - 11/22/18 - Added ability to pause child apps using code developed by @Cobra - Andrew Parker. Thanks!
  *  V1.1.4 - 11/03/18 - All colors are now defined in Custom Color Presets (Parent app). Colors now include Hue, Saturation and
  *						Level for better color control. All colors are customizable, create up to 15 colors in the Parent app. Be 
  *                      sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app.
@@ -72,14 +74,21 @@ parent: "BPTWorld:Lighting Effects",
     )
 
 preferences {
+    page(name: "pageConfig")
+}
+
+def pageConfig() {
+    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {	
     display()
-        section ("Create a spooky, sparkly or party effect. Be sure to read the instructions."){}    
-        section("Instructions:", hideable: true, hidden: true) {
-        	paragraph "<b>Dimming:</b>"
+		section("Instructions:", hideable: true, hidden: true) {
+        	paragraph "<b>Fast Dimming:</b>"
     		paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
     		paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
-        	paragraph "<b>Color Changing:</b>"
-        	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app."
+        	paragraph "<b>Fast Color Changing:</b>"
+        	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 sec and 5 minutes."
+        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+			paragraph "<b>Slow Color Changing:</b>"
+        	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 minutes and 3 hours."
         	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
 			paragraph "<b>Slow Off, On and Loop:</b>"
         	paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
@@ -89,82 +98,108 @@ preferences {
 			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         }
    		section() {
-    	input "triggerMode", "enum", title: "Select Lights Type", submitOnChange: true,  options: ["Dimmer","Color_Changing","Slow_Off","Slow_On","Slow_Loop"], required: true, Multiple: false
+    		input "triggerMode", "enum", title: "Select Lights Type", submitOnChange: true,  options: ["Fast_Dimmer","Fast_Color_Changing","Slow_Color_Changing", "Slow_Off","Slow_On","Slow_Loop"], required: true, Multiple: false
         
-        if(triggerMode == "Dimmer"){ 
-			section("Select your options:") {
-				input "dimmers", "capability.switchLevel", title: "Select Dimmable Lights", required: false, multiple: true
-				input "sleepytime", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
+        	if(triggerMode == "Fast_Dimmer"){
+				section("Used to change colors between 5 sec and 5 minutes.") {
+					input "dimmers", "capability.switchLevel", title: "Select Dimmable Lights", required: false, multiple: true
+					input "sleepytime", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
+        		}
         	}
-        }
-            
-        if(triggerMode == "Color_Changing"){
-        	section("Select your options:") {
-				paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
-        		input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
-				input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
-            	input "sleepytime2", "number", title: "Enter the delay between actions (in seconds)" , required: true, defaultValue: 300
-        		input "sleepPattern", "enum", title: "Delay constant or random", defaultValue: "constant", options: ["constant","random"], required: true, multiple: false
-        		input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
-                input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required: true, multiple: false
-
-				input "colorSelection", "enum", title: "Choose your colors", options: [
-                	[color01:"${parent.msgColor01Name}"],
-                	[color02:"${parent.msgColor02Name}"],
-                	[color03:"${parent.msgColor03Name}"],
-                	[color04:"${parent.msgColor04Name}"],
-                	[color05:"${parent.msgColor05Name}"],
-                	[color06:"${parent.msgColor06Name}"],
-                	[color07:"${parent.msgColor07Name}"],
-                	[color08:"${parent.msgColor08Name}"],
-                	[color09:"${parent.msgColor09Name}"],
-                	[color10:"${parent.msgColor10Name}"],
-					[color11:"${parent.msgColor11Name}"],
-					[color12:"${parent.msgColor12Name}"],
-					[color13:"${parent.msgColor13Name}"],
-					[color14:"${parent.msgColor14Name}"],
-					[color15:"${parent.msgColor15Name}"],
-            	], required: true, multiple: true
+       		if(triggerMode == "Fast_Color_Changing"){
+        		section("Select your options:") {
+					paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+        			input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
+					input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
+            		input "sleepytime2", "number", title: "Enter the delay between actions in seconds (range 5 to 300)" , required: true, defaultValue: 300, range: '5..300'
+					input "sleepPattern", "enum", title: "Delay constant or random", defaultValue: "constant", options: ["constant","random"], required: true, multiple: false
+					input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
+                	input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required: true, multiple: false
+					input "colorSelection", "enum", title: "Choose your colors", options: [
+                		[color01:"${parent.msgColor01Name}"],
+                		[color02:"${parent.msgColor02Name}"],
+                		[color03:"${parent.msgColor03Name}"],
+                		[color04:"${parent.msgColor04Name}"],
+                		[color05:"${parent.msgColor05Name}"],
+                		[color06:"${parent.msgColor06Name}"],
+                		[color07:"${parent.msgColor07Name}"],
+                		[color08:"${parent.msgColor08Name}"],
+                		[color09:"${parent.msgColor09Name}"],
+                		[color10:"${parent.msgColor10Name}"],
+						[color11:"${parent.msgColor11Name}"],
+						[color12:"${parent.msgColor12Name}"],
+						[color13:"${parent.msgColor13Name}"],
+						[color14:"${parent.msgColor14Name}"],
+						[color15:"${parent.msgColor15Name}"],
+            		], required: true, multiple: true
+				}
 			}
-        }
-    }
-    
-    if(triggerMode == "Slow_On"){
-        section("Select your options:") {
-            input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
-    		input "minutes", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
-    		input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
-            //input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_On", Options: ["Slow_On"]
-			tMode = "Slow_On"
+			if(triggerMode == "Slow_Color_Changing"){
+        		section("Used to change colors between 5 minutes and 3 hours.") {
+					paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+        			input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
+					input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
+            		input "sleepytime2", "number", title: "Enter the delay between actions in minutes (range 5 to 180)" , required: true, defaultValue: 60, range: '5..180'
+        			input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
+                	input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required: true, multiple: false
+					input "colorSelection", "enum", title: "Choose your colors", options: [
+                		[color01:"${parent.msgColor01Name}"],
+                		[color02:"${parent.msgColor02Name}"],
+                		[color03:"${parent.msgColor03Name}"],
+                		[color04:"${parent.msgColor04Name}"],
+                		[color05:"${parent.msgColor05Name}"],
+                		[color06:"${parent.msgColor06Name}"],
+                		[color07:"${parent.msgColor07Name}"],
+                		[color08:"${parent.msgColor08Name}"],
+                		[color09:"${parent.msgColor09Name}"],
+                		[color10:"${parent.msgColor10Name}"],
+						[color11:"${parent.msgColor11Name}"],
+						[color12:"${parent.msgColor12Name}"],
+						[color13:"${parent.msgColor13Name}"],
+						[color14:"${parent.msgColor14Name}"],
+						[color15:"${parent.msgColor15Name}"],
+            		], required: true, multiple: true
+				}
+			}
+    		if(triggerMode == "Slow_On"){
+       			section("Select your options:") {
+            		input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
+    				input "minutes", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
+    				input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+            		//input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_On", Options: ["Slow_On"]
+					tMode = "Slow_On"
+				}
+   		 	}
+    		if(triggerMode == "Slow_Off"){
+    			section("Select your options:") {
+            		input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
+    				input "minutes", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
+    				input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
+            		//input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Off", Options: ["Slow_Off"]
+					tMode = "Slow_Off"
+        		}
+   			}
+    		if(triggerMode == "Slow_Loop"){
+    			section("Select your options:") {
+        			input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
+    				input "minutes", "number", title: "Takes how many minutes per dim or raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
+    				input "targetLevelHigh", "number", title: "Target Level - High(1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+            		input "targetLevelLow", "number", title: "Target Level - Low(1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
+            		tMode = "Slow_Loop"
+       			}    
+   			 }   
 		}
-    }
-    
-    if(triggerMode == "Slow_Off"){
-    	section("Select your options:") {
-            input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
-    		input "minutes", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
-    		input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-            //input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Off", Options: ["Slow_Off"]
-			tMode = "Slow_Off"
-        }
-    }
-    
-    if(triggerMode == "Slow_Loop"){
-    	section("Select your options:") {
-        	input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
-    		input "minutes", "number", title: "Takes how many minutes per dim or raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
-    		input "targetLevelHigh", "number", title: "Target Level - High(1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
-            input "targetLevelLow", "number", title: "Target Level - Low(1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-            tMode = "Slow_Loop"
-        }    
-    }   
-    
 		section("Activate the Dimming/Color Changing when this switch is on") {
 			input "switches", "capability.switch", title: "Switch", required: true, multiple: false
 		} 
-    	section() {
-        	input "debugMode", "bool", title: "Enable Debug Logging", required: true, defaultValue: false
-    	}
+		section(" ") {label title: "Enter a name for this automation", required: false}
+		section() {
+			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
+		}
+        section() {
+            input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+		}
+	}
 }
 
 def installed() {
@@ -173,17 +208,22 @@ def installed() {
 }
 
 def updated() {	
-    log.debug "Updated with settings: ${settings}"
-	//if(debugMode) runIn(1800,logsOff)
+    LOGDEBUG("Updated with settings: ${settings}")
     unsubscribe()
 	unschedule()
+	logCheck()
 	initialize()
 }
 
 def initialize() {
-    if(triggerMode == "Dimmer"){subscribe(switches, "switch", eventHandler)}
-    if(triggerMode == "Color_Changing"){
+	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
+    if(triggerMode == "Fast_Dimmer"){subscribe(switches, "switch", eventHandler)}
+    if(triggerMode == "Fast_Color_Changing"){
         subscribe(switches, "switch", changeHandler)
+    	state.colorOffset=0
+    }
+	if(triggerMode == "Slow_Color_Changing"){
+        subscribe(switches, "switch", slowChangeHandler)
     	state.colorOffset=0
     }
     if(triggerMode == "Slow_On"){subscribe(switches, "switch", slowonHandler)}
@@ -191,12 +231,21 @@ def initialize() {
     if(triggerMode == "Slow_Loop"){subscribe(switches, "switch", slowonHandler)}
 }
 
-def logsOff(){
-    //log.warn "Debug logging auto disabled"
-    //device.updateSetting("debugMode",[value:false])
+def enablerSwitchHandler(evt){
+	state.enablerSwitch2 = evt.value
+	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
+    if(state.enablerSwitch2 == "on"){
+    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+	} else {
+		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
+    }
 }
 
 def eventHandler(evt) {
+	LOGDEBUG("In eventHandler...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")							
 	if(switches.currentValue("switch") == "on") {
         if(triggerMode == "Dimmer"){
             for (dimmer in dimmers) {
@@ -217,10 +266,17 @@ def eventHandler(evt) {
             }
         }
     	runIn(10,"eventHandler")
-    } else if(switches.currentValue("switch") == "off"){dimmers.off()}
+    } else if(switches.currentValue("switch") == "off"){
+		dimmers.off()
+		unschedule()
+	}							
+	}
 }
     
 def changeHandler(evt) {
+	LOGDEBUG("In changeHandler...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")							
     if(switches.currentValue("switch") == "on") {
 		LOGDEBUG("In changeHandler...")
 		LOGDEBUG("Color Selection = ${colorSelection}")
@@ -279,11 +335,79 @@ def changeHandler(evt) {
         	runIn(state.sleepTime2,"changeHandler")
 	} else if(switches.currentValue("switch") == "off"){
 		lights.off()
+		unschedule()
+	}
+	}
+}
+
+def slowChangeHandler(evt) {
+	LOGDEBUG("In slowChangeHandler...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")							
+    if(switches.currentValue("switch") == "on") {
+		LOGDEBUG("In slowChangeHandler...")
+		LOGDEBUG("Color Selection = ${colorSelection}")
+        lights.on()
+        	if(triggerMode == "Slow_Color_Changing"){
+                for (numberoflights in lights) {
+                    state.sleepTime2 = (sleepytime2*60)
+        			def colors = []
+                	colors = colorSelection
+					LOGDEBUG("Colors = ${colors}")
+				
+                	def offLights = lights.findAll { light -> light.currentSwitch == "off"}
+                	LOGDEBUG("offLights = ${offLights}")
+                
+                	def onLights = lights.findAll { light -> light.currentSwitch == "on"}
+                	LOGDEBUG("onLights = ${onLights}")
+    	    		def numberon = onLights.size();
+					def numcolors = colors.size();
+        			
+					LOGDEBUG("pattern = ${pattern}")
+                    if (pattern == 'randomize') {
+                    	randOffset = Math.abs(new Random().nextInt()%numcolors)
+                    	LOGDEBUG("Pattern: ${pattern}")
+						LOGDEBUG("Offset: ${randOffset}")
+                		if (seperate == 'combined') {
+                        	sendcolor(onLights,colors[randOffset])
+                		} else {
+           					for(def i=0;i<numberon;i++) {
+                            	sendcolor(onLights[i],colors[(randOffset + i) % numcolors])
+                			}
+            			}
+                	} else if (pattern == 'cycle') {
+                       	if (onLights.size() > 0) {
+							if (state.colorOffset >= numcolors ) {
+            					state.colorOffset = 0
+            				}
+							if (seperate == 'combined') {
+								sendcolor(onLights,colors[state.colorOffset])
+								LOGDEBUG("changeHandler-cycle-combined = onLighgts: ${onLights}, Colors: ${colors[state.colorOffset]}")
+							} else {
+           						for(def i=0;i<numberon;i++) {
+                					sendcolor(onLights[i],colors[(state.colorOffset + i) % numcolors])
+									LOGDEBUG("changeHandler-cycle-randomize = onLighgts: ${onLights[i]}, Colors: ${colors[(state.colorOffset + i) % numcolors]}")
+                				}
+            				}
+            				state.colorOffset = state.colorOffset + 1
+                        }
+     				}
+                }
+            }
+			LOGDEBUG("sleepTime2: ${state.sleepTime2}")
+        	runIn(state.sleepTime2,"slowChangeHandler")
+	} else if(switches.currentValue("switch") == "off"){
+		lights.off()
+		unschedule()
+	}
 	}
 }
 
 def slowonHandler(evt) {
-    LOGDEBUG("In slowonHandler...")
+	LOGDEBUG("In slowonHandler...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+								
     if(dimmers[0].currentSwitch == "off") {
         dimmers.setLevel(0)
         state.currentLevel = 0
@@ -295,11 +419,14 @@ def slowonHandler(evt) {
     state.dimStep = targetLevelHigh / seconds
     state.dimLevel = state.currentLevel
     LOGDEBUG("slowonHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
-    dimStepUp()
+    dimStepUp()			
+	}
 }
 
 def dimStepUp() {
-    LOGDEBUG("In dimStepUp...")
+	LOGDEBUG("In dimStepUp...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")						
     if(switches.currentValue("switch") == "on") {
     	if(state.currentLevel < targetLevelHigh) {
         	state.dimLevel = state.dimLevel + state.dimStep
@@ -319,11 +446,14 @@ def dimStepUp() {
     	}
     } else{
         LOGDEBUG("Current Level: ${state.currentLevel} - Control Switch turned Off")
-    }
+    }					
+	}
 }
 
 def slowoffHandler(evt) {
-    LOGDEBUG("In slowoffHandler...")
+	LOGDEBUG("In slowoffHandler...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")					
     if(dimmers[0].currentSwitch == "off") {
         dimmers.setLevel(99)
         state.currentLevel = 99
@@ -335,11 +465,14 @@ def slowoffHandler(evt) {
     state.dimStep1 = (targetLevelLow / seconds) * 100
     state.dimLevel = state.currentLevel
     LOGDEBUG("slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
-    dimStepDown()
+    dimStepDown()					
+	}
 }
 
 def dimStepDown() {
-    LOGDEBUG("In dimStepDown...")
+	LOGDEBUG("In dimStepDown...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")						
     if(switches.currentValue("switch") == "on") {
     	if(state.currentLevel > targetLevelLow) {
             state.dimStep = state.dimStep1
@@ -360,18 +493,20 @@ def dimStepDown() {
         }    
     } else{
         LOGDEBUG("Current Level: ${state.currentLevel} - Control Switch turned Off")
-    }
+    }						
+	}
 }
 
 def sendcolor(lights,color) {
-	LOGDEBUG("In sendcolor...")
+	LOGDEBUG("In sendcolor...Pause: $pause1")
+	if(pause1 == true){log.warn "Unable to continue - App paused"}
+    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")						
 	if (brightnessLevel<1) {
 		brightnessLevel=1
 	}
     else if (brightnessLevel>100) {
 		brightnessLevel=100
 	}
-
     def colorPallet = [
 		"color01": [hue: parent.msgColor01Hue, saturation: parent.msgColor01Sat, level: parent.msgColor01Lev],
     	"color02": [hue: parent.msgColor02Hue, saturation: parent.msgColor02Sat, level: parent.msgColor02Lev],
@@ -393,29 +528,61 @@ def sendcolor(lights,color) {
     LOGDEBUG("${color} = ${newcolor}")
     newcolor.level = brightnessLevel
 	lights*.setColor(newcolor)
-    LOGDEBUG("Setting Color = ${color} on: ${lights}")
+    LOGDEBUG("Setting Color = ${color} on: ${lights}")					
+	}
 }
 
-// define debug action
+def pauseOrNot(){
+	LOGDEBUG("In pauseOrNot...")
+    state.pauseNow = pause1
+        if(state.pauseNow == true){
+            state.pauseApp = true
+            if(app.label){
+            if(app.label.contains('red')){
+                log.warn "Paused"}
+            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
+              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
+            }
+            }
+        }
+     if(state.pauseNow == false){
+         state.pauseApp = false
+         if(app.label){
+     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
+     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
+        }
+     }
+  }    
+}
+
+def setDefaults(){
+  LOGDEBUG("Initialising defaults...")
+    pauseOrNot()
+    if(pause1 == null){pause1 = false}
+    if(state.pauseApp == null){state.pauseApp = false}
+	if(debugMode == null){debugMode = false}
+	if(state.checkLog == null){state.checkLog = false}
+}
+
 def logCheck(){
 	state.checkLog = debugMode
 	if(state.checkLog == true){
-		log.info "All Logging Enabled"
+		log.info "${app.label} - All Logging Enabled"
 	}
 	else if(state.checkLog == false){
-		log.info "Further Logging Disabled"
+		log.info "${app.label} - Further Logging Disabled"
 	}
 }
 
-// logging...
 def LOGDEBUG(txt){
     try {
-    	if (settings.debugMode) { log.debug("${txt}") }
+		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
     } catch(ex) {
-    	log.error("LOGDEBUG unable to output requested data!")
+    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
     }
 }
 
 def display(){
-	section{paragraph "Child App Version: 1.1.4"}
-} 
+	section{paragraph "<b>Lighting Effects</b><br>App Version: 1.1.6<br>@BPTWorld"}      
+	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
+}
