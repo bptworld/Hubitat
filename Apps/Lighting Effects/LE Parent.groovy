@@ -39,6 +39,8 @@
  *
  *  Changes:
  *
+ *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
+ *  V1.1.5 - 11/22/18 - Added ability to pause child apps using code developed by @Cobra - Andrew Parker. Thanks!
  *  V1.1.4 - 11/03/18 - All colors are now defined in Custom Color Presets (Parent app). Colors now include Hue, Saturation and
  *						Level for better color control. All colors are customizable, create up to 15 colors in the Parent app. Be 
  *                      sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app.
@@ -84,34 +86,35 @@ def updated() {
 }
 
 def initialize() {
-	
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
     log.info "Child app: ${child.label}"
     }
-    
 }
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
-      installCheck()
+    installCheck()
         
 	if(state.appInstalled == 'COMPLETE'){
 		display()
         	section ("Create a spooky, sparkly or party effect."){}
         	section("Instructions:", hideable: true, hidden: true) {
-        		paragraph "<b>Dimming:</b>"
-    			paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
-    			paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
-        		paragraph "<b>Color Changing:</b>"
-        		paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app."
-        		paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
-				paragraph "<b>Slow Off, On and Loop:</b>"
-        		paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
-            	paragraph "<b>Important:</b>"
-        		paragraph "Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"
-            	paragraph "<b>Very Important:</b>"
-				paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
+        	paragraph "<b>Fast Dimming:</b>"
+    		paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
+    		paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
+        	paragraph "<b>Fast Color Changing:</b>"
+        	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 sec and 5 minutes."
+        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+			paragraph "<b>Slow Color Changing:</b>"
+        	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 minutes and 3 hours."
+        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+			paragraph "<b>Slow Off, On and Loop:</b>"
+        	paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
+            paragraph "<b>Important:</b>"
+        	paragraph "Be sure to turn off 'Enable descriptionText logging' for each device. Can create a LOT of log entries!"
+            paragraph "<b>Very Important:</b>"
+			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         	}
   			section ("Child Apps"){
 				app(name: "anyOpenApp", appName: "Lighting Effects Child", namespace: "BPTWorld", title: "<b>Add a new lighting effect</b>", multiple: true)
@@ -278,9 +281,7 @@ def installCheck(){
 }
 
 def display(){
-	section{paragraph "Version: 1.1.4<br>@BPTWorld"}
+	section{
+		paragraph "<b>Lighting Effects</b><br>App Version: 1.1.6<br>@BPTWorld"
+	}        
 }         
-
-def setVersion(){
-		state.InternalName = "LightingEffectsParent"  
-}
