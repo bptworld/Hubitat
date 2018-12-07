@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 12/07/18 - Added an option to Contact Sensor trigger. Can now trigger based on Open or Closed.
  *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
  *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
  *                      certain conditions. THE PARENT AND ALL CHILD APPS MUST BE OPENED AND SAVED AGAIN FOR THIS TO WORK.
@@ -126,7 +127,7 @@ def mainPage() {
                     	input "msg8", "text", required: false, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
                     	input "msg9", "text", required: false, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
                     	input "msg10", "text", required: false, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
-			input "msg11", "text", required: false, title: "Message - 11", defaultValue: ""
+						input "msg11", "text", required: false, title: "Message - 11", defaultValue: ""
                     	input "msg12", "text", required: false, title: "Message - 12", defaultValue: ""
                     	input "msg13", "text", required: false, title: "Message - 13", defaultValue: ""
                     	input "msg14", "text", required: false, title: "Message - 14", defaultValue: ""
@@ -153,10 +154,7 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Welcome Home</b><br>App Version: 1.0.6<br>@BPTWorld"
+		paragraph "<b>Welcome Home</b><br>App Version: 1.0.7<br>@BPTWorld"
 	}        
 }
-	
-def setVersion(){
-		state.InternalName = "WelcomeHomeParent"  
-}
+
