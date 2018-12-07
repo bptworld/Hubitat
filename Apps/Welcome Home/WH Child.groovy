@@ -37,6 +37,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.7 - 12/07/18 - Added an option to Contact Sensor trigger. Can now trigger based on Open or Closed.
  *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
  *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
  *                      certain conditions. THE PARENT AND ALL CHILD APPS MUST BE OPENED AND SAVED AGAIN FOR THIS TO WORK.
@@ -88,7 +89,8 @@ def pageConfig() {
 				input "lock1", "capability.lock", title: "Activate the welcome message when this door is unlocked", required: true, multiple: true
 			}
 			if(triggerMode == "Contact_Sensor"){
-				input "contactSensor", "capability.contactSensor", title: "Activate the welcome message when this contact sensor is opened", required: true, multiple: true
+				input "contactSensor", "capability.contactSensor", title: "Activate the welcome message when this contact sensor is activated", required: true, multiple: true
+				input "csOpenClosed", "enum", title: "Activate when Opened or Closed" , options: ["Open","Closed"], required: true, defaultValue: "Open"
 			}
 			if(triggerMode == "Motion_Sensor"){
 				input "motionSensor1", "capability.motionSensor", title: "Activate the welcome message when this motion sensor is activated", required: true, multiple: true
@@ -97,6 +99,7 @@ def pageConfig() {
 		section("If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message.") {
 			input "presenceSensor1", "capability.presenceSensor", title: "Presence Sensor 1", required: true, multiple: false, width:6
 			input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, width:6
+			input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10
 		}
 		section() { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
@@ -125,9 +128,6 @@ def pageConfig() {
 		}
 		section() {
 			input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
-		}
-		section() {
-			input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10
 		}
 		section(" ") {label title: "Enter a name for this automation", required: false}
 		section() {
@@ -206,11 +206,22 @@ def contactSensorHandler(evt) {
 	if(state.enablerSwitch2 == "off") {
 		state.contactStatus = evt.value
 		LOGDEBUG("contact Status: = ${state.contactStatus}")
-		if(state.contactStatus == "open") {
-			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-				LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-				getTimeDiff()
+		if(csOpenClosed == "Open") {
+			if(state.contactStatus == "open") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+					getTimeDiff()
+				}
+			}
+		}
+		if(csOpenClosed == "Closed") {
+			if(state.contactStatus == "closed") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+					getTimeDiff()
+				}
 			}
 		}
 	} else {
@@ -480,6 +491,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.6<br>@BPTWorld"}      
+	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.7<br>@BPTWorld"}      
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 } 
