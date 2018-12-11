@@ -8,7 +8,7 @@ Designed to make static holiday lights dim or flicker randomly. Can also randoml
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
 * Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘Lighting Effects’ under ‘User Apps’ (Not the child app)
+* Select ‘Lighting Effects’ under ‘User Apps’
 * Click 'Done'
 * Go back to Apps and open 'Lighting Effects'
 <br>
