@@ -7,7 +7,7 @@ This app is designed to work locally with Blue Iris security software.<br><br>
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
 * Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘BI Control’ under ‘User Apps’ (Not the child app)
+* Select ‘BI Control’ under ‘User Apps’
 * Click 'Done'
 * Go back to Apps and open 'BI Control'
 <br>
