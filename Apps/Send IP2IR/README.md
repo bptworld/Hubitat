@@ -8,7 +8,7 @@ This app is designed to send commands to an iTach IP2IR device.<br><br>
 4. Go to 'Devices' and 'Add Virtual Device'. 'Device Name'=IP2IR Telnet , 'Type'=IP2IR Telnet (created in step one)
 5. Go to ‘Apps’
 6. Click ‘Load New Apps’
-7. Select ‘Send IP2IR’ under ‘User Apps’ (Not the child app)
+7. Select ‘Send IP2IR’ under ‘User Apps’
 8. Click 'Done'
 9. Go back to Apps and open 'Send IP2IR'
 <br>
