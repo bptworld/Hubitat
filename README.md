@@ -7,6 +7,8 @@ https://community.hubitat.com/
 <br><br>
 **Lighting Effects** - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.
 <br><br>
+**One at a Time** - This app is designed to allow only one switch, in a group of switches, to be on at a time.
+<br><br>
 **Send IP2IR** - This app is designed to send commands to an iTach IP2IR device.
 <br><br>
 **Welcome Home** - This app is designed to give a personal welcome announcement after you have entered the home.
