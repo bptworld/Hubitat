@@ -6,7 +6,7 @@ This app is designed to give a personal welcome announcement after you have ente
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
 * Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘Welcome Home’ under ‘User Apps’ (Not the child app)
+* Select ‘Welcome Home’ under ‘User Apps’
 * Click 'Done'
 * Go back to Apps and open 'Welcome Home'
 <br>
