@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.7 - 12/19/18 - Changed some wording - 'Enable Hue in degrees (0-360)', added 'Not necessary for Hue bulbs'
  *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
  *  V1.1.5 - 11/22/18 - Added ability to pause child apps using code developed by @Cobra - Andrew Parker. Thanks!
  *  V1.1.4 - 11/03/18 - All colors are now defined in Custom Color Presets (Parent app). Colors now include Hue, Saturation and
@@ -108,7 +109,7 @@ def mainPage() {
         	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
 			paragraph "<b>Slow Color Changing:</b>"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 minutes and 3 hours."
-        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
 			paragraph "<b>Slow Off, On and Loop:</b>"
         	paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
             paragraph "<b>Important:</b>"
@@ -282,6 +283,6 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Lighting Effects</b><br>App Version: 1.1.6<br>@BPTWorld"
+		paragraph "<b>Lighting Effects</b><br>App Version: 1.1.7<br>@BPTWorld"
 	}        
 }         
