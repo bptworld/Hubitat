@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 12/20/18 - Fixed a nasty bug in Fast_Color_Changing.
  *  V1.1.7 - 12/19/18 - Changed some wording - 'Enable Hue in degrees (0-360)', added 'Not necessary for Hue bulbs'
  *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
  *  V1.1.5 - 11/22/18 - Added ability to pause child apps using code developed by @Cobra - Andrew Parker. Thanks!
@@ -283,6 +284,6 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Lighting Effects</b><br>App Version: 1.1.7<br>@BPTWorld"
+		paragraph "<b>Lighting Effects</b><br>App Version: 1.1.8<br>@BPTWorld"
 	}        
 }         
