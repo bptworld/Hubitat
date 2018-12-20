@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 12/20/18 - Fixed a nasty bug in Fast_Color_Changing.
  *  V1.1.7 - 12/19/18 - Changed some wording - 'Enable Hue in degrees (0-360)', added 'Not necessary for Hue bulbs'
  *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
  *  V1.1.5 - 11/22/18 - Added ability to pause child apps using code developed by @Cobra - Andrew Parker. Thanks!
@@ -266,7 +267,7 @@ def eventHandler(evt) {
             	pause(state.sleepTime)
             }
         }
-    	runIn(10,"eventHandler")
+    	runIn(10, eventHandler)
     } else if(switches.currentValue("switch") == "off"){
 		dimmers.off()
 		unschedule()
@@ -282,12 +283,16 @@ def changeHandler(evt) {
 		LOGDEBUG("In changeHandler...")
 		LOGDEBUG("Color Selection = ${colorSelection}")
         lights.on()
-        	if(triggerMode == "Color_Changing"){
+		LOGDEBUG(" - - - - - - - - - - I'm in changeHandler, triggerMode = ${triggerMode}")
+        	if(triggerMode == "Fast_Color_Changing"){
                 for (numberoflights in lights) {
+					LOGDEBUG(" - - - - - - - - - - sleepPattern = ${sleepPattern}")
 					if(sleepPattern == "random"){
                     	state.sleepTime2 = Math.abs(new Random().nextInt() % sleepytime2)
+						LOGDEBUG(" - - - - - - - - - - I'm in random, state.sleepTime2 = ${state.sleepTime2}")
 					} else{
                     	state.sleepTime2 = sleepytime2
+						LOGDEBUG(" - - - - - - - - - - I'm in constant, state.sleepTime2 = ${state.sleepTime2}")
 					}
         			def colors = []
                 	colors = colorSelection
@@ -333,7 +338,7 @@ def changeHandler(evt) {
                 }
             }
 			LOGDEBUG("sleepTime2: ${state.sleepTime2}")
-        	runIn(state.sleepTime2,"changeHandler")
+        	runIn(state.sleepTime2, changeHandler)
 	} else if(switches.currentValue("switch") == "off"){
 		lights.off()
 		unschedule()
@@ -396,7 +401,7 @@ def slowChangeHandler(evt) {
                 }
             }
 			LOGDEBUG("sleepTime2: ${state.sleepTime2}")
-        	runIn(state.sleepTime2,"slowChangeHandler")
+        	runIn(state.sleepTime2, slowChangeHandler)
 	} else if(switches.currentValue("switch") == "off"){
 		lights.off()
 		unschedule()
@@ -584,6 +589,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Lighting Effects</b><br>App Version: 1.1.7<br>@BPTWorld"}      
+	section{paragraph "<b>Lighting Effects</b><br>App Version: 1.1.8<br>@BPTWorld"}      
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
 }
