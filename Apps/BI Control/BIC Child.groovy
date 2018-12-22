@@ -387,7 +387,7 @@ def biChangeProfile(num) {
 		// /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
 	}
 	
-	LOGDEBUG("sending GET to URL http://${biHost}/${biRawCommand}")
+	LOGDEBUG("sending GET to URL http://${biHost}${biRawCommand}")
 	LOGDEBUG("biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}")
 	
 	def httpMethod = "GET"
