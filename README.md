@@ -7,8 +7,8 @@ https://community.hubitat.com/
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
 **Device Watchdog** - Keep an eye on your devices and see how long it's been since they checked in.<br>
-Hubitat Forum Discussion:
-<br><br><a href="https://community.hubitat.com/t/release-device-watchdog/7692" target="_blank">Go Here</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-watchdog/7692" target="_blank">Go Here</a>
+<br><br>
 **Lighting Effects** - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
 <br><br>
