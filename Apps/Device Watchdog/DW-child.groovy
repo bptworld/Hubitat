@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 12/27/18 - Code cleanup.
  *  V1.0.0 - 12/21/18 - Initial release.
  *
  */
@@ -66,73 +66,26 @@ def pageConfig() {
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- Be sure to generate a new report before trying to view the 'Last Device Status Report'."	
-			paragraph "<b>Bonus Feature:</b>"
-			paragraph "- All changes are saved right away, no need to exit out and back in before generating a new report."
+			paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- Be sure to generate a new report before trying to view the 'Last Device Status Report'.<br>- All changes are saved right away, no need to exit out and back in before generating a new report."
 		}
 		section("<b>Click the button below to generate a new report. Be sure to watch your log to see when it finishes.<br>Usually only takes a minute or two depending on how many devices it's looking at.</b>") {
-			paragraph ">   >   >   >   >   >   ", width:3
+			paragraph "                        ", width:3
 			input "runButton", "button", title: "Click here to generate a new report.", width:5
-			paragraph "   <   <   <   <   <   <", width:3
+			paragraph "                        ", width:3
 			href "pageStatus", title: "Last Device Status Report", description: "Click here to view the Device Status Report."
 		}
-   		section("<b>Setup to automatically run once a day</b>") {
-			input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
-		}
 		section("<b>Define whether this child app will be for checking Activity or Battery Levels</b>") {
-			input(name: "activityORbattery", type: "bool", defaultValue: "false", submitOnChange: true, title: "Activity or Battery", description: "")
-			paragraph "Off to check Activity, On to check battery levels."
+			input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true,  options: ["Activity", "Battery_Level"]
 		}
-			if(activityORbattery) {
+			if(triggerMode == "Battery_Level") {
 				section("<b>Select your battery devices</b>") {
 					input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				}
 				section("<b>Options:</b>") {
 					input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required: false, submitOnChange: true
+					input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
 					input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false, submitOnChange: true
 				}
-			} else {
-	section("<b>Devices may show up in multiple lists but each device only needs to be selected once.</b>") {
-		input "accelerationSensorDevice", "capability.accelerationSensor", title: "Select Acceleration Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "alarmDevice", "capability.alarm", title: "Select Alarm Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "carbonMonoxideDetectorDevice", "capability.carbonMonoxideDetector", title: "Select Carbon Monoxide Detector Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "contactSensorDevice", "capability.contactSensor", title: "Select Contact Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "energyMeteDevicer", "capability.energyMeter", title: "Select Energy Meter Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "illuminanceMeasurementDevice", "capability.illuminanceMeasurement", title: "Select Illuminance Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "lockDevice", "capability.lock", title: "Select Lock Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "motionSensorDevice", "capability.motionSensor", title: "Select Motion Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "powerMeterDevice", "capability.powerMeter", title: "Select Power Meter Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "presenceSensorDevice", "capability.presenceSensor", title: "Select Presence Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "pushableButtonDevice", "capability.pushableButton", title: "SelectPushable Button Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "relativeHumidityMeasurementDevice", "capability.relativeHumidityMeasurement", title: "Select Relative Humidity Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "smokeDetectorDevice", "capability.smokeDetector", title: "Select Smoke Detector Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "switchDevice", "capability.switch", title: "Select Switch Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "switchLevelDevice", "capability.switchLevel", title: "Select Switch Level Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "temperatureMeasurementDevice", "capability.temperatureMeasurement", title: "Select Temperature Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "valveDevice", "capability.valve", title: "Select Valve Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "voltageMeasurementDevice", "capability.voltageMeasurement", title: "Select Voltage Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		input "waterSensorDevice", "capability.waterSensor", title: "Select Water Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-	}
-		section("If you have a device not found in the list above, try these two options.") {
-			input "actuatorDevice", "capability.actuator", title: "Select Actuator Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-			input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		}
-		section("<b>Options:</b>") {
-			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
-		}
-		section() {
-			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false
-		}
-				}  // End of activityORbattery Switch
-		section() {label title: "Enter a name for this automation", required: false, submitOnChange: true}
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
-        section() {
-            input(name: "debugMode", type: "bool", defaultValue: "true", submitOnChange: true, title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
-		}
-			if(activityORbattery) {
 				section() {
 					input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Below Threshold or Above Threshold", description: "On is Active, Off is Inactive.")
 					if(badORgood) {
@@ -141,22 +94,53 @@ def pageConfig() {
 						paragraph "App will only display Devices BELOW Threshold."
 					}
 				}
-			} else {
-				section() {
-					input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Inactive or active", description: "On is Active, Off is Inactive.")
-					if(badORgood) {
-						paragraph "App will only display ACTIVE Devices."
-					} else {
-						paragraph "App will only display INACTIVE Devices."
-					}
+			} else if(triggerMode == "Activity") {
+		section("<b>Devices may show up in multiple lists but each device only needs to be selected once.</b>") {
+			input "accelerationSensorDevice", "capability.accelerationSensor", title: "Select Acceleration Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "alarmDevice", "capability.alarm", title: "Select Alarm Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "carbonMonoxideDetectorDevice", "capability.carbonMonoxideDetector", title: "Select Carbon Monoxide Detector Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "contactSensorDevice", "capability.contactSensor", title: "Select Contact Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "energyMeteDevicer", "capability.energyMeter", title: "Select Energy Meter Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "illuminanceMeasurementDevice", "capability.illuminanceMeasurement", title: "Select Illuminance Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "lockDevice", "capability.lock", title: "Select Lock Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "motionSensorDevice", "capability.motionSensor", title: "Select Motion Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "powerMeterDevice", "capability.powerMeter", title: "Select Power Meter Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "presenceSensorDevice", "capability.presenceSensor", title: "Select Presence Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "pushableButtonDevice", "capability.pushableButton", title: "SelectPushable Button Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "relativeHumidityMeasurementDevice", "capability.relativeHumidityMeasurement", title: "Select Relative Humidity Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "smokeDetectorDevice", "capability.smokeDetector", title: "Select Smoke Detector Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "switchDevice", "capability.switch", title: "Select Switch Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "switchLevelDevice", "capability.switchLevel", title: "Select Switch Level Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "temperatureMeasurementDevice", "capability.temperatureMeasurement", title: "Select Temperature Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "valveDevice", "capability.valve", title: "Select Valve Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "voltageMeasurementDevice", "capability.voltageMeasurement", title: "Select Voltage Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "waterSensorDevice", "capability.waterSensor", title: "Select Water Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+		}
+		section("If you have a device not found in the list above, try these two options.") {
+			input "actuatorDevice", "capability.actuator", title: "Select Actuator Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+			input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+		}
+		section("<b>Options:</b>") {
+			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
+			input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
+			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false
+		}
+		section() {
+			input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Inactive or active", description: "On is Active, Off is Inactive.")
+				if(badORgood) {
+					paragraph "App will only display ACTIVE Devices."
+				} else {
+					paragraph "App will only display INACTIVE Devices."
 				}
-			}
+		}
+		}
 	}
 }
 
 def pageStatus(params) {
 	dynamicPage(name: "pageStatus", title: "Device Watchdog - Status", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
-		if(activityORbattery) {  // Battery
+		if(triggerMode == "Battery_Level") {  // Battery
 			if(badORgood == false) {  // less than
 				section("Devices that have reported Battery levels less than $batteryThreshold") {}
 				if (state.batteryMap) {
@@ -180,7 +164,8 @@ def pageStatus(params) {
 					}
 				}
 			}
-		} else {  // Activity
+		}
+		if(triggerMode == "Activity") {
 			if(badORgood == false) {
 				section("Devices that have not reported in for $timeAllowed hour(s)") {}
 				if (state.timeSinceMap) {
@@ -189,7 +174,7 @@ def pageStatus(params) {
         			}
 				} else {
 					section("Oops!") {
-						paragraph "Something went wrong. Please hit 'Done' and come back here again.<br>Still working on what causes this sometimes!"
+						paragraph "Something went wrong. Please hit 'Done' and come right back here again.<br>Still working on what causes this sometimes!"
 					}
 				}
 			} else {
@@ -200,14 +185,14 @@ def pageStatus(params) {
         			}
 				} else {
 					section("Oops!") {
-						paragraph "Something went wrong. Please hit 'Done' and come back here again.<br>Still working on what causes this sometimes!"
+						paragraph "Something went wrong. Please hit 'Done' and come right back here again.<br>Still working on what causes this sometimes!"
 					}
 				}
 			}
 		}
 	}
 }
-
+	
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -222,21 +207,16 @@ def updated() {
 
 def initialize() {
 	setDefaults()
-	if(activityORbattery == false) schedule(timeToRun, activityHandler)
-	if(activityORbattery == true) schedule(timeToRun, batteryHandler)
-}
-
-def batteryHandler(evt) {
-	log.info "     * * * * * * * * Starting (B) ${app.label} * * * * * * * *     "
-	if(batteryDevice) {
-		state.myType = "Battery"
-		state.mySensors = batteryDevice
-		myBatteryHandler()
+	if(triggerMode == "Activity") {
+		state.timeSinceMap = ""
+		state.timeSinceMapPhone = ""
+		schedule(timeToRun, activityHandler)
 	}
-	log.info "     * * * * * * * * End (B) ${app.label} * * * * * * * *     "
-	def rightNow = new Date()
-	state.batteryMap += "<br>Report generated: ${rightNow}<br>"
-	if(sendPushMessage) pushNow()
+	if(triggerMode == "Battery_Level") {
+		state.batteryMap = ""
+		state.batteryMapPhone = ""
+		schedule(timeToRun, activityHandler)
+	}
 }
 
 def activityHandler(evt) {
@@ -244,116 +224,139 @@ def activityHandler(evt) {
 	if(actuatorDevice) {
 		state.myType = "Actuator"
 		state.mySensors = actuatorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(sensorDevice) {
 		state.myType = "Sensor"
 		state.mySensors = sensorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(accelerationSensorDevice) {
 	  	state.myType = "Acceleration"
 		state.mySensors = accelerationSensorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(alarmDevice) {
 		state.myType = "Alarm"
 		state.mySensors = alarmDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(batteryDevice) {
 		state.myType = "Battery"
 		state.mySensors = batteryDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(carbonMonoxideDetectorDevice) {
 	  	state.myType = "Carbon Monoxide Detector"
 		state.mySensors = carbonMonoxideDetectorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(contactSensorDevice) {
 		state.myType = "Contact Sensor"
 		state.mySensors = contactSensorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(energyMeterDevice) {
 		state.myType = "Energy Meter"
 		state.mySensors = energyMeterDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(illuminanceMeasurementDevice) {
 		state.myType = "Illuminance Measurement"
 		state.mySensors = illuminanceMeasurementDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(lockDevice) {
 		state.myType = "Lock"
 		state.mySensors = lockDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(motionSensorDevice) {
 		state.myType = "Motion Sensor"
 		state.mySensors = motionSensorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(powerMeterDevice) {
 		state.myType = "Power Meter"
 		state.mySensors = powerMeterDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(presenceSensorDevice) {
 		state.myType = "Presence Sensor"
 		state.mySensors = presenceSensorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(pushableButtonDevice) {
 		state.myType = "Pushable Button"
 		state.mySensors = pushableButtonDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(relativeHumidityMeasurementDevice) {
 		state.myType = "Relative Humidity Measurement"
 		state.mySensors = relativeHumidityMeasurementDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(smokeDetectorDevice) {
 		state.myType = "Smoke Detector"
 		state.mySensors = smokeDetectorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(switchDevice) {
 		state.myType = "Switch"
 		state.mySensors = switchDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(switchLevelDevice) {
 		state.myType = "Switch Level"
 		state.mySensors = switchLevelDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(temperatureMeasurementDevice) {
 		state.myType = "Temperature Measurement"
 		state.mySensors = temperatureMeasurementDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(valveDevice) {
 		state.myType = "Valve"
 		state.mySensors = valveDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(voltageMeasurementDevice) {
 		state.myType = "Voltage Measurement"
 		state.mySensors = voltageMeasurementDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	if(waterSensorDevice) {
 		state.myType = "Water Sensor"
 		state.mySensors = waterSensorDevice
-		mySensorHandler()
+		if(triggerMode == "Activity") mySensorHandler()
+		if(triggerMode == "Battery_Level") myBatteryHandler()
 	}
 	log.info "     * * * * * * * * End ${app.label} * * * * * * * *     "
 	def rightNow = new Date()
-	state.timeSinceMap += "<br>Report generated: ${rightNow}<br>"
+	if(triggerMode == "Activity") {state.timeSinceMap += "<br>Report generated: ${rightNow}<br>"}
+	if(triggerMode == "Battery_Level") {state.batteryMap += "<br>Report generated: ${rightNow}<br>"}
 	if(sendPushMessage) pushNow()
 }	
 
@@ -379,11 +382,11 @@ def myBatteryHandler() {
 			}
 		}
 	}
-	log.info "     - - - - - End (B)${state.myType} - - - - -     "
+	log.info "     - - - - - End (B) ${state.myType} - - - - -     "
 }
 
 def mySensorHandler() {
-	log.info "     - - - - - Start ${state.myType} - - - - -     "
+	log.info "     - - - - - Start (S) ${state.myType} - - - - -     "
 	LOGDEBUG("In mySensorHandler...")
 	state.mySensors.each { device ->
 		log.info "Working on... ${device}"
@@ -416,7 +419,7 @@ def mySensorHandler() {
 			}
 		}
 	}
-	log.info "     - - - - - End ${state.myType} - - - - -     "
+	log.info "     - - - - - End (S) ${state.myType} - - - - -     "
 }
 
 def appButtonHandler(btn){
@@ -429,11 +432,7 @@ def appButtonHandler(btn){
 		state.timeSinceMapPhone = ""
 		state.batteryMap = ""
 		state.batteryMapPhone = ""
-		if(activityORbattery) {
-        	runIn(1, batteryHandler)
-		} else {
-			runIn(1, activityHandler)
-		}
+		runIn(1, activityHandler)
     }
 }
 
@@ -504,6 +503,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.0<br>@BPTWorld"}
+	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.1<br>@BPTWorld"}
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false}
 }
