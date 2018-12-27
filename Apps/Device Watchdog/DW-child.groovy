@@ -56,7 +56,6 @@ parent: "BPTWorld:Device Watchdog",
     )
 
 preferences {
-	
     page(name: "pageConfig")
 	page(name: "pageStatus")
 }
@@ -94,6 +93,11 @@ def pageConfig() {
 						paragraph "App will only display Devices BELOW Threshold."
 					}
 				}
+				section("<b>General</b>") {label title: "Enter a name for this child app", required: false}
+				section() {
+					input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
+					input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+    			}
 			} else if(triggerMode == "Activity") {
 		section("<b>Devices may show up in multiple lists but each device only needs to be selected once.</b>") {
 			input "accelerationSensorDevice", "capability.accelerationSensor", title: "Select Acceleration Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
@@ -134,6 +138,11 @@ def pageConfig() {
 					paragraph "App will only display INACTIVE Devices."
 				}
 		}
+		section("<b>General</b>") {label title: "Enter a name for this child app", required: false}
+		section() {
+			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
+			input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+    	}
 		}
 	}
 }
