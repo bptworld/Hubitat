@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 12/27/18 - Code cleanup.
  *  V1.0.0 - 12/21/18 - Initial release.
  *
  */
@@ -84,7 +84,7 @@ def mainPage() {
 				}
 				section("Instructions:", hideable: true, hidden: true) {
 					paragraph "<b>Notes:</b>"
-					paragraph "* Need to put something in here."	
+					paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- Be sure to generate a new report before trying to view the 'Last Device Status Report'.<br>- All changes are saved right away, no need to exit out and back in before generating a new report."
 				}
   				section("Child Apps", hideable: true, hidden: true){
 					app(name: "anyOpenApp", appName: "Device Watchdog Child", namespace: "BPTWorld", title: "<b>Add a new 'Device Watchdog' child</b>", multiple: true)
@@ -108,6 +108,6 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.0<br>@BPTWorld"
+		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.1<br>@BPTWorld"
 	}        
 }         
