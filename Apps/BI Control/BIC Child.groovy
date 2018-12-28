@@ -68,7 +68,7 @@ preferences {
 	}
 	
 	section() {
-		input "triggerType", "enum", title: "Select Control Type", submitOnChange: true, options: ["Profile","Camera"], required: true, Multiple: false
+		input "triggerType", "enum", title: "Select Control Type", submitOnChange: true, options: ["Profile", "Schedule", "Camera"], required: true, Multiple: false
 		
 		if(triggerType == "Profile"){
     		input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
@@ -102,6 +102,37 @@ preferences {
 							[Pon7:"Profile 7"],
 						], required: true, multiple: false
 				}
+			}
+		}
+		if(triggerType == "Schedule"){
+    		input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
+			if(triggerMode == "Mode"){
+				section(){
+					paragraph "<b>Ability to change BI Schedule based on HE Mode</b>"
+				}
+				section(""){
+					input "biScheduleName1", "text", title: "Schedule 1 Name", description: "The exact name of the BI schedule"
+					input "biSchedule1", "mode", title: "Schedule 1 Mode(s)", required: false, multiple: true, width:3
+                    input "biScheduleName2", "text", title: "Schedule 2 Name", description: "The exact name of the BI schedule"
+                    input "biSchedule2", "mode", title: "Schedule 2 Mode(s)", required: false, multiple: true, width:3
+                    input "biScheduleName3", "text", title: "Schedule 3 Name", description: "The exact name of the BI schedule"
+                    input "biSchedule3", "mode", title: "Schedule 3 Mode(s)", required: false, multiple: true, width:3
+                    input "biScheduleName4", "text", title: "Schedule 4 Name", description: "The exact name of the BI schedule"
+                    input "biSchedule4", "mode", title: "Schedule 4 Mode(s)", required: false, multiple: true, width:3
+                    input "biScheduleName5", "text", title: "Schedule 5 Name", description: "The exact name of the BI schedule"
+                    input "biSchedule5", "mode", title: "Schedule 5 Mode(s)", required: false, multiple: true, width:3
+                    input "biScheduleName6", "text", title: "Schedule 6 Name", description: "The exact name of the BI schedule"
+                    input "biSchedule6", "mode", title: "Schedule 6 Mode(s)", required: false, multiple: true, width:3
+				}
+			}
+			if(triggerMode == "Switch"){
+				section(){
+					paragraph "<b>Ability to change the BI Schedule using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+				}
+				section(){
+					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
+                    input "biScheduleSwitch", "text", title: "Schedule Name", description: "The exact name of the BI schedule to trigger with the switch"
+                }
 			}
 		}
 		if(triggerType == "Camera"){
@@ -174,15 +205,20 @@ def updated() {
 def initialize() {
 	LOGDEBUG("Initializing...")
 	LOGDEBUG("triggerMode = ${triggerMode}")
-	if(triggerMode == "Mode"){subscribe(location, "mode", modeChangeHandler)}
-	if(triggerMode == "Switch"){subscribe(switches, "switch", switchHandler)}
+	if(triggerType == "Profile") {
+		if(triggerMode == "Mode"){subscribe(location, "mode", profileModeChangeHandler)}
+		if(triggerMode == "Switch"){subscribe(switches, "switch", profileSwitchHandler)}
+	} else if (triggerType == "Schedule") {
+		if(triggerMode == "Mode"){subscribe(location, "mode", scheduleModeChangeHandler)}
+		if(triggerMode == "Switch"){subscribe(switches, "switch", scheduleSwitchHandler)}
+	}
 	if(triggerMode == "Camera_Preset"){subscribe(switches, "switch", cameraPresetHandler)}
 	if(triggerMode == "Camera_Snapshot"){subscribe(switches, "switch", cameraSnapshotHandler)}
 	if(triggerMode == "Camera_Trigger"){subscribe(switches, "switch", cameraTriggerHandler)}
 	if(triggerMode == "Camera_PTZ"){subscribe(switches, "switch", cameraPTZHandler)}
 }
 
-def modeChangeHandler(evt) {
+def profileModeChangeHandler(evt) {
 	LOGDEBUG("BI Control-modeChangeHandler...")
 	LOGDEBUG("Mode changed to ${evt.value}")
 
@@ -223,7 +259,7 @@ def modeChangeHandler(evt) {
     }
 }
 
-def switchHandler(evt) {
+def profileSwitchHandler(evt) {
 	LOGDEBUG("BI Control-switchChangeHandler...")
 	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
 
@@ -258,6 +294,46 @@ def switchHandler(evt) {
 			biChangeProfile(setProfile)
 		}
 	}
+}
+
+def scheduleModeChangeHandler(evt) {
+	LOGDEBUG("BI Control-modeChangeHandler...")
+	LOGDEBUG("Mode changed to ${evt.value}")
+
+	if(biScheduleName1 != null && evt.value in biSchedule1) {
+        biChangeSchedule(biScheduleName1)
+		LOGDEBUG("biSchedule1 ${settings.biScheduleName1}")
+    }
+    else if(biScheduleName2 != null && evt.value in biSchedule2) {
+        biChangeSchedule(biScheduleName2)
+		LOGDEBUG("biSchedule2 ${settings.biScheduleName2}")
+	}
+    else if(biScheduleName3 != null && evt.value in biSchedule3) {
+		biChangeSchedule(biScheduleName3)
+		LOGDEBUG("biSchedule3 ${settings.biScheduleName3}")
+    }
+    else if(biScheduleName4 != null && evt.value in biSchedule4) {
+		biChangeSchedule(biScheduleName4)
+		LOGDEBUG("biSchedule4 ${settings.biScheduleName4}")
+    }
+    else if(biScheduleName5 != null && evt.value in biSchedule5) {
+		biChangeSchedule(biScheduleName5)
+		LOGDEBUG("biSchedule4 ${settings.biScheduleName5}")
+    }
+    else if(biScheduleName6 != null && evt.value in biSchedule6) {
+		biChangeSchedule(biScheduleName6)
+		LOGDEBUG("biSchedule6 ${settings.biScheduleName6}")
+    }
+}
+
+def scheduleSwitchHandler(evt) {
+	LOGDEBUG("BI Control-switchChangeHandler...")
+	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+
+	if(switches.currentValue("switch") == "on") {
+        LOGDEBUG("scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}")
+        biChangeSchedule(biScheduleSwitch)
+    }
 }
 
 def cameraPresetHandler(evt) {
@@ -401,6 +477,29 @@ def biChangeProfile(num) {
 		]
 	def hubAction = new hubitat.device.HubAction(httpRequest)
 	sendHubCommand(hubAction)
+}
+
+def biChangeSchedule(schedule) {
+    LOGDEBUG("BI Control-biChangeSchedule...")
+
+    biHost = "${parent.biServer}:${parent.biPort}"
+
+    biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
+
+    LOGDEBUG("sending GET to URL http://${biHost}${biRawCommand}")
+    LOGDEBUG("biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}")
+
+    def httpMethod = "GET"
+    def httpRequest = [
+            method:		httpMethod,
+            path: 		biRawCommand,
+            headers:	[
+                    HOST:		biHost,
+                    Accept: 	"*/*",
+            ]
+    ]
+    def hubAction = new hubitat.device.HubAction(httpRequest)
+    sendHubCommand(hubAction)
 }
 
 // define debug action
