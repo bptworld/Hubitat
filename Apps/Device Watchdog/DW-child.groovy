@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
  *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
  *						Added option to select 'all devices' for Battery Level trigger.
  *						Fixed Pushover to send a 'No devices to report' message instead of a blank message.
@@ -458,22 +459,24 @@ def pushNow(){
 	LOGDEBUG("In pushNow...")
 	if(triggerMode == "Activity") {
 		if(state.timeSinceMapPhone) {
-			LOGDEBUG("In pushNow...Sending message: ${state.timeSinceMapPhone}")
-        	sendPushMessage.deviceNotification(state.timeSinceMapPhone)
+			timeSincePhone = "${app.label} - ${state.batteryMapPhone}"
+			LOGDEBUG("In pushNow...Sending message: ${timeSincePhone}")
+        	sendPushMessage.deviceNotification(timeSincePhone)
 		} else {
-			emptyMapPhone = "Nothing to report."
+			emptyMapPhone = "${app.label} - Nothing to report."
 			LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
         	sendPushMessage.deviceNotification(emptyMapPhone)
 		}
 	}	
 	if(triggerMode == "Battery_Level") {
 		if(state.batteryMapPhone) {
-			LOGDEBUG("In pushNow...Sending message: ${state.batteryMapPhone}")
-			sendPushMessage.deviceNotification(state.batteryMapPhone)
+			batteryPhone = "${app.label} - ${state.batteryMapPhone}"
+			LOGDEBUG("In pushNow...Sending message: ${batteryPhone}")
+			sendPushMessage.deviceNotification(batteryPhone)
 		} else {
-			emptyMapPhone = "Nothing to report."
-			LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
-        	sendPushMessage.deviceNotification(emptyMapPhone)
+			emptyBatteryPhone = "${app.label} - Nothing to report."
+			LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
+        	sendPushMessage.deviceNotification(emptyBatteryPhone)
 		}
 	}	
 }
@@ -534,6 +537,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.2<br>@BPTWorld"}
+	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.3<br>@BPTWorld"}
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false}
 }
