@@ -4,7 +4,7 @@ www.hubitat.com<br>
 https://community.hubitat.com/
 <br><br>
 **Abacus** - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Go Here</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
 **BI Control** - Designed to work locally with Blue Iris security software.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
