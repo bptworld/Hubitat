@@ -36,6 +36,9 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
+ *						Added option to select 'all devices' for Battery Level trigger.
+ *						Fixed Pushover to send a 'No devices to report' message instead of a blank message.
  *  V1.0.1 - 12/27/18 - Code cleanup.
  *  V1.0.0 - 12/21/18 - Initial release.
  *
@@ -108,6 +111,6 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.1<br>@BPTWorld"
+		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.2<br>@BPTWorld"
 	}        
 }         
