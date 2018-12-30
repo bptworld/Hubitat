@@ -54,7 +54,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *					.
+ *
+ *  V1.0.1 - 12/30/18 - Updated to new theme.
  *  V1.0.0 - 12/19/18 - Initial release.
  *
  */
@@ -78,7 +79,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {	
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Motion Controlled Scene Lighting</h2>", install: true, uninstall: true, refreshInterval:0) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
         	paragraph "<b>Info:</b>"
@@ -86,10 +87,10 @@ def pageConfig() {
 			paragraph "<b>Prerequisites:</b>"
 			paragraph "- Must already have at least one Scene setup in Hubitats 'Groups and Scenes' built in app.<br>- Have at least one dimmable buld included in each Scene.<br>- (Optional) Have a virutal switch created to Enable/Disable each child app."
 		}
-    	section() {
+    	section(getFormat("header-green", "${getImage("Blank")}"+" Setup")) {
 			input "motionSensors", "capability.motionSensor", title: "Select Motion Sensor(s):", required: true, multiple:true
 		}
-		section("<b>Mode 1</b>") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Mode 1")) {
 			input "modeName1", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 			input "sceneSwitch1", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 			input "lightsToDim1", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -98,7 +99,7 @@ def pageConfig() {
 		}
 		section() {input(name: "mode2Enable", type: "bool", defaultValue: "false", submitOnChange: true, title: "Need another Mode?", description: "Enable another mode set.")}
 		if(mode2Enable) {
-			section("<b>Mode 2</b>") {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 2")) {
 				input "modeName2", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch2", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim2", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -108,7 +109,7 @@ def pageConfig() {
 			section() {input(name: "mode3Enable", type: "bool", defaultValue: "false", submitOnChange: true, title: "Need another Mode?", description: "Enable another mode set.")}
 		}
 		if(mode3Enable) {	
-			section("<b>Mode 3</b>") {	
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 3")) {	
 				input "modeName3", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch3", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim3", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -118,7 +119,7 @@ def pageConfig() {
 			section() {input(name: "mode4Enable", type: "bool", defaultValue: "false", submitOnChange: true, title: "Need another Mode?", description: "Enable another mode set.")}
 		}
 		if(mode4Enable) {
-			section("<b>Mode 4</b>") {	
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 4")) {	
 				input "modeName4", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch4", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim4", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -128,7 +129,7 @@ def pageConfig() {
 			section() {input(name: "mode5Enable", type: "bool", defaultValue: "false", submitOnChange: true, title: "Need another Mode?", description: "Enable another mode set.")}
 		}
 		if(mode5Enable) {
-			section("<b>Mode 5</b>") {	
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 5")) {	
 				input "modeName5", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch5", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim5", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -138,7 +139,7 @@ def pageConfig() {
 			section() {input(name: "mode6Enable", type: "bool", defaultValue: "false", submitOnChange: true, title: "Need another Mode?", description: "Enable another mode set.")}
 		}
 		if(mode6Enable) {
-			section("<b>Mode 6</b>") {	
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 6")) {	
 				input "modeName6", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch6", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim6", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -147,7 +148,7 @@ def pageConfig() {
 			}
 		}
 		if(mode7Enable) {
-			section("<b>Mode 7</b>") {	
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 7")) {	
 				input "modeName7", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch7", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim7", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -156,7 +157,7 @@ def pageConfig() {
 			}
 		}
 		if(mode8Enable) {
-			section("<b>Mode 8</b>") {	
+			section(getFormat("header-green", "${getImage("Blank")}"+" Mode 8")) {	
 				input "modeName8", "mode", title: "When in this Mode...", required: true, multiple: false, width:6
 				input "sceneSwitch8", "capability.switch", title: "...turn on this Switch to Activate Scene.", required: true, multiple: false, width:6
 				input "lightsToDim8", "capability.switch", title: "Select light(s) to dim when no motion (will dim to 50% of whatever level they are currently)", required: true, multiple: true
@@ -164,20 +165,32 @@ def pageConfig() {
         		input "offTime8", "number", title: "Time since lights Dimmed, before all lights in Scene turn off (in seconds)", required: true, width:6
 			}
 		}
-		section("<b>Restrictions</b> (optional)") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions (optional)")) {
         	input "lightSensor", "capability.illuminanceMeasurement", title: "Only when illuminance on this light sensor...", required: false, width:6
             input "lightLevel", "number", title: "...is equal to or below this illuminance level", required: false, width:6
 		}
-		section("<b>Safety Net</b> (optional - used to turn off all lights selected, not just the ones in the Scene.)") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Safety Net (optional - used to turn off all lights selected, not just the ones in the Scene.)")) {
 			input "safetySwitches", "capability.switch", title: "Turn off these switches when...", required: false, multiple: true, width:6
 			input "safetyTime", "number", title: "...Time since Motion inactivity (in minutes)", required: false, width:6
 		}
-		section("<b>General</b>") {label title: "Enter a name for this child app", required: false}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
+		display2()
 	}
+}
+
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -575,7 +588,16 @@ def LOGDEBUG(txt){
     }
 }
 
-def display(){
-	section{paragraph "<b>Motion Controlled Scene Lighting</b><br>App Version: 1.0.0<br>@BPTWorld"}      
-	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
+def display() {
+	section() {
+		paragraph getFormat("line")
+		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+	}
+}
+
+def display2() {
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}
 } 
