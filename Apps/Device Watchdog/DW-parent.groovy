@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
  *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
  *						Added option to select 'all devices' for Battery Level trigger.
  *						Fixed Pushover to send a 'No devices to report' message instead of a blank message.
@@ -111,6 +112,6 @@ def installCheck(){
 
 def display(){
 	section{
-		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.2<br>@BPTWorld"
+		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.3<br>@BPTWorld"
 	}        
 }         
