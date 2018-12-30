@@ -36,6 +36,9 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
+ *						Added option to select 'all devices' for Battery Level trigger.
+ *						Fixed Pushover to send a 'No devices to report' message instead of a blank message.
  *  V1.0.1 - 12/27/18 - Code cleanup.
  *  V1.0.0 - 12/21/18 - Initial release.
  *
@@ -78,12 +81,17 @@ def pageConfig() {
 		}
 			if(triggerMode == "Battery_Level") {
 				section("<b>Select your battery devices</b>") {
-					input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+					input(name: "allDevices", type: "bool", defaultValue: "false", title: "Select ALL battery devices?", submitOnChange: "true")
+					if(allDevices) {
+						paragraph "<b>** This will check all Battery device levels. **</b>"
+					} else {
+						input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+					}
 				}
 				section("<b>Options:</b>") {
 					input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required: false, submitOnChange: true
 					input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
-					input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false, submitOnChange: true
+					input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
 				}
 				section() {
 					input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Below Threshold or Above Threshold", description: "On is Active, Off is Inactive.")
@@ -128,7 +136,7 @@ def pageConfig() {
 		section("<b>Options:</b>") {
 			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
 			input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
-			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false
+			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
 		}
 		section() {
 			input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Inactive or active", description: "On is Active, Off is Inactive.")
@@ -224,6 +232,7 @@ def initialize() {
 	if(triggerMode == "Battery_Level") {
 		state.batteryMap = ""
 		state.batteryMapPhone = ""
+		if(allDevices) subscribe(location, "battery", activityHandler)
 		schedule(timeToRun, activityHandler)
 	}
 }
@@ -447,13 +456,26 @@ def appButtonHandler(btn){
 
 def pushNow(){
 	LOGDEBUG("In pushNow...")
-		if(activityORbattery) {
+	if(triggerMode == "Activity") {
+		if(state.timeSinceMapPhone) {
 			LOGDEBUG("In pushNow...Sending message: ${state.timeSinceMapPhone}")
         	sendPushMessage.deviceNotification(state.timeSinceMapPhone)
 		} else {
+			emptyMapPhone = "Nothing to report."
+			LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
+        	sendPushMessage.deviceNotification(emptyMapPhone)
+		}
+	}	
+	if(triggerMode == "Battery_Level") {
+		if(state.batteryMapPhone) {
 			LOGDEBUG("In pushNow...Sending message: ${state.batteryMapPhone}")
 			sendPushMessage.deviceNotification(state.batteryMapPhone)
+		} else {
+			emptyMapPhone = "Nothing to report."
+			LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
+        	sendPushMessage.deviceNotification(emptyMapPhone)
 		}
+	}	
 }
 
 // ********** Normal Stuff **********
@@ -512,6 +534,6 @@ def LOGDEBUG(txt){
 }
 
 def display(){
-	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.1<br>@BPTWorld"}
+	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.2<br>@BPTWorld"}
 	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false}
 }
