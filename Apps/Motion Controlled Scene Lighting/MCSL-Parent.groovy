@@ -56,6 +56,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 12/30/18 - Updated to new theme.
  *  V1.0.0 - 12/19/18 - Initial release.
  *
  */
@@ -97,20 +98,26 @@ def initialize() {
 def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
-        
 		if(state.appInstalled == 'COMPLETE'){
-			display()
-				section("Instructions:", hideable: true, hidden: true) {
-					paragraph "<b>Info:</b>"
-    				paragraph "Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'."
-					paragraph "<b>Prerequisites:</b>"
-					paragraph "- Must already have at least one Scene setup in Hubitats 'Groups and Scenes' built in app.<br>- Have at least one dimmable buld included in each Scene.<br>- (Optional) Have a virutal switch created to Enable/Disable each child app."
-				}
-  				section("Child Apps", hideable: true, hidden: true){
-					app(name: "anyOpenApp", appName: "Motion Controlled Scene Lighting Child", namespace: "BPTWorld", title: "<b>Add a new 'Motion Controlled Scene Lighting' child</b>", multiple: true)
-  			    }
+			section(getFormat("title", "${app.label}")) {
+				paragraph "<div style='color:#1A77C9'>Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.</div>"
+				paragraph getFormat("line")
 			}
+			section("Instructions:", hideable: true, hidden: true) {
+				paragraph "<b>Info:</b>"
+    			paragraph "Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'."
+				paragraph "<b>Prerequisites:</b>"
+				paragraph "- Must already have at least one Scene setup in Hubitats 'Groups and Scenes' built in app.<br>- Have at least one dimmable buld included in each Scene.<br>- (Optional) Have a virutal switch created to Enable/Disable each child app."
+			}
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "Motion Controlled Scene Lighting Child", namespace: "BPTWorld", title: "<b>Add a new 'Motion Controlled Scene Lighting' child</b>", multiple: true)
+  			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+ 			}
+			display()
 		}
+	}
 }
 
 def nameChange(evt){
@@ -128,8 +135,21 @@ def installCheck(){
   	}
 }
 
-def display(){
-	section{
-		paragraph "<b>Motion Controlled Scene Lighting</b><br>App Version: 1.0.0<br>@BPTWorld"
-	}        
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
 }
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
+def display(){
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - App Version: 1.0.0 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}       
+}         
+
