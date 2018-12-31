@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 12/30/18 - Updated to my new color theme.
  *  V1.1.8 - 12/20/18 - Fixed a nasty bug in Fast_Color_Changing.
  *  V1.1.7 - 12/19/18 - Changed some wording - 'Enable Hue in degrees (0-360)', added 'Not necessary for Hue bulbs'
  *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
@@ -96,18 +97,19 @@ def initialize() {
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
-    installCheck()
-        
-	if(state.appInstalled == 'COMPLETE'){
-		display()
-        	section ("Create a spooky, sparkly or party effect."){}
-        	section("Instructions:", hideable: true, hidden: true) {
+    	installCheck()
+		if(state.appInstalled == 'COMPLETE'){
+		section(getFormat("title", "${app.label}")) {
+			paragraph "<div style='color:#1A77C9'>Create a spooky, sparkly or party effect.</div>"
+			paragraph getFormat("line")
+		}
+        section("Instructions:", hideable: true, hidden: true) {
         	paragraph "<b>Fast Dimming:</b>"
     		paragraph "Designed for dimming modules (z-wave/zigbee). For each Child App, multiple devices can be selected. Each device will run sequential, Device 1, then Device 2, Back to device 1, then device 2..etc."
     		paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
-        	paragraph "<b>Fast Color Changing:</b>"
+       	 	paragraph "<b>Fast Color Changing:</b>"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 sec and 5 minutes."
-        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+       	 	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
 			paragraph "<b>Slow Color Changing:</b>"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 minutes and 3 hours."
         	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
@@ -118,15 +120,16 @@ def mainPage() {
             paragraph "<b>Very Important:</b>"
 			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         	}
-  			section ("Child Apps"){
-				app(name: "anyOpenApp", appName: "Lighting Effects Child", namespace: "BPTWorld", title: "<b>Add a new lighting effect</b>", multiple: true)
-        	}
-    		section (" "){}
-  			section("App Name") {
-        		label title: "Enter a name for parent app (optional)", required: false
-        	}
-			section("Be sure to change any of the preset values to suit your bulbs in Advanced Config.") {}
-            	section("Advanced Config:", hideable: true, hidden: true) {
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "Lighting Effects Child", namespace: "BPTWorld", title: "<b>Add a new 'Lighting Effects' child</b>", multiple: true)
+			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+ 			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {
+				paragraph "Be sure to change any of the preset values to suit your bulbs in Advanced Config."
+			}
+            section("Advanced Config:", hideable: true, hidden: true) {
 					input "msgColor01Name", "text", required: true, title: "Color Name - 01", defaultValue: "White", width:3
             		input "msgColor01Hue", "number", required: true, title: "Hue - 01", defaultValue: "0", width:3
 					input "msgColor01Sat", "number", required: true, title: "Saturation - 01", defaultValue: "0", width:3
@@ -202,8 +205,9 @@ def mainPage() {
 					input "msgColor15Sat", "number", required: false, title: "Saturation - 15", defaultValue: 0, width:3
 					input "msgColor15Lev", "number", required: true, title: "Level - 15", defaultValue: 0, width:3
             	}
-	}
-  }
+		}
+		display()
+  	}
 }
 
 def update() {
@@ -282,8 +286,20 @@ def installCheck(){
     }
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
 def display(){
-	section{
-		paragraph "<b>Lighting Effects</b><br>App Version: 1.1.8<br>@BPTWorld"
-	}        
-}         
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Lighting Effects - App Version: 1.1.9 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}       
+}           
