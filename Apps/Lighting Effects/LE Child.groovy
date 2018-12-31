@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 12/30/18 - Updated to my new color theme. Removed duplicate Level field from Fast and Slow Color Changing.
  *  V1.1.8 - 12/20/18 - Fixed a nasty bug in Fast_Color_Changing.
  *  V1.1.7 - 12/19/18 - Changed some wording - 'Enable Hue in degrees (0-360)', added 'Not necessary for Hue bulbs'
  *  V1.1.6 - 12/05/18 - Added 'Slow Color Changing' option. Lots of code cleanup.
@@ -80,7 +81,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {	
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Lighting Effects Child</h2>", install: true, uninstall: true, refreshInterval:0) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
         	paragraph "<b>Fast Dimming:</b>"
@@ -99,20 +100,19 @@ def pageConfig() {
             paragraph "<b>Very Important:</b>"
 			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         }
-   		section() {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Setup")) {
     		input "triggerMode", "enum", title: "Select Lights Type", submitOnChange: true,  options: ["Fast_Dimmer","Fast_Color_Changing","Slow_Color_Changing", "Slow_Off","Slow_On","Slow_Loop"], required: true, Multiple: false
         
         	if(triggerMode == "Fast_Dimmer"){
-				section("Used to change colors between 5 sec and 5 minutes.") {
+				section(getFormat("header-green", "${getImage("Blank")}"+" Used to change colors between 5 sec and 5 minutes")) {
 					input "dimmers", "capability.switchLevel", title: "Select Dimmable Lights", required: false, multiple: true
 					input "sleepytime", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
         		}
         	}
        		if(triggerMode == "Fast_Color_Changing"){
-        		section("Select your options:") {
+				section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
 					paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
         			input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
-					input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
             		input "sleepytime2", "number", title: "Enter the delay between actions in seconds (range 5 to 300)" , required: true, defaultValue: 300, range: '5..300'
 					input "sleepPattern", "enum", title: "Delay constant or random", defaultValue: "constant", options: ["constant","random"], required: true, multiple: false
 					input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
@@ -137,10 +137,9 @@ def pageConfig() {
 				}
 			}
 			if(triggerMode == "Slow_Color_Changing"){
-        		section("Used to change colors between 5 minutes and 3 hours.") {
+				section(getFormat("header-green", "${getImage("Blank")}"+" Used to change colors between 5 minutes and 3 hours")) {
 					paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
         			input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
-					input "brightnessLevel", "number", title: "Brightness Level (1-100)?", required:false, defaultValue:100, range: '1..100'
             		input "sleepytime2", "number", title: "Enter the delay between actions in minutes (range 5 to 180)" , required: true, defaultValue: 60, range: '5..180'
         			input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
                 	input "pattern", "enum", title: "Cycle or Randomize each color", defaultValue: "randomize", options: ["randomize","cycle"], required: true, multiple: false
@@ -164,25 +163,23 @@ def pageConfig() {
 				}
 			}
     		if(triggerMode == "Slow_On"){
-       			section("Select your options:") {
+				section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
             		input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
     				input "minutes", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     				input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
-            		//input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_On", Options: ["Slow_On"]
 					tMode = "Slow_On"
 				}
    		 	}
     		if(triggerMode == "Slow_Off"){
-    			section("Select your options:") {
+    			section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
             		input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
     				input "minutes", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     				input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-            		//input "tMode", "text", title: "Mode (Do not change)", required: true, multiple: false, defaultValue: "Slow_Off", Options: ["Slow_Off"]
 					tMode = "Slow_Off"
         		}
    			}
     		if(triggerMode == "Slow_Loop"){
-    			section("Select your options:") {
+    			section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
         			input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
     				input "minutes", "number", title: "Takes how many minutes per dim or raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     				input "targetLevelHigh", "number", title: "Target Level - High(1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
@@ -191,17 +188,29 @@ def pageConfig() {
        			}    
    			 }   
 		}
-		section("Activate the Dimming/Color Changing when this switch is on") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Activate the Dimming/Color Changing when this switch is on")) {
 			input "switches", "capability.switch", title: "Switch", required: true, multiple: false
 		} 
-		section(" ") {label title: "Enter a name for this automation", required: false}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 		}
         section() {
             input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
+		display2()
 	}
+}
+
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -507,11 +516,11 @@ def sendcolor(lights,color) {
 	LOGDEBUG("In sendcolor...Pause: $pause1")
 	if(pause1 == true){log.warn "Unable to continue - App paused"}
     if(pause1 == false){LOGDEBUG("Continue - App NOT paused")						
-	if (brightnessLevel<1) {
-		brightnessLevel=1
+	if (level<1) {
+		level=1
 	}
-    else if (brightnessLevel>100) {
-		brightnessLevel=100
+    else if (level>100) {
+		level=100
 	}
     def colorPallet = [
 		"color01": [hue: parent.msgColor01Hue, saturation: parent.msgColor01Sat, level: parent.msgColor01Lev],
@@ -532,7 +541,7 @@ def sendcolor(lights,color) {
     ]
 	def newcolor = colorPallet."${color}"
     LOGDEBUG("${color} = ${newcolor}")
-    newcolor.level = brightnessLevel
+	newcolor.level = level					
 	lights*.setColor(newcolor)
     LOGDEBUG("Setting Color = ${color} on: ${lights}")					
 	}
@@ -588,7 +597,17 @@ def LOGDEBUG(txt){
     }
 }
 
-def display(){
-	section{paragraph "<b>Lighting Effects</b><br>App Version: 1.1.8<br>@BPTWorld"}      
-	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
+def display() {
+	section() {
+		paragraph getFormat("line")
+		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+	}
 }
+
+def display2() {
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Lighting Effects - App Version: 1.1.9 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}
+}
+
