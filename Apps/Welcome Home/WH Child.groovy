@@ -37,6 +37,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.8 - 12/30/18 - Updated to my new color theme.
  *  V1.0.7 - 12/07/18 - Added an option to Contact Sensor trigger. Can now trigger based on Open or Closed.
  *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
  *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
@@ -69,9 +70,8 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {
-		display()
-		section ("This app is designed to give a personal welcome announcement after you have entered the home."){}    
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Welcome Home</h2>", install: true, uninstall: true, refreshInterval:0) {
+		display() 
         section("Instructions:", hideable: true, hidden: true) {
         	paragraph "<b>Types of Triggers:</b>"
     		paragraph "<b>Unlock or Door Open</b><br>Both of these work pretty much the same. When door or lock is triggered, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement."
@@ -83,7 +83,7 @@ def pageConfig() {
 			paragraph "<b>Requirements:</b>"
 			paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
 		}
-		section() {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Select Activation Type")) {
     	input "triggerMode", "enum", title: "Select activation Type", submitOnChange: true,  options: ["Contact_Sensor","Door_Lock","Motion_Sensor"], required: true, Multiple: false
 			if(triggerMode == "Door_Lock"){
 				input "lock1", "capability.lock", title: "Activate the welcome message when this door is unlocked", required: true, multiple: true
@@ -95,13 +95,14 @@ def pageConfig() {
 			if(triggerMode == "Motion_Sensor"){
 				input "motionSensor1", "capability.motionSensor", title: "Activate the welcome message when this motion sensor is activated", required: true, multiple: true
 			}
-		}			
-		section("If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message.") {
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options")) {
+			paragraph "If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message."
 			input "presenceSensor1", "capability.presenceSensor", title: "Presence Sensor 1", required: true, multiple: false, width:6
 			input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, width:6
 			input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10
 		}
-		section() { 
+		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
               	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: false, multiple: true, submitOnChange:true
@@ -115,12 +116,12 @@ def pageConfig() {
           	}
       	}
     	if(speechMode){ 
-        	section("Allow messages between what times? (Optional)") {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         		input "fromTime", "time", title: "From", required: false
         		input "toTime", "time", title: "To", required: false
 			}
     	}
-		section() {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			input "message1Count", "number", title: "How many random message presets to choose from (default=10). Max equals 20. Be sure they are already filled out in the parent app.", required: true, defaultValue: 10
 		}
 		section() {
@@ -129,14 +130,26 @@ def pageConfig() {
 		section() {
 			input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
 		}
-		section(" ") {label title: "Enter a name for this automation", required: false}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 		}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
+		display2()
 	}
+}
+
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -490,7 +503,17 @@ def LOGDEBUG(txt){
     }
 }
 
-def display(){
-	section{paragraph "<b>Welcome Home</b><br>App Version: 1.0.7<br>@BPTWorld"}      
-	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
-} 
+def display() {
+	section() {
+		paragraph getFormat("line")
+		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+	}
+}
+
+def display2() {
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - App Version: 1.0.8 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}
+}
+
