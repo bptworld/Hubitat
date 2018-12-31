@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.1 - 12/30/18 - Updated to my new color theme.
  *  V1.1.0 - 12/10/18 - Changed over to Parent/Child type app. Create as many groups as you like. Also added in all the normal
  *						stuff: Enable/Disable switch, Pause switch and Logging options.
  *  V1.0.0 - 12/09/18 - Hubitat Port of ST app 'One at a Time Please' - 2015 Jody Albritton
@@ -63,23 +64,35 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {	
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>One at a Time</h2>", install: true, uninstall: true, refreshInterval:0) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "* When one switch is turned on, the other switches in the group will turn off.<br>* Create as many groups as you like.<br>* Great for making sure only one scene is active at a time!"	
 		}
-   		section("Define Switch Group") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Define Switch Group")) {
 			input "switches", "capability.switch", title: "Select the switches to group", required: true, multiple: true
 		} 
-		section() {label title: "Enter a name for this automation", required: false}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 		}
         section() {
             input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
+		display2()
 	}
+}
+
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -153,7 +166,17 @@ def LOGDEBUG(txt){
     }
 }
 
-def display(){
-	section{paragraph "<b>One at a Time</b><br>App Version: 1.1.0<br>@BPTWorld"}      
-	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false }
+def display() {
+	section() {
+		paragraph getFormat("line")
+		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+	}
 }
+
+def display2() {
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>One at a Time - App Version: 1.1.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}
+}
+
