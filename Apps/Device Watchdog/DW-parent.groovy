@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 12/30/18 - Updated to my new color theme.
  *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
  *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
  *						Added option to select 'all devices' for Battery Level trigger.
@@ -82,20 +83,21 @@ def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
-			display()
-				section() {
-					paragraph "Keep an eye on your devices and see how long it's been since they checked in."
-				}
-				section("Instructions:", hideable: true, hidden: true) {
-					paragraph "<b>Notes:</b>"
-					paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- Be sure to generate a new report before trying to view the 'Last Device Status Report'.<br>- All changes are saved right away, no need to exit out and back in before generating a new report."
-				}
-  				section("Child Apps", hideable: true, hidden: true){
-					app(name: "anyOpenApp", appName: "Device Watchdog Child", namespace: "BPTWorld", title: "<b>Add a new 'Device Watchdog' child</b>", multiple: true)
-  			    }
- 			 	section("App Name"){
+			section(getFormat("title", "${app.label}")) {
+				paragraph "<div style='color:#1A77C9'>Keep an eye on your devices and see how long it's been since they checked in.</div>"
+				paragraph getFormat("line")
+			}
+			section("Instructions:", hideable: true, hidden: true) {
+				paragraph "<b>Notes:</b>"
+				paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- Be sure to generate a new report before trying to view the 'Last Device Status Report'.<br>- All changes are saved right away, no need to exit out and back in before generating a new report."
+			}
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "Device Watchdog Child", namespace: "BPTWorld", title: "<b>Add a new 'Device Watchdog' child</b>", multiple: true)
+  			}
+ 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        				label title: "Enter a name for parent app (optional)", required: false
- 				}
+ 			}
+			display()
 		}
 	}
 }
@@ -110,8 +112,20 @@ def installCheck(){
   	}
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
 def display(){
-	section{
-		paragraph "<b>Device Watchdog</b><br>App Version: 1.0.3<br>@BPTWorld"
-	}        
-}         
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}       
+}          
