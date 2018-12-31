@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 12/31/18 - Major rewrite to how the app finds new devices and sets them up for the first time. You will need to 
+ *						delete any lines that have null in them or delete the child app and start over. Sorry.
  *  V1.0.0 - 12/27/18 - Initial release.
  *
  */
@@ -87,9 +89,7 @@ def mainPage() {
 				paragraph "Daily counts are reset each morning.<br>Weekly counts are reset each Sunday.<br>Monthly counts are reset at on the 1st of each month.<br>Yearly counts get reset on Jan 1st.<br>All count resets happen between 12:05am and 12:10am"	
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-			//section("Child Apps", hideable: true, hidden: true) {
 				app(name: "anyOpenApp", appName: "Abacus Child", namespace: "BPTWorld", title: "<b>Add a new 'Abacus' child</b>", multiple: true)
-  			//}
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
@@ -123,6 +123,6 @@ def getFormat(type, myText=""){
 def display(){
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - App Version: 1.0.0 - @BPTWorld - <a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}       
 }         
