@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
+ *						support for Blue Iris schedules.
  *  V1.0.3 - 11/25/18 - Added PTZ camera controls.
  *  V1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
  *						to start or stop manual recording on camera from a Switch.
@@ -84,34 +86,33 @@ def mainPage() {
     	installCheck()
         
 		if(state.appInstalled == 'COMPLETE'){
-			display()
-				section() {
-					paragraph "This app is designed to work locally with Blue Iris security software."
-				}
-				section("Instructions:", hideable: true, hidden: true) {
-					paragraph "<b>Notes:</b>"
-					paragraph "BI Control keeps everything local, no Internet required!"
-					paragraph "This app uses 'Virtual Switches', instead of buttons. That way the devices can be used within Google Assistant and Rule Machine. Be sure to set 'Enable auto off' within each Virtual Device to '1s' (except for recording device)."
-        			paragraph "<b>Blue Iris requirements:</b>"
-					paragraph "In Blue Iris settings > Web Server > Advanced > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."	
-				}
-  				section("Child Apps", hideable: true, hidden: true){
-					app(name: "anyOpenApp", appName: "BI Control Child", namespace: "BPTWorld", title: "<b>Add a new 'BI Control' child</b>", multiple: true)
-  			    }
-   				 section(" "){}
- 			 	section("App Name"){
-       				label title: "Enter a name for parent app (optional)", required: false
- 				}
-
-            	section("Blue Iris Server Config:", hideable: true, hidden: true) {
-					paragraph "<b>Please be sure to setup the Blue Iris server per the instructions above.</b>"
-					paragraph "Use the local IP address for Host, do not include http:// or anything but the IP address. ie. 192.168.1.123"
-					input "biServer", "text", title: "Server", description: "Blue Iris web server IP", required: true
-					input "biPort", "number", title: "Port", description: "Blue Iris web server port", required: true
-					input "biUser", "text", title: "User name", description: "Blue Iris user name", required: true
-					input "biPass", "password", title: "Password", description: "Blue Iris password", required: true
-				}
+			section(getFormat("title", "${app.label}")) {
+				paragraph "<div style='color:#1A77C9'>This app is designed to work locally with Blue Iris security software.</div>"
+				paragraph getFormat("line")
+			}
+			section("Instructions:", hideable: true, hidden: true) {
+				paragraph "<b>Notes:</b>"
+				paragraph "BI Control keeps everything local, no Internet required!"
+				paragraph "This app uses 'Virtual Switches', instead of buttons. That way the devices can be used within Google Assistant and Rule Machine. Be sure to set 'Enable auto off' within each Virtual Device to '1s' (except for recording device)."
+        		paragraph "<b>Blue Iris requirements:</b>"
+				paragraph "In Blue Iris settings > Web Server > Advanced > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."	
+			}
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "BI Control Child", namespace: "BPTWorld", title: "<b>Add a new 'BI Control' child</b>", multiple: true)
+  			}
+   			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+ 			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Blue Iris Server Config")) {
+				paragraph "<b>Please be sure to setup the Blue Iris server per the instructions above.</b>"
+				paragraph "Use the local IP address for Host, do not include http:// or anything but the IP address. ie. 192.168.1.123"
+				input "biServer", "text", title: "Server", description: "Blue Iris web server IP", required: true
+				input "biPort", "number", title: "Port", description: "Blue Iris web server port", required: true
+				input "biUser", "text", title: "User name", description: "Blue Iris user name", required: true
+				input "biPass", "password", title: "Password", description: "Blue Iris password", required: true
+			}
 		}
+		display()
 	}
 }
 
@@ -132,13 +133,20 @@ def installCheck(){
   	}
 }
 
-def display(){
-	section{paragraph "Version: 1.0.3<br>@BPTWorld"}     
-}         
-
-def setVersion(){
-		state.InternalName = "BIControlParent"  
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
 }
 
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
 
-
+def display(){
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}       
+}  
