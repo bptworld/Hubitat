@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.1 - 12/30/18 - Updated to my new color theme.
  *  V1.1.0 - 12/10/18 - Changed over to Parent/Child type app. Create as many groups as you like. Also added in all the normal
  *						stuff: Enable/Disable switch, Pause switch and Logging options.
  *  V1.0.0 - 12/09/18 - Hubitat Port of ST app 'One at a Time Please' - 2015 Jody Albritton
@@ -81,20 +82,21 @@ def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
+			section(getFormat("title", "${app.label}")) {
+				paragraph "<div style='color:#1A77C9'>Designed to allow only one switch, in a group of switches, to be on at a time.</div>"
+				paragraph getFormat("line")
+			}
+			section("Instructions:", hideable: true, hidden: true) {
+				paragraph "<b>Notes:</b>"
+				paragraph "* When one switch is turned on, the other switches in the group will turn off.<br>* Create as many groups as you like.<br>* Great for making sure only one scene is active at a time!"	
+			}
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "One at a Time Child", namespace: "BPTWorld", title: "<b>Add a new 'One at a Time' child</b>", multiple: true)
+			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+ 			}
 			display()
-				section() {
-					paragraph "This app is designed to allow only one switch, in a group of switches, to be on at a time."
-				}
-				section("Instructions:", hideable: true, hidden: true) {
-					paragraph "<b>Notes:</b>"
-					paragraph "* When one switch is turned on, the other switches in the group will turn off.<br>* Create as many groups as you like.<br>* Great for making sure only one scene is active at a time!"	
-				}
-  				section("Child Apps", hideable: true, hidden: true){
-					app(name: "anyOpenApp", appName: "One at a Time Child", namespace: "BPTWorld", title: "<b>Add a new 'One at a Time' child</b>", multiple: true)
-  			    }
- 			 	section("App Name"){
-       				label title: "Enter a name for parent app (optional)", required: false
- 				}
 		}
 	}
 }
@@ -109,8 +111,20 @@ def installCheck(){
   	}
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
 def display(){
-	section{
-		paragraph "<b>One at a Time</b><br>App Version: 1.1.0<br>@BPTWorld"
-	}        
-}         
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>One at a Time - App Version: 1.1.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}       
+}          
