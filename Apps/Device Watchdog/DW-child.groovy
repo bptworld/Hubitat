@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 12/30/18 - Updated to my new color theme.
  *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
  *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
  *						Added option to select 'all devices' for Battery Level trigger.
@@ -65,23 +66,24 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "pageConfig", title: "Device Watchdog", nextPage: null, install: true, uninstall: true, refreshInterval:0) {	
+    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Device Watchdog</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- Be sure to generate a new report before trying to view the 'Last Device Status Report'.<br>- All changes are saved right away, no need to exit out and back in before generating a new report."
 		}
-		section("<b>Click the button below to generate a new report. Be sure to watch your log to see when it finishes.<br>Usually only takes a minute or two depending on how many devices it's looking at.</b>") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
+			paragraph "<b>Click the button below to generate a new report. Be sure to watch your log to see when it finishes.<br>Usually only takes a minute or two depending on how many devices it's looking at.</b>"
 			paragraph "                        ", width:3
 			input "runButton", "button", title: "Click here to generate a new report.", width:5
 			paragraph "                        ", width:3
 			href "pageStatus", title: "Last Device Status Report", description: "Click here to view the Device Status Report."
 		}
-		section("<b>Define whether this child app will be for checking Activity or Battery Levels</b>") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Define whether this child app will be for checking Activity or Battery Levels")) {
 			input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true,  options: ["Activity", "Battery_Level"]
 		}
 			if(triggerMode == "Battery_Level") {
-				section("<b>Select your battery devices</b>") {
+				section(getFormat("header-green", "${getImage("Blank")}"+" Select your battery devices")) {
 					input(name: "allDevices", type: "bool", defaultValue: "false", title: "Select ALL battery devices?", submitOnChange: "true")
 					if(allDevices) {
 						paragraph "<b>** This will check all Battery device levels. **</b>"
@@ -89,7 +91,7 @@ def pageConfig() {
 						input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 					}
 				}
-				section("<b>Options:</b>") {
+				section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 					input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required: false, submitOnChange: true
 					input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
 					input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
@@ -102,7 +104,7 @@ def pageConfig() {
 						paragraph "App will only display Devices BELOW Threshold."
 					}
 				}
-				section("<b>General</b>") {label title: "Enter a name for this child app", required: false}
+				section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 				section() {
 					input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 					input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
@@ -134,7 +136,7 @@ def pageConfig() {
 			input "actuatorDevice", "capability.actuator", title: "Select Actuator Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 			input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 		}
-		section("<b>Options:</b>") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
 			input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
@@ -147,12 +149,13 @@ def pageConfig() {
 					paragraph "App will only display INACTIVE Devices."
 				}
 		}
-		section("<b>General</b>") {label title: "Enter a name for this child app", required: false}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
 		}
+		display2()
 	}
 }
 
@@ -210,7 +213,18 @@ def pageStatus(params) {
 		}
 	}
 }
-	
+
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+}
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -536,7 +550,17 @@ def LOGDEBUG(txt){
     }
 }
 
-def display(){
-	section{paragraph "<b>Device Watchdog</b><br>App Version: 1.0.3<br>@BPTWorld"}
-	section(){input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false}
+def display() {
+	section() {
+		paragraph getFormat("line")
+		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+	}
 }
+
+def display2() {
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}
+}
+
