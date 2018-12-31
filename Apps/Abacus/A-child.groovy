@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 12/31/18 - Major rewrite to how the app finds new devices and sets them up for the first time. You will need to 
+ *						delete any lines that have null in them or delete the child app and start over. Sorry.
  *  V1.0.0 - 12/30/18 - Initial release.
  *
  */
@@ -68,7 +70,6 @@ def pageConfig() {
 			paragraph "Daily counts are reset each morning.<br>Weekly counts are reset each Sunday.<br>Monthly counts are reset at on the 1st of each month.<br>Yearly counts get reset on Jan 1st.<br>All count resets happen between 12:05am and 12:10am"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
-		//section("<b>Reports</b>") {
 			href "pageCounts", title: "Abacus Report", description: "Click here to view the Abacus Report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Devices")) {
@@ -225,9 +226,6 @@ def getImage(type) {
 }
 
 def getFormat(type, myText=""){
-    if(type == "section") return "<div style='color:#78bf35;font-weight: bold'>${myText}</div>"
-    if(type == "command") return "<div style='color:red;font-weight: bold'>${myText}</div>"
-    if(type == "header-black") return "<div style='color:#ffffff;background-color:#392F2E;text-align:center'>${myText}</div>"
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -249,9 +247,112 @@ def initialize() {
 	subscribe(motionEvent, "motion.active", motionHandler)
 	subscribe(contactEvent, "contact.open", contactHandler)
 	subscribe(switchEvent, "switch.on", switchHandler)
-	schedule("0 5 0 * * ? *", resetMotionCountHandler)
-	schedule("0 6 0 * * ? *", resetContactCountHandler)
-	schedule("0 7 0 * * ? *", resetSwitchCountHandler)
+	schedule("0 55 10 * * ? *", resetMotionCountHandler)
+	schedule("0 55 10 * * ? *", resetContactCountHandler)
+	schedule("0 55 10 * * ? *", resetSwitchCountHandler)
+}
+
+def setupNewStuff() {
+	LOGDEBUG("In setupNewStuff...")
+	
+	// ********** Starting Motion Devices **********
+	
+	LOGDEBUG("In setupNewStuff...Setting up Motion Maps")
+	
+	if(state.motionMap == null) resetMotionMapHandler()
+	if(state.motionMapD == null) resetMotionMapHandler()
+	if(state.motionMapW == null) resetMotionMapHandler()
+	if(state.motionMapM == null) resetMotionMapHandler()
+	if(state.motionMapY == null) resetMotionMapHandler()
+
+	LOGDEBUG("In setupNewStuff...Looking for new Motion devices")
+	motionEvent.each { it -> 
+		LOGDEBUG("Working on... ${it.displayName}")
+		if(state.motionMapD.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			state.motionMapD.put(it.displayName, 0)
+		}
+		if(state.motionMapW.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			state.motionMapW.put(it.displayName, 0)
+		}
+		if(state.motionMapM.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			state.motionMapM.put(it.displayName, 0)
+		}
+		if(state.motionMapY.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			state.motionMapY.put(it.displayName, 0)
+		}
+	}
+	
+	// ********** Ending Motion Devices **********
+	
+	// ********** Starting Contact Devices **********
+	
+	LOGDEBUG("In setupNewStuff...Setting up Contact Maps")
+	
+	if(state.contactMap == null) resetContactMapHandler()
+	if(state.contactMapD == null) resetContactMapHandler()
+	if(state.contactMapW == null) resetContactMapHandler()
+	if(state.contactMapM == null) resetContactMapHandler()
+	if(state.contactMapY == null) resetContactMapHandler()
+
+	LOGDEBUG("In setupNewStuff...Looking for new Contact devices")
+	contactEvent.each { it -> 
+		LOGDEBUG("Working on... ${it.displayName}")
+		if(state.contactMapD.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			state.contactMapD.put(it.displayName, 0)
+		}
+		if(state.contactMapW.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			state.contactMapW.put(it.displayName, 0)
+		}
+		if(state.contactMapM.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			state.contactMapM.put(it.displayName, 0)
+		}
+		if(state.contactMapY.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			state.contactMapY.put(it.displayName, 0)
+		}
+	}
+	
+	// ********** Ending Contact Devices **********
+	
+	// ********** Starting Switch Devices **********
+	
+	LOGDEBUG("In setupNewStuff...Setting up Switch Maps")
+	
+	if(state.switchMap == null) resetSwitchMapHandler()
+	if(state.switchMapD == null) resetSwitchMapHandler()
+	if(state.switchMapW == null) resetSwitchMapHandler()
+	if(state.switchMapM == null) resetSwitchMapHandler()
+	if(state.switchMapY == null) resetSwitchMapHandler()
+
+	LOGDEBUG("In setupNewStuff...Looking for new Switch devices")
+	switchEvent.each { it -> 
+		LOGDEBUG("Working on... ${it.displayName}")
+		if(state.switchMapD.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			state.switchMapD.put(it.displayName, 0)
+		}
+		if(state.switchMapW.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			state.switchMapW.put(it.displayName, 0)
+		}
+		if(state.switchMapM.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			state.switchMapM.put(it.displayName, 0)
+		}
+		if(state.switchMapY.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			state.switchMapY.put(it.displayName, 0)
+		}
+	}
+	
+	// ********** Ending Switch Devices **********
 }
 
 def motionHandler(evt) {
@@ -762,6 +863,7 @@ def pauseOrNot(){
 }
 
 def setDefaults(){
+	setupNewStuff()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
@@ -804,6 +906,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - App Version: 1.0.0 - @BPTWorld - <a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
