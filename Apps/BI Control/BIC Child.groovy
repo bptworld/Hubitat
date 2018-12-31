@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
+ *						support for Blue Iris schedules.
  *  V1.0.3 - 11/25/18 - Added PTZ camera controls.
  *  V1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
  *						to start or stop manual recording on camera from a Switch.
@@ -58,41 +60,42 @@ definition(
 )
 
 preferences {
+    page(name: "pageConfig")
+}
+
+def pageConfig() {
+    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>BI Control Child</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {
 	display()
-	section("Instructions:", hideable: true, hidden: true) {
-		paragraph "<b>Notes:</b>"
-		paragraph "BI Control keeps everything local, no Internet required!"
-		paragraph "This app uses 'Virtual Switches', instead of buttons. That way the devices can be used within Google Assistant and Rule Machine. Be sure to set 'Enable auto off' within each Virtual Device to '1s' (except for recording device)."
-        paragraph "<b>Blue Iris requirements:</b>"
-		paragraph "In Blue Iris settings > Web Server > Advanced > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."	
-	}
-	
-	section() {
-		input "triggerType", "enum", title: "Select Control Type", submitOnChange: true, options: ["Profile", "Schedule", "Camera"], required: true, Multiple: false
-		
-		if(triggerType == "Profile"){
-    		input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
-			if(triggerMode == "Mode"){
-				section(){
-					paragraph "<b>Ability to change BI Profile based on HE Mode</b>"
+		section("Instructions:", hideable: true, hidden: true) {
+			paragraph "<b>Notes:</b>"
+			paragraph "BI Control keeps everything local, no Internet required!"
+			paragraph "This app uses 'Virtual Switches', instead of buttons. That way the devices can be used within Google Assistant and Rule Machine. Be sure to set 'Enable auto off' within each Virtual Device to '1s' (except for recording device)."
+       	 paragraph "<b>Blue Iris requirements:</b>"
+			paragraph "In Blue Iris settings > Web Server > Advanced > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."	
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Control Type")) {
+			input "triggerType", "enum", title: "Select Control Type", submitOnChange: true, options: ["Profile", "Schedule", "Camera"], required: true, Multiple: false
+			if(triggerType == "Profile"){
+    			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
+				if(triggerMode == "Mode"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Profile based on HE Mode")) {}
+					section(""){
+						input "biProfile1", "mode", title: "Profile 1 Mode(s)", required: false, multiple: true, width:3
+						input "biProfile2", "mode", title: "Profile 2 Mode(s)", required: false, multiple: true, width:3
+						input "biProfile3", "mode", title: "Profile 3 Mode(s)", required: false, multiple: true, width:3 
+						input "biProfile4", "mode", title: "Profile 4 Mode(s)", required: false, multiple: true, width:3
+						input "biProfile5", "mode", title: "Profile 5 Mode(s)", required: false, multiple: true, width:3
+						input "biProfile6", "mode", title: "Profile 6 Mode(s)", required: false, multiple: true, width:3
+						input "biProfile7", "mode", title: "Profile 7 Mode(s)", required: false, multiple: true, width:3
+					}
 				}
-				section(""){
-					input "biProfile1", "mode", title: "Profile 1 Mode(s)", required: false, multiple: true, width:3
-					input "biProfile2", "mode", title: "Profile 2 Mode(s)", required: false, multiple: true, width:3
-					input "biProfile3", "mode", title: "Profile 3 Mode(s)", required: false, multiple: true, width:3 
-					input "biProfile4", "mode", title: "Profile 4 Mode(s)", required: false, multiple: true, width:3
-					input "biProfile5", "mode", title: "Profile 5 Mode(s)", required: false, multiple: true, width:3
-					input "biProfile6", "mode", title: "Profile 6 Mode(s)", required: false, multiple: true, width:3
-					input "biProfile7", "mode", title: "Profile 7 Mode(s)", required: false, multiple: true, width:3
-				}
-			}
-			if(triggerMode == "Switch"){
-				section(){
-					paragraph "<b>Ability to change the BI Profile using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
-				}
-				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
-					input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
+				if(triggerMode == "Switch"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Profile using a Switch")) {
+						paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					}
+					section(){
+						input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
+						input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
 							[Pon1:"Profile 1"],
 							[Pon2:"Profile 2"],
 							[Pon3:"Profile 3"],
@@ -101,78 +104,82 @@ preferences {
 							[Pon6:"Profile 6"],
 							[Pon7:"Profile 7"],
 						], required: true, multiple: false
+					}
 				}
 			}
-		}
-		if(triggerType == "Schedule"){
-    		input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
-			if(triggerMode == "Mode"){
-				section(){
-					paragraph "<b>Ability to change BI Schedule based on HE Mode</b>"
+			if(triggerType == "Schedule"){
+    			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
+				if(triggerMode == "Mode"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Schedule based on HE Mode")) {}
+					section(""){
+						input "biScheduleName1", "text", title: "Schedule 1 Name", description: "The exact name of the BI schedule"
+						input "biSchedule1", "mode", title: "Schedule 1 Mode(s)", required: false, multiple: true, width:3
+                    	input "biScheduleName2", "text", title: "Schedule 2 Name", description: "The exact name of the BI schedule"
+                    	input "biSchedule2", "mode", title: "Schedule 2 Mode(s)", required: false, multiple: true, width:3
+                   	 	input "biScheduleName3", "text", title: "Schedule 3 Name", description: "The exact name of the BI schedule"
+                   	 	input "biSchedule3", "mode", title: "Schedule 3 Mode(s)", required: false, multiple: true, width:3
+                    	input "biScheduleName4", "text", title: "Schedule 4 Name", description: "The exact name of the BI schedule"
+                    	input "biSchedule4", "mode", title: "Schedule 4 Mode(s)", required: false, multiple: true, width:3
+                    	input "biScheduleName5", "text", title: "Schedule 5 Name", description: "The exact name of the BI schedule"
+                    	input "biSchedule5", "mode", title: "Schedule 5 Mode(s)", required: false, multiple: true, width:3
+                    	input "biScheduleName6", "text", title: "Schedule 6 Name", description: "The exact name of the BI schedule"
+                    	input "biSchedule6", "mode", title: "Schedule 6 Mode(s)", required: false, multiple: true, width:3
+					}
 				}
-				section(""){
-					input "biScheduleName1", "text", title: "Schedule 1 Name", description: "The exact name of the BI schedule"
-					input "biSchedule1", "mode", title: "Schedule 1 Mode(s)", required: false, multiple: true, width:3
-                    input "biScheduleName2", "text", title: "Schedule 2 Name", description: "The exact name of the BI schedule"
-                    input "biSchedule2", "mode", title: "Schedule 2 Mode(s)", required: false, multiple: true, width:3
-                    input "biScheduleName3", "text", title: "Schedule 3 Name", description: "The exact name of the BI schedule"
-                    input "biSchedule3", "mode", title: "Schedule 3 Mode(s)", required: false, multiple: true, width:3
-                    input "biScheduleName4", "text", title: "Schedule 4 Name", description: "The exact name of the BI schedule"
-                    input "biSchedule4", "mode", title: "Schedule 4 Mode(s)", required: false, multiple: true, width:3
-                    input "biScheduleName5", "text", title: "Schedule 5 Name", description: "The exact name of the BI schedule"
-                    input "biSchedule5", "mode", title: "Schedule 5 Mode(s)", required: false, multiple: true, width:3
-                    input "biScheduleName6", "text", title: "Schedule 6 Name", description: "The exact name of the BI schedule"
-                    input "biSchedule6", "mode", title: "Schedule 6 Mode(s)", required: false, multiple: true, width:3
+				if(triggerMode == "Switch"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Schedule using a Switch")) {
+						paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					}
+					section(){
+						input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
+                    	input "biScheduleSwitch", "text", title: "Schedule Name", description: "The exact name of the BI schedule to trigger with the switch"
+                	}
 				}
 			}
-			if(triggerMode == "Switch"){
-				section(){
-					paragraph "<b>Ability to change the BI Schedule using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
-				}
-				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
-                    input "biScheduleSwitch", "text", title: "Schedule Name", description: "The exact name of the BI schedule to trigger with the switch"
-                }
-			}
-		}
-		if(triggerType == "Camera"){
-			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ"], required: true, Multiple: false
-			if(triggerMode == "Camera_Preset"){
-				section(){
-					paragraph "<b>Ability to move a camera to a Preset using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
-				}
-				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: true, multiple: false
-					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
-					input "biCameraPreset", "enum", title: "Preset number", options: [
+			if(triggerType == "Camera"){
+				input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ"], required: true, Multiple: false
+				if(triggerMode == "Camera_Preset"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Camera Preset")) {
+						paragraph "<b>Ability to move a camera to a Preset using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					}
+					section(){
+						input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: true, multiple: false
+						input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+						input "biCameraPreset", "enum", title: "Preset number", options: [
 							[PS1:"Preset 1"],
 							[PS2:"Preset 2"],
 							[PS3:"Preset 3"],
 							[PS4:"Preset 4"],
 							[PS5:"Preset 5"],
 						], required: true, multiple: false
+					}
 				}
-			}
-			if(triggerMode == "Camera_Snapshot"){
-				paragraph "<b>Ability to get a Camera Snapshot using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
-				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: true, multiple: false
-					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+				if(triggerMode == "Camera_Snapshot"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Camera Snapshot")) {
+						paragraph "<b>Ability to get a Camera Snapshot using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					}
+					section(){
+						input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: true, multiple: false
+						input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+					}
 				}
-			}
-			if(triggerMode == "Camera_Trigger"){
-				paragraph "<b>Ability to start or stop manual recording on camera using a Switch.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
-				section(){
-					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: true, multiple: false
-					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+				if(triggerMode == "Camera_Trigger"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Camera Trigger")) {
+						paragraph "<b>Ability to start or stop manual recording on camera using a Switch.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
+					}
+					section(){
+						input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: true, multiple: false
+						input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+					}
 				}
-			}
-			if(triggerMode == "Camera_PTZ"){
-				paragraph "<b>Ability to use PTZ commands using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
-				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: true, multiple: false
-					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
-					input "biCameraPTZ", "enum", title: "PTZ Command", options: [
+				if(triggerMode == "Camera_PTZ"){
+					section(getFormat("header-green", "${getImage("Blank")}"+" Camera PTZ")) {
+						paragraph "<b>Ability to use PTZ commands using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					}
+					section(){
+						input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: true, multiple: false
+						input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+						input "biCameraPTZ", "enum", title: "PTZ Command", options: [
 							[PTZ0:"0 - Left"],
 							[PTZ1:"1 - Right"],
 							[PTZ2:"2 - Up"],
@@ -181,13 +188,27 @@ preferences {
 							[PTZ5:"5 - Zoom In"],
 							[PTZ6:"6 - Zoom Out"],
 						], required: true, multiple: false
+					}
 				}
 			}
 		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
+		section() {
+        	input "debugMode", "bool", title: "Enable Debug Logging", required: true, defaultValue: false
+   		}
+		display2()
 	}
-	section() {
-        input "debugMode", "bool", title: "Enable Debug Logging", required: true, defaultValue: false
-    }
+}
+
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -522,10 +543,17 @@ def LOGDEBUG(txt){
     }
 }
 
-def display(){
-	section{paragraph "Version: 1.0.3<br>@BPTWorld"}
+def display() {
+	section() {
+		paragraph getFormat("line")
+		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+	}
 }
 
-def setVersion(){
-		state.InternalName = "BIControlChild"  
+def display2() {
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}
 }
+
