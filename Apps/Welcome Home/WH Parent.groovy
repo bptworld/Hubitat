@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 12/30/18 - Updated to my new color theme.
  *  V1.0.7 - 12/07/18 - Added an option to Contact Sensor trigger. Can now trigger based on Open or Closed.
  *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
  *  V1.0.5 - 12/01/18 - Added 10 more random message presets! Fixed (hopefully) an issue with announcements not happening under
@@ -86,60 +87,62 @@ def initialize() {
 def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
-        
 		if(state.appInstalled == 'COMPLETE'){
-			display()
-				section() {
-					paragraph "This app is designed to give a personal welcome announcement after you have entered the home."
-				}
-				section("Instructions:", hideable: true, hidden: true) {
-        			paragraph "<b>Types of Triggers:</b>"
-    				paragraph "<b>Unlock or Door Open</b><br>Both of these work pretty much the same. When door or lock is triggered, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement."
-					paragraph "Each trigger can have multiple selections but this is an 'or' function. Meaning it only takes one device to trigger the actions. ie. Door1 or Door2 has been opened. If you require a different delay per door/lock, then separate child apps would be required - one for each door or lock."
-					paragraph "<b>Motion Sensor</b><br>When motion sensor becomes active, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement. If you require a different delay per motion sensor, then separate child apps would be required - one for each motion sensor."
-					paragraph "This trigger also works with Hubitat's built in 'Zone Motion Controllers' app. Which allows you to do some pretty cool things with motion sensors."
-					paragraph "<b>Notes:</b>"
-					paragraph "This app is designed to give a personal welcome announcement <i>after</i> you have entered the home."
-					paragraph "<b>Requirements:</b>"
-					paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
-				}
-  				section("Child Apps", hideable: true, hidden: true){
-					app(name: "anyOpenApp", appName: "Welcome Home Child", namespace: "BPTWorld", title: "<b>Add a new 'Welcome Home' child</b>", multiple: true)
-  			    }
-   				 section(" "){}
- 			 	section("App Name"){
-       				label title: "Enter a name for parent app (optional)", required: false
- 				}
-				section("<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>") {}
-            		section("Advanced Config:", hideable: true, hidden: true) {
-						paragraph "<br>%greeting% - will return a greeting based on time of day.<br>%name% - will return the Friendly Name associcated with a Presence Sensor<br>Note: adding a . anywhere will give the message a little pause"
-						input "greeting1", "text", required: true, title: "Greeting - 1 (am)", defaultValue: "Good Morning"
-                    	input "greeting2", "text", required: true, title: "Greeting - 2 (before 6pm)", defaultValue: "Good Afternoon"
-                    	input "greeting3", "text", required: true, title: "Greeting - 3 (after 6pm)", defaultValue: "Good Evening"
-						paragraph "<br>"
-            			input "msg1", "text", required: true, title: "Message - 1", defaultValue: "Welcome home. %name%"
-                    	input "msg2", "text", required: false, title: "Message - 2", defaultValue: "Long time no see. %name%"
-                    	input "msg3", "text", required: false, title: "Message - 3", defaultValue: "Look who's home. it's %name%"
-                    	input "msg4", "text", required: false, title: "Message - 4", defaultValue: "Nice to have you back. %name%"
-                    	input "msg5", "text", required: false, title: "Message - 5", defaultValue: "%greeting%. %name%"
-                    	input "msg6", "text", required: false, title: "Message - 6", defaultValue: "%greeting%. Oh ya. %name% is home"
-                    	input "msg7", "text", required: false, title: "Message - 7", defaultValue: "How are you doing. %name%"
-                    	input "msg8", "text", required: false, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
-                    	input "msg9", "text", required: false, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
-                    	input "msg10", "text", required: false, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
-						input "msg11", "text", required: false, title: "Message - 11", defaultValue: ""
-                    	input "msg12", "text", required: false, title: "Message - 12", defaultValue: ""
-                    	input "msg13", "text", required: false, title: "Message - 13", defaultValue: ""
-                    	input "msg14", "text", required: false, title: "Message - 14", defaultValue: ""
-                    	input "msg15", "text", required: false, title: "Message - 15", defaultValue: ""
-                    	input "msg16", "text", required: false, title: "Message - 16", defaultValue: ""
-                    	input "msg17", "text", required: false, title: "Message - 17", defaultValue: ""
-                    	input "msg18", "text", required: false, title: "Message - 18", defaultValue: ""
-                    	input "msg19", "text", required: false, title: "Message - 19", defaultValue: ""
-                    	input "msg20", "text", required: false, title: "Message - 20", defaultValue: ""
-                	}
-				}
+			section(getFormat("title", "${app.label}")) {
+				paragraph "<div style='color:#1A77C9'>This app is designed to give a personal welcome announcement after you have entered the home.</div>"
+				paragraph getFormat("line")
+			}
+			section("Instructions:", hideable: true, hidden: true) {
+        		paragraph "<b>Types of Triggers:</b>"
+    			paragraph "<b>Unlock or Door Open</b><br>Both of these work pretty much the same. When door or lock is triggered, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement."
+				paragraph "Each trigger can have multiple selections but this is an 'or' function. Meaning it only takes one device to trigger the actions. ie. Door1 or Door2 has been opened. If you require a different delay per door/lock, then separate child apps would be required - one for each door or lock."
+				paragraph "<b>Motion Sensor</b><br>When motion sensor becomes active, it will check to see which presence sensors have recently become 'present' within your set time. The system will then wait your set delay before making the announcement. If you require a different delay per motion sensor, then separate child apps would be required - one for each motion sensor."
+				paragraph "This trigger also works with Hubitat's built in 'Zone Motion Controllers' app. Which allows you to do some pretty cool things with motion sensors."
+				paragraph "<b>Notes:</b>"
+				paragraph "This app is designed to give a personal welcome announcement <i>after</i> you have entered the home."
+				paragraph "<b>Requirements:</b>"
+				paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
+			}
+  			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "Welcome Home Child", namespace: "BPTWorld", title: "<b>Add a new 'Welcome Home' child</b>", multiple: true)
+			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+ 			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {
+				paragraph "<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>"
+			}
+            section("Advanced Config:", hideable: true, hidden: true) {
+				paragraph "<br>%greeting% - will return a greeting based on time of day.<br>%name% - will return the Friendly Name associcated with a Presence Sensor<br>Note: adding a . anywhere will give the message a little pause"
+				input "greeting1", "text", required: true, title: "Greeting - 1 (am)", defaultValue: "Good Morning"
+                input "greeting2", "text", required: true, title: "Greeting - 2 (before 6pm)", defaultValue: "Good Afternoon"
+                input "greeting3", "text", required: true, title: "Greeting - 3 (after 6pm)", defaultValue: "Good Evening"
+				paragraph "<br>"
+            	input "msg1", "text", required: true, title: "Message - 1", defaultValue: "Welcome home. %name%"
+                input "msg2", "text", required: false, title: "Message - 2", defaultValue: "Long time no see. %name%"
+                input "msg3", "text", required: false, title: "Message - 3", defaultValue: "Look who's home. it's %name%"
+                input "msg4", "text", required: false, title: "Message - 4", defaultValue: "Nice to have you back. %name%"
+                input "msg5", "text", required: false, title: "Message - 5", defaultValue: "%greeting%. %name%"
+                input "msg6", "text", required: false, title: "Message - 6", defaultValue: "%greeting%. Oh ya. %name% is home"
+                input "msg7", "text", required: false, title: "Message - 7", defaultValue: "How are you doing. %name%"
+                input "msg8", "text", required: false, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
+                input "msg9", "text", required: false, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
+                input "msg10", "text", required: false, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
+				input "msg11", "text", required: false, title: "Message - 11", defaultValue: ""
+                input "msg12", "text", required: false, title: "Message - 12", defaultValue: ""
+                input "msg13", "text", required: false, title: "Message - 13", defaultValue: ""
+                input "msg14", "text", required: false, title: "Message - 14", defaultValue: ""
+                input "msg15", "text", required: false, title: "Message - 15", defaultValue: ""
+                input "msg16", "text", required: false, title: "Message - 16", defaultValue: ""
+                input "msg17", "text", required: false, title: "Message - 17", defaultValue: ""
+                input "msg18", "text", required: false, title: "Message - 18", defaultValue: ""
+                input "msg19", "text", required: false, title: "Message - 19", defaultValue: ""
+                input "msg20", "text", required: false, title: "Message - 20", defaultValue: ""
+			}
+
 		}
+		display()
+	}
 }
 
 def installCheck(){         
@@ -152,9 +155,21 @@ def installCheck(){
   	}
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
 def display(){
-	section{
-		paragraph "<b>Welcome Home</b><br>App Version: 1.0.7<br>@BPTWorld"
-	}        
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - App Version: 1.0.8 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+	}       
 }
 
