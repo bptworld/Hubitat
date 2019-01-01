@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 01/01/19 - Fixed a typo in the countReset modules. Added in ability to count Thermostats! Again, wipe is recommended.
  *  V1.0.1 - 12/31/18 - Major rewrite to how the app finds new devices and sets them up for the first time. You will need to 
  *						delete any lines that have null in them or delete the child app and start over. Sorry.
  *  V1.0.0 - 12/27/18 - Initial release.
