@@ -51,7 +51,7 @@ definition(
     description: "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!",
     category: "Useless",
 	
-//parent: "BPTWorld:Abacus",
+parent: "BPTWorld:Abacus",
     
     iconUrl: "",
     iconX2Url: "",
