@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 12/31/18 - Fixed debug logging.
  *  V1.0.4 - 12/30/18 - Updated to my new color theme.
  *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
  *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
@@ -107,7 +108,7 @@ def pageConfig() {
 				section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 				section() {
 					input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-					input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+					input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     			}
 			} else if(triggerMode == "Activity") {
 		section("<b>Devices may show up in multiple lists but each device only needs to be selected once.</b>") {
@@ -152,7 +153,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-			input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
 		}
 		display2()
@@ -226,7 +227,7 @@ def getFormat(type, myText=""){
 }
 
 def installed() {
-    log.debug "Installed with settings: ${settings}"
+    log.info "Installed with settings: ${settings}"
 	initialize()
 }
 
@@ -560,7 +561,7 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.5 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
 
