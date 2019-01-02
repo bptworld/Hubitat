@@ -1,5 +1,5 @@
 /**
- *  ****************  Abacus Child ****************
+ *  ****************  Abacus - Intense Counting Child ****************
  *
  *  Design Usage:
  *  Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 01/02/19 - Changed name. Cleaned up code.
  *  V1.0.2 - 01/01/19 - Fixed a typo in the countReset modules. Added in ability to count Thermostats! Again, wipe is recommended.
  *  V1.0.1 - 12/31/18 - Major rewrite to how the app finds new devices and sets them up for the first time. You will need to 
  *						delete any lines that have null in them or delete the child app and start over. Sorry.
@@ -45,13 +46,13 @@
  */
 
 definition(
-    name: "Abacus Child",
+    name: "Abacus - Intense Counting Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!",
     category: "Useless",
 	
-parent: "BPTWorld:Abacus",
+parent: "BPTWorld:Abacus - Intense Counting",
     
     iconUrl: "",
     iconX2Url: "",
@@ -64,14 +65,14 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Abacus</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Abacus - Intense Counting</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {
 	display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Information</b>"
 			paragraph "Daily counts are reset each morning.<br>Weekly counts are reset each Sunday.<br>Monthly counts are reset at on the 1st of each month.<br>Yearly counts get reset on Jan 1st.<br>All count resets happen between 12:05am and 12:10am"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
-			href "pageCounts", title: "Abacus Report", description: "Click here to view the Abacus Report."
+			href "pageCounts", title: "Abacus - Intense Counting Report", description: "Click here to view the Abacus Report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Most Common Devices")) {
 			input(name: "switchEvent", type: "capability.switch", title: "Switch Device(s) to count", submitOnChange: true, required: false, multiple: true)
@@ -195,7 +196,7 @@ def pageConfig() {
 				}
 			} else {
 				section() {
-					paragraph "<div style='color:red'>Line to Edit was not found. Please double check the device name from the 'Couting Events Reports' page.</div>"
+					paragraph "<div style='color:red'>Line to Edit was not found. Please double check the device name from the 'Abacus Reports' page.</div>"
 				}
 			}
 		}
@@ -204,7 +205,7 @@ def pageConfig() {
 }
 
 def pageCounts(params) {
-	dynamicPage(name: "pageStatus", title: "<h2 style='color:#1A77C9;font-weight: bold'>Abacus</h2>", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
+	dynamicPage(name: "pageStatus", title: "<h2 style='color:#1A77C9;font-weight: bold'>Abacus - Intense Counting</h2>", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
 		if(state.motionMap) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Motion Sensors")) {
 				if(state.motionMap) {
@@ -235,17 +236,6 @@ def pageCounts(params) {
 				} else {
 					LOGDEBUG("In pageCounts...Switch Events")
 					paragraph "No Switch data to display."
-				}
-			}
-		}
-		if(state.actuatorMap) {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Actuator Events")) {
-				if(state.actuatorMap) {
-					LOGDEBUG("In pageCounts...Actuator Events")
-					paragraph "${state.actuatorMap}"
-				} else {
-					LOGDEBUG("In pageCounts...Actuator Events")
-					paragraph "No Actuator data to display."
 				}
 			}
 		}
@@ -1344,6 +1334,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - App Version: 1.0.2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.3 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
