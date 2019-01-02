@@ -1,4 +1,4 @@
-# ABACUS
+# ABACUS - Intense Counting
 <b>Design Usage:</b><br>
 Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br><br>
 
@@ -9,7 +9,7 @@ Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and 
 * Click ‘Load New Apps’
 * Select ‘Abacus’ under ‘User Apps’
 * Click 'Done'
-* Go back to Apps and open 'Abacus'
+* Go back to Apps and open 'Abacus - Intense Coutning'
 <br>
 You can now create new child apps directly from here.<br><br>
 
