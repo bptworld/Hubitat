@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 01/03/19 - Bug fixes and a much better way to remove a device and it's stats.
  *  V1.0.3 - 01/02/19 - Changed name. Cleaned up code.
  *  V1.0.2 - 01/01/19 - Fixed a typo in the countReset modules. Added in ability to count Thermostats! Again, wipe is recommended.
  *  V1.0.1 - 12/31/18 - Major rewrite to how the app finds new devices and sets them up for the first time. You will need to 
@@ -91,19 +92,23 @@ def pageConfig() {
 			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-			input(name: "deleteALine", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Need to remove a Device?")
+			input "triggerMode", "enum", title: "Select a Mode", submitOnChange: true,  options: ["Normal_Tracking","Delete_A_Device"], required: true, Multiple: false
 		}
-		if(deleteALine) {
-			section("Instructions for Deleting a line:", hideable: true, hidden: true) {
-				paragraph "If a device needs to be removed<br> - De-select it from one of the Device lists.<br> - Click on 'Couting Events Reports'<br> - Completely highlight the line that needs to be removed<br> - Press 'ctrl'-C to copy it, then click 'Done'<br> - Now scroll back down to the 'Maintenance' section<br> - Flip the switch for 'Need to remove a Device'<br> - Paste in the line to remove and then click outside the box<br> - Press the 'Delete Now' button"
-				paragraph "Now go back to the 'Couting Events Reports' and the line should be gone."
+		if(triggerMode == "Normal_Tracking") {
+			section() {
+				paragraph "Everything is up and running"
+			}
+		}
+		if(triggerMode == "Delete_A_Device") {
+			section("Instructions for Deleting a device:", hideable: true, hidden: true) {
+				paragraph "If a device needs to be removed<br> - De-select it from all of the Device lists above.<br> - Then come back down here and select the device from the list below.<br> - Click 'Done' to save the new settings.<br> - Now trigger the device to be removed. ie. motion='active', contact='open', switch='on' and thermostat='heating' or 'cooling' to trigger the removal.<br> - Be sure to go back into this child app and change the 'Maintenance' setting back to 'Normal_Tracking'<br> - Hit 'Done' again and everything is all set."
 			}
 			section() {
-				paragraph "<div style='color:red;font-weight: bold'>Use with CAUTION. Deleting a line completely removes the device and all of it's stats.</b><br>Please see the Instructions above before attempting to remove a device.</div>"
-				input "whichMap", "enum", title: "Which Event type...", submitOnChange: true,  options: ["Switch","Motion","Contact"], required: true, Multiple: false
-				input "lineToDelete", "text", title: "Exact copy of line item to remove", required: true
-				input "runButton", "button", title: "-- Delete Now --"
-				paragraph "<div style='color:red'>* Check log for status of the deletion.</div>"
+				paragraph "<div style='color:red;font-weight: bold'>Use with CAUTION. Deleting a device completely removes the all of it's stats.</b><br>Please see the Instructions above before attempting to remove a device.</div>"
+				input(name: "deleteMotionEvent", type: "capability.motionSensor", title: "Motion sensor(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
+				input(name: "deleteContactEvent", type: "capability.contactSensor", title: "Contact Sensor(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
+				input(name: "deleteSwitchEvent", type: "capability.switch", title: "Switch Device(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
+				input(name: "deleteThermostatEvent", type: "capability.thermostat", title: "Thermostat(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
 			}
 		}
 		section() {
@@ -155,18 +160,6 @@ def pageConfig() {
 							ecountW = state.contactMapW.get(lineToEdit)
 							ecountM = state.contactMapM.get(lineToEdit)
 							ecountY = state.contactMapY.get(lineToEdit)
-							lineExist = "Yes"
-						} catch (all) {
-							log.info "${app.label} - Unable to edit, ${lineToEdit} does not exist"
-							lineExist = "No"
-						}
-					}
-					if(whichMap == "Actuator") {
-						try {
-							ecountD = state.actuatorMapD.get(lineToEdit)
-							ecountW = state.actuatorMapW.get(lineToEdit)
-							ecountM = state.actuatorMapM.get(lineToEdit)
-							ecountY = state.actuatorMapY.get(lineToEdit)
 							lineExist = "Yes"
 						} catch (all) {
 							log.info "${app.label} - Unable to edit, ${lineToEdit} does not exist"
@@ -281,6 +274,7 @@ def installed() {
 
 def updated() {
 	LOGDEBUG("Updated with settings: ${settings}")
+	unsubscribe()
 	logCheck()
 	initialize()
 }
@@ -288,17 +282,21 @@ def updated() {
 def initialize() {
 	LOGDEBUG("In initialize...")
 	setDefaults()
-	subscribe(motionEvent, "motion.active", motionHandler)
-	subscribe(contactEvent, "contact.open", contactHandler)
-	subscribe(switchEvent, "switch.on", switchHandler)
-	subscribe(actuatorDevice, "actuator.on", actuatorHandler)
-	subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
+	if(triggerMode == "Normal_Tracking") subscribe(motionEvent, "motion.active", motionHandler)
+	if(triggerMode == "Normal_Tracking") subscribe(contactEvent, "contact.open", contactHandler)
+	if(triggerMode == "Normal_Tracking") subscribe(switchEvent, "switch.on", switchHandler)
+	if(triggerMode == "Normal_Tracking") subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
+	
+	if(triggerMode == "Delete_A_Device") subscribe(deleteMotionEvent, "motion.active", deleteMotionHandler)
+	if(triggerMode == "Delete_A_Device") subscribe(deleteContactEvent, "contact.open", deleteContactHandler)
+	if(triggerMode == "Delete_A_Device") subscribe(deleteSwitchEvent, "switch.on", deleteSwitchHandler)
+	if(triggerMode == "Delete_A_Device") subscribe(deleteThermostatEvent, "thermostatOperatingState.heating", deleteThermostatHandler)
+	if(triggerMode == "Delete_A_Device") subscribe(deleteThermostatEvent, "thermostatOperatingState.cooling", deleteThermostatHandler)
 	
 	schedule("0 5 0 * * ? *", resetMotionCountHandler)
 	schedule("0 6 0 * * ? *", resetContactCountHandler)
 	schedule("0 7 0 * * ? *", resetSwitchCountHandler)
-	schedule("0 8 0 * * ? *", resetActuatorCountHandler)
-	schedule("0 9 0 * * ? *", resetThermostatCountHandler)
+	schedule("0 8 0 * * ? *", resetThermostatCountHandler)
 }
 
 def setupNewStuff() {
@@ -470,6 +468,126 @@ def setupNewStuff() {
 	// ********** Ending Thermostat Devices **********
 }
 
+def deleteMotionHandler(evt) {
+	if(triggerMode == "Delete_A_Device") {	
+		LOGDEBUG("In deleteMotionHandler...")
+
+		LOGDEBUG("In deleteMotionHandler...Looking for Motion devices to DELETE")
+		LOGDEBUG("Working on... ${evt.displayName}")
+		countD = state.motionMapD.get(evt.displayName)
+		countW = state.motionMapW.get(evt.displayName)
+		countM = state.motionMapM.get(evt.displayName)
+		countY = state.motionMapY.get(evt.displayName)
+		
+		try {
+			state.motionMap -= "${evt.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
+			LOGDEBUG("${evt.displayName} - Removed from motionMap")
+		} catch(ex) {
+			LOGDEBUG("In deleteMotionHandler...${evt.displayName}: Device was not found.")
+		}
+		newCountD = 0
+		newCountW = 0
+		newCountM = 0
+		newCountY = 0
+   		state.motionMapD.put(evt.displayName, newCountD)
+		state.motionMapW.put(evt.displayName, newCountW)
+		state.motionMapM.put(evt.displayName, newCountM)
+		state.motionMapY.put(evt.displayName, newCountY)
+		LOGDEBUG("${evt.displayName} - Removed from motionMap D W M Y")
+		LOGDEBUG("Finished removing... ${evt.displayName}")
+	}
+}
+
+def deleteContactHandler(evt) {
+	if(triggerMode == "Delete_A_Device") {	
+		LOGDEBUG("In deleteContactHandler...")
+
+		LOGDEBUG("In deleteContactHandler...Looking for Contact devices to DELETE")
+		LOGDEBUG("Working on... ${evt.displayName}")
+		countD = state.contactMapD.get(evt.displayName)
+		countW = state.contactMapW.get(evt.displayName)
+		countM = state.contactMapM.get(evt.displayName)
+		countY = state.contactMapY.get(evt.displayName)
+		
+		try {
+			state.contactMap -= "${evt.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
+			LOGDEBUG("${evt.displayName} - Removed from contactMap")
+		} catch(ex) {
+			LOGDEBUG("In deleteContactHandler...${evt.displayName}: Device was not found.")
+		}
+		newCountD = 0
+		newCountW = 0
+		newCountM = 0
+		newCountY = 0
+   		state.contactMapD.put(evt.displayName, newCountD)
+		state.contactMapW.put(evt.displayName, newCountW)
+		state.contactMapM.put(evt.displayName, newCountM)
+		state.contactMapY.put(evt.displayName, newCountY)
+		LOGDEBUG("${evt.displayName} - Removed from contactMap D W M Y")
+		LOGDEBUG("Finished removing... ${evt.displayName}")
+	}
+}
+
+def deleteSwitchHandler(evt) {
+	if(triggerMode == "Delete_A_Device") {	
+		LOGDEBUG("In deleteSwitchHandler...")
+
+		LOGDEBUG("In deleteSwitchHandler...Looking for Switch devices to DELETE")
+		LOGDEBUG("Working on... ${evt.displayName}")
+		countD = state.switchMapD.get(evt.displayName)
+		countW = state.switchMapW.get(evt.displayName)
+		countM = state.switchMapM.get(evt.displayName)
+		countY = state.switchMapY.get(evt.displayName)
+		
+		try {
+			state.switchMap -= "${evt.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
+			LOGDEBUG("${evt.displayName} - Removed from switchMap")
+		} catch(ex) {
+			LOGDEBUG("In deleteSwitchHandler...${evt.displayName}: Device was not found.")
+		}
+		newCountD = 0
+		newCountW = 0
+		newCountM = 0
+		newCountY = 0
+   		state.switchMapD.put(evt.displayName, newCountD)
+		state.switchMapW.put(evt.displayName, newCountW)
+		state.switchMapM.put(evt.displayName, newCountM)
+		state.switchMapY.put(evt.displayName, newCountY)
+		LOGDEBUG("${evt.displayName} - Removed from switchMap D W M Y")
+		LOGDEBUG("Finished removing... ${evt.displayName}")
+	}
+}
+
+def deleteThermostatHandler(evt) {
+	if(triggerMode == "Delete_A_Device") {	
+		LOGDEBUG("In deleteThermostatHandler...")
+
+		LOGDEBUG("In deleteThermostatHandler...Looking for Thermostat devices to DELETE")
+		LOGDEBUG("Working on... ${evt.displayName}")
+		countD = state.thermostatMapD.get(evt.displayName)
+		countW = state.thermostatMapW.get(evt.displayName)
+		countM = state.thermostatMapM.get(evt.displayName)
+		countY = state.thermostatMapY.get(evt.displayName)
+		
+		try {
+			state.thermostatMap -= "${evt.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
+			LOGDEBUG("${evt.displayName} - Removed from thermostatMap")
+		} catch(ex) {
+			LOGDEBUG("In deleteThermostatHandler...${evt.displayName}: Device was not found.")
+		}
+		newCountD = 0
+		newCountW = 0
+		newCountM = 0
+		newCountY = 0
+   		state.thermostatMapD.put(evt.displayName, newCountD)
+		state.thermostatMapW.put(evt.displayName, newCountW)
+		state.thermostatMapM.put(evt.displayName, newCountM)
+		state.thermostatMapY.put(evt.displayName, newCountY)
+		LOGDEBUG("${evt.displayName} - Removed from thermostatMap D W M Y")
+		LOGDEBUG("Finished removing... ${evt.displayName}")
+	}
+}
+
 def motionHandler(evt) {
 	LOGDEBUG("In motionHandler...")
 	LOGDEBUG("In motionHandler: Device: $evt.displayName is $evt.value")
@@ -620,56 +738,6 @@ def switchHandler(evt) {
 	LOGDEBUG("Adding In - ${evt.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}")
 }
 
-def actuatorHandler(evt) {
-	LOGDEBUG("In actuatorHandler...")
-	LOGDEBUG("$evt.displayName: $evt.value")
-
-	if(state.actuatorMap == null) resetActuatorMapHandler()
-	if(state.actuatorMapD == null) resetActuatorMapHandler()
-	if(state.actuatorMapW == null) resetActuatorMapHandler()
-	if(state.actuatorMapM == null) resetActuatorMapHandler()
-	if(state.actuatorMapY == null) resetActuatorMapHandler()
-	
-	if(state.actuatorMapD.get(evt.displayName) == null) {
-		LOGDEBUG("In switchHandler: ${evt.displayName} not found in Map D...Adding it in.")
-		state.actuatorMapD.put(evt.displayName, 0)
-	}
-	if(state.actuatorMapW.get(evt.displayName) == null) {
-		LOGDEBUG("In switchHandler: ${evt.displayName} not found in Map W...Adding it in.")
-		state.actuatorMapW.put(evt.displayName, 0)
-	}
-	if(state.actuatorMapM.get(evt.displayName) == null) {
-		LOGDEBUG("In switchHandler: ${evt.displayName} not found in Map M...Adding it in.")
-		state.actuatorMapM.put(evt.displayName, 0)
-	}
-	if(state.actuatorMapY.get(evt.displayName) == null) {
-		LOGDEBUG("In switchHandler: ${evt.displayName} not found in Map Y...Adding it in.")
-		state.actuatorMapY.put(evt.displayName, 0)
-	}
-	countD = state.actuatorMapD.get(evt.displayName)
-    newCountD = countD + 1
-    state.actuatorMapD.put(evt.displayName, newCountD)
-	
-	countW = state.actuatorMapW.get(evt.displayName)
-    newCountW = countW + 1
-    state.actuatorMapW.put(evt.displayName, newCountW)
-	
-	countM = state.actuatorMapM.get(evt.displayName)
-    newCountM = countM + 1
-    state.actuatorMapM.put(evt.displayName, newCountM)
-	
-    countY = state.actuatorMapY.get(evt.displayName)
-    newCountY = countY + 1
-    state.actuatorMapY.put(evt.displayName, newCountY)
-	
-	LOGDEBUG("To Delete - ${evt.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-	
-	state.actuatorMap -= "${evt.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-	state.actuatorMap += "${evt.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}<br>"
-	
-	LOGDEBUG("Adding In - ${evt.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}")
-}
-
 def thermostatHandler(evt) {
 	state.tStat = evt.value
 	LOGDEBUG("In thermostatHandler...Current Status: ${state.tStat}")
@@ -808,35 +876,6 @@ def resetSwitchMapHandler() {
 		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMapY")
     	state.switchMapY = [:]
 		switchEvent.each { it -> state.switchMapY.put(it.displayName, 0)}
-	}
-}
-
-def resetActuatorMapHandler() {
-	LOGDEBUG("In resetActuatorMapHandler...")
-	if(state.actuatorMap == null) {
-		LOGDEBUG("In resetActuatorMapHandler...Reseting actuatorMap")
-    	state.actuatorMap = [:]
-		state.actuatorMap = ""
-	}
-	if(state.actuatorMapD == null) {
-		LOGDEBUG("In resetActuatorMapHandler...Reseting actuatorMapD")
-    	state.actuatorMapD = [:]
-		actuatorEvent.each { it -> state.actuatorMapD.put(it.displayName, 0)}
-	}
-	if(state.actuatorMapW == null) {
-		LOGDEBUG("In resetActuatorMapHandler...Reseting actuatorMapW")
-    	state.actuatorMapW = [:]
-		actuatorEvent.each { it -> state.actuatorMapW.put(it.displayName, 0)}
-	}
-	if(state.actuatorMapM == null) {
-		LOGDEBUG("In resetActuatorMapHandler...Reseting actuatorMapM")
-    	state.actuatorMapM = [:]
-		actuatorEvent.each { it -> state.actuatorMapM.put(it.displayName, 0)}
-	}
-	if(state.actuatorMapY == null) {
-		LOGDEBUG("In resetActuatorMapHandler...Reseting actuatorMapY")
-    	state.actuatorMapY = [:]
-		actuatorEvent.each { it -> state.actuatorMapY.put(it.displayName, 0)}
 	}
 }
 
@@ -1090,78 +1129,6 @@ def resetSwitchCountHandler() {
 	}
 }
 
-def resetActuatorCountHandler() {
-	LOGDEBUG("In resetActuatorCountHandler...")
-	// Resetting Daily Counter
-		actuatorEvent.each { it -> 
-			countD = state.actuatorMapD.get(it.displayName)
-			countW = state.actuatorMapW.get(it.displayName)
-			countM = state.actuatorMapM.get(it.displayName)
-			countY = state.actuatorMapY.get(it.displayName)
-			newCountD = 0
-			LOGDEBUG("To Delete - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-   			state.actuatorMap -= "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-			state.actuatorMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-			LOGDEBUG("Adding In - ${it.displayName} — Today's count: ${newCountD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-		}
-    	state.actuatorMapD = [:]
-		actuatorEvent.each { it -> state.actuatorMapD.put(it.displayName, 0)}
-	// Resetting Weekly Counter
-	def date1 = new Date()
-	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
-	if(dayOfWeek == 1) {
-		actuatorEvent.each { it -> 
-			countD = state.actuatorMapD.get(it.displayName)
-			countW = state.actuatorMapW.get(it.displayName)
-			countM = state.actuatorMapM.get(it.displayName)
-			countY = state.actuatorMapY.get(it.displayName)
-			newCountW = 0
-			LOGDEBUG("To Delete - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-   			state.actuatorMap -= "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-			state.actuatorMap += "${it.displayName} — Today's count: ${countD}, Week: ${newCountW}, Month: ${countM}, Year: ${countY}<br>"
-			LOGDEBUG("Adding In - ${it.displayName} — Today's count: ${countD}, Week: ${newCountW}, Month: ${countM}, Year: ${countY}")
-		}
-		state.actuatorMapW = [:]
-		actuatorEvent.each { it -> state.actuatorMapW.put(it.displayName, 0)}
-	}
-	// Resetting Monthly Counter
-	def date2 = new Date()
-	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
-	if(dayOfMonth == 1) {
-		actuatorEvent.each { it -> 
-			countD = state.actuatorMapD.get(it.displayName)
-			countW = state.actuatorMapW.get(it.displayName)
-			countM = state.actuatorMapM.get(it.displayName)
-			countY = state.actuatorMapY.get(it.displayName)
-			newCountM = 0
-			LOGDEBUG("To Delete - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-   			state.actuatorMap -= "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-			state.actuatorMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${newCountM}, Year: ${countY}<br>"
-			LOGDEBUG("Adding In - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${newCountM}, Year: ${countY}")
-		}
-		state.actuatorMapM = [:]
-		actuatorEvent.each { it -> state.actuatorMapM.put(it.displayName, 0)}
-	}
-	// Resetting Yearly Counter
-	def date3 = new Date()
-	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
-	if(dayOfYear == 1) {
-		actuatorEvent.each { it -> 
-			countD = state.actuatorMapD.get(it.displayName)
-			countW = state.actuatorMapW.get(it.displayName)
-			countM = state.actuatorMapM.get(it.displayName)
-			countY = state.actuatorMapY.get(it.displayName)
-			newCountY = 0
-			LOGDEBUG("To Delete - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-   			state.actuatorMap -= "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-			state.actuatorMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${newCountY}<br>"
-			LOGDEBUG("Adding In - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${newCountY}")
-		}
-		state.actuatorMapY = [:]
-		actuatorEvent.each { it -> state.actuatorMapY.put(it.displayName, 0)}
-	}
-}
-
 def resetThermostatCountHandler() {
 	LOGDEBUG("In resetThermostatCountHandler...")
 	// Resetting Daily Counter
@@ -1334,6 +1301,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.3 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
