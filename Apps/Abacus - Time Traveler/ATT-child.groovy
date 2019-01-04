@@ -37,7 +37,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 01/04/19 - Major logic change to calculate how long a device was active.
  *  V1.0.0 - 01/03/19 - Initial release.
  *
  */
@@ -221,6 +221,7 @@ def setupNewStuff() {
 	if(state.motionMapW == null) resetMotionMapHandler()
 	if(state.motionMapM == null) resetMotionMapHandler()
 	if(state.motionMapY == null) resetMotionMapHandler()
+	if(state.motionPrevMap == null) resetMotionMapHandler()
 
 	LOGDEBUG("In setupNewStuff...Looking for new Motion devices")
 	motionEvent.each { it -> 
@@ -241,6 +242,12 @@ def setupNewStuff() {
 			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
 			state.motionMapY.put(it.displayName, 0)
 		}
+		if(state.motionPrevMap.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map prev...Adding it in.")
+			def now1 = new Date()
+    		prev = now1.getTime()
+			state.motionPrevMap.put(it.displayName, prev)
+		}
 	}
 	
 	// ********** Ending Motion Devices **********
@@ -254,6 +261,7 @@ def setupNewStuff() {
 	if(state.contactMapW == null) resetContactMapHandler()
 	if(state.contactMapM == null) resetContactMapHandler()
 	if(state.contactMapY == null) resetContactMapHandler()
+	if(state.contactPrevMap == null) resetContactMapHandler()
 
 	LOGDEBUG("In setupNewStuff...Looking for new Contact devices")
 	contactEvent.each { it -> 
@@ -274,6 +282,12 @@ def setupNewStuff() {
 			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
 			state.contactMapY.put(it.displayName, 0)
 		}
+		if(state.contactPrevMap.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map prev...Adding it in.")
+			def now1 = new Date()
+    		prev = now1.getTime()
+			state.contactPrevMap.put(it.displayName, prev)
+		}
 	}
 	
 	// ********** Ending Contact Devices **********
@@ -287,6 +301,7 @@ def setupNewStuff() {
 	if(state.switchMapW == null) resetSwitchMapHandler()
 	if(state.switchMapM == null) resetSwitchMapHandler()
 	if(state.switchMapY == null) resetSwitchMapHandler()
+	if(state.switchPrevMap == null) resetSwitchMapHandler()
 
 	LOGDEBUG("In setupNewStuff...Looking for new Switch devices")
 	switchEvent.each { it -> 
@@ -307,6 +322,12 @@ def setupNewStuff() {
 			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
 			state.switchMapY.put(it.displayName, 0)
 		}
+		if(state.switchPrevMap.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map prev...Adding it in.")
+			def now1 = new Date()
+    		prev = now1.getTime()
+			state.switchPrevMap.put(it.displayName, prev)
+		}
 	}
 	
 	// ********** Ending Switch Devices **********
@@ -320,6 +341,7 @@ def setupNewStuff() {
 	if(state.thermostatMapW == null) resetThermostatMapHandler()
 	if(state.thermostatMapM == null) resetThermostatMapHandler()
 	if(state.thermostatMapY == null) resetThermostatMapHandler()
+	if(state.thermostatPrevMap == null) resetThermostatMapHandler()
 
 	LOGDEBUG("In setupNewStuff...Looking for new Thermostat devices")
 	thermostatEvent.each { it -> 
@@ -339,6 +361,12 @@ def setupNewStuff() {
 		if(state.thermostatMapY.get(it.displayName) == null) {
 			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
 			state.thermostatMapY.put(it.displayName, 0)
+		}
+		if(state.thermostatPrevMap.get(it.displayName) == null) {
+			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map prev...Adding it in.")
+			def now1 = new Date()
+    		prev = now1.getTime()
+			state.thermostatPrevMap.put(it.displayName, prev)
 		}
 	}
 	
@@ -581,15 +609,17 @@ if(triggerMode == "Normal_Tracking") {
 	
 	if(state.motionStatus == "active") {
 		def now1 = new Date()
-    	state.prev = now1.getTime()
+    	prev = now1.getTime()
+		state.motionPrevMap.put(evt.displayName, prev)
 		LOGDEBUG("In motionHandler...${evt.displayName} became ${state.motionStatus} at ${now1}")
 	}
 		
 	if(state.motionStatus == "inactive") {
+		prev = state.motionPrevMap.get(evt.displayName, prev)
 		def now2 = new Date()
 		LOGDEBUG("In motionHandler...${evt.displayName} became ${state.motionStatus} at ${now2}")
 		long unxNow = now2.getTime()
-    	long unxPrev = state.prev
+    	long unxPrev = prev
     	unxNow = unxNow/1000 
     	unxPrev = unxPrev/1000
 		timeDiff = (unxNow-unxPrev)
@@ -704,21 +734,24 @@ if(triggerMode == "Normal_Tracking") {
 }
 	
 def contactHandler(evt) {
+if(triggerMode == "Normal_Tracking") {
 	LOGDEBUG("In contactHandler...")
-	//LOGDEBUG("$evt.displayName: $evt.value")
+	LOGDEBUG("$evt.displayName: $evt.value")
 	state.contactStatus = evt.value
 	
 	if(state.contactStatus == "open") {
 		def now1 = new Date()
-    	state.prev = now1.getTime()
+    	prev = now1.getTime()
+		state.contactPrevMap.put(evt.displayName, prev)
 		LOGDEBUG("In contactHandler...${evt.displayName} became ${state.contactStatus} at ${now1}")
 	}
 		
 	if(state.contactStatus == "closed") {
+		prev = state.contactPrevMap.get(evt.displayName, prev)
 		def now2 = new Date()
 		LOGDEBUG("In contactHandler...${evt.displayName} became ${state.contactStatus} at ${now2}")
 		long unxNow = now2.getTime()
-    	long unxPrev = state.prev
+    	long unxPrev = prev
     	unxNow = unxNow/1000 
     	unxPrev = unxPrev/1000
 		timeDiff = (unxNow-unxPrev)
@@ -829,23 +862,27 @@ def contactHandler(evt) {
 			LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
 	}
 }
+}
 
 def switchHandler(evt) {
+if(triggerMode == "Normal_Tracking") {
 	LOGDEBUG("In switchHandler...")
 	LOGDEBUG("$evt.displayName: $evt.value")
-	state.switchStatus = evt.value
+	switchStatus = evt.value
 	
-	if(state.switchStatus == "on") {
+	if(switchStatus == "on") {
 		def now1 = new Date()
-    	state.prev = now1.getTime()
-		LOGDEBUG("In switchHandler...${evt.displayName} turned ${state.switchStatus} at ${now1}")
+    	prev = now1.getTime()
+		state.switchPrevMap.put(evt.displayName, prev)
+		LOGDEBUG("In switchHandler...${evt.displayName} turned ${switchStatus} at ${now1}")
 	}
 		
-	if(state.switchStatus == "off") {
+	if(switchStatus == "off") {
+		prev = state.switchPrevMap.get(evt.displayName, prev)
 		def now2 = new Date()
-		LOGDEBUG("In switchHandler...${evt.displayName} turned ${state.switchStatus} at ${now2}")
+		LOGDEBUG("In switchHandler...${evt.displayName} turned ${switchStatus} at ${now2}")
 		long unxNow = now2.getTime()
-    	long unxPrev = state.prev
+    	long unxPrev = prev
     	unxNow = unxNow/1000 
     	unxPrev = unxPrev/1000
 		timeDiff = (unxNow-unxPrev)
@@ -957,28 +994,33 @@ def switchHandler(evt) {
 	
 	}
 }
+}
 
 def thermostatHandler(evt) {
+if(triggerMode == "Normal_Tracking") {
 	state.tStat = evt.value
 	LOGDEBUG("In thermostatHandler...Current Status: ${state.tStat}")
 	
 	if(state.tStat == "heating") {
 		def now1 = new Date()
-    	state.prev = now1.getTime()
+		prev = now1.getTime()
+		state.thermostatPrevMap.put(evt.displayName, prev)
 		LOGDEBUG("In thermostatHandler...${evt.displayName} started ${state.tStat} at ${now1}")
 	}
 	
 	if(state.tStat == "cooling") {
 		def now1 = new Date()
-    	state.prev = now1.getTime()
+		prev = now1.getTime()
+		state.thermostatPrevMap.put(evt.displayName, prev)
 		LOGDEBUG("In thermostatHandler...${evt.displayName} started ${state.tStat} at ${now1}")
 	}
 	
 	if(state.tStat == "idle") {
+		prev = state.thermostatPrevMap.get(evt.displayName, prev)
 		def now2 = new Date()
 		LOGDEBUG("In thermostatHandler...${evt.displayName} is ${state.tStat} at ${now2}")
 		long unxNow = now2.getTime()
-    	long unxPrev = state.prev
+    	long unxPrev = prev
     	unxNow = unxNow/1000 
     	unxPrev = unxPrev/1000
 		timeDiff = (unxNow-unxPrev)
@@ -1089,7 +1131,8 @@ def thermostatHandler(evt) {
 		}
 		LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
 	
-	}		
+	}	
+}
 }
 
 def resetMotionMapHandler() {
@@ -1118,6 +1161,13 @@ def resetMotionMapHandler() {
 		LOGDEBUG("In resetMotionMapHandler...Reseting motionMapY")
     	state.motionMapY = [:]
 		motionEvent.each { it -> state.motionMapY.put(it.displayName, 0)}
+	}
+	if(state.motionPrevMap == null) {
+		LOGDEBUG("In resetMotionMapHandler...Reseting motionPrevMap")
+		def now1 = new Date()
+    	prev = now1.getTime()
+    	state.motionPrevMap = [:]
+		switchEvent.each { it -> state.motionPrevMap.put(it.displayName, prev)}
 	}
 }
 
@@ -1148,6 +1198,13 @@ def resetContactMapHandler() {
     	state.contactMapY = [:]
 		contactEvent.each { it -> state.contactMapY.put(it.displayName, 0)}
 	}
+	if(state.contactPrevMap == null) {
+		LOGDEBUG("In resetContactMapHandler...Reseting contactPrevMap")
+		def now1 = new Date()
+    	prev = now1.getTime()
+    	state.contactPrevMap = [:]
+		switchEvent.each { it -> state.contactPrevMap.put(it.displayName, prev)}
+	}
 }
 
 def resetSwitchMapHandler() {
@@ -1177,6 +1234,13 @@ def resetSwitchMapHandler() {
     	state.switchMapY = [:]
 		switchEvent.each { it -> state.switchMapY.put(it.displayName, 0)}
 	}
+	if(state.switchPrevMap == null) {
+		LOGDEBUG("In resetSwitchMapHandler...Reseting switchPrevMap")
+		def now1 = new Date()
+    	prev = now1.getTime()
+    	state.switchPrevMap = [:]
+		switchEvent.each { it -> state.switchPrevMap.put(it.displayName, prev)}
+	}
 }
 
 def resetThermostatMapHandler() {
@@ -1205,6 +1269,13 @@ def resetThermostatMapHandler() {
 		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMapY")
     	state.thermostatMapY = [:]
 		thermostatEvent.each { it -> state.thermostatMapY.put(it.displayName, 0)}
+	}
+	if(state.thermostatPrevMap == null) {
+		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatPrevMap")
+		def now1 = new Date()
+    	prev = now1.getTime()
+    	state.thermostatPrevMap = [:]
+		switchEvent.each { it -> state.thermostatPrevMap.put(it.displayName, prev)}
 	}
 }
 
@@ -2157,6 +2228,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.0 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
