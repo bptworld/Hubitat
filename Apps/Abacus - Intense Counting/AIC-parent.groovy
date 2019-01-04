@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 01/04/19 - Removed some left over code causing an error.
  *  V1.0.4 - 01/03/19 - Bug fixes and a much better way to remove a device and it's stats.
  *  V1.0.3 - 01/02/19 - Changed name. Cleaned up code.
  *  V1.0.2 - 01/01/19 - Fixed a typo in the countReset modules. Added in ability to count Thermostats! Again, wipe is recommended.
@@ -126,6 +127,6 @@ def getFormat(type, myText=""){
 def display(){
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.5 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}       
 }         
