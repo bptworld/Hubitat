@@ -6,6 +6,9 @@ https://community.hubitat.com/
 **Abacus - Intense Counting** - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
+**Abacus - Time Traveler** - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus-time-traveler/8091" target="_blank">Go Here</a>
+<br><br>
 **BI Control** - Designed to work locally with Blue Iris security software.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
