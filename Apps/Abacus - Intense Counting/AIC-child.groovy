@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 01/04/19 - Removed some left over code causing an error.
  *  V1.0.4 - 01/03/19 - Bug fixes and a much better way to remove a device and it's stats.
  *  V1.0.3 - 01/02/19 - Changed name. Cleaned up code.
  *  V1.0.2 - 01/01/19 - Fixed a typo in the countReset modules. Added in ability to count Thermostats! Again, wipe is recommended.
@@ -83,7 +84,6 @@ def pageConfig() {
 		}
 		//section(getFormat("header-green", "${getImage("Blank")}"+" Even More Devices")) {
 		//	paragraph "If you have a device not found in the list above, try this option. If your device doesn't work, please message me on the forum and let me know what type of device it is. No promises but I will take a look at it."
-		//	input "actuatorDevice", "capability.actuator", title: "Select Actuator Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 		//	input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 		//}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
@@ -244,7 +244,7 @@ def pageCounts(params) {
 			}
 		}
 		section() {
-			if(state.motionMap == null && state.contactMap == null && state.switchMap == null && state.actuatorMap && state.thermostatMap) {
+			if(state.motionMap == null && state.contactMap == null && state.switchMap == null && state.thermostatMap) {
 				paragraph "No data to display."
 			}
 		}
@@ -400,39 +400,6 @@ def setupNewStuff() {
 	}
 	
 	// ********** Ending Switch Devices **********
-	
-	// ********** Starting Actuator Devices **********
-	
-	LOGDEBUG("In setupNewStuff...Setting up Actuator Maps")
-	
-	if(state.actuatorMap == null) resetActuatorMapHandler()
-	if(state.actuatorMapD == null) resetActuatorMapHandler()
-	if(state.actuatorMapW == null) resetActuatorMapHandler()
-	if(state.actuatorMapM == null) resetActuatorMapHandler()
-	if(state.actuatorMapY == null) resetActuatorMapHandler()
-
-	LOGDEBUG("In setupNewStuff...Looking for new Actuator devices")
-	actuatorEvent.each { it -> 
-		LOGDEBUG("Working on... ${it.displayName}")
-		if(state.actuatorMapD.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
-			state.actuatorMapD.put(it.displayName, 0)
-		}
-		if(state.actuatorMapW.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
-			state.actuatorMapW.put(it.displayName, 0)
-		}
-		if(state.actuatorMapM.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
-			state.actuatorMapM.put(it.displayName, 0)
-		}
-		if(state.actuatorMapY.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
-			state.actuatorMapY.put(it.displayName, 0)
-		}
-	}
-	
-	// ********** Ending Actuator Devices **********
 	
 	// ********** Starting Thermostat Devices **********
 	
@@ -1213,7 +1180,6 @@ def appButtonHandler(btn){
 			if(whichMap == "Switch") { state.switchMap -= "${deleteLine}" }
 			if(whichMap == "Motion") { state.motionMap -= "${deleteLine}" }
 			if(whichMap == "Contact") { state.contactMap -= "${deleteLine}" }
-			if(whichMap == "Actuator") { state.actuatorMap -= "${deleteLine}" }
 			if(whichMap == "Thermostat") { state.thermostatMap -= "${deleteLine}" }
 			log.info "${app.label} - ${deleteLine} was deleted.}"
 		} catch (all) {
@@ -1301,6 +1267,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.4 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.5 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
