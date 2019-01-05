@@ -130,6 +130,6 @@ def getFormat(type, myText=""){
 def display(){
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.6 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.7 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}       
 }          
