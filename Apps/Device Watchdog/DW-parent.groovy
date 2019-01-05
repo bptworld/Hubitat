@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
+ *						attribute is null/blank/non-existent. Previously it showed 0.
  *  V1.0.6 - 01/01/19 - Fixed typo in Pushover module.
  *  V1.0.5 - 12/31/18 - Fixed debug logging.
  *  V1.0.4 - 12/30/18 - Updated to my new color theme.
