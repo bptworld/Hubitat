@@ -409,7 +409,7 @@ def myBatteryHandler() {
 			if(badORgood == false) {
 				log.info "${state.myType} - mySensors: ${device} battery is ${currentValue} less than ${batteryThreshold} threshold."
 				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}<br>"
-				state.batteryMapPhone += "${device} - ${currentValue} - "
+				state.batteryMapPhone += "${device}-${currentValue} : "
 			}
 		} else {
 			if(badORgood == true && currentValue > -999) { //RayzurMod
