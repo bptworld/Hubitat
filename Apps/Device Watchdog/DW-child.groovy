@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
+ *						attribute is null/blank/non-existent. Previously it showed 0.
  *  V1.0.6 - 01/01/19 - Fixed typo in Pushover module.
  *  V1.0.5 - 12/31/18 - Fixed debug logging.
  *  V1.0.4 - 12/30/18 - Updated to my new color theme.
@@ -401,20 +403,25 @@ def myBatteryHandler() {
 	state.mySensors.each { device ->
 		log.info "Working on... ${device}"
 		def currentValue = device.currentValue("battery")
-		if(currentValue == null) currentValue = 0
+		if(currentValue == null) currentValue = -999  //RayzurMod
 		LOGDEBUG("In myBatteryHandler...${device} - ${currentValue}")
-		if(currentValue < batteryThreshold) {
+		if(currentValue < batteryThreshold && currentValue > -999) { //RayzurMod
 			if(badORgood == false) {
 				log.info "${state.myType} - mySensors: ${device} battery is ${currentValue} less than ${batteryThreshold} threshold."
 				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}<br>"
 				state.batteryMapPhone += "${device} - ${currentValue} - "
 			}
 		} else {
-			if(badORgood == true) {
+			if(badORgood == true && currentValue > -999) { //RayzurMod
 				log.info "${state.myType} - ${device} battery is ${currentValue}, over threshold."
 				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}, over threshold.<br>"
 				state.batteryMapPhone += "${device} - ${currentValue} - "
-			}
+			} else
+				if (currentValue == -999) { //RayzurMod
+					log.info "${state.myType} - ${device} battery hasn't reported in." //RayzurMod
+					state.batteryMap += "${state.myType} - <i>${device} battery level isn't reporting</i><br>" //RayzurMod
+					state.batteryMapPhone += "${device} - isn't reporting - " //RayzurMod
+				} //RayzurMod
 		}
 	}
 	log.info "     - - - - - End (B) ${state.myType} - - - - -     "
@@ -562,7 +569,7 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.6 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - App Version: 1.0.7 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
 
