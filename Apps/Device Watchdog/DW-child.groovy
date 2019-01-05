@@ -37,7 +37,7 @@
  *  Changes:
  *
  *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
- *						attribute is null/blank/non-existent. Previously it showed 0.
+ *						attribute is null/blank/non-existent. Previously it showed 0. Also adjusted the output on the Push report.
  *  V1.0.6 - 01/01/19 - Fixed typo in Pushover module.
  *  V1.0.5 - 12/31/18 - Fixed debug logging.
  *  V1.0.4 - 12/30/18 - Updated to my new color theme.
@@ -415,12 +415,12 @@ def myBatteryHandler() {
 			if(badORgood == true && currentValue > -999) { //RayzurMod
 				log.info "${state.myType} - ${device} battery is ${currentValue}, over threshold."
 				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}, over threshold.<br>"
-				state.batteryMapPhone += "${device} - ${currentValue} - "
+				state.batteryMapPhone += "${device}-${currentValue} : "
 			} else
 				if (currentValue == -999) { //RayzurMod
 					log.info "${state.myType} - ${device} battery hasn't reported in." //RayzurMod
 					state.batteryMap += "${state.myType} - <i>${device} battery level isn't reporting</i><br>" //RayzurMod
-					state.batteryMapPhone += "${device} - isn't reporting - " //RayzurMod
+					state.batteryMapPhone += "${device}-isn't reporting : " //RayzurMod
 				} //RayzurMod
 		}
 	}
@@ -451,13 +451,13 @@ def mySensorHandler() {
 			if(badORgood == false) {
 				log.info "${state.myType} - ${device} hasn't checked in since ${hour}h ${min}m ago."
 				state.timeSinceMap += "${state.myType} - ${device} hasn't checked in since ${hour}h ${min}m ago.<br>"
-				state.timeSinceMapPhone += "${device} - ${hour}h ${min}m - "
+				state.timeSinceMapPhone += "${device}-${hour}h ${min}m : "
 			}
 		} else {
 			if(badORgood == true) {
 				log.info "${state.myType} - mySensors: ${device} last checked in ${hour}h ${min}m ago.<br>"
 				state.timeSinceMap += "${state.myType} - ${device} last checked in ${hour}h ${min}m ago.<br>"
-				state.timeSinceMapPhone += "${device} - ${hour}h ${min}m - "
+				state.timeSinceMapPhone += "${device}-${hour}h ${min}m : "
 			}
 		}
 	}
