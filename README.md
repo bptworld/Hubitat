@@ -1,7 +1,8 @@
 # Apps for Hubitat Elevation
 Apps for use with the Hubitat Elevation Hub.<br>
-www.hubitat.com<br>
-https://community.hubitat.com/
+Website: www.hubitat.com<br>
+Official Forum: https://community.hubitat.com/
+UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br><br>
 **Abacus - Intense Counting** - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
