@@ -37,6 +37,8 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.2 - 01/06/19 - Squashed a bug in the Weekly count reset. Also added in a way to delete a single line from the reports.
+ *						This is needed to get rid of the orphans created from the Weekly Count bug.
  *  V1.0.1 - 01/04/19 - Major logic change to calculate how long a device was active.
  *  V1.0.0 - 01/03/19 - Initial release.
  *
@@ -101,6 +103,22 @@ def pageConfig() {
 				input(name: "deleteContactEvent", type: "capability.contactSensor", title: "Contact Sensor(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
 				input(name: "deleteSwitchEvent", type: "capability.switch", title: "Switch Device(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
 				input(name: "deleteThermostatEvent", type: "capability.thermostat", title: "Thermostat(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
+			}
+			section() {
+				paragraph "<b>Under Special Circumstances you may need to delete one line instead of an entire device.</b>"
+				input(name: "deleteALine", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Need to remove a Line?")
+			}
+			if(deleteALine) {
+				section("Instructions for Deleting a line:", hideable: true, hidden: true) {
+					paragraph "If a device needs to be removed<br> - Click on 'Abacus Reports'<br> - Completely highlight the line that needs to be removed<br> - Press 'ctrl'-C to copy it, then click 'Done'<br> - Now scroll back down to the 'Maintenance' section<br> - Paste in the line to remove and then click outside the box<br> - Now adjust the code by putting < b > and < /b > (but with NO spaces) around the device name.  ie. < b >mZone-Basement< /b > - Week: 0 Days, 0 Hours, 0 Minutes, null Seconds<br> - Now click outside the box again<br>	- Press the 'Delete Now' button - WAIT 2 seconds - Press the button again."
+					paragraph "Now go back to the 'Abacus Reports' and the line should be gone."
+				}
+				section() {
+					paragraph "<div style='color:red;font-weight: bold'>Use with CAUTION. Deleting a line completely removes that line and all of it's stats.</b><br>Please see the Instructions above before attempting to remove a line.</div>"
+					input "lineToDelete", "text", title: "Exact copy of line item to remove", required: true
+					input "runButton", "button", title: "-- Delete Now --"
+					paragraph "Remember to hit the Delete now button twice."
+				}
 			}
 		}
 		display2()
@@ -1167,7 +1185,7 @@ def resetMotionMapHandler() {
 		def now1 = new Date()
     	prev = now1.getTime()
     	state.motionPrevMap = [:]
-		switchEvent.each { it -> state.motionPrevMap.put(it.displayName, prev)}
+		motionEvent.each { it -> state.motionPrevMap.put(it.displayName, prev)}
 	}
 }
 
@@ -1203,7 +1221,7 @@ def resetContactMapHandler() {
 		def now1 = new Date()
     	prev = now1.getTime()
     	state.contactPrevMap = [:]
-		switchEvent.each { it -> state.contactPrevMap.put(it.displayName, prev)}
+		contactEvent.each { it -> state.contactPrevMap.put(it.displayName, prev)}
 	}
 }
 
@@ -1275,7 +1293,7 @@ def resetThermostatMapHandler() {
 		def now1 = new Date()
     	prev = now1.getTime()
     	state.thermostatPrevMap = [:]
-		switchEvent.each { it -> state.thermostatPrevMap.put(it.displayName, prev)}
+		thermostatEvent.each { it -> state.thermostatPrevMap.put(it.displayName, prev)}
 	}
 }
 
@@ -2138,10 +2156,10 @@ def appButtonHandler(btn){
 		deleteLine = "${lineToDelete}<br>"
 		LOGDEBUG("Deleting Line: ${deleteLine}")
 		try {
-			if(whichMap == "Switch") { state.switchMap -= "${deleteLine}" }
-			if(whichMap == "Motion") { state.motionMap -= "${deleteLine}" }
-			if(whichMap == "Contact") { state.contactMap -= "${deleteLine}" }
-			if(whichMap == "Thermostat") { state.thermostatMap -= "${deleteLine}" }
+			state.switchMap -= "${deleteLine}"
+			state.motionMap -= "${deleteLine}"
+			state.contactMap -= "${deleteLine}"
+			state.thermostatMap -= "${deleteLine}"
 			log.info "${app.label} - ${deleteLine} was deleted.}"
 		} catch (all) {
 			log.info "${app.label} - Unable to delete, line did not exist"
@@ -2228,6 +2246,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
