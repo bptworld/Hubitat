@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 01/06/19 - Squashed a bug in the Weekly count reset. Also added in a way to delete a single line from the reports.
+ *						This is needed to get rid of the orphans created from the Weekly Count bug.
  *  V1.0.1 - 01/04/19 - Major logic change to calculate how long a device was active.
  *  V1.0.0 - 01/03/19 - Initial release.
  *
@@ -118,11 +120,12 @@ def getFormat(type, myText=""){
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+	if(type == "wording") return "<div style='color:#1A77C9'>${myText}</div>"
 }
 
 def display(){
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}       
 }         
