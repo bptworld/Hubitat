@@ -37,10 +37,10 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 12/10/19 - Tons of cosmetic changes. Added in Push option, time between polls. Changed it up to turn the switch off
- *						if website/internet becomes active again. Added in all the normal stuff - pause, enable/disable and debug
- *						logging.
- *  V1.0.0 - 12/09/19 - Hubitat Port of ST app 'SmartPing' - 2016 Jason Botello
+ *  V1.0.1 - 01/10/19 - Tons of cosmetic changes. Added in Push option, time between polls. Changed it up to turn the switch off
+ *			if website/internet becomes active again. Added in all the normal stuff - pause, enable/disable and debug
+ *			logging.
+ *  V1.0.0 - 01/09/19 - Hubitat Port of ST app 'SmartPing' - 2016 Jason Botello
  *
  */
 
