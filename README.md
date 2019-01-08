@@ -29,7 +29,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-a
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667" target="_blank">Go Here</a>
 <br><br>
 **Web Pinger** - Monitor a website and trigger automations if not found or if your internet goes down.<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Go Here</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-pinger/8347" target="_blank">Go Here</a>
 <br><br>
 **Welcome Home** - Designed to give a personal welcome announcement after you have entered the home.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-welcome-home/6445" target="_blank">Go Here</a>
