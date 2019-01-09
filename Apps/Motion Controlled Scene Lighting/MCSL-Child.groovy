@@ -55,7 +55,7 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 01/10/19 - Fixed Enabler/Disable switch. It wasn't working.
+ *  V1.0.2 - 01/08/19 - Fixed Enabler/Disable switch. It wasn't working.
  *  V1.0.1 - 12/30/18 - Updated to new color theme.
  *  V1.0.0 - 12/19/18 - Initial release.
  *
