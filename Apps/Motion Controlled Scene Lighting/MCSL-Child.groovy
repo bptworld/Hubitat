@@ -55,7 +55,8 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 12/30/18 - Updated to new theme.
+ *  V1.0.2 - 01/10/19 - Fixed Enabler/Disable switch. It wasn't working.
+ *  V1.0.1 - 12/30/18 - Updated to new color theme.
  *  V1.0.0 - 12/19/18 - Initial release.
  *
  */
@@ -224,6 +225,8 @@ def enablerSwitchHandler(evt){
 }
 
 def modeHandler(evt){
+if(state.enablerSwitch2 == "off"){
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
 	allInactive()
 	LOGDEBUG("       - - - - - -     ")
 	LOGDEBUG("In modeHandler...Before if's - Thinks it's Mode: ${state.modeNow} - Actual mode: ${location.mode}")
@@ -313,6 +316,8 @@ def modeHandler(evt){
 		state.currentMode = "NONE"
 	}
 }
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
+}
 
 def allInactive(){
 	LOGDEBUG("       - - - - - -     ")
@@ -329,6 +334,8 @@ def allInactive(){
 }
 
 def motionHandler(evt) {
+if(state.enablerSwitch2 == "off"){
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
 	LOGDEBUG("       - - - - - -     ")
 	LOGDEBUG("In motionHandler...")
 	if(pause1 == true){log.warn "Unable to continue - App paused"}
@@ -350,6 +357,8 @@ def motionHandler(evt) {
     		}
 		}
 	}
+}
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
 }
 
 def setScene() {
@@ -598,6 +607,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - App Version: 1.0.2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 } 
