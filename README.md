@@ -14,7 +14,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacu
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
 **Device Sequencer** - Turn on/off several devices in a row, with a user defined pause in between each.<br>
-Hubitat Forum Discussion: 
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-sequencer/8596" target="_blank">Go Here</a>
 <br><br>
 **Device Watchdog** - Keep an eye on your devices and see how long it's been since they checked in.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-watchdog/7692" target="_blank">Go Here</a>
