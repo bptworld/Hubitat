@@ -37,6 +37,8 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.1.0 - 01/13/19 - Updated to announce multiple people coming home at the same time, in one message. Seems like such a simple
+ *						thing but it took a huge rewrite to do it!
  *  V1.0.8 - 12/30/18 - Updated to my new color theme.
  *  V1.0.7 - 12/07/18 - Added an option to Contact Sensor trigger. Can now trigger based on Open or Closed.
  *  V1.0.6 - 12/04/18 - Code rewrite so we don't have to fill in all 20 presets. Must state in child app how many presets to use.
@@ -100,6 +102,19 @@ def pageConfig() {
 			paragraph "If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message."
 			input "presenceSensor1", "capability.presenceSensor", title: "Presence Sensor 1", required: true, multiple: false, width:6
 			input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, width:6
+			
+			input "presenceSensor2", "capability.presenceSensor", title: "Presence Sensor 2", required: false, multiple: false, width:6
+			input "friendlyName2", "text", title: "Friendly name for presence sensor 2", required: false, multiple: false, width:6
+			
+			input "presenceSensor3", "capability.presenceSensor", title: "Presence Sensor 3", required: false, multiple: false, width:6
+			input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, width:6
+			
+			input "presenceSensor4", "capability.presenceSensor", title: "Presence Sensor 4", required: false, multiple: false, width:6
+			input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, width:6
+			
+			input "presenceSensor5", "capability.presenceSensor", title: "Presence Sensor 5", required: false, multiple: false, width:6
+			input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, width:6
+			
 			input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
@@ -161,7 +176,6 @@ def updated() {
     LOGDEBUG("Updated with settings: ${settings}")
     unsubscribe()
 	unschedule()
-	//if(logEnable) runIn(10,logsOff)
 	initialize()
 }
 
@@ -170,7 +184,12 @@ def initialize() {
     setDefaults()
 	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	subscribe(presenceSensor1, "presence", presenceSensorHandler)
+	subscribe(presenceSensor1, "presence", presenceSensorHandler1)
+	subscribe(presenceSensor2, "presence", presenceSensorHandler2)
+	subscribe(presenceSensor3, "presence", presenceSensorHandler3)
+	subscribe(presenceSensor4, "presence", presenceSensorHandler4)
+	subscribe(presenceSensor5, "presence", presenceSensorHandler5)
+	
 	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
@@ -187,18 +206,66 @@ def enablerSwitchHandler(evt){
     }
 }
 
-def presenceSensorHandler(evt){
-	state.presenceSensor2 = evt.value
-	LOGDEBUG("IN presenceSensorHandler - Presence Sensor = ${presenceSensor1}")
-	LOGDEBUG("Presence Sensor = $state.presenceSensor2")
-    if(state.presenceSensor2 == "not present"){
+def setupNewStuff() {
+	LOGDEBUG("In setupNewStuff...Setting up Maps")
+	if(state.presenceMap == null) state.presenceMap = [:]
+}
+		
+def presenceSensorHandler1(evt){
+	state.presenceSensor1 = evt.value
+	LOGDEBUG("IN presenceSensorHandler1 - Presence Sensor = ${presenceSensor1}")
+    if(state.presenceSensor1 == "not present"){
     	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
-		state.beenHere = "no"
+		state.beenHere1 = "no"
     } else {
 		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
 }
-	
+
+def presenceSensorHandler2(evt){
+	state.presenceSensor2 = evt.value
+	LOGDEBUG("IN presenceSensorHandler2 - Presence Sensor = ${presenceSensor2}")
+    if(state.presenceSensor2 == "not present"){
+    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+		state.beenHere2 = "no"
+    } else {
+		LOGDEBUG("Presence Sensor is present - Let's go!")
+    }
+}
+
+def presenceSensorHandler3(evt){
+	state.presenceSensor3 = evt.value
+	LOGDEBUG("IN presenceSensorHandler3 - Presence Sensor = ${presenceSensor3}")
+    if(state.presenceSensor3 == "not present"){
+    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+		state.beenHere3 = "no"
+    } else {
+		LOGDEBUG("Presence Sensor is present - Let's go!")
+    }
+}
+
+def presenceSensorHandler4(evt){
+	state.presenceSensor4 = evt.value
+	LOGDEBUG("IN presenceSensorHandler4 - Presence Sensor = ${presenceSensor4}")
+    if(state.presenceSensor4 == "not present"){
+    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+		state.beenHere4 = "no"
+    } else {
+		LOGDEBUG("Presence Sensor is present - Let's go!")
+    }
+}
+
+def presenceSensorHandler5(evt){
+	state.presenceSensor5 = evt.value
+	LOGDEBUG("IN presenceSensorHandler5 - Presence Sensor = ${presenceSensor5}")
+    if(state.presenceSensor5 == "not present"){
+    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+		state.beenHere5 = "no"
+    } else {
+		LOGDEBUG("Presence Sensor is present - Let's go!")
+    }
+}
+
 def lockHandler(evt) {
 	if(state.enablerSwitch2 == "off") {
 		state.lockStatus = evt.value
@@ -207,7 +274,18 @@ def lockHandler(evt) {
 			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 				LOGDEBUG("In lockHandler...Pause: ${pause1}")
-				getTimeDiff()
+				state.presenceMap = [:]
+				state.nameCount = 0
+				state.canSpeak = "no"
+				if(presenceSensor1) getTimeDiff1()
+				if(presenceSensor2) getTimeDiff2()
+				if(presenceSensor3) getTimeDiff3()
+				if(presenceSensor4) getTimeDiff4()
+				if(presenceSensor5) getTimeDiff5()
+				LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
+				def delay1ms = delay1 * 1000
+				pauseExecution(delay1ms)
+				if(state.canSpeak == "yes") talkNow1()
 			}
 		}
 	} else {
@@ -224,7 +302,19 @@ def contactSensorHandler(evt) {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-					getTimeDiff()
+					state.presenceMap = [:]
+					state.nameCount = 0
+					state.canSpeak = "no"
+					LOGDEBUG("In contactSensorHandler...canSpeak: ${state.canSpeak}")
+					if(presenceSensor1) getTimeDiff1()
+					if(presenceSensor2) getTimeDiff2()
+					if(presenceSensor3) getTimeDiff3()
+					if(presenceSensor4) getTimeDiff4()
+					if(presenceSensor5) getTimeDiff5()
+					LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
+					def delay1ms = delay1 * 1000
+					pauseExecution(delay1ms)
+					if(state.canSpeak == "yes") talkNow1()
 				}
 			}
 		}
@@ -233,7 +323,19 @@ def contactSensorHandler(evt) {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-					getTimeDiff()
+					state.presenceMap = [:]
+					state.nameCount = 0
+					state.canSpeak = "no"
+					LOGDEBUG("In contactSensorHandler...canSpeak: ${state.canSpeak}")
+					if(presenceSensor1) getTimeDiff1()
+					if(presenceSensor2) getTimeDiff2()
+					if(presenceSensor3) getTimeDiff3()
+					if(presenceSensor4) getTimeDiff4()
+					if(presenceSensor5) getTimeDiff5()
+					LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
+					def delay1ms = delay1 * 1000
+					pauseExecution(delay1ms)
+					if(state.canSpeak == "yes") talkNow1()
 				}
 			}
 		}
@@ -250,7 +352,18 @@ def motionSensorHandler(evt) {
 			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 				LOGDEBUG("In motionSensorHandler...Pause: ${pause1}")
-				getTimeDiff()
+				state.presenceMap = [:]
+				state.nameCount = 0
+				state.canSpeak = "no"
+				if(presenceSensor1) getTimeDiff1()
+				if(presenceSensor2) getTimeDiff2()
+				if(presenceSensor3) getTimeDiff3()
+				if(presenceSensor4) getTimeDiff4()
+				if(presenceSensor5) getTimeDiff5()
+				LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
+				def delay1ms = delay1 * 1000
+				pauseExecution(delay1ms)
+				if(state.canSpeak == "yes") talkNow1()
 			}
 		}
 	} else {
@@ -258,18 +371,138 @@ def motionSensorHandler(evt) {
 	}
 }
 										
-def getTimeDiff() {
-	LOGDEBUG("In getTimeDiff...")
-	def sensorStatus = presenceSensor1.currentValue("presence")
-	LOGDEBUG("Presence Sensor Status: = ${sensorStatus}")
-	if(sensorStatus == "present") {
-		LOGDEBUG("Been Here: ${state.beenHere}")
-		def lastActivity = presenceSensor1.getLastActivity()
+def getTimeDiff1() {
+	LOGDEBUG("In getTimeDiff1...")
+	def sensorStatus1 = presenceSensor1.currentValue("presence")
+	LOGDEBUG("Presence Sensor Status - 1: ${sensorStatus1}")
+	if(sensorStatus1 == "present") {
+		LOGDEBUG("Been Here: ${state.beenHere1}")
+		def lastActivity1 = presenceSensor1.getLastActivity()
 			
-		LOGDEBUG("lastActivity: ${lastActivity}")
+		LOGDEBUG("lastActivity: ${lastActivity1}")
     	long timeDiff
    		def now = new Date()
-    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
+    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity1}".replace("+00:00","+0000"))
+    	long unxNow = now.getTime()
+    	long unxPrev = prev.getTime()
+    	unxNow = unxNow/1000
+    	unxPrev = unxPrev/1000
+    	timeDiff = Math.abs(unxNow-unxPrev)
+    	timeDiff = Math.round(timeDiff/60)
+    
+		LOGDEBUG("timeDiff: ${timeDiff}")	
+  		if(timeDiff < timeHome) {
+			if(state.beenHere1 == "no") {
+				state.beenHere1 = "yes"
+				log.info "${app.label} - ${friendlyName1} just got here! Time Diff = ${timeDiff}"
+				state.nameCount = state.nameCount + 1
+				state.presenceMap = [friendlyName1]
+				state.canSpeak = "yes"
+			}
+		} else {
+			state.beenHere1 = "no"
+			log.info "${app.label} - ${friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
+		}
+	} else {
+		LOGDEBUG("Been Here: ${state.beenHere1}")
+		LOGDEBUG("Presence Sensor: ${sensorStatus1} - No announcement needed.")
+		state.beenHere1 = "no"
+	}
+}
+
+def getTimeDiff2() {
+	LOGDEBUG("In getTimeDiff2...")
+	def sensorStatus2 = presenceSensor2.currentValue("presence")
+	LOGDEBUG("Presence Sensor Status - 2: ${sensorStatus2}")
+	if(sensorStatus2 == "present") {
+		LOGDEBUG("Been Here: ${state.beenHere2}")
+		def lastActivity2 = presenceSensor2.getLastActivity()
+			
+		LOGDEBUG("lastActivity: ${lastActivity2}")
+    	long timeDiff
+   		def now = new Date()
+    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity2}".replace("+00:00","+0000"))
+    	long unxNow = now.getTime()
+    	long unxPrev = prev.getTime()
+    	unxNow = unxNow/1000
+    	unxPrev = unxPrev/1000
+    	timeDiff = Math.abs(unxNow-unxPrev)
+    	timeDiff = Math.round(timeDiff/60)
+    
+		LOGDEBUG("timeDiff: ${timeDiff}")	
+  		if(timeDiff < timeHome) {
+			if(state.beenHere2 == "no") {
+				state.beenHere2 = "yes"
+				log.info "${app.label} - ${friendlyName2} just got here! Time Diff = ${timeDiff}"
+				state.nameCount = state.nameCount + 1
+				if(state.nameCount == 1) state.presenceMap = [friendlyName2]
+				if(state.nameCount >= 2) state.presenceMap += [friendlyName2]
+				state.canSpeak = "yes"
+			}
+		} else {
+			state.beenHere2 = "no"
+			log.info "${app.label} - ${friendlyName2} - No announcement needed. Time Diff = ${timeDiff}"
+		}
+	} else {
+		LOGDEBUG("Been Here: ${state.beenHere2}")
+		LOGDEBUG("Presence Sensor: ${sensorStatus2} - No announcement needed.")
+		state.beenHere2 = "no"
+	}
+}
+
+def getTimeDiff3() {
+	LOGDEBUG("In getTimeDiff3...")
+	def sensorStatus3 = presenceSensor3.currentValue("presence")
+	LOGDEBUG("Presence Sensor Status - 3: ${sensorStatus3}")
+	if(sensorStatus3 == "present") {
+		LOGDEBUG("Been Here: ${state.beenHere3}")
+		def lastActivity3 = presenceSensor3.getLastActivity()
+			
+		LOGDEBUG("lastActivity: ${lastActivity3}")
+    	long timeDiff
+   		def now = new Date()
+    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity3}".replace("+00:00","+0000"))
+    	long unxNow = now.getTime()
+    	long unxPrev = prev.getTime()
+    	unxNow = unxNow/1000
+    	unxPrev = unxPrev/1000
+    	timeDiff = Math.abs(unxNow-unxPrev)
+    	timeDiff = Math.round(timeDiff/60)
+    
+		LOGDEBUG("timeDiff: ${timeDiff}")	
+  		if(timeDiff < timeHome) {
+			if(state.beenHere3 == "no") {
+				state.beenHere3 = "yes"
+				log.info "${app.label} - ${friendlyName3} just got here! Time Diff = ${timeDiff}"
+				state.nameCount = state.nameCount + 1
+				if(state.nameCount == 1) state.presenceMap = [friendlyName3]
+				if(state.nameCount >= 2) state.presenceMap += [friendlyName3]
+				state.canSpeak = "yes"
+			}
+		} else {
+			state.beenHere3 = "no"
+
+			log.info "${app.label} - ${friendlyName3} - No announcement needed. Time Diff = ${timeDiff}"
+		}
+	} else {
+		LOGDEBUG("Been Here: ${state.beenHere3}")
+		LOGDEBUG("Presence Sensor: ${sensorStatus3} - No announcement needed.")
+		state.beenHere3 = "no"
+	}
+}
+
+def getTimeDiff4() {
+	LOGDEBUG("In getTimeDiff4...")
+	def sensorStatus4 = presenceSensor4.currentValue("presence")
+	LOGDEBUG("Presence Sensor Status - 4: ${sensorStatus4}")
+	if(sensorStatus4 == "present") {
+		LOGDEBUG("Been Here: ${state.beenHere4}")
+		def lastActivity4 = presenceSensor4.getLastActivity()
+			
+		LOGDEBUG("lastActivity: ${lastActivity4}")
+    	long timeDiff
+   		def now = new Date()
+    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity4}".replace("+00:00","+0000"))
     	long unxNow = now.getTime()
     	long unxPrev = prev.getTime()
     	unxNow = unxNow/1000
@@ -278,24 +511,63 @@ def getTimeDiff() {
     	timeDiff = Math.round(timeDiff/60)
     
 		LOGDEBUG("timeDiff: ${timeDiff}")
-	
-		def delay1ms = delay1 * 1000	
   		if(timeDiff < timeHome) {
-			if(state.beenHere == "no") {
-				state.beenHere = "yes"
-				log.info "${app.label} - ${friendlyName1} just got here! Time Diff = ${timeDiff}"
-				LOGDEBUG("Wait ${delay1} seconds to Speak")
-				pauseExecution(delay1ms)
-				talkNow1()
+			if(state.beenHere4 == "no") {
+				state.beenHere4 = "yes"
+				log.info "${app.label} - ${friendlyName4} just got here! Time Diff = ${timeDiff}"
+				state.nameCount = state.nameCount + 1
+				if(state.nameCount == 1) state.presenceMap = [friendlyName4]
+				if(state.nameCount >= 2) state.presenceMap += [friendlyName4]
+				state.canSpeak = "yes"
 			}
-		} else{
-			state.beenHere = "no"
-			log.info "${app.label} - ${friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
+		} else {
+			state.beenHere4 = "no"
+			log.info "${app.label} - ${friendlyName4} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Been Here: ${state.beenHere}")
-		LOGDEBUG("Presence Sensor: ${sensorStatus} - No announcement needed.")
-		state.beenHere = "no"
+		LOGDEBUG("Been Here: ${state.beenHere4}")
+		LOGDEBUG("Presence Sensor: ${sensorStatus4} - No announcement needed.")
+		state.beenHere4 = "no"
+	}
+}
+
+def getTimeDiff5() {
+	LOGDEBUG("In getTimeDiff5...")
+	def sensorStatus5 = presenceSensor5.currentValue("presence")
+	LOGDEBUG("Presence Sensor Status - 5: ${sensorStatus5}")
+	if(sensorStatus5 == "present") {
+		LOGDEBUG("Been Here: ${state.beenHere5}")
+		def lastActivity5 = presenceSensor5.getLastActivity()
+			
+		LOGDEBUG("lastActivity: ${lastActivity5}")
+    	long timeDiff
+   		def now = new Date()
+    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity5}".replace("+00:00","+0000"))
+    	long unxNow = now.getTime()
+    	long unxPrev = prev.getTime()
+    	unxNow = unxNow/1000
+    	unxPrev = unxPrev/1000
+    	timeDiff = Math.abs(unxNow-unxPrev)
+    	timeDiff = Math.round(timeDiff/60)
+    
+		LOGDEBUG("timeDiff: ${timeDiff}")	
+  		if(timeDiff < timeHome) {
+			if(state.beenHere5 == "no") {
+				state.beenHere5 = "yes"
+				log.info "${app.label} - ${friendlyName5} just got here! Time Diff = ${timeDiff}"
+				state.nameCount = state.nameCount + 1
+				if(state.nameCount == 1) state.presenceMap = [friendlyName5]
+				if(state.nameCount >= 2) state.presenceMap += [friendlyName5]
+				state.canSpeak = "yes"
+			}
+		} else {
+			state.beenHere5 = "no"
+			log.info "${app.label} - ${friendlyName5} - No announcement needed. Time Diff = ${timeDiff}"
+		}
+	} else {
+		LOGDEBUG("Been Here: ${state.beenHere5}")
+		LOGDEBUG("Presence Sensor: ${sensorStatus5} - No announcement needed.")
+		state.beenHere5 = "no"
 	}
 }
 
@@ -311,14 +583,17 @@ def talkNow1() {
     		LOGDEBUG("Music Player")
     		setVolume()
     		speaker1.playTextAndRestore(state.fullMsg1)
+			state.canSpeak = "no"
 			LOGDEBUG("Wow, that's it!")
   		}   
 		if (speechMode == "Speech Synth"){ 
 			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
 			speaker1.speak(state.fullMsg1)
+			state.canSpeak = "no"
 			LOGDEBUG("Wow, that's it!")
 		}
 	} else {
+		state.canSpeak = "no"
 		LOGDEBUG("It's quiet time...Can't talk right now")
 	}
 }
@@ -372,7 +647,7 @@ private compileMsg1() {
 	LOGDEBUG("In compileMsg...message1 = ${message1}")
     def msgComp = ""
     msgComp = message1.toLowerCase()
-		LOGDEBUG("Changed msgComp to lowercase = ${msgComp}")
+	LOGDEBUG("Changed msgComp to lowercase = ${msgComp}")
 	if (msgComp.toLowerCase().contains("%random%")) {msgComp = msgComp.toLowerCase().replace('%random%', getGroup1() )}
 	if (msgComp.toLowerCase().contains("%greeting%")) {msgComp = msgComp.toLowerCase().replace('%greeting%', getGreeting() )}
 	if (msgComp.toLowerCase().contains("%name%")) {msgComp = msgComp.toLowerCase().replace('%name%', getName() )}
@@ -381,11 +656,53 @@ private compileMsg1() {
 }	
 
 private getName(){
-	LOGDEBUG("In getName...Name = ${friendlyName1}")
-	name1 = "${friendlyName1}"
-	if(name1 == null) {name1 = "Whoever you are"}
-	LOGDEBUG("AGAIN...Name = ${name1}")
-	return name1
+	LOGDEBUG("In getName...")
+	LOGDEBUG("In getName...Number of Names: ${state.nameCount} - Names: ${state.presenceMap}")
+	name = ""
+	myCount = 0
+	if(state.nameCount == 1) {
+		state.presenceMap.each { it -> 
+			LOGDEBUG("*********** In nameCount=1: myCount = ${myCount}")
+			name = "${it.value}"
+		}
+	}
+	if(state.nameCount == 2) {
+		state.presenceMap.each { it -> 
+			LOGDEBUG("*********** In nameCount=2: myCount = ${myCount}")
+			myCount = myCount + 1
+			name = "${name}" + "${it.value} "
+			if(myCount == 1) name = "${name}" + "and "
+		}
+		name = "${name}" + "!"
+	}
+	if(state.nameCount == 3) {
+		state.presenceMap.each { it -> 
+			LOGDEBUG("*********** In nameCount=3: myCount = ${myCount}")
+			myCount = myCount + 1
+			name = "${name}" + "${it.value}, "
+			if(myCount == 2) name = "${name}" + "and "
+		}
+	}
+	if(state.nameCount == 4) {
+		state.presenceMap.each { it -> 
+			LOGDEBUG("*********** In nameCount=4: myCount = ${myCount}")
+			myCount = myCount + 1
+			name = "${name}" + "${it.value}, "
+			if(myCount == 3) name = "${name}" + "and "
+		}
+	}
+	if(state.nameCount == 5) {
+		state.presenceMap.each { it -> 
+			LOGDEBUG("*********** In nameCount=5: myCount = ${myCount}")
+			myCount = myCount + 1
+			name = "${name}" + "${it.value}, "
+			if(myCount == 4) name = "${name}" + "and "
+		}
+	}
+	if(names == null) names = "Whoever you are"
+	if(names == "") names = "Whoever you are"
+	LOGDEBUG("AGAIN...Name = ${name}")
+	return name
 }
 
 private getGreeting(){
@@ -477,12 +794,19 @@ def pauseOrNot(){
 }
 
 def setDefaults(){
+	setupNewStuff()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
-	if(state.beenHere == null){state.beenHere = "no"}
+	if(state.beenHere1 == null){state.beenHere1 = "no"}
+	if(state.beenHere2 == null){state.beenHere2 = "no"}
+	if(state.beenHere3 == null){state.beenHere3 = "no"}
+	if(state.beenHere4 == null){state.beenHere4 = "no"}
+	if(state.beenHere5 == null){state.beenHere5 = "no"}
+	state.nameCount = 0
+	state.canSpeak = "no"
 }
 
 def logCheck(){
@@ -513,7 +837,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - App Version: 1.0.8 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - App Version: 1.1.0 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
-
