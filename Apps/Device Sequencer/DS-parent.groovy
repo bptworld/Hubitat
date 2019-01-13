@@ -83,7 +83,7 @@ def mainPage() {
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "* Select as many devices from each group as needed.<br>* All devices selected will turn on/off with the Control Switch.<br>* When executed, group 1 will run first, then group 2, group 3, group 4 and group 5.<br>* Each group can have a diffenet pause between devices AND a different pause between groups."	
+				paragraph "* Select as many devices from each group as needed.<br>* All devices selected will turn on/off with the Control Switch.<br>* When executed, group 1 will run first, then group 2, group 3, group 4 and group 5.<br>* Each group can have a different pause between devices AND a different pause between groups."	
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Device Sequencer Child", namespace: "BPTWorld", title: "<b>Add a new 'Device Sequencer' child</b>", multiple: true)
