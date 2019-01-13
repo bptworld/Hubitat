@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 01/12/19 - Made the Control switch stand out more.
  *  V1.0.0 - 01/12/19 - Initial Release
  *
  */
@@ -86,8 +87,9 @@ def pageConfig() {
 			paragraph "<b>Group 5</b>"
 			input "g5Switches", "capability.switch", title: "Group 5 - Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g5Switches) input "timeToPause5", "number", title: "Group 5 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
-			paragraph getFormat("line")
-			input "controlSwitch", "capability.switch", title: "Select the switch to activate the sequence", required: true, multiple: false 
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
+			input "controlSwitch", "capability.switch", title: "Select the switch to control the sequence (on/off)", required: true, multiple: false 
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
 		
@@ -284,6 +286,6 @@ def display() {
 def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Sequencer - App Version: 1.0.0 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Sequencer - App Version: 1.0.1 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
 	}
 }
