@@ -7,7 +7,6 @@
  *  Copyright 2018 Bryan Turcotte (@bptworld)
  *
  *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Also thanks to Jody Albritton for the original 'One At A Time Please' code that I based this app off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
