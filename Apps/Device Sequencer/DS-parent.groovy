@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 01/12/19 - Made the Control switch stand out more.
  *  V1.0.0 - 01/12/19 - Initial release.
  *
  */
