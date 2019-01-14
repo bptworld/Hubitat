@@ -1,4 +1,4 @@
-# At Home Simulator
+# At Home Simulator - BETA
 <b>Design Usage:</b><br>
 Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.<br><br>
 
