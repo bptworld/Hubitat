@@ -1,12 +1,12 @@
 {
-  "currVersion": "v1.2.0",
+  "currVersion": "v1.1.6",
   
   "parentRawCode":
-  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy' target='_blank'>[Parent Raw Code]</a>",
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Parent.groovy' target='_blank'>[Parent Raw Code]</a>",
   
   "childRawCode":
-  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy' target='_blank'>[Child Raw Code]</a>",
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Child.groovy' target='_blank'>[Child Raw Code]</a>",
   
   "discussion":
-  "<a href='https://community.hubitat.com/t/release-lighting-effects/4330' target='_blank'>[Discussion]</a></span>"
+  "<a href='https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667' target='_blank'>[Discussion]</a></span>"
 }
