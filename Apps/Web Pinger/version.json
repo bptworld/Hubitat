@@ -1,12 +1,12 @@
 {
-  "currVersion": "v1.2.0",
+  "currVersion": "v1.0.2",
   
   "parentRawCode":
-  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy' target='_blank'>[Parent Raw Code]</a>",
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
   
   "childRawCode":
-  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy' target='_blank'>[Child Raw Code]</a>",
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-child.groovy' target='_blank'>[Child Raw Code]</a>",
   
   "discussion":
-  "<a href='https://community.hubitat.com/t/release-lighting-effects/4330' target='_blank'>[Discussion]</a></span>"
+  "<a href='https://community.hubitat.com/t/release-web-pinger/8347' target='_blank'>[Discussion]</a></span>"
 }
