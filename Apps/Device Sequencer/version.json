@@ -1,0 +1,12 @@
+{
+  "currVersion": "v1.0.4",
+  
+  "parentRawCode":
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
+  
+  "childRawCode":
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-child.groovy' target='_blank'>[Child Raw Code]</a>",
+  
+  "discussion":
+  "<a href='https://community.hubitat.com/t/release-device-sequencer/8596' target='_blank'>[Discussion]</a></span>"
+}
