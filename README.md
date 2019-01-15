@@ -10,6 +10,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacu
 **Abacus - Time Traveler** - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus-time-traveler/8091" target="_blank">Go Here</a>
 <br><br>
+**At Home Simulator** - Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-simulator/8697" target="_blank">Go Here</a>
+<br><br>
 **BI Control** - Designed to work locally with Blue Iris security software.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
