@@ -55,11 +55,14 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 01/08/19 - Fixed Enabler/Disable switch. It wasn't working.
+ *  V1.0.3 - 01/15/19 - Updated footer with update check and links
+ *  V1.0.2 - 01/10/19 - Fixed Enabler/Disable switch. It wasn't working.
  *  V1.0.1 - 12/30/18 - Updated to new color theme.
  *  V1.0.0 - 12/19/18 - Initial release.
  *
  */
+
+def version(){"v1.0.3"}
 
 definition(
     name: "Motion Controlled Scene Lighting Child",
@@ -181,17 +184,6 @@ def pageConfig() {
     	}
 		display2()
 	}
-}
-
-def getImage(type) {
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
-}
-
-def getFormat(type, myText=""){
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -597,6 +589,17 @@ def LOGDEBUG(txt){
     }
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+}
+
 def display() {
 	section() {
 		paragraph getFormat("line")
@@ -604,9 +607,32 @@ def display() {
 	}
 }
 
-def display2() {
+def checkForUpdate(){
+	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/version.json",
+				   	contentType: "application/json"]
+       	try {
+			httpGet(params) { response ->
+				def results = response.data
+				def appStatus
+				if(version() == results.currVersion){
+					appStatus = "${version()} - No Update Available - ${results.discussion}"
+				}
+				else {
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					log.warn "${app.label} has an update available - Please consider updating."
+				}
+				return appStatus
+			}
+		} 
+        catch (e) {
+        	log.error "Error:  $e"
+    	}
+}
+
+def display2(){
 	section() {
+		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - App Version: 1.0.2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
-	}
-} 
+		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+	}       
+}  
