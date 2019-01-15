@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 01/15/19 - Updated footer with update check and links
  *  V1.0.5 - 01/04/19 - Removed some left over code causing an error.
  *  V1.0.4 - 01/03/19 - Bug fixes and a much better way to remove a device and it's stats.
  *  V1.0.3 - 01/02/19 - Changed name. Cleaned up code.
@@ -46,6 +47,8 @@
  *  V1.0.0 - 12/27/18 - Initial release.
  *
  */
+
+def version(){"v1.0.6"}
 
 definition(
     name:"Abacus - Intense Counting",
@@ -79,6 +82,7 @@ def initialize() {
     log.info "Child app: ${child.label}"
     }
 }
+
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
@@ -115,7 +119,7 @@ def installCheck(){
 
 def getImage(type) {
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
 def getFormat(type, myText=""){
@@ -124,9 +128,32 @@ def getFormat(type, myText=""){
 	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
+def checkForUpdate(){
+	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/version.json",
+				   	contentType: "application/json"]
+       	try {
+			httpGet(params) { response ->
+				def results = response.data
+				def appStatus
+				if(version() == results.currVersion){
+					appStatus = "${version()} - No Update Available - ${results.discussion}"
+				}
+				else {
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					log.warn "${app.label} has an update available - Please consider updating."
+				}
+				return appStatus
+			}
+		} 
+        catch (e) {
+        	log.error "Error:  $e"
+    	}
+}
+
 def display(){
 	section() {
+		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - App Version: 1.0.5 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
 	}       
 }         
