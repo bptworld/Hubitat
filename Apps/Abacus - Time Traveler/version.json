@@ -1,0 +1,12 @@
+{
+  "currVersion": "v1.0.2",
+  
+  "parentRawCode":
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
+  
+  "childRawCode":
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-child.groovy' target='_blank'>[Child Raw Code]</a>",
+  
+  "discussion":
+  "<a href='https://community.hubitat.com/t/release-abacus-time-traveler/8091' target='_blank'>[Discussion]</a></span>"
+}
