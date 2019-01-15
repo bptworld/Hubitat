@@ -37,12 +37,15 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.3 - 01/15/19 - Updated footer with update check and links
  *  V1.0.2 - 01/06/19 - Squashed a bug in the Weekly count reset. Also added in a way to delete a single line from the reports.
  *						This is needed to get rid of the orphans created from the Weekly Count bug.
  *  V1.0.1 - 01/04/19 - Major logic change to calculate how long a device was active.
  *  V1.0.0 - 01/03/19 - Initial release.
  *
  */
+
+def version(){"v1.0.3"}
 
 definition(
     name: "Abacus - Time Traveler Child",
@@ -110,7 +113,7 @@ def pageConfig() {
 			}
 			if(deleteALine) {
 				section("Instructions for Deleting a line:", hideable: true, hidden: true) {
-					paragraph "If a device needs to be removed<br> - Click on 'Abacus Reports'<br> - Completely highlight the line that needs to be removed<br> - Press 'ctrl'-C to copy it, then click 'Done'<br> - Now scroll back down to the 'Maintenance' section<br> - Paste in the line to remove and then click outside the box<br> - Now adjust the code by putting < b > and < /b > (but with NO spaces) around the device name.  ie. < b >mZone-Basement< /b > - Week: 0 Days, 0 Hours, 0 Minutes, null Seconds<br> - Now click outside the box again<br>	- Press the 'Delete Now' button - WAIT 2 seconds - Press the button again."
+					paragraph "If a device needs to be removed<br> - Click on 'Abacus Reports'<br> - Completely highlight the line that needs to be removed<br> - Press 'ctrl'-C to copy it, then click 'Done'<br> - Now scroll back down to the 'Maintenance' section<br> - Paste in the line to remove and then click outside the box<br> - Now adjust the code by putting < b > and < /b > (but with NO spaces) around the device name.  ie. < b >mZone-Basement< /b > - Week: 0 Days, 0 Hours, 0 Minutes, null Seconds<br> - Now click outside the box again<br> - Press the 'Delete Now' button - WAIT 2 seconds - Press the button again."
 					paragraph "Now go back to the 'Abacus Reports' and the line should be gone."
 				}
 				section() {
@@ -182,17 +185,6 @@ def pageCounts(params) {
 			paragraph "<div style='color:#1A77C9'>Report generated: ${rightNow}</div>"
 		}
 	}
-}
-
-def getImage(type) {
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
-}
-
-def getFormat(type, myText=""){
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def installed() {
@@ -2236,6 +2228,39 @@ def LOGDEBUG(txt){
     }
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+}
+
+def checkForUpdate(){
+	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/version.json",
+				   	contentType: "application/json"]
+       	try {
+			httpGet(params) { response ->
+				def results = response.data
+				def appStatus
+				if(version() == results.currVersion){
+					appStatus = "${version()} - No Update Available - ${results.discussion}"
+				}
+				else {
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					log.warn "${app.label} has an update available - Please consider updating."
+				}
+				return appStatus
+			}
+		} 
+        catch (e) {
+        	log.error "Error:  $e"
+    	}
+}
+
 def display() {
 	section() {
 		paragraph getFormat("line")
@@ -2243,9 +2268,10 @@ def display() {
 	}
 }
 
-def display2() {
+def display2(){
 	section() {
+		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - App Version: 1.0.2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
-	}
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+	}       
 }
