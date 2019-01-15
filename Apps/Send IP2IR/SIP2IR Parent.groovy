@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.7 - 01/15/19 - Updated footer with update check and links
  *  V1.1.6 - 12/30/18 - Updated to my new color theme.
  *  V1.1.5 - 12/06/18 - Code cleanup, removal of IP Address from Child Apps as it was not needed anymore. 
  *  V1.1.4 - 11/30/18 - Added pause button to child apps. Added an Enable/Disable by switch option. Cleaned up code.
@@ -53,6 +54,8 @@
  *						me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
+
+def version(){"v1.1.7"}
 
 definition(
     name:"Send IP2IR",
@@ -144,7 +147,7 @@ def installCheck(){
 
 def getImage(type) {
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
 def getFormat(type, myText=""){
@@ -153,9 +156,32 @@ def getFormat(type, myText=""){
 	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
+def checkForUpdate(){
+	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/version.json",
+				   	contentType: "application/json"]
+       	try {
+			httpGet(params) { response ->
+				def results = response.data
+				def appStatus
+				if(version() == results.currVersion){
+					appStatus = "${version()} - No Update Available - ${results.discussion}"
+				}
+				else {
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					log.warn "${app.label} has an update available - Please consider updating."
+				}
+				return appStatus
+			}
+		} 
+        catch (e) {
+        	log.error "Error:  $e"
+    	}
+}
+
 def display(){
 	section() {
+		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Send IP2IR - App Version: 1.1.6 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a></div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Send IP2IR - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
 	}       
-}         
+}          
