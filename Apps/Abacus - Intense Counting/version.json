@@ -1,8 +1,11 @@
 {
   "currVersion": "v1.0.5",
   
-  "rawCode":
+  "parentRawCode":
   "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-parent.groovy' target='_blank'>[Raw Code]</a>",
+  
+  "childRawCode":
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy' target='_blank'>[Raw Code]</a>",
   
   "discussion":
   "<a href='https://community.hubitat.com/t/release-abacus-intense-counting/7883' target='_blank'>[Hubitat Forum Discussion]</a></span>"
