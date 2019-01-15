@@ -2,11 +2,11 @@
   "currVersion": "v1.2.0",
   
   "parentRawCode":
-  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy' target='_blank'>[Parent Raw Code]</a>",
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Parent.groovy' target='_blank'>[Parent Raw Code]</a>",
   
   "childRawCode":
-  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy' target='_blank'>[Child Raw Code]</a>",
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Child.groovy' target='_blank'>[Child Raw Code]</a>",
   
   "discussion":
-  "<a href='https://community.hubitat.com/t/release-lighting-effects/4330' target='_blank'>[Discussion]</a></span>"
+  "<a href='https://community.hubitat.com/t/release-one-at-a-time/7063' target='_blank'>[Discussion]</a></span>"
 }
