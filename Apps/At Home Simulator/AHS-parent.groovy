@@ -36,12 +36,13 @@
  *
  *  Changes:
  *
+ *  V0.0.4 - 01/16/19 - Changed the delay between groups to be a random time within a user selected range.
  *  V0.0.2 - 01/14/19 - Added update information to custom footer. Used code from @Stephack as example, thank you.
  *  V0.0.1 - 01/14/19 - Initial Beta Release
  *
  */
 
-def version(){"v0.0.2"}
+def version(){"v0.0.4"}
 
 definition(
 	name: "At Home Simulator",
