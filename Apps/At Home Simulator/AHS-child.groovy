@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V0.0.5 - 01/16/19 - Startup now has a random delay too.
  *  V0.0.4 - 01/16/19 - Changed the delay between groups to be a random time within a user selected range.
  *  V0.0.3 - 01/15/19 - Updated footer with update check and links
  *  V0.0.2 - 01/14/19 - Added update information to custom footer. Used code from @Stephack as example, thank you.  
@@ -43,7 +44,7 @@
  *
  */
 
-def version(){"v0.0.4"}
+def version(){"v0.0.5"}
 
 definition(
     name: "At Home Simulator Child",
@@ -77,13 +78,16 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
 			input "controlSwitch", "capability.switch", title: "Select the switch to control the Lighting Routine (on/off)", required: true, multiple: false
 			input "tRunTime", "number", title: "Total run time. This will stop the app even if it didn't finish the entire simulator (in minutes)", required: true, defaultValue: 360
+			paragraph "Extra Time to pause before Group 1 starts. This is a random delay based on the two numbers you select below. Makes it so the lights don't turn on at exactly the same time each time the simulation starts."
+			input "pFrom0", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
+			input "pTo0", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Routines")) {}
 		section("<b>Group 1</b>", hideable: true, hidden: true) {
 			input "g1Switches", "capability.switch", title: "Switches to control", required: true, multiple: true, submitOnChange: true
 			if(g1Switches) input "g1TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
 			if(g1Switches) input "timeToPause1", "number", title: "Time to pause between devices turning On within group 1 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 1 and Group 2. This is a random delay based on the two numbers you select below. The delay will be between the two numbers."
+			paragraph "Extra Time to pause between Group 1 and Group 2. This is a random delay based on the two numbers you select below."
 			if(g1Switches) input "pFrom1", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g1Switches) input "pTo1", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
@@ -91,7 +95,7 @@ def pageConfig() {
 			input "g2Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g2Switches) input "g2TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
 			if(g2Switches) input "timeToPause2", "number", title: "Time to pause between devices turning On within group 2 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 2 and Group 3. This is a random delay based on the two numbers you select below. The delay will be between the two numbers."
+			paragraph "Extra Time to pause between Group 2 and Group 3. This is a random delay based on the two numbers you select below."
 			if(g2Switches) input "pFrom2", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g2Switches) input "pTo2", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
@@ -99,7 +103,7 @@ def pageConfig() {
 			input "g3Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g3Switches) input "g3TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
 			if(g3Switches) input "timeToPause3", "number", title: "Time to pause between devices turning On within group 3 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 3 and Group 4. This is a random delay based on the two numbers you select below. The delay will be between the two numbers."
+			paragraph "Extra Time to pause between Group 3 and Group 4. This is a random delay based on the two numbers you select below."
 			if(g3Switches) input "pFrom3", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g3Switches) input "pTo3", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
@@ -107,7 +111,7 @@ def pageConfig() {
 			input "g4Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g4Switches) input "g4TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
 			if(g4Switches) input "timeToPause4", "number", title: "Time to pause between devices turning On within group 4 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 4 and Group 5. This is a random delay based on the two numbers you select below. The delay will be between the two numbers."
+			paragraph "Extra Time to pause between Group 4 and Group 5. This is a random delay based on the two numbers you select below."
 			if(g4Switches) input "pFrom4", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g4Switches) input "pTo4", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
@@ -169,6 +173,10 @@ def initialize() {
 }
 
 def deviceOnHandler(evt) {
+	def delay0b = Math.abs(new Random().nextInt() % ([pTo0] - [pFrom0])) + [pFrom0]
+		LOGDEBUG("In deviceOnHandler 0...Delay: ${pFrom0} to ${pTo1} = ${delay0b} till next Group **********")
+		int delay0c = (delay0b * 60) * 1000			// Minutes
+		pauseExecution(delay0c)
 	if(g1Switches) { 
 		int delay1 = (timeToPause1 * 1000)			// Seconds
 		//int delay1a = (timeToPause1a * 60)	* 1000	// Minutes
@@ -179,17 +187,7 @@ def deviceOnHandler(evt) {
 			runIn(g1TTSO, g1SwitchesOff)
 			pauseExecution(delay1)
     	}
-		
 		def delay1b = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-		
-		def delay1ba = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-		def delay1bb = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-		def delay1bc = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-		def delay1bd = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-		def delay1be = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-		
-		LOGDEBUG("In deviceOnHandler 1...Delay: ${delay1ba} ${delay1bb} ${delay1bc} ${delay1bd} ${delay1be} **********")
-		
 		LOGDEBUG("In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********")
 		int delay1c = (delay1b * 60) * 1000			// Minutes
 		pauseExecution(delay1c)
@@ -416,7 +414,7 @@ def checkForUpdate(){
 			httpGet(params) { response ->
 				def results = response.data
 				def appStatus
-				if(version() == results.currVersion){
+				if(version() == results.currChildVersion){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
