@@ -79,8 +79,8 @@ def pageConfig() {
 			input "controlSwitch", "capability.switch", title: "Select the switch to control the Lighting Routine (on/off)", required: true, multiple: false
 			input "tRunTime", "number", title: "Total run time. This will stop the app even if it didn't finish the entire simulator (in minutes)", required: true, defaultValue: 360
 			paragraph "Extra Time to pause before Group 1 starts. This is a random delay based on the two numbers you select below. Makes it so the lights don't turn on at exactly the same time each time the simulation starts."
-			input "pFrom0", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
-			input "pTo0", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
+			input "pFromS", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
+			input "pToS", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Routines")) {}
 		section("<b>Group 1</b>", hideable: true, hidden: true) {
@@ -173,10 +173,10 @@ def initialize() {
 }
 
 def deviceOnHandler(evt) {
-	def delay0b = Math.abs(new Random().nextInt() % ([pTo0] - [pFrom0])) + [pFrom0]
-		LOGDEBUG("In deviceOnHandler 0...Delay: ${pFrom0} to ${pTo1} = ${delay0b} till next Group **********")
-		int delay0c = (delay0b * 60) * 1000			// Minutes
-		pauseExecution(delay0c)
+	def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
+		LOGDEBUG("In deviceOnHandler 0...Delay: ${pFrom0} to ${pToS} = ${delaySb} till next Group **********")
+		int delaySc = (delaySb * 60) * 1000			// Minutes
+		pauseExecution(delaySc)
 	if(g1Switches) { 
 		int delay1 = (timeToPause1 * 1000)			// Seconds
 		//int delay1a = (timeToPause1a * 60)	* 1000	// Minutes
