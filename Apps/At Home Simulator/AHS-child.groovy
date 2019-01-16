@@ -139,17 +139,6 @@ def pageConfig() {
 	}
 }
 
-def getImage(type) {
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
-}
-
-def getFormat(type, myText=""){
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -164,12 +153,17 @@ def updated() {
 }
 
 def initialize() {
-	subscribe(controlSwitch, "switch.on", deviceOnHandler)
-	subscribe(controlSwitch, "switch.on", randomSwitchesHandler)
-	subscribe(controlSwitch, "switch.off", deviceOffHandler)
+	subscribe(controlSwitch, "switch", deviceHandler)
+	if(rSwitches) subscribe(controlSwitch, "switch.on", randomSwitchesHandler)
 	
 	int tRT = (tRunTime * 60)			// Minutes
 	runIn(tRT, deviceOffHandler)
+}
+
+def deviceHandler(evt) {
+	state.Controller = evt.value
+	if(state.Controller == "on") deviceOnHandler()
+	if(state.Controller == "off") deviceOffHandler()	
 }
 
 def deviceOnHandler(evt) {
@@ -245,14 +239,11 @@ def deviceOnHandler(evt) {
 			runIn(g5TTSO, g5SwitchesOff)
 			pauseExecution(delay5)
     	}
-		//def delay5b = Math.abs(new Random().nextInt() % ([pTo5] - [pFrom5])) + [pFrom5]
-		//LOGDEBUG("In deviceOnHandler 5...Delay: ${pFrom5} to ${pTo5} = ${delay5b} till next Group **********")
-		//int delay5c = (delay5b * 60) * 1000			// Minutes
-		//pauseExecution(delay5c)
 	}
 }
 
-def randomSwitchesHandler(evt) { 
+def randomSwitchesHandler(evt) {
+	
 	LOGDEBUG("In randomSwitchesHandler...timeToPauseR: ${timeToPauseR}, rTimeToStayOn: ${rTimeToStayOn}")
 	int delayR = (timeToPauseR * 60)		 	// Minutes
 	int rTTSO = (rTimeToStayOn * 60)			// Minutes
@@ -360,6 +351,7 @@ def deviceOffHandler(evt) {
     	}
 	}
 	unschedule()
+    unsubscribe()
 	controlSwitch.off()
 	LOGDEBUG("In deviceOffHandler...ALL FINISHED")
 }
@@ -407,6 +399,17 @@ def LOGDEBUG(txt){
     }
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
+}
+
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+}
+
 def checkForUpdate(){
 	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/version.json",
 				   	contentType: "application/json"]
@@ -418,7 +421,7 @@ def checkForUpdate(){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
 					log.warn "${app.label} has an update available - Please consider updating."
 				}
 				return appStatus
