@@ -1,5 +1,7 @@
 {
-  "currVersion": "v0.0.4",
+  "currParentVersion": "v0.0.4",
+  
+  "currChildVersion": "v0.0.5",
   
   "parentRawCode":
   "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
