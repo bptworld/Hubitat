@@ -133,7 +133,7 @@ def checkForUpdate(){
 			httpGet(params) { response ->
 				def results = response.data
 				def appStatus
-				if(version() == results.currVersion){
+				if(version() == results.currParentVersion){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
