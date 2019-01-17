@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *  V0.0.5 - 01/16/19 - Startup now has a random delay too.
+ *  V0.0.5 - 01/16/19 - Startup now has a random delay. Pause button and Enable/Disable switch should now work.
  *  V0.0.4 - 01/16/19 - Changed the delay between groups to be a random time within a user selected range.
  *  V0.0.3 - 01/15/19 - Updated footer with update check and links
  *  V0.0.2 - 01/14/19 - Added update information to custom footer. Used code from @Stephack as example, thank you.  
@@ -127,7 +127,7 @@ def pageConfig() {
 			if(rSwitches) input "rTimeToStayOn", "number", title: "How long should each light stay On (in minutes)", required: true, defaultValue: 5
 			if(rSwitches) input "timeToPauseR", "number", title: "Time to pause between devices turning On (in minutes)", required: true, defaultValue: 10
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false, submitOnChange: true}
 		
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
@@ -154,44 +154,71 @@ def updated() {
 
 def initialize() {
 	subscribe(controlSwitch, "switch", deviceHandler)
-	if(rSwitches) subscribe(controlSwitch, "switch.on", randomSwitchesHandler)
+	//if(rSwitches) subscribe(controlSwitch, "switch.on", randomSwitchesHandler)
 	
 	int tRT = (tRunTime * 60)			// Minutes
 	runIn(tRT, deviceOffHandler)
 }
 
 def deviceHandler(evt) {
-	state.Controller = evt.value
-	if(state.Controller == "on") deviceOnHandler()
-	if(state.Controller == "off") deviceOffHandler()	
+	if(state.enablerSwitch2 == "off") {
+		controller = controlSwitch.currentValue("switch")
+		LOGDEBUG("In deviceHandler...Controller: ${controller}")
+		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+			if(controlSwitch.currentValue("switch") == "on") {
+				deviceOnHandler()
+			} else {
+				unschedule()
+				deviceOffHandler()
+			}
+		}
+	}
 }
 
-def deviceOnHandler(evt) {
-	def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
-		LOGDEBUG("In deviceOnHandler 0...Delay: ${pFrom0} to ${pToS} = ${delaySb} till next Group **********")
+def deviceOnHandler() {
+	controller = controlSwitch.currentValue("switch")
+	if(controlSwitch.currentValue("switch") == "on") {
+		def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
+		LOGDEBUG("In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group **********")
 		int delaySc = (delaySb * 60) * 1000			// Minutes
 		pauseExecution(delaySc)
-	if(g1Switches) { 
+		g1SwitchesHandler()
+	} else {
+		unschedule()
+		deviceOffHandler()
+	}
+}
+	
+def g1SwitchesHandler() {
+	controller = controlSwitch.currentValue("switch")
+	if(controlSwitch.currentValue("switch") == "on") {
 		int delay1 = (timeToPause1 * 1000)			// Seconds
-		//int delay1a = (timeToPause1a * 60)	* 1000	// Minutes
 		int g1TTSO = (g1TimeToStayOn * 60)			// Minutes
    		g1Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn}")
+			LOGDEBUG("In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - Controller: ${controller}")
         	device.on()
-			runIn(g1TTSO, g1SwitchesOff)
 			pauseExecution(delay1)
     	}
+		runIn(g1TTSO, g1SwitchesOff)
 		def delay1b = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
 		LOGDEBUG("In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********")
 		int delay1c = (delay1b * 60) * 1000			// Minutes
-		pauseExecution(delay1c)
+	  	pauseExecution(delay1c)
+		if(g2Switches) g2SwitchesHandler()
+	} else {
+		unschedule()
+		deviceOffHandler()
 	}
+}
 	
-	if(g2Switches) { 
+def g2SwitchesHandler() {
+	controller = controlSwitch.currentValue("switch")
+	if(controlSwitch.currentValue("switch") == "on") {
 		int delay2 = (timeToPause2 * 1000) 			// Seconds
 		int g2TTSO = (g2TimeToStayOn * 60)			// Minutes
    		g2Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn}")
+			LOGDEBUG("In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - Controller: ${controller}")
         	device.on()
 			runIn(g2TTSO, g2SwitchesOff)
 			pauseExecution(delay2)
@@ -200,13 +227,19 @@ def deviceOnHandler(evt) {
 		LOGDEBUG("In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********")
 		int delay2c = (delay2b * 60) * 1000			// Minutes
 		pauseExecution(delay2c)
+	} else {
+		unschedule()
+		deviceOffHandler()
 	}
+}
 	
-	if(g3Switches) { 
+def g3SwitchesHandler() {
+	controller = controlSwitch.currentValue("switch")
+	if(controlSwitch.currentValue("switch") == "on") {
 		int delay3 = timeToPause3 * 1000 			// Seconds
 		int g3TTSO = (g3TimeToStayOn * 60)			// Minutes
    		g3Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn}")
+			LOGDEBUG("In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - Controller: ${controller}")
         	device.on()
 			runIn(g3TTSO, g3SwitchesOff)
 			pauseExecution(delay3)
@@ -215,12 +248,19 @@ def deviceOnHandler(evt) {
 		LOGDEBUG("In deviceOnHandler 3...Delay: ${pFrom3} to ${pTo3} = ${delay3b} till next Group **********")
 		int delay3c = (delay3b * 60) * 1000			// Minutes
 		pauseExecution(delay3c)
+	} else {
+		unschedule()
+		deviceOffHandler()
 	}
-	if(g4Switches) { 
+}
+	
+def g4SwitchesHandler() {
+	controller = controlSwitch.currentValue("switch")
+	if(controlSwitch.currentValue("switch") == "on") {
 		int delay4 = timeToPause4 * 1000 			// Seconds
 		int g4TTSO = (g4TimeToStayOn * 60)			// Minutes
    		g4Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn}")
+			LOGDEBUG("In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - Controller: ${controller}")
         	device.on()
 			runIn(g4TTSO, g4SwitchesOff)
 			pauseExecution(delay4)
@@ -229,34 +269,45 @@ def deviceOnHandler(evt) {
 		LOGDEBUG("In deviceOnHandler 4...Delay: ${pFrom4} to ${pTo4} = ${delay4b} till next Group **********")
 		int delay4c = (delay4b * 60) * 1000			// Minutes
 		pauseExecution(delay4c)
+	} else {
+		unschedule()
+		deviceOffHandler()
 	}
-	if(g5Switches) { 
+}
+	
+def g5SwitchesHandler() {
+	controller = controlSwitch.currentValue("switch")
+	if(controlSwitch.currentValue("switch") == "on") {
 		int delay5 = timeToPause5 * 1000 			// Seconds
 		int g5TTSO = (g5TimeToStayOn * 60)			// Minutes
    		g5Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn}")
+			LOGDEBUG("In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - Controller: ${controller}")
         	device.on()
 			runIn(g5TTSO, g5SwitchesOff)
 			pauseExecution(delay5)
     	}
+	} else {
+		unschedule()
+		deviceOffHandler()
 	}
 }
 
-def randomSwitchesHandler(evt) {
+def randomSwitchesHandler() {
+	controller = controlSwitch.currentValue("switch")
+	LOGDEBUG("In randomSwitchesHandler...Controller: ${controller}")
+		LOGDEBUG("In randomSwitchesHandler...timeToPauseR: ${timeToPauseR}, rTimeToStayOn: ${rTimeToStayOn} - Controller: ${controller}")
+		int delayR = (timeToPauseR * 60)		 	// Minutes
+		int rTTSO = (rTimeToStayOn * 60)			// Minutes
 	
-	LOGDEBUG("In randomSwitchesHandler...timeToPauseR: ${timeToPauseR}, rTimeToStayOn: ${rTimeToStayOn}")
-	int delayR = (timeToPauseR * 60)		 	// Minutes
-	int rTTSO = (rTimeToStayOn * 60)			// Minutes
+		def randomS = rSwitches.size();
+		def randomKey1 = Math.abs(new Random().nextInt() % randomS)
+		rSwitch = rSwitches[randomKey1]
 	
-	def randomS = rSwitches.size();
-	def randomKey1 = Math.abs(new Random().nextInt() % randomS)
-	rSwitch = rSwitches[randomKey1]
+		LOGDEBUG("In randomSwitchesHandler...turning on ${rSwitch}, Time to Stay On: ${rTimeToStayOn} ----------")
+    	rSwitch.on()
+		runIn(rTTSO, rSwitchesOff)
 	
-	LOGDEBUG("In randomSwitchesHandler...turning on ${rSwitch}, Time to Stay On: ${rTimeToStayOn}")
-    rSwitch.on()
-	runIn(rTTSO, rSwitchesOff)
-	
-    runIn(delayR, randomSwitchesHandler)
+    	runIn(delayR, randomSwitchesHandler)
 }
 
 def g1SwitchesOff() { 
@@ -314,6 +365,8 @@ def rSwitchesOff() {
 }
 
 def deviceOffHandler(evt) {
+	controller = controlSwitch.currentValue("switch")
+	LOGDEBUG("In deviceOffHandler... Controller: ${controller}")
 	if(g1Switches) { 
    		g1Switches.each { device ->
 			LOGDEBUG("In deviceOffHandler 1...turning all lights off ${device}")
@@ -351,12 +404,24 @@ def deviceOffHandler(evt) {
     	}
 	}
 	unschedule()
-    unsubscribe()
 	controlSwitch.off()
+	controller = controlSwitch.currentValue("switch")
+	LOGDEBUG("In deviceOffHandler... and now... Controller: ${controller}")
 	LOGDEBUG("In deviceOffHandler...ALL FINISHED")
 }
 
 // ***** Normal Stuff *****
+
+def enablerSwitchHandler(evt){
+	state.enablerSwitch2 = evt.value
+	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
+	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
+    if(state.enablerSwitch2 == "on"){
+    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+	} else {
+		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
+    }
+}
 
 def pauseOrNot(){
 	LOGDEBUG("In pauseOrNot...")
