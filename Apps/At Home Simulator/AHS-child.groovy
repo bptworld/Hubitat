@@ -148,11 +148,12 @@ def updated() {
     LOGDEBUG("Updated with settings: ${settings}")
 	unschedule()
     unsubscribe()
-	logCheck()
 	initialize()
 }
 
 def initialize() {
+	logCheck()
+	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	subscribe(controlSwitch, "switch", deviceHandler)
 	
@@ -465,6 +466,14 @@ def LOGDEBUG(txt){
     } catch(ex) {
     	log.error("${app.label} - LOGDEBUG unable to output requested data!")
     }
+}
+
+def setDefaults(){
+    pauseOrNot()
+    if(pause1 == null){pause1 = false}
+    if(state.pauseApp == null){state.pauseApp = false}
+	if(logEnable == null){logEnable = false}
+	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 }
 
 def getImage(type) {
