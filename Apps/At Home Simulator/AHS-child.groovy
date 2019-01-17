@@ -152,6 +152,7 @@ def updated() {
 }
 
 def initialize() {
+	setDefaults()
 	logCheck()
 	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
