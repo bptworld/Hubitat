@@ -153,8 +153,8 @@ def updated() {
 }
 
 def initialize() {
+	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	subscribe(controlSwitch, "switch", deviceHandler)
-	//if(rSwitches) subscribe(controlSwitch, "switch.on", randomSwitchesHandler)
 	
 	int tRT = (tRunTime * 60)			// Minutes
 	runIn(tRT, deviceOffHandler)
@@ -168,11 +168,14 @@ def deviceHandler(evt) {
     	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 			if(controlSwitch.currentValue("switch") == "on") {
 				deviceOnHandler()
+				if(rSwitches) randomSwitchesHandler()
 			} else {
 				unschedule()
 				deviceOffHandler()
 			}
 		}
+	} else {
+		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	}
 }
 
