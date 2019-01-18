@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *  V1.0.9 - 01/17/19 - App no longer sends Push notification when there is nothing to report.
+ *  V1.0.9 - 01/17/19 - Toggle switch added, Send or not to send Push notification when there is nothing to report.
  *  V1.0.8 - 01/15/19 - Updated footer with update check and links
  *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
  *						attribute is null/blank/non-existent. Previously it showed 0. Also adjusted the output on the Push report.
@@ -103,6 +103,7 @@ def pageConfig() {
 					input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required: false, submitOnChange: true
 					input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
 					input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
+					if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 				}
 				section() {
 					input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Below Threshold or Above Threshold", description: "On is Active, Off is Inactive.")
@@ -148,6 +149,7 @@ def pageConfig() {
 			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
 			input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
+			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 		}
 		section() {
 			input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Inactive or active", description: "On is Active, Off is Inactive.")
@@ -479,10 +481,13 @@ def pushNow(){
 			LOGDEBUG("In pushNow...Sending message: ${timeSincePhone}")
         	sendPushMessage.deviceNotification(timeSincePhone)
 		} else {
-			log.info "${app.label} - No push needed...Nothing to report."
-			//emptyMapPhone = "${app.label} - Nothing to report."
-			//LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
-        	//sendPushMessage.deviceNotification(emptyMapPhone)
+			if(pushAll == true) {
+				log.info "${app.label} - No push needed...Nothing to report."
+			} else {
+				emptyMapPhone = "${app.label} - Nothing to report."
+				LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
+        		sendPushMessage.deviceNotification(emptyMapPhone)
+			}
 		}
 	}	
 	if(triggerMode == "Battery_Level") {
@@ -491,10 +496,13 @@ def pushNow(){
 			LOGDEBUG("In pushNow...Sending message: ${batteryPhone}")
 			sendPushMessage.deviceNotification(batteryPhone)
 		} else {
-			log.info "${app.label} - No push needed...Nothing to report."
-			//emptyBatteryPhone = "${app.label} - Nothing to report."
-			//LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
-        	//sendPushMessage.deviceNotification(emptyBatteryPhone)
+			if(pushAll == true) {
+				log.info "${app.label} - No push needed...Nothing to report."
+			} else {
+				emptyBatteryPhone = "${app.label} - Nothing to report."
+				LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
+        		sendPushMessage.deviceNotification(emptyBatteryPhone)
+			}
 		}
 	}	
 }
@@ -534,6 +542,7 @@ def setDefaults(){
 	if(state.timeSinceMapPhone == null){state.timeSinceMapPhone = ""}
 	if(state.batteryMap == null){state.batteryMap = ""}
 	if(state.batteryMapPhone == null){state.batteryMapPhone = ""}
+	if(pushAll == null){pushAll = false}
 }
 
 def logCheck(){
