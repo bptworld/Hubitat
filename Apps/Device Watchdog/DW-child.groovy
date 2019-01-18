@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 01/17/19 - App no longer sends Push notification when there is nothing to report.
  *  V1.0.8 - 01/15/19 - Updated footer with update check and links
  *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
  *						attribute is null/blank/non-existent. Previously it showed 0. Also adjusted the output on the Push report.
@@ -51,7 +52,7 @@
  *
  */
 
-def version(){"v1.0.8"}
+def version(){"v1.0.9"}
 
 definition(
     name: "Device Watchdog Child",
@@ -478,9 +479,10 @@ def pushNow(){
 			LOGDEBUG("In pushNow...Sending message: ${timeSincePhone}")
         	sendPushMessage.deviceNotification(timeSincePhone)
 		} else {
-			emptyMapPhone = "${app.label} - Nothing to report."
-			LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
-        	sendPushMessage.deviceNotification(emptyMapPhone)
+			log.info "${app.label} - No push needed...Nothing to report."
+			//emptyMapPhone = "${app.label} - Nothing to report."
+			//LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
+        	//sendPushMessage.deviceNotification(emptyMapPhone)
 		}
 	}	
 	if(triggerMode == "Battery_Level") {
@@ -489,9 +491,10 @@ def pushNow(){
 			LOGDEBUG("In pushNow...Sending message: ${batteryPhone}")
 			sendPushMessage.deviceNotification(batteryPhone)
 		} else {
-			emptyBatteryPhone = "${app.label} - Nothing to report."
-			LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
-        	sendPushMessage.deviceNotification(emptyBatteryPhone)
+			log.info "${app.label} - No push needed...Nothing to report."
+			//emptyBatteryPhone = "${app.label} - Nothing to report."
+			//LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
+        	//sendPushMessage.deviceNotification(emptyBatteryPhone)
 		}
 	}	
 }
@@ -569,11 +572,11 @@ def checkForUpdate(){
 			httpGet(params) { response ->
 				def results = response.data
 				def appStatus
-				if(version() == results.currVersion){
+				if(version() == results.currChildVersion){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
 					log.warn "${app.label} has an update available - Please consider updating."
 				}
 				return appStatus
