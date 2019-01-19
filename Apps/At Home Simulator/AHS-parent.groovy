@@ -191,7 +191,7 @@ def deviceHandler(evt) {
 				def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
 				LOGDEBUG("In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group - cs: ${atomicState.cSwitch} **********")
 				int delaySc = (delaySb * 60) * 1000			// Minutes
-				log.info "Starting - Waiting Random Pause: ${delaySc}"
+				log.info "Starting - Waiting Random Pause: ${delaySb}"
 				if(atomicState.cSwitch == 1) pauseExecution(delaySc)
 				
 				LOGDEBUG("In between S and 1 ... cs: ${atomicState.cSwitch}   *   *   *")
@@ -204,7 +204,7 @@ def deviceHandler(evt) {
 							LOGDEBUG("In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}")
 							log.info "Group 1 - Turning on ${device}"
         					device.on()
-							log.info "Group 1 - Waiting Pause between devices: ${delay1}"
+							log.info "Group 1 - Waiting Pause between devices: ${timeToPause1}"
 							pauseExecution(delay1)
 						}
     				}
@@ -212,7 +212,7 @@ def deviceHandler(evt) {
 					def delay1b = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
 					LOGDEBUG("In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********")
 					int delay1c = (delay1b * 60) * 1000			// Minutes
-					log.info "Group 1 - Waiting Random Pause: ${delay1c} before heading to Group 2"
+					log.info "Group 1 - Waiting Random Pause: ${delay1b} before heading to Group 2"
 					if(atomicState.cSwitch == 1) pauseExecution(delay1c)
 				}
 				
@@ -226,7 +226,7 @@ def deviceHandler(evt) {
 							LOGDEBUG("In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}")
         					log.info "Group 2 - Turning on ${device}"
 							device.on()
-							log.info "Group 2 - Waiting Pause between devices: ${delay2}"
+							log.info "Group 2 - Waiting Pause between devices: ${timeToPause2}"
 							pauseExecution(delay2)
 						}
     				}
@@ -234,7 +234,7 @@ def deviceHandler(evt) {
 					def delay2b = Math.abs(new Random().nextInt() % ([pTo2] - [pFrom2])) + [pFrom2]
 					LOGDEBUG("In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********")
 					int delay2c = (delay2b * 60) * 1000			// Minutes
-					log.info "Group 2 - Waiting Random Pause: ${delay1c} before heading to Group 3"
+					log.info "Group 2 - Waiting Random Pause: ${delay2b} before heading to Group 3"
 					if(atomicState.cSwitch == 1) pauseExecution(delay2c)
 				}
 		
@@ -246,7 +246,7 @@ def deviceHandler(evt) {
 							LOGDEBUG("In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}")
         					log.info "Group 3 - Turning on ${device}"
 							device.on()
-							log.info "Group 3 - Waiting Pause between devices: ${delay3}"
+							log.info "Group 3 - Waiting Pause between devices: ${timeToPause3}"
 							pauseExecution(delay3)
 						}
     				}
@@ -254,7 +254,7 @@ def deviceHandler(evt) {
 					def delay3b = Math.abs(new Random().nextInt() % ([pTo3] - [pFrom3])) + [pFrom3]
 					LOGDEBUG("In deviceOnHandler 3...Delay: ${pFrom3} to ${pTo3} = ${delay3b} till next Group **********")
 					int delay3c = (delay3b * 60) * 1000			// Minutes
-					log.info "Group 3 - Waiting Random Pause: ${delay1c} before heading to Group 4"
+					log.info "Group 3 - Waiting Random Pause: ${delay3b} before heading to Group 4"
 					if(atomicState.cSwitch == 1) pauseExecution(delay3c)
 				}
 				
@@ -266,7 +266,7 @@ def deviceHandler(evt) {
 							LOGDEBUG("In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}")
         					log.info "Group 4 - Turning on ${device}"
 							device.on()
-							log.info "Group 4 - Waiting Pause between devices: ${delay4}"
+							log.info "Group 4 - Waiting Pause between devices: ${timeToPause4}"
 							pauseExecution(delay4)
 						}
     				}
@@ -274,7 +274,7 @@ def deviceHandler(evt) {
 					def delay4b = Math.abs(new Random().nextInt() % ([pTo4] - [pFrom4])) + [pFrom4]
 					LOGDEBUG("In deviceOnHandler 4...Delay: ${pFrom4} to ${pTo4} = ${delay4b} till next Group **********")
 					int delay4c = (delay4b * 60) * 1000			// Minutes
-					log.info "Group 4 - Waiting Random Pause: ${delay1c} before heading to Group 5"
+					log.info "Group 4 - Waiting Random Pause: ${delay4b} before heading to Group 5"
 					if(atomicState.cSwitch == 1) pauseExecution(delay4c)			
 				}
 					
@@ -286,7 +286,7 @@ def deviceHandler(evt) {
 							LOGDEBUG("In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}")
         					log.info "Group 5 - Turning on ${device}"
 							device.on()
-							log.info "Group 5 - Waiting Pause between devices: ${delay5}"
+							log.info "Group 5 - Waiting Pause between devices: ${timeToPause5}"
 							pauseExecution(delay5)		
 						}
 					}
@@ -322,7 +322,7 @@ def randomSwitchesHandler() {
     	if(atomicState.cSwitch == 1) rSwitch.on()
 		runIn(rTTSO, gRSwitchesOff)
 		
-		log.info "Random - Waiting Pause: ${delayR}"
+		log.info "Random - Waiting Pause: ${timeToPauseR}"
     	if(atomicState.cSwitch == 1) runIn(delayR, randomSwitchesHandler)
 	}
 }
