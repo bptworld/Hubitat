@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.0 - 01/19/19 - Officially out of beta! (hopefully)
  *  V0.0.9 - 01/19/19 - More testing, more bug fixing.
  *  V0.0.8 - 01/19/19 - More bug fixes and better logging.
  *  V0.0.7 - 01/18/19 - Made some code changes and fixed some of the wording. Hopefully it makes more sense.
@@ -48,7 +49,7 @@
  *
  */
 
-def version(){"v0.0.9"}
+def version(){"v1.0.0"}
 
 definition(
     name: "At Home Simulator Child",
