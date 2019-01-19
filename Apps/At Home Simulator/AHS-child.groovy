@@ -78,7 +78,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
 			input "controlSwitch", "capability.switch", title: "Select the switch to control the Lighting Routine (on/off)", required: true, multiple: false
-			input "tRunTime", "number", title: "Total run time. This will stop the app even if it didn't finish the entire simulator (in minutes)", required: true, defaultValue: 360
+			input "tRunTime", "number", title: "Max run time. This will stop the app even if it didn't finish the entire simulator (in minutes)", required: true, defaultValue: 360
 			paragraph "Extra Time to pause before Group 1 starts. This is a random delay based on the two numbers you select below. Makes it so the lights don't turn on at exactly the same time each time the simulation starts."
 			input "pFromS", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			input "pToS", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
