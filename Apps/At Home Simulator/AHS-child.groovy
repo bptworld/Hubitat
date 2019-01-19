@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V0.0.7 - 01/18/19 - Made some code changes and fixed some of the wording. Hopefully it makes more sense.
  *  V0.0.6 - 01/18/19 - Finally got the control switch to turn off the simulation.
  *  V0.0.5 - 01/16/19 - Startup now has a random delay. Pause button and Enable/Disable switch should now work.
  *  V0.0.4 - 01/16/19 - Changed the delay between groups to be a random time within a user selected range.
@@ -45,7 +46,7 @@
  *
  */
 
-def version(){"v0.0.6"}
+def version(){"v0.0.7"}
 
 definition(
     name: "At Home Simulator Child",
@@ -77,50 +78,50 @@ def pageConfig() {
 			paragraph "* Select as many devices from each group as needed.<br>* Child Apps are activated/deactivated by the Control Switch.<br>* When activated, group 1 will run first, then group 2, group 3, group 4 and group 5.<br>* Set how long each group of lights stays on<br>* Each group can have a different pause between devices AND a different pause between groups.<br>* Best to create overlaps in lighting from room to room, using multiple groups"	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
-			input "controlSwitch", "capability.switch", title: "Select the switch to control the Lighting Routine (on/off)", required: true, multiple: false
-			input "tRunTime", "number", title: "Max run time. This will stop the app even if it didn't finish the entire simulator (in minutes)", required: true, defaultValue: 360
+			input "controlSwitch", "capability.switch", title: "Select the switch to control the Lighting Simulation (on/off)", required: true, multiple: false
+			input "tRunTime", "number", title: "Max run time. This will stop the app after a certain amount of time, even if it didn't finish the entire simulator (in minutes)", required: true, defaultValue: 360
 			paragraph "Extra Time to pause before Group 1 starts. This is a random delay based on the two numbers you select below. Makes it so the lights don't turn on at exactly the same time each time the simulation starts."
 			input "pFromS", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			input "pToS", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		} 
-		section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Routines")) {}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Groups")) {}
 		section("<b>Group 1</b>", hideable: true, hidden: true) {
 			input "g1Switches", "capability.switch", title: "Switches to control", required: true, multiple: true, submitOnChange: true
-			if(g1Switches) input "g1TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
+			if(g1Switches) input "g1TimeToStayOn", "number", title: "How long should each light stay On (in minutes)", required: true, defaultValue: 5
 			if(g1Switches) input "timeToPause1", "number", title: "Time to pause between devices turning On within group 1 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 1 and Group 2. This is a random delay based on the two numbers you select below."
+			if(g1Switches) paragraph "Extra Time to pause between Group 1 and Group 2. This is a random delay based on the two numbers you select below."
 			if(g1Switches) input "pFrom1", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g1Switches) input "pTo1", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section("<b>Group 2</b>", hideable: true, hidden: true) {
 			input "g2Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
-			if(g2Switches) input "g2TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
+			if(g2Switches) input "g2TimeToStayOn", "number", title: "How long should lights stay On (in minutes)", required: true, defaultValue: 5
 			if(g2Switches) input "timeToPause2", "number", title: "Time to pause between devices turning On within group 2 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 2 and Group 3. This is a random delay based on the two numbers you select below."
+			if(g2Switches) paragraph "Extra Time to pause between Group 2 and Group 3. This is a random delay based on the two numbers you select below."
 			if(g2Switches) input "pFrom2", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g2Switches) input "pTo2", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section("<b>Group 3</b>", hideable: true, hidden: true) {
 			input "g3Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
-			if(g3Switches) input "g3TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
+			if(g3Switches) input "g3TimeToStayOn", "number", title: "How long should lights stay On (in minutes)", required: true, defaultValue: 5
 			if(g3Switches) input "timeToPause3", "number", title: "Time to pause between devices turning On within group 3 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 3 and Group 4. This is a random delay based on the two numbers you select below."
+			if(g3Switches) paragraph "Extra Time to pause between Group 3 and Group 4. This is a random delay based on the two numbers you select below."
 			if(g3Switches) input "pFrom3", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g3Switches) input "pTo3", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section("<b>Group 4</b>", hideable: true, hidden: true) {
 			input "g4Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
-			if(g4Switches) input "g4TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
+			if(g4Switches) input "g4TimeToStayOn", "number", title: "How long should lights stay On (in minutes)", required: true, defaultValue: 5
 			if(g4Switches) input "timeToPause4", "number", title: "Time to pause between devices turning On within group 4 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 4 and Group 5. This is a random delay based on the two numbers you select below."
+			if(g4Switches) paragraph "Extra Time to pause between Group 4 and Group 5. This is a random delay based on the two numbers you select below."
 			if(g4Switches) input "pFrom4", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g4Switches) input "pTo4", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section("<b>Group 5</b>", hideable: true, hidden: true) {
 			input "g5Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
-			if(g5Switches) input "g5TimeToStayOn", "number", title: "How long should lights stay On, from the time the last switch turns on (in minutes)", required: true, defaultValue: 5
+			if(g5Switches) input "g5TimeToStayOn", "number", title: "How long should lights stay On (in minutes)", required: true, defaultValue: 5
 			if(g5Switches) input "timeToPause5", "number", title: "Time to pause between devices turning On within group 5 (in seconds)", required: true, defaultValue: 1
-			paragraph "Extra Time to pause between Group 5 and ending the Simulation. This is a random delay based on the two numbers you select below."
+			if(g5Switches) paragraph "Extra Time to pause between Group 5 and ending the Simulation. This is a random delay based on the two numbers you select below."
 			if(g5Switches) input "pFrom4", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(g5Switches) input "pTo4", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
