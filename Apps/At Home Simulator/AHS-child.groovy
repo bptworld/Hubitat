@@ -265,7 +265,7 @@ def deviceHandler(evt) {
 					def delay2b = Math.abs(new Random().nextInt() % ([pTo2] - [pFrom2])) + [pFrom2]
 					LOGDEBUG("In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********")
 					int delay2c = (delay2b * 60) * 1000			// Minutes
-					if(atomicState.cSwitch == 1 && g35Switches) log.info "Group 2 - Waiting Random Pause: ${delay2b} minutes before heading to Group 3"
+					if(atomicState.cSwitch == 1 && g3Switches) log.info "Group 2 - Waiting Random Pause: ${delay2b} minutes before heading to Group 3"
 					if(atomicState.cSwitch == 1 && g3Switches) pauseExecution(delay2c)
 				}
 		
@@ -405,7 +405,7 @@ def g1SwitchesOff() {
 	int delay1 = timeToPause1 * 1000 		// Seconds
    	g1Switches.each { device ->
 		LOGDEBUG("In g1SwitchesOff 1...turning off ${device}")
-		log.info "Group 1 - Turning Off ${device}"
+		log.info "offGroup 1 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay1)
     }
@@ -415,7 +415,7 @@ def g2SwitchesOff() {
 	int delay2 = timeToPause2 * 1000 		// Seconds
    	g2Switches.each { device ->
 		LOGDEBUG("In g2witchesOff 2...turning off ${device}")
-		log.info "Group 2 - Turning Off ${device}"
+		log.info "offGroup 2 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay2)
     }
@@ -425,7 +425,7 @@ def g3SwitchesOff() {
 	int delay3 = timeToPause3 * 1000 		// Seconds
    	g3Switches.each { device ->
 		LOGDEBUG("In g3witchesOff 3...turning off ${device}")
-		log.info "Group 3 - Turning Off ${device}"
+		log.info "offGroup 3 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay3)
     }
@@ -435,7 +435,7 @@ def g4SwitchesOff() {
 	int delay4 = timeToPause4 * 1000 		// Seconds
    	g4Switches.each { device ->
 		LOGDEBUG("In g4witchesOff 4...turning off ${device}")
-		log.info "Group 4 - Turning Off ${device}"
+		log.info "offGroup 4 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay4)
     }
@@ -445,7 +445,7 @@ def g5SwitchesOff() {
 	int delay5 = timeToPause5 * 1000 		// Seconds
    	g5Switches.each { device ->
 		LOGDEBUG("In g5witchesOff 5...turning off ${device}")
-		log.info "Group 5 - Turning Off ${device}"
+		log.info "offGroup 5 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay5)
     }
@@ -455,7 +455,7 @@ def gRSwitchesOff() {
 	int delayR = timeToPauseR * 1000 		// Seconds
    	gRSwitches.each { device ->
 		LOGDEBUG("In gRwitchesOff R...turning off ${device}")
-		log.info "Group R - Turning Off ${device}"
+		log.info "offGroup R - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delayR)
     }
