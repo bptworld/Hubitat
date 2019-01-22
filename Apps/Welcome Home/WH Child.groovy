@@ -37,6 +37,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.1.2 - 01/22/19 - Made all fields within Speech Options mandatory to avoid an error.
  *  V1.1.1 - 01/15/19 - Updated footer with update check and links
  *  V1.1.0 - 01/13/19 - Updated to announce multiple people coming home at the same time, in one message. Seems like such a simple
  *						thing but it took a huge rewrite to do it!
@@ -54,7 +55,7 @@ import groovy.time.TimeCategory
  *
  */
 
-def version(){"v1.1.1"}
+def version(){"v1.1.2"}
 
 definition(
     name: "Welcome Home Child",
@@ -123,14 +124,14 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
-              	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: false, multiple: true, submitOnChange:true
-              	input "volume1", "number", title: "Speaker volume", description: "0-100%", required: false
-              	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: false // defaultValue: "0",			
-				input "fromTime2", "time", title: "Quiet Time Start", required: false
-    		  	input "toTime2", "time", title: "Quiet Time End", required: false
+              	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange:true
+              	input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
+              	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
+				input "fromTime2", "time", title: "Quiet Time Start", required: true
+    		  	input "toTime2", "time", title: "Quiet Time End", required: true
           	}   
         	if (speechMode == "Speech Synth"){ 
-         		input "speaker1", "capability.speechSynthesis", title: "Choose speaker(s)", required: false, multiple: true
+         		input "speaker1", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
       	}
     	if(speechMode){ 
