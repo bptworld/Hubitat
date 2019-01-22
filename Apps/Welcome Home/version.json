@@ -1,5 +1,7 @@
 {
-  "currVersion": "v1.1.1",
+  "currParentVersion": "v1.1.1",
+  
+  "currChildVersion": "v1.1.2",
   
   "parentRawCode":
   "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy' target='_blank'>[Parent Raw Code]</a>",
