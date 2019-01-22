@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 01/22/19 - Added more randomness to Random section.
  *  V1.0.0 - 01/19/19 - Officially out of beta! (hopefully)
  *  V0.0.9 - 01/19/19 - More testing, more bug fixing.
  *  V0.0.8 - 01/19/19 - More bug fixes and better logging.
@@ -49,7 +50,7 @@
  *
  */
 
-def version(){"v1.0.0"}
+def version(){"v1.0.1"}
 
 definition(
     name: "At Home Simulator Child",
@@ -89,7 +90,7 @@ def pageConfig() {
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Groups")) {}
 		section("<b>Group 1</b>", hideable: true, hidden: true) {
-			input "g1Switches", "capability.switch", title: "Switches to control", required: true, multiple: true, submitOnChange: true
+			input "g1Switches", "capability.switch", title: "Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g1Switches) input "g1TimeToStayOn", "number", title: "How long should each light stay On (in minutes)", required: true, defaultValue: 5
 			if(g1Switches) input "timeToPause1", "number", title: "Time to pause between devices turning On within group 1 (in seconds)", required: true, defaultValue: 1
 			if(g1Switches) paragraph "Extra Time to pause between Group 1 and Group 2. This is a random delay based on the two numbers you select below."
@@ -131,9 +132,14 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Random Lights")) {}
 		section("<b>Random Lights</b>", hideable: true, hidden: true) {
 			paragraph "Some times you just need to break away from the daily routine. Choose a couple of lights here (not included in the above Groups) to randomly turn on and off while the Group routines continue to run."
-			input "gRSwitches", "capability.switch", title: "Switches to randomly control, only one light in this group will be on at a time", required: false, multiple: true, submitOnChange: true
-			if(gRSwitches) input "rTimeToStayOn", "number", title: "How long should each light stay On (in minutes)", required: true, defaultValue: 5
-			if(gRSwitches) input "timeToPauseR", "number", title: "Time to pause between devices turning On (in minutes)", required: true, defaultValue: 10
+			input "gRSwitches", "capability.switch", title: "Switches to randomly control.", required: false, multiple: true, submitOnChange: true
+			if(gRSwitches) paragraph "How long should each light stay On. This is a random delay based on the two numbers you select below."
+			if(gRSwitches) input "tFromR", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
+			if(gRSwitches) input "tToR", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
+			
+			if(gRSwitches) paragraph "Extra Time to pause between lights. This is a random delay based on the two numbers you select below."
+			if(gRSwitches) input "pFromR", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
+			if(gRSwitches) input "pToR", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false, submitOnChange: true}
 		
@@ -188,13 +194,12 @@ def deviceHandler(evt) {
 		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 			if(atomicState.cSwitch == 1) {
-				if(gRSwitches) randomSwitchesHandler()
-				
 				def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
 				LOGDEBUG("In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group - cs: ${atomicState.cSwitch} **********")
 				int delaySc = (delaySb * 60) * 1000			// Minutes
 				log.info "Starting - Waiting Random Pause: ${delaySb} minutes"
 				if(atomicState.cSwitch == 1) pauseExecution(delaySc)
+				if(gRSwitches) randomSwitchesHandler()
 				
 				LOGDEBUG("In between S and 1 ... cs: ${atomicState.cSwitch}   *   *   *")
 				
@@ -384,21 +389,27 @@ def deviceHandler(evt) {
 
 def randomSwitchesHandler() {
 	if(atomicState.cSwitch == 1) {
-		LOGDEBUG("In randomSwitchesHandler...timeToPauseR: ${timeToPauseR}, rTimeToStayOn: ${rTimeToStayOn} - cs: ${atomicState.cSwitch}")
-		int delayR = (timeToPauseR * 60)		 	// Minutes
-		int rTTSO = (rTimeToStayOn * 60)			// Minutes
-	
+		LOGDEBUG("In randomSwitchesHandler...cs: ${atomicState.cSwitch}")
+		
+		int rTTSOa = Math.abs(new Random().nextInt() % ([tToR] - [tFromR])) + [tFromR]
+		int rTTSO = (rTTSOa * 60)			// Minutes
+		
+		def delayRb = Math.abs(new Random().nextInt() % ([pToR] - [pFromR])) + [pFromR]
+		int delayRc = (delayRb * 60)		// Minutes
+		
 		def randomS = gRSwitches.size();
 		def randomKey1 = Math.abs(new Random().nextInt() % randomS)
 		rSwitch = gRSwitches[randomKey1]
 	
-		LOGDEBUG("In randomSwitchesHandler...turning on ${rSwitch}, Time to Stay On: ${rTimeToStayOn} ----------")
-		log.info "Random - Turning on Random switch: ${rSwitch}"
+		LOGDEBUG("In randomSwitchesHandler...Delay: ${pFromR} to ${pToR} = ${delayRb}")
+				 
+		LOGDEBUG("In randomSwitchesHandler...turning on ${rSwitch}, Time to Stay On: ${rTTSOa} ----------")
+		log.info "Random - Turning on Random switch: ${rSwitch}, Time to Stay On: ${rTTSOa} minutes"
     	if(atomicState.cSwitch == 1) rSwitch.on()
-		runIn(rTTSO, gRSwitchesOff)
+		if(atomicState.cSwitch == 1) runIn(rTTSO, gRSwitchesOff)
 		
-		log.info "Random - Waiting Pause: ${timeToPauseR}"
-    	if(atomicState.cSwitch == 1) runIn(delayR, randomSwitchesHandler)
+		if(atomicState.cSwitch == 1) log.info "Random - Waiting Random Pause: ${delayRb} minutes before next light"
+		if(atomicState.cSwitch == 1) runIn(delayRc, randomSwitchesHandler)
 	}
 }
 
@@ -453,7 +464,9 @@ def g5SwitchesOff() {
 }
 
 def gRSwitchesOff() { 
-	int delayR = timeToPauseR * 1000 		// Seconds
+	int rTTSOa = Math.abs(new Random().nextInt() % ([tToR] - [tFromR])) + [tFromR]
+	int delayR = (rTTSOa * 60) * 1000			// Minutes
+	
    	gRSwitches.each { device ->
 		LOGDEBUG("In gRwitchesOff R...turning off ${device}")
 		log.info "offGroup R - Turning Off ${device}"
