@@ -845,11 +845,11 @@ def checkForUpdate(){
 			httpGet(params) { response ->
 				def results = response.data
 				def appStatus
-				if(version() == results.currVersion){
+				if(version() == results.currChildVersion){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
 					log.warn "${app.label} has an update available - Please consider updating."
 				}
 				return appStatus
