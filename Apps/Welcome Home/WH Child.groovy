@@ -37,6 +37,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.1.3 - 01/24/19 - Welcome Home now works with Echo Speaks.
  *  V1.1.2 - 01/22/19 - Made all fields within Speech Options mandatory to avoid an error.
  *  V1.1.1 - 01/15/19 - Updated footer with update check and links
  *  V1.1.0 - 01/13/19 - Updated to announce multiple people coming home at the same time, in one message. Seems like such a simple
@@ -55,7 +56,7 @@ import groovy.time.TimeCategory
  *
  */
 
-def version(){"v1.1.2"}
+def version(){"v1.1.3"}
 
 definition(
     name: "Welcome Home Child",
@@ -124,8 +125,9 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
-              	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange:true
-              	input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
+              	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this a echo speaks device?", description: "Echo speaks device?")
+				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
               	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
 				input "fromTime2", "time", title: "Quiet Time Start", required: true
     		  	input "toTime2", "time", title: "Quiet Time End", required: true
@@ -574,10 +576,18 @@ def talkNow1() {
 		state.fullMsg1 = "${state.msgComp}"
   		if (speechMode == "Music Player"){ 
     		LOGDEBUG("Music Player")
-    		setVolume()
-    		speaker1.playTextAndRestore(state.fullMsg1)
-			state.canSpeak = "no"
-			LOGDEBUG("Wow, that's it!")
+			if(echoSpeaks) {
+				setVolume()
+				speaker1.setVolumeSpeakAndRestore(state.volume, state.fullMsg1)
+				state.canSpeak = "no"
+				LOGDEBUG("Wow, that's it!")
+			}
+			if(!echoSpeaks) {
+    			setVolume()
+    			speaker1.playTextAndRestore(state.fullMsg1)
+				state.canSpeak = "no"
+				LOGDEBUG("Wow, that's it!")
+			}
   		}   
 		if (speechMode == "Speech Synth"){ 
 			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
@@ -600,13 +610,13 @@ def setVolume(){
     	state.volume = volume2
    		speaker1.setLevel(state.volume)
    		LOGDEBUG("Quiet Time = Yes - Setting Quiet time volume")
-   		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1") 
+   		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1 - Echo Speakes = $echoSpeaks") 
 	}
 	if (!between2) {
 		state.volume = volume1
+		if(!echoSpeaks) speaker1.setLevel(state.volume)
 		LOGDEBUG("Quiet Time = No - Setting Normal time volume")
-		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1")
-		speaker1.setLevel(state.volume)
+		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1 - Echo Speakes = $echoSpeaks")
 	}
 	}
 	else if (timecheck == null){
