@@ -621,7 +621,7 @@ def setVolume(){
 	}
 	else if (timecheck == null){
 		state.volume = volume1
-		speaker1.setLevel(state.volume)
+		if(!echoSpeaks) speaker1.setLevel(state.volume)
 	}
 }
 
