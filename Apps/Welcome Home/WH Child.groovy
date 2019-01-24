@@ -608,7 +608,7 @@ def setVolume(){
 		def between2 = timeOfDayIsBetween(toDateTime(fromTime2), toDateTime(toTime2), new Date(), location.timeZone)
     if (between2) {
     	state.volume = volume2
-   		speaker1.setLevel(state.volume)
+   		if(!echoSpeaks) speaker1.setLevel(state.volume)
    		LOGDEBUG("Quiet Time = Yes - Setting Quiet time volume")
    		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1 - Echo Speakes = $echoSpeaks") 
 	}
@@ -621,7 +621,7 @@ def setVolume(){
 	}
 	else if (timecheck == null){
 		state.volume = volume1
-		speaker1.setLevel(state.volume)
+		if(!echoSpeaks) speaker1.setLevel(state.volume)
 	}
 }
 
