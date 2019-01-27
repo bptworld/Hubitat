@@ -28,7 +28,11 @@ In any app that has a speech option, simply select the 'What Did I Say' device i
 <br><br>
 Note: if you find an app that doesn't work with this driver, please drop me a message and I'll see what I can do!
 <br><br>
-Now all you have to do is add this device to one of your dashboards to see what was said!
+Now all you have to do is add this device to one of your dashboards to see what was said!<br>
+Add a new tile with the following selections
+- Pick a device = What Did I Say
+- Pick a template = attribute
+- 3rd box = whatDidISay
 
 <br><br>
 Bryan<br>
