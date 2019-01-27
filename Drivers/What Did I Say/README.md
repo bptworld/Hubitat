@@ -24,8 +24,11 @@ Preferences<br>
 <br><br>
 
 <b>Usage:</b><br>
-
-
+In any app that has a speech option, simply select the 'What Did I Say' device in addition to your normally selected speech device.  Whatever is sent to your speech device will also be sent to this device.
+<br><br>
+Note: if you find an app that doesn't work with this driver, please drop me a message and I'll see what I can do!
+<br><br>
+Now all you have to do is add this device to one of your dashboards to see what was said!
 
 <br><br>
 Bryan<br>
