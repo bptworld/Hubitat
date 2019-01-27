@@ -10,6 +10,7 @@ This driver formats Speech data to be used with Hubitat's Dashboards.<br><br>
 * Select ‘What Did You Say’ under ‘Type’
 * Click 'Save Device'
 <br><br>
+
 <b>Setup Options:</b><br>
 Commands Section
 * Ignore everything in this section
@@ -21,6 +22,7 @@ Preferences
 * Time Selection - Off for 24h, On for 12h
 * Clear All Speech Data - Clears out any stored data in the speech device
 <br><br>
+
 <b>Usage:</b><br>
 
 
