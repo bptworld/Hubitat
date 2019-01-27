@@ -2,7 +2,7 @@
  *  ****************  What Did I Say Driver  ****************
  *
  *  Design Usage:
- *  This driver formats the Speech data to be used with Hubitat's Dashboards.
+ *  This driver formats Speech data to be displayed on Hubitat's Dashboards.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *  
