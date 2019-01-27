@@ -17,9 +17,9 @@ Commands Section<br>
 <br>
 Preferences<br>
 * Enable logging - Turns the device logging on and off
-* Font Size - Changes the size of the font used on the tile (bigger number = bigger font)
-* How many lines to display - Only two options here, 5 and 10
-* Time Selection - Off for 24h, On for 12h
+* Font Size - Changes the size of the font used on the tile 'bigger number = bigger font'
+* How many lines to display - Only two options here - 5 and 10
+* Time Selection - Off for 24h - On for 12h
 * Clear All Speech Data - Clears out any stored data in the speech device
 <br><br>
 
