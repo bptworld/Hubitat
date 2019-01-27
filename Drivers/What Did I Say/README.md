@@ -1,6 +1,6 @@
 # What Did I Say
 <b>Design Usage:</b><br>
-This driver formats Speech data to be used with Hubitat's Dashboards.<br><br>
+This driver formats Speech data to be displayed on Hubitat's Dashboards.<br><br>
 
 <b>New Install:</b><br>
 * Copy the Driver code from GitHub into a ‘New driver’ under the ‘Drivers Code’ menu then click ‘Done’
