@@ -11,10 +11,10 @@ This driver formats Speech data to be used with Hubitat's Dashboards.<br><br>
 * Click 'Save Device'
 <br><br>
 <b>Setup Options:</b><br>
-<i>Commands Section</i>
+Commands Section
 * Ignore everything in this section
 <br>
-<i>Preferences</i>
+Preferences
 * Enable logging - Turns the device logging on and off
 * Font Size - Changes the size of the font used on the tile (bigger number = bigger font)
 * How many lines to display - Only two options here, 5 and 10
