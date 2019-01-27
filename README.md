@@ -40,5 +40,8 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-p
 **Welcome Home** - Designed to give a personal welcome announcement after you have entered the home.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-welcome-home/6445" target="_blank">Go Here</a>
 <br><br>
+**What Did I Say** - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
+<br><br>
 Bryan<br>
 @BPTWorld
