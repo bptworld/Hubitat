@@ -142,7 +142,7 @@ def checkForUpdate(){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currParentVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currParentVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.driverRawCode}  ${results.discussion}"
 					log.warn "${app.label} has an update available - Please consider updating."
 				}
 				return appStatus
