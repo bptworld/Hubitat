@@ -89,7 +89,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your counts on a Dashboard? Now you can, simply follow these instructions!</b>"
-			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Abacus - Counting Tile'<br> - Use our 'Abacus - Counting Tile' Driver<br> - Then select this new device below"
+			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Abacus - Counting Tile'<br> - Use our 'Abacus - Counting Tile' as the Driver<br> - Then select this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
 			paragraph "- Pick a device = Abacus - Counting Tile<br>- Pick a template = attribute<br>- 3rd box = abacusMotion, abacusContact, abacusSwitch or abacusThermostat"
 			}
@@ -1301,7 +1301,7 @@ def checkForUpdate(){
 					appStatus = "${version()} - No Update Available - ${results.discussion}"
 				}
 				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.driverRawCode}  ${results.discussion}"
 					log.warn "${app.label} has an update available - Please consider updating."
 				}
 				return appStatus
