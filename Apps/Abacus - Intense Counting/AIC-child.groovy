@@ -89,7 +89,9 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your counts on a Dashboard? Now you can, simply follow these simply instructions!</b>"
-			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Abacus - Counting Tile'<br> - Use our 'Abacus - Counting Tile' as the Driver<br> - Then select this new device below" 
+			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Abacus - Counting Tile'<br> - Use our 'Abacus - Counting Tile' as the Driver<br> - Then select this new device below"
+			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
+			paragraph "- Pick a device = Abacus - Counting Tile<br>- Pick a template = attribute<br>- 3rd box = abacusMotion, abacusContact, abacusSwitch or abacusThermostat"
 			}
 		section() {
 			input(name: "countTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Counts to:", submitOnChange: true, required: false, multiple: false)
