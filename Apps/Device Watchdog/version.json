@@ -9,6 +9,9 @@
   "childRawCode":
   "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy' target='_blank'>[Child Raw Code]</a>",
   
+  "driverRawCode":
+  "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy' target='_blank'>[Driver Raw Code]</a>",
+  
   "discussion":
   "<a href='https://community.hubitat.com/t/release-device-watchdog/7692' target='_blank'>[Discussion]</a></span>"
 }
