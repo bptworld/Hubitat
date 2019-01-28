@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 01/25/19 - Create a tile so counts can be used on Dashboard
  *  V1.0.6 - 01/15/19 - Updated footer with update check and links
  *  V1.0.5 - 01/04/19 - Removed some left over code causing an error.
  *  V1.0.4 - 01/03/19 - Bug fixes and a much better way to remove a device and it's stats.
@@ -48,7 +49,7 @@
  *
  */
 
-def version(){"v1.0.6"}
+def version(){"v1.0.7"}
 
 definition(
     name: "Abacus - Intense Counting Child",
@@ -85,10 +86,15 @@ def pageConfig() {
 			input(name: "contactEvent", type: "capability.contactSensor", title: "Contact Sensor(s) to count", submitOnChange: true, required: false, multiple: true)
 			input(name: "thermostatEvent", type: "capability.thermostat", title: "Thermostat(s) to count", submitOnChange: true, required: false, multiple: true)
 		}
-		//section(getFormat("header-green", "${getImage("Blank")}"+" Even More Devices")) {
-		//	paragraph "If you have a device not found in the list above, try this option. If your device doesn't work, please message me on the forum and let me know what type of device it is. No promises but I will take a look at it."
-		//	input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-		//}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
+		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
+			paragraph "<b>Want to be able to view your counts on a Dashboard? Now you can, simply follow these simply instructions!</b>"
+			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Abacus - Counting Tile'<br> - Use our 'Abacus - Counting Tile' as the Driver<br> - Then select this new device below" 
+			}
+		section() {
+			input(name: "countTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Counts to:", submitOnChange: true, required: false, multiple: false)
+			input("updateTime", "number", title: "How long between updates (in minutes)", required:true, defaultValue: 15)
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
 		section() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
@@ -289,6 +295,28 @@ def initialize() {
 	schedule("0 6 0 * * ? *", resetContactCountHandler)
 	schedule("0 7 0 * * ? *", resetSwitchCountHandler)
 	schedule("0 8 0 * * ? *", resetThermostatCountHandler)
+	
+	if(countTileDevice) schedule("0 */${updateTime} * ? * *", countMapHandler)  	// send new Counts every XX minutes
+}
+
+def countMapHandler(evt) {
+	def rightNow = new Date()
+	
+	def motionMap = "${state.motionMap}<br>${rightNow}"
+	LOGDEBUG("In countMapHandler...Sending new Abacus Motion Counts to ${countTileDevice}")
+    countTileDevice.sendMotionMap(motionMap)
+	
+	def contactMap = "${state.contactMap}<br>${rightNow}"
+	LOGDEBUG("In countMapHandler...Sending new Abacus Contact Counts to ${countTileDevice}")
+	countTileDevice.sendContactMap(contactMap)
+	
+	def switchMap = "${state.switchMap}<br>${rightNow}"
+	LOGDEBUG("In countMapHandler...Sending new Abacus Switch Counts to ${countTileDevice}")
+	countTileDevice.sendSwitchMap(switchMap)
+	
+	def thermostatMap = "${state.thermostatMap}<br>${rightNow}"
+	LOGDEBUG("In countMapHandler...Sending new Abacus Thermostat Counts to ${countTileDevice}")
+	countTileDevice.sendThermostatMap(thermostatMap)
 }
 
 def setupNewStuff() {
