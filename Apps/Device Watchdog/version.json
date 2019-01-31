@@ -1,7 +1,7 @@
 {
   "currParentVersion": "v1.0.9",
   
-  "currChildVersion": "v1.1.1",
+  "currChildVersion": "v1.1.2",
   
   "parentRawCode":
   "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
