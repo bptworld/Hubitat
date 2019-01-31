@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.2 - 01/31/19 - Added ability to turn on a device when there is something to report
  *  V1.1.1 - 01/28/19 - Under the hood rewrite, better reporting. Also added NEW Device Watchdog Tile for use with dashboards
  *  V1.1.0 - 01/25/19 - Added more wording regarding the 'all battery devices' switch
  *  V1.0.9 - 01/17/19 - Toggle switch added, Send or not to send Push notification when there is nothing to report.
@@ -54,7 +55,7 @@
  *
  */
 
-def version(){"v1.1.1"}
+def version(){"v1.1.2"}
 
 definition(
     name: "Device Watchdog Child",
@@ -101,6 +102,7 @@ def pageConfig() {
 				section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 					input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required: false, submitOnChange: true
 					input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
+					input "isDataBatteryDevice", "capability.switch", title: "Turn this device on if there is Battery data to report", submitOnChange: true, required: false, multiple: false
 					input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
 					if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 				}
@@ -157,6 +159,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 			input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
 			input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
+			input "isDataActivityDevice", "capability.switch", title: "Turn this device on if there is Activity data to report", submitOnChange: true, required: false, multiple: false
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
 			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 		}
@@ -418,6 +421,8 @@ def activityHandler(evt) {
 	if(triggerMode == "Activity") {state.timeSinceMap += "<br>Report generated: ${rightNow}<br>"}
 	if(triggerMode == "Battery_Level") {state.batteryMap += "<br>Report generated: ${rightNow}<br>"}
 	if(watchdogTileDevice) watchdogMapHandler()
+	if(isDataActivityDevice) isThereData()
+	if(isDataBatteryDevice) isThereData()
 	if(sendPushMessage) pushNow()
 }	
 
@@ -499,7 +504,6 @@ def setupNewStuff() {
 	if(state.timeSinceMapPhone == null) clearMaps()
 	if(state.batteryMap == null) clearMaps()
 	if(state.batteryMapPhone == null) clearMaps()
-	
 }
 	
 def clearMaps() {
@@ -513,6 +517,28 @@ def clearMaps() {
 	state.batteryMap = ""
 	state.batteryMapPhone = ""
 }
+
+def isThereData(){
+	LOGDEBUG("In isThereData...")
+	if(triggerMode == "Activity") {
+		LOGDEBUG("In isThereData...Activity")
+		if(state.timeSinceMapPhone) {
+			isDataActivityDevice.on()
+		} else {
+			isDataActivityDevice.off()
+		}
+	}
+		
+	if(triggerMode == "Battery_Level") {
+		LOGDEBUG("In isThereData...Battery")
+		if(state.batteryMapPhone) {
+			isDataBatteryDevice.on()
+		} else {
+			isDataBatteryDevice.off()
+		}
+	}
+}
+
 
 def pushNow(){
 	LOGDEBUG("In pushNow...")
