@@ -1,6 +1,6 @@
 {
-  "AbacusIntenseCountingParent": "v1.0.6",
-  "AbacusIntenseCountingChild": "v1.0.7",
+  "AbacusIntenseCountingParentVersion": "v1.0.6",
+  "AbacusIntenseCountingChildVersion": "v1.0.7",
   "AbacusIntenseCountingParentRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
   "AbacusIntenseCountingChildRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy' target='_blank'>[Child Raw Code]</a>",
   "AbacusIntenseCountingDriverRawCode": "<a href='https://github.com/bptworld/Hubitat/blob/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy' target='_blank'>[Child Raw Code]</a>",
