@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 01/31/19 - Fixed Pause and Disable/Enable not working.
  *  V1.1.2 - 01/31/19 - Added ability to turn on a device when there is something to report
  *  V1.1.1 - 01/28/19 - Under the hood rewrite, better reporting. Also added NEW Device Watchdog Tile for use with dashboards
  *  V1.1.0 - 01/25/19 - Added more wording regarding the 'all battery devices' switch
@@ -55,7 +56,7 @@
  *
  */
 
-def version(){"v1.1.2"}
+def version(){"v1.1.3"}
 
 definition(
     name: "Device Watchdog Child",
@@ -283,147 +284,152 @@ def watchdogMapHandler(evt) {
 }
 
 def activityHandler(evt) {
-	log.info "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
-	if(actuatorDevice) {
-		state.myType = "Actuator"
-		state.mySensors = actuatorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
+	if(state.enablerSwitch2 == "off") {
+		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+   		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+			log.info "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
+			if(actuatorDevice) {
+				state.myType = "Actuator"
+				state.mySensors = actuatorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(sensorDevice) {
+				state.myType = "Sensor"
+				state.mySensors = sensorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(accelerationSensorDevice) {
+	  			state.myType = "Acceleration"
+				state.mySensors = accelerationSensorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(alarmDevice) {
+				state.myType = "Alarm"
+				state.mySensors = alarmDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(batteryDevice) {
+				state.myType = "Battery"
+				state.mySensors = batteryDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(carbonMonoxideDetectorDevice) {
+	  			state.myType = "Carbon Monoxide Detector"
+				state.mySensors = carbonMonoxideDetectorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(contactSensorDevice) {
+				state.myType = "Contact Sensor"
+				state.mySensors = contactSensorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(energyMeterDevice) {
+				state.myType = "Energy Meter"
+				state.mySensors = energyMeterDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(illuminanceMeasurementDevice) {
+				state.myType = "Illuminance Measurement"
+				state.mySensors = illuminanceMeasurementDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(lockDevice) {
+				state.myType = "Lock"
+				state.mySensors = lockDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(motionSensorDevice) {
+				state.myType = "Motion Sensor"
+				state.mySensors = motionSensorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(powerMeterDevice) {
+				state.myType = "Power Meter"
+				state.mySensors = powerMeterDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(presenceSensorDevice) {
+				state.myType = "Presence Sensor"
+				state.mySensors = presenceSensorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(pushableButtonDevice) {
+				state.myType = "Pushable Button"
+				state.mySensors = pushableButtonDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(relativeHumidityMeasurementDevice) {
+				state.myType = "Relative Humidity Measurement"
+				state.mySensors = relativeHumidityMeasurementDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(smokeDetectorDevice) {
+				state.myType = "Smoke Detector"
+				state.mySensors = smokeDetectorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(switchDevice) {
+				state.myType = "Switch"
+				state.mySensors = switchDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(switchLevelDevice) {
+				state.myType = "Switch Level"
+				state.mySensors = switchLevelDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(temperatureMeasurementDevice) {
+				state.myType = "Temperature Measurement"
+				state.mySensors = temperatureMeasurementDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(valveDevice) {
+				state.myType = "Valve"
+				state.mySensors = valveDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(voltageMeasurementDevice) {
+				state.myType = "Voltage Measurement"
+				state.mySensors = voltageMeasurementDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			if(waterSensorDevice) {
+				state.myType = "Water Sensor"
+				state.mySensors = waterSensorDevice
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+			}
+			log.info "     * * * * * * * * End ${app.label} * * * * * * * *     "
+			def rightNow = new Date()
+			if(triggerMode == "Activity") {state.timeSinceMap += "<br>Report generated: ${rightNow}<br>"}
+			if(triggerMode == "Battery_Level") {state.batteryMap += "<br>Report generated: ${rightNow}<br>"}
+			if(watchdogTileDevice) watchdogMapHandler()
+			if(isDataActivityDevice) isThereData()
+			if(isDataBatteryDevice) isThereData()
+			if(sendPushMessage) pushNow()
+		}
 	}
-	if(sensorDevice) {
-		state.myType = "Sensor"
-		state.mySensors = sensorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(accelerationSensorDevice) {
-	  	state.myType = "Acceleration"
-		state.mySensors = accelerationSensorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(alarmDevice) {
-		state.myType = "Alarm"
-		state.mySensors = alarmDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(batteryDevice) {
-		state.myType = "Battery"
-		state.mySensors = batteryDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(carbonMonoxideDetectorDevice) {
-	  	state.myType = "Carbon Monoxide Detector"
-		state.mySensors = carbonMonoxideDetectorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(contactSensorDevice) {
-		state.myType = "Contact Sensor"
-		state.mySensors = contactSensorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(energyMeterDevice) {
-		state.myType = "Energy Meter"
-		state.mySensors = energyMeterDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(illuminanceMeasurementDevice) {
-		state.myType = "Illuminance Measurement"
-		state.mySensors = illuminanceMeasurementDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(lockDevice) {
-		state.myType = "Lock"
-		state.mySensors = lockDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(motionSensorDevice) {
-		state.myType = "Motion Sensor"
-		state.mySensors = motionSensorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(powerMeterDevice) {
-		state.myType = "Power Meter"
-		state.mySensors = powerMeterDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(presenceSensorDevice) {
-		state.myType = "Presence Sensor"
-		state.mySensors = presenceSensorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(pushableButtonDevice) {
-		state.myType = "Pushable Button"
-		state.mySensors = pushableButtonDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(relativeHumidityMeasurementDevice) {
-		state.myType = "Relative Humidity Measurement"
-		state.mySensors = relativeHumidityMeasurementDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(smokeDetectorDevice) {
-		state.myType = "Smoke Detector"
-		state.mySensors = smokeDetectorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(switchDevice) {
-		state.myType = "Switch"
-		state.mySensors = switchDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(switchLevelDevice) {
-		state.myType = "Switch Level"
-		state.mySensors = switchLevelDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(temperatureMeasurementDevice) {
-		state.myType = "Temperature Measurement"
-		state.mySensors = temperatureMeasurementDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(valveDevice) {
-		state.myType = "Valve"
-		state.mySensors = valveDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(voltageMeasurementDevice) {
-		state.myType = "Voltage Measurement"
-		state.mySensors = voltageMeasurementDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	if(waterSensorDevice) {
-		state.myType = "Water Sensor"
-		state.mySensors = waterSensorDevice
-		if(triggerMode == "Activity") mySensorHandler()
-		if(triggerMode == "Battery_Level") myBatteryHandler()
-	}
-	log.info "     * * * * * * * * End ${app.label} * * * * * * * *     "
-	def rightNow = new Date()
-	if(triggerMode == "Activity") {state.timeSinceMap += "<br>Report generated: ${rightNow}<br>"}
-	if(triggerMode == "Battery_Level") {state.batteryMap += "<br>Report generated: ${rightNow}<br>"}
-	if(watchdogTileDevice) watchdogMapHandler()
-	if(isDataActivityDevice) isThereData()
-	if(isDataBatteryDevice) isThereData()
-	if(sendPushMessage) pushNow()
 }	
 
 def myBatteryHandler() {
