@@ -1,9 +1,9 @@
 {
   "AbacusIntenseCountingParentVersion": "v1.0.6",
   "AbacusIntenseCountingChildVersion": "v1.0.7",
-  "AbacusIntenseCountingDriverVersion": "NA",
+  "AbacusIntenseCountingDriverVersion": "V1.0.0",
   "AbacusIntenseCountingParentRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
-  "AbacusIntenseCountingChildRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy' target='_blank'>[Child Raw Code]</a>",
+  "AbacusIntenseCountingChildRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy' target='_blank'>[Child Raw Code]</a></a>",
   "AbacusIntenseCountingDriverRawCode": "<a href='https://github.com/bptworld/Hubitat/blob/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy' target='_blank'>[Child Raw Code]</a>",
   "AbacusIntenseCountingDiscussion": "<a href='https://community.hubitat.com/t/release-abacus-intense-counting/7883' target='_blank'>[Discussion]</a></span>",
   
@@ -17,11 +17,11 @@
 
   "AppWatcherParentVersion": "v1.0.0",
   "AppWatcherChildVersion": "v1.0.1",
-  "AppWatcherDriverVersion": "NA",
-  "AppWatcherParentRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-parent.groovy' target='_blank'>[Parent Raw Code]</a>",
-  "AppWatcherChildRawCode": "<a href='https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-child.groovy' target='_blank'>[Child Raw Code]</a>",
+  "AppWatcherDriverVersion": "NA - Working on it",
+  "AppWatcherParentRawCode": "NA - Working on it",
+  "AppWatcherChildRawCode": "NA - Working on it",
   "AppWatcherDriverRawCode": "NA",
-  "AppWatcherDiscussion": "<a href='https://community.hubitat.com/t/release-abacus-time-traveler/8091' target='_blank'>[Discussion]</a></span>",
+  "AppWatcherDiscussion": "NA - Working on it",
 
 
 
