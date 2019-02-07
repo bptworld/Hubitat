@@ -20,8 +20,8 @@
   "AppWatcherParentVersion": "v1.0.0",
   "AppWatcherChildVersion": "v1.0.2",
   "AppWatcherDriverVersion": "NA",
-  "AppWatcherParentRawCode": "NA",
-  "AppWatcherChildRawCode": "NA",
+  "AppWatcherParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
+  "AppWatcherChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
   "AppWatcherDriverRawCode": "NA",
   "AppWatcherDiscussion": "NA",
 
