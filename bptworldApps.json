@@ -18,7 +18,7 @@
   "AbacusTimeTravelerDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
 
   "AppWatchdogParentVersion": "v1.0.0",
-  "AppWatchdogChildVersion": "v1.0.2",
+  "AppWatchdogChildVersion": "v1.0.3",
   "AppWatchdogDriverVersion": "NA",
   "AppWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
