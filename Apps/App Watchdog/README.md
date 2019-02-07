@@ -12,7 +12,7 @@ See if any compatible app needs an update, all in one place.<br><br>
 * Go back to Apps and open 'App Watchdog'
 <br>
 You can now create new child apps directly from here.<br><br>
-<b>*** HOW TO DISPLAY THE DATA ON A DASHBOARD TILE ***</b>
+<b>*** HOW TO DISPLAY THE DATA ON A DASHBOARD TILE ***</b><br>
 <b>Design Usage:</b><br>
 This driver formats the data to be displayed on Hubitat's Dashboards.<br><br>
 <b>New Install:</b><br>
