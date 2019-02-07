@@ -16,12 +16,12 @@ You can now create new child apps directly from here.
 <b>Design Usage:</b><br>
 This driver formats the data to be displayed on Hubitat's Dashboards.<br><br>
 <b>New Install:</b><br>
-* Copy the Driver code from GitHub into a ‘New driver’ under the ‘Drivers Code’ menu then click ‘Done’
-* Go to ‘Devices’ and create a new 'Add Virtual Device'
-* Name your new device something like 'Device Watchdog Tile'
-* Come up with a new 'Device Network ID'
-* Select ‘Device Watchdog Tile’ under ‘Type’
-* Click 'Save Device'
+* Copy the Driver code from GitHub into a ‘New driver’ under the ‘Drivers Code’ menu then click ‘Done’<br>
+* Go to ‘Devices’ and create a new 'Add Virtual Device'<br>
+* Name your new device something like 'Device Watchdog Tile'<br>
+* Come up with a new 'Device Network ID'<br>
+* Select ‘Device Watchdog Tile’ under ‘Type’<br>
+* Click 'Save Device'<br>
 <br><br>
 <b>Setup Options:</b><br>
 Commands Section<br>
