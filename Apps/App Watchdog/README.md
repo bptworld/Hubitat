@@ -33,12 +33,13 @@ Preferences<br>
 <br><br>
 <b>Usage:</b><br>
 Now all you have to do is add this device to one of your dashboards to see the data anytime!<br>
-Add a new tile with the following selections
-- Pick a device = App Watchdog
-- Pick a template = attribute
-- 3rd box = watchDevice
+Add a new tile with the following selections<br>
+- Pick a device = App Watchdog<br>
+- Pick a template = attribute<br>
+- 3rd box = watchDevice<br>
 
-<br>
+
+<br><br>
 Bryan<br>
 @BPTWorld
 
