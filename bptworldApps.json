@@ -45,9 +45,9 @@
   "AppWatchdogDriverRawCode": "NA",
   "AppWatchdogDiscussion": "NA",
 
-  "ExampleParentVersion": "v0.0.0",
-  "ExampleChildVersion": "NA",
-  "ExampleDriverVersion": "NA",
+  "ExampleParentVersion": "Do not remove this section.",
+  "ExampleChildVersion": "Use it to copy and paste in another app.",
+  "ExampleDriverVersion": "Replace Example with your App name - NO spaces",
   "ExampleParentRawCode": "NA",
   "ExampleChildRawCode": "NA",
   "ExampleDriverRawCode": "NA",
