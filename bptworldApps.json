@@ -7,8 +7,8 @@
   "App05": "BI Control",
   "App06": "Device Sequencer",
   "App07": "Device Watchdog",
-  "App08": "",
-  "App09": "",
+  "App08": "Lighting Effects",
+  "App09": "Motion Controlled Scene Lighting",
   "App10": "",
   "App11": "",
   "App12": "",
@@ -85,7 +85,19 @@
   "DeviceWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
   
+  "LightingEffectsParentVersion": "v1.2.0",
+  "LightingEffectsChildVersion": "v1.2.0",
+  "LightingEffectsDriverVersion": "NA",
+  "LightingEffectsParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy",
+  "LightingEffectsChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy",
+  "LightingEffectsDriverRawCode": "NA",
+  "LightingEffectsDiscussion": "https://community.hubitat.com/t/release-lighting-effects/4330",
   
-  
-  
+  "MotionControlledSceneLightingParentVersion": "v1.0.3",
+  "MotionControlledSceneLightingChildVersion": "v1.0.3",
+  "MotionControlledSceneLightingDriverVersion": "NA",
+  "MotionControlledSceneLightingParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/MCSL-Parent.groovy",
+  "MotionControlledSceneLightingChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/MCSL-Child.groovy",
+  "MotionControlledSceneLightingDriverRawCode": "NA",
+  "MotionControlledSceneLightingDiscussion": "https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419",
 }
