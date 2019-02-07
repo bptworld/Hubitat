@@ -19,11 +19,11 @@
 
   "AppWatcherParentVersion": "v1.0.0",
   "AppWatcherChildVersion": "v1.0.2",
-  "AppWatcherDriverVersion": "NA - Working on it",
-  "AppWatcherParentRawCode": "NA - Working on it",
-  "AppWatcherChildRawCode": "NA - Working on it",
+  "AppWatcherDriverVersion": "NA",
+  "AppWatcherParentRawCode": "NA",
+  "AppWatcherChildRawCode": "NA",
   "AppWatcherDriverRawCode": "NA",
-  "AppWatcherDiscussion": "NA - Working on it",
+  "AppWatcherDiscussion": "NA",
 
   "ExampleParentVersion": "v0.0.0",
   "ExampleChildVersion": "NA",
