@@ -76,20 +76,26 @@ def pageConfig() {
 			}
 			paragraph "<b>Beta Limitation:</b> If you need to uncheck an app from this list, Only remove ONE app at a time, then hit 'done', go back in... remove another, hit 'done'. If not you WILL break this app."
     		input "installedApps", "enum", title: "Select which apps you have installed", options: [
-				[AbacusIntenseCounting:"Abacus Intense Counting"],
-        		[AbacusTimeTraveler:"Abacus Time Traveler"],
-				[AppWatchdog:"App Watchdog"],
-        		[AtHomeSimulator:"At Home Simulator"],
-        		[BIControl:"BI Control"],
-        		[DeviceSequencer:"Device Sequencer"],
-				[DeviceWatchdog:"Device Watchdog"],
-        		[LightingEffects:"Lighting Effects"],
-				[MotionControlledSceneLighting:"Motion Controlled Scene Lighting"],
-        		[OneataTime:"One at a Time"],
-        		[SendIP2IR:"Send IP2IR"],
-        		[WebPinger:"Web Pinger"],
-        		[WelcomeHome:"Welcome Home"],
-        		[WhatDidISay:"What Did I Say"],
+				["${state.app01NoSpace}":"${state.app01}"],
+				["${state.app02NoSpace}":"${state.app02}"],
+				["${state.app03NoSpace}":"${state.app03}"],
+				["${state.app04NoSpace}":"${state.app04}"],
+				["${state.app05NoSpace}":"${state.app05}"],
+				["${state.app06NoSpace}":"${state.app06}"],
+				["${state.app07NoSpace}":"${state.app07}"],
+				["${state.app08NoSpace}":"${state.app08}"],
+				["${state.app09NoSpace}":"${state.app09}"],
+				["${state.app10NoSpace}":"${state.app10}"],
+				["${state.app11NoSpace}":"${state.app11}"],
+				["${state.app12NoSpace}":"${state.app12}"],
+				["${state.app13NoSpace}":"${state.app13}"],
+				["${state.app14NoSpace}":"${state.app14}"],
+				["${state.app15NoSpace}":"${state.app15}"],
+				["${state.app16NoSpace}":"${state.app16}"],
+				["${state.app17NoSpace}":"${state.app17}"],
+				["${state.app18NoSpace}":"${state.app18}"],
+				["${state.app19NoSpace}":"${state.app19}"],
+				["${state.app20NoSpace}":"${state.app20}"],
 				[Example:"Must Keep Checked"],
 			], required: false, multiple: true, defaultValue: "Example", submitOnChange: true
 		}
@@ -176,19 +182,24 @@ def setupNewStuff() {
 		state.oldChildMap = [:]
 		state.oldDriverMap = [:]
 	}
-	installedApps.each { stuff -> 
-		def stuffing = "NA"
-		def oldParentMap = state.oldParentMap.get(stuff)
-		LOGDEBUG("In setupNewStuff...Checking to see if ${stuff} is in map...${state.oldParentMap}")
-		if(oldParentMap != null) {
-			LOGDEBUG("In setupNewStuff...Found ${stuff}! All is good.")
-		} else {
-			LOGDEBUG("In setupNewStuff...Did not find ${stuff}. Adding it in.")	 
-			state.oldParentMap.put(stuff, stuffing)
-			state.oldChildMap.put(stuff, stuffing)
-			state.oldDriverMap.put(stuff, stuffing)
+	try {
+		installedApps.each { stuff -> 
+			def stuffing = "NA"
+			def oldParentMap = state.oldParentMap.get(stuff)
+			LOGDEBUG("In setupNewStuff...Checking to see if ${stuff} is in map...${state.oldParentMap}")
+			if(oldParentMap != null) {
+				LOGDEBUG("In setupNewStuff...Found ${stuff}! All is good.")
+			} else {
+				LOGDEBUG("In setupNewStuff...Did not find ${stuff}. Adding it in.")	 
+				state.oldParentMap.put(stuff, stuffing)
+				state.oldChildMap.put(stuff, stuffing)
+				state.oldDriverMap.put(stuff, stuffing)
+			}
 		}
 	}
+	catch (e) {
+        	//log.error "Error:  $e"
+    }
 	LOGDEBUG("In setupNewStuff...Here is the oldParentMap: ${state.oldParentMap} **********")
 	LOGDEBUG("In setupNewStuff...End New Stuff")
 	removingStuff()
@@ -199,17 +210,23 @@ def removingStuff() {
 	LOGDEBUG("In removingStuff...Time to Clean up the Maps")
 	LOGDEBUG("In removingStuff...Checking Map: ${state.oldParentMap}")
 	if(state.oldParentMap) {
-		state.oldParentMap.each { stuff2 -> 
-			LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
-			if(installedApps.contains(stuff2.key)) {
-				LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
-			} else {
-				LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
-				state.oldParentMap.remove(stuff2.key)
-				state.oldChildMap.remove(stuff2.key)
-				state.oldDriverMap.remove(stuff2.key)
+		try {
+			state.oldParentMap.each { stuff2 -> 
+				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
+				if(installedApps.contains(stuff2.key)) {
+					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
+				} else {
+					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
+					state.oldParentMap.remove(stuff2.key)
+					state.oldChildMap.remove(stuff2.key)
+					state.oldDriverMap.remove(stuff2.key)
+					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
+				}
 			}
 		}
+		catch (e) {
+        	//log.error "Error:  $e"
+    	}
 		LOGDEBUG("In removingStuff...Finished Map: ${state.oldParentMap}")
 	} else { LOGDEBUG("In removingStuff...state.oldParentMap was NULL") }
 }
@@ -221,6 +238,147 @@ def gitHubCheck() {
 		httpGet(params) { response ->
 			results = response.data
 			state.gitHubAuthor = "GitHub: ${results.GitHubAuthor}"
+			state.app01 = results.App01
+			state.app02 = results.App02
+			state.app03 = results.App03
+			state.app04 = results.App04
+			state.app05 = results.App05
+			state.app06 = results.App06
+			state.app07 = results.App07
+			state.app08 = results.App08
+			state.app09 = results.App09
+			state.app10 = results.App10
+			state.app11 = results.App11
+			state.app12 = results.App12
+			state.app13 = results.App13
+			state.app14 = results.App14
+			state.app15 = results.App15
+			state.app16 = results.App16
+			state.app17 = results.App17
+			state.app18 = results.App18
+			state.app19 = results.App19
+			state.app20 = results.App20
+			
+			if(state.app01) {
+				state.app01NoSpace = state.app01.replace(" ", "")
+			} else { 
+				state.app01NoSpace = "NoApp"
+				state.app01 = "No App"
+			}
+			if(state.app02) {
+				state.app02NoSpace = state.app02.replace(" ", "")
+			} else { 
+				state.app02NoSpace = "NoApp"
+				state.app02 = "No App"
+			}
+			if(state.app03) { 
+				state.app03NoSpace = state.app03.replace(" ", "")
+			} else { 
+				state.app03NoSpace = "NoApp"
+				state.app03 = "No App"
+			}
+			if(state.app04) {
+				state.app04NoSpace = state.app04.replace(" ", "")
+			} else { 
+				state.app04NoSpace = "NoApp"
+				state.app04 = "No App"
+			}
+			if(state.app05) {
+				state.app05NoSpace = state.app05.replace(" ", "")
+			} else { 
+				state.app05NoSpace = "NoApp"
+				state.app05 = "No App"
+			}
+			if(state.app06) {
+				state.app06NoSpace = state.app06.replace(" ", "")
+			} else { 
+				state.app06NoSpace = "NoApp"
+				state.app06 = "No App"
+			}
+			if(state.app07) {
+				state.app07NoSpace = state.app07.replace(" ", "")
+			} else { 
+				state.app07NoSpace = "NoApp"
+				state.app07 = "No App"
+			}
+			if(state.app08) {
+				state.app08NoSpace = state.app08.replace(" ", "")
+			} else { 
+				state.app08NoSpace = "NoApp"
+				state.app08 = "No App"
+			}
+			if(state.app09) {
+				state.app09NoSpace = state.app09.replace(" ", "")
+			} else { 
+				state.app09NoSpace = "NoApp"
+				state.app09 = "No App"
+			}
+			if(state.app10) {
+				state.app10NoSpace = state.app10.replace(" ", "")
+			} else { 
+				state.app10NoSpace = "NoApp"
+				state.app10 = "No App"
+			}
+			if(state.app11) {
+				state.app11NoSpace = state.app11.replace(" ", "")
+			} else { 
+				state.app11NoSpace = "NoApp"
+				state.app11 = "No App"
+			}
+			if(state.app12) {
+				state.app12NoSpace = state.app12.replace(" ", "")
+			} else { 
+				state.app12NoSpace = "NoApp"
+				state.app12 = "No App"
+			}
+			if(state.app13) {
+				state.app13NoSpace = state.app13.replace(" ", "")
+			} else { 
+				state.app13NoSpace = "NoApp"
+				state.app13 = "No App"
+			}
+			if(state.app14) {
+				state.app14NoSpace = state.app14.replace(" ", "")
+			} else { 
+				state.app14NoSpace = "NoApp"
+				state.app14 = "No App"
+			}
+			if(state.app15) {
+				state.app15NoSpace = state.app15.replace(" ", "")
+			} else { 
+				state.app15NoSpace = "NoApp"
+				state.app15 = "No App"
+			}
+			if(state.app16) {
+				state.app16NoSpace = state.app16.replace(" ", "")
+			} else { 
+				state.app16NoSpace = "NoApp"
+				state.app16 = "No App"
+			}
+			if(state.app17) {
+				state.app17NoSpace = state.app17.replace(" ", "")
+			} else { 
+				state.app17NoSpace = "NoApp"
+				state.app17 = "No App"
+			}
+			if(state.app18) {
+				state.app18NoSpace = state.app18.replace(" ", "")
+			} else { 
+				state.app18NoSpace = "NoApp"
+				state.app18 = "No App"
+			}
+			if(state.app19) {
+				state.app19NoSpace = state.app19.replace(" ", "")
+			} else { 
+				state.app19NoSpace = "NoApp"
+				state.app19 = "No App"
+			}
+			if(state.app20) {
+				state.app20NoSpace = state.app20.replace(" ", "")
+			} else { 
+				state.app20NoSpace = "NoApp"
+				state.app20 = "No App"
+			}
 		}
 	} 
     catch (e) {
@@ -285,6 +443,9 @@ def appMapHandler(evt) {
 			}			
 		}
 	}
+	if(maintSwitch2 != true) {
+		if(sendPushMessage) pushNow()
+	}
 }
 
 def checkTheData() {
@@ -329,29 +490,54 @@ def checkTheData() {
 		if(state.appDiscussion != "NA") {
 			appDiscussion2 = "<a href='${state.appDiscussion}' target='_blank'>[App Discussion]</a>"
 		} else {
-			appDiscussion2 = "NA"
+			appDiscussion2 = "Not Found"
 		}
 		if(state.appParentRawCode != "NA") {
 			appParentRawCode2 = "<a href='${state.appParentRawCode}' target='_blank'>[Parent Raw Code]</a>"
 		} else {
-			appParentRawCode2 = "NA"
+			appParentRawCode2 = "Not Found"
 		}	
 		if(state.appChildRawCode != "NA") {
 			appChildRawCode2 = "<a href='${state.appChildRawCode}' target='_blank'>[Child Raw Code]</a>"
 		} else {
-			appChildRawCode2 = "NA"
+			appChildRawCode2 = "Not Found"
 		}	
 		if(state.appDriverRawCode != "NA") {
 			appDriverRawCode2 = "<a href='${state.appDriverRawCode}' target='_blank'>[Driver Raw Code]</a>"
 		} else {
-			appDriverRawCode2 = "NA"
+			appDriverRawCode2 = "Not Found"
 		}	
+		def dName = state.appsName
+		if(state.appsName == state.app01NoSpace) dName = state.app01
+		if(state.appsName == state.app02NoSpace) dName = state.app02
+		if(state.appsName == state.app03NoSpace) dName = state.app03
+		if(state.appsName == state.app04NoSpace) dName = state.app04
+		if(state.appsName == state.app05NoSpace) dName = state.app05
+		if(state.appsName == state.app06NoSpace) dName = state.app06
+		if(state.appsName == state.app07NoSpace) dName = state.app07
+		if(state.appsName == state.app08NoSpace) dName = state.app08
+		if(state.appsName == state.app09NoSpace) dName = state.app09
+		if(state.appsName == state.app10NoSpace) dName = state.app10
+		if(state.appsName == state.app11NoSpace) dName = state.app11
+		if(state.appsName == state.app12NoSpace) dName = state.app12
+		if(state.appsName == state.app13NoSpace) dName = state.app13
+		if(state.appsName == state.app14NoSpace) dName = state.app14
+		if(state.appsName == state.app15NoSpace) dName = state.app15
+		if(state.appsName == state.app16NoSpace) dName = state.app16
+		if(state.appsName == state.app17NoSpace) dName = state.app17
+		if(state.appsName == state.app18NoSpace) dName = state.app18
+		if(state.appsName == state.app19NoSpace) dName = state.app19
+		if(state.appsName == state.app20NoSpace) dName = state.app20
 		
-		state.appMap += "<tr><td width='75%' colspan='2'><b>${state.appsName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
-		state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
-		state.appMap += "<tr><td width='36%'><i>Current</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
-		state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
-		state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
+		if(dName != "Example") {
+			state.appMap += "<tr><td width='75%' colspan='2'><b>${dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
+			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
+			state.appMap += "<tr><td width='36%'><i>Current</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
+			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
+			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
+			
+			state.appMapPhone += "${dName} has an update available : "
+		}
 	}
 }
 
@@ -381,11 +567,11 @@ def isThereData(){
 
 def pushNow(){
 	LOGDEBUG("In pushNow...")
-	if(triggerMode == "Activity") {
-		if(state.MapPhone) {
-			mapPhone = "${app.label} - ${state.MapPhone}"
-			LOGDEBUG("In pushNow...Sending message: ${mapPhone}")
-        	sendPushMessage.deviceNotification(mapPhone)
+	if(sendPushMessage) {
+		if(state.appMapPhone) {
+			pushMessage = "${app.label} - ${state.appMapPhone}"
+			LOGDEBUG("In pushNow...Sending message: ${pushMessage}")
+        	sendPushMessage.deviceNotification(pushMessage)
 		} else {
 			if(pushAll == true) {
 				log.info "${app.label} - No push needed...Nothing to report."
