@@ -121,8 +121,7 @@ def getFormat(type, myText=""){		// Modified from @Stephack Code
 
 def display(){
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${version()}</div>"
 	}       
 }         
