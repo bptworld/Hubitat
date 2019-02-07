@@ -125,7 +125,7 @@
   "WebPingerDriverRawCode": "NA",
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
   
-  "WelcomeHomeParentVersion": "v1.1.1"",
+  "WelcomeHomeParentVersion": "v1.1.1",
   "WelcomeHomeChildVersion": "v1.1.3"",
   "WelcomeHomeDriverVersion": "NA",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
