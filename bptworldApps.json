@@ -1,5 +1,8 @@
 {
   "GitHubAuthor": "BPTWorld",
+  "App01": "Abacus Intense Counting",
+  "App02": "Abacus Time Traveler",
+  "App03": "App Watchdog",
   
   "AbacusIntenseCountingParentVersion": "v1.0.6",
   "AbacusIntenseCountingChildVersion": "v1.0.7",
