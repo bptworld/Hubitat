@@ -10,6 +10,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacu
 **Abacus - Time Traveler** - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus-time-traveler/8091" target="_blank">Go Here</a>
 <br><br>
+**App Watchdog** - See if any compatible app needs an update, all in one place. DEVELOPERS WELCOME!<br>
+Hubitat Forum Discussion: 
+<br><br>
 **At Home Simulator** - Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-simulator/8697" target="_blank">Go Here</a>
 <br><br>
