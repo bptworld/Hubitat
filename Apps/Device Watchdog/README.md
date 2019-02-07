@@ -14,7 +14,7 @@ You can now create new child apps directly from here.
 <br><br>
 <b>*** HOW TO DISPLAY THE DATA ON A DASHBOARD TILE ***</b>
 <b>Design Usage:</b><br>
-This driver formats Speech data to be displayed on Hubitat's Dashboards.<br><br>
+This driver formats the data to be displayed on Hubitat's Dashboards.<br><br>
 <b>New Install:</b><br>
 * Copy the Driver code from GitHub into a ‘New driver’ under the ‘Drivers Code’ menu then click ‘Done’
 * Go to ‘Devices’ and create a new 'Add Virtual Device'
