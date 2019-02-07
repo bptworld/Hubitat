@@ -26,7 +26,7 @@ This driver formats the data to be displayed on Hubitat's Dashboards.<br><br>
 <b>Setup Options:</b><br>
 Commands Section<br>
 * Ignore everything in this section
-<br>
+<br><br>
 Preferences<br>
 * Enable logging - Turns the device logging on and off<br>
 * Font Size - Changes the size of the font used on the tile 'bigger number = bigger font'<br>
