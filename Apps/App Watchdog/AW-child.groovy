@@ -34,12 +34,12 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 02/07/19 - Beta
+ *  V1.0.3 - 02/07/19 - Beta
  *  V1.0.0 - 02/01/19 - Initial Beta release.
  *
  */
 
-def version(){"v1.0.2"}
+def version(){"v1.0.3"}
 
 definition(
     name: "App Watchdog Child",
@@ -110,7 +110,7 @@ def pageConfig() {
 			input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Maintenance")) {
-			paragraph "Once you've updated all the code, flip this switch on, a second switch will appear. Turn on the second switch to update ALL version data to Current. Use with caution, it can not be undone."
+			paragraph "Once you've updated all of the apps, flip this switch on, a second switch will appear. Turn on the second switch to update ALL version data to Current. Use with caution, it can not be undone. After about 10 seconds you can turn this switch back off."
             input(name: "maintSwitch", type: "bool", defaultValue: "false", title: "Update all versions to current?", description: "Update all Version Data to Current", submitOnChange: "true")
 			if(maintSwitch) {
 				paragraph "Be sure to turn this switch off after update!"
@@ -130,21 +130,22 @@ def pageConfig() {
 def pageStatus(params) {
 	dynamicPage(name: "pageStatus", title: "Apps Watchdog - Status", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
 		appMapHandler()
-		if(state.appMap) {
 			section("How to Update", hideable: true, hidden: true) {
 				paragraph "<b>To update your code:</b><br>(<i>Do this for each item that needs updating.</i>)"
 				paragraph " - Right-click on any link and choose 'Copy Link Location'<br> - Go into your 'Apps Code' section<br> - Select the corresponding app<br> - 'Import' it in, 'Save' and done!"
 				paragraph "<b>To Reset this Data AFTER Updating:</b>"
-				paragraph " - Go back into this app<br> - Flip the switch 'Update ALL version data to Current'<br> - Then press the 'button'<br> - All set!"
+				paragraph " - Go back into this app<br> - Flip the switch 'Update ALL version data to Current'<br> - Then flip the second switch<br> - All set!"
 			}
+		if(state.appMap) {
 			section() {
-				state.FinishedMap = "<table width='100%'>${state.appMap}</table>"
-				
-				paragraph "${state.FinishedMap}"
+				updateMap = "<table width='100%'>${state.appMap}</table>"
+				paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps with an update</h2>"
+				paragraph "${updateMap}"
         	}
 		} else {
-			section("Apps that have reported an update...") { 
-				paragraph "Nothing to report"
+			section() { 
+				paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps with an update</h2>"
+				paragraph "All apps are up to date"
 			}
 		}
 	}
@@ -296,7 +297,7 @@ def checkTheData() {
 	}
 	else {
 		parentCheck = "yes"
-		pnew = "<span style='color:red'>NEW</span>"
+		pnew = "<span style='color:red'>NEW </span>"
 		LOGDEBUG("In checkTheData...Old Parent Version: ${state.oldAppParentVersion} - Update Available! - New: ${state.appParentVersion}")
 	}
 							
@@ -308,7 +309,7 @@ def checkTheData() {
 	}
 	else {
 		childCheck = "yes"
-		cnew = "<span style='color:red'>NEW</span>"
+		cnew = "<span style='color:red'>NEW </span>"
 		LOGDEBUG("In checkTheData...Old Child Version: ${state.oldAppChildVersion} - Update Available! - New: ${state.appChildVersion}")
 	}
 							
@@ -320,15 +321,37 @@ def checkTheData() {
 	}
 	else {
 		driverCheck = "yes"
-		dnew = "<span style='color:red'>NEW</span>"
+		dnew = "<span style='color:red'>NEW </span>"
 		LOGDEBUG("In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - Update Available!- New: ${state.appDriverVersion}")
 	}
 
 	if(parentCheck == "yes" || childCheck == "yes" || driverCheck == "yes") {
-		state.appMap += "<tr><td width='75%' colspan='2'><b>${state.appsName}</b></td><td width='25%'>${state.appDiscussion}</td></tr>"
+		if(state.appDiscussion != "NA") {
+			appDiscussion2 = "<a href='${state.appDiscussion}' target='_blank'>[App Discussion]</a>"
+		} else {
+			appDiscussion2 = "NA"
+		}
+		if(state.appParentRawCode != "NA") {
+			appParentRawCode2 = "<a href='${state.appParentRawCode}' target='_blank'>[Parent Raw Code]</a>"
+		} else {
+			appParentRawCode2 = "NA"
+		}	
+		if(state.appChildRawCode != "NA") {
+			appChildRawCode2 = "<a href='${state.appChildRawCode}' target='_blank'>[Child Raw Code]</a>"
+		} else {
+			appChildRawCode2 = "NA"
+		}	
+		if(state.appDriverRawCode != "NA") {
+			appDriverRawCode2 = "<a href='${state.appDriverRawCode}' target='_blank'>[Driver Raw Code]</a>"
+		} else {
+			appDriverRawCode2 = "NA"
+		}	
+		
+		state.appMap += "<tr><td width='75%' colspan='2'><b>${state.appsName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
 		state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
 		state.appMap += "<tr><td width='36%'><i>Current</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
-		state.appMap += "<tr><td width='36%'>${pnew} ${state.appParentRawCode}</td><td width='32%'>${cnew} ${state.appChildRawCode}</td><td width='32%'>${dnew} ${state.appDriverRawCode}</td></tr>"
+		state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
+		state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 	}
 }
 
