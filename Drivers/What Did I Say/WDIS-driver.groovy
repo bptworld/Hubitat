@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 02/08/19 - Change the number of messages to any number from 1 to 10. Attmept to fix a reported error.
+ *  V1.0.1 - 02/08/19 - Changed the 'How many lines' field from 5 or 10, to any number from 1 to 10. Attempt to fix a reported error.
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
