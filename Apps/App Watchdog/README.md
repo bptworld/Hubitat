@@ -36,7 +36,7 @@ Now all you have to do is add this device to one of your dashboards to see the d
 Add a new tile with the following selections<br>
 - Pick a device = App Watchdog<br>
 - Pick a template = attribute<br>
-- 3rd box = watchDevice<br>
+- 3rd box = appVersions<br>
 
 
 <br><br>
