@@ -34,12 +34,13 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 02/08/19 - Dashboard tile now works
  *  V1.0.3 - 02/07/19 - Beta
  *  V1.0.0 - 02/01/19 - Initial Beta release.
  *
  */
 
-def version(){"v1.0.3"}
+def version(){"v1.0.4"}
 
 definition(
     name: "App Watchdog Child",
@@ -100,8 +101,8 @@ def pageConfig() {
 			], required: false, multiple: true, defaultValue: "Example", submitOnChange: true
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-			input "timeToRun", "time", title: "Check Apps at this time daily", required: true, submitOnChange: true
-			input "isDataDevice", "capability.switch", title: "Turn this device on if there is data to report", submitOnChange: true, required: false, multiple: false
+			input "timeToRun", "time", title: "Check Apps at this time daily", required: false
+			input "isDataDevice", "capability.switch", title: "Turn this device on if there is data to report", required: false, multiple: false
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 		}
@@ -445,6 +446,7 @@ def appMapHandler(evt) {
 	}
 	if(maintSwitch2 != true) {
 		if(sendPushMessage) pushNow()
+		if(tileDevice) tileHandler()
 	}
 }
 
@@ -545,6 +547,15 @@ def tileHandler(evt) {
 	def appMap = "${state.appMap}"
 	LOGDEBUG("In tileHandler...Sending new App Watchdog data to ${tileDevice}")
     tileDevice.sendDataMap(appMap)
+}
+
+def tileVersionHandler() {
+	childVersion = "${version}"
+	verMap = "${app.label} - ${childVersion}"
+	
+	def appVersionMap = "${verMap}"
+	LOGDEBUG("In tileVersionHandler...Sending new App Watchdog data to ${tileDevice}")
+    tileDevice.sendDataMap(appVersionMap)
 }
 
 def clearMaps() {
