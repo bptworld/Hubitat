@@ -51,7 +51,7 @@
   "AppWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
   "AppWatchdogDriverRawCode": "NA",
-  "AppWatchdogDiscussion": "NA",
+  "AppWatchdogDiscussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
 
   "AtHomeSimulatorParentVersion": "v1.0.0",
   "AtHomeSimulatorChildVersion": "v1.0.1",
