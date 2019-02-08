@@ -135,7 +135,7 @@
   
   "WhatDidISayParentVersion": "NA",
   "WhatDidISayChildVersion": "NA",
-  "WhatDidISayDriverVersion": "v1.0.0",
+  "WhatDidISayDriverVersion": "v1.0.1",
   "WhatDidISayParentRawCode": "NA",
   "WhatDidISayChildRawCode": "NA",
   "WhatDidISayDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy",
