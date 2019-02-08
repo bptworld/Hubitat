@@ -34,9 +34,11 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 02/08/19 - Change the number of messages to any number from 1 to 10. Attmept to fix a reported error.
  *  V1.0.0 - 01/27/19 - Initial release
  */
+
+def version(){"v1.0.1"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
@@ -55,13 +57,13 @@ metadata {
         section(){
             input("debugMode", "bool", title: "Enable logging", required: false, defaultValue: false)
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
-			input("numOfLines", "number", title: "How many lines to display (5 or 10 only)", required:true, defaultValue: 5)
+			input("numOfLines", "number", title: "How many lines to display (from 1 to 10 only)", required:true, defaultValue: 5)
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
 			input("clearData", "bool", title: "Clear All Speech Data", required: false, defaultValue: false)
         }
     }
 }
-	
+
 //Received new messages from apps
 def sendSpeechMap(speechMap) {
 	state.speechReceived = speechMap
@@ -87,16 +89,21 @@ def populateMap() {
 	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceived}")
 	
 	// Read in the maps
-	sOne = state.speechMap1.get(state.s,nMessage)
-	sTwo = state.speechMap2.get(state.s,nMessage)
-	sThree = state.speechMap3.get(state.s,nMessage)
-	sFour = state.speechMap4.get(state.s,nMessage)
-	sFive = state.speechMap5.get(state.s,nMessage)
-	sSix = state.speechMap6.get(state.s,nMessage)
-	sSeven = state.speechMap7.get(state.s,nMessage)
-	sEight = state.speechMap8.get(state.s,nMessage)
-	sNine = state.speechMap9.get(state.s,nMessage)
-	sTen = state.speechMap10.get(state.s,nMessage)
+	try {
+		sOne = state.speechMap1.get(state.s,nMessage)
+		sTwo = state.speechMap2.get(state.s,nMessage)
+		sThree = state.speechMap3.get(state.s,nMessage)
+		sFour = state.speechMap4.get(state.s,nMessage)
+		sFive = state.speechMap5.get(state.s,nMessage)
+		sSix = state.speechMap6.get(state.s,nMessage)
+		sSeven = state.speechMap7.get(state.s,nMessage)
+		sEight = state.speechMap8.get(state.s,nMessage)
+		sNine = state.speechMap9.get(state.s,nMessage)
+		sTen = state.speechMap10.get(state.s,nMessage)
+	}
+	catch (e) {
+        //log.error "Error:  $e"
+    }
 	
 	LOGDEBUG("What Did I Say - OLD -<br>sOne: ${sOne}<br>sTwo: ${sTwo}<br>sThree: ${sThree}<br>sFour: ${sFour}<br>sFive: ${sFive}")
 	
@@ -128,21 +135,51 @@ def populateMap() {
 	LOGDEBUG("What Did I Say - NEW -<br>mOne: ${mOne}<br>mTwo: ${mTwo}<br>mThree: ${mThree}<br>mFour: ${mFour}<br>mFive: ${mFive}")
 	
 	// Fill the maps back in
-	state.speechMap1.put(state.s,mOne)
-	state.speechMap2.put(state.s,mTwo)
-	state.speechMap3.put(state.s,mThree)
-	state.speechMap4.put(state.s,mFour)
-	state.speechMap5.put(state.s,mFive)
-	state.speechMap6.put(state.s,mSix)
-	state.speechMap7.put(state.s,mSeven)
-	state.speechMap8.put(state.s,mEight)
-	state.speechMap9.put(state.s,mNine)
-	state.speechMap10.put(state.s,mTen)
+	try {
+		state.speechMap1.put(state.s,mOne)
+		state.speechMap2.put(state.s,mTwo)
+		state.speechMap3.put(state.s,mThree)
+		state.speechMap4.put(state.s,mFour)
+		state.speechMap5.put(state.s,mFive)
+		state.speechMap6.put(state.s,mSix)
+		state.speechMap7.put(state.s,mSeven)
+		state.speechMap8.put(state.s,mEight)
+		state.speechMap9.put(state.s,mNine)
+		state.speechMap10.put(state.s,mTen)
+	}
+	catch (e) {
+        //log.error "Error:  $e"
+    }
 	
 	state.speechTop = "<table width='100%'><tr><td align='left'>"
+	if(numOfLines == 1) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}</div>"
+	}
+	if(numOfLines == 2) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}</div>"
+	}
+	if(numOfLines == 3) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}</div>"
+	}
+	if(numOfLines == 4) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}</div>"
+	}
 	if(numOfLines == 5) {
 		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}</div>"
-	} else {
+	} 
+	if(numOfLines == 6) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}</div>"
+	}
+	if(numOfLines == 7) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}</div>"
+	}
+	if(numOfLines == 8) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}</div>"
+	}
+	if(numOfLines == 9) {
+		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}</div>"
+	}
+	if(numOfLines == 10) {
 		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div>"
 	}
 	state.speechTop+= "</td></tr></table>"
@@ -187,18 +224,16 @@ def clearSpeechData(){
 	state.speechMap4.put(state.s,state.nMessage)
 	state.speechMap5 = [:]
 	state.speechMap5.put(state.s,state.nMessage)
-	if(numOfLines != 5) {
-		state.speechMap6 = [:]
-		state.speechMap6.put(state.s,state.nMessage)
-		state.speechMap7 = [:]
-		state.speechMap7.put(state.s,state.nMessage)
-		state.speechMap8 = [:]
-		state.speechMap8.put(state.s,state.nMessage)
-		state.speechMap9 = [:]
-		state.speechMap9.put(state.s,state.nMessage)
-		state.speechMap10 = [:]
-		state.speechMap10.put(state.s,state.nMessage)
-	}
+	state.speechMap6 = [:]
+	state.speechMap6.put(state.s,state.nMessage)
+	state.speechMap7 = [:]
+	state.speechMap7.put(state.s,state.nMessage)
+	state.speechMap8 = [:]
+	state.speechMap8.put(state.s,state.nMessage)
+	state.speechMap9 = [:]
+	state.speechMap9.put(state.s,state.nMessage)
+	state.speechMap10 = [:]
+	state.speechMap10.put(state.s,state.nMessage)
 	
 	state.speechTop = "Waiting for Data..."
 	sendEvent(name: "whatDidISay", value: state.speechTop, displayed: true)
