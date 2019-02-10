@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V1.0.5 - 02/09/19 - Now have two templates available: apps/driver and just drivers. Can now have up to 6 drivers in one section.
+ *  V1.0.5 - 02/10/19 - Now have two templates available: apps/driver and just drivers. Can now have up to 6 drivers in one section.
  *						If more are needed, simply make another section. Added in a new report, 'Current App Versions', shows a list
  *						of all apps with versions. DEVELOPERS, please see new GitHub json template.
  *  V1.0.4 - 02/08/19 - Dashboard tile now works
