@@ -72,7 +72,7 @@
 
   "AppWatchdogType": "App",
   "AppWatchdogParentVersion": "v1.0.0",
-  "AppWatchdogChildVersion": "v1.0.4",
+  "AppWatchdogChildVersion": "v1.0.5",
   "AppWatchdogDriverVersion": "v1.0.0",
   "AppWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
