@@ -35,9 +35,10 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.1 - 02/11/19 - Trobleshooting problem with Friendly Name
  *  V2.0.0 - 02/11/19 - Major rewrite. Presence sensors are now in Parent app, so they can be shared across multiple child apps.
  *						Welcome Home now requires a new 'Virtual Device' using our custom 'Global Variables Driver'.  Each child app
- *                      will link to the same 'Virtual Device'.  This way we can track who came home across mutliple child apps!
+ *                      will link to the same 'Virtual Device'.  This way we can track who came home across multiple child apps!
  *  V1.1.4 - 01/30/19 - Added in more message variables. Thanks to @Matthew for the coding.
  *  V1.1.3 - 01/24/19 - Welcome Home now works with Echo Speaks.
  *  V1.1.2 - 01/22/19 - Made all fields within Speech Options mandatory to avoid an error.
@@ -384,9 +385,9 @@ def getTimeDiff1() {
   		if(timeDiff < timeHome) {
 			globalBeenHere()
 			if(state.globalBH1 == "no") {
-				log.info "${app.label} - ${state.friendlyName1} just got here! Time Diff = ${timeDiff}"
+				log.info "${app.label} - ${parent.friendlyName1} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				state.presenceMap = [state.friendlyName1]
+				state.presenceMap = [parent.friendlyName1]
 				state.canSpeak = "yes"
 				state.globalBH1 = "yes"
 				dataMap1 = "globalBH1:yes"
@@ -398,7 +399,7 @@ def getTimeDiff1() {
 			state.globalBH1 = "no"
 			dataMap1 = "globalBH1:no"
 			gvDevice.sendDataMap1(state.globalBH1)
-			log.info "${app.label} - ${state.friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
+			log.info "${app.label} - ${parent.friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
 		LOGDEBUG("Global Been Here: ${state.globalBH1}")
@@ -435,10 +436,10 @@ def getTimeDiff2() {
 				state.globalBH2 = "yes"
 				dataMap2 = "globalBH2:yes"
 				gvDevice.sendDataMap2(state.globalBH2)
-				log.info "${app.label} - ${state.friendlyName2} just got here! Time Diff = ${timeDiff}"
+				log.info "${app.label} - ${parent.friendlyName2} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [state.friendlyName2]
-				if(state.nameCount >= 2) state.presenceMap += [state.friendlyName2]
+				if(state.nameCount == 1) state.presenceMap = [parent.friendlyName2]
+				if(state.nameCount >= 2) state.presenceMap += [parent.friendlyName2]
 				state.canSpeak = "yes"
 			} else {
 				log.info "Global 'Been Here' is ${state.globalBH2}. No announcement needed."
@@ -447,7 +448,7 @@ def getTimeDiff2() {
 			state.globalBH2 = "no"
 			dataMap1 = "globalBH2:no"
 			gvDevice.sendDataMap2(state.globalBH2)
-			log.info "${app.label} - ${state.friendlyName2} - No announcement needed. Time Diff = ${timeDiff}"
+			log.info "${app.label} - ${parent.friendlyName2} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
 		LOGDEBUG("Global Been Here: ${state.globalBH2}")
@@ -484,10 +485,10 @@ def getTimeDiff3() {
 				state.globalBH3 = "yes"
 				dataMap3 = "globalBH3:yes"
 				gvDevice.sendDataMap3(state.globalBH3)
-				log.info "${app.label} - ${state.friendlyName3} just got here! Time Diff = ${timeDiff}"
+				log.info "${app.label} - ${parent.friendlyName3} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [state.friendlyName3]
-				if(state.nameCount >= 2) state.presenceMap += [state.friendlyName3]
+				if(state.nameCount == 1) state.presenceMap = [parent.friendlyName3]
+				if(state.nameCount >= 2) state.presenceMap += [parent.friendlyName3]
 				state.canSpeak = "yes"
 			} else {
 				log.info "Global 'Been Here' is ${state.globalBH3}. No announcement needed."
@@ -496,7 +497,7 @@ def getTimeDiff3() {
 			state.globalBH3 = "no"
 			dataMap3 = "globalBH3:no"
 			gvDevice.sendDataMap3(state.globalBH3)
-			log.info "${app.label} - ${state.friendlyName3} - No announcement needed. Time Diff = ${timeDiff}"
+			log.info "${app.label} - ${parent.friendlyName3} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
 		LOGDEBUG("Global Been Here: ${state.globalBH3}")
@@ -543,7 +544,7 @@ def getTimeDiff4() {
 		} else {
 			state.globalBH4 = "no"
 			gvDevice.sendDataMap4(state.globalBH4)
-			log.info "${app.label} - ${state.friendlyName4} - No announcement needed. Time Diff = ${timeDiff}"
+			log.info "${app.label} - ${parent.friendlyName4} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
 		LOGDEBUG("getTimeDiff4 - Global Been Here: ${state.globalBH4}")
@@ -579,10 +580,10 @@ def getTimeDiff5() {
 				state.globalBH5 = "yes"
 				dataMap5 = "globalBH5:yes"
 				gvDevice.sendDataMap5(state.globalBH5)
-				log.info "${app.label} - ${state.friendlyName5} just got here! Time Diff = ${timeDiff}"
+				log.info "${app.label} - ${parent.friendlyName5} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [state.friendlyName5]
-				if(state.nameCount >= 2) state.presenceMap += [state.friendlyName5]
+				if(state.nameCount == 1) state.presenceMap = [parent.friendlyName5]
+				if(state.nameCount >= 2) state.presenceMap += [parent.friendlyName5]
 				state.canSpeak = "yes"
 			} else {
 				log.info "Global 'Been Here' is ${state.globalBH5}. No announcement needed."
@@ -591,7 +592,7 @@ def getTimeDiff5() {
 			state.globalBH5 = "no"
 			dataMap5 = "globalBH5:no"
 			gvDevice.sendDataMap5(state.globalBH5)
-			log.info "${app.label} - ${state.friendlyName5} - No announcement needed. Time Diff = ${timeDiff}"
+			log.info "${app.label} - ${parent.friendlyName5} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
 		LOGDEBUG("Global Been Here: ${state.globalBH5}")
@@ -855,11 +856,6 @@ def setDefaults(){
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	state.nameCount = 0
 	state.canSpeak = "no"
-	state.friendlyName1 == "${parent.friendlyName1}"
-	state.friendlyName2 == "${parent.friendlyName2}"
-	state.friendlyName3 == "${parent.friendlyName3}"
-	state.friendlyName4 == "${parent.friendlyName4}"
-	state.friendlyName5 == "${parent.friendlyName5}"
 }
 
 def logCheck(){					// Modified from @Cobra Code
