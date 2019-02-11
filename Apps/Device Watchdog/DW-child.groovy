@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.5 - 02/11/19 - Fix the previous report not sometimes clearing before displaying the new report.
  *  V1.1.4 - 02/10/19 - Added a switch to run a report any time.
  *  V1.1.3 - 01/31/19 - Fixed Pause and Disable/Enable not working.
  *  V1.1.2 - 01/31/19 - Added ability to turn on a device when there is something to report
@@ -57,7 +58,7 @@
  *
  */
 
-def version(){"v1.1.4"}
+def version(){"v1.1.5"}
 
 definition(
     name: "Device Watchdog Child",
@@ -201,7 +202,6 @@ def pageConfig() {
 
 def pageStatus(params) {
 	dynamicPage(name: "pageStatus", title: "Device Watchdog - Status", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
-		clearMaps()
 		activityHandler()
 		log.warn("state.reportCount: ${state.reportCount} ***")
 		log.warn("state.timeSinceMap: ${state.timeSinceMap}")
@@ -292,6 +292,7 @@ def watchdogMapHandler(evt) {
 }
 
 def activityHandler(evt) {
+	clearMaps()
 	if(state.enablerSwitch2 == "off") {
 		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
