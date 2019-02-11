@@ -36,6 +36,9 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 02/11/19 - Major rewrite. Presence sensors are now in Parent app, so they can be shared across multiple child apps.
+ *						Welcome Home now requires a new 'Virtual Device' using our custom 'Global Variables Driver'.  Each child app
+ *                      will link to the same 'Virtual Device'.  This way we can track who came home across mutliple child apps!
  *  V1.1.1 - 01/15/19 - Updated footer with update check and links
  *  V1.1.0 - 01/13/19 - Updated to announce multiple people coming home at the same time, in one message. Seems like such a simple
  *						thing but it took a huge rewrite to do it!
@@ -53,7 +56,7 @@
  *
  */
 
-def version(){"v1.1.1"}
+def version(){"v2.0.0"}
 
 definition(
     name:"Welcome Home",
@@ -106,19 +109,26 @@ def mainPage() {
 				paragraph "<b>Notes:</b>"
 				paragraph "This app is designed to give a personal welcome announcement <i>after</i> you have entered the home."
 				paragraph "<b>Requirements:</b>"
-				paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
+				paragraph "Be sure to complete the 'Advanced Config' section before creating Child Apps."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				paragraph "<b>Be sure to complete the 'Advanced Config' section before creating Child Apps.</b>"
 				app(name: "anyOpenApp", appName: "Welcome Home Child", namespace: "BPTWorld", title: "<b>Add a new 'Welcome Home' child</b>", multiple: true)
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {
-				paragraph "<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>"
+			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {}
+			section("Presence Sensors:", hideable: true, hidden: true) {
+				paragraph "Enter in your 'Friendly Names' for the presence sensors to be used with this app. You'll still attach them to the presence sensors within each child app. This will keep them in order across multiple child apps."
+				input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, defaultValue: "Not set"
+				input "friendlyName2", "text", title: "Friendly name for presence sensor 2", required: false, multiple: false, defaultValue: "Not set"
+				input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, defaultValue: "Not set"
+				input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, defaultValue: "Not set"
+				input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, defaultValue: "Not set"
 			}
-            section("Advanced Config:", hideable: true, hidden: true) {
-				paragraph "<br>%greeting% - will return a greeting based on time of day.<br>%name% - will return the Friendly Name associcated with a Presence Sensor<br>Note: adding a . anywhere will give the message a little pause"
+            section("Greetings and Messages:", hideable: true, hidden: true) {
+				paragraph "<br>%greeting% - returns a greeting based on time of day.<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors<br>Note: adding a . anywhere will give the message a little pause<br>"
 				input "greeting1", "text", required: true, title: "Greeting - 1 (am)", defaultValue: "Good Morning"
                 input "greeting2", "text", required: true, title: "Greeting - 2 (before 6pm)", defaultValue: "Good Afternoon"
                 input "greeting3", "text", required: true, title: "Greeting - 3 (after 6pm)", defaultValue: "Good Evening"
@@ -171,33 +181,10 @@ def getFormat(type, myText=""){
 	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currParentVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currParentVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display(){
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${version()}</div>"
 	}       
 }  
 
