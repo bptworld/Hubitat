@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.4 - 02/10/19 - Added a switch to run a report any time.
  *  V1.1.3 - 01/31/19 - Fixed Pause and Disable/Enable not working.
  *  V1.1.2 - 01/31/19 - Added ability to turn on a device when there is something to report
  *  V1.1.1 - 01/28/19 - Under the hood rewrite, better reporting. Also added NEW Device Watchdog Tile for use with dashboards
@@ -56,7 +57,7 @@
  *
  */
 
-def version(){"v1.1.3"}
+def version(){"v1.1.4"}
 
 definition(
     name: "Device Watchdog Child",
@@ -115,6 +116,9 @@ def pageConfig() {
 						paragraph "App will only display Devices BELOW Threshold."
 					}
 				}
+				section() {
+					input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to run a new report", submitOnChange: true, required: false, multiple: false
+				}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
@@ -171,6 +175,9 @@ def pageConfig() {
 				} else {
 					paragraph "App will only display INACTIVE Devices."
 				}
+		}
+		section() {
+			input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to a run new report", submitOnChange: true, required: false, multiple: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
@@ -268,6 +275,7 @@ def initialize() {
 		if(allDevices) subscribe(location, "battery", activityHandler)
 		schedule(timeToRun, activityHandler)
 	}
+	if(runReportSwitch) subscribe(runReportSwitch, "switch", activityHandler)
 }
 
 def watchdogMapHandler(evt) {
