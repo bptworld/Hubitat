@@ -162,7 +162,7 @@
   
   "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.0",
-  "WelcomeHomeChildVersion": "v2.0.0",
+  "WelcomeHomeChildVersion": "v2.0.1",
   "WelcomeHomeDriverVersion": "v1.0.0",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
