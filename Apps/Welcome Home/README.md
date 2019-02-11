@@ -10,8 +10,16 @@ This app is designed to give a personal welcome announcement after you have ente
 * Click 'Done'
 * Go back to Apps and open 'Welcome Home'
 <br>
-You can now create new child apps directly from here.<br><br>
-
+<b>*** Driver ***</b>
+<b>New Install:</b><br>
+* Copy the Driver code from GitHub into a ‘New driver’ under the ‘Drivers Code’ menu then click ‘Done’<br>
+* Go to ‘Devices’ and create a new 'Add Virtual Device'<br>
+* Name your new device something like 'Global Variables Device'<br>
+* Come up with a new 'Device Network ID'<br>
+* Select ‘Global Variables Driver’ under ‘Type’<br>
+* Click 'Save Device'<br>
+<br>
+All set!
 <br>
 Bryan<br>
 @BPTWorld
