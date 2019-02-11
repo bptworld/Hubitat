@@ -161,12 +161,12 @@
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
   
   "WelcomeHomeType": "App",
-  "WelcomeHomeParentVersion": "v1.1.1",
-  "WelcomeHomeChildVersion": "v1.1.3",
-  "WelcomeHomeDriverVersion": "NA",
+  "WelcomeHomeParentVersion": "v2.0.0",
+  "WelcomeHomeChildVersion": "v2.0.0",
+  "WelcomeHomeDriverVersion": "v1.0.0",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
-  "WelcomeHomeDriverRawCode": "NA",
+  "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDiscussion": "https://community.hubitat.com/t/release-welcome-home/6445",
   
   "WhatDidISayType": "Driver",
