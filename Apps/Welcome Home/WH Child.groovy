@@ -6,9 +6,7 @@ import groovy.time.TimeCategory
  *  This app is designed to give a personal welcome announcement after you have entered the home.
  *
  *  Copyright 2018 Bryan Turcotte (@bptworld)
- *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  
+ * 
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
@@ -37,6 +35,10 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.0 - 02/11/19 - Major rewrite. Presence sensors are now in Parent app, so they can be shared across multiple child apps.
+ *						Welcome Home now requires a new 'Virtual Device' using our custom 'Global Variables Driver'.  Each child app
+ *                      will link to the same 'Virtual Device'.  This way we can track who came home across mutliple child apps!
+ *  V1.1.4 - 01/30/19 - Added in more message variables. Thanks to @Matthew for the coding.
  *  V1.1.3 - 01/24/19 - Welcome Home now works with Echo Speaks.
  *  V1.1.2 - 01/22/19 - Made all fields within Speech Options mandatory to avoid an error.
  *  V1.1.1 - 01/15/19 - Updated footer with update check and links
@@ -56,7 +58,7 @@ import groovy.time.TimeCategory
  *
  */
 
-def version(){"v1.1.3"}
+def version(){"v2.0.0"}
 
 definition(
     name: "Welcome Home Child",
@@ -64,13 +66,11 @@ definition(
     author: "Bryan Turcotte",
     description: "This app is designed to give a personal welcome announcement after you have entered the home.",
     category: "",
-    
-parent: "BPTWorld:Welcome Home",
-    
+	parent: "BPTWorld:Welcome Home",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+)
 
 preferences {
     page(name: "pageConfig")
@@ -105,20 +105,17 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options")) {
 			paragraph "If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message."
-			input "presenceSensor1", "capability.presenceSensor", title: "Presence Sensor 1", required: true, multiple: false, width:6
-			input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, width:6
-			
-			input "presenceSensor2", "capability.presenceSensor", title: "Presence Sensor 2", required: false, multiple: false, width:6
-			input "friendlyName2", "text", title: "Friendly name for presence sensor 2", required: false, multiple: false, width:6
-			
-			input "presenceSensor3", "capability.presenceSensor", title: "Presence Sensor 3", required: false, multiple: false, width:6
-			input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, width:6
-			
-			input "presenceSensor4", "capability.presenceSensor", title: "Presence Sensor 4", required: false, multiple: false, width:6
-			input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, width:6
-			
-			input "presenceSensor5", "capability.presenceSensor", title: "Presence Sensor 5", required: false, multiple: false, width:6
-			input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, width:6
+			paragraph "Note: If you are not seeing your 'Friendly Names', then go back to the parent app, enter them in and hit 'done' before setting up any child apps."
+			input(name: "presenceSensor1a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName1}", description: "PS1", submitOnChange: true)
+			if(presenceSensor1a) input("presenceSensor1", "capability.presenceSensor", title: "Match a Presence Sensor to the Friendly Name", required: true, multiple: false)
+			input(name: "presenceSensor2a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName2}", description: "PS2", submitOnChange: true)
+			if(presenceSensor2a) input("presenceSensor2", "capability.presenceSensor", title: "Match a Presence Sensor to the Friendly Name", required: true, multiple: false)
+			input(name: "presenceSensor3a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName3}", description: "PS3", submitOnChange: true)
+			if(presenceSensor3a) input("presenceSensor3", "capability.presenceSensor", title: "Match a Presence Sensor to the Friendly Name", required: true, multiple: false)
+			input(name: "presenceSensor4a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName4}", description: "PS4", submitOnChange: true)
+			if(presenceSensor4a) input("presenceSensor4", "capability.presenceSensor", title: "Match a Presence Sensor to the Friendly Name", required: true, multiple: false)
+			input(name: "presenceSensor5a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName5}", description: "PS5", submitOnChange: true)
+			if(presenceSensor5a) input("presenceSensor5", "capability.presenceSensor", title: "Match a Presence Sensor to the Friendly Name", required: true, multiple: false)
 			
 			input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10
 		}
@@ -150,6 +147,11 @@ def pageConfig() {
 		}
 		section() {
 			input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Global Variables")) {
+			paragraph "This app requires a 'virtual device' to send variables between child apps. This is to prevent muliple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
+			paragraph "* Vitual Device must use our custom 'Global Variables Driver'"
+			input "gvDevice", "capability.actuator", title: "Virtual Device created for Welcome Home", required: true, multiple: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
 		section() {
@@ -207,55 +209,60 @@ def setupNewStuff() {
 }
 		
 def presenceSensorHandler1(evt){
-	state.presenceSensor1 = evt.value
-	LOGDEBUG("IN presenceSensorHandler1 - Presence Sensor = ${presenceSensor1}")
-    if(state.presenceSensor1 == "not present"){
+	state.presenceSensorValue1 = evt.value
+	LOGDEBUG("IN presenceSensorHandler1 - Presence Sensor = ${state.presenceSensorValue1}")
+    if(state.presenceSensorValue1 == "not present"){
     	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
-		state.beenHere1 = "no"
+		state.globalBH1 = "no"
+		gvDevice.sendDataMap1(state.globalBH1)
     } else {
 		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
 }
 
 def presenceSensorHandler2(evt){
-	state.presenceSensor2 = evt.value
-	LOGDEBUG("IN presenceSensorHandler2 - Presence Sensor = ${presenceSensor2}")
-    if(state.presenceSensor2 == "not present"){
+	state.presenceSensorValue2 = evt.value
+	LOGDEBUG("IN presenceSensorHandler2 - Presence Sensor = ${state.presenceSensorValue2}")
+    if(state.presenceSensorValue2 == "not present"){
     	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
-		state.beenHere2 = "no"
+		state.globalBH2 = "no"
+		gvDevice.sendDataMap2(state.globalBH2)
     } else {
 		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
 }
 
 def presenceSensorHandler3(evt){
-	state.presenceSensor3 = evt.value
-	LOGDEBUG("IN presenceSensorHandler3 - Presence Sensor = ${presenceSensor3}")
-    if(state.presenceSensor3 == "not present"){
+	state.presenceSensorValue3 = evt.value
+	LOGDEBUG("IN presenceSensorHandler3 - Presence Sensor = ${state.presenceSensorValue3}")
+    if(state.presenceSensorValue3 == "not present"){
     	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
-		state.beenHere3 = "no"
+		state.globalBH3 = "no"
+		gvDevice.sendDataMap3(state.globalBH3)
     } else {
 		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
 }
 
 def presenceSensorHandler4(evt){
-	state.presenceSensor4 = evt.value
-	LOGDEBUG("IN presenceSensorHandler4 - Presence Sensor = ${presenceSensor4}")
-    if(state.presenceSensor4 == "not present"){
+	state.presenceSensorValue4 = evt.value
+	LOGDEBUG("IN presenceSensorHandler4 - Presence Sensor = ${state.presenceSensorValue4}")
+    if(state.presenceSensorValue4 == "not present"){
     	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
-		state.beenHere4 = "no"
+		state.globalBH4 = "no"
+		gvDevice.sendDataMap4(state.globalBH4)
     } else {
 		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
 }
 
 def presenceSensorHandler5(evt){
-	state.presenceSensor5 = evt.value
-	LOGDEBUG("IN presenceSensorHandler5 - Presence Sensor = ${presenceSensor5}")
-    if(state.presenceSensor5 == "not present"){
+	state.presenceSensorValue5 = evt.value
+	LOGDEBUG("IN presenceSensorHandler5 - Presence Sensor = ${state.presenceSensorValue5}")
+    if(state.presenceSensorValue5 == "not present"){
     	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
-		state.beenHere5 = "no"
+		state.globalBH5 = "no"
+		gvDevice.sendDataMap5(state.globalBH5)
     } else {
 		LOGDEBUG("Presence Sensor is present - Let's go!")
     }
@@ -277,9 +284,6 @@ def lockHandler(evt) {
 				if(presenceSensor3) getTimeDiff3()
 				if(presenceSensor4) getTimeDiff4()
 				if(presenceSensor5) getTimeDiff5()
-				LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
-				def delay1ms = delay1 * 1000
-				pauseExecution(delay1ms)
 				if(state.canSpeak == "yes") talkNow1()
 			}
 		}
@@ -306,9 +310,6 @@ def contactSensorHandler(evt) {
 					if(presenceSensor3) getTimeDiff3()
 					if(presenceSensor4) getTimeDiff4()
 					if(presenceSensor5) getTimeDiff5()
-					LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
-					def delay1ms = delay1 * 1000
-					pauseExecution(delay1ms)
 					if(state.canSpeak == "yes") talkNow1()
 				}
 			}
@@ -327,9 +328,6 @@ def contactSensorHandler(evt) {
 					if(presenceSensor3) getTimeDiff3()
 					if(presenceSensor4) getTimeDiff4()
 					if(presenceSensor5) getTimeDiff5()
-					LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
-					def delay1ms = delay1 * 1000
-					pauseExecution(delay1ms)
 					if(state.canSpeak == "yes") talkNow1()
 				}
 			}
@@ -355,9 +353,6 @@ def motionSensorHandler(evt) {
 				if(presenceSensor3) getTimeDiff3()
 				if(presenceSensor4) getTimeDiff4()
 				if(presenceSensor5) getTimeDiff5()
-				LOGDEBUG("Wait ${delay1} seconds to Speak and canSpeak = ${state.canSpeak}")
-				def delay1ms = delay1 * 1000
-				pauseExecution(delay1ms)
 				if(state.canSpeak == "yes") talkNow1()
 			}
 		}
@@ -371,9 +366,9 @@ def getTimeDiff1() {
 	def sensorStatus1 = presenceSensor1.currentValue("presence")
 	LOGDEBUG("Presence Sensor Status - 1: ${sensorStatus1}")
 	if(sensorStatus1 == "present") {
-		LOGDEBUG("Been Here: ${state.beenHere1}")
+		LOGDEBUG("Global Been Here: ${state.globalBH1}")
 		def lastActivity1 = presenceSensor1.getLastActivity()
-			
+		
 		LOGDEBUG("lastActivity: ${lastActivity1}")
     	long timeDiff
    		def now = new Date()
@@ -387,21 +382,30 @@ def getTimeDiff1() {
     
 		LOGDEBUG("timeDiff: ${timeDiff}")	
   		if(timeDiff < timeHome) {
-			if(state.beenHere1 == "no") {
-				state.beenHere1 = "yes"
-				log.info "${app.label} - ${friendlyName1} just got here! Time Diff = ${timeDiff}"
+			globalBeenHere()
+			if(state.globalBH1 == "no") {
+				log.info "${app.label} - ${state.friendlyName1} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				state.presenceMap = [friendlyName1]
+				state.presenceMap = [state.friendlyName1]
 				state.canSpeak = "yes"
+				state.globalBH1 = "yes"
+				dataMap1 = "globalBH1:yes"
+				gvDevice.sendDataMap1(state.globalBH1)
+			} else {
+				log.info "Global 'Been Here' is ${state.globalBH1}. No announcement needed."
 			}
 		} else {
-			state.beenHere1 = "no"
-			log.info "${app.label} - ${friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
+			state.globalBH1 = "no"
+			dataMap1 = "globalBH1:no"
+			gvDevice.sendDataMap1(state.globalBH1)
+			log.info "${app.label} - ${state.friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Been Here: ${state.beenHere1}")
+		LOGDEBUG("Global Been Here: ${state.globalBH1}")
 		LOGDEBUG("Presence Sensor: ${sensorStatus1} - No announcement needed.")
-		state.beenHere1 = "no"
+		state.globalBH1 = "no"
+		dataMap1 = "globalBH1:no"
+		gvDevice.sendDataMap1(state.globalBH1)
 	}
 }
 
@@ -410,7 +414,7 @@ def getTimeDiff2() {
 	def sensorStatus2 = presenceSensor2.currentValue("presence")
 	LOGDEBUG("Presence Sensor Status - 2: ${sensorStatus2}")
 	if(sensorStatus2 == "present") {
-		LOGDEBUG("Been Here: ${state.beenHere2}")
+		LOGDEBUG("Global Been Here: ${state.globalBH2}")
 		def lastActivity2 = presenceSensor2.getLastActivity()
 			
 		LOGDEBUG("lastActivity: ${lastActivity2}")
@@ -426,22 +430,31 @@ def getTimeDiff2() {
     
 		LOGDEBUG("timeDiff: ${timeDiff}")	
   		if(timeDiff < timeHome) {
-			if(state.beenHere2 == "no") {
-				state.beenHere2 = "yes"
-				log.info "${app.label} - ${friendlyName2} just got here! Time Diff = ${timeDiff}"
+			globalBeenHere()
+			if(state.globalBH2 == "no") {
+				state.globalBH2 = "yes"
+				dataMap2 = "globalBH2:yes"
+				gvDevice.sendDataMap2(state.globalBH2)
+				log.info "${app.label} - ${state.friendlyName2} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [friendlyName2]
-				if(state.nameCount >= 2) state.presenceMap += [friendlyName2]
+				if(state.nameCount == 1) state.presenceMap = [state.friendlyName2]
+				if(state.nameCount >= 2) state.presenceMap += [state.friendlyName2]
 				state.canSpeak = "yes"
+			} else {
+				log.info "Global 'Been Here' is ${state.globalBH2}. No announcement needed."
 			}
 		} else {
-			state.beenHere2 = "no"
-			log.info "${app.label} - ${friendlyName2} - No announcement needed. Time Diff = ${timeDiff}"
+			state.globalBH2 = "no"
+			dataMap1 = "globalBH2:no"
+			gvDevice.sendDataMap2(state.globalBH2)
+			log.info "${app.label} - ${state.friendlyName2} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Been Here: ${state.beenHere2}")
+		LOGDEBUG("Global Been Here: ${state.globalBH2}")
 		LOGDEBUG("Presence Sensor: ${sensorStatus2} - No announcement needed.")
-		state.beenHere2 = "no"
+		state.globalBH2 = "no"
+		dataMap2 = "globalBH2:no"
+		gvDevice.sendDataMap2(state.globalBH2)
 	}
 }
 
@@ -450,7 +463,7 @@ def getTimeDiff3() {
 	def sensorStatus3 = presenceSensor3.currentValue("presence")
 	LOGDEBUG("Presence Sensor Status - 3: ${sensorStatus3}")
 	if(sensorStatus3 == "present") {
-		LOGDEBUG("Been Here: ${state.beenHere3}")
+		LOGDEBUG("Global Been Here: ${state.globalBH3}")
 		def lastActivity3 = presenceSensor3.getLastActivity()
 			
 		LOGDEBUG("lastActivity: ${lastActivity3}")
@@ -466,35 +479,43 @@ def getTimeDiff3() {
     
 		LOGDEBUG("timeDiff: ${timeDiff}")	
   		if(timeDiff < timeHome) {
-			if(state.beenHere3 == "no") {
-				state.beenHere3 = "yes"
-				log.info "${app.label} - ${friendlyName3} just got here! Time Diff = ${timeDiff}"
+			globalBeenHere()
+			if(state.globalBH3 == "no") {
+				state.globalBH3 = "yes"
+				dataMap3 = "globalBH3:yes"
+				gvDevice.sendDataMap3(state.globalBH3)
+				log.info "${app.label} - ${state.friendlyName3} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [friendlyName3]
-				if(state.nameCount >= 2) state.presenceMap += [friendlyName3]
+				if(state.nameCount == 1) state.presenceMap = [state.friendlyName3]
+				if(state.nameCount >= 2) state.presenceMap += [state.friendlyName3]
 				state.canSpeak = "yes"
+			} else {
+				log.info "Global 'Been Here' is ${state.globalBH3}. No announcement needed."
 			}
 		} else {
-			state.beenHere3 = "no"
-
-			log.info "${app.label} - ${friendlyName3} - No announcement needed. Time Diff = ${timeDiff}"
+			state.globalBH3 = "no"
+			dataMap3 = "globalBH3:no"
+			gvDevice.sendDataMap3(state.globalBH3)
+			log.info "${app.label} - ${state.friendlyName3} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Been Here: ${state.beenHere3}")
+		LOGDEBUG("Global Been Here: ${state.globalBH3}")
 		LOGDEBUG("Presence Sensor: ${sensorStatus3} - No announcement needed.")
-		state.beenHere3 = "no"
+		state.globalBH3 = "no"
+		dataMap3 = "globalBH3:no"
+		gvDevice.sendDataMap3(state.globalBH3)
 	}
 }
 
 def getTimeDiff4() {
 	LOGDEBUG("In getTimeDiff4...")
 	def sensorStatus4 = presenceSensor4.currentValue("presence")
-	LOGDEBUG("Presence Sensor Status - 4: ${sensorStatus4}")
+	LOGDEBUG("getTimeDiff4 - Presence Sensor Status - 4: ${sensorStatus4}")
 	if(sensorStatus4 == "present") {
-		LOGDEBUG("Been Here: ${state.beenHere4}")
+		LOGDEBUG("getTimeDiff4 - Global Been Here: ${state.globalBH4}")
 		def lastActivity4 = presenceSensor4.getLastActivity()
 			
-		LOGDEBUG("lastActivity: ${lastActivity4}")
+		LOGDEBUG("getTimeDiff4 - lastActivity: ${lastActivity4}")
     	long timeDiff
    		def now = new Date()
     	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity4}".replace("+00:00","+0000"))
@@ -505,24 +526,30 @@ def getTimeDiff4() {
     	timeDiff = Math.abs(unxNow-unxPrev)
     	timeDiff = Math.round(timeDiff/60)
     
-		LOGDEBUG("timeDiff: ${timeDiff}")
+		LOGDEBUG("getTimeDiff4 - getTimeDiff4 - timeDiff: ${timeDiff}")
   		if(timeDiff < timeHome) {
-			if(state.beenHere4 == "no") {
-				state.beenHere4 = "yes"
-				log.info "${app.label} - ${friendlyName4} just got here! Time Diff = ${timeDiff}"
+			globalBeenHere()
+			if(state.globalBH4 == "no") {
+				state.globalBH4 = "yes"
+				gvDevice.sendDataMap4(state.globalBH4)
+				log.info "${app.label} - ${parent.friendlyName4} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [friendlyName4]
-				if(state.nameCount >= 2) state.presenceMap += [friendlyName4]
+				if(state.nameCount == 1) state.presenceMap = [parent.friendlyName4]
+				if(state.nameCount >= 2) state.presenceMap += [parent.friendlyName4]
 				state.canSpeak = "yes"
+			} else {
+				log.info "Global 'Been Here' is ${state.globalBH4}. No announcement needed."
 			}
 		} else {
-			state.beenHere4 = "no"
-			log.info "${app.label} - ${friendlyName4} - No announcement needed. Time Diff = ${timeDiff}"
+			state.globalBH4 = "no"
+			gvDevice.sendDataMap4(state.globalBH4)
+			log.info "${app.label} - ${state.friendlyName4} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Been Here: ${state.beenHere4}")
-		LOGDEBUG("Presence Sensor: ${sensorStatus4} - No announcement needed.")
-		state.beenHere4 = "no"
+		LOGDEBUG("getTimeDiff4 - Global Been Here: ${state.globalBH4}")
+		LOGDEBUG("getTimeDiff4 - Presence Sensor: ${sensorStatus4} - No announcement needed.")
+		state.globalBH4 = "no"
+		gvDevice.sendDataMap4(state.globalBH4)
 	}
 }
 
@@ -531,7 +558,7 @@ def getTimeDiff5() {
 	def sensorStatus5 = presenceSensor5.currentValue("presence")
 	LOGDEBUG("Presence Sensor Status - 5: ${sensorStatus5}")
 	if(sensorStatus5 == "present") {
-		LOGDEBUG("Been Here: ${state.beenHere5}")
+		LOGDEBUG("Global Been Here: ${state.globalBH5}")
 		def lastActivity5 = presenceSensor5.getLastActivity()
 			
 		LOGDEBUG("lastActivity: ${lastActivity5}")
@@ -547,26 +574,35 @@ def getTimeDiff5() {
     
 		LOGDEBUG("timeDiff: ${timeDiff}")	
   		if(timeDiff < timeHome) {
-			if(state.beenHere5 == "no") {
-				state.beenHere5 = "yes"
-				log.info "${app.label} - ${friendlyName5} just got here! Time Diff = ${timeDiff}"
+			globalBeenHere()
+			if(state.globalBH5 == "no") {
+				state.globalBH5 = "yes"
+				dataMap5 = "globalBH5:yes"
+				gvDevice.sendDataMap5(state.globalBH5)
+				log.info "${app.label} - ${state.friendlyName5} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				if(state.nameCount == 1) state.presenceMap = [friendlyName5]
-				if(state.nameCount >= 2) state.presenceMap += [friendlyName5]
+				if(state.nameCount == 1) state.presenceMap = [state.friendlyName5]
+				if(state.nameCount >= 2) state.presenceMap += [state.friendlyName5]
 				state.canSpeak = "yes"
+			} else {
+				log.info "Global 'Been Here' is ${state.globalBH5}. No announcement needed."
 			}
 		} else {
-			state.beenHere5 = "no"
-			log.info "${app.label} - ${friendlyName5} - No announcement needed. Time Diff = ${timeDiff}"
+			state.globalBH5 = "no"
+			dataMap5 = "globalBH5:no"
+			gvDevice.sendDataMap5(state.globalBH5)
+			log.info "${app.label} - ${state.friendlyName5} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Been Here: ${state.beenHere5}")
+		LOGDEBUG("Global Been Here: ${state.globalBH5}")
 		LOGDEBUG("Presence Sensor: ${sensorStatus5} - No announcement needed.")
-		state.beenHere5 = "no"
+		state.globalBH5 = "no"
+		dataMap5 = "globalBH5:no"
+		gvDevice.sendDataMap5(state.globalBH5)
 	}
 }
 
-def talkNow1() {
+def talkNow1() {								// Heavily Modified from @Cobra Code
 	LOGDEBUG("In talkNow1...")
 	checkTime()
 	
@@ -574,6 +610,9 @@ def talkNow1() {
 		compileMsg1()
 		LOGDEBUG("Speaker(s) in use: ${speaker1}")
 		state.fullMsg1 = "${state.msgComp}"
+		LOGDEBUG("In talkNow1...Waiting ${delay1} seconds to Speak")
+		def delay1ms = delay1 * 1000
+		pauseExecution(delay1ms)
   		if (speechMode == "Music Player"){ 
     		LOGDEBUG("Music Player")
 			if(echoSpeaks) {
@@ -601,7 +640,7 @@ def talkNow1() {
 	}
 }
 
-def setVolume(){
+def setVolume(){								// Modified from @Cobra Code
 	LOGDEBUG("In setVolume...")
 	def timecheck = fromTime2
 	if (timecheck != null){
@@ -625,7 +664,7 @@ def setVolume(){
 	}
 }
 
-def checkTime(){
+def checkTime(){							// Modified from @Cobra Code
 	LOGDEBUG("In checkTime...")
 	def timecheckNow = fromTime
 	if (timecheckNow != null){
@@ -646,7 +685,7 @@ def checkTime(){
   	}
 }
 
-private compileMsg1() {
+private compileMsg1() {							// Modified from @Cobra Code
 	LOGDEBUG("In compileMsg...message1 = ${message1}")
     def msgComp = ""
     msgComp = message1.toLowerCase()
@@ -654,6 +693,9 @@ private compileMsg1() {
 	if (msgComp.toLowerCase().contains("%random%")) {msgComp = msgComp.toLowerCase().replace('%random%', getGroup1() )}
 	if (msgComp.toLowerCase().contains("%greeting%")) {msgComp = msgComp.toLowerCase().replace('%greeting%', getGreeting() )}
 	if (msgComp.toLowerCase().contains("%name%")) {msgComp = msgComp.toLowerCase().replace('%name%', getName() )}
+	
+	if (msgComp.toLowerCase().contains("%is_are%")) {msgComp = msgComp.toLowerCase().replace('%is_are%', "${is_are}" )}
+	if (msgComp.toLowerCase().contains("%has_have%")) {msgComp = msgComp.toLowerCase().replace('%has_have%', "${has_have}" )}
 	state.msgComp = "${msgComp}"
 	return state.msgComp
 }	
@@ -702,13 +744,15 @@ private getName(){
 			if(myCount == 4) name = "${name}" + "and "
 		}
 	}
+	is_are = (name.contains(' and ') ? 'are' : 'is')
+	has_have = (name.contains(' and ') ? 'have' : 'has')
 	if(names == null) names = "Whoever you are"
 	if(names == "") names = "Whoever you are"
 	LOGDEBUG("AGAIN...Name = ${name}")
 	return name
 }
 
-private getGreeting(){
+private getGreeting(){						// Modified from @Cobra Code
 	LOGDEBUG("In getGreeting...")
     def calendar = Calendar.getInstance()
 	calendar.setTimeZone(location.timeZone)
@@ -730,7 +774,7 @@ private getGreeting(){
 	return state.greeting
 }
 
-private getGroup1(msgGroup1item) {
+private getGroup1(msgGroup1item) {			// Heavily Modified from @Cobra Code
 	LOGDEBUG("In getGroup1...")
     def group1List = [
         "${parent.msg1}", 
@@ -766,14 +810,19 @@ private getGroup1(msgGroup1item) {
 	return msgGroup1
 }
 
-// ********** Normal Stuff **********
-
-def logsOff(){
-    log.warn "${app.label} - debug logging auto disabled"
-    device.updateSetting("logEnable",[value:"false",type:"bool"])
+def globalBeenHere() { 
+    state.globalBH1 = gvDevice.currentValue("globalBH1")
+	state.globalBH2 = gvDevice.currentValue("globalBH2")
+	state.globalBH3 = gvDevice.currentValue("globalBH3")
+	state.globalBH4 = gvDevice.currentValue("globalBH4")
+	state.globalBH5 = gvDevice.currentValue("globalBH5")
+	
+	LOGDEBUG("${gDevice}: globalBH1: ${state.globalBH1} - globalBH2: ${state.globalBH2} - globalBH3: ${state.globalBH3} - globalBH4: ${state.globalBH4} - globalBH5: ${state.globalBH5}")
 }
 
-def pauseOrNot(){
+// ********** Normal Stuff **********
+
+def pauseOrNot(){						// Modified from @Cobra Code
     state.pauseNow = pause1
         if(state.pauseNow == true){
             state.pauseApp = true
@@ -798,21 +847,22 @@ def pauseOrNot(){
 
 def setDefaults(){
 	setupNewStuff()
+	globalBeenHere()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
-	if(state.beenHere1 == null){state.beenHere1 = "no"}
-	if(state.beenHere2 == null){state.beenHere2 = "no"}
-	if(state.beenHere3 == null){state.beenHere3 = "no"}
-	if(state.beenHere4 == null){state.beenHere4 = "no"}
-	if(state.beenHere5 == null){state.beenHere5 = "no"}
 	state.nameCount = 0
 	state.canSpeak = "no"
+	state.friendlyName1 == "${parent.friendlyName1}"
+	state.friendlyName2 == "${parent.friendlyName2}"
+	state.friendlyName3 == "${parent.friendlyName3}"
+	state.friendlyName4 == "${parent.friendlyName4}"
+	state.friendlyName5 == "${parent.friendlyName5}"
 }
 
-def logCheck(){
+def logCheck(){					// Modified from @Cobra Code
 	state.checkLog = logEnable
 	if(state.logEnable == true){
 		log.info "${app.label} - All Logging Enabled"
@@ -822,7 +872,7 @@ def logCheck(){
 	}
 }
 
-def LOGDEBUG(txt){
+def LOGDEBUG(txt){				// Modified from @Cobra Code
     try {
 		if (settings.logEnable) { log.debug("${app.label} - ${txt}") }
     } catch(ex) {
@@ -830,12 +880,12 @@ def LOGDEBUG(txt){
     }
 }
 
-def getImage(type) {
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){			// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -848,32 +898,9 @@ def display() {
 	}
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currChildVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display2(){
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${version()}</div>"
 	}       
 }
