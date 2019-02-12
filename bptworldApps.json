@@ -30,6 +30,7 @@
   "ExampleChildRawCode": "NA",
   "ExampleDriverRawCode": "NA",
   "ExampleDiscussion": "NA",
+  "ExampleUpdateNote": "NA",
   
   "Example2Type": "Driver",
   "Example2Driver1Version": "NA",
@@ -51,6 +52,7 @@
   "ExampleDriver5Name": "NA",
   "ExampleDriver6Name": "NA",
   "Example2Discussion": "NA",
+  "Example2UpdateNote": "NA",
   
   "AbacusIntenseCountingType": "App",
   "AbacusIntenseCountingParentVersion": "v1.0.6",
@@ -60,6 +62,7 @@
   "AbacusIntenseCountingChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy",
   "AbacusIntenseCountingDriverRawCode": "https://github.com/bptworld/Hubitat/blob/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy",
   "AbacusIntenseCountingDiscussion": "https://community.hubitat.com/t/release-abacus-intense-counting/7883",
+  "AbacusIntenseCountingUpdateNote": "NA",
   
   "AbacusTimeTravelerType": "App",
   "AbacusTimeTravelerParentVersion": "v1.0.3",
@@ -69,6 +72,7 @@
   "AbacusTimeTravelerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-child.groovy",
   "AbacusTimeTravelerDriverRawCode": "NA",
   "AbacusTimeTravelerDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
+  "AbacusTimeTravelerUpdateNote": "NA",
 
   "AppWatchdogType": "App",
   "AppWatchdogParentVersion": "v1.0.0",
@@ -78,6 +82,7 @@
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
   "AppWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-driver.groovy",
   "AppWatchdogDiscussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
+  "AppWatchdogUpdateNote": "NA",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v1.0.0",
@@ -87,6 +92,7 @@
   "AtHomeSimulatorChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-child.groovy",
   "AtHomeSimulatorDriverRawCode": "NA",
   "AtHomeSimulatorDiscussion": "https://community.hubitat.com/t/beta-at-home-simulator/8697",
+  "AtHomeSimulatorUpdateNote": "NA",
   
   "BIControlType": "App",
   "BIControlParentVersion": "v1.0.5",
@@ -96,6 +102,7 @@
   "BIControlChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Child.groovy",
   "BIControlDriverRawCode": "NA",
   "BIControlDiscussion": "https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454",
+  "BIControlUpdateNote": "NA",
   
   "DeviceSequencerType": "App",
   "DeviceSequencerParentVersion": "v1.0.2",
@@ -105,6 +112,7 @@
   "DeviceSequencerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-child.groovy",
   "DeviceSequencerDriverRawCode": "NA",
   "DeviceSequencerDiscussion": "https://community.hubitat.com/t/release-device-sequencer/8596",
+  "DeviceSequencerUpdateNote": "NA",
   
   "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v1.0.9",
@@ -114,6 +122,7 @@
   "DeviceWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
   "DeviceWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
+  "DeviceWatchdogUpdateNote": "NA",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
@@ -123,6 +132,7 @@
   "LightingEffectsChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy",
   "LightingEffectsDriverRawCode": "NA",
   "LightingEffectsDiscussion": "https://community.hubitat.com/t/release-lighting-effects/4330",
+  "LightingEffectsUpdateNote": "NA",
   
   "MotionControlledSceneLightingType": "App",
   "MotionControlledSceneLightingParentVersion": "v1.0.3",
@@ -132,6 +142,7 @@
   "MotionControlledSceneLightingChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/MCSL-Child.groovy",
   "MotionControlledSceneLightingDriverRawCode": "NA",
   "MotionControlledSceneLightingDiscussion": "https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419",
+  "MotionControlledSceneLightingUpdateNote": "NA",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
@@ -141,6 +152,7 @@
   "OneataTimeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Child.groovy",
   "OneataTimeDriverRawCode": "NA",
   "OneataTimeDiscussion": "https://community.hubitat.com/t/release-one-at-a-time/7063",
+  "OneataTimeUpdateNote": "NA",
   
   "SendIP2IRType": "App",
   "SendIP2IRParentVersion": "v1.1.7",
@@ -149,7 +161,8 @@
   "SendIP2IRParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Parent.groovy",
   "SendIP2IRChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Child.groovy",
   "SendIP2IRDriverRawCode": "NA",
-  "SendIP2IReDiscussion": "https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667",
+  "SendIP2IRDiscussion": "https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667",
+  "SendIP2IRUpdateNote": "NA",
   
   "WebPingerType": "App",
   "WebPingerParentVersion": "v1.0.2",
@@ -159,6 +172,7 @@
   "WebPingerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-child.groovy",
   "WebPingerDriverRawCode": "NA",
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
+  "WebPingerUpdateNote": "NA",
   
   "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.0",
@@ -168,6 +182,7 @@
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDiscussion": "https://community.hubitat.com/t/release-welcome-home/6445",
+  "WelcomeHomeUpdateNote": "NA",
   
   "WhatDidISayType": "Driver",
   "WhatDidISayDriver1Version": "v1.0.3",
@@ -189,5 +204,6 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
+  "WhatDidISayUpdateNote": "NA",
   
 }
