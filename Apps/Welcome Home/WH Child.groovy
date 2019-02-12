@@ -124,7 +124,7 @@ def pageConfig() {
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
               	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
-				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this a echo speaks device?", description: "Echo speaks device?")
+				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?")
 				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
               	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
 				input "fromTime2", "time", title: "Quiet Time Start", required: true
