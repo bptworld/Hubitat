@@ -4,10 +4,8 @@
  *  Design Usage:
  *  Keep an eye on your devices and see how long it's been since they checked in.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
@@ -36,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.6 - 02/12/19 - Removed 'All battery devices' switch and other code cleanup.
  *  V1.1.5 - 02/11/19 - Fix the previous report not sometimes clearing before displaying the new report.
  *  V1.1.4 - 02/10/19 - Added a switch to run a report any time.
  *  V1.1.3 - 01/31/19 - Fixed Pause and Disable/Enable not working.
@@ -58,7 +57,7 @@
  *
  */
 
-def version(){"v1.1.5"}
+def version(){"v1.1.6"}
 
 definition(
     name: "Device Watchdog Child",
@@ -66,13 +65,11 @@ definition(
     author: "Bryan Turcotte",
     description: "Keep an eye on your devices and see how long it's been since they checked in.",
     category: "",
-    
-parent: "BPTWorld:Device Watchdog",
-    
+	parent: "BPTWorld:Device Watchdog",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+)
 
 preferences {
     page(name: "pageConfig")
@@ -95,12 +92,7 @@ def pageConfig() {
 		}
 			if(triggerMode == "Battery_Level") {
 				section(getFormat("header-green", "${getImage("Blank")}"+" Select your battery devices")) {
-					input(name: "allDevices", type: "bool", defaultValue: "false", title: "Select ALL battery devices?", submitOnChange: "true")
-					if(allDevices) {
-						paragraph "<b>** This will check all Battery device levels. **</b><br>If you add a new battery device after setting up this app, you will need to come back here and toggle the 'all battery devices' switch off and then back on again to include the new device."
-					} else {
-						input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-					}
+					input "batteryDevice", "capability.battery", title: "Select Battery Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				}
 				section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 					input "batteryThreshold", "number", title: "Battery will be considered low when below this level", required: false, submitOnChange: true
@@ -591,7 +583,7 @@ def pushNow(){
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){
+def pauseOrNot(){								// Modified from @Cobra Code
 	LOGDEBUG("In pauseOrNot...")
     state.pauseNow = pause1
         if(state.pauseNow == true){
@@ -625,7 +617,7 @@ def setDefaults(){
 	if(state.reportCount == null){state.reportCount = 0}
 }
 
-def logCheck(){
+def logCheck(){									// Modified from @Cobra Code
 	state.checkLog = debugMode
 	if(state.checkLog == true){
 		log.info "${app.label} - All Logging Enabled"
@@ -635,7 +627,7 @@ def logCheck(){
 	}
 }
 
-def LOGDEBUG(txt){
+def LOGDEBUG(txt){								// Modified from @Cobra Code
     try {
 		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
     } catch(ex) {
@@ -643,37 +635,15 @@ def LOGDEBUG(txt){
     }
 }
 
-def getImage(type) {
+def getImage(type) {							// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){					// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
-}
-
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currChildVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.driverRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
 }
 
 def display() {
@@ -685,8 +655,7 @@ def display() {
 
 def display2(){
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${version()}</div>"
 	}       
 } 
