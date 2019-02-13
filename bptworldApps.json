@@ -116,13 +116,13 @@
   
   "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v1.0.9",
-  "DeviceWatchdogChildVersion": "v1.1.6",
+  "DeviceWatchdogChildVersion": "v1.1.7",
   "DeviceWatchdogDriverVersion": "NA",
   "DeviceWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
   "DeviceWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
   "DeviceWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
-  "DeviceWatchdogUpdateNote": "02/12/19 - Removed 'All battery devices' switch and other code cleanup.",
+  "DeviceWatchdogUpdateNote": "V1.1.7 - 02/13/19 - Added more error checking.",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
