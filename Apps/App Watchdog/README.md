@@ -7,7 +7,7 @@ See if any compatible app needs an update, all in one place.<br><br>
 * Copy the Child code from GitHub into a second ‘New App’ & also save this
 * Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘Abacus’ under ‘User Apps’
+* Select ‘App Watchdog’ under ‘User Apps’
 * Click 'Done'
 * Go back to Apps and open 'App Watchdog'
 <br>
