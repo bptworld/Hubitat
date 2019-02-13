@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.7 - 02/13/19 - Added more error checking.
  *  V1.1.6 - 02/12/19 - Removed 'All battery devices' switch and other code cleanup.
  *  V1.1.5 - 02/11/19 - Fix the previous report not sometimes clearing before displaying the new report.
  *  V1.1.4 - 02/10/19 - Added a switch to run a report any time.
@@ -57,7 +58,9 @@
  *
  */
 
-def version(){"v1.1.6"}
+def version() {
+	state.version = "v1.1.7"
+}
 
 definition(
     name: "Device Watchdog Child",
@@ -272,14 +275,24 @@ def initialize() {
 
 def watchdogMapHandler(evt) {
 	if(triggerMode == "Activity") {
-		def watchdogActivityMap = "${state.timeSinceMap}"
-		LOGDEBUG("In watchdogMapHandler...Sending new Device Watchdog data to ${watchdogTileDevice}")
-    	watchdogTileDevice.sendWatchdogActivityMap(watchdogActivityMap)
+		try {
+			def watchdogActivityMap = "${state.timeSinceMap}"
+			LOGDEBUG("In watchdogMapHandler...Sending new Device Watchdog data to ${watchdogTileDevice}")
+    		watchdogTileDevice.sendWatchdogActivityMap(watchdogActivityMap)
+		} catch (e) {
+			log.warn "${app.label}...Can't send data to Tile Device."
+			LOGDEBUG("In watchdogMapHandler...${e}")
+		}
 	}
 	if(triggerMode == "Battery_Level") {
-		def watchdogBatteryMap = "${state.batteryMap}"
-		LOGDEBUG("In watchdogMapHandler...Sending new Batterry Watchdog data to ${watchdogTileDevice}")
-    	watchdogTileDevice.sendWatchdogBatteryMap(watchdogBatteryMap)
+		try {
+			def watchdogBatteryMap = "${state.batteryMap}"
+			LOGDEBUG("In watchdogMapHandler...Sending new Batterry Watchdog data to ${watchdogTileDevice}")
+    		watchdogTileDevice.sendWatchdogBatteryMap(watchdogBatteryMap)
+		} catch (e) {
+			log.warn "${app.label}...Can't send data to Tile Device."
+			LOGDEBUG("In watchdogMapHandler...${e}")
+		}
 	}
 }
 
@@ -607,6 +620,7 @@ def pauseOrNot(){								// Modified from @Cobra Code
 }
 
 def setDefaults(){
+	version()
 	setupNewStuff()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
@@ -656,6 +670,6 @@ def display() {
 def display2(){
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${version()}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 } 
