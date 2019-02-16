@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 02/16/19 - Trying to track down an error.
  *  V1.1.7 - 02/13/19 - Added more error checking.
  *  V1.1.6 - 02/12/19 - Removed 'All battery devices' switch and other code cleanup.
  *  V1.1.5 - 02/11/19 - Fix the previous report not sometimes clearing before displaying the new report.
@@ -59,7 +60,7 @@
  */
 
 def version() {
-	state.version = "v1.1.7"
+	state.version = "v1.1.8"
 }
 
 definition(
@@ -80,7 +81,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Device Watchdog</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {	
+    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Device Watchdog</h2>", nextPage: null, install: true, uninstall: true) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
@@ -196,7 +197,7 @@ def pageConfig() {
 }
 
 def pageStatus(params) {
-	dynamicPage(name: "pageStatus", title: "Device Watchdog - Status", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
+	dynamicPage(name: "pageStatus", title: "Device Watchdog - Status", nextPage: null, install: false, uninstall: false) {
 		activityHandler()
 		log.warn("state.reportCount: ${state.reportCount} ***")
 		log.warn("state.timeSinceMap: ${state.timeSinceMap}")
