@@ -55,14 +55,14 @@
   "Example2UpdateNote": "NA",
   
   "AbacusIntenseCountingType": "App",
-  "AbacusIntenseCountingParentVersion": "v1.0.6",
-  "AbacusIntenseCountingChildVersion": "v1.0.7",
+  "AbacusIntenseCountingParentVersion": "v1.0.7",
+  "AbacusIntenseCountingChildVersion": "v1.0.8",
   "AbacusIntenseCountingDriverVersion": "V1.0.0",
   "AbacusIntenseCountingParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-parent.groovy",
   "AbacusIntenseCountingChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy",
   "AbacusIntenseCountingDriverRawCode": "https://github.com/bptworld/Hubitat/blob/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy",
   "AbacusIntenseCountingDiscussion": "https://community.hubitat.com/t/release-abacus-intense-counting/7883",
-  "AbacusIntenseCountingUpdateNote": "NA",
+  "AbacusIntenseCountingUpdateNote": "V1.0.8 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.",
   
   "AbacusTimeTravelerType": "App",
   "AbacusTimeTravelerParentVersion": "v1.0.4",
