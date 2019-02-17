@@ -4,10 +4,7 @@
  *  Design Usage:
  *  Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
- *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Thanks to Stephan Hackett (@stephack) for the idea to change up the colors.
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -37,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.6 - 01/15/19 - Updated footer with update check and links
  *  V1.0.5 - 01/04/19 - Removed some left over code causing an error.
  *  V1.0.4 - 01/03/19 - Bug fixes and a much better way to remove a device and it's stats.
@@ -48,7 +46,9 @@
  *
  */
 
-def version(){"v1.0.6"}
+def setVersion() {
+	state.version = "v1.0.7"
+}
 
 definition(
     name:"Abacus - Intense Counting",
@@ -102,7 +102,7 @@ def mainPage() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
-			display()
+			display2()
 		}
 	}
 }
@@ -128,32 +128,10 @@ def getFormat(type, myText=""){
 	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currParentVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currParentVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.driverRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
-def display(){
+def display2(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }         
