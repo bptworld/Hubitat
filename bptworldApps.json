@@ -65,13 +65,13 @@
   "AbacusIntenseCountingUpdateNote": "NA",
   
   "AbacusTimeTravelerType": "App",
-  "AbacusTimeTravelerParentVersion": "v1.0.3",
-  "AbacusTimeTravelerChildVersion": "v1.0.3",
+  "AbacusTimeTravelerParentVersion": "v1.0.4",
+  "AbacusTimeTravelerChildVersion": "v1.0.4",
   "AbacusTimeTravelerDriverVersion": "NA",
   "AbacusTimeTravelerParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-parent.groovy",
   "AbacusTimeTravelerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-child.groovy",
   "AbacusTimeTravelerDriverRawCode": "NA",
-  "AbacusTimeTravelerDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
+  "AbacusTimeTravelerDiscussion": "V1.0.4 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.",
   "AbacusTimeTravelerUpdateNote": "NA",
 
   "AppWatchdogType": "App",
