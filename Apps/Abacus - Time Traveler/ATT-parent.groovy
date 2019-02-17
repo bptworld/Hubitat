@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.3 - 01/15/19 - Updated footer with update check and links
  *  V1.0.2 - 01/06/19 - Squashed a bug in the Weekly count reset. Also added in a way to delete a single line from the reports.
  *						This is needed to get rid of the orphans created from the Weekly Count bug.
@@ -45,7 +46,9 @@
  *
  */
 
-def version(){"v1.0.3"}
+def setVersion() {
+	state.version = "v1.0.4"
+}
 
 definition(
     name:"Abacus - Time Traveler",
@@ -99,7 +102,7 @@ def mainPage() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
-			display()
+			display2()
 		}
 	}
 }
@@ -126,32 +129,10 @@ def getFormat(type, myText=""){
 	if(type == "wording") return "<div style='color:#1A77C9'>${myText}</div>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
-def display(){
+def display2(){
 	section() {
-		def verUpdate = "${checkForUpdate()}"
+		setVersion()
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
-}      
+}     
