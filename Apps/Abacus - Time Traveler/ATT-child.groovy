@@ -5,9 +5,7 @@ import groovy.time.TimeCategory
  *  Design Usage:
  *  Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
- *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -37,6 +35,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.4 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.3 - 01/15/19 - Updated footer with update check and links
  *  V1.0.2 - 01/06/19 - Squashed a bug in the Weekly count reset. Also added in a way to delete a single line from the reports.
  *						This is needed to get rid of the orphans created from the Weekly Count bug.
@@ -45,7 +44,9 @@ import groovy.time.TimeCategory
  *
  */
 
-def version(){"v1.0.3"}
+def setVersion() {
+	state.version = "v1.0.4"
+}
 
 definition(
     name: "Abacus - Time Traveler Child",
@@ -53,9 +54,7 @@ definition(
     author: "Bryan Turcotte",
     description: "Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!",
     category: "Useless",
-	
-parent: "BPTWorld:Abacus - Time Traveler",
-    
+	parent: "BPTWorld:Abacus - Time Traveler",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -88,42 +87,6 @@ def pageConfig() {
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-			input "triggerMode", "enum", title: "Select a Mode", submitOnChange: true,  options: ["Normal_Tracking","Delete_A_Device"], required: true, Multiple: false
-		}
-		if(triggerMode == "Normal_Tracking") {
-			section() {
-				paragraph "Everything is up and running"
-			}
-		}
-		if(triggerMode == "Delete_A_Device") {
-			section("Instructions for Deleting a device:", hideable: true, hidden: true) {
-				paragraph "If a device needs to be removed<br> - De-select it from all of the Device lists above.<br> - Then come back down here and select the device from the list below.<br> - Click 'Done' to save the new settings.<br> - Now trigger the device to be removed. ie. motion='active', contact='open', switch='on' and thermostat='heating' or 'cooling' to trigger the removal.<br> - Be sure to go back into this child app and change the 'Maintenance' setting back to 'Normal_Tracking'<br> - Hit 'Done' again and everything is all set."
-			}
-			section() {
-				paragraph "<div style='color:red;font-weight: bold'>Use with CAUTION. Deleting a device completely removes the all of it's stats.</b><br>Please see the Instructions above before attempting to remove a device.</div>"
-				input(name: "deleteMotionEvent", type: "capability.motionSensor", title: "Motion sensor(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
-				input(name: "deleteContactEvent", type: "capability.contactSensor", title: "Contact Sensor(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
-				input(name: "deleteSwitchEvent", type: "capability.switch", title: "Switch Device(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
-				input(name: "deleteThermostatEvent", type: "capability.thermostat", title: "Thermostat(s) to REMOVE", submitOnChange: true, required: false, multiple: true)
-			}
-			section() {
-				paragraph "<b>Under Special Circumstances you may need to delete one line instead of an entire device.</b>"
-				input(name: "deleteALine", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Need to remove a Line?")
-			}
-			if(deleteALine) {
-				section("Instructions for Deleting a line:", hideable: true, hidden: true) {
-					paragraph "If a device needs to be removed<br> - Click on 'Abacus Reports'<br> - Completely highlight the line that needs to be removed<br> - Press 'ctrl'-C to copy it, then click 'Done'<br> - Now scroll back down to the 'Maintenance' section<br> - Paste in the line to remove and then click outside the box<br> - Now adjust the code by putting < b > and < /b > (but with NO spaces) around the device name.  ie. < b >mZone-Basement< /b > - Week: 0 Days, 0 Hours, 0 Minutes, null Seconds<br> - Now click outside the box again<br> - Press the 'Delete Now' button - WAIT 2 seconds - Press the button again."
-					paragraph "Now go back to the 'Abacus Reports' and the line should be gone."
-				}
-				section() {
-					paragraph "<div style='color:red;font-weight: bold'>Use with CAUTION. Deleting a line completely removes that line and all of it's stats.</b><br>Please see the Instructions above before attempting to remove a line.</div>"
-					input "lineToDelete", "text", title: "Exact copy of line item to remove", required: true
-					input "runButton", "button", title: "-- Delete Now --"
-					paragraph "Remember to hit the Delete now button twice."
-				}
-			}
-		}
 		display2()
 	}
 }
@@ -202,17 +165,11 @@ def updated() {
 def initialize() {
 	LOGDEBUG("In initialize...")
 	setDefaults()
-	if(triggerMode == "Normal_Tracking") subscribe(motionEvent, "motion", motionHandler)
-	if(triggerMode == "Normal_Tracking") subscribe(contactEvent, "contact", contactHandler)
-	if(triggerMode == "Normal_Tracking") subscribe(switchEvent, "switch", switchHandler)
-	if(triggerMode == "Normal_Tracking") subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
+	subscribe(motionEvent, "motion", motionHandler)
+	subscribe(contactEvent, "contact", contactHandler)
+	subscribe(switchEvent, "switch", switchHandler)
+	subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
 
-	if(triggerMode == "Delete_A_Device") subscribe(deleteMotionEvent, "motion.active", deleteMotionHandler)
-	if(triggerMode == "Delete_A_Device") subscribe(deleteContactEvent, "contact.open", deleteContactHandler)
-	if(triggerMode == "Delete_A_Device") subscribe(deleteSwitchEvent, "switch.on", deleteSwitchHandler)
-	if(triggerMode == "Delete_A_Device") subscribe(deleteThermostatEvent, "thermostatOperatingState.heating", deleteThermostatHandler)
-	if(triggerMode == "Delete_A_Device") subscribe(deleteThermostatEvent, "thermostatOperatingState.cooling", deleteThermostatHandler)
-	
 	schedule("0 5 0 * * ? *", resetMotionCountHandler)
 	schedule("0 6 0 * * ? *", resetContactCountHandler)
 	schedule("0 7 0 * * ? *", resetSwitchCountHandler)
@@ -383,368 +340,145 @@ def setupNewStuff() {
 	// ********** Ending Thermostat Devices **********
 }
 
-def deleteMotionHandler(evt) {
-	if(triggerMode == "Delete_A_Device") {	
-		LOGDEBUG("In deleteMotionHandler...")
-
-		LOGDEBUG("In deleteMotionHandler...Looking for Motion devices to DELETE")
-		LOGDEBUG("Working on... ${evt.displayName}")
-		countD = state.motionMapD.get(evt.displayName)
-		countW = state.motionMapW.get(evt.displayName)
-		countM = state.motionMapM.get(evt.displayName)
-		countY = state.motionMapY.get(evt.displayName)
-		// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers
-		try {
-			state.motionMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.motionMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.motionMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.motionMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-			LOGDEBUG("${evt.displayName} - Removed from motionMap")
-		} catch(ex) {
-			LOGDEBUG("In deleteMotionHandler...${evt.displayName}: Device was not found.")
-		}
-		newCountD = 0
-		newCountW = 0
-		newCountM = 0
-		newCountY = 0
-   		state.motionMapD.put(evt.displayName, newCountD)
-		state.motionMapW.put(evt.displayName, newCountW)
-		state.motionMapM.put(evt.displayName, newCountM)
-		state.motionMapY.put(evt.displayName, newCountY)
-		LOGDEBUG("${evt.displayName} - Removed from motionMap D W M Y")
-		LOGDEBUG("Finished removing... ${evt.displayName}")
-	}
-}
-
-def deleteContactHandler(evt) {
-	if(triggerMode == "Delete_A_Device") {	
-		LOGDEBUG("In deleteContactHandler...")
-
-		LOGDEBUG("In deleteContactHandler...Looking for Contact devices to DELETE")
-		LOGDEBUG("Working on... ${evt.displayName}")
-		countD = state.contactMapD.get(evt.displayName)
-		countW = state.contactMapW.get(evt.displayName)
-		countM = state.contactMapM.get(evt.displayName)
-		countY = state.contactMapY.get(evt.displayName)
-		// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers
-		try {
-			state.contactMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.contactMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.contactMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.contactMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-			LOGDEBUG("${evt.displayName} - Removed from contactMap")
-		} catch(ex) {
-			LOGDEBUG("In deleteContactHandler...${evt.displayName}: Device was not found.")
-		}
-		newCountD = 0
-		newCountW = 0
-		newCountM = 0
-		newCountY = 0
-   		state.contactMapD.put(evt.displayName, newCountD)
-		state.contactMapW.put(evt.displayName, newCountW)
-		state.contactMapM.put(evt.displayName, newCountM)
-		state.contactMapY.put(evt.displayName, newCountY)
-		LOGDEBUG("${evt.displayName} - Removed from contactMap D W M Y")
-		LOGDEBUG("Finished removing... ${evt.displayName}")
-	}
-}
-
-def deleteSwitchHandler(evt) {
-	if(triggerMode == "Delete_A_Device") {	
-		LOGDEBUG("In deleteSwitchHandler...")
-
-		LOGDEBUG("In deleteSwitchHandler...Looking for Switch devices to DELETE")
-		LOGDEBUG("Working on... ${evt.displayName}")
-		countD = state.switchMapD.get(evt.displayName)
-		countW = state.switchMapW.get(evt.displayName)
-		countM = state.switchMapM.get(evt.displayName)
-		countY = state.switchMapY.get(evt.displayName)
-		// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers
-		try {
-			state.switchMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.switchMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.switchMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.switchMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-			LOGDEBUG("${evt.displayName} - Removed from switchMap")
-		} catch(ex) {
-			LOGDEBUG("In deleteSwitchHandler...${evt.displayName}: Device was not found.")
-		}
-		newCountD = 0
-		newCountW = 0
-		newCountM = 0
-		newCountY = 0
-   		state.switchMapD.put(evt.displayName, newCountD)
-		state.switchMapW.put(evt.displayName, newCountW)
-		state.switchMapM.put(evt.displayName, newCountM)
-		state.switchMapY.put(evt.displayName, newCountY)
-		LOGDEBUG("${evt.displayName} - Removed from switchMap D W M Y")
-		LOGDEBUG("Finished removing... ${evt.displayName}")
-	}
-}
-
-def deleteThermostatHandler(evt) {
-	if(triggerMode == "Delete_A_Device") {	
-		LOGDEBUG("In deleteThermostatHandler...")
-
-		LOGDEBUG("In deleteThermostatHandler...Looking for Thermostat devices to DELETE")
-		LOGDEBUG("Working on... ${evt.displayName}")
-		countD = state.thermostatMapD.get(evt.displayName)
-		countW = state.thermostatMapW.get(evt.displayName)
-		countM = state.thermostatMapM.get(evt.displayName)
-		countY = state.thermostatMapY.get(evt.displayName)
-		// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers
-		try {
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-			LOGDEBUG("${evt.displayName} - Removed from thermostatMap")
-		} catch(ex) {
-			LOGDEBUG("In deleteThermostatHandler...${evt.displayName}: Device was not found.")
-		}
-		newCountD = 0
-		newCountW = 0
-		newCountM = 0
-		newCountY = 0
-   		state.thermostatMapD.put(evt.displayName, newCountD)
-		state.thermostatMapW.put(evt.displayName, newCountW)
-		state.thermostatMapM.put(evt.displayName, newCountM)
-		state.thermostatMapY.put(evt.displayName, newCountY)
-		LOGDEBUG("${evt.displayName} - Removed from thermostatMap D W M Y")
-		LOGDEBUG("Finished removing... ${evt.displayName}")
-	}
-}
-
 def motionHandler(evt) {
-if(triggerMode == "Normal_Tracking") {
 	LOGDEBUG("In motionHandler...")
 	LOGDEBUG("In motionHandler: Device: $evt.displayName is $evt.value")
 	state.motionStatus = evt.value
-	
+				
 	if(state.motionStatus == "active") {
 		def now1 = new Date()
     	prev = now1.getTime()
 		state.motionPrevMap.put(evt.displayName, prev)
 		LOGDEBUG("In motionHandler...${evt.displayName} became ${state.motionStatus} at ${now1}")
 	}
-		
+	
 	if(state.motionStatus == "inactive") {
-		prev = state.motionPrevMap.get(evt.displayName, prev)
-		def now2 = new Date()
-		LOGDEBUG("In motionHandler...${evt.displayName} became ${state.motionStatus} at ${now2}")
-		long unxNow = now2.getTime()
-    	long unxPrev = prev
-    	unxNow = unxNow/1000 
-    	unxPrev = unxPrev/1000
-		timeDiff = (unxNow-unxPrev)
-		LOGDEBUG("In motionHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
-	
-	countD = state.motionMapD.get(evt.displayName)
-		if(countD == null) countD = 0
-    newCountD = countD + timeDiff
-    state.motionMapD.put(evt.displayName, newCountD)
-	
-	countW = state.motionMapW.get(evt.displayName)
-		if(countW == null) countW = 0
-    newCountW = countW + timeDiff
-    state.motionMapW.put(evt.displayName, newCountW)
-	
-	countM = state.motionMapM.get(evt.displayName)
-		if(countM == null) countM = 0
-    newCountM = countM + timeDiff
-    state.motionMapM.put(evt.displayName, newCountM)
-	
-    countY = state.motionMapY.get(evt.displayName)
-		if(countY == null) countY = 0
-    newCountY = countY + timeDiff
-    state.motionMapY.put(evt.displayName, newCountY)
-		
-	// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers	
-	
-	// Now Triggered Numbers
-		int inputNow=timeDiff
-		int nDayNow = inputNow / 86400
-		int nHrsNow = (inputNow % 86400 ) / 3600
-		int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
-		int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
-	// End Now Triggered Nubmers
-	
-	// Today's Numbers
-		int inputD=newCountD
-		int newnDayD = inputD / 86400
-		int newnHrsD = (inputD % 86400 ) / 3600
-		int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
-		int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
-	// End Today's Numbers
-		
-	// Weekly Numbers
-		int inputW=newCountW
-		int newnDayW = inputW / 86400
-		int newnHrsW = (inputW % 86400 ) / 3600
-		int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
-		int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
-	// End Weekly Numbers
-		
-	// Monthly Numbers
-		int inputM=newCountM
-		int newnDayM = inputM / 86400
-		int newnHrsM = (inputM % 86400 ) / 3600
-		int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
-		int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
-	// End Monthly Numbers
-		
-	// Yearly Numbers
-		int inputY=newCountY
-		int newnDayY = inputY / 86400
-		int newnHrsY = (inputY % 86400 ) / 3600
-		int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
-		int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
-	// End Yearly Numbers
-		
-		LOGDEBUG("In motionHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
-	
-		LOGDEBUG("To Delete - <b>${evt.displayName}</b><br>Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br>")
+		state.motionMap = ""
 		try {
-			state.motionMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.motionMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.motionMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.motionMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
-			state.motionMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
-			state.motionMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
-			state.motionMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
-			state.motionMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
-		} catch(ex) {
-			LOGDEBUG("In motionHandler...${evt.displayName}: Device was not found.")
-		}
-		LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
+			motionEvent.each { it -> 
+				if(evt.displayName == it.displayName) {
+					prev = state.motionPrevMap.get(evt.displayName, prev)
+					def now2 = new Date()
+					LOGDEBUG("In motionHandler...${evt.displayName} became ${state.motionStatus} at ${now2}")
+					long unxNow = now2.getTime()
+    				long unxPrev = prev
+    				unxNow = unxNow/1000 
+    				unxPrev = unxPrev/1000
+					timeDiff = (unxNow-unxPrev)
+					LOGDEBUG("In motionHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
 	
+					countD = state.motionMapD.get(evt.displayName)
+					if(countD == null) countD = 0
+  					newCountD = countD + timeDiff
+    				state.motionMapD.put(evt.displayName, newCountD)
+	
+					countW = state.motionMapW.get(evt.displayName)
+					if(countW == null) countW = 0
+    				newCountW = countW + timeDiff
+    				state.motionMapW.put(evt.displayName, newCountW)
+	
+					countM = state.motionMapM.get(evt.displayName)
+					if(countM == null) countM = 0
+   	 				newCountM = countM + timeDiff
+    				state.motionMapM.put(evt.displayName, newCountM)
+	
+    				countY = state.motionMapY.get(evt.displayName)
+					if(countY == null) countY = 0
+    				newCountY = countY + timeDiff
+    				state.motionMapY.put(evt.displayName, newCountY)	
+	
+				// Now Triggered Numbers
+					int inputNow=timeDiff
+					int nDayNow = inputNow / 86400
+					int nHrsNow = (inputNow % 86400 ) / 3600
+					int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+					int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+				// End Now Triggered Nubmers
+	
+				// Today's Numbers
+					int inputD=newCountD
+					int newnDayD = inputD / 86400
+					int newnHrsD = (inputD % 86400 ) / 3600
+					int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
+					int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
+				// End Today's Numbers
+		
+				// Weekly Numbers
+					int inputW=newCountW
+					int newnDayW = inputW / 86400
+					int newnHrsW = (inputW % 86400 ) / 3600
+					int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
+					int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
+				// End Weekly Numbers
+		
+				// Monthly Numbers
+					int inputM=newCountM
+					int newnDayM = inputM / 86400
+					int newnHrsM = (inputM % 86400 ) / 3600
+					int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
+					int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
+				// End Monthly Numbers
+		
+				// Yearly Numbers
+					int inputY=newCountY
+					int newnDayY = inputY / 86400
+					int newnHrsY = (inputY % 86400 ) / 3600
+					int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
+					int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
+				// End Yearly Numbers
+		
+				LOGDEBUG("In motionHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
+					
+					state.motionMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
+					state.motionMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
+					state.motionMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
+					state.motionMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+					
+					LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
+				} else {
+					countD = state.motionMapD.get(it.displayName)
+					countW = state.motionMapW.get(it.displayName)
+					countM = state.motionMapM.get(it.displayName)
+					countY = state.motionMapY.get(it.displayName)
+				// Before Triggered Numbers
+					int inputDBef=countD
+					int nDayDBef = inputDBef / 86400
+					int nHrsDBef = (inputDBef % 86400 ) / 3600
+					int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
+					int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
+		
+					int inputWBef=countW
+					int nDayWBef = inputWBef / 86400
+					int nHrsWBef = (inputWBef % 86400 ) / 3600
+					int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
+					int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
+		
+					int inputMBef=countM
+					int nDayMBef = inputMBef / 86400
+					int nHrsMBef = (inputMBef % 86400 ) / 3600
+					int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
+					int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
+		
+					int inputYBef=countY
+					int nDayYBef = inputYBef / 86400
+					int nHrsYBef = (inputYBef % 86400 ) / 3600
+					int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
+					int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
+				// End Before Triggered Nubmers
+					
+					state.motionMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
+					state.motionMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
+					state.motionMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
+					state.motionMap += "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+				}
+			}
+		} catch(ex) {
+		LOGDEBUG("In motionHandler...${evt.displayName}: Device was not found.")
+		}
 	}
-}
 }
 	
 def contactHandler(evt) {
-if(triggerMode == "Normal_Tracking") {
 	LOGDEBUG("In contactHandler...")
 	LOGDEBUG("$evt.displayName: $evt.value")
 	state.contactStatus = evt.value
@@ -757,125 +491,130 @@ if(triggerMode == "Normal_Tracking") {
 	}
 		
 	if(state.contactStatus == "closed") {
-		prev = state.contactPrevMap.get(evt.displayName, prev)
-		def now2 = new Date()
-		LOGDEBUG("In contactHandler...${evt.displayName} became ${state.contactStatus} at ${now2}")
-		long unxNow = now2.getTime()
-    	long unxPrev = prev
-    	unxNow = unxNow/1000 
-    	unxPrev = unxPrev/1000
-		timeDiff = (unxNow-unxPrev)
-		LOGDEBUG("In contactHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
-	
-			countD = state.contactMapD.get(evt.displayName)
-			if(countD == null) countD = 0
-   			newCountD = countD + timeDiff
-   			state.contactMapD.put(evt.displayName, newCountD)
-	
-			countW = state.contactMapW.get(evt.displayName)
-			if(countW == null) countW = 0
-   			newCountW = countW + timeDiff
-    		state.contactMapW.put(evt.displayName, newCountW)
-	
-			countM = state.contactMapM.get(evt.displayName)
-			if(countM == null) countM = 0
-    		newCountM = countM + timeDiff
-   			state.contactMapM.put(evt.displayName, newCountM)
-	
-    		countY = state.contactMapY.get(evt.displayName)
-			if(countY == null) countY = 0
-   		 	newCountY = countY + timeDiff
-    		state.contactMapY.put(evt.displayName, newCountY)
-		
-		// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-		// End Before Triggered Nubmers	
-	
-		// Now Triggered Numbers
-		int inputNow=timeDiff
-		int nDayNow = inputNow / 86400
-		int nHrsNow = (inputNow % 86400 ) / 3600
-		int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
-		int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
-		// End Now Triggered Nubmers
-	
-		// Today's Numbers
-		int inputD=newCountD
-		int newnDayD = inputD / 86400
-		int newnHrsD = (inputD % 86400 ) / 3600
-		int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
-		int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
-		// End Today's Numbers
-		
-		// Weekly Numbers
-		int inputW=newCountW
-		int newnDayW = inputW / 86400
-		int newnHrsW = (inputW % 86400 ) / 3600
-		int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
-		int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
-		// End Weekly Numbers
-		
-		// Monthly Numbers
-		int inputM=newCountM
-		int newnDayM = inputM / 86400
-		int newnHrsM = (inputM % 86400 ) / 3600
-		int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
-		int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
-		// End Monthly Numbers
-		
-		// Yearly Numbers
-		int inputY=newCountY
-		int newnDayY = inputY / 86400
-		int newnHrsY = (inputY % 86400 ) / 3600
-		int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
-		int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
-		// End Yearly Numbers
-		
-			LOGDEBUG("In contactHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
-	
-			LOGDEBUG("To Delete - <b>${evt.displayName}</b><br>Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br>")
+		state.contactMap = ""
 		try {
-			state.contactMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.contactMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.contactMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.contactMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+			contactEvent.each { it -> 
+				if(evt.displayName == it.displayName) {
+					prev = state.contactPrevMap.get(evt.displayName, prev)
+					def now2 = new Date()
+					LOGDEBUG("In contactHandler...${evt.displayName} became ${state.contactStatus} at ${now2}")
+					long unxNow = now2.getTime()
+    				long unxPrev = prev
+    				unxNow = unxNow/1000 
+    				unxPrev = unxPrev/1000
+					timeDiff = (unxNow-unxPrev)
+					LOGDEBUG("In contactHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
+	
+					countD = state.contactMapD.get(evt.displayName)
+					if(countD == null) countD = 0
+   					newCountD = countD + timeDiff
+   					state.contactMapD.put(evt.displayName, newCountD)
+	
+					countW = state.contactMapW.get(evt.displayName)
+					if(countW == null) countW = 0
+   					newCountW = countW + timeDiff
+    				state.contactMapW.put(evt.displayName, newCountW)
+	
+					countM = state.contactMapM.get(evt.displayName)
+					if(countM == null) countM = 0
+    				newCountM = countM + timeDiff
+   					state.contactMapM.put(evt.displayName, newCountM)
+	
+    				countY = state.contactMapY.get(evt.displayName)
+					if(countY == null) countY = 0
+   				 	newCountY = countY + timeDiff
+    				state.contactMapY.put(evt.displayName, newCountY)
 		
-			state.contactMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
-			state.contactMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
-			state.contactMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
-			state.contactMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+				// Now Triggered Numbers
+					int inputNow=timeDiff
+					int nDayNow = inputNow / 86400
+					int nHrsNow = (inputNow % 86400 ) / 3600
+					int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+					int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+				// End Now Triggered Nubmers
+	
+				// Today's Numbers
+					int inputD=newCountD
+					int newnDayD = inputD / 86400
+					int newnHrsD = (inputD % 86400 ) / 3600
+					int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
+					int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
+				// End Today's Numbers
+		
+				// Weekly Numbers
+					int inputW=newCountW
+					int newnDayW = inputW / 86400
+					int newnHrsW = (inputW % 86400 ) / 3600
+					int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
+					int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
+				// End Weekly Numbers
+		
+				// Monthly Numbers
+					int inputM=newCountM
+					int newnDayM = inputM / 86400
+					int newnHrsM = (inputM % 86400 ) / 3600
+					int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
+					int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
+				// End Monthly Numbers
+		
+				// Yearly Numbers
+					int inputY=newCountY
+					int newnDayY = inputY / 86400
+					int newnHrsY = (inputY % 86400 ) / 3600
+					int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
+					int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
+				// End Yearly Numbers
+		
+					LOGDEBUG("In contactHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
+					state.contactMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
+					state.contactMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
+					state.contactMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
+					state.contactMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+					
+					LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
+				} else {
+					countD = state.contactMapD.get(it.displayName)
+					countW = state.contactMapW.get(it.displayName)
+					countM = state.contactMapM.get(it.displayName)
+					countY = state.contactMapY.get(it.displayName)
+				// Before Triggered Numbers
+					int inputDBef=countD
+					int nDayDBef = inputDBef / 86400
+					int nHrsDBef = (inputDBef % 86400 ) / 3600
+					int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
+					int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
+		
+					int inputWBef=countW
+					int nDayWBef = inputWBef / 86400
+					int nHrsWBef = (inputWBef % 86400 ) / 3600
+					int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
+					int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
+		
+					int inputMBef=countM
+					int nDayMBef = inputMBef / 86400
+					int nHrsMBef = (inputMBef % 86400 ) / 3600
+					int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
+					int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
+		
+					int inputYBef=countY
+					int nDayYBef = inputYBef / 86400
+					int nHrsYBef = (inputYBef % 86400 ) / 3600
+					int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
+					int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
+				// End Before Triggered Nubmers
+					state.contactMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
+					state.contactMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
+					state.contactMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
+					state.contactMap += "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+				}
+			}
 		} catch(ex) {
 			LOGDEBUG("In contactHandler...${evt.displayName}: Device was not found.")
 		}
-			LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
 	}
-}
 }
 
 def switchHandler(evt) {
-if(triggerMode == "Normal_Tracking") {
 	LOGDEBUG("In switchHandler...")
 	LOGDEBUG("$evt.displayName: $evt.value")
 	switchStatus = evt.value
@@ -888,126 +627,130 @@ if(triggerMode == "Normal_Tracking") {
 	}
 		
 	if(switchStatus == "off") {
-		prev = state.switchPrevMap.get(evt.displayName, prev)
-		def now2 = new Date()
-		LOGDEBUG("In switchHandler...${evt.displayName} turned ${switchStatus} at ${now2}")
-		long unxNow = now2.getTime()
-    	long unxPrev = prev
-    	unxNow = unxNow/1000 
-    	unxPrev = unxPrev/1000
-		timeDiff = (unxNow-unxPrev)
-		LOGDEBUG("In switchHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
-	
-	countD = state.switchMapD.get(evt.displayName)
-		if(countD == null) countD = 0
-    newCountD = countD + timeDiff
-    state.switchMapD.put(evt.displayName, newCountD)
-	
-	countW = state.switchMapW.get(evt.displayName)
-		if(countW == null) countW = 0
-    newCountW = countW + timeDiff
-    state.switchMapW.put(evt.displayName, newCountW)
-	
-	countM = state.switchMapM.get(evt.displayName)
-		if(countM == null) countM = 0
-    newCountM = countM + timeDiff
-    state.switchMapM.put(evt.displayName, newCountM)
-	
-    countY = state.switchMapY.get(evt.displayName)
-		if(countY == null) countY = 0
-    newCountY = countY + timeDiff
-    state.switchMapY.put(evt.displayName, newCountY)
-		
-	// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers	
-	
-	// Now Triggered Numbers
-		int inputNow=timeDiff
-		int nDayNow = inputNow / 86400
-		int nHrsNow = (inputNow % 86400 ) / 3600
-		int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
-		int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
-	// End Now Triggered Nubmers
-	
-	// Today's Numbers
-		int inputD=newCountD
-		int newnDayD = inputD / 86400
-		int newnHrsD = (inputD % 86400 ) / 3600
-		int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
-		int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
-	// End Today's Numbers
-		
-	// Weekly Numbers
-		int inputW=newCountW
-		int newnDayW = inputW / 86400
-		int newnHrsW = (inputW % 86400 ) / 3600
-		int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
-		int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
-	// End Weekly Numbers
-		
-	// Monthly Numbers
-		int inputM=newCountM
-		int newnDayM = inputM / 86400
-		int newnHrsM = (inputM % 86400 ) / 3600
-		int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
-		int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
-	// End Monthly Numbers
-		
-	// Yearly Numbers
-		int inputY=newCountY
-		int newnDayY = inputY / 86400
-		int newnHrsY = (inputY % 86400 ) / 3600
-		int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
-		int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
-	// End Yearly Numbers
-		
-		LOGDEBUG("In switchHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
-	
-		LOGDEBUG("To Delete - <b>${evt.displayName}</b><br>Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br>")
+		state.switchMap = ""
 		try {
-			state.switchMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.switchMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.switchMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.switchMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+			switchEvent.each { it -> 
+				if(evt.displayName == it.displayName) {
+					prev = state.switchPrevMap.get(evt.displayName, prev)
+					def now2 = new Date()
+					LOGDEBUG("In switchHandler...${evt.displayName} turned ${switchStatus} at ${now2}")
+					long unxNow = now2.getTime()
+  			  		long unxPrev = prev
+  			  		unxNow = unxNow/1000 
+  			  		unxPrev = unxPrev/1000
+					timeDiff = (unxNow-unxPrev)
+					LOGDEBUG("In switchHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
+	
+					countD = state.switchMapD.get(evt.displayName)
+					if(countD == null) countD = 0
+    				newCountD = countD + timeDiff
+    				state.switchMapD.put(evt.displayName, newCountD)
+	
+					countW = state.switchMapW.get(evt.displayName)
+					if(countW == null) countW = 0
+   	 				newCountW = countW + timeDiff
+    				state.switchMapW.put(evt.displayName, newCountW)
+	
+					countM = state.switchMapM.get(evt.displayName)
+					if(countM == null) countM = 0
+    				newCountM = countM + timeDiff
+    				state.switchMapM.put(evt.displayName, newCountM)
+	
+    				countY = state.switchMapY.get(evt.displayName)
+					if(countY == null) countY = 0
+    				newCountY = countY + timeDiff
+    				state.switchMapY.put(evt.displayName, newCountY)
 		
-			state.switchMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
-			state.switchMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
-			state.switchMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
-			state.switchMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+				// Now Triggered Numbers
+					int inputNow=timeDiff
+					int nDayNow = inputNow / 86400
+					int nHrsNow = (inputNow % 86400 ) / 3600
+					int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+					int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+				// End Now Triggered Nubmers
+	
+				// Today's Numbers
+					int inputD=newCountD
+					int newnDayD = inputD / 86400
+					int newnHrsD = (inputD % 86400 ) / 3600
+					int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
+					int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
+				// End Today's Numbers
+		
+				// Weekly Numbers
+					int inputW=newCountW
+					int newnDayW = inputW / 86400
+					int newnHrsW = (inputW % 86400 ) / 3600
+					int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
+					int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
+				// End Weekly Numbers
+		
+				// Monthly Numbers
+					int inputM=newCountM
+					int newnDayM = inputM / 86400
+					int newnHrsM = (inputM % 86400 ) / 3600
+					int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
+					int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
+				// End Monthly Numbers
+		
+				// Yearly Numbers
+					int inputY=newCountY
+					int newnDayY = inputY / 86400
+					int newnHrsY = (inputY % 86400 ) / 3600
+					int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
+					int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
+				// End Yearly Numbers
+		
+					LOGDEBUG("In switchHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
+					state.switchMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
+					state.switchMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
+					state.switchMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
+					state.switchMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+					
+					LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
+				} else {
+					countD = state.switchMapD.get(it.displayName)
+					countW = state.switchMapW.get(it.displayName)
+					countM = state.switchMapM.get(it.displayName)
+					countY = state.switchMapY.get(it.displayName)
+				// Before Triggered Numbers
+					int inputDBef=countD
+					int nDayDBef = inputDBef / 86400
+					int nHrsDBef = (inputDBef % 86400 ) / 3600
+					int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
+					int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
+		
+					int inputWBef=countW
+					int nDayWBef = inputWBef / 86400
+					int nHrsWBef = (inputWBef % 86400 ) / 3600
+					int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
+					int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
+		
+					int inputMBef=countM
+					int nDayMBef = inputMBef / 86400
+					int nHrsMBef = (inputMBef % 86400 ) / 3600
+					int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
+					int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
+		
+					int inputYBef=countY
+					int nDayYBef = inputYBef / 86400
+					int nHrsYBef = (inputYBef % 86400 ) / 3600
+					int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
+					int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
+				// End Before Triggered Nubmers
+					state.switchMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
+					state.switchMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
+					state.switchMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
+					state.switchMap += "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+				}
+			}
 		} catch(ex) {
 			LOGDEBUG("In switchHandler...${evt.displayName}: Device was not found.")
 		}
-		LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
-	
 	}
-}
 }
 
 def thermostatHandler(evt) {
-if(triggerMode == "Normal_Tracking") {
 	state.tStat = evt.value
 	LOGDEBUG("In thermostatHandler...Current Status: ${state.tStat}")
 	
@@ -1026,123 +769,128 @@ if(triggerMode == "Normal_Tracking") {
 	}
 	
 	if(state.tStat == "idle") {
-		prev = state.thermostatPrevMap.get(evt.displayName, prev)
-		def now2 = new Date()
-		LOGDEBUG("In thermostatHandler...${evt.displayName} is ${state.tStat} at ${now2}")
-		long unxNow = now2.getTime()
-    	long unxPrev = prev
-    	unxNow = unxNow/1000 
-    	unxPrev = unxPrev/1000
-		timeDiff = (unxNow-unxPrev)
-		LOGDEBUG("In thermostatHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
-	
-	countD = state.thermostatMapD.get(evt.displayName)
-		if(countD == null) countD = 0
-    newCountD = countD + timeDiff
-    state.thermostatMapD.put(evt.displayName, newCountD)
-	
-	countW = state.thermostatMapW.get(evt.displayName)
-		if(countW == null) countW = 0
-    newCountW = countW + timeDiff
-    state.thermostatMapW.put(evt.displayName, newCountW)
-	
-	countM = state.thermostatMapM.get(evt.displayName)
-		if(countM == null) countM = 0
-    newCountM = countM + timeDiff
-		LOGDEBUG("${countM} + ${timeDiff} = ${newCountM}")
-    state.thermostatMapM.put(evt.displayName, newCountM)
-	
-    countY = state.thermostatMapY.get(evt.displayName)
-		if(countY == null) countY = 0
-    newCountY = countY + timeDiff
-    state.thermostatMapY.put(evt.displayName, newCountY)
-		
-	// Before Triggered Numbers
-		int inputDBef=countD
-		int nDayDBef = inputDBef / 86400
-		int nHrsDBef = (inputDBef % 86400 ) / 3600
-		int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
-		int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
-		
-		int inputWBef=countW
-		int nDayWBef = inputWBef / 86400
-		int nHrsWBef = (inputWBef % 86400 ) / 3600
-		int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
-		int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
-		
-		int inputMBef=countM
-		int nDayMBef = inputMBef / 86400
-		int nHrsMBef = (inputMBef % 86400 ) / 3600
-		int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
-		int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
-		
-		int inputYBef=countY
-		int nDayYBef = inputYBef / 86400
-		int nHrsYBef = (inputYBef % 86400 ) / 3600
-		int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
-		int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
-	// End Before Triggered Nubmers	
-	
-	// Now Triggered Numbers
-		int inputNow=timeDiff
-		int nDayNow = inputNow / 86400
-		int nHrsNow = (inputNow % 86400 ) / 3600
-		int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
-		int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
-	// End Now Triggered Nubmers
-	
-	// Today's Numbers
-		int inputD=newCountD
-		int newnDayD = inputD / 86400
-		int newnHrsD = (inputD % 86400 ) / 3600
-		int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
-		int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
-	// End Today's Numbers
-		
-	// Weekly Numbers
-		int inputW=newCountW
-		int newnDayW = inputW / 86400
-		int newnHrsW = (inputW % 86400 ) / 3600
-		int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
-		int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
-	// End Weekly Numbers
-		
-	// Monthly Numbers
-		int inputM=newCountM
-		int newnDayM = inputM / 86400
-		int newnHrsM = (inputM % 86400 ) / 3600
-		int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
-		int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
-	// End Monthly Numbers
-		
-	// Yearly Numbers
-		int inputY=newCountY
-		int newnDayY = inputY / 86400
-		int newnHrsY = (inputY % 86400 ) / 3600
-		int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
-		int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
-	// End Yearly Numbers
-		
-		LOGDEBUG("In thermostatHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
-	
-		LOGDEBUG("To Delete - <b>${evt.displayName}</b><br>Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br>")
+		state.thermostatMap = ""
 		try {
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.thermostatMap -= "<b>${evt.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+			thermostatEvent.each { it -> 
+				if(evt.displayName == it.displayName) {
+					prev = state.thermostatPrevMap.get(evt.displayName, prev)
+					def now2 = new Date()
+					LOGDEBUG("In thermostatHandler...${evt.displayName} is ${state.tStat} at ${now2}")
+					long unxNow = now2.getTime()
+    				long unxPrev = prev
+    				unxNow = unxNow/1000 
+    				unxPrev = unxPrev/1000
+					timeDiff = (unxNow-unxPrev)
+					LOGDEBUG("In thermostatHandler...${evt.displayName}: timeDiff in Seconds: ${timeDiff}")
+	
+					countD = state.thermostatMapD.get(evt.displayName)
+					if(countD == null) countD = 0
+    				newCountD = countD + timeDiff
+    				state.thermostatMapD.put(evt.displayName, newCountD)
+	
+					countW = state.thermostatMapW.get(evt.displayName)
+					if(countW == null) countW = 0
+    				newCountW = countW + timeDiff
+    				state.thermostatMapW.put(evt.displayName, newCountW)
+	
+					countM = state.thermostatMapM.get(evt.displayName)
+					if(countM == null) countM = 0
+    				newCountM = countM + timeDiff
+					LOGDEBUG("${countM} + ${timeDiff} = ${newCountM}")
+    				state.thermostatMapM.put(evt.displayName, newCountM)
+	
+    				countY = state.thermostatMapY.get(evt.displayName)
+					if(countY == null) countY = 0
+    				newCountY = countY + timeDiff
+    				state.thermostatMapY.put(evt.displayName, newCountY)
+	
+				// Now Triggered Numbers
+					int inputNow=timeDiff
+					int nDayNow = inputNow / 86400
+					int nHrsNow = (inputNow % 86400 ) / 3600
+					int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+					int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+				// End Now Triggered Nubmers
+	
+				// Today's Numbers
+					int inputD=newCountD
+					int newnDayD = inputD / 86400
+					int newnHrsD = (inputD % 86400 ) / 3600
+					int newnMinD = ((inputD % 86400 ) % 3600 ) / 60
+					int newnSecD = ((inputD % 86400 ) % 3600 ) % 60
+				// End Today's Numbers
 		
-			state.thermostatMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
-			state.thermostatMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
-			state.thermostatMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
-			state.thermostatMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+				// Weekly Numbers
+					int inputW=newCountW
+					int newnDayW = inputW / 86400
+					int newnHrsW = (inputW % 86400 ) / 3600
+					int newnMinW = ((inputW % 86400 ) % 3600 ) / 60
+					int newnSecW = ((inputW % 86400 ) % 3600 ) % 60
+				// End Weekly Numbers
+		
+				// Monthly Numbers
+					int inputM=newCountM
+					int newnDayM = inputM / 86400
+					int newnHrsM = (inputM % 86400 ) / 3600
+					int newnMinM = ((inputM % 86400 ) % 3600 ) / 60
+					int newnSecM = ((inputM % 86400 ) % 3600 ) % 60
+				// End Monthly Numbers
+		
+				// Yearly Numbers
+					int inputY=newCountY
+					int newnDayY = inputY / 86400
+					int newnHrsY = (inputY % 86400 ) / 3600
+					int newnMinY = ((inputY % 86400 ) % 3600 ) / 60
+					int newnSecY = ((inputY % 86400 ) % 3600 ) % 60
+				// End Yearly Numbers
+		
+					LOGDEBUG("In thermostatHandler...${evt.displayName}: This Time: ${nDayNow} Days, ${nHrsNow} Hours, ${nMinNow} Minutes, ${nSecNow} Seconds")
+					state.thermostatMap += "<b>${evt.displayName}</b> - Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>"
+					state.thermostatMap += "<b>${evt.displayName}</b> - Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>"
+					state.thermostatMap += "<b>${evt.displayName}</b> - Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>"
+					state.thermostatMap += "<b>${evt.displayName}</b> - Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br><br>"
+					
+					LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
+				} else {
+					countD = state.thermostatMapD.get(it.displayName)
+					countW = state.thermostatMapW.get(it.displayName)
+					countM = state.thermostatMapM.get(it.displayName)
+					countY = state.thermostatMapY.get(it.displayName)
+				// Before Triggered Numbers
+					int inputDBef=countD
+					int nDayDBef = inputDBef / 86400
+					int nHrsDBef = (inputDBef % 86400 ) / 3600
+					int nMinDBef = ((inputDBef % 86400 ) % 3600 ) / 60
+					int nSecDBef = ((inputDBef % 86400 ) % 3600 ) % 60
+		
+					int inputWBef=countW
+					int nDayWBef = inputWBef / 86400
+					int nHrsWBef = (inputWBef % 86400 ) / 3600
+					int nMinWBef = ((inputWBef % 86400 ) % 3600 ) / 60
+					int nSecWBef = ((inputWBef % 86400 ) % 3600 ) % 60
+		
+					int inputMBef=countM
+					int nDayMBef = inputMBef / 86400
+					int nHrsMBef = (inputMBef % 86400 ) / 3600
+					int nMinMBef = ((inputMBef % 86400 ) % 3600 ) / 60
+					int nSecMBef = ((inputMBef % 86400 ) % 3600 ) % 60
+		
+					int inputYBef=countY
+					int nDayYBef = inputYBef / 86400
+					int nHrsYBef = (inputYBef % 86400 ) / 3600
+					int nMinYBef = ((inputYBef % 86400 ) % 3600 ) / 60
+					int nSecYBef = ((inputYBef % 86400 ) % 3600 ) % 60
+				// End Before Triggered Nubmers
+					state.thermostatMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
+					state.thermostatMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
+					state.thermostatMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
+					state.thermostatMap += "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
+				}
+			}
 		} catch(ex) {
 			LOGDEBUG("In thermostatHandler...${evt.displayName}: Device was not found.")
 		}
-		LOGDEBUG("Adding In - <b>${evt.displayName}</b><br>Today: ${newnDayD} Days, ${newnHrsD} Hours, ${newnMinD} Minutes, ${newnSecD} Seconds<br>Week: ${newnDayW} Days, ${newnHrsW} Hours, ${newnMinW} Minutes, ${newnSecW} Seconds<br>Month: ${newnDayM} Days, ${newnHrsM} Hours, ${newnMinM} Minutes, ${newnSecM} Seconds<br>Year: ${newnDayY} Days, ${newnHrsY} Hours, ${newnMinY} Minutes, ${newnSecY} Seconds<br>")
-	
-	}	
-}
+	}
 }
 
 def resetMotionMapHandler() {
@@ -1289,9 +1037,93 @@ def resetThermostatMapHandler() {
 	}
 }
 
+def removingFromMap() {
+	LOGDEBUG("In removingStuff...Time to Clean up the Maps")
+	LOGDEBUG("In removingStuff...Checking Motion Map: ${state.motionMap}")
+	if(state.motionMap) {
+		try {
+			state.motionMap.each { stuff2 -> 
+				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
+				if(motionEvents.contains(stuff2.key)) {
+					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
+				} else {
+					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
+					state.motionMap.remove(stuff2.key)
+					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
+				}
+			}
+		}
+		catch (e) {
+        	//log.error "Error:  $e"
+    	}
+		LOGDEBUG("In removingStuff...Finished Map: ${state.motionMap}")
+	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
+	
+	LOGDEBUG("In removingStuff...Checking Contact Map: ${state.contactMap}")
+	if(state.contactMap) {
+		try {
+			state.contactMap.each { stuff2 -> 
+				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
+				if(contactEvents.contains(stuff2.key)) {
+					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
+				} else {
+					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
+					state.contactMap.remove(stuff2.key)
+					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
+				}
+			}
+		}
+		catch (e) {
+        	//log.error "Error:  $e"
+    	}
+		LOGDEBUG("In removingStuff...Finished Map: ${state.contactMap}")
+	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
+	
+	LOGDEBUG("In removingStuff...Checking Switch Map: ${state.switchMap}")
+	if(state.switchMap) {
+		try {
+			state.switchMap.each { stuff2 -> 
+				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
+				if(switchEvents.contains(stuff2.key)) {
+					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
+				} else {
+					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
+					state.switchMap.remove(stuff2.key)
+					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
+				}
+			}
+		}
+		catch (e) {
+        	//log.error "Error:  $e"
+    	}
+		LOGDEBUG("In removingStuff...Finished Map: ${state.switchMap}")
+	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
+	
+	LOGDEBUG("In removingStuff...Checking Thermostat Map: ${state.thermostatMap}")
+	if(state.thermostatMap) {
+		try {
+			state.thermostatMap.each { stuff2 -> 
+				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
+				if(thermostatEvents.contains(stuff2.key)) {
+					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
+				} else {
+					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
+					state.thermostatMap.remove(stuff2.key)
+					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
+				}
+			}
+		}
+		catch (e) {
+        	//log.error "Error:  $e"
+    	}
+		LOGDEBUG("In removingStuff...Finished Map: ${state.thermostaMap}")
+	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
+}
+
 def resetMotionCountHandler() {
 	LOGDEBUG("In resetMotionCountHandler...")
 	// Resetting Daily Counter
+		state.motionMap = ""
 		motionEvent.each { it -> 
 			countD = state.motionMapD.get(it.displayName)
 			countW = state.motionMapW.get(it.displayName)
@@ -1328,11 +1160,6 @@ def resetMotionCountHandler() {
 			newnHrsDBef = 0
 			newnMinDBef = 0
 			newnSecDBef = 0
-			
-			state.motionMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
 		
 			state.motionMap += "<b>${it.displayName}</b> - Today: ${newnDayDBef} Days, ${newnHrsDBef} Hours, ${newnMinDBef} Minutes, ${newnSecDBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
@@ -1345,6 +1172,7 @@ def resetMotionCountHandler() {
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	if(dayOfWeek == 1) {
+		state.motionMap = ""
 		motionEvent.each { it -> 
 			countD = state.motionMapD.get(it.displayName)
 			countW = state.motionMapW.get(it.displayName)
@@ -1381,11 +1209,6 @@ def resetMotionCountHandler() {
 			newnMinWBef = 0
 			newnSeWBef = 0
 			
-			state.motionMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.motionMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Week: ${newnDayWBef} Days, ${newnHrsWBef} Hours, ${newnMinWBef} Minutes, ${newnSecWBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1398,6 +1221,7 @@ def resetMotionCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
+		state.motionMap = ""
 		motionEvent.each { it -> 
 			countD = state.motionMapD.get(it.displayName)
 			countW = state.motionMapW.get(it.displayName)
@@ -1434,11 +1258,6 @@ def resetMotionCountHandler() {
 			newnMinMBef = 0
 			newnSecMBef = 0
 			
-			state.motionMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.motionMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Month: ${newnDayMBef} Days, ${newnHrsMBef} Hours, ${newnMinMBef} Minutes, ${newnSecMBef} Seconds<br>"
@@ -1451,6 +1270,7 @@ def resetMotionCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
+		state.motionMap = ""
 		motionEvent.each { it -> 
 			countD = state.motionMapD.get(it.displayName)
 			countW = state.motionMapW.get(it.displayName)
@@ -1487,11 +1307,6 @@ def resetMotionCountHandler() {
 			newnMinYBef = 0
 			newnSecYBef = 0
 			
-			state.motionMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.motionMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.motionMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.motionMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1505,6 +1320,7 @@ def resetMotionCountHandler() {
 def resetContactCountHandler() {
 	LOGDEBUG("In resetContactCountHandler...")
 	// Resetting Daily Counter
+		state.contactMap = ""
 		contactEvent.each { it -> 
 			countD = state.contactMapD.get(it.displayName)
 			countW = state.contactMapW.get(it.displayName)
@@ -1541,11 +1357,6 @@ def resetContactCountHandler() {
 			newnMinDBef = 0
 			newnSecDBef = 0
 			
-			state.contactMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.contactMap += "<b>${it.displayName}</b> - Today: ${newnDayDBef} Days, ${newnHrsDBef} Hours, ${newnMinDBef} Minutes, ${newnSecDBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1558,6 +1369,7 @@ def resetContactCountHandler() {
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	LOGDEBUG("In resetContactCountHandler...dayOfWeek: ${dayOfWeek}")
 	if(dayOfWeek == 1) {
+		state.contactMap = ""
 		contactEvent.each { it -> 
 			countD = state.contactMapD.get(it.displayName)
 			countW = state.contactMapW.get(it.displayName)
@@ -1594,11 +1406,6 @@ def resetContactCountHandler() {
 			newnMinWBef = 0
 			newnSecWBef = 0
 			
-			state.contactMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.contactMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Week: ${newnDayWBef} Days, ${newnHrsWBef} Hours, ${newnMinWBef} Minutes, ${newnSecWBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1611,6 +1418,7 @@ def resetContactCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
+		state.contactMap = ""
 		contactEvent.each { it -> 
 			countD = state.contactMapD.get(it.displayName)
 			countW = state.contactMapW.get(it.displayName)
@@ -1647,11 +1455,6 @@ def resetContactCountHandler() {
 			newnMinMBef = 0
 			newnSecMBef = 0
 			
-			state.contactMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.contactMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Month: ${newnDayMBef} Days, ${newnHrsMBef} Hours, ${newnMinMBef} Minutes, ${newnSecMBef} Seconds<br>"
@@ -1664,6 +1467,7 @@ def resetContactCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
+		state.contactMap = ""
 		contactEvent.each { it -> 
 			countD = state.contactMapD.get(it.displayName)
 			countW = state.contactMapW.get(it.displayName)
@@ -1700,11 +1504,6 @@ def resetContactCountHandler() {
 			newnMinYBef = 0
 			newnSecYBef = 0
 			
-			state.contactMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.contactMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.contactMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.contactMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1718,6 +1517,7 @@ def resetContactCountHandler() {
 def resetSwitchCountHandler() {
 	LOGDEBUG("In resetSwitchCountHandler...")
 	// Resetting Daily Counter
+		state.switchMap = ""
 		switchEvent.each { it -> 
 			countD = state.switchMapD.get(it.displayName)
 			countW = state.switchMapW.get(it.displayName)
@@ -1754,11 +1554,6 @@ def resetSwitchCountHandler() {
 			newnMinDBef = 0
 			newnSecDBef = 0
 			
-			state.switchMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.switchMap += "<b>${it.displayName}</b> - Today: ${newnDayDBef} Days, ${newnHrsDBef} Hours, ${newnMinDBef} Minutes, ${newnSecDBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1770,6 +1565,7 @@ def resetSwitchCountHandler() {
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	if(dayOfWeek == 1) {
+		state.switchMap = ""
 		switchEvent.each { it -> 
 			countD = state.switchMapD.get(it.displayName)
 			countW = state.switchMapW.get(it.displayName)
@@ -1806,11 +1602,6 @@ def resetSwitchCountHandler() {
 			newnMinWBef = 0
 			newnSecWBef = 0
 			
-			state.switchMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.switchMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Week: ${newnDayWBef} Days, ${newnHrsWBef} Hours, ${newnMinWBef} Minutes, ${newnSecWBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1823,6 +1614,7 @@ def resetSwitchCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
+		state.switchMap = ""
 		switchEvent.each { it -> 
 			countD = state.switchMapD.get(it.displayName)
 			countW = state.switchMapW.get(it.displayName)
@@ -1859,11 +1651,6 @@ def resetSwitchCountHandler() {
 			newnMinMBef = 0
 			newnSecMBef = 0
 			
-			state.switchMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.switchMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Month: ${newnDayMBef} Days, ${newnHrsMBef} Hours, ${newnMinMBef} Minutes, ${newnSecMBef} Seconds<br>"
@@ -1876,6 +1663,7 @@ def resetSwitchCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
+		state.switchMap = ""
 		switchEvent.each { it -> 
 			countD = state.switchMapD.get(it.displayName)
 			countW = state.switchMapW.get(it.displayName)
@@ -1912,11 +1700,6 @@ def resetSwitchCountHandler() {
 			newnMinYBef = 0
 			newnSecYBef = 0
 			
-			state.switchMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.switchMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.switchMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.switchMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1930,6 +1713,7 @@ def resetSwitchCountHandler() {
 def resetThermostatCountHandler() {
 	LOGDEBUG("In resetThermostatCountHandler...")
 	// Resetting Daily Counter
+		state.thermostatMap = ""
 		thermostatEvent.each { it -> 
 			countD = state.thermostatMapD.get(it.displayName)
 			countW = state.thermostatMapW.get(it.displayName)
@@ -1966,11 +1750,6 @@ def resetThermostatCountHandler() {
 			newnMinDBef = 0
 			newnSecDBef = 0
 			
-			state.thermostatMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.thermostatMap += "<b>${it.displayName}</b> - Today: ${newnDayDBef} Days, ${newnHrsDBef} Hours, ${newnMinDBef} Minutes, ${newnSecDBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -1982,6 +1761,7 @@ def resetThermostatCountHandler() {
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	if(dayOfWeek == 1) {
+		state.thermostatMap = ""
 		thermostatEvent.each { it -> 
 			countD = state.thermostatMapD.get(it.displayName)
 			countW = state.thermostatMapW.get(it.displayName)
@@ -2018,11 +1798,6 @@ def resetThermostatCountHandler() {
 			newnMinWBef = 0
 			newnSecWBef = 0
 			
-			state.thermostatMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.thermostatMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Week: ${newnDayWBef} Days, ${newnHrsWBef} Hours, ${newnMinWBef} Minutes, ${newnSecWBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -2035,6 +1810,7 @@ def resetThermostatCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
+		state.thermostatMap = ""
 		thermostatEvent.each { it -> 
 			countD = state.thermostatMapD.get(it.displayName)
 			countW = state.thermostatMapW.get(it.displayName)
@@ -2071,11 +1847,6 @@ def resetThermostatCountHandler() {
 			newnMinMBef = 0
 			newnSecMBef = 0
 			
-			state.thermostatMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.thermostatMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Month: ${newnDayMBef} Days, ${newnHrsMBef} Hours, ${newnMinMBef} Minutes, ${newnSecMBef} Seconds<br>"
@@ -2088,6 +1859,7 @@ def resetThermostatCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
+		state.thermostatMap = ""
 		thermostatEvent.each { it -> 
 			countD = state.thermostatMapD.get(it.displayName)
 			countW = state.thermostatMapW.get(it.displayName)
@@ -2124,11 +1896,6 @@ def resetThermostatCountHandler() {
 			newnMinYBef = 0
 			newnSecYBef = 0
 			
-			state.thermostatMap -= "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
-			state.thermostatMap -= "<b>${it.displayName}</b> - Year: ${nDayYBef} Days, ${nHrsYBef} Hours, ${nMinYBef} Minutes, ${nSecYBef} Seconds<br><br>"
-		
 			state.thermostatMap += "<b>${it.displayName}</b> - Today: ${nDayDBef} Days, ${nHrsDBef} Hours, ${nMinDBef} Minutes, ${nSecDBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Week: ${nDayWBef} Days, ${nHrsWBef} Hours, ${nMinWBef} Minutes, ${nSecWBef} Seconds<br>"
 			state.thermostatMap += "<b>${it.displayName}</b> - Month: ${nDayMBef} Days, ${nHrsMBef} Hours, ${nMinMBef} Minutes, ${nSecMBef} Seconds<br>"
@@ -2139,27 +1906,6 @@ def resetThermostatCountHandler() {
 	}
 }
 
-def appButtonHandler(btn){
-	LOGDEBUG("In appButtonHandler...Delete Line")
-    state.btnCall = btn
-	LOGDEBUG("In appButtonHandler...state.btnCall: ${state.btnCall}")
-    if(state.btnCall == "runButton"){
-        log.info "${app.label} - Run Now button was pressed..."
-		deleteLine = "${lineToDelete}<br>"
-		LOGDEBUG("Deleting Line: ${deleteLine}")
-		try {
-			state.switchMap -= "${deleteLine}"
-			state.motionMap -= "${deleteLine}"
-			state.contactMap -= "${deleteLine}"
-			state.thermostatMap -= "${deleteLine}"
-			log.info "${app.label} - ${deleteLine} was deleted.}"
-		} catch (all) {
-			log.info "${app.label} - Unable to delete, line did not exist"
-		}
-		
-    }
-}
-
 def sendMessage(msg) {
 	LOGDEBUG("${msg}")
     if (pushNotification) {
@@ -2167,11 +1913,9 @@ def sendMessage(msg) {
     }
 }
 
-
-
 // ********** Normal Stuff **********
 
-def pauseOrNot(){
+def pauseOrNot(){							// Modified from @Cobra Code
 	LOGDEBUG("In pauseOrNot...")
     state.pauseNow = pause1
         if(state.pauseNow == true){
@@ -2195,7 +1939,9 @@ def pauseOrNot(){
 }
 
 def setDefaults(){
+	setVersion()
 	setupNewStuff()
+	removingFromMap()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
@@ -2210,7 +1956,7 @@ def setDefaults(){
 	ecountY = 0
 }
 
-def logCheck(){
+def logCheck(){									// Modified from @Cobra Code
 	state.checkLog = debugMode
 	if(state.checkLog == true){
 		log.info "${app.label} - All Logging Enabled"
@@ -2220,7 +1966,7 @@ def logCheck(){
 	}
 }
 
-def LOGDEBUG(txt){
+def LOGDEBUG(txt){								// Modified from @Cobra Code
     try {
 		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
     } catch(ex) {
@@ -2228,37 +1974,15 @@ def LOGDEBUG(txt){
     }
 }
 
-def getImage(type) {
+def getImage(type) {							// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){					// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
-}
-
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
 }
 
 def display() {
@@ -2270,8 +1994,7 @@ def display() {
 
 def display2(){
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Time Traveler - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
