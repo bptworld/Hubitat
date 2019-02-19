@@ -88,6 +88,8 @@ def mainPage() {
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
 				paragraph "A better way to wake up, with a slowly rising light level and a random announcement."
+				paragraph "This is a sequence of events. The speech will not start until after the light reaches its target level. Keep that in mind when choosing your start time and minutes to raise options."
+				paragraph "example: if the start time is 6:00 am and the time to rise is 15 minutes, then the announcements won't start until 6:15 am."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				paragraph "<b>Be sure to complete the 'Advanced Config' section before creating Child Apps.</b>"
