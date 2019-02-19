@@ -2,7 +2,7 @@
  *  ****************  Wake Me Up Parent App  ****************
  *
  *  Design Usage:
- *  A better way to wake up, with a slowly raising light level and a random announcement.
+ *  A better way to wake up, with a slowly rising light level and a random announcement.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -47,7 +47,7 @@ definition(
     name:"Wake Me Up",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "A better way to wake up, with a slowly raising light level and a random announcement.",
+    description: "A better way to wake up, with a slowly rising light level and a random announcement.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -82,12 +82,12 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>A better way to wake up, with a slowly raising light level and a random announcement.</div>"
+				paragraph "<div style='color:#1A77C9'>A better way to wake up, with a slowly rising light level and a random announcement.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "A better way to wake up, with a slowly raising light level and a random announcement."
+				paragraph "A better way to wake up, with a slowly rising light level and a random announcement."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				paragraph "<b>Be sure to complete the 'Advanced Config' section before creating Child Apps.</b>"
@@ -153,4 +153,3 @@ def display(){
 		paragraph "<div style='color:#1A77C9;text-align:center'>Wake Me Up - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
-
