@@ -1,6 +1,6 @@
 # Wake Me Up
 <b>Design Usage:</b><br>
-A better way to wake up, with a slowly raising light level and a random announcement.<br><br>
+A better way to wake up, with a slowly rising light level and a random announcement.<br><br>
 
 <b>New Install:</b><br>
 * Copy the Parent code from GitHub into a ‘New App’ under the ‘Apps Code’ menu then click ‘Done’
