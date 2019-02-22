@@ -9,7 +9,7 @@ Notifications based on date/day and time. A perfect way to get reminders or crea
 * Click ‘Load New Apps’
 * Select ‘Notifier’ under ‘User Apps’
 * Click 'Done'
-* Go back to Apps and open 'Wake Me Up'
+* Go back to Apps and open 'Notifier'
 <br>
 You can now create new child apps directly from here.<br><br>
 
