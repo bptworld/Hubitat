@@ -31,6 +31,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-light
 **Motion Controlled Scene Lighting** - Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419" target="_blank">Go Here</a>
 <br><br>
+**Notifier** - Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-notifier/10859" target="_blank">Go Here</a>
+<br><br>
 **One at a Time** - Designed to allow only one switch, in a group of switches, to be on at a time.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-at-a-time/7063" target="_blank">Go Here</a>
 <br><br>
