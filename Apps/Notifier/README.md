@@ -1,6 +1,6 @@
 # Notifier
 <b>Design Usage:</b><br>
-A better way to wake up. With slowly rising light levels, random announcements and more.<br><br>
+Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.<br><br>
 
 <b>New Install:</b><br>
 * Copy the Parent code from GitHub into a ‘New App’ under the ‘Apps Code’ menu then click ‘Done’
