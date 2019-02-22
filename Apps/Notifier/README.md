@@ -1,4 +1,4 @@
-# Wake Me Up
+# Notifier
 <b>Design Usage:</b><br>
 A better way to wake up. With slowly rising light levels, random announcements and more.<br><br>
 
@@ -7,7 +7,7 @@ A better way to wake up. With slowly rising light levels, random announcements a
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
 * Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘Wake Me Up’ under ‘User Apps’
+* Select ‘Notifier’ under ‘User Apps’
 * Click 'Done'
 * Go back to Apps and open 'Wake Me Up'
 <br>
