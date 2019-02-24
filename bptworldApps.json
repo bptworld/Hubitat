@@ -115,14 +115,14 @@
   "DeviceSequencerUpdateNote": "NA",
   
   "DeviceWatchdogType": "App",
-  "DeviceWatchdogParentVersion": "v1.0.9",
-  "DeviceWatchdogChildVersion": "v1.1.8",
+  "DeviceWatchdogParentVersion": "v1.1.0",
+  "DeviceWatchdogChildVersion": "v1.1.9",
   "DeviceWatchdogDriverVersion": "NA",
   "DeviceWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
   "DeviceWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
   "DeviceWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
-  "DeviceWatchdogUpdateNote": "V1.1.8 - 02/16/19 - Trying to track down an error.",
+  "DeviceWatchdogUpdateNote": "V1.1.9 - 02/24/19 - Fixed Pushover reports.",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
