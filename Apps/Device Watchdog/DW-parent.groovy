@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 02/24/19 - Cosmetic update.
  *  V1.0.9 - 01/18/19 - Not going to update Parent apps anymore unless there is a change in the Parent app, not just the child.
  *  V1.0.8 - 01/15/19 - Updated footer with update check and links
  *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
@@ -51,7 +52,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.9"
+	state.version = "v1.1.0"
 }
 
 definition(
