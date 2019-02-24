@@ -67,7 +67,7 @@ def updated() {
     initialize()
 }
 
-def initialize() {				// Modified from @Cobra Code
+def initialize() {
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
     	log.info "Child app: ${child.label}"
@@ -75,7 +75,7 @@ def initialize() {				// Modified from @Cobra Code
 }
 
 
-def mainPage() {				// Modified from @Cobra Code
+def mainPage() {					// Modified from @Cobra Code
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
@@ -98,7 +98,7 @@ def mainPage() {				// Modified from @Cobra Code
 	}
 }
 
-def installCheck(){         		// Modified from @Cobra Code
+def installCheck(){
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
 		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
