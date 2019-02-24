@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 02/24/19 - Fixed Pushover reports.
+ *  V1.0.6 - 02/17/19 - New field added to json, xxUpdateNote. A place to put any notes you want to show up in the update report.
  *  V1.0.5 - 02/10/19 - Now have two templates available: apps/driver and just drivers. Can now have up to 6 drivers in one section.
  *						If more are needed, simply make another section. Added in a new report, 'Current App Versions', shows a list
  *						of all apps with versions. DEVELOPERS, please see new GitHub json template.
@@ -43,7 +45,16 @@
  *
  */
 
-def version(){"v1.0.5"}
+def setVersion(){
+	state.version = "v1.0.7"
+}
+
+def sendVersionToAW(){
+	if(sendToAWSwitch) {
+		awName = "App Watchdog Child:${state.version}"
+		gvDevice.sendAWinfo(awName)
+	}
+}
 
 definition(
     name: "App Watchdog Child",
@@ -132,6 +143,8 @@ def pageConfig() {
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
+			input(name: "sendToAW", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Send version information to App Watcher", description: "Send version to App Watcher")
+			if(sendToAW) input(name: "sendToAWSwitch", type: "capability.actuator", title: "App Watcher device...", required: false, multiple: false)
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
@@ -454,6 +467,7 @@ def appMapHandler(evt) {
 								state.appChildRawCode = results."${item}ChildRawCode"
 								state.appDriverRawCode = results."${item}DriverRawCode"
 								state.appDiscussion = results."${item}Discussion"
+								state.appUpdateNote = results."${item}UpdateNote"
 							}
 							if(state.aType == "Driver") {
 								state.appDriver1Version = results."${item}Driver1Version"
@@ -475,6 +489,7 @@ def appMapHandler(evt) {
 								state.appDriver5Name = results."${item}Driver5Name"
 								state.appDriver6Name = results."${item}Driver6Name"
 								state.appDiscussion = results."${item}Discussion"
+								state.appUpdateNote = results."${item}UpdateNote"
 							}
 							
 							if(maintSwitch == true && maintSwitch2 == true) {
@@ -614,9 +629,10 @@ def checkTheAppData() {
 			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Current</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
 			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
+			if(state.appUpdateNote != "NA") { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
 			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 			
-			state.appMapPhone += "${dName} has an update available : "
+			state.appMapPhone += "${dName} has an update available \n"
 		}
 	}
 	if(dName != "Example") {
@@ -764,6 +780,7 @@ def checkTheDriverData() {
 			state.appMap += "<tr><td width='36%'><i>Installed</i>: Driver 1: ${state.oldAppDriver1Version}</td><td width='32%'>Driver 2: ${state.oldAppDriver2Version}</td><td width='32%'>Driver 3: ${state.oldAppDriver3Version}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Current</i>:  Driver 1: ${state.appDriver1Version}</td><td width='32%'>Driver 2: ${state.appDriver2Version}</td><td width='32%'>Driver 3: ${state.appDriver3Version}</td></tr>"
 			state.appMap += "<tr><td width='36%'>${d1new}${appDriver1RawCode2}</td><td width='32%'>${d2new}${appDriver2RawCode2}</td><td width='32%'>${d3new}${appDriver3RawCode2}</td></tr>"
+			if(state.appUpdateNote != "NA") { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
 			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 			
 			if(state.oldAppDriver4Version != "NA") {
@@ -774,7 +791,7 @@ def checkTheDriverData() {
 				state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 			}
 			
-			state.appMapPhone += "${dName} has an update available : "
+			state.appMapPhone += "${dName} has an update available \n"
 		}
 	}
 	if(dName != "Example") {
@@ -826,14 +843,16 @@ def pushNow(){
 	LOGDEBUG("In pushNow...")
 	if(sendPushMessage) {
 		if(state.appMapPhone) {
-			pushMessage = "${app.label} - ${state.appMapPhone}"
+			pushMessage = "${app.label} \n"
+			pushMessage += "${state.appMapPhone}"
 			LOGDEBUG("In pushNow...Sending message: ${pushMessage}")
         	sendPushMessage.deviceNotification(pushMessage)
 		} else {
 			if(pushAll == true) {
 				log.info "${app.label} - No push needed...Nothing to report."
 			} else {
-				emptyMapPhone = "${app.label} - Nothing to report."
+				emptyMapPhone = "${app.label} \n"
+				emptyMapPhone += "Nothing to report."
 				LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
         		sendPushMessage.deviceNotification(emptyMapPhone)
 			}
@@ -913,8 +932,9 @@ def display() {
 }
 
 def display2(){
+	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${version()}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 } 
