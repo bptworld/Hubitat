@@ -34,13 +34,13 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.
  *  V1.0.0 - 02/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -81,7 +81,9 @@ def pageConfig() {
 				if(month == "Feb") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
 				input "year", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: [ "2019", "2020", "2021", "2022"], defaultValue: "2019"
 				input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
-				input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
+				//input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
+				// Used in testing
+				input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 				paragraph "<hr>"
 			}
 			if(xDate && xDay) {
@@ -117,17 +119,29 @@ def pageConfig() {
 		if(oLighting) {
     		section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Options")) {
 				if(oLighting && !oControl) paragraph "<b>* Control Switch is required when using Lighting options.</b>"
-				input(name: "oSetOn", type: "bool", defaultValue: "false", title: "<b>Turn Light On and Set To Level</b>", description: "Dim Up", submitOnChange: "true", width: 12)
+				input(name: "oSetLC", type: "bool", defaultValue: "false", title: "<b>Turn Light On, Set Level and Color</b>", description: "Light On", submitOnChange: "true", width: 12)
 				input(name: "oDimUp", type: "bool", defaultValue: "false", title: "<b>Slowly Dim Lighting UP</b>", description: "Dim Up", submitOnChange: "true", width: 6)
 				input(name: "oDimDn", type: "bool", defaultValue: "false", title: "<b>Slowly Dim Lighting DOWN</b>", description: "Dim Down", submitOnChange: "true", width: 6)
-				if(oSetOn) {
-					input "setOn", "capability.switchLevel", title: "Select dimmer to turn on", required: true, multiple: true
-					input "onLevel", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+				if(oSetLC) {
+					input "setOnLC", "capability.switchLevel", title: "Select dimmer to turn on", required: true, multiple: true
+					input "levelLC", "number", title: "On Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+					input "colorLC", "enum", title: "Color", required: true, multiple:false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
 				}
 				if(oDimUp) {
 					input "slowDimmerUp", "capability.switchLevel", title: "Select dimmer devices to slowly rise", required: true, multiple: true
     				input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
     				input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+					input "colorUp", "enum", title: "Color", required: true, multiple:false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
 					paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
 					input(name: "oDelay", type: "bool", defaultValue: "false", title: "<b>Delay Until Finished</b>", description: "Future Options", submitOnChange: "true")
 					paragraph "<hr>"
@@ -135,7 +149,14 @@ def pageConfig() {
 				if(oDimDn) {
 					input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
     				input "minutesDn", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
-    				input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+    				input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 0, range: '1..99'
+					input(name: "dimDnOff", type: "bool", defaultValue: "false", title: "<b>Turn dimmer off after target is reached?</b>", description: "Dim Off Options", submitOnChange: "true")
+					input "colorDn", "enum", title: "Color", required: true, multiple:false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
 					paragraph "<hr>"
 				}
 			}
@@ -272,7 +293,7 @@ def magicHappensHandler() {
 			state.realSeconds = minutesUp * 60
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
-			if(oSetOn && oControl) runIn(state.realSeconds,dimmerOnHandler)
+			if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
 			if(oMessage && oControl) runIn(state.realSeconds,messageHandler)
 			if(oPush && oControl) runIn(state.realSeconds,pushHandler)
 			if(oSpeech && oControl) runIn(state.realSeconds,letsTalk)
@@ -280,9 +301,10 @@ def magicHappensHandler() {
 			if(oDevice) runIn(state.realSeconds,switchesOffHandler)
 			if(newMode) runIn(state.realSeconds, modeHandler)
 		} else {
+			state.realSeconds = minutesUp * 60
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) slowOffHandler()
-			if(oSetOn && oControl) dimmerOnHandler()
+			if(oSetLC && oControl) dimmerOnHandler()
 			if(oMessage && oControl) messageHandler()
 			if(oPush && oControl) pushHandler()
 			if(oSpeech && oControl) letsTalk()
@@ -301,19 +323,18 @@ def slowOnHandler(evt) {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In slowOnHandler...Pause: ${pause1}")
-					if(slowDimmerUp[0].currentSwitch == "off") {
-        				slowDimmerUp.setLevel(0)
-        				state.currentLevel = 0
-    				} else {
-        				state.currentLevel = slowDimmerUp[0].currentLevel
-    				}
+					state.fromWhere = "slowOn"
+					state.onLevel = 1
+					state.color = "${colorUp}"
+					setLevelandColorHandler()
+        			state.currentLevel = slowDimmerUp[0].currentLevel
     				if(minutesUp == 0) return
     				seconds = minutesUp * 6
     				state.dimStep = targetLevelHigh / seconds
     				state.dimLevel = state.currentLevel
     				LOGDEBUG("slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
-    				dimStepUp()
-					LOGDEBUG("slowOnHandler - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)")
+					if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
+					runIn(10,dimStepUp)
 				}
 			} else {
 				LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
@@ -335,18 +356,17 @@ def slowOffHandler(evt) {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In slowOffandler...Pause: ${pause1}")
-					if(slowDimmerDn[0].currentSwitch == "off") {
-        				slowDimmerDn.setLevel(99)
-        				state.currentLevel = 99
-    				} else{
-        				state.currentLevel = slowDimmerDn[0].currentLevel
-    				}
+					state.fromWhere = "slowOff"
+					state.onLevel = 99
+					state.color = "${colorDn}"
+					setLevelandColorHandler()
+        			state.currentLevel = slowDimmerDn[0].currentLevel
     				if(minutesDn == 0) return
     				seconds = minutesDn * 6
     				state.dimStep1 = (targetLevelLow / seconds) * 100
     				state.dimLevel = state.currentLevel
-   					LOGDEBUG("slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
-    				dimStepDown()					
+   					LOGDEBUG("slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+    				runIn(10,dimStepDown)					
 				}				
 									
 			} else {
@@ -370,6 +390,9 @@ def dimStepUp() {
     		slowDimmerUp.setLevel(state.currentLevel)
        	 	LOGDEBUG("dimStepUp - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
         	runIn(10,dimStepUp)				
+		} else {
+			LOGDEBUG("dimStepUp - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+			log.info "${app.label} - Target Level has been reached"
 		}
 	} else {
 		log.info "${app.label} - Control Switch is off"
@@ -378,7 +401,7 @@ def dimStepUp() {
 
 def dimStepDown() {
 	LOGDEBUG("In dimStepDown...")			
-    if(switches.currentValue("switch") == "on") {
+    if(state.controlSwitch2 == "on") {
     	if(state.currentLevel > targetLevelLow) {
             state.dimStep = state.dimStep1
         	state.dimLevel = state.dimLevel - state.dimStep
@@ -387,7 +410,11 @@ def dimStepDown() {
     		slowDimmerDn.setLevel(state.currentLevel)
             LOGDEBUG("dimStepDown - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
         	runIn(10,dimStepDown)
-    	} 
+    	} else {
+			if(dimDnOff) slowDimmerDn.off()
+			LOGDEBUG("dimStepDown - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+			log.info "${app.label} - Target Level has been reached"
+		} 
     } else{
         LOGDEBUG("${app.label} - Control Switch is Off")
     }						
@@ -423,6 +450,7 @@ def letsTalk() {							// Modified from @Cobra Code
 }
 
 def messageHandler() {
+	LOGDEBUG("In messageHandler...")
 	if(state.controlSwitch2 == "on") {
 		if(oRandom) {
 			def values = "${message}".split(";")
@@ -446,16 +474,17 @@ def switchesOnHandler() {
 
 def switchesOffHandler() {
 	switchesOff.each { it ->
-		LOGDEBUG("In switchOnHandler - Turning off ${it}")
+		LOGDEBUG("In switchOffHandler - Turning off ${it}")
 		it.off()
 	}
 }
 
 def dimmerOnHandler() {
-	setOn.each { it ->
-		LOGDEBUG("In switchOnHandler - Turning on ${it} @ ${onLevel}%")
-		it.setLevel(onLevel,duration=1)
-	}
+	LOGDEBUG("In dimmerOnHandler...")
+	state.fromWhere = "dimmerOn"
+	state.color = "${colorLC}"
+	state.onLevel = levelLC
+	setLevelandColorHandler()
 }
 
 def modeHandler() {
@@ -501,6 +530,96 @@ def pushHandler(){
 		LOGDEBUG("In pushNow...Sending message: ${theMessage}")
     	sendPushMessage.deviceNotification(theMessage)
 		count = count + 1
+	}
+}
+
+def setLevelandColorHandler() {
+	LOGDEBUG("In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}")
+    def hueColor = 0
+    def saturation = 100
+	int onLevel = state.onLevel
+    switch(state.color) {
+            case "White":
+            hueColor = 52
+            saturation = 19
+            break;
+        case "Daylight":
+            hueColor = 53
+            saturation = 91
+            break;
+        case "Soft White":
+            hueColor = 23
+            saturation = 56
+            break;
+        case "Warm White":
+            hueColor = 20
+            saturation = 80
+            break;
+        case "Blue":
+            hueColor = 70
+            break;
+        case "Green":
+            hueColor = 39
+            break;
+        case "Yellow":
+            hueColor = 25
+            break;
+        case "Orange":
+            hueColor = 10
+            break;
+        case "Purple":
+            hueColor = 75
+            break;
+        case "Pink":
+            hueColor = 83
+            break;
+        case "Red":
+            hueColor = 100
+            break;
+    }
+	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    LOGDEBUG("In setLevelandColorHandler - value: $value")
+	if(state.fromWhere == "dimmerOn") {
+    	setOnLC.each {
+        	if (it.hasCommand('setColor')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	it.setColor(value)
+        	} else if (it.hasCommand('setLevel')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	it.setLevel(onLevel as Integer ?: 100)
+        	} else {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	it.on()
+        	}
+    	}
+	}
+	if(state.fromWhere == "slowOn") {
+    	slowDimmerUp.each {
+        	if (it.hasCommand('setColor')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	it.setColor(value)
+        	} else if (it.hasCommand('setLevel')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	it.setLevel(onLevel as Integer ?: 100)
+        	} else {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	it.on()
+        	}
+    	}
+	}
+	if(state.fromWhere == "slowOff") {
+    	slowDimmerDn.each {
+        	if (it.hasCommand('setColor')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	it.setColor(value)
+        	} else if (it.hasCommand('setLevel')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	it.setLevel(level as Integer ?: 100)
+        	} else {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	it.on()
+        	}
+    	}
 	}
 }
 
