@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 02/24/19 - Fixed Pushover reports.
  *  V1.1.8 - 02/16/19 - Trying to track down an error.
  *  V1.1.7 - 02/13/19 - Added more error checking.
  *  V1.1.6 - 02/12/19 - Removed 'All battery devices' switch and other code cleanup.
@@ -59,8 +60,8 @@
  *
  */
 
-def version() {
-	state.version = "v1.1.8"
+def setVersion() {
+	state.version = "v1.1.9"
 }
 
 definition(
@@ -459,18 +460,18 @@ def myBatteryHandler() {
 			if(badORgood == false) {
 				log.info "${state.myType} - mySensors: ${device} battery is ${currentValue} less than ${batteryThreshold} threshold."
 				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}<br>"
-				state.batteryMapPhone += "${device}-${currentValue} : "
+				state.batteryMapPhone += "${device} - ${currentValue} \n"
 			}
 		} else {
 			if(badORgood == true && currentValue > -999) { //RayzurMod
 				log.info "${state.myType} - ${device} battery is ${currentValue}, over threshold."
 				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}, over threshold.<br>"
-				state.batteryMapPhone += "${device}-${currentValue} : "
+				state.batteryMapPhone += "${device} - ${currentValue} \n"
 			} else
 				if (currentValue == -999) { //RayzurMod
 					log.info "${state.myType} - ${device} battery hasn't reported in." //RayzurMod
 					state.batteryMap += "${state.myType} - <i>${device} battery level isn't reporting</i><br>" //RayzurMod
-					state.batteryMapPhone += "${device}-isn't reporting : " //RayzurMod
+					state.batteryMapPhone += "${device} - isn't reporting \n" //RayzurMod
 				} //RayzurMod
 		}
 	}
@@ -502,7 +503,7 @@ def mySensorHandler() {
 			if(badORgood == false) {
 				log.info "${state.myType} - ${device} hasn't checked in since ${hour}h ${min}m ago."
 				state.timeSinceMap += "${state.myType} - ${device} hasn't checked in since ${hour}h ${min}m ago.<br>"
-				state.timeSinceMapPhone += "${device}-${hour}h ${min}m : "
+				state.timeSinceMapPhone += "${device}-${hour}h ${min}m \n"
 				state.reportCount = state.reportCount + 1
 				log.info "state.reportCount: ${state.reportCount}"
 			}
@@ -510,7 +511,7 @@ def mySensorHandler() {
 			if(badORgood == true) {
 				log.info "${state.myType} - mySensors: ${device} last checked in ${hour}h ${min}m ago.<br>"
 				state.timeSinceMap += "${state.myType} - ${device} last checked in ${hour}h ${min}m ago.<br>"
-				state.timeSinceMapPhone += "${device}-${hour}h ${min}m : "
+				state.timeSinceMapPhone += "${device}-${hour}h ${min}m \n"
 				state.reportCount = state.reportCount + 1
 				log.info "state.reportCount: ${state.reportCount}"
 			}
@@ -565,14 +566,16 @@ def pushNow(){
 	LOGDEBUG("In pushNow...")
 	if(triggerMode == "Activity") {
 		if(state.timeSinceMapPhone) {
-			timeSincePhone = "${app.label} - ${state.timeSinceMapPhone}"
+			timeSincePhone = "${app.label} \n"
+			timeSincePhone += "${state.timeSinceMapPhone}"
 			LOGDEBUG("In pushNow...Sending message: ${timeSincePhone}")
         	sendPushMessage.deviceNotification(timeSincePhone)
 		} else {
 			if(pushAll == true) {
 				log.info "${app.label} - No push needed...Nothing to report."
 			} else {
-				emptyMapPhone = "${app.label} - Nothing to report."
+				emptyMapPhone = "${app.label} \n"
+				emptyMapPhone += "Nothing to report."
 				LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
         		sendPushMessage.deviceNotification(emptyMapPhone)
 			}
@@ -580,14 +583,16 @@ def pushNow(){
 	}	
 	if(triggerMode == "Battery_Level") {
 		if(state.batteryMapPhone) {
-			batteryPhone = "${app.label} - ${state.batteryMapPhone}"
+			batteryPhone = "${app.label} \n"
+			batteryPhone += "${state.batteryMapPhone}"
 			LOGDEBUG("In pushNow...Sending message: ${batteryPhone}")
 			sendPushMessage.deviceNotification(batteryPhone)
 		} else {
 			if(pushAll == true) {
 				log.info "${app.label} - No push needed...Nothing to report."
 			} else {
-				emptyBatteryPhone = "${app.label} - Nothing to report."
+				emptyBatteryPhone = "${app.label} \n"
+				emptyBatteryPhone += "Nothing to report."
 				LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
         		sendPushMessage.deviceNotification(emptyBatteryPhone)
 			}
@@ -621,7 +626,6 @@ def pauseOrNot(){								// Modified from @Cobra Code
 }
 
 def setDefaults(){
-	version()
 	setupNewStuff()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
@@ -670,6 +674,7 @@ def display() {
 
 def display2(){
 	section() {
+		setVersion()
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
