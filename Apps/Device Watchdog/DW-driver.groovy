@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 02/25/19 - Added Device Status attribute
  *  V1.0.0 - 01/28/19 - Initial release
  */
 
@@ -44,9 +44,11 @@ metadata {
 
 		command "sendWatchdogActivityMap", ["string"]
 		command "sendWatchdogBatteryMap", ["string"]
+		command "sendWatchdogStatusMap", ["string"]
 		
     	attribute "watchdogActivity", "string"
 		attribute "watchdogBattery", "string"
+		attribute "watchdogStatus", "string"
 	}
 	preferences() {    	
         section(""){
@@ -73,6 +75,15 @@ def sendWatchdogBatteryMap(batteryMap) {
 	state.batteryDevice+= "</td></tr></table>"
 	
 	sendEvent(name: "watchdogBattery", value: state.batteryDevice, displayed: true)
+}
+
+def sendWatchdogStatusMap(statusMap) {
+    LOGDEBUG("In Device Watchdog Tile - Received new Status data!")
+	state.statusDevice = "<table width='100%'><tr><td width='10'><td align='left'>"
+	state.statusDevice+= "<div style='line-height=50%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${statusMap}</div>"
+	state.statusDevice+= "</td></tr></table>"
+	
+	sendEvent(name: "watchdogStatus", value: state.statusDevice, displayed: true)
 }
 	
 def LOGDEBUG(txt) {
