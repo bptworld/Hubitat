@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.2.2 - 02/26/19 - Attempt to fix an error in the new Device Status reporting
  *  V1.2.1 - 02/25/19 - Second attempt at new Device Status reporting
  *  V1.2.0 - 02/25/19 - Added a new report type - Device Status
  *  V1.1.9 - 02/24/19 - Fixed Pushover reports.
@@ -63,7 +64,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.1"
+	state.version = "v1.2.2"
 }
 
 definition(
@@ -227,8 +228,7 @@ def pageConfig() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 				input "timeToRun", "time", title: "Check Devices at this time daily", required: false, submitOnChange: true
-				//input "isDataActivityDevice", "capability.switch", title: "Turn this device on if there is Activity data to report", submitOnChange: true, required: false, multiple: false
-			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
+				input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
 				if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 			}
 			section() {
@@ -334,7 +334,7 @@ def initialize() {
 		schedule(timeToRun, activityHandler)
 	}
 	if(triggerMode == "Status") {
-		schedule(timeToRun, activityHandler)
+		if(timeToRun) schedule(timeToRun, activityHandler)
 	}
 	if(runReportSwitch) subscribe(runReportSwitch, "switch", activityHandler)
 }
@@ -646,12 +646,28 @@ def myStatusHandler() {
 		if(state.myType == "Voltage Measurement") { deviceStatus = device.currentValue("voltageMeasurement") }
 		if(state.myType == "Water Sensor") { deviceStatus = device.currentValue("waterSensor") }
 		
-		def lastActivity = device.getLastActivity()
-		def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
-		log.info "${state.myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
-		state.statusMap += "${device} is ${deviceStatus} - last checked in ${newDate}<br>"
-		state.statusMapPhone += "${device} \n"
-		state.statusMapPhone += "${deviceStatus} - ${newDate} \n"
+		state.noLastActivity = "ok"
+		try {
+			def lastActivity = device.getLastActivity()
+			state.newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
+			LOGDEBUG("In myStatusHandler - No lastActivity is ${device} - ${state.newDate} aaaaaaaaaa")
+		} 
+		catch (e) {
+			LOGDEBUG("In myStatusHandler - No lastActivity on ${device} bbbbbbbbbb")
+			state.noLastActivity = "No Last Activity date available"
+		}
+		LOGDEBUG("In myStatusHandler - noLastActivity: ${state.noLastActivity}")
+		if(state.noLastActivity == "ok") {
+			log.info "${state.myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${state.newDate}<br>"
+			state.statusMap += "${device} is ${deviceStatus} - last checked in ${state.newDate}<br>"
+			state.statusMapPhone += "${device} \n"
+			state.statusMapPhone += "${deviceStatus} - ${state.newDate} \n"
+		} else {
+			log.info "${state.myType} - myStatus: ${device} is ${deviceStatus} - ${state.noLastActivity}<br>"
+			state.statusMap += "${device} is ${deviceStatus} - ${state.noLastActivity}<br>"
+			state.statusMapPhone += "${device} \n"
+			state.statusMapPhone += "${deviceStatus} - ${state.noLastActivity} \n"
+		} 
 	}
 	log.info "     - - - - - End (S) ${state.myType} - - - - -     "
 }
