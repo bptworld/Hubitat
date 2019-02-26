@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.2.3 - 02/26/19 - Removed Actuator and Sensor options for Device Status reporting
  *  V1.2.2 - 02/26/19 - Attempt to fix an error in the new Device Status reporting
  *  V1.2.1 - 02/25/19 - Second attempt at new Device Status reporting
  *  V1.2.0 - 02/25/19 - Added a new report type - Device Status
@@ -64,7 +65,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.2"
+	state.version = "v1.2.3"
 }
 
 definition(
@@ -221,10 +222,6 @@ def pageConfig() {
 				input "valveDevice", "capability.valve", title: "Select Valve Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "voltageMeasurementDevice", "capability.voltageMeasurement", title: "Select Voltage Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "waterSensorDevice", "capability.waterSensor", title: "Select Water Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-			}
-			section("If you have a device not found in the list above, try these two options.") {
-				input "actuatorDevice", "capability.actuator", title: "Select Actuator Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-				input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 				input "timeToRun", "time", title: "Check Devices at this time daily", required: false, submitOnChange: true
@@ -623,8 +620,6 @@ def myStatusHandler() {
 	LOGDEBUG("In myStatusHandler...")
 	state.mySensors.each { device ->
 		log.info "Working on... ${device}"
-		if(state.myType == "Actuator") { deviceStatus = device.currentValue("actuator") }
-		if(state.myType == "Sensor") { deviceStatus = device.currentValue("sensor") }
 		if(state.myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
 		if(state.myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
 		if(state.myType == "Battery") { deviceStatus = device.currentValue("battery") }
