@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 02/26/19 - Some test code had snuck in to the last update breaking the app.
  *  V1.0.7 - 02/24/19 - Fixed Pushover reports.
  *  V1.0.6 - 02/17/19 - New field added to json, xxUpdateNote. A place to put any notes you want to show up in the update report.
  *  V1.0.5 - 02/10/19 - Now have two templates available: apps/driver and just drivers. Can now have up to 6 drivers in one section.
@@ -46,7 +47,7 @@
  */
 
 def setVersion(){
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
 }
 
 def sendVersionToAW(){
@@ -117,7 +118,7 @@ def pageConfig() {
 			], required: false, multiple: true, defaultValue: "Example", submitOnChange: true
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-			input "timeToRun", "time", title: "Check Apps at this time daily", required: false
+			input "timeToRun", "time", title: "Check Apps at this time daily", required: true
 			input "isDataDevice", "capability.switch", title: "Turn this device on if there is data to report", required: false, multiple: false
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
@@ -198,7 +199,6 @@ def updated() {
     unsubscribe()
 	unschedule()
 	logCheck()
-	tileVersionHandler()
 	initialize()
 }
 
@@ -441,10 +441,11 @@ def gitHubCheck() {
 def appMapHandler(evt) {
 	LOGDEBUG("In appMapHandler...")
 	if(state.enablerSwitch2 == "off") {
+		LOGDEBUG("In appMapHandler - Enabler Switch is Off")
 		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+			LOGDEBUG("In appMapHandler - pause is Off")
 			clearMaps()
-			LOGDEBUG("In appMapHandler...")
 			if(installedApps) {
 				installedApps.each { item ->
 					state.appsName = item
@@ -715,7 +716,6 @@ def checkTheDriverData() {
 		d6new = "<span style='color:red'>NEW </span>"
 		LOGDEBUG("In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - Update Available! - New: ${state.appDriver6Version}")
 	}
-	
 		if(state.appDiscussion != "NA") {
 			appDiscussion2 = "<a href='${state.appDiscussion}' target='_blank'>[Driver Discussion]</a>"
 		} else {
@@ -813,7 +813,7 @@ def tileHandler(evt) {
 }
 
 def tileVersionHandler() {
-	childVersion = "${version()}"
+	childVersion = "${state.version}"
 	verMap = "${app.name}:${childVersion}"
 	log.info("In tileVersionHandler...appName: ${app.name}")
     tileDevice.sendVersionMap(verMap)
@@ -865,27 +865,28 @@ def pushNow(){
 def pauseOrNot(){			// Modified from @Cobra Code
 	LOGDEBUG("In pauseOrNot...")
     state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            	if(app.label.contains('red')){
-                	log.warn "Paused"}
-            	else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              		LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            	}
+    if(state.pauseNow == true){
+    	state.pauseApp = true
+        if(app.label){
+        	if(app.label.contains('red')){
+            	log.warn "Paused"}
+           	else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
+            	LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
             }
         }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
+    }
+    if(state.pauseNow == false){
+    	state.pauseApp = false
+        if(app.label){
+     		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
+     			LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
+        	}
+		}
+    }  
 }
 
 def setDefaults(){
+	LOGDEBUG("In setDefaults...")
 	setupNewStuff()
 	pauseOrNot()
     if(pause1 == null){pause1 = false}
@@ -893,6 +894,7 @@ def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(pushAll == null){pushAll = false}
+	LOGDEBUG("In setDefaults - Finished defaults")
 }
 
 def logCheck(){			// Modified from @Cobra Code
@@ -937,4 +939,4 @@ def display2(){
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
-}
+} 
