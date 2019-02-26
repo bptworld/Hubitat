@@ -116,7 +116,7 @@
   
   "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v1.1.0",
-  "DeviceWatchdogChildVersion": "v1.2.2",
+  "DeviceWatchdogChildVersion": "v1.2.3",
   "DeviceWatchdogDriverVersion": "V1.0.1",
   "DeviceWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
   "DeviceWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
