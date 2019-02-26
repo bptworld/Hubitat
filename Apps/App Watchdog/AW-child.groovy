@@ -937,4 +937,4 @@ def display2(){
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
-} 
+}
