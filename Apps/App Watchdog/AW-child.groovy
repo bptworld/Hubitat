@@ -144,8 +144,8 @@ def pageConfig() {
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
-			input(name: "sendToAW", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Send version information to App Watcher", description: "Send version to App Watcher")
-			if(sendToAW) input(name: "sendToAWSwitch", type: "capability.actuator", title: "App Watcher device...", required: false, multiple: false)
+		//	input(name: "sendToAW", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Send version information to App Watcher", description: "Send version to App Watcher")
+		//	if(sendToAW) input(name: "sendToAWSwitch", type: "capability.actuator", title: "App Watcher device...", required: false, multiple: false)
 			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
