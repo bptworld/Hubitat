@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.2.1 - 02/25/19 - Second attempt at new Device Status reporting
  *  V1.2.0 - 02/25/19 - Added a new report type - Device Status
  *  V1.1.9 - 02/24/19 - Fixed Pushover reports.
  *  V1.1.8 - 02/16/19 - Trying to track down an error - Resolved.
@@ -622,7 +623,29 @@ def myStatusHandler() {
 	LOGDEBUG("In myStatusHandler...")
 	state.mySensors.each { device ->
 		log.info "Working on... ${device}"
-		def deviceStatus = device.getStatus()
+		if(state.myType == "Actuator") { deviceStatus = device.currentValue("actuator") }
+		if(state.myType == "Sensor") { deviceStatus = device.currentValue("sensor") }
+		if(state.myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
+		if(state.myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
+		if(state.myType == "Battery") { deviceStatus = device.currentValue("battery") }
+		if(state.myType == "Carbon Monoxide Detector") { deviceStatus = device.currentValue("carbonMonoxideDetector") } 
+		if(state.myType == "Contact Sensor") { deviceStatus = device.currentValue("contact") }
+		if(state.myType == "Energy Meter") { deviceStatus = device.currentValue("energyMeter") }
+		if(state.myType == "Illuminance Measurement") { deviceStatus = device.currentValue("illuminanceMeasurement") }
+		if(state.myType == "Lock") { deviceStatus = device.currentValue("lock") }
+		if(state.myType == "Motion Sensor") { deviceStatus = device.currentValue("motion") }
+		if(state.myType == "Power Meter") { deviceStatus = device.currentValue("powerMeter") }
+		if(state.myType == "Presence Sensor") { deviceStatus = device.currentValue("presence") }
+		if(state.myType == "Pushable Button") { deviceStatus = device.currentValue("pushableButton") }
+		if(state.myType == "Relative Humidity Measurement") { deviceStatus = device.currentValue("relativeHumidityMeasurement") }
+		if(state.myType == "Smoke Detector") { deviceStatus = device.currentValue("smokeDetector") }
+		if(state.myType == "Switch") { deviceStatus = device.currentValue("switch") }
+		if(state.myType == "Switch Level") { deviceStatus = device.currentValue("switchLevel") }
+		if(state.myType == "Temperature Measurement") { deviceStatus = device.currentValue("temperatureMeasurement") }
+		if(state.myType == "Valve") { deviceStatus = device.currentValue("valve") }
+		if(state.myType == "Voltage Measurement") { deviceStatus = device.currentValue("voltageMeasurement") }
+		if(state.myType == "Water Sensor") { deviceStatus = device.currentValue("waterSensor") }
+		
 		def lastActivity = device.getLastActivity()
 		def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
 		log.info "${state.myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
