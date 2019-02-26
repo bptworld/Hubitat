@@ -37,7 +37,7 @@ Now all you have to do is add this device to one of your dashboards to see the d
 Add a new tile with the following selections
 - Pick a device = Device Watchdog
 - Pick a template = attribute
-- 3rd box = activityDevice or batteryDevice
+- 3rd box = watchdogActivity, watchdogBattery or watchdogStatus
 
 <br>
 Bryan<br>
