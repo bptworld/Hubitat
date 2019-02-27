@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 02/27/19 - App now sends 'All apps are up to date' to tile.
  *  V1.0.8 - 02/26/19 - Some test code had snuck in to the last update breaking the app.
  *  V1.0.7 - 02/24/19 - Fixed Pushover reports.
  *  V1.0.6 - 02/17/19 - New field added to json, xxUpdateNote. A place to put any notes you want to show up in the update report.
@@ -47,7 +48,7 @@
  */
 
 def setVersion(){
-	state.version = "v1.0.8"
+	state.version = "v1.0.9"
 }
 
 def sendVersionToAW(){
@@ -807,8 +808,10 @@ def checkTheDriverData() {
 }
 
 def tileHandler(evt) {
-	def appMap = "${state.appMap}"
-	LOGDEBUG("In tileHandler...Sending new App Watchdog data to ${tileDevice}")
+	if(state.appMap) appMap = "${state.appMap}"
+	if(state.appMap == "") appMap = "All Apps are up to date."
+
+	LOGDEBUG("In tileHandler...Sending new App Watchdog data to ${tileDevice} - ${appMap}")
     tileDevice.sendDataMap(appMap)
 }
 
