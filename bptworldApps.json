@@ -144,6 +144,16 @@
   "MotionControlledSceneLightingDiscussion": "https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419",
   "MotionControlledSceneLightingUpdateNote": "NA",
   
+  "NotifierType": "App",
+  "NotifierParentVersion": "v1.0.0",
+  "NotifierChildVersion": "v1.0.1",
+  "NotifierDriverVersion": "NA",
+  "NotifierParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier/N-parent.groovy",
+  "NotifierChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier/N-child.groovy",
+  "NotifierDriverRawCode": "NA",
+  "NotifierDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
+  "NotifierUpdateNote": "V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.",
+  
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
   "OneataTimeChildVersion": "v1.1.2",
@@ -205,15 +215,4 @@
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
   "WhatDidISayUpdateNote": "NA",
-  
-  "NotifierType": "App",
-  "NotifierParentVersion": "v1.0.0",
-  "NotifierChildVersion": "v1.0.1",
-  "NotifierDriverVersion": "NA",
-  "NotifierParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier/N-parent.groovy",
-  "NotifierChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier/N-child.groovy",
-  "NotifierDriverRawCode": "NA",
-  "NotifierDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierUpdateNote": "V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.",
-  
 }
