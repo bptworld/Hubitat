@@ -175,14 +175,14 @@
   "WebPingerUpdateNote": "NA",
   
   "WelcomeHomeType": "App",
-  "WelcomeHomeParentVersion": "v2.0.0",
-  "WelcomeHomeChildVersion": "v2.0.1",
+  "WelcomeHomeParentVersion": "v2.0.1",
+  "WelcomeHomeChildVersion": "v2.0.2",
   "WelcomeHomeDriverVersion": "v1.0.0",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDiscussion": "https://community.hubitat.com/t/release-welcome-home/6445",
-  "WelcomeHomeUpdateNote": "NA",
+  "WelcomeHomeUpdateNote": "V2.0.2 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Message from Parent app.",
   
   "WhatDidISayType": "Driver",
   "WhatDidISayDriver1Version": "v1.0.3",
