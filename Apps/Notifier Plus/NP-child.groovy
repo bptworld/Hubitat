@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 02/27/19 - Name change to Notifier PLus. Added in triggers for Contact Sensors and Switches. (more to come!)
+ *  V1.0.2 - 02/27/19 - Name change to Notifier Plus. Added in triggers for Contact Sensors and Switches. (more to come!)
  *  V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.
  *  V1.0.0 - 02/22/19 - Initial release.
  *
