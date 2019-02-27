@@ -4,10 +4,8 @@
  *  Design Usage:
  *  This app is designed to give a personal welcome announcement after you have entered the home.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
@@ -36,9 +34,11 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
+ *						from Parent app.
  *  V2.0.0 - 02/11/19 - Major rewrite. Presence sensors are now in Parent app, so they can be shared across multiple child apps.
  *						Welcome Home now requires a new 'Virtual Device' using our custom 'Global Variables Driver'.  Each child app
- *                      will link to the same 'Virtual Device'.  This way we can track who came home across mutliple child apps!
+ *                      will link to the same 'Virtual Device'.  This way we can track who came home across multiple child apps!
  *  V1.1.1 - 01/15/19 - Updated footer with update check and links
  *  V1.1.0 - 01/13/19 - Updated to announce multiple people coming home at the same time, in one message. Seems like such a simple
  *						thing but it took a huge rewrite to do it!
@@ -56,18 +56,20 @@
  *
  */
 
-def version(){"v2.0.0"}
+def setVersion() {
+	state.version = "v2.0.1"
+}
 
 definition(
     name:"Welcome Home",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Parent App for 'Welcome Home' childapps ",
+    description: "This app is designed to give a personal welcome announcement after you have entered the home.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: ""
-    )
+)
 
 preferences {
      page name: "mainPage", title: "", install: true, uninstall: true
@@ -89,7 +91,6 @@ def initialize() {
     childApps.each {child ->
     log.info "Child app: ${child.label}"
     }
-    
 }
 
 def mainPage() {
@@ -127,34 +128,6 @@ def mainPage() {
 				input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, defaultValue: "Not set"
 				input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, defaultValue: "Not set"
 			}
-            section("Greetings and Messages:", hideable: true, hidden: true) {
-				paragraph "<br>%greeting% - returns a greeting based on time of day.<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors<br>Note: adding a . anywhere will give the message a little pause<br>"
-				input "greeting1", "text", required: true, title: "Greeting - 1 (am)", defaultValue: "Good Morning"
-                input "greeting2", "text", required: true, title: "Greeting - 2 (before 6pm)", defaultValue: "Good Afternoon"
-                input "greeting3", "text", required: true, title: "Greeting - 3 (after 6pm)", defaultValue: "Good Evening"
-				paragraph "<br>"
-            	input "msg1", "text", required: true, title: "Message - 1", defaultValue: "Welcome home. %name%"
-                input "msg2", "text", required: false, title: "Message - 2", defaultValue: "Long time no see. %name%"
-                input "msg3", "text", required: false, title: "Message - 3", defaultValue: "Look who's home. it's %name%"
-                input "msg4", "text", required: false, title: "Message - 4", defaultValue: "Nice to have you back. %name%"
-                input "msg5", "text", required: false, title: "Message - 5", defaultValue: "%greeting%. %name%"
-                input "msg6", "text", required: false, title: "Message - 6", defaultValue: "%greeting%. Oh ya. %name% is home"
-                input "msg7", "text", required: false, title: "Message - 7", defaultValue: "How are you doing. %name%"
-                input "msg8", "text", required: false, title: "Message - 8", defaultValue: "%greeting%. Anything I can do for you. %name%"
-                input "msg9", "text", required: false, title: "Message - 9", defaultValue: "%greeting% I'm at your service, %name%"
-                input "msg10", "text", required: false, title: "Message - 10", defaultValue: "%greeting%. The dogs have been waiting for you. %name%"
-				input "msg11", "text", required: false, title: "Message - 11", defaultValue: ""
-                input "msg12", "text", required: false, title: "Message - 12", defaultValue: ""
-                input "msg13", "text", required: false, title: "Message - 13", defaultValue: ""
-                input "msg14", "text", required: false, title: "Message - 14", defaultValue: ""
-                input "msg15", "text", required: false, title: "Message - 15", defaultValue: ""
-                input "msg16", "text", required: false, title: "Message - 16", defaultValue: ""
-                input "msg17", "text", required: false, title: "Message - 17", defaultValue: ""
-                input "msg18", "text", required: false, title: "Message - 18", defaultValue: ""
-                input "msg19", "text", required: false, title: "Message - 19", defaultValue: ""
-                input "msg20", "text", required: false, title: "Message - 20", defaultValue: ""
-			}
-
 		}
 		display()
 	}
@@ -182,9 +155,9 @@ def getFormat(type, myText=""){
 }
 
 def display(){
+	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${version()}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
-
