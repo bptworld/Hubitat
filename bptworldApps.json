@@ -76,13 +76,13 @@
 
   "AppWatchdogType": "App",
   "AppWatchdogParentVersion": "v1.0.0",
-  "AppWatchdogChildVersion": "v1.0.8",
+  "AppWatchdogChildVersion": "v1.0.9",
   "AppWatchdogDriverVersion": "v1.0.0",
   "AppWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
   "AppWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-driver.groovy",
   "AppWatchdogDiscussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdogUpdateNote": "V1.0.8 - 02/26/19 - Some test code had snuck in to the last update breaking the app.",
+  "AppWatchdogUpdateNote": "V1.0.9 - 02/27/19 - App now sends 'All apps are up to date' to tile.",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v1.0.0",
