@@ -5,7 +5,7 @@ import groovy.time.TimeCategory
  *  Design Usage:
  *  This app is designed to give a personal welcome announcement after you have entered the home.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -35,7 +35,9 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
- *  V2.0.1 - 02/11/19 - Trobleshooting problem with Friendly Name
+ *  V2.0.2 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
+ *						from Parent app.
+ *  V2.0.1 - 02/11/19 - Trobleshooting problem with Friendly Name - Fixed
  *  V2.0.0 - 02/11/19 - Major rewrite. Presence sensors are now in Parent app, so they can be shared across multiple child apps.
  *						Welcome Home now requires a new 'Virtual Device' using our custom 'Global Variables Driver'.  Each child app
  *                      will link to the same 'Virtual Device'.  This way we can track who came home across multiple child apps!
@@ -59,7 +61,9 @@ import groovy.time.TimeCategory
  *
  */
 
-def version(){"v2.0.1"}
+def setVersion() {
+	state.version = "v2.0.2"
+}
 
 definition(
     name: "Welcome Home Child",
@@ -123,7 +127,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
-              	input "speaker1", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+              	input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
 				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?")
 				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
               	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
@@ -131,7 +135,7 @@ def pageConfig() {
     		  	input "toTime2", "time", title: "Quiet Time End", required: true
           	}   
         	if (speechMode == "Speech Synth"){ 
-         		input "speaker1", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+         		input "speakers", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
       	}
     	if(speechMode){ 
@@ -141,10 +145,58 @@ def pageConfig() {
 			}
     	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
-			input "message1Count", "number", title: "How many random message presets to choose from (default=10). Max equals 20. Be sure they are already filled out in the parent app.", required: true, defaultValue: 10
-		}
-		section() {
-			input "message1", "text", title: "Message to be spoken - Use %random% to have a random message spoken from the list entered within the parent app",  required: true, defaultValue: "%random%"
+			input(name: "oRandomG1", type: "bool", defaultValue: "false", title: "Random Greeting 1?", description: "Random", submitOnChange: "true")
+			if(!oRandomG1) input "greeting1", "text", required: true, title: "Greeting - 1 (am) - Single message", defaultValue: "Good Morning"
+			if(oRandomG1) {
+				input "greeting1", "text", title: "Random Greeting - 1 (am) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of random messages 1?", description: "List View", submitOnChange: "true")
+				if(oG1List) {
+					def valuesG1 = "${greeting1}".split(";")
+					listMapG1 = ""
+    				valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
+					paragraph "${listMapG1}"
+				}
+			}
+			paragraph "<hr>"
+			input(name: "oRandomG2", type: "bool", defaultValue: "false", title: "Random Greeting 2?", description: "Random", submitOnChange: "true")
+			if(!oRandomG2) input "greeting2", "text", required: true, title: "Greeting - 2 (pm before 6) - Single message", defaultValue: "Good Afternoon"
+			if(oRandomG2) {
+				input "greeting2", "text", title: "Random Greeting - 2 (pm before 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG2List", type: "bool", defaultValue: "false", title: "Show a list view of the random messages 2?", description: "List View", submitOnChange: "true")
+				if(oG2List) {
+					def valuesG2 = "${greeting2}".split(";")
+					listMapG2 = ""
+    				valuesG2.each { itemG2 -> listMapG2 += "${itemG2}<br>" }
+					paragraph "${listMapG2}"
+				}
+			}
+			paragraph "<hr>"
+			input(name: "oRandomG3", type: "bool", defaultValue: "false", title: "Random Greeting 3?", description: "Random", submitOnChange: "true")
+			if(!oRandomG3) input "greeting3", "text", required: true, title: "Greeting - 3 (pm after 6) - Single message", defaultValue: "Good Evening"
+			if(oRandomG3) {
+				input "greeting3", "text", title: "Random Greeting - 3 (pm after 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG3List", type: "bool", defaultValue: "false", title: "Show a list view of the random messages 3?", description: "List View", submitOnChange: "true")
+				if(oG3List) {
+					def valuesG3 = "${greeting3}".split(";")
+					listMapG3 = ""
+    				valuesG3.each { itemG3 -> listMapG3 += "${itemG3}<br>" }
+					paragraph "${listMapG3}"
+				}
+			}
+			paragraph "<hr>"
+			input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Message?", description: "Random", submitOnChange: "true")
+			paragraph "<u>Optional wildcards:</u><br>%greeting% - returns a greeting based on time of day.<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
+			if(!oRandom) input "message", "text", title: "Message to be spoken - Single message",  required: true
+			if(oRandom) {
+				input "message", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				input(name: "oMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+				if(oMsgList) {
+					def values = "${message}".split(";")
+					listMap = ""
+    				values.each { item -> listMap += "${item}<br>"}
+					paragraph "${listMap}"
+				}
+			}
 		}
 		section() {
 			input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
@@ -285,7 +337,7 @@ def lockHandler(evt) {
 				if(presenceSensor3) getTimeDiff3()
 				if(presenceSensor4) getTimeDiff4()
 				if(presenceSensor5) getTimeDiff5()
-				if(state.canSpeak == "yes") talkNow1()
+				if(state.canSpeak == "yes") letsTalk()
 			}
 		}
 	} else {
@@ -311,7 +363,7 @@ def contactSensorHandler(evt) {
 					if(presenceSensor3) getTimeDiff3()
 					if(presenceSensor4) getTimeDiff4()
 					if(presenceSensor5) getTimeDiff5()
-					if(state.canSpeak == "yes") talkNow1()
+					if(state.canSpeak == "yes") letsTalk()
 				}
 			}
 		}
@@ -329,7 +381,7 @@ def contactSensorHandler(evt) {
 					if(presenceSensor3) getTimeDiff3()
 					if(presenceSensor4) getTimeDiff4()
 					if(presenceSensor5) getTimeDiff5()
-					if(state.canSpeak == "yes") talkNow1()
+					if(state.canSpeak == "yes") letsTalk()
 				}
 			}
 		}
@@ -354,7 +406,7 @@ def motionSensorHandler(evt) {
 				if(presenceSensor3) getTimeDiff3()
 				if(presenceSensor4) getTimeDiff4()
 				if(presenceSensor5) getTimeDiff5()
-				if(state.canSpeak == "yes") talkNow1()
+				if(state.canSpeak == "yes") letsTalk()
 			}
 		}
 	} else {
@@ -603,41 +655,40 @@ def getTimeDiff5() {
 	}
 }
 
-def talkNow1() {								// Heavily Modified from @Cobra Code
-	LOGDEBUG("In talkNow1...")
+def letsTalk() {								// Heavily Modified from @Cobra Code
+	LOGDEBUG("In letsTalk...")
 	checkTime()
-	
 	if(state.timeOK == true) {
-		compileMsg1()
-		LOGDEBUG("Speaker(s) in use: ${speaker1}")
-		state.fullMsg1 = "${state.msgComp}"
-		LOGDEBUG("In talkNow1...Waiting ${delay1} seconds to Speak")
+		messageHandler()
+		LOGDEBUG("Speaker(s) in use: ${speakers}")
+		state.theMsg = "${state.theMessage}"
+		LOGDEBUG("In letsTalk - Waiting ${delay1} seconds to Speak")
 		def delay1ms = delay1 * 1000
 		pauseExecution(delay1ms)
   		if (speechMode == "Music Player"){ 
     		LOGDEBUG("Music Player")
 			if(echoSpeaks) {
 				setVolume()
-				speaker1.setVolumeSpeakAndRestore(state.volume, state.fullMsg1)
+				speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg)
 				state.canSpeak = "no"
-				LOGDEBUG("Wow, that's it!")
+				LOGDEBUG("In letsTalk - Wow, that's it!")
 			}
 			if(!echoSpeaks) {
     			setVolume()
-    			speaker1.playTextAndRestore(state.fullMsg1)
+    			speakers.playTextAndRestore(state.theMsg)
 				state.canSpeak = "no"
-				LOGDEBUG("Wow, that's it!")
+				LOGDEBUG("In letsTalk - Wow, that's it!")
 			}
   		}   
 		if (speechMode == "Speech Synth"){ 
-			LOGDEBUG("Speech Synth - ${state.fullMsg1}")
-			speaker1.speak(state.fullMsg1)
+			LOGDEBUG("Speech Synth - ${state.theMsg}")
+			speakers.speak(state.theMsg)
 			state.canSpeak = "no"
-			LOGDEBUG("Wow, that's it!")
+			LOGDEBUG("In letsTalk - Wow, that's it!")
 		}
 	} else {
 		state.canSpeak = "no"
-		LOGDEBUG("It's quiet time...Can't talk right now")
+		LOGDEBUG("In letsTalk - It's quiet time...Can't talk right now")
 	}
 }
 
@@ -648,20 +699,20 @@ def setVolume(){								// Modified from @Cobra Code
 		def between2 = timeOfDayIsBetween(toDateTime(fromTime2), toDateTime(toTime2), new Date(), location.timeZone)
     if (between2) {
     	state.volume = volume2
-   		if(!echoSpeaks) speaker1.setLevel(state.volume)
-   		LOGDEBUG("Quiet Time = Yes - Setting Quiet time volume")
-   		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1 - Echo Speakes = $echoSpeaks") 
+   		if(!echoSpeaks) speakers.setLevel(state.volume)
+   		LOGDEBUG("In setVolume - Quiet Time = Yes - Setting Quiet time volume")
+   		LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks") 
 	}
 	if (!between2) {
 		state.volume = volume1
-		if(!echoSpeaks) speaker1.setLevel(state.volume)
-		LOGDEBUG("Quiet Time = No - Setting Normal time volume")
-		LOGDEBUG("between2 = $between2 - state.volume = $state.volume - Speaker = $speaker1 - Echo Speakes = $echoSpeaks")
+		if(!echoSpeaks) speakers.setLevel(state.volume)
+		LOGDEBUG("In setVolume - Quiet Time = No - Setting Normal time volume")
+		LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks")
 	}
 	}
 	else if (timecheck == null){
 		state.volume = volume1
-		if(!echoSpeaks) speaker1.setLevel(state.volume)
+		if(!echoSpeaks) speakers.setLevel(state.volume)
 	}
 }
 
@@ -673,33 +724,40 @@ def checkTime(){							// Modified from @Cobra Code
 	def between = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
     if (between) {
     	state.timeOK = true
-   		LOGDEBUG("Time is ok so can continue")
+   		LOGDEBUG("In checkTime - Time is ok so can continue")
 	}
 	else if (!between) {
 		state.timeOK = false
-		LOGDEBUG("Time is NOT ok so can't continue")
+		LOGDEBUG("In checkTime - Time is NOT ok so can't continue")
 	}
   	}
 	else if (timecheckNow == null){  
 		state.timeOK = true
-  		LOGDEBUG("Time restrictions have not been configured - Continue")
+  		LOGDEBUG("In checkTime - Time restrictions have not been configured - Continue")
   	}
 }
 
-private compileMsg1() {							// Modified from @Cobra Code
-	LOGDEBUG("In compileMsg...message1 = ${message1}")
-    def msgComp = ""
-    msgComp = message1.toLowerCase()
-	LOGDEBUG("Changed msgComp to lowercase = ${msgComp}")
-	if (msgComp.toLowerCase().contains("%random%")) {msgComp = msgComp.toLowerCase().replace('%random%', getGroup1() )}
-	if (msgComp.toLowerCase().contains("%greeting%")) {msgComp = msgComp.toLowerCase().replace('%greeting%', getGreeting() )}
-	if (msgComp.toLowerCase().contains("%name%")) {msgComp = msgComp.toLowerCase().replace('%name%', getName() )}
-	
-	if (msgComp.toLowerCase().contains("%is_are%")) {msgComp = msgComp.toLowerCase().replace('%is_are%', "${is_are}" )}
-	if (msgComp.toLowerCase().contains("%has_have%")) {msgComp = msgComp.toLowerCase().replace('%has_have%', "${has_have}" )}
-	state.msgComp = "${msgComp}"
-	return state.msgComp
-}	
+def messageHandler() {
+	LOGDEBUG("In messageHandler...")
+	if(oRandom) {
+		def values = "${message}".split(";")
+		vSize = values.size()
+		count = vSize.toInteger()
+    	def randomKey = new Random().nextInt(count)
+		theMessage = values[randomKey]
+		LOGDEBUG("In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}") 
+	} else {
+		theMessage = "${message}"
+		LOGDEBUG("In messageHandler - Static - theMessage: ${theMessage}")
+	}
+   	theMessage = theMessage.toLowerCase()
+	if (theMessage.toLowerCase().contains("%greeting%")) {theMessage = theMessage.toLowerCase().replace('%greeting%', getGreeting() )}
+	if (theMessage.toLowerCase().contains("%name%")) {theMessage = theMessage.toLowerCase().replace('%name%', getName() )}
+	if (theMessage.toLowerCase().contains("%is_are%")) {theMessage = theMessage.toLowerCase().replace('%is_are%', "${is_are}" )}
+	if (theMessage.toLowerCase().contains("%has_have%")) {theMessage = theMessage.toLowerCase().replace('%has_have%', "${has_have}" )}
+	state.theMessage = "${theMessage}"
+	return state.theMessage
+}
 
 private getName(){
 	LOGDEBUG("In getName...")
@@ -747,8 +805,8 @@ private getName(){
 	}
 	is_are = (name.contains(' and ') ? 'are' : 'is')
 	has_have = (name.contains(' and ') ? 'have' : 'has')
-	if(names == null) names = "Whoever you are"
-	if(names == "") names = "Whoever you are"
+	if(name == null) names = "Whoever you are"
+	if(name == "") names = "Whoever you are"
 	LOGDEBUG("AGAIN...Name = ${name}")
 	return name
 }
@@ -761,54 +819,45 @@ private getGreeting(){						// Modified from @Cobra Code
     def timeampm = calendar.get(Calendar.AM_PM) ? "pm" : "am" 
 	LOGDEBUG("timeHH = $timeHH")
 	if(timeampm == 'am'){
-		state.greeting = "${parent.greeting1}"
+		if(oRandomG1) {
+			def values = "${greeting1}".split(";")
+			vSize = values.size()
+			count = vSize.toInteger()
+    		def randomKey = new Random().nextInt(count)
+			state.greeting = values[randomKey]
+			LOGDEBUG("In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}") 
+		} else {
+			state.greeting = "${greeting1}"
+			LOGDEBUG("In getGreeting - Static - greeting: ${state.greeting}")
+		}
 	}
 	else if(timeampm == 'pm' && timeHH < 6){
-		state.greeting = "${parent.greeting2}"
-		LOGDEBUG("timeampm = ${timeampm} - timehh = ${timeHH}")
+		if(oRandomG2) {
+			def values = "${greeting2}".split(";")
+			vSize = values.size()
+			count = vSize.toInteger()
+    		def randomKey = new Random().nextInt(count)
+			state.greeting = values[randomKey]
+			LOGDEBUG("In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}") 
+		} else {
+			state.greeting = "${greeting2}"
+			LOGDEBUG("In getGreeting - Static - greeting: ${state.greeting}")
+		}
 	}
 	else if(timeampm == 'pm' && timeHH >= 6){
-		LOGDEBUG("timehh = ${timeHH} - timeampm = ${timeampm}")
-		state.greeting = "${parent.greeting3}"
-	} 
-	LOGDEBUG("Greeting = ${state.greeting}")
+		if(oRandomG3) {
+			def values = "${greeting3}".split(";")
+			vSize = values.size()
+			count = vSize.toInteger()
+    		def randomKey = new Random().nextInt(count)
+			state.greeting = values[randomKey]
+			LOGDEBUG("In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}") 
+		} else {
+			state.greeting = "${greeting3}"
+			LOGDEBUG("In getGreeting - Static - greeting: ${state.greeting}")
+		}
+	}
 	return state.greeting
-}
-
-private getGroup1(msgGroup1item) {			// Heavily Modified from @Cobra Code
-	LOGDEBUG("In getGroup1...")
-    def group1List = [
-        "${parent.msg1}", 
-		"${parent.msg2}",
-        "${parent.msg3}",
-        "${parent.msg4}",
-        "${parent.msg5}",
-        "${parent.msg6}",
-		"${parent.msg7}", 
-		"${parent.msg8}",
-        "${parent.msg9}",
-        "${parent.msg10}",
-		"${parent.msg11}", 
-		"${parent.msg12}",
-        "${parent.msg13}",
-        "${parent.msg14}",
-        "${parent.msg15}",
-        "${parent.msg16}",
-		"${parent.msg17}", 
-		"${parent.msg18}",
-        "${parent.msg19}",
-        "${parent.msg20}"
-    ]
-	if(message1Count>20){message1Count = 20}
-    if(msgGroup1item == null) {
-		count = message1Count.toInteger()
-        def randomKey1 = new Random().nextInt(count)
-		LOGDEBUG("getGroup1 - randomKey1 = ${randomKey1}") 
-		msgGroup1 = group1List[randomKey1]
-    } else {
-        msgGroup1 = group1List[msgGroup1item]
-    }
-	return msgGroup1
 }
 
 def globalBeenHere() { 
@@ -817,7 +866,6 @@ def globalBeenHere() {
 	state.globalBH3 = gvDevice.currentValue("globalBH3")
 	state.globalBH4 = gvDevice.currentValue("globalBH4")
 	state.globalBH5 = gvDevice.currentValue("globalBH5")
-	
 	LOGDEBUG("${gDevice}: globalBH1: ${state.globalBH1} - globalBH2: ${state.globalBH2} - globalBH3: ${state.globalBH3} - globalBH4: ${state.globalBH4} - globalBH5: ${state.globalBH5}")
 }
 
@@ -825,20 +873,19 @@ def globalBeenHere() {
 
 def pauseOrNot(){						// Modified from @Cobra Code
     state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
+    if(state.pauseNow == true){
+    	state.pauseApp = true
+        if(app.label){
             if(app.label.contains('red')){
                 log.warn "Paused"}
             else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
+              	LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
             }
         }
-    
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
+    }
+    if(state.pauseNow == false){
+    	state.pauseApp = false
+        if(app.label){
      		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
      		LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
           	}
@@ -895,8 +942,9 @@ def display() {
 }
 
 def display2(){
+	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${version()}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Welcome Home - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
