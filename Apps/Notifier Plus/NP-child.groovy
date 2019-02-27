@@ -1,8 +1,8 @@
 /**
- *  ****************  Notifier Child App  ****************
+ *  ****************  Notifier Plus Child App  ****************
  *
  *  Design Usage:
- *  Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.
+ *  Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.
  *	
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
@@ -34,22 +34,23 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 02/27/19 - Name change to Notifier PLus. Added in triggers for Contact Sensors and Switches. (more to come!)
  *  V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.
  *  V1.0.0 - 02/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
-    name: "Notifier Child",
+    name: "Notifier Plus Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.",
+    description: "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.",
     category: "",
-	parent: "BPTWorld:Notifier",
+	parent: "BPTWorld:Notifier Plus",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -60,20 +61,25 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Notifier</h2>", install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Notifier Plus</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm."
+			paragraph "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm."
 			paragraph "Get nofified when it's a holiday, birthday, special occasion, etc. Great for telling Hubitat when it's school vacation."
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Set Notifier Type")) {
-			if(xDate && xDay) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
+			if((xDate && xDay) || (xDate && xContact) || (xDate && xDevice) || (xDay && xContact) || (xDay && xDevice) || (xContact && xDevice)) {
 				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
 			} else {
 				paragraph "Please only choose <b>one</b> option. If multiple options are selected bad things will happen."
 			}
-			input(name: "xDate", type: "bool", defaultValue: "false", title: "<b>by Date?</b><br>This will notify you on the Month/Day(s)/Year selected only.", description: "Date", submitOnChange: "true")
+			input(name: "xDate", type: "bool", defaultValue: "false", title: "<b>by Date?</b><br>This will notify you on the Month/Day(s)/Year selected only.", description: "Date", submitOnChange: "true", width: 6)
+			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true", width: 6)
+			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
+			input(name: "xDevice", type: "bool", defaultValue: "false", title: "<b>by Device?</b><br>Device Notifications", description: "Device Notifications", submitOnChange: "true", width: 6)
+		}
+		section() {
 			if(xDate) {
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 				if(month == "Jan" || month == "Mar" || month == "May" || month == "Jun" || month == "Aug" || month == "Oct" || month == "Dec") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
@@ -84,23 +90,41 @@ def pageConfig() {
 				//input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
 				// Used in testing
 				input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
-				paragraph "<hr>"
-			}
-			if(xDate && xDay) {
-				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
-				paragraph "<hr>"
 			}
 		}
 		section() {
-			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true")
 			if(xDay) {
 				input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 				input(name: "startTime", type: "time", title: "Time to notify", description: "Time", required: true)
-				paragraph "<hr>"
 			}
-			if(xDate && xDay) {
+		}
+		section() {
+			if(xContact) {
+				input(name: "contactEvent", type: "capability.contactSensor", title: "Trigger Notifications based on a Contact Sensor", required: true, multiple: true, submitOnChange: true)
+				if(contactEvent) {
+					input(name: "csOpenClosed", type: "bool", defaultValue: "false", title: "<b>Contact Closed or Opened? (off=Closed, on=Open)</b>", description: "Contact status", submitOnChange: "true")
+					if(!csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been OPENED."
+					if(csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been CLOSED."
+					input(name: "oContactTime", type: "bool", defaultValue: "false", title: "<b>For How Long?</b>", description: "Contact Time", submitOnChange: true)
+					if(oContactTime) paragraph "coming soon..."
+				}
+			}
+		}
+		section() {
+			if(xDevice) {
+				input(name: "switchEvent", type: "capability.switch", title: "Trigger Notifications based on a Switch", required: true, multiple: true, submitOnChange: true)
+				if(switchEvent) {
+					input(name: "seOpenClosed", type: "bool", defaultValue: "false", title: "<b>Switch Off or On? (off=Off, on=On)</b>", description: "Switch status", submitOnChange: "true")
+					if(seOpenClosed) paragraph "You will recieve notifications if any of the switches are on."
+					if(!seOpenClosed) paragraph "You will recieve notifications if any of the switches are off."
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>For How Long?</b>", description: "Switch Time", submitOnChange: true)
+					if(oContactTime) paragraph "coming soon..."
+				}
+			}
+		}
+		section() {
+			if((xDate && xDay) || (xDate && xContact) || (xDate && xDevice) || (xDay && xContact) || (xDay && xDevice) || (xContact && xDevice)) {
 				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
-				paragraph "<hr>"
 			}
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Choose Your Notify Options")) {
@@ -144,7 +168,6 @@ def pageConfig() {
                 		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
 					paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
 					input(name: "oDelay", type: "bool", defaultValue: "false", title: "<b>Delay Until Finished</b>", description: "Future Options", submitOnChange: "true")
-					paragraph "<hr>"
 				}
 				if(oDimDn) {
 					input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
@@ -157,7 +180,6 @@ def pageConfig() {
                 		["Daylight":"Daylight - Energize"],
                 		["Warm White":"Warm White - Relax"],
                 		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
-					paragraph "<hr>"
 				}
 			}
 		}
@@ -166,15 +188,24 @@ def pageConfig() {
 				paragraph "Great for turning on/off alarms, lighting, fans, coffee makers, etc..."
 				input(name: "switchesOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "switchesOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
-				input(name: "newMode", type: "mode", title: "Change Mode", required: false, multiple: false)
+				if(xDate || xDay) input(name: "newMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oMessage) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 				if(oMessage && !oControl) paragraph "<b>* Control Switch is required when using Message options.</b>"
-				input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Message?", description: "Random", submitOnChange: "true")
-				if(!oRandom) input "message", "text", title: "Message to be spoken",  required: true
-				if(oRandom) input "message", "text", title: "Message to be spoken - Separate each message with ; ",  required: true
+				input(name: "oRandom", type: "bool", defaultValue: "false", title: "<b>Random Message?</b>", description: "Random", submitOnChange: "true")
+				if(!oRandom) input "message", "text", title: "Message to be spoken", required: true, submitOnChange: true
+				if(oRandom) {
+					input "message", "text", title: "Message to be spoken - Separate each message with ; ",  required: true
+					input(name: "oM1List", type: "bool", defaultValue: "false", title: "Show a list view of random messages?", description: "List View", submitOnChange: "true")
+					if(oM1List) {
+						def valuesM1 = "${message}".split(";")
+						listMapM1 = ""
+    					valuesM1.each { itemM1 -> listMapM1 += "${itemM1}<br>" }
+						paragraph "${listMapM1}"
+					}
+				}
 				input(name: "oRepeat", type: "bool", defaultValue: "false", title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: "true")
 				if(oRepeat) input "repeatSeconds", "number", title: "Repeat message every xx seconds until control switch is turned off (1 to 600)", required: true, multiple: false, defaultValue:10, range: '1..600'
 				input(name: "oSpeech", type: "bool", defaultValue: "false", title: "<b>Speech Options</b>", description: "Speech Options", submitOnChange: "true", width: 6)
@@ -229,7 +260,6 @@ def initialize() {
     setDefaults()
 	
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	subscribe(controlSwitch, "switch", controlSwitchHandler)
 	scheduleHandler()
 }
 
@@ -259,10 +289,9 @@ def scheduleHandler(){
 		LOGDEBUG("In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *")
     	schedule(state.schedule, magicHappensHandler)
 	}
-	
-	if(xDay) {
-		schedule(startTime, magicHappensHandler)
-	}
+	if(xDay) schedule(startTime, magicHappensHandler)
+	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
+	if(xDevice) subscribe(switchEvent, "switch", switchHandler)
 	
 }
 def enablerSwitchHandler(evt){
@@ -275,6 +304,77 @@ def enablerSwitchHandler(evt){
 		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
     }
 }
+
+def contactSensorHandler(evt) {
+	if(state.enablerSwitch2 == "off") {
+		state.contactStatus = evt.value
+		LOGDEBUG("In contactSensorHandler - contact Status: ${state.contactStatus}")
+		if(csOpenClosed) {
+			if(state.contactStatus == "open") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+					magicHappensHandler()
+				}
+			}
+			if(state.contactStatus == "closed") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+					reverseTheMagicHandler()
+				}
+			}
+		}
+		if(!csOpenClosed) {
+			if(state.contactStatus == "closed") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+					magicHappensHandler()
+				}
+			}
+			if(state.contactStatus == "open") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+					reverseTheMagicHandler()
+				}
+			}
+		}
+	} else {
+		LOGDEBUG("In contactSensorHandler - Enabler Switch is ON - Child app is disabled.")
+	}
+}
+
+def switchHandler(evt) {
+	if(state.enablerSwitch2 == "off") {
+		state.switchStatus = evt.value
+		LOGDEBUG("In switchHandler - contact Status: ${state.switchStatus}")
+		if(csOpenClosed) {
+			if(state.switchStatus == "open") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In switchHandler...Pause: ${pause1}")
+					magicHappensHandler()
+				}
+			}
+		}
+		if(!csOpenClosed) {
+			if(state.switchStatus == "closed") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In switchHandler...Pause: ${pause1}")
+					magicHappensHandler()
+				}
+			}
+		}
+	} else {
+		LOGDEBUG("In switchHandler - Enabler Switch is ON - Child app is disabled.")
+	}
+}
+
+
+
 
 def controlSwitchHandler(evt){
 	state.controlSwitch2 = evt.value
@@ -290,7 +390,7 @@ def controlSwitchHandler(evt){
 def magicHappensHandler() {
 	LOGDEBUG("In magicHappensHandler...")
 		if(oDelay) {
-			state.realSeconds = minutesUp * 60
+			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
 			if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
@@ -301,7 +401,7 @@ def magicHappensHandler() {
 			if(oDevice) runIn(state.realSeconds,switchesOffHandler)
 			if(newMode) runIn(state.realSeconds, modeHandler)
 		} else {
-			state.realSeconds = minutesUp * 60
+			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) slowOffHandler()
 			if(oSetLC && oControl) dimmerOnHandler()
@@ -312,6 +412,16 @@ def magicHappensHandler() {
 			if(oDevice) switchesOffHandler()
 			if(newMode) modeHandler()
 		}
+}
+
+def reverseTheMagicHandler() {
+	LOGDEBUG("In reverseTheMagicHandler...")
+	if(minutesUp) state.realSeconds = minutesUp * 60
+	if(oDimUp && oControl) slowDimmerUp.off()
+	if(oDimDn && oControl) slowDimmerDn.off()
+	if(oSetLC && oControl) setOnLC.off()
+	if(switchesOn) switchesOn.off()
+	if(switchesOff) switchesOff.on()
 }
 
 def slowOnHandler(evt) {
@@ -439,9 +549,7 @@ def letsTalk() {							// Modified from @Cobra Code
 			speaker.speak(state.msg)
 		}
 		if(oRepeat) {
-			repeatSeconds2 = repeatSeconds + 1
 			runIn(repeatSeconds,messageHandler)
-			runIn(repeatSeconds2,letsTalk)
 		}
 	} else {
 		log.info "${app.label} - Control Switch is off"
@@ -458,9 +566,11 @@ def messageHandler() {
 			count = vSize.toInteger()
     		def randomKey = new Random().nextInt(count)
 			state.msg = values[randomKey]
-			LOGDEBUG("In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}") 
+			LOGDEBUG("In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}")
+			letsTalk()
 		} else {
 			state.msg = "${message}"
+			letsTalk()
 		}
 	}
 }
@@ -692,9 +802,9 @@ def display() {
 }
 
 def display2(){
+	setVersion()
 	section() {
-		setVersion()
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Notifier - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Notifier Plus - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
