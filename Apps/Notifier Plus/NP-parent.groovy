@@ -1,8 +1,8 @@
 /**
- *  ****************  Notifier Parent App  ****************
+ *  ****************  Notifier Plus Parent App  ****************
  *
  *  Design Usage:
- *  Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.
+ *  Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -34,20 +34,20 @@
  *
  *  Changes:
  *
- *
- *  V1.0.0 - 02/22/19 - Initial release. 
+ *  V1.0.1 - 02/27/19 - Name change to Notifier PLus. Added in triggers for Contact Sensors and Switches. (more to come!)
+ *  V1.0.0 - 02/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
-    name:"Notifier",
+    name:"Notifier Plus",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.",
+    description: "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -82,15 +82,15 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.</div>"
+				paragraph "<div style='color:#1A77C9'>Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm."
+				paragraph "Notifications based on date/day, time and moree. A perfect way to get reminders or create a wakeup alarm."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Notifier Child", namespace: "BPTWorld", title: "<b>Add a new 'Notifier' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Notifier Plus Child", namespace: "BPTWorld", title: "<b>Add a new 'Notifier Plus' child</b>", multiple: true)
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
@@ -122,9 +122,10 @@ def getFormat(type, myText=""){
 }
 
 def display(){
+	setVersion()
 	section() {
-		setVersion()
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Notifier - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Notifier Plus - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
+
