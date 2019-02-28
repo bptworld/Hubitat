@@ -34,7 +34,10 @@
  *
  *  Changes:
  *
- *  V1.0.4 - 02/28/19 - Second attempt to fix speaking bug.
+ *  V1.0.5 - 02/28/19 - Changed 'Speaker Synth' speaker device into two branches - Google Speakers and other speakers, fixes an 
+ *						issue with 'Initialize Google' speaker option.  Contact Sensors triggers and Switch Triggers can now act
+ *						as the Control Switch.
+ *  V1.0.4 - 02/28/19 - Fixed speaking bug.
  *  V1.0.3 - 02/27/19 - Attempt to fix a bad bug in the letsTalk / messageHandler routines.
  *  V1.0.2 - 02/27/19 - Name change to Notifier Plus. Added in triggers for Contact Sensors and Switches. (more to come!)
  *  V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.
@@ -43,7 +46,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
@@ -71,7 +74,7 @@ def pageConfig() {
 			paragraph "Get nofified when it's a holiday, birthday, special occasion, etc. Great for telling Hubitat when it's school vacation."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
-			if((xDate && xDay) || (xDate && xContact) || (xDate && xDevice) || (xDay && xContact) || (xDay && xDevice) || (xContact && xDevice)) {
+			if((xDate && xDay) || (xDate && xContact) || (xDate && xSwitch) || (xDay && xContact) || (xDay && xSwitch) || (xContact && xSwitch)) {
 				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
 			} else {
 				paragraph "Please only choose <b>one</b> option. If multiple options are selected bad things will happen."
@@ -79,7 +82,7 @@ def pageConfig() {
 			input(name: "xDate", type: "bool", defaultValue: "false", title: "<b>by Date?</b><br>This will notify you on the Month/Day(s)/Year selected only.", description: "Date", submitOnChange: "true", width: 6)
 			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true", width: 6)
 			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
-			input(name: "xDevice", type: "bool", defaultValue: "false", title: "<b>by Device?</b><br>Device Notifications", description: "Device Notifications", submitOnChange: "true", width: 6)
+			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Device?</b><br>Device Notifications", description: "Device Notifications", submitOnChange: "true", width: 6)
 		}
 		section() {
 			if(xDate) {
@@ -113,7 +116,7 @@ def pageConfig() {
 			}
 		}
 		section() {
-			if(xDevice) {
+			if(xSwitch) {
 				input(name: "switchEvent", type: "capability.switch", title: "Trigger Notifications based on a Switch", required: true, multiple: true, submitOnChange: true)
 				if(switchEvent) {
 					input(name: "seOpenClosed", type: "bool", defaultValue: "false", title: "<b>Switch Off or On? (off=Off, on=On)</b>", description: "Switch status", submitOnChange: "true")
@@ -125,7 +128,7 @@ def pageConfig() {
 			}
 		}
 		section() {
-			if((xDate && xDay) || (xDate && xContact) || (xDate && xDevice) || (xDay && xContact) || (xDay && xDevice) || (xContact && xDevice)) {
+			if((xDate && xDay) || (xDate && xContact) || (xDate && xSwitch) || (xDay && xContact) || (xDay && xSwitch) || (xContact && xSwitch)) {
 				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
 			}
 		}
@@ -138,8 +141,17 @@ def pageConfig() {
 		}
 		if(oControl) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
-				paragraph "This is your child app on/off switch. <b>Required is using Lighting and/or Message Options.</b>"
-				input(name: "controlSwitch", type: "capability.switch", title: "Turn the app on or off with this switch", required: true, multiple: false)
+				paragraph "This is your child app on/off switch. <b>Required if using Lighting and/or Message Options.</b>"
+				if(xContact) {
+					paragraph "If choosing to use either Contact or Switch for Control... Be sure to remove any device from the control switch option below."
+					input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
+				}
+				if(xSwitch) input(name: "oControlSwitch", type: "bool", defaultValue: "false", title: "<b>Use Trigger Switch as Control Switch?</b>", description: "Control Options", submitOnChange: true)
+				if((oControlContact) || (oControlSwitch)) {
+					paragraph ""
+				} else {
+					input(name: "controlSwitch", type: "capability.switch", title: "Turn the app on or off with this switch", required: true, multiple: false)
+				}
 			}
 		}
 		if(oLighting) {
@@ -218,13 +230,14 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
            		input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
-              		input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+              		input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: false, multiple: true, submitOnChange: true
 					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device")
 					input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
           		}   
         		if (speechMode == "Speech Synth"){ 
-         			input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
-					input "gInitialize", "bool", title: "Initialize Google devices before sending speech", required: true, defaultValue: false
+					input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: false, multiple: false
+         			input "gSpeaker", "capability.speechSynthesis", title: "Choose Google speaker(s) (Home, Hub, Max and Mini's)", required: false, multiple: true, submitOnChange: true
+					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech", required: true, defaultValue: false
 				}
           	}
       	}
@@ -261,9 +274,6 @@ def initialize() {
 	logCheck()
     setDefaults()
 	
-	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-	
 	scheduleHandler()
 }
 
@@ -293,9 +303,20 @@ def scheduleHandler(){
 		LOGDEBUG("In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *")
     	schedule(state.schedule, magicHappensHandler)
 	}
+	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
+	
+	if(controlSwitch) {
+		if((oControlContact) || (oControlSwitch)) {
+			if(xContact) subscribe(contactEvent, "contact", controlSwitchHandler)
+			if(xSwitch) subscribe(switchEvent, "switch", controlSwitchHandler)
+		} else {
+			subscribe(controlSwitch, "switch", controlSwitchHandler)
+		}
+	}
+	
 	if(xDay) schedule(startTime, magicHappensHandler)
 	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
-	if(xDevice) subscribe(switchEvent, "switch", switchHandler)
+	if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
 	
 }
 def enablerSwitchHandler(evt){
@@ -309,9 +330,44 @@ def enablerSwitchHandler(evt){
     }
 }
 
+def controlSwitchHandler(evt){
+	if((controlSwitch) && (!oControlContact) && (!oControlSwitch)) {
+		state.controlSwitch2 = evt.value
+		LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
+    	if(state.controlSwitch2 == "on"){
+    		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+		} else {
+			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    	}
+	}
+	
+	if(oControlContact) {
+		LOGDEBUG("In controlSwitchHandler - Contact Sensor: ${state.contactStatus}")
+    	if(state.contactStatus == "open"){
+			state.controlSwitch2 = "on"
+    		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+		} else {
+			state.controlSwitch2 = "off"
+			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    	}
+	}
+	
+	if(oControlSwitch) {
+		LOGDEBUG("In controlSwitchHandler - Switch: ${state.switchStatus}")
+    	if(state.switchStatus == "on"){
+			state.controlSwitch2 = "on"
+    		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+		} else {
+			state.controlSwitch2 = "off"
+			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    	}
+	}
+}
+
 def contactSensorHandler(evt) {
+	state.contactStatus = evt.value
+	controlSwitchHandler()
 	if(state.enablerSwitch2 == "off") {
-		state.contactStatus = evt.value
 		LOGDEBUG("In contactSensorHandler - contact Status: ${state.contactStatus}")
 		if(csOpenClosed) {
 			if(state.contactStatus == "open") {
@@ -351,11 +407,12 @@ def contactSensorHandler(evt) {
 }
 
 def switchHandler(evt) {
+	state.switchStatus = evt.value
+	controlSwitchHandler()
 	if(state.enablerSwitch2 == "off") {
-		state.switchStatus = evt.value
-		LOGDEBUG("In switchHandler - contact Status: ${state.switchStatus}")
+		LOGDEBUG("In switchHandler - Switch Status: ${state.switchStatus}")
 		if(csOpenClosed) {
-			if(state.switchStatus == "open") {
+			if(state.switchStatus == "on") {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In switchHandler...Pause: ${pause1}")
@@ -364,7 +421,7 @@ def switchHandler(evt) {
 			}
 		}
 		if(!csOpenClosed) {
-			if(state.switchStatus == "closed") {
+			if(state.switchStatus == "off") {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In switchHandler...Pause: ${pause1}")
@@ -380,18 +437,10 @@ def switchHandler(evt) {
 
 
 
-def controlSwitchHandler(evt){
-	state.controlSwitch2 = evt.value
-	LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
-    if(state.controlSwitch2 == "on"){
-    	log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
-	} else {
-		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
-    }
-}
+
 
 def magicHappensHandler() {
-	LOGDEBUG("In magicHappensHandler...")
+	LOGDEBUG("In magicHappensHandler...CS: ${state.controlSwitch2}")
 		if(oDelay) {
 			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(oDimUp && oControl) slowOnHandler()
@@ -418,7 +467,7 @@ def magicHappensHandler() {
 }
 
 def reverseTheMagicHandler() {
-	LOGDEBUG("In reverseTheMagicHandler...")
+	LOGDEBUG("In reverseTheMagicHandler...CS: ${state.controlSwitch2}")
 	if(minutesUp) state.realSeconds = minutesUp * 60
 	if(oDimUp && oControl) slowDimmerUp.off()
 	if(oDimDn && oControl) slowDimmerDn.off()
@@ -534,10 +583,12 @@ def dimStepDown() {
 }
 
 def letsTalk() {							// Modified from @Cobra Code
-	LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
+	if(speaker) LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
+	if(gSpeaker) LOGDEBUG("In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}")
 	if(state.controlSwitch2 == "on") {
 		messageHandler()
-  		if(speechMode == "Music Player"){ 
+  		if(speechMode == "Music Player"){
+			LOGDEBUG("Music Player - ${state.msg}")
 			if(echoSpeaks) {
 				speaker.setLevel(volume1)
 				speaker.setVolumeSpeakAndRestore(state.volume, state.msg)
@@ -548,9 +599,10 @@ def letsTalk() {							// Modified from @Cobra Code
 			}
   		}   
 		if(speechMode == "Speech Synth"){
-			if(gInitialize) speaker.initialize()
 			LOGDEBUG("Speech Synth - ${state.msg}")
-			speaker.speak(state.msg)
+			if(gInitialize) gSpeaker.initialize()
+			if(gSpeaker) gSpeaker.speak(state.msg)
+			if(speaker) speaker.speak(state.msg)
 		}
 		if(oRepeat) {
 			runIn(repeatSeconds,letsTalk)
