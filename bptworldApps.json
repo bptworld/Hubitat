@@ -146,13 +146,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.0.2",
+  "NotifierPlusChildVersion": "v1.0.3",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.0.2 - 02/27/19 - Name change to Notifier PLus. Added in triggers for Contact Sensors and Switches. (more to come!)",
+  "NotifierPlusUpdateNote": "V1.0.3 - 02/27/19 - Fixed a bad bug in the letsTalk / messageHandler routines.",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
