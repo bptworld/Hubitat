@@ -304,16 +304,8 @@ def scheduleHandler(){
     	schedule(state.schedule, magicHappensHandler)
 	}
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	
-	if(controlSwitch) {
-		if((oControlContact) || (oControlSwitch)) {
-			if(xContact) subscribe(contactEvent, "contact", controlSwitchHandler)
-			if(xSwitch) subscribe(switchEvent, "switch", controlSwitchHandler)
-		} else {
-			subscribe(controlSwitch, "switch", controlSwitchHandler)
-		}
-	}
-	
+	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
+
 	if(xDay) schedule(startTime, magicHappensHandler)
 	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
 	if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
