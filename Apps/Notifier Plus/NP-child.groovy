@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 02/27/19 - Fixed a bad bug in the letsTalk / messageHandler routines.
  *  V1.0.2 - 02/27/19 - Name change to Notifier Plus. Added in triggers for Contact Sensors and Switches. (more to come!)
  *  V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.
  *  V1.0.0 - 02/22/19 - Initial release.
@@ -41,7 +42,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -103,8 +104,8 @@ def pageConfig() {
 				input(name: "contactEvent", type: "capability.contactSensor", title: "Trigger Notifications based on a Contact Sensor", required: true, multiple: true, submitOnChange: true)
 				if(contactEvent) {
 					input(name: "csOpenClosed", type: "bool", defaultValue: "false", title: "<b>Contact Closed or Opened? (off=Closed, on=Open)</b>", description: "Contact status", submitOnChange: "true")
-					if(!csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been OPENED."
-					if(csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been CLOSED."
+					if(csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been OPENED."
+					if(!csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been CLOSED."
 					input(name: "oContactTime", type: "bool", defaultValue: "false", title: "<b>For How Long?</b>", description: "Contact Time", submitOnChange: true)
 					if(oContactTime) paragraph "coming soon..."
 				}
@@ -260,6 +261,8 @@ def initialize() {
     setDefaults()
 	
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
+	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
+	
 	scheduleHandler()
 }
 
@@ -531,8 +534,10 @@ def dimStepDown() {
 }
 
 def letsTalk() {							// Modified from @Cobra Code
-	LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker}")
+	LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
 	if(state.controlSwitch2 == "on") {
+		messageHandler()
+		state.msg = msg
   		if(speechMode == "Music Player"){ 
 			if(echoSpeaks) {
 				speaker.setLevel(volume1)
@@ -549,7 +554,7 @@ def letsTalk() {							// Modified from @Cobra Code
 			speaker.speak(state.msg)
 		}
 		if(oRepeat) {
-			runIn(repeatSeconds,messageHandler)
+			runIn(repeatSeconds,letsTalk)
 		}
 	} else {
 		log.info "${app.label} - Control Switch is off"
@@ -565,13 +570,15 @@ def messageHandler() {
 			vSize = values.size()
 			count = vSize.toInteger()
     		def randomKey = new Random().nextInt(count)
-			state.msg = values[randomKey]
+			msg = values[randomKey]
 			LOGDEBUG("In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}")
-			letsTalk()
+			return msg
 		} else {
 			state.msg = "${message}"
-			letsTalk()
+			return msg
 		}
+	} else {
+		LOGDEBUG("In messageHandler - Control Switch in Off")
 	}
 }
 
@@ -763,6 +770,7 @@ def setDefaults(){
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
+	if(state.controlSwitch2 == null){state.controlSwitch2 = "off"}
 }
 
 def logCheck(){					// Modified from @Cobra Code
