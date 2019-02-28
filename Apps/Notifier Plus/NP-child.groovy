@@ -36,7 +36,7 @@
  *
  *  V1.0.5 - 02/28/19 - Changed 'Speaker Synth' speaker device into two branches - Google Speakers and other speakers, fixes an 
  *						issue with 'Initialize Google' speaker option.  Contact Sensors triggers and Switch Triggers can now act
- *						as the Control Switch.
+ *						as the Control Switch. Delay notifications now work.
  *  V1.0.4 - 02/28/19 - Fixed speaking bug.
  *  V1.0.3 - 02/27/19 - Attempt to fix a bad bug in the letsTalk / messageHandler routines.
  *  V1.0.2 - 02/27/19 - Name change to Notifier Plus. Added in triggers for Contact Sensors and Switches. (more to come!)
@@ -84,6 +84,7 @@ def pageConfig() {
 			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
 			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Device?</b><br>Device Notifications", description: "Device Notifications", submitOnChange: "true", width: 6)
 		}
+		section("<b>Please remember to clear any selection made before switching to another trigger.</b>") {}
 		section() {
 			if(xDate) {
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -110,8 +111,11 @@ def pageConfig() {
 					input(name: "csOpenClosed", type: "bool", defaultValue: "false", title: "<b>Contact Closed or Opened? (off=Closed, on=Open)</b>", description: "Contact status", submitOnChange: "true")
 					if(csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been OPENED."
 					if(!csOpenClosed) paragraph "You will recieve notifications if any of the contact sensors have been CLOSED."
-					input(name: "oContactTime", type: "bool", defaultValue: "false", title: "<b>For How Long?</b>", description: "Contact Time", submitOnChange: true)
-					if(oContactTime) paragraph "coming soon..."
+					input(name: "oContactTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Contact Time", submitOnChange: true)
+					if(oContactTime) {
+						paragraph "Delay the notification until the device has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
 				}
 			}
 		}
@@ -119,11 +123,14 @@ def pageConfig() {
 			if(xSwitch) {
 				input(name: "switchEvent", type: "capability.switch", title: "Trigger Notifications based on a Switch", required: true, multiple: true, submitOnChange: true)
 				if(switchEvent) {
-					input(name: "seOpenClosed", type: "bool", defaultValue: "false", title: "<b>Switch Off or On? (off=Off, on=On)</b>", description: "Switch status", submitOnChange: "true")
-					if(seOpenClosed) paragraph "You will recieve notifications if any of the switches are on."
-					if(!seOpenClosed) paragraph "You will recieve notifications if any of the switches are off."
-					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>For How Long?</b>", description: "Switch Time", submitOnChange: true)
-					if(oContactTime) paragraph "coming soon..."
+					input(name: "seOnOff", type: "bool", defaultValue: "false", title: "<b>Switch Off or On? (off=Off, on=On)</b>", description: "Switch status", submitOnChange: "true")
+					if(seOnOff) paragraph "You will recieve notifications if any of the switches are on."
+					if(!seOnOff) paragraph "You will recieve notifications if any of the switches are off."
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
+					if(oSwitchTime) {
+						paragraph "Delay the notification until the device has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
 				}
 			}
 		}
@@ -323,6 +330,7 @@ def enablerSwitchHandler(evt){
 }
 
 def controlSwitchHandler(evt){
+	LOGDEBUG("In controlSwitchHandler...Checking what type of trigger to use")
 	if((controlSwitch) && (!oControlContact) && (!oControlSwitch)) {
 		state.controlSwitch2 = evt.value
 		LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
@@ -403,7 +411,7 @@ def switchHandler(evt) {
 	controlSwitchHandler()
 	if(state.enablerSwitch2 == "off") {
 		LOGDEBUG("In switchHandler - Switch Status: ${state.switchStatus}")
-		if(csOpenClosed) {
+		if(seOnOff) {
 			if(state.switchStatus == "on") {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
@@ -411,13 +419,27 @@ def switchHandler(evt) {
 					magicHappensHandler()
 				}
 			}
+			if(state.switchStatus == "off") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In switchHandler...Pause: ${pause1}")
+					reverseTheMagicHandler()
+				}
+			}
 		}
-		if(!csOpenClosed) {
+		if(!seOnOff) {
 			if(state.switchStatus == "off") {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 					LOGDEBUG("In switchHandler...Pause: ${pause1}")
 					magicHappensHandler()
+				}
+			}
+			if(state.switchStatus == "on") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In switchHandler...Pause: ${pause1}")
+					reverseTheMagicHandler()
 				}
 			}
 		}
@@ -434,7 +456,9 @@ def switchHandler(evt) {
 def magicHappensHandler() {
 	LOGDEBUG("In magicHappensHandler...CS: ${state.controlSwitch2}")
 		if(oDelay) {
+			LOGDEBUG("In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}")
 			if(minutesUp) state.realSeconds = minutesUp * 60
+			if(notifyDelay) state.notifyDel = notifyDelay * 60
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
 			if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
@@ -444,8 +468,22 @@ def magicHappensHandler() {
 			if(oDevice) runIn(state.realSeconds,switchesOnHandler)
 			if(oDevice) runIn(state.realSeconds,switchesOffHandler)
 			if(newMode) runIn(state.realSeconds, modeHandler)
+		} else if(notifyDelay) {
+			LOGDEBUG("In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}")
+			if(minutesUp) state.realSeconds = minutesUp * 60
+			if(notifyDelay) state.notifyDel = notifyDelay * 60
+			if(oDimUp && oControl) slowOnHandler()
+			if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
+			if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
+			if(oMessage && oControl) runIn(state.notifyDel,messageHandler)
+			if(oPush && oControl) runIn(state.notifyDel,pushHandler)
+			if(oSpeech && oControl) runIn(state.notifyDel,letsTalk)
+			if(oDevice) runIn(state.notifyDel,switchesOnHandler)
+			if(oDevice) runIn(state.notifyDel,switchesOffHandler)
+			if(newMode) runIn(state.notifyDel, modeHandler)
 		} else {
 			if(minutesUp) state.realSeconds = minutesUp * 60
+			if(notifyDelay) state.notifyDel = notifyDelay * 60
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) slowOffHandler()
 			if(oSetLC && oControl) dimmerOnHandler()
@@ -461,6 +499,7 @@ def magicHappensHandler() {
 def reverseTheMagicHandler() {
 	LOGDEBUG("In reverseTheMagicHandler...CS: ${state.controlSwitch2}")
 	if(minutesUp) state.realSeconds = minutesUp * 60
+	if(notifyDelay) state.notifyDel = notifyDelay * 60
 	if(oDimUp && oControl) slowDimmerUp.off()
 	if(oDimDn && oControl) slowDimmerDn.off()
 	if(oSetLC && oControl) setOnLC.off()
@@ -812,6 +851,8 @@ def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(state.controlSwitch2 == null){state.controlSwitch2 = "off"}
+	if(notifyDelay == null){notifyDelay = 0}
+	if(minutesUp == null){minutesUp = 0}
 }
 
 def logCheck(){					// Modified from @Cobra Code
