@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *  V1.0.3 - 02/27/19 - Fixed a bad bug in the letsTalk / messageHandler routines.
+ *  V1.0.4 - 02/28/19 - Second attempt to fix speaking bug.
+ *  V1.0.3 - 02/27/19 - Attempt to fix a bad bug in the letsTalk / messageHandler routines.
  *  V1.0.2 - 02/27/19 - Name change to Notifier Plus. Added in triggers for Contact Sensors and Switches. (more to come!)
  *  V1.0.1 - 02/24/19 - Added color to lighting options. Other code cleanup.
  *  V1.0.0 - 02/22/19 - Initial release.
@@ -42,7 +43,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -381,12 +382,11 @@ def switchHandler(evt) {
 
 def controlSwitchHandler(evt){
 	state.controlSwitch2 = evt.value
-	LOGDEBUG("In controlSwitchHandler - Control Switch = ${state.controlSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
+	LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
     if(state.controlSwitch2 == "on"){
-    	log.info "${app.label} - Control Switch is set to On."
+    	log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
 	} else {
-		log.info "${app.label} - Control Switch is set to Off."
+		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
     }
 }
 
@@ -489,7 +489,7 @@ def slowOffHandler(evt) {
 			LOGDEBUG("${app.label} - Day of the Week didn't match - No need to run.")
 		}
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+		LOGDEBUG("${app.label} - Control Switch is ${state.controlSwitch2} - No need to run.")
 	}
 }
 
@@ -508,7 +508,7 @@ def dimStepUp() {
 			log.info "${app.label} - Target Level has been reached"
 		}
 	} else {
-		log.info "${app.label} - Control Switch is off"
+		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
 	}
 }
 
@@ -529,7 +529,7 @@ def dimStepDown() {
 			log.info "${app.label} - Target Level has been reached"
 		} 
     } else{
-        LOGDEBUG("${app.label} - Control Switch is Off")
+        LOGDEBUG("${app.label} - Control Switch is ${state.controlSwitch2}")
     }						
 }
 
@@ -537,7 +537,6 @@ def letsTalk() {							// Modified from @Cobra Code
 	LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
 	if(state.controlSwitch2 == "on") {
 		messageHandler()
-		state.msg = msg
   		if(speechMode == "Music Player"){ 
 			if(echoSpeaks) {
 				speaker.setLevel(volume1)
@@ -557,28 +556,26 @@ def letsTalk() {							// Modified from @Cobra Code
 			runIn(repeatSeconds,letsTalk)
 		}
 	} else {
-		log.info "${app.label} - Control Switch is off"
+		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
 		LOGDEBUG("In letsTalk...Okay, I'm done!")
 	}
 }
 
 def messageHandler() {
-	LOGDEBUG("In messageHandler...")
+	LOGDEBUG("In messageHandler - Control Switch: ${state.controlSwitch2}")
 	if(state.controlSwitch2 == "on") {
 		if(oRandom) {
 			def values = "${message}".split(";")
 			vSize = values.size()
 			count = vSize.toInteger()
     		def randomKey = new Random().nextInt(count)
-			msg = values[randomKey]
+			state.msg = values[randomKey]
 			LOGDEBUG("In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}")
-			return msg
 		} else {
 			state.msg = "${message}"
-			return msg
 		}
 	} else {
-		LOGDEBUG("In messageHandler - Control Switch in Off")
+		LOGDEBUG("In messageHandler - Control Switch is ${state.controlSwitch2}")
 	}
 }
 
