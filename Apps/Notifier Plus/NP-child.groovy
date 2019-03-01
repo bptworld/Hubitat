@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 03/01/19 - Fixed 'pause' button. Fixed 'by Day of the Week'. Special Thank you to RCJordan for all the testing!
+ *						Added Motion Sensor to Triggers.
  *  V1.0.5 - 02/28/19 - Changed 'Speaker Synth' speaker device into two branches - Google Speakers and other speakers, fixes an 
  *						issue with 'Initialize Google' speaker option.  Contact Sensors triggers and Switch Triggers can now act
  *						as the Control Switch. Delay notifications now work.
@@ -46,7 +48,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
 }
 
 definition(
@@ -82,9 +84,10 @@ def pageConfig() {
 			input(name: "xDate", type: "bool", defaultValue: "false", title: "<b>by Date?</b><br>This will notify you on the Month/Day(s)/Year selected only.", description: "Date", submitOnChange: "true", width: 6)
 			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true", width: 6)
 			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
-			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Device?</b><br>Device Notifications", description: "Device Notifications", submitOnChange: "true", width: 6)
+			input(name: "xMotion", type: "bool", defaultValue: "false", title: "<b>by Motion Sensor?</b><br>Motion Sensor Notifications", description: "Motion Sensor Notifications", submitOnChange: "true", width: 6)
+			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Switch?</b><br>Switch Notifications", description: "Switch Notifications", submitOnChange: "true", width: 12)
 		}
-		section("<b>Please remember to clear any selection made before switching to another trigger.</b>") {}
+		section("<b>If you would like to change to a different trigger, be sure to remove all selections associated with that trigger before choosing a different trigger. It is strongly recommended to simply delete this child app and create a new one, if a different trigger is needed.</b>") {}
 		section() {
 			if(xDate) {
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -106,6 +109,7 @@ def pageConfig() {
 		}
 		section() {
 			if(xContact) {
+				paragraph "<b>by Contact Sensor</b>"
 				input(name: "contactEvent", type: "capability.contactSensor", title: "Trigger Notifications based on a Contact Sensor", required: true, multiple: true, submitOnChange: true)
 				if(contactEvent) {
 					input(name: "csOpenClosed", type: "bool", defaultValue: "false", title: "<b>Contact Closed or Opened? (off=Closed, on=Open)</b>", description: "Contact status", submitOnChange: "true")
@@ -120,7 +124,24 @@ def pageConfig() {
 			}
 		}
 		section() {
+			if(xMotion) {
+				paragraph "<b>by Motion Sensor</b>"
+				input(name: "motionEvent", type: "capability.motionSensor", title: "Trigger Notifications based on a Motion Sensor", required: true, multiple: true, submitOnChange: true)
+				if(motionEvent) {
+					input(name: "meOnOff", type: "bool", defaultValue: "false", title: "<b>Motion Inactive or Active? (off=Inactive, on=Active)</b>", description: "Motion status", submitOnChange: "true")
+					if(seOnOff) paragraph "You will recieve notifications if any of the sensors are on."
+					if(!seOnOff) paragraph "You will recieve notifications if any of the sensors are off."
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
+					if(oSwitchTime) {
+						paragraph "Delay the notification until the device has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
+				}
+			}
+		}
+		section() {
 			if(xSwitch) {
+				paragraph "<b>by Switch</b>"
 				input(name: "switchEvent", type: "capability.switch", title: "Trigger Notifications based on a Switch", required: true, multiple: true, submitOnChange: true)
 				if(switchEvent) {
 					input(name: "seOnOff", type: "bool", defaultValue: "false", title: "<b>Switch Off or On? (off=Off, on=On)</b>", description: "Switch status", submitOnChange: "true")
@@ -149,15 +170,16 @@ def pageConfig() {
 		if(oControl) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
 				paragraph "This is your child app on/off switch. <b>Required if using Lighting and/or Message Options.</b>"
-				if(xContact) {
-					paragraph "If choosing to use either Contact or Switch for Control... Be sure to remove any device from the control switch option below."
-					input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
-				}
+				paragraph "If choosing to use either Contact, Motion or Switch for Control...Be sure to remove any device from the control switch option below."
+				if(xContact) input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
+				if(xMotion) input(name: "oControlMotion", type: "bool", defaultValue: "false", title: "<b>Use Trigger Motion Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
 				if(xSwitch) input(name: "oControlSwitch", type: "bool", defaultValue: "false", title: "<b>Use Trigger Switch as Control Switch?</b>", description: "Control Options", submitOnChange: true)
-				if((oControlContact) || (oControlSwitch)) {
+				if((oControlContact) || (oControlSwitch) || (oControlMotion)) {
 					paragraph ""
+					state.controlSW = "no"
 				} else {
 					input(name: "controlSwitch", type: "capability.switch", title: "Turn the app on or off with this switch", required: true, multiple: false)
+					state.controlSW = "yes"
 				}
 			}
 		}
@@ -280,44 +302,51 @@ def updated() {
 def initialize() {
 	logCheck()
     setDefaults()
-	
 	scheduleHandler()
 }
 
 def scheduleHandler(){
 	LOGDEBUG("In scheduleHandler...") 
-	if(xDate) {
-		state.monthName = month   
-    	if(state.monthName == "Jan") {state.theMonth = "1"}
-    	if(state.monthName == "Feb") {state.theMonth = "2"}
-    	if(state.monthName == "Mar") {state.theMonth = "3"}
-    	if(state.monthName == "Apr") {state.theMonth = "4"}
-    	if(state.monthName == "May") {state.theMonth = "5"}
-    	if(state.monthName == "Jun") {state.theMonth = "6"}
-    	if(state.monthName == "Jul") {state.theMonth = "7"}
-    	if(state.monthName == "Aug") {state.theMonth = "8"}
-    	if(state.monthName == "Sep") {state.theMonth = "9"}
-    	if(state.monthName == "Oct") {state.theMonth = "10"}
-    	if(state.monthName == "Nov") {state.theMonth = "11"}
-    	if(state.monthName == "Dec") {state.theMonth = "12"}
-		LOGDEBUG("In scheduleHandler - day: ${day}")
-		String jDays = day.join(",")
-		state.theDays = jDays
-		state.theHour = hour
-		state.theMin = min
-	
-    	state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
-		LOGDEBUG("In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *")
-    	schedule(state.schedule, magicHappensHandler)
-	}
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-
-	if(xDay) schedule(startTime, magicHappensHandler)
-	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
-	if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
+	if(state.enablerSwitch2 == "off") {
+		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+ 	   	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+			if(xDate) {
+				state.monthName = month   
+ 		 	  	if(state.monthName == "Jan") {state.theMonth = "1"}
+    			if(state.monthName == "Feb") {state.theMonth = "2"}
+    			if(state.monthName == "Mar") {state.theMonth = "3"}
+    			if(state.monthName == "Apr") {state.theMonth = "4"}
+    			if(state.monthName == "May") {state.theMonth = "5"}
+   			 	if(state.monthName == "Jun") {state.theMonth = "6"}
+    			if(state.monthName == "Jul") {state.theMonth = "7"}
+ 			   	if(state.monthName == "Aug") {state.theMonth = "8"}
+    			if(state.monthName == "Sep") {state.theMonth = "9"}
+    			if(state.monthName == "Oct") {state.theMonth = "10"}
+    			if(state.monthName == "Nov") {state.theMonth = "11"}
+    			if(state.monthName == "Dec") {state.theMonth = "12"}
+				LOGDEBUG("In scheduleHandler - day: ${day}")
+				String jDays = day.join(",")
+				state.theDays = jDays
+				state.theHour = hour
+				state.theMin = min
 	
+    			state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
+				LOGDEBUG("In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *")
+    			schedule(state.schedule, magicHappensHandler)
+			}
+			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
+
+			if(xDay) schedule(startTime, dayOfTheWeekHandler)
+			if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
+			if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
+			if(xMotion) subscribe(motionEvent, "motion", motionHandler)
+		}
+	} else {
+		LOGDEBUG("In scheduleHandler - Enabler Switch is ON - Child app is disabled.")
+	}
 }
+	
 def enablerSwitchHandler(evt){
 	state.enablerSwitch2 = evt.value
 	LOGDEBUG("In enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
@@ -331,7 +360,7 @@ def enablerSwitchHandler(evt){
 
 def controlSwitchHandler(evt){
 	LOGDEBUG("In controlSwitchHandler...Checking what type of trigger to use")
-	if((controlSwitch) && (!oControlContact) && (!oControlSwitch)) {
+	if(state.controlSW == "yes") {
 		state.controlSwitch2 = evt.value
 		LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
     	if(state.controlSwitch2 == "on"){
@@ -340,27 +369,71 @@ def controlSwitchHandler(evt){
 			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
     	}
 	}
-	
 	if(oControlContact) {
-		LOGDEBUG("In controlSwitchHandler - Contact Sensor: ${state.contactStatus}")
-    	if(state.contactStatus == "open"){
-			state.controlSwitch2 = "on"
-    		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
-		} else {
-			state.controlSwitch2 = "off"
-			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
-    	}
+		if(csOpenClosed) {
+			LOGDEBUG("In controlSwitchHandler - Contact Sensor: ${state.contactStatus}")
+    		if(state.contactStatus == "open"){
+				state.controlSwitch2 = "on"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "off"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
+		if(!csOpenClosed) {
+			LOGDEBUG("In controlSwitchHandler - Contact Sensor: ${state.contactStatus}")
+    		if(state.contactStatus == "open"){
+				state.controlSwitch2 = "off"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "on"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
 	}
-	
 	if(oControlSwitch) {
-		LOGDEBUG("In controlSwitchHandler - Switch: ${state.switchStatus}")
-    	if(state.switchStatus == "on"){
-			state.controlSwitch2 = "on"
-    		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
-		} else {
-			state.controlSwitch2 = "off"
-			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
-    	}
+		if(seOnOff) {
+			LOGDEBUG("In controlSwitchHandler - Switch: ${state.switchStatus}")
+    		if(state.switchStatus == "on"){
+				state.controlSwitch2 = "on"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "off"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
+		if(!seOnOff) {
+			LOGDEBUG("In controlSwitchHandler - Switch: ${state.switchStatus}")
+    		if(state.switchStatus == "on"){
+				state.controlSwitch2 = "off"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "on"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
+	}
+	if(oControlMotion) {
+		if(meOnOff) {
+			LOGDEBUG("In controlSwitchHandler - Motion: ${state.motionStatus}")
+    		if(state.motionStatus == "active"){
+				state.controlSwitch2 = "on"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "off"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
+		if(!meOnOff) {
+			LOGDEBUG("In controlSwitchHandler - Motion: ${state.motionStatus}")
+    		if(state.motionStatus == "active"){
+				state.controlSwitch2 = "off"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "on"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
 	}
 }
 
@@ -448,7 +521,47 @@ def switchHandler(evt) {
 	}
 }
 
-
+def motionHandler(evt) {
+	state.motionStatus = evt.value
+	controlSwitchHandler()
+	if(state.enablerSwitch2 == "off") {
+		LOGDEBUG("In motionHandler - Switch Status: ${state.motionStatus}")
+		if(meOnOff) {
+			if(state.motionStatus == "active") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+					magicHappensHandler()
+				}
+			}
+			if(state.motionStatus == "inactive") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+					reverseTheMagicHandler()
+				}
+			}
+		}
+		if(!meOnOff) {
+			if(state.motionStatus == "inactive") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+					magicHappensHandler()
+				}
+			}
+			if(state.motionStatus == "active") {
+				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+					reverseTheMagicHandler()
+				}
+			}
+		}
+	} else {
+		LOGDEBUG("In motionHandler - Enabler Switch is ON - Child app is disabled.")
+	}
+}
 
 
 
@@ -510,30 +623,26 @@ def reverseTheMagicHandler() {
 def slowOnHandler(evt) {
 	if(state.controlSwitch2 == "on") {
 		dayOfTheWeekHandler()
-		if(state.dotwMatch == "yes") {
-			LOGDEBUG("In slowOnHandler...")
-			if(state.enablerSwitch2 == "off") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In slowOnHandler...Pause: ${pause1}")
-					state.fromWhere = "slowOn"
-					state.onLevel = 1
-					state.color = "${colorUp}"
-					setLevelandColorHandler()
-        			state.currentLevel = slowDimmerUp[0].currentLevel
-    				if(minutesUp == 0) return
-    				seconds = minutesUp * 6
-    				state.dimStep = targetLevelHigh / seconds
-    				state.dimLevel = state.currentLevel
-    				LOGDEBUG("slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
-					if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
-					runIn(10,dimStepUp)
-				}
-			} else {
-				LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
+		LOGDEBUG("In slowOnHandler...")
+		if(state.enablerSwitch2 == "off") {
+			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+				LOGDEBUG("In slowOnHandler...Pause: ${pause1}")
+				state.fromWhere = "slowOn"
+				state.onLevel = 1
+				state.color = "${colorUp}"
+				setLevelandColorHandler()
+       			state.currentLevel = slowDimmerUp[0].currentLevel
+    			if(minutesUp == 0) return
+    			seconds = minutesUp * 6
+    			state.dimStep = targetLevelHigh / seconds
+    			state.dimLevel = state.currentLevel
+    			LOGDEBUG("slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+				if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
+				runIn(10,dimStepUp)
 			}
 		} else {
-			LOGDEBUG("${app.label} - Day of the Week didn't match - No need to run.")
+			LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
 		}
 	} else {
 		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
@@ -543,30 +652,25 @@ def slowOnHandler(evt) {
 def slowOffHandler(evt) {
 	if(state.controlSwitch2 == "on") {
 		dayOfTheWeekHandler()
-		if(state.dotwMatch == "yes") {
-			LOGDEBUG("In slowOffHandler...")
-			if(state.enablerSwitch2 == "off") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In slowOffandler...Pause: ${pause1}")
-					state.fromWhere = "slowOff"
-					state.onLevel = 99
-					state.color = "${colorDn}"
-					setLevelandColorHandler()
-        			state.currentLevel = slowDimmerDn[0].currentLevel
-    				if(minutesDn == 0) return
-    				seconds = minutesDn * 6
-    				state.dimStep1 = (targetLevelLow / seconds) * 100
-    				state.dimLevel = state.currentLevel
-   					LOGDEBUG("slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
-    				runIn(10,dimStepDown)					
-				}				
-									
-			} else {
-				LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
-			}
+		LOGDEBUG("In slowOffHandler...")
+		if(state.enablerSwitch2 == "off") {
+			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+				LOGDEBUG("In slowOffandler...Pause: ${pause1}")
+				state.fromWhere = "slowOff"
+				state.onLevel = 99
+				state.color = "${colorDn}"
+				setLevelandColorHandler()
+       			state.currentLevel = slowDimmerDn[0].currentLevel
+    			if(minutesDn == 0) return
+    			seconds = minutesDn * 6
+    			state.dimStep1 = (targetLevelLow / seconds) * 100
+    			state.dimLevel = state.currentLevel
+   				LOGDEBUG("slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+    			runIn(10,dimStepDown)					
+			}											
 		} else {
-			LOGDEBUG("${app.label} - Day of the Week didn't match - No need to run.")
+			LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
 		}
 	} else {
 		LOGDEBUG("${app.label} - Control Switch is ${state.controlSwitch2} - No need to run.")
@@ -692,7 +796,6 @@ def modeHandler() {
 def dayOfTheWeekHandler() {
 	LOGDEBUG("In dayOfTheWeek...")
 	if(xDay) {
-		state.dotwMatch = "no"
 		Calendar date = Calendar.getInstance()
 		int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
 		if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
@@ -709,13 +812,13 @@ def dayOfTheWeekHandler() {
 			it2 = it.replace("[","")
 			it3 = it2.replace("]","")
 			it4 = it3.replace(" ","")
-			if(it4 == state.dotWeek) { state.dotwMatch = "yes" }
-			LOGDEBUG("In dayOfTheWeekHandler - state.dotWeek: ${state.dotWeek} - values: ${it4}")
+			if(it4 == state.dotWeek) {
+				LOGDEBUG("In dayOfTheWeekHandler - Match: state.dotWeek: ${state.dotWeek} - values: ${it4}")
+				magicHappensHandler()
+			} else {
+				LOGDEBUG("In dayOfTheWeekHandler - Days set to run (${it4}) does not match today (${state.dotWeek})")
+			}
 		}
-		if(state.dotwMatch != "yes") state.dotwMatch = "no"
-		LOGDEBUG("In dayOfTheWeekHandler - dotwMatch: ${state.dotwMatch}")
-	} else {
-		state.dotwMatch = "yes"
 	}
 }
 
@@ -853,6 +956,9 @@ def setDefaults(){
 	if(state.controlSwitch2 == null){state.controlSwitch2 = "off"}
 	if(notifyDelay == null){notifyDelay = 0}
 	if(minutesUp == null){minutesUp = 0}
+	if(oControlContact == null){oControlContact = false}
+	if(oControlMotion == null){oControlMotion = false}
+	if(oControlSwitch == null){oControlSwitch = false}
 }
 
 def logCheck(){					// Modified from @Cobra Code
