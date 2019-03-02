@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 03/02/19 - Added more options to 'repeat message' section.
  *  V1.0.6 - 03/01/19 - Fixed 'pause' button. Fixed 'by Day of the Week'. Special Thank you to RCJordan for all the testing!
  *						Added Motion Sensor to Triggers.
  *  V1.0.5 - 02/28/19 - Changed 'Speaker Synth' speaker device into two branches - Google Speakers and other speakers, fixes an 
@@ -48,7 +49,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.6"
+	state.version = "v1.0.7"
 }
 
 definition(
@@ -181,6 +182,7 @@ def pageConfig() {
 					input(name: "controlSwitch", type: "capability.switch", title: "Turn the app on or off with this switch", required: true, multiple: false)
 					state.controlSW = "yes"
 				}
+				paragraph "<b>Note:</b> Control switch must be triggered AFTER this child app has been saved to be considered active. This is a fail safe to not trigger the app until all changes have been made and saved correctly.<br>ex. The selected Control Switch is ON when child app is saved, it would have to change to OFF then back to ON to activate this child app."
 			}
 		}
 		if(oLighting) {
@@ -250,7 +252,21 @@ def pageConfig() {
 					}
 				}
 				input(name: "oRepeat", type: "bool", defaultValue: "false", title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: "true")
-				if(oRepeat) input "repeatSeconds", "number", title: "Repeat message every xx seconds until control switch is turned off (1 to 600)", required: true, multiple: false, defaultValue:10, range: '1..600'
+				if(oRepeat) {
+					paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
+					input "repeatSeconds", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					input "maxRepeats", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: "true"
+					if(repeatSeconds) {
+						paragraph "Message will repeat every ${repeatSeconds} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats})"
+						repeatTimeSeconds = (repeatSeconds * maxRepeats)
+						int inputNow=repeatTimeSeconds
+						int nDayNow = inputNow / 86400
+						int nHrsNow = (inputNow % 86400 ) / 3600
+						int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+						int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+						paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Secs to reach the max number of repeats (if Control Switch is not turned off)"
+					}
+				}
 				input(name: "oSpeech", type: "bool", defaultValue: "false", title: "<b>Speech Options</b>", description: "Speech Options", submitOnChange: "true", width: 6)
 				input(name: "oPush", type: "bool", defaultValue: "false", title: "<b>Pushover Options</b>", description: "Pushover Options", submitOnChange: "true", width: 6)
 			}
@@ -572,6 +588,7 @@ def magicHappensHandler() {
 			LOGDEBUG("In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}")
 			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(notifyDelay) state.notifyDel = notifyDelay * 60
+			if(maxRepeats) state.numRepeats = 1
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
 			if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
@@ -585,6 +602,7 @@ def magicHappensHandler() {
 			LOGDEBUG("In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}")
 			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(notifyDelay) state.notifyDel = notifyDelay * 60
+			if(maxRepeats) state.numRepeats = 1
 			if(oDimUp && oControl) slowOnHandler()
 			if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
 			if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
@@ -718,9 +736,9 @@ def dimStepDown() {
 }
 
 def letsTalk() {							// Modified from @Cobra Code
-	if(speaker) LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
-	if(gSpeaker) LOGDEBUG("In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}")
 	if(state.controlSwitch2 == "on") {
+		if(speaker) LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
+		if(gSpeaker) LOGDEBUG("In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}")
 		messageHandler()
   		if(speechMode == "Music Player"){
 			LOGDEBUG("Music Player - ${state.msg}")
@@ -740,7 +758,12 @@ def letsTalk() {							// Modified from @Cobra Code
 			if(speaker) speaker.speak(state.msg)
 		}
 		if(oRepeat) {
-			runIn(repeatSeconds,letsTalk)
+			if(state.numRepeats < maxRepeats) {
+				state.numRepeats = state.numRepeats + 1
+				runIn(repeatSeconds,letsTalk)
+			} else {
+				log.info "${app.label} - Max repeats has been reached."
+			}
 		}
 	} else {
 		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
@@ -959,6 +982,7 @@ def setDefaults(){
 	if(oControlContact == null){oControlContact = false}
 	if(oControlMotion == null){oControlMotion = false}
 	if(oControlSwitch == null){oControlSwitch = false}
+	if(state.numRepeats == null){state.numRepeats = 1}
 }
 
 def logCheck(){					// Modified from @Cobra Code
