@@ -34,15 +34,18 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 03/02/19 - Fix the date being display on tile
+ *  V1.0.2 - 02/18/19 - Adding command initialize
  *  V1.0.1 - 02/08/19 - Changed the 'How many lines' field from 5 or 10, to any number from 1 to 10. Attempt to fix a reported error.
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.1"}
+def version(){"v1.0.3"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
-   		capability "Actuator"
+   		capability "Initialize"
+		capability "Actuator"
 		capability "Speech Synthesis"
 		capability "Music Player"
 		
@@ -52,6 +55,7 @@ metadata {
 		command "speak", ["string"]
 		
     	attribute "whatDidISay", "string"
+		attribute "lastSpoken", "string"
 	}
 	preferences() {    	
         section(){
@@ -87,6 +91,8 @@ def speak(speechMap) {
 
 def populateMap() {
 	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceived}")
+	
+	sendEvent(name: "lastSpoken", value: state.speechReceived, displayed: true)
 	
 	// Read in the maps
 	try {
@@ -201,8 +207,8 @@ def updated() {
 
 def getDateTime() {
 	def date = new Date()
-	if(hourType == false) state.newdate=date.format("MM-DD HH:mm:ss")
-	if(hourType == true) state.newdate=date.format("MM-DD hh:mm:ss")
+	if(hourType == false) state.newdate=date.format("MM-d HH:mm:ss")
+	if(hourType == true) state.newdate=date.format("MM-d hh:mm:ss")
 }
 
 def clearDataOff(){
@@ -247,4 +253,3 @@ def LOGDEBUG(txt) {
     	log.error("LOGDEBUG unable to output requested data!")
     }
 }
-	
