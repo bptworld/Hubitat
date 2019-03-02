@@ -146,13 +146,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.0.6",
+  "NotifierPlusChildVersion": "v1.0.7",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.0.6 - 03/01/19 - Fixed 'pause' button. Fixed 'by Day of the Week'. Special Thank you to RCJordan for all the testing! Added Motion Sensor to Triggers.",
+  "NotifierPlusUpdateNote": "V1.0.7 - 03/02/19 - Added more options to 'repeat message' section.",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
