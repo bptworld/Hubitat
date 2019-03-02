@@ -34,13 +34,13 @@
  *
  *  Changes:
  *
- *  V1.0.3 - 03/02/19 - Fix the date being display on tile
+ *  V1.0.4 - 03/02/19 - Fix the date being display on tile
  *  V1.0.2 - 02/18/19 - Adding command initialize
  *  V1.0.1 - 02/08/19 - Changed the 'How many lines' field from 5 or 10, to any number from 1 to 10. Attempt to fix a reported error.
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.3"}
+def version(){"v1.0.4"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
