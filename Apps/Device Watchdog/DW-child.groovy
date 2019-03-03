@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  V1.2.? - 03/xx/19 - Working on option to send pushover when device comes back online (@gabriele)
+ *  V1.2.4 - 03/03/19 - Functions cleanup. Changes by @gabriele
  *  V1.2.3 - 02/26/19 - Removed Actuator and Sensor options for Device Status reporting
  *  V1.2.2 - 02/26/19 - Attempt to fix an error in the new Device Status reporting
  *  V1.2.1 - 02/25/19 - Second attempt at new Device Status reporting
@@ -64,8 +66,9 @@
  *
  */
 
+
 def setVersion() {
-	state.version = "v1.2.3"
+	state.version = "v1.2.4"
 }
 
 definition(
@@ -169,8 +172,9 @@ def pageConfig() {
 				input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
 				input "timeToRun", "time", title: "Check Devices at this time daily", required: true, submitOnChange: true
 				input "isDataActivityDevice", "capability.switch", title: "Turn this device on if there is Activity data to report", submitOnChange: true, required: false, multiple: false
-			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
+				input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
 				if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
+				//if(sendPushMessage) input(name: "pushOnline", type: "bool", defaultValue: "false", submitOnChange: true, title: "Send another Push when device comes back online", description: "Push when back online")
 			}
 			section() {
 				input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Inactive or active", description: "On is Active, Off is Inactive.")
@@ -315,7 +319,10 @@ def installed() {
 	initialize()
 }
 
-def updated() {	
+def updated() {
+	if(state.mySensors) state.remove('mySensors')
+	if(state.myType) state.remove('myType')
+	
     LOGDEBUG("Updated with settings: ${settings}")
     unsubscribe()
 	logCheck()
@@ -376,158 +383,114 @@ def activityHandler(evt) {
    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
 			log.info "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
 			if(actuatorDevice) {
-				state.myType = "Actuator"
-				state.mySensors = actuatorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Actuator", actuatorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Actuator", actuatorDevice)
+				if(triggerMode == "Status") myStatusHandler("Actuator", actuatorDevice)
 			}
 			if(sensorDevice) {
-				state.myType = "Sensor"
-				state.mySensors = sensorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Sensor", sensorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Sensor", sensorDevice)
+				if(triggerMode == "Status") myStatusHandler("Sensor", sensorDevice)
 			}
 			if(accelerationSensorDevice) {
-	  			state.myType = "Acceleration"
-				state.mySensors = accelerationSensorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Acceleration", accelerationSensorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Acceleration", accelerationSensorDevice)
+				if(triggerMode == "Status") myStatusHandler("Acceleration", accelerationSensorDevice)
 			}
 			if(alarmDevice) {
-				state.myType = "Alarm"
-				state.mySensors = alarmDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Alarm", alarmDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Alarm", alarmDevice)
+				if(triggerMode == "Status") myStatusHandler("Alarm", alarmDevice)
 			}
 			if(batteryDevice) {
-				state.myType = "Battery"
-				state.mySensors = batteryDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Battery", batteryDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Battery", batteryDevice)
+				if(triggerMode == "Status") myStatusHandler("Battery", batteryDevice)
 			}
 			if(carbonMonoxideDetectorDevice) {
-	  			state.myType = "Carbon Monoxide Detector"
-				state.mySensors = carbonMonoxideDetectorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Carbon Monoxide Detector", carbonMonoxideDetectorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Carbon Monoxide Detector", carbonMonoxideDetectorDevice)
+				if(triggerMode == "Status") myStatusHandler("Carbon Monoxide Detector", carbonMonoxideDetectorDevice)
 			}
 			if(contactSensorDevice) {
-				state.myType = "Contact Sensor"
-				state.mySensors = contactSensorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Contact Sensor", contactSensorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Contact Sensor", contactSensorDevice)
+				if(triggerMode == "Status") myStatusHandler("Contact Sensor", contactSensorDevice)
 			}
 			if(energyMeterDevice) {
-				state.myType = "Energy Meter"
-				state.mySensors = energyMeterDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Energy Meter", energyMeterDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Energy Meter", energyMeterDevice)
+				if(triggerMode == "Status") myStatusHandler("Energy Meter", energyMeterDevice)
 			}
 			if(illuminanceMeasurementDevice) {
-				state.myType = "Illuminance Measurement"
-				state.mySensors = illuminanceMeasurementDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Illuminance Measurement", illuminanceMeasurementDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Illuminance Measurement", illuminanceMeasurementDevice)
+				if(triggerMode == "Status") myStatusHandler("Illuminance Measurement", illuminanceMeasurementDevice)
 			}
 			if(lockDevice) {
-				state.myType = "Lock"
-				state.mySensors = lockDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Lock", lockDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Lock", lockDevice)
+				if(triggerMode == "Status") myStatusHandler("Lock", lockDevice)
 			}
 			if(motionSensorDevice) {
-				state.myType = "Motion Sensor"
-				state.mySensors = motionSensorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Motion Sensor", motionSensorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Motion Sensor", motionSensorDevice)
+				if(triggerMode == "Status") myStatusHandler("Motion Sensor", motionSensorDevice)
 			}
 			if(powerMeterDevice) {
-				state.myType = "Power Meter"
-				state.mySensors = powerMeterDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Power Meter", powerMeterDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Power Meter", powerMeterDevice)
+				if(triggerMode == "Status") myStatusHandler("Power Meter", powerMeterDevice)
 			}
 			if(presenceSensorDevice) {
-				state.myType = "Presence Sensor"
-				state.mySensors = presenceSensorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Presence Sensor", presenceSensorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Presence Sensor", presenceSensorDevice)
+				if(triggerMode == "Status") myStatusHandler("Presence Sensor", presenceSensorDevice)
 			}
 			if(pushableButtonDevice) {
-				state.myType = "Pushable Button"
-				state.mySensors = pushableButtonDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Pushable Button", pushableButtonDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Pushable Button", pushableButtonDevice)
+				if(triggerMode == "Status") myStatusHandler("Pushable Button", pushableButtonDevice)
 			}
 			if(relativeHumidityMeasurementDevice) {
-				state.myType = "Relative Humidity Measurement"
-				state.mySensors = relativeHumidityMeasurementDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Relative Humidity Measurement", relativeHumidityMeasurementDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Relative Humidity Measurement", relativeHumidityMeasurementDevice)
+				if(triggerMode == "Status") myStatusHandler("Relative Humidity Measurement", relativeHumidityMeasurementDevice)
 			}
 			if(smokeDetectorDevice) {
-				state.myType = "Smoke Detector"
-				state.mySensors = smokeDetectorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Smoke Detector", smokeDetectorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Smoke Detector", smokeDetectorDevice)
+				if(triggerMode == "Status") myStatusHandler("Smoke Detector", smokeDetectorDevice)
 			}
 			if(switchDevice) {
-				state.myType = "Switch"
-				state.mySensors = switchDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Switch", switchDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Switch", switchDevice)
+				if(triggerMode == "Status") myStatusHandler("Switch", switchDevice)
 			}
 			if(switchLevelDevice) {
-				state.myType = "Switch Level"
-				state.mySensors = switchLevelDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Switch Level", switchLevelDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Switch Level", switchLevelDevice)
+				if(triggerMode == "Status") myStatusHandler("Switch Level", switchLevelDevice)
 			}
 			if(temperatureMeasurementDevice) {
-				state.myType = "Temperature Measurement"
-				state.mySensors = temperatureMeasurementDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Temperature Measurement", temperatureMeasurementDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Temperature Measurement", temperatureMeasurementDevice)
+				if(triggerMode == "Status") myStatusHandler("Temperature Measurement", temperatureMeasurementDevice)
 			}
 			if(valveDevice) {
-				state.myType = "Valve"
-				state.mySensors = valveDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Valve", valveDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Valve", valveDevice)
+				if(triggerMode == "Status") myStatusHandler("Valve", valveDevice)
 			}
 			if(voltageMeasurementDevice) {
-				state.myType = "Voltage Measurement"
-				state.mySensors = voltageMeasurementDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Voltage Measurement", voltageMeasurementDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Voltage Measurement", voltageMeasurementDevice)
+				if(triggerMode == "Status") myStatusHandler("Voltage Measurement", voltageMeasurementDevice)
 			}
 			if(waterSensorDevice) {
-				state.myType = "Water Sensor"
-				state.mySensors = waterSensorDevice
-				if(triggerMode == "Activity") mySensorHandler()
-				if(triggerMode == "Battery_Level") myBatteryHandler()
-				if(triggerMode == "Status") myStatusHandler()
+				if(triggerMode == "Activity") mySensorHandler("Water Sensor", waterSensorDevice)
+				if(triggerMode == "Battery_Level") myBatteryHandler("Water Sensor", waterSensorDevice)
+				if(triggerMode == "Status") myStatusHandler("Water Sensor", waterSensorDevice)
 			}
 			log.info "     * * * * * * * * End ${app.label} * * * * * * * *     "
 			def rightNow = new Date()
@@ -543,41 +506,41 @@ def activityHandler(evt) {
 	}
 }	
 
-def myBatteryHandler() {
-	log.info "     - - - - - Start (B) ${state.myType} - - - - -     "
+def myBatteryHandler(myType, mySensors) {
+	log.info "     - - - - - Start (B) ${myType} - - - - -     "
 	LOGDEBUG("In myBatteryHandler...")
-	state.mySensors.each { device ->
+	mySensors.each { device ->
 		log.info "Working on... ${device}"
 		def currentValue = device.currentValue("battery")
 		if(currentValue == null) currentValue = -999  //RayzurMod
 		LOGDEBUG("In myBatteryHandler...${device} - ${currentValue}")
 		if(currentValue < batteryThreshold && currentValue > -999) { //RayzurMod
 			if(badORgood == false) {
-				log.info "${state.myType} - mySensors: ${device} battery is ${currentValue} less than ${batteryThreshold} threshold."
-				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}<br>"
+				log.info "${myType} - mySensors: ${device} battery is ${currentValue} less than ${batteryThreshold} threshold."
+				state.batteryMap += "${myType} - ${device} battery level is ${currentValue}<br>"
 				state.batteryMapPhone += "${device} - ${currentValue} \n"
 			}
 		} else {
 			if(badORgood == true && currentValue > -999) { //RayzurMod
-				log.info "${state.myType} - ${device} battery is ${currentValue}, over threshold."
-				state.batteryMap += "${state.myType} - ${device} battery level is ${currentValue}, over threshold.<br>"
+				log.info "${myType} - ${device} battery is ${currentValue}, over threshold."
+				state.batteryMap += "${myType} - ${device} battery level is ${currentValue}, over threshold.<br>"
 				state.batteryMapPhone += "${device} - ${currentValue} \n"
 			} else
 				if (currentValue == -999) { //RayzurMod
-					log.info "${state.myType} - ${device} battery hasn't reported in." //RayzurMod
-					state.batteryMap += "${state.myType} - <i>${device} battery level isn't reporting</i><br>" //RayzurMod
+					log.info "${myType} - ${device} battery hasn't reported in." //RayzurMod
+					state.batteryMap += "${myType} - <i>${device} battery level isn't reporting</i><br>" //RayzurMod
 					state.batteryMapPhone += "${device} - isn't reporting \n" //RayzurMod
 				} //RayzurMod
 		}
 	}
-	log.info "     - - - - - End (B) ${state.myType} - - - - -     "
+	log.info "     - - - - - End (B) ${myType} - - - - -     "
 }
 
-def mySensorHandler() {
-	log.info "     - - - - - Start (S) ${state.myType} - - - - -     "
+def mySensorHandler(myType, mySensors) {
+	log.info "     - - - - - Start (S) ${myType} - - - - -     "
 	state.reportCount = 0
 	LOGDEBUG("In mySensorHandler...")
-	state.mySensors.each { device ->
+	mySensors.each { device ->
 		log.info "Working on... ${device}"
 		def lastActivity = device.getLastActivity()
     	long timeDiff
@@ -592,79 +555,81 @@ def mySensorHandler() {
 		hourDiff = timeDiff / 60
     	int hour = Math.floor(timeDiff / 60)
 		int min = timeDiff % 60
-		LOGDEBUG("${state.myType} - mySensors: ${device} hour: ${hour} min: ${min}")
-		LOGDEBUG("${state.myType} - mySensors: ${device} hourDiff: ${hourDiff} vs timeAllowed: ${timeAllowed}")
+		LOGDEBUG("${myType} - mySensors: ${device} hour: ${hour} min: ${min}")
+		LOGDEBUG("${myType} - mySensors: ${device} hourDiff: ${hourDiff} vs timeAllowed: ${timeAllowed}")
   		if(hourDiff > timeAllowed) {
 			if(badORgood == false) {
-				log.info "${state.myType} - ${device} hasn't checked in since ${hour}h ${min}m ago."
-				state.timeSinceMap += "${state.myType} - ${device} hasn't checked in since ${hour}h ${min}m ago.<br>"
-				state.timeSinceMapPhone += "${device}-${hour}h ${min}m \n"
+				log.info "${myType} - ${device} hasn't checked in since ${hour}h ${min}m ago."
+				state.timeSinceMap += "${myType} - ${device} hasn't checked in since ${hour}h ${min}m ago.<br>"
+				state.timeSinceMapPhone += "${device} - ${hour}h ${min}m \n"
 				state.reportCount = state.reportCount + 1
 				log.info "state.reportCount: ${state.reportCount}"
+				if(pushOnline) {
+					subscribe(device, myType, eventCheck)
+				}
 			}
 		} else {
 			if(badORgood == true) {
-				log.info "${state.myType} - mySensors: ${device} last checked in ${hour}h ${min}m ago.<br>"
-				state.timeSinceMap += "${state.myType} - ${device} last checked in ${hour}h ${min}m ago.<br>"
-				state.timeSinceMapPhone += "${device}-${hour}h ${min}m \n"
+				log.info "${myType} - mySensors: ${device} last checked in ${hour}h ${min}m ago.<br>"
+				state.timeSinceMap += "${myType} - ${device} last checked in ${hour}h ${min}m ago.<br>"
+				state.timeSinceMapPhone += "${device} - ${hour}h ${min}m \n"
 				state.reportCount = state.reportCount + 1
 				log.info "state.reportCount: ${state.reportCount}"
 			}
 		}
 	}
-	log.info "     - - - - - End (S) ${state.myType} - - - - -     "
+	log.info "     - - - - - End (S) ${myType} - - - - -     "
 }
 
-def myStatusHandler() {
-	log.info "     - - - - - Start (S) ${state.myType} - - - - -     "
+def myStatusHandler(myType, mySensors) {
+	log.info "     - - - - - Start (S) ${myType} - - - - -     "
 	LOGDEBUG("In myStatusHandler...")
-	state.mySensors.each { device ->
+	mySensors.each { device ->
 		log.info "Working on... ${device}"
-		if(state.myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
-		if(state.myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
-		if(state.myType == "Battery") { deviceStatus = device.currentValue("battery") }
-		if(state.myType == "Carbon Monoxide Detector") { deviceStatus = device.currentValue("carbonMonoxideDetector") } 
-		if(state.myType == "Contact Sensor") { deviceStatus = device.currentValue("contact") }
-		if(state.myType == "Energy Meter") { deviceStatus = device.currentValue("energyMeter") }
-		if(state.myType == "Illuminance Measurement") { deviceStatus = device.currentValue("illuminanceMeasurement") }
-		if(state.myType == "Lock") { deviceStatus = device.currentValue("lock") }
-		if(state.myType == "Motion Sensor") { deviceStatus = device.currentValue("motion") }
-		if(state.myType == "Power Meter") { deviceStatus = device.currentValue("powerMeter") }
-		if(state.myType == "Presence Sensor") { deviceStatus = device.currentValue("presence") }
-		if(state.myType == "Pushable Button") { deviceStatus = device.currentValue("pushableButton") }
-		if(state.myType == "Relative Humidity Measurement") { deviceStatus = device.currentValue("relativeHumidityMeasurement") }
-		if(state.myType == "Smoke Detector") { deviceStatus = device.currentValue("smokeDetector") }
-		if(state.myType == "Switch") { deviceStatus = device.currentValue("switch") }
-		if(state.myType == "Switch Level") { deviceStatus = device.currentValue("switchLevel") }
-		if(state.myType == "Temperature Measurement") { deviceStatus = device.currentValue("temperatureMeasurement") }
-		if(state.myType == "Valve") { deviceStatus = device.currentValue("valve") }
-		if(state.myType == "Voltage Measurement") { deviceStatus = device.currentValue("voltageMeasurement") }
-		if(state.myType == "Water Sensor") { deviceStatus = device.currentValue("waterSensor") }
-		
-		state.noLastActivity = "ok"
+		if(myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
+		if(myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
+		if(myType == "Battery") { deviceStatus = device.currentValue("battery") }
+		if(myType == "Carbon Monoxide Detector") { deviceStatus = device.currentValue("carbonMonoxideDetector") } 
+		if(myType == "Contact Sensor") { deviceStatus = device.currentValue("contact") }
+		if(myType == "Energy Meter") { deviceStatus = device.currentValue("energyMeter") }
+		if(myType == "Illuminance Measurement") { deviceStatus = device.currentValue("illuminanceMeasurement") }
+		if(myType == "Lock") { deviceStatus = device.currentValue("lock") }
+		if(myType == "Motion Sensor") { deviceStatus = device.currentValue("motion") }
+		if(myType == "Power Meter") { deviceStatus = device.currentValue("powerMeter") }
+		if(myType == "Presence Sensor") { deviceStatus = device.currentValue("presence") }
+		if(myType == "Pushable Button") { deviceStatus = device.currentValue("pushableButton") }
+		if(myType == "Relative Humidity Measurement") { deviceStatus = device.currentValue("relativeHumidityMeasurement") }
+		if(myType == "Smoke Detector") { deviceStatus = device.currentValue("smokeDetector") }
+		if(myType == "Switch") { deviceStatus = device.currentValue("switch") }
+		if(myType == "Switch Level") { deviceStatus = device.currentValue("switchLevel") }
+		if(myType == "Temperature Measurement") { deviceStatus = device.currentValue("temperatureMeasurement") }
+		if(myType == "Valve") { deviceStatus = device.currentValue("valve") }
+		if(myType == "Voltage Measurement") { deviceStatus = device.currentValue("voltageMeasurement") }
+		if(myType == "Water Sensor") { deviceStatus = device.currentValue("waterSensor") }
+		def noLastActivity = "ok"
 		try {
 			def lastActivity = device.getLastActivity()
-			state.newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
-			LOGDEBUG("In myStatusHandler - No lastActivity is ${device} - ${state.newDate} aaaaaaaaaa")
+			def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
+			LOGDEBUG("In myStatusHandler - No lastActivity is ${device} - ${newDate}")
 		} 
 		catch (e) {
-			LOGDEBUG("In myStatusHandler - No lastActivity on ${device} bbbbbbbbbb")
-			state.noLastActivity = "No Last Activity date available"
+			LOGDEBUG("In myStatusHandler - No lastActivity on ${device}")
+			noLastActivity = "No Last Activity date available"
 		}
-		LOGDEBUG("In myStatusHandler - noLastActivity: ${state.noLastActivity}")
-		if(state.noLastActivity == "ok") {
-			log.info "${state.myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${state.newDate}<br>"
-			state.statusMap += "${device} is ${deviceStatus} - last checked in ${state.newDate}<br>"
+		LOGDEBUG("In myStatusHandler - noLastActivity: ${noLastActivity}")
+		if(noLastActivity == "ok") {
+			log.info "${myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
+			state.statusMap += "${device} is ${deviceStatus} - last checked in ${newDate}<br>"
 			state.statusMapPhone += "${device} \n"
-			state.statusMapPhone += "${deviceStatus} - ${state.newDate} \n"
+			state.statusMapPhone += "${deviceStatus} - ${newDate} \n"
 		} else {
-			log.info "${state.myType} - myStatus: ${device} is ${deviceStatus} - ${state.noLastActivity}<br>"
-			state.statusMap += "${device} is ${deviceStatus} - ${state.noLastActivity}<br>"
+			log.info "${myType} - myStatus: ${device} is ${deviceStatus} - ${noLastActivity}<br>"
+			state.statusMap += "${device} is ${deviceStatus} - ${noLastActivity}<br>"
 			state.statusMapPhone += "${device} \n"
-			state.statusMapPhone += "${deviceStatus} - ${state.noLastActivity} \n"
+			state.statusMapPhone += "${deviceStatus} - ${noLastActivity} \n"
 		} 
 	}
-	log.info "     - - - - - End (S) ${state.myType} - - - - -     "
+	log.info "     - - - - - End (S) ${myType} - - - - -     "
 }
 
 def setupNewStuff() {
@@ -682,12 +647,10 @@ def clearMaps() {
 	state.timeSinceMapPhone = [:]
 	state.timeSinceMap = ""
 	state.timeSinceMapPhone = ""
-	
 	state.batteryMap = [:]
 	state.batteryMapPhone = [:]
 	state.batteryMap = ""
 	state.batteryMapPhone = ""
-	
 	state.statusMap = [:]
 	state.statusMapPhone = [:]
 	state.statusMap = ""
@@ -777,6 +740,13 @@ def pushNow(){
 	}	
 }
 
+def eventCheck(evt) {						// Added by @gabriele
+	def device = evt.getDevice()
+	LOGDEBUG("In eventCheck - ${device} is back online, sending Pushover message")
+	sendPushMessage.deviceNotification("${device} is back online!")
+	unsubscribe(device)
+}
+
 // ********** Normal Stuff **********
 
 def pauseOrNot(){								// Modified from @Cobra Code
@@ -850,9 +820,9 @@ def display() {
 }
 
 def display2(){
+	setVersion()
 	section() {
-		setVersion()
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
-} 
+}
