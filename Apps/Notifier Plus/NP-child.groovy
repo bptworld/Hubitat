@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 03/04/19 - Added Temp, Humidity and Power Triggers
  *  V1.0.7 - 03/02/19 - Added more options to 'repeat message' section.
  *  V1.0.6 - 03/01/19 - Fixed 'pause' button. Fixed 'by Day of the Week'. Special Thank you to RCJordan for all the testing!
  *						Added Motion Sensor to Triggers.
@@ -49,7 +50,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
 }
 
 definition(
@@ -77,7 +78,7 @@ def pageConfig() {
 			paragraph "Get nofified when it's a holiday, birthday, special occasion, etc. Great for telling Hubitat when it's school vacation."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
-			if((xDate && xDay) || (xDate && xContact) || (xDate && xSwitch) || (xDay && xContact) || (xDay && xSwitch) || (xContact && xSwitch)) {
+			if((xDate && xDay) || (xDate && xContact) || (xDate && xMotion) || (xDate && xSwitch) || (xDate && xTemp) ||  (xDate && xPower) || (xDay && xContact) || (xDay && xMotion) || (xDay && xSwitch) || (xDay && xTemp) || (xDay && xPower)) {
 				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
 			} else {
 				paragraph "Please only choose <b>one</b> option. If multiple options are selected bad things will happen."
@@ -85,11 +86,14 @@ def pageConfig() {
 			input(name: "xDate", type: "bool", defaultValue: "false", title: "<b>by Date?</b><br>This will notify you on the Month/Day(s)/Year selected only.", description: "Date", submitOnChange: "true", width: 6)
 			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true", width: 6)
 			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
+			input(name: "xHumidity", type: "bool", defaultValue: "false", title: "<b>by Humidity Level?</b><br>Power Notifications", description: "Humidity Notifications", submitOnChange: "true", width: 6)
 			input(name: "xMotion", type: "bool", defaultValue: "false", title: "<b>by Motion Sensor?</b><br>Motion Sensor Notifications", description: "Motion Sensor Notifications", submitOnChange: "true", width: 6)
-			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Switch?</b><br>Switch Notifications", description: "Switch Notifications", submitOnChange: "true", width: 12)
+			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Switch?</b><br>Switch Notifications", description: "Switch Notifications", submitOnChange: "true", width: 6)
+			input(name: "xTemp", type: "bool", defaultValue: "false", title: "<b>by Temperature?</b><br>Temperature Notifications", description: "Temperature Notifications", submitOnChange: "true", width: 6)
+			input(name: "xPower", type: "bool", defaultValue: "false", title: "<b>by Power Meter?</b><br>Power Notifications", description: "Power Notifications", submitOnChange: "true", width: 6)
 		}
-		section("<b>If you would like to change to a different trigger, be sure to remove all selections associated with that trigger before choosing a different trigger. It is strongly recommended to simply delete this child app and create a new one, if a different trigger is needed.</b>") {}
-		section() {
+		section("<b>If you would like to change to a different trigger, be sure to remove all selections associated with that trigger before choosing a different trigger. It is strongly recommended to simply delete this child app and create a new one, if a different trigger is needed.</b>") {
+			paragraph "<hr>"
 			if(xDate) {
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 				if(month == "Jan" || month == "Mar" || month == "May" || month == "Jun" || month == "Aug" || month == "Oct" || month == "Dec") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
@@ -97,18 +101,12 @@ def pageConfig() {
 				if(month == "Feb") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
 				input "year", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: [ "2019", "2020", "2021", "2022"], defaultValue: "2019"
 				input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
-				//input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
-				// Used in testing
 				input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 			}
-		}
-		section() {
 			if(xDay) {
 				input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 				input(name: "startTime", type: "time", title: "Time to notify", description: "Time", required: true)
 			}
-		}
-		section() {
 			if(xContact) {
 				paragraph "<b>by Contact Sensor</b>"
 				input(name: "contactEvent", type: "capability.contactSensor", title: "Trigger Notifications based on a Contact Sensor", required: true, multiple: true, submitOnChange: true)
@@ -123,8 +121,23 @@ def pageConfig() {
 					}
 				}
 			}
-		}
-		section() {
+			if(xHumidity) {
+				paragraph "<b>by Humidity Level</b>"
+				input(name: "humidityEvent", type: "capability.relativeHumidityMeasurement", title: "Trigger Notifications based on Humidity Setpoints", required: true, multiple: true, submitOnChange: true)
+				input(name: "oSetPointHigh", type: "bool", defaultValue: "false", title: "<b>Trigger when Humidity is too High?</b>", description: "Humidity High", submitOnChange: true)
+				if(oSetPointHigh) input "setPointHigh", "number", title: "Humidity High Setpoint", required: true, defaultValue: 75, submitOnChange: true
+				input(name: "oSetPointLow", type: "bool", defaultValue: "false", title: "<b>Trigger when Humidity is too Low?</b>", description: "Humidity Low", submitOnChange: true)
+				if(oSetPointLow) input "setPointLow", "number", title: "Humidity Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
+				if(powerEvent) {
+					if(oSetPointHigh) paragraph "You will recieve notifications if Humidity reading is above ${setPointHigh}"
+					if(oSetPointLow) paragraph "You will recieve notifications if Humidity reading is below ${setPointLow}"
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
+					if(oSwitchTime) {
+						paragraph "Delay the notification until the device has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
+				}
+			}
 			if(xMotion) {
 				paragraph "<b>by Motion Sensor</b>"
 				input(name: "motionEvent", type: "capability.motionSensor", title: "Trigger Notifications based on a Motion Sensor", required: true, multiple: true, submitOnChange: true)
@@ -139,8 +152,23 @@ def pageConfig() {
 					}
 				}
 			}
-		}
-		section() {
+			if(xPower) {
+				paragraph "<b>by Power Meter</b>"
+				input(name: "powerEvent", type: "capability.powerMeter", title: "Trigger Notifications based on Power Setpoints", required: true, multiple: true, submitOnChange: true)
+				input(name: "oSetPointHigh", type: "bool", defaultValue: "false", title: "<b>Trigger when Power is too High?</b>", description: "Power High", submitOnChange: true)
+				if(oSetPointHigh) input "setPointHigh", "number", title: "Power High Setpoint", required: true, defaultValue: 75, submitOnChange: true
+				input(name: "oSetPointLow", type: "bool", defaultValue: "false", title: "<b>Trigger when Power is too Low?</b>", description: "Power Low", submitOnChange: true)
+				if(oSetPointLow) input "setPointLow", "number", title: "Power Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
+				if(powerEvent) {
+					if(oSetPointHigh) paragraph "You will recieve notifications if Power reading is above ${setPointHigh}"
+					if(oSetPointLow) paragraph "You will recieve notifications if Power reading is below ${setPointLow}"
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
+					if(oSwitchTime) {
+						paragraph "Delay the notification until the device has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
+				}
+			}
 			if(xSwitch) {
 				paragraph "<b>by Switch</b>"
 				input(name: "switchEvent", type: "capability.switch", title: "Trigger Notifications based on a Switch", required: true, multiple: true, submitOnChange: true)
@@ -155,9 +183,26 @@ def pageConfig() {
 					}
 				}
 			}
+			if(xTemp) {
+				paragraph "<b>by Temperature</b>"
+				input(name: "tempEvent", type: "capability.temperatureMeasurement", title: "Trigger Notifications based on Temperature Setpoints", required: true, multiple: true, submitOnChange: true)
+				input(name: "oSetPointHigh", type: "bool", defaultValue: "false", title: "<b>Trigger when Temperature is too High?</b>", description: "Temp High", submitOnChange: true)
+				if(oSetPointHigh) input "setPointHigh", "number", title: "Temperature High Setpoint", required: true, defaultValue: 75, submitOnChange: true
+				input(name: "oSetPointLow", type: "bool", defaultValue: "false", title: "<b>Trigger when Temperature is too Low?</b>", description: "Temp Low", submitOnChange: true)
+				if(oSetPointLow) input "setPointLow", "number", title: "Temperature Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
+				if(powerEvent) {
+					if(oSetPointHigh) paragraph "You will recieve notifications if Temperature reading is above ${setPointHigh}"
+					if(oSetPointLow) paragraph "You will recieve notifications if Temperature reading is below ${setPointLow}"
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
+					if(oSwitchTime) {
+						paragraph "Delay the notification until the device has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
+				}
+			}
 		}
 		section() {
-			if((xDate && xDay) || (xDate && xContact) || (xDate && xSwitch) || (xDay && xContact) || (xDay && xSwitch) || (xContact && xSwitch)) {
+			if((xDate && xDay) || (xDate && xContact) || (xDate && xMotion) || (xDate && xSwitch) || (xDate && xTemp) ||  (xDate && xPower) || (xDay && xContact) || (xDay && xMotion) || (xDay && xSwitch) || (xDay && xTemp) || (xDay && xPower)) {
 				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
 			}
 		}
@@ -240,7 +285,29 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 				if(oMessage && !oControl) paragraph "<b>* Control Switch is required when using Message options.</b>"
 				input(name: "oRandom", type: "bool", defaultValue: "false", title: "<b>Random Message?</b>", description: "Random", submitOnChange: "true")
-				if(!oRandom) input "message", "text", title: "Message to be spoken", required: true, submitOnChange: true
+				paragraph "%device% - will speak the Device Name"
+				if(!oRandom) {
+					if(xHumidity) {
+						if(oSetPointHigh) input "messageHH", "text", title: "Message to speak when Humidity is too high", required: true, submitOnChange: true, defaultValue: "Power is too high"
+						if(oSetPointLow) input "messageHL", "text", title: "Message to speak when Humidity is too low", required: true, submitOnChange: true, defaultValue: "Power is too low"
+						if(oSetPointLow) input "messageHB", "text", title: "Message to speak when Humidity is both too high and too low", required: true, submitOnChange: true, defaultValue: "Humidity is out of range"
+					}
+					if(xPower) {
+						if(oSetPointHigh) input "messagePH", "text", title: "Message to speak when Power is too high", required: true, submitOnChange: true, defaultValue: "Power is too high"
+						if(oSetPointLow) input "messagePL", "text", title: "Message to speak when Power is too low", required: true, submitOnChange: true, defaultValue: "Power is too low"
+						if(oSetPointLow) input "messagePB", "text", title: "Message to speak when Power is both too high and too low", required: true, submitOnChange: true, defaultValue: "Power is out of range"
+					}
+					if(xTemp) {
+						if(oSetPointHigh) input "messageTH", "text", title: "Message to speak when Temp is too high", required: true, submitOnChange: true, defaultValue: "Temp is too high"
+						if(oSetPointLow) input "messageTL", "text", title: "Message to speak when Temp is too low", required: true, submitOnChange: true, defaultValue: "Temp is too low"
+						if(oSetPointLow) input "messageTB", "text", title: "Message to speak when Temp is both too high and too low", required: true, submitOnChange: true, defaultValue: "Temp is out of range"
+					}
+					if(xPower || xTemp || xHumidity) {
+						paragraph ""
+					} else {
+						input "message", "text", title: "Message to speak", required: true, submitOnChange: true
+					}
+				}
 				if(oRandom) {
 					input "message", "text", title: "Message to be spoken - Separate each message with ; ",  required: true
 					input(name: "oM1List", type: "bool", defaultValue: "false", title: "Show a list view of random messages?", description: "List View", submitOnChange: "true")
@@ -350,13 +417,15 @@ def scheduleHandler(){
     			state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
 				LOGDEBUG("In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *")
     			schedule(state.schedule, magicHappensHandler)
-			}
+			}			
 			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-
 			if(xDay) schedule(startTime, dayOfTheWeekHandler)
 			if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
 			if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
-			if(xMotion) subscribe(motionEvent, "motion", motionHandler)
+			if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
+			if(xTemp) subscribe(tempEvent, "temperature", setPointHandler)
+			if(xPower) subscribe(powerEvent, "power", setPointHandler)
+			if(xHumidity) subscribe(humidityEvent, "humidity", setPointHandler)
 		}
 	} else {
 		LOGDEBUG("In scheduleHandler - Enabler Switch is ON - Child app is disabled.")
@@ -366,18 +435,17 @@ def scheduleHandler(){
 def enablerSwitchHandler(evt){
 	state.enablerSwitch2 = evt.value
 	LOGDEBUG("In enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
     if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+    	LOGDEBUG("In enablerSwitchHandler - Enabler Switch is ON - Child app is disabled.")
 	} else {
-		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
+		LOGDEBUG("In enablerSwitchHandler - Enabler Switch is OFF - Child app is active.")
     }
 }
 
 def controlSwitchHandler(evt){
 	LOGDEBUG("In controlSwitchHandler...Checking what type of trigger to use")
 	if(state.controlSW == "yes") {
-		state.controlSwitch2 = evt.value
+		state.controlSwitch2 = controlSwitch.currentValue("switch")
 		LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
     	if(state.controlSwitch2 == "on"){
     		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -456,175 +524,193 @@ def controlSwitchHandler(evt){
 def contactSensorHandler(evt) {
 	state.contactStatus = evt.value
 	controlSwitchHandler()
-	if(state.enablerSwitch2 == "off") {
-		LOGDEBUG("In contactSensorHandler - contact Status: ${state.contactStatus}")
+	if(state.controlSwitch2 == "on") {
 		if(csOpenClosed) {
-			if(state.contactStatus == "open") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-					magicHappensHandler()
-				}
-			}
-			if(state.contactStatus == "closed") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-					reverseTheMagicHandler()
-				}
-			}
+			if(state.contactStatus == "open") {magicHappensHandler()}
+			if(state.contactStatus == "closed") {reverseTheMagicHandler()}
 		}
 		if(!csOpenClosed) {
-			if(state.contactStatus == "closed") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-					magicHappensHandler()
-				}
-			}
-			if(state.contactStatus == "open") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
-					reverseTheMagicHandler()
-				}
-			}
+			if(state.contactStatus == "closed") {magicHappensHandler()}
+			if(state.contactStatus == "open") {reverseTheMagicHandler()}
 		}
 	} else {
-		LOGDEBUG("In contactSensorHandler - Enabler Switch is ON - Child app is disabled.")
+		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
 	}
 }
 
 def switchHandler(evt) {
 	state.switchStatus = evt.value
 	controlSwitchHandler()
-	if(state.enablerSwitch2 == "off") {
-		LOGDEBUG("In switchHandler - Switch Status: ${state.switchStatus}")
+	if(state.controlSwitch2 == "on") {
 		if(seOnOff) {
-			if(state.switchStatus == "on") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In switchHandler...Pause: ${pause1}")
-					magicHappensHandler()
-				}
-			}
-			if(state.switchStatus == "off") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In switchHandler...Pause: ${pause1}")
-					reverseTheMagicHandler()
-				}
-			}
+			if(state.switchStatus == "on") {magicHappensHandler()}
+			if(state.switchStatus == "off") {reverseTheMagicHandler()}
 		}
 		if(!seOnOff) {
-			if(state.switchStatus == "off") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In switchHandler...Pause: ${pause1}")
-					magicHappensHandler()
-				}
-			}
-			if(state.switchStatus == "on") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In switchHandler...Pause: ${pause1}")
-					reverseTheMagicHandler()
-				}
-			}
+			if(state.switchStatus == "off") {magicHappensHandler()}
+			if(state.switchStatus == "on") {reverseTheMagicHandler()}
 		}
 	} else {
-		LOGDEBUG("In switchHandler - Enabler Switch is ON - Child app is disabled.")
+		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
 	}
 }
 
 def motionHandler(evt) {
 	state.motionStatus = evt.value
 	controlSwitchHandler()
-	if(state.enablerSwitch2 == "off") {
-		LOGDEBUG("In motionHandler - Switch Status: ${state.motionStatus}")
+	if(state.controlSwitch2 == "on") {
 		if(meOnOff) {
-			if(state.motionStatus == "active") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+			if(state.motionStatus == "active") {magicHappensHandler()}
+			if(state.motionStatus == "inactive") {reverseTheMagicHandler()}
+		}
+		if(!meOnOff) {
+			if(state.motionStatus == "inactive") {magicHappensHandler()}
+			if(state.motionStatus == "active") {reverseTheMagicHandler()}
+		}
+	} else {
+		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+	}
+}
+
+def setPointHandler(evt) {
+	state.setPointDevice = evt.displayName
+	setPointValue = evt.value
+	controlSwitchHandler()
+	if(state.controlSwitch2 == "on") {
+		setPointValue1 = setPointValue.toDouble()
+		LOGDEBUG("In setPointHandler - Device: ${state.setPointDevice}, setPointHigh: ${setPointHigh}, setPointLow: ${setPointLow}, Acutal value: ${setPointValue1} - setPointHighOK: ${state.setPointHighOK}, setPointLowOK: ${state.setPointLowOK}")
+		// *** setPointHigh ***
+		if(oSetPointHigh && !oSetPointLow) {
+			if(setPointValue1 > setPointHigh) {
+				if(state.setPointHighOK != "no") {
+					LOGDEBUG("In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}")
+					state.setPointHighOK = "no"
 					magicHappensHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
 				}
 			}
-			if(state.motionStatus == "inactive") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+			if(setPointValue1 < setPointHigh) {
+				if(state.setPointHighOK == "no") {
+					LOGDEBUG("In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${setPointHigh}")
+					state.setPointHighOK = "yes"
 					reverseTheMagicHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
 				}
 			}
 		}
-		if(!meOnOff) {
-			if(state.motionStatus == "inactive") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+		// *** setPointLow ***
+		if(oSetPointLow && !oSetPointHigh) {
+			if(setPointValue1 < setPointLow) {
+				if(state.setPointLowOK != "no") {
+					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}")
+					state.setPointLowOK = "no"
 					magicHappensHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
 				}
 			}
-			if(state.motionStatus == "active") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In motionHandler...Pause: ${pause1}")
+			if(setPointValue1 > setPointLow) {
+				if(state.setPointLowOK == "no") {
+					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${setPointLow}")
+					state.setPointLowOK = "yes"
 					reverseTheMagicHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+				}
+			}
+		}
+		// *** Inbetween ***
+		if(oSetPointHigh && oSetPointLow) {
+			if(setPointValue1 > setPointHigh) {
+				if(state.setPointHighOK != "no") {
+					LOGDEBUG("In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}")
+					state.setPointHighOK = "no"
+					magicHappensHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+				}
+			}
+			if(setPointValue1 < setPointLow) {
+				if(state.setPointLowOK != "no") {
+					LOGDEBUG("In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}")
+					state.setPointLowOK = "no"
+					magicHappensHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+				}
+			}
+			if((setPointValue1 <= setPointHigh) && (setPointValue1 >= setPointLow)) {
+				if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
+					LOGDEBUG("InsetPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${setPointHigh} and setPointLow: ${setPointLow}")
+					state.setPointHighOK = "yes"
+					state.setPointLowOK = "yes"
+					reverseTheMagicHandler()
+				} else {
+					LOGDEBUG("In setPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
 				}
 			}
 		}
 	} else {
-		LOGDEBUG("In motionHandler - Enabler Switch is ON - Child app is disabled.")
+		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
 	}
 }
 
-
-
-
 def magicHappensHandler() {
 	LOGDEBUG("In magicHappensHandler...CS: ${state.controlSwitch2}")
-		if(oDelay) {
-			LOGDEBUG("In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}")
-			if(minutesUp) state.realSeconds = minutesUp * 60
-			if(notifyDelay) state.notifyDel = notifyDelay * 60
-			if(maxRepeats) state.numRepeats = 1
-			if(oDimUp && oControl) slowOnHandler()
-			if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
-			if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
-			if(oMessage && oControl) runIn(state.realSeconds,messageHandler)
-			if(oPush && oControl) runIn(state.realSeconds,pushHandler)
-			if(oSpeech && oControl) runIn(state.realSeconds,letsTalk)
-			if(oDevice) runIn(state.realSeconds,switchesOnHandler)
-			if(oDevice) runIn(state.realSeconds,switchesOffHandler)
-			if(newMode) runIn(state.realSeconds, modeHandler)
-		} else if(notifyDelay) {
-			LOGDEBUG("In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}")
-			if(minutesUp) state.realSeconds = minutesUp * 60
-			if(notifyDelay) state.notifyDel = notifyDelay * 60
-			if(maxRepeats) state.numRepeats = 1
-			if(oDimUp && oControl) slowOnHandler()
-			if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
-			if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
-			if(oMessage && oControl) runIn(state.notifyDel,messageHandler)
-			if(oPush && oControl) runIn(state.notifyDel,pushHandler)
-			if(oSpeech && oControl) runIn(state.notifyDel,letsTalk)
-			if(oDevice) runIn(state.notifyDel,switchesOnHandler)
-			if(oDevice) runIn(state.notifyDel,switchesOffHandler)
-			if(newMode) runIn(state.notifyDel, modeHandler)
+	if(state.enablerSwitch2 == "off") {
+		if(state.controlSwitch2 == "on") {
+			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
+ 	 	  	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+				if(oDelay) {
+					LOGDEBUG("In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}")
+					if(minutesUp) state.realSeconds = minutesUp * 60
+					if(notifyDelay) state.notifyDel = notifyDelay * 60
+					if(maxRepeats) state.numRepeats = 1
+					if(oDimUp && oControl) slowOnHandler()
+					if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
+					if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
+					if(oMessage && oControl) runIn(state.realSeconds,messageHandler)
+					if(oPush && oControl) runIn(state.realSeconds,pushHandler)
+					if(oSpeech && oControl) runIn(state.realSeconds,letsTalk)
+					if(oDevice) runIn(state.realSeconds,switchesOnHandler)
+					if(oDevice) runIn(state.realSeconds,switchesOffHandler)
+					if(newMode) runIn(state.realSeconds, modeHandler)
+				} else if(notifyDelay) {
+					LOGDEBUG("In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}")
+					if(minutesUp) state.realSeconds = minutesUp * 60
+					if(notifyDelay) state.notifyDel = notifyDelay * 60
+					if(maxRepeats) state.numRepeats = 1
+					if(oDimUp && oControl) slowOnHandler()
+					if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
+					if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
+					if(oMessage && oControl) runIn(state.notifyDel,messageHandler)
+					if(oPush && oControl) runIn(state.notifyDel,pushHandler)
+					if(oSpeech && oControl) runIn(state.notifyDel,letsTalk)
+					if(oDevice) runIn(state.notifyDel,switchesOnHandler)
+					if(oDevice) runIn(state.notifyDel,switchesOffHandler)
+					if(newMode) runIn(state.notifyDel, modeHandler)
+				} else {
+					if(minutesUp) state.realSeconds = minutesUp * 60
+					if(notifyDelay) state.notifyDel = notifyDelay * 60
+					if(oDimUp && oControl) slowOnHandler()
+					if(oDimDn && oControl) slowOffHandler()
+					if(oSetLC && oControl) dimmerOnHandler()
+					if(oMessage && oControl) messageHandler()
+					if(oPush && oControl) pushHandler()
+					if(oSpeech && oControl) letsTalk()
+					if(oDevice) switchesOnHandler()
+					if(oDevice) switchesOffHandler()
+					if(newMode) modeHandler()
+				}
+			}
 		} else {
-			if(minutesUp) state.realSeconds = minutesUp * 60
-			if(notifyDelay) state.notifyDel = notifyDelay * 60
-			if(oDimUp && oControl) slowOnHandler()
-			if(oDimDn && oControl) slowOffHandler()
-			if(oSetLC && oControl) dimmerOnHandler()
-			if(oMessage && oControl) messageHandler()
-			if(oPush && oControl) pushHandler()
-			if(oSpeech && oControl) letsTalk()
-			if(oDevice) switchesOnHandler()
-			if(oDevice) switchesOffHandler()
-			if(newMode) modeHandler()
+			log.info "${app.label} - Control Switch is OFF - No need to run."
 		}
+	} else {
+		log.info "${app.label} - Enabler Switch is ON - Child app is disabled."
+	}
 }
 
 def reverseTheMagicHandler() {
@@ -642,26 +728,19 @@ def slowOnHandler(evt) {
 	if(state.controlSwitch2 == "on") {
 		dayOfTheWeekHandler()
 		LOGDEBUG("In slowOnHandler...")
-		if(state.enablerSwitch2 == "off") {
-			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-				LOGDEBUG("In slowOnHandler...Pause: ${pause1}")
-				state.fromWhere = "slowOn"
-				state.onLevel = 1
-				state.color = "${colorUp}"
-				setLevelandColorHandler()
-       			state.currentLevel = slowDimmerUp[0].currentLevel
-    			if(minutesUp == 0) return
-    			seconds = minutesUp * 6
-    			state.dimStep = targetLevelHigh / seconds
-    			state.dimLevel = state.currentLevel
-    			LOGDEBUG("slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
-				if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
-				runIn(10,dimStepUp)
-			}
-		} else {
-			LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
-		}
+		LOGDEBUG("In slowOnHandler...Pause: ${pause1}")
+		state.fromWhere = "slowOn"
+		state.onLevel = 1
+		state.color = "${colorUp}"
+		setLevelandColorHandler()
+       	state.currentLevel = slowDimmerUp[0].currentLevel
+    	if(minutesUp == 0) return
+    	seconds = minutesUp * 6
+    	state.dimStep = targetLevelHigh / seconds
+    	state.dimLevel = state.currentLevel
+    	LOGDEBUG("slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+		if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
+		runIn(10,dimStepUp)
 	} else {
 		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
 	}
@@ -671,25 +750,16 @@ def slowOffHandler(evt) {
 	if(state.controlSwitch2 == "on") {
 		dayOfTheWeekHandler()
 		LOGDEBUG("In slowOffHandler...")
-		if(state.enablerSwitch2 == "off") {
-			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-				LOGDEBUG("In slowOffandler...Pause: ${pause1}")
-				state.fromWhere = "slowOff"
-				state.onLevel = 99
-				state.color = "${colorDn}"
-				setLevelandColorHandler()
-       			state.currentLevel = slowDimmerDn[0].currentLevel
-    			if(minutesDn == 0) return
-    			seconds = minutesDn * 6
-    			state.dimStep1 = (targetLevelLow / seconds) * 100
-    			state.dimLevel = state.currentLevel
-   				LOGDEBUG("slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
-    			runIn(10,dimStepDown)					
-			}											
-		} else {
-			LOGDEBUG("Enabler Switch is ON - ${app.label} is disabled.")
-		}
+		state.fromWhere = "slowOff"
+		state.onLevel = 99
+		state.color = "${colorDn}"
+		setLevelandColorHandler()
+       	state.currentLevel = slowDimmerDn[0].currentLevel
+    	if(minutesDn == 0) return
+    	seconds = minutesDn * 6
+    	state.dimStep1 = (targetLevelLow / seconds) * 100
+    	state.dimLevel = state.currentLevel
+   		LOGDEBUG("slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
 	} else {
 		LOGDEBUG("${app.label} - Control Switch is ${state.controlSwitch2} - No need to run.")
 	}
@@ -736,12 +806,14 @@ def dimStepDown() {
 }
 
 def letsTalk() {							// Modified from @Cobra Code
+	LOGDEBUG("In letsTalk...")
 	if(state.controlSwitch2 == "on") {
 		if(speaker) LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
 		if(gSpeaker) LOGDEBUG("In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}")
 		messageHandler()
+		LOGDEBUG("In letsTalk...Back from messageHandler")
   		if(speechMode == "Music Player"){
-			LOGDEBUG("Music Player - ${state.msg}")
+			LOGDEBUG("In letsTalk - Music Player - ${state.msg}")
 			if(echoSpeaks) {
 				speaker.setLevel(volume1)
 				speaker.setVolumeSpeakAndRestore(state.volume, state.msg)
@@ -752,12 +824,13 @@ def letsTalk() {							// Modified from @Cobra Code
 			}
   		}   
 		if(speechMode == "Speech Synth"){
-			LOGDEBUG("Speech Synth - ${state.msg}")
+			LOGDEBUG("In letsTalk - Speech Synth - ${state.msg}")
 			if(gInitialize) gSpeaker.initialize()
 			if(gSpeaker) gSpeaker.speak(state.msg)
 			if(speaker) speaker.speak(state.msg)
 		}
 		if(oRepeat) {
+			LOGDEBUG("In letsTalk - oRepeat - ${state.numRepeats}")
 			if(state.numRepeats < maxRepeats) {
 				state.numRepeats = state.numRepeats + 1
 				runIn(repeatSeconds,letsTalk)
@@ -782,8 +855,31 @@ def messageHandler() {
 			state.msg = values[randomKey]
 			LOGDEBUG("In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}")
 		} else {
-			state.msg = "${message}"
+			if(xHumidity) {
+				LOGDEBUG("In messageHandler (Humidity) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}")
+				if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messageHH}"
+				if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messageHL}"
+				if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messageHB}"
+			}
+			if(xPower) {
+				LOGDEBUG("In messageHandler (Power) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}")
+				if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messagePH}"
+				if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messagePL}"
+				if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messagePB}"
+			}
+			if(xTemp) {
+				LOGDEBUG("In messageHandler (Temp) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}")
+				if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messageTH}"
+				if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messageTL}"
+				if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messageTB}"
+			}
+			if(!xPower && !xTemp && !xHumidity) theMessage = "${message}"
 		}
+		LOGDEBUG("In messageHandler - theMessage: ${theMessage}")
+		theMessage = theMessage.toLowerCase()
+		if (theMessage.toLowerCase().contains("%device%")) {theMessage = theMessage.toLowerCase().replace('%device%', state.setPointDevice)}
+		state.msg = "${theMessage}"
+		LOGDEBUG("In messageHandler - msg: ${state.msg}")
 	} else {
 		LOGDEBUG("In messageHandler - Control Switch is ${state.controlSwitch2}")
 	}
@@ -983,6 +1079,10 @@ def setDefaults(){
 	if(oControlMotion == null){oControlMotion = false}
 	if(oControlSwitch == null){oControlSwitch = false}
 	if(state.numRepeats == null){state.numRepeats = 1}
+	if(setPointHigh == null){setPointHigh = 0}
+	if(setPointLow == null){setPointLow = 0}
+	if(state.setPointHighOK == null){state.setPointHighOK = "yes"}
+	if(state.setPointLowOK == null){state.setPointLowOK = "yes"}
 }
 
 def logCheck(){					// Modified from @Cobra Code
