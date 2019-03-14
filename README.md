@@ -28,6 +28,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-devic
 **Lighting Effects** - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
 <br><br>
+**Magic Cube** - Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-magic-cube/11987" target="_blank">Go Here</a>
+<br><br>
 **Motion Controlled Scene Lighting** - Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419" target="_blank">Go Here</a>
 <br><br>
