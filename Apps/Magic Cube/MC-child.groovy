@@ -71,7 +71,7 @@ def pageConfig() {
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "For use with the Xiaomi Mi Cube using the 'Xiaomi Mi Cube Controller device driver'"
+			paragraph "For use with the Xiaomi Mi Cube using the 'Xiaomi Mi Cube Controller device driver'<br>Driver must have 'Cube Mode' set to 36"
 			paragraph "Driver information can be found here: <a href='https://community.hubitat.com/t/release-xiaomi-aqara-device-drivers/631/527' target='_Blank'>[TUTORIAL] Use of the Xiaomi Mi Cube Controller device driver</a>"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Xiaomi Mi Cube Controller")) {
