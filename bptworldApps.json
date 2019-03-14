@@ -141,7 +141,7 @@
   "MagicCubeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-parent.groovy",
   "MagicCubeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-child.groovy",
   "MagicCubeDriverRawCode": "NA",
-  "MagicCubeDiscussion": "NA",
+  "MagicCubeDiscussion": "https://community.hubitat.com/t/release-magic-cube/11987",
   "MagicCubeUpdateNote": "V1.0.0 - 3/14/19 - Inital Release",
   
   "MotionControlledSceneLightingType": "App",
