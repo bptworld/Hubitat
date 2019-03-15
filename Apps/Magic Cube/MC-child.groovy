@@ -2,7 +2,7 @@
  *  ****************  Magic Cube Child  ****************
  *
  *  Design Usage:
- *  Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.
+ *  Take control of your Xiaomi Aqara/Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -36,19 +36,20 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 03/15/19 - Added Change Mode, Toggle, Dim and Set Color to device options.
  *  V1.0.0 - 03/14/19 - Initial Release
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
     name: "Magic Cube Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.",
+    description: "Take control of your Xiaomi Aqara/Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.",
     category: "",
 	parent: "BPTWorld:Magic Cube",
     iconUrl: "",
@@ -71,10 +72,10 @@ def pageConfig() {
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "For use with the Xiaomi Mi Cube using the 'Xiaomi Mi Cube Controller device driver'<br>Driver must have 'Cube Mode' set to 36"
+			paragraph "For use with the Xiaomi Aqara/Mi Cube using the 'Xiaomi Mi Cube Controller device driver'<br>Driver must have 'Cube Mode' set to 36"
 			paragraph "Driver information can be found here: <a href='https://community.hubitat.com/t/release-xiaomi-aqara-device-drivers/631/527' target='_Blank'>[TUTORIAL] Use of the Xiaomi Mi Cube Controller device driver</a>"
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Xiaomi Mi Cube Controller")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Xiaomi Aqara/Mi Cube Controller")) {
 			input "xCube", "capability.threeAxis", title: "Select a Cube device", required: true, submitOnChange: true
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Choose which cube face to configure")) {
@@ -116,36 +117,109 @@ def face0Options(){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 - Flip To Options")) {
 				input(name: "f0FlipToOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f0FlipToOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f0FlipToToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f0FlipTosetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f0FlipTosetOnLC) input "f0FlipTolevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f0FlipTosetOnLC) { input "f0FlipTocolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f0FlipTonewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF0Slide) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 - Slide Options")) {
 				input(name: "f0SlideOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f0SlideOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f0SlideToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f0SlidesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f0SlidesetOnLC) input "f0SlidelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f0SlidesetOnLC) { input "f0SlidecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f0SlidenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF0Knock) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 - Knock Options")) {
 				input(name: "f0KnockOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f0KnockOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f0KnockToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f0KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f0KnocksetOnLC) input "f0KnocklevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f0KnocksetOnLC) { input "f0KnockcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f0KnocknewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF0rLeft) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 - Rotate Left Options")) {
 				input(name: "f0rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f0rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f0rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f0rLeftsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f0rLeftsetOnLC) input "f0rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f0rLeftsetOnLC) { input "f0rLeftcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f0rLeftnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
+				
 			}
 		}
 		if(oF0rRight) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 - Rotate Right Options")) {
 				input(name: "f0rRightOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f0rRightOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f0rRightToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f0rRightsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f0rRightsetOnLC) input "f0rRightlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f0rRightsetOnLC) { input "f0rRightcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f0rRightnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF0Shake) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 - Shake Options")) {
 				input(name: "f0ShakeOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f0ShakeOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f0ShakeToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f0ShakesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f0ShakesetOnLC) input "f0ShakelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f0ShakesetOnLC) { input "f0ShakecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f0ShakenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 	}
@@ -168,36 +242,108 @@ def face1Options(){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 - Flip To Options")) {
 				input(name: "f10FlipToOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f1FlipToOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f1FlipToToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f1FlipTosetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f1FlipTosetOnLC) input "f1FlipTolevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f1FlipTosetOnLC) { input "f1FlipTocolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f1FlipTonewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF1Slide) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 - Slide Options")) {
 				input(name: "f1SlideOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f1SlideOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f1SlideToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f1SlidesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f1SlidesetOnLC) input "f1SlidelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f1SlidesetOnLC) { input "f1SlidecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f1SlidenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF1Knock) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 - Knock Options")) {
 				input(name: "f1KnockOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f1KnockOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f1KnockToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f1KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f1KnocksetOnLC) input "f1KnocklevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f1KnocksetOnLC) { input "f1KnockcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f1KnocknewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF1rLeft) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 - Rotate Left Options")) {
 				input(name: "f1rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f1rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f1rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f1KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f1rLeftsetOnLC) input "f1rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f1rLeftsetOnLC) { input "f1rLeftcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f1rLeftnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF1rRight) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 - Rotate Right Options")) {
 				input(name: "f1rRightOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f1rRightOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f1rRightToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f1rRightsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f1rRightsetOnLC) input "f1rRightlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f1rRightsetOnLC) { input "f1rRightcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f1rRightnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF1Shake) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 - Shake Options")) {
 				input(name: "f1ShakeOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f1ShakeOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f1ShakeToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f1ShakesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f1ShakesetOnLC) input "f1ShakelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f1ShakesetOnLC) { input "f1ShakecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f1ShakenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 	}
@@ -220,36 +366,108 @@ def face2Options(){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 - Flip To Options")) {
 				input(name: "f2FlipToOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2FlipToOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f2FlipToToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f2FlipTosetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f2FlipTosetOnLC) input "f2FlipTolevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f2FlipTosetOnLC) { input "f2FlipTocolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f2FlipTonewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF2Slide) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 - Slide Options")) {
 				input(name: "f2SlideOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2SlideOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f2SlideToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f2SlidesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f2SlidesetOnLC) input "f2SlidelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f2SlidesetOnLC) { input "f2SlidecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f2SlidenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF2Knock) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 - Knock Options")) {
 				input(name: "f2KnockOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2KnockOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f2KnockToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f2KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f2KnocksetOnLC) input "f2KnocklevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f2KnocksetOnLC) { input "f2KnockcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f2KnocknewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF2rLeft) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 - Rotate Left Options")) {
 				input(name: "f2rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f2rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f2KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f2rLeftsetOnLC) input "f2rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f2rLeftsetOnLC) { input "f2rLeftcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f2rLeftnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF2rRight) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 - Rotate Right Options")) {
 				input(name: "f2rRightOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2rRightOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f2rRightToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f2rRightsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f2rRightsetOnLC) input "f2rRightlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f2rRightsetOnLC) { input "f2rRightcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f2rRightnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF2Shake) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 - Shake Options")) {
 				input(name: "f2ShakeOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2ShakeOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f2ShakeToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f2ShakesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f2ShakesetOnLC) input "f2ShakelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f2ShakesetOnLC) { input "f2ShakecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f2ShakenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 	}
@@ -272,36 +490,108 @@ def face3Options(){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 - Flip To Options")) {
 				input(name: "f3FlipToOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f3FlipToOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f3FlipToToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f3FlipTosetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f3FlipTosetOnLC) input "f3FlipTolevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f3FlipTosetOnLC) { input "f3FlipTocolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f3FlipTonewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF3Slide) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 - Slide Options")) {
 				input(name: "f3SlideOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f3SlideOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f3SlideToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f3SlidesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f3SlidesetOnLC) input "f3SlidelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f3SlidesetOnLC) { input "f3SlidecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f3SlidenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF3Knock) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 - Knock Options")) {
 				input(name: "f3KnockOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f3KnockOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f3KnockToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f3KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f3KnocksetOnLC) input "f3KnocklevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f3KnocksetOnLC) { input "f3KnockcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f3KnocknewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF3rLeft) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 - Rotate Left Options")) {
 				input(name: "f3rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f3rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f3rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f3KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f3rLeftsetOnLC) input "f3rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f3rLeftsetOnLC) { input "f3rLeftcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f3rLeftnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF3rRight) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 - Rotate Right Options")) {
 				input(name: "f3rRightOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f3rRightOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f3rRightToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f3rRightsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f3rRightsetOnLC) input "f3rRightlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f3rRightsetOnLC) { input "f3rRightcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f3rRightnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF3Shake) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 - Shake Options")) {
 				input(name: "f3ShakeOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f3ShakeOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f3ShakeToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f3ShakesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f3ShakesetOnLC) input "f3ShakelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f3ShakesetOnLC) { input "f3ShakecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f3ShakenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 	}
@@ -324,36 +614,108 @@ def face4Options(){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 - Flip To Options")) {
 				input(name: "f4FlipToOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f4FlipToOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f4FlipToToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f4FlipTosetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f4FlipTosetOnLC) input "f4FlipTolevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f4FlipTosetOnLC) { input "f4FlipTocolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f4FlipTonewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF4Slide) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 - Slide Options")) {
 				input(name: "f4SlideOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f4SlideOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f4SlideToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f4SlidesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f4SlidesetOnLC) input "f4SlidelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f4SlidesetOnLC) { input "f4SlidecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f4SlidenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF4Knock) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 - Knock Options")) {
 				input(name: "f4KnockOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f4KnockOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f4KnockToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f4KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f4KnocksetOnLC) input "f4KnocklevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f4KnocksetOnLC) { input "f4KnockcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f4KnocknewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF4rLeft) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 - Rotate Left Options")) {
 				input(name: "f4rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f4rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f4rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f4KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f4rLeftsetOnLC) input "f4rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f4rLeftsetOnLC) { input "f4rLeftcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f4rLeftnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF4rRight) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 - Rotate Right Options")) {
 				input(name: "f4rRightOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f4rRightOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f4rRightToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f4rRightsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f4rRightsetOnLC) input "f4rRightlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f4rRightsetOnLC) { input "f4rRightcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f4rRightnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF4Shake) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 - Shake Options")) {
 				input(name: "f4ShakeOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f4ShakeOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f4ShakeToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f4ShakesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f4ShakesetOnLC) input "f4ShakelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f4ShakesetOnLC) { input "f4ShakecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f4ShakenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 	}
@@ -376,36 +738,108 @@ def face5Options(){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 - Flip To Options")) {
 				input(name: "f5FlipToOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f5FlipToOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f5FlipToToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f5FlipTosetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f5FlipTosetOnLC) input "f5FlipTolevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f5FlipTosetOnLC) { input "f5FlipTocolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f5FlipTonewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF5Slide) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 - Slide Options")) {
 				input(name: "f5SlideOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f5SlideOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f5SlideToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f5SlidesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f5SlidesetOnLC) input "f5SlidelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f5SlidesetOnLC) { input "f5SlidecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f5SlidenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF5Knock) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 - Knock Options")) {
 				input(name: "f5KnockOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f5KnockOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f5KnockToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f5KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f5KnocksetOnLC) input "f5KnocklevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f5KnocksetOnLC) { input "f5KnockcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f5KnocknewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF5rLeft) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 - Rotate Left Options")) {
 				input(name: "f5rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f5rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f5rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f5KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f5rLeftsetOnLC) input "f5rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f5rLeftsetOnLC) { input "f5rLeftcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f5rLeftnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF5rRight) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 - Rotate Right Options")) {
 				input(name: "f5rRightOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f5rRightOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f5rRightToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f5rRightsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f5rRightsetOnLC) input "f5rRightlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f5rRightsetOnLC) { input "f5rRightcolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f5rRightnewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 		if(oF5Shake) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 - Shake Options")) {
 				input(name: "f5ShakeOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f5ShakeOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
+				input(name: "f5ShakeToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
+				input "f5ShakesetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				if(f5ShakesetOnLC) input "f5ShakelevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
+				if(f5ShakesetOnLC) { input "f5ShakecolorLC", "enum", title: "Color", required: false, options: [
+                		["Soft White":"Soft White - Default"],
+                		["White":"White - Concentrate"],
+                		["Daylight":"Daylight - Energize"],
+                		["Warm White":"Warm White - Relax"],
+                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+						paragraph "<hr>"
+				}
+				input(name: "f5ShakenewMode", type: "mode", title: "Change Mode", required: false, multiple: false)
 			}
 		}
 	}
@@ -454,6 +888,7 @@ def pushedHandler(msg) {
 }
 
 def angleHandler(msg) {
+	state.OLDangleValue = state.angleValue
 	state.angleValue = msg.value.toString()
 	LOGDEBUG("In angleHandler - Angle: ${state.angleValue}")
 	waitHere()
@@ -473,129 +908,243 @@ def doSomethingHandler() {
 	if(state.pushedValue == "4" || state.pushedValue == "10"  || state.pushedValue == "16" || state.pushedValue == "22" || state.pushedValue == "28" || state.pushedValue == "34") { state.face = "f3" }
 	if(state.pushedValue == "5" || state.pushedValue == "11"  || state.pushedValue == "17" || state.pushedValue == "23" || state.pushedValue == "29" || state.pushedValue == "35") { state.face = "f4" }
 	if(state.pushedValue == "6" || state.pushedValue == "12"  || state.pushedValue == "18" || state.pushedValue == "24" || state.pushedValue == "30" || state.pushedValue == "36") { state.face = "f5" }
+	
+	if(state.pushedValue == "1" || state.pushedValue == "2"  || state.pushedValue == "3" || state.pushedValue == "4" || state.pushedValue == "5" || state.pushedValue == "6") { state.action = "Flip To" }
+	if(state.pushedValue == "7" || state.pushedValue == "8"  || state.pushedValue == "9" || state.pushedValue == "10" || state.pushedValue == "11" || state.pushedValue == "12") { state.action = "Slide" }
+	if(state.pushedValue == "13" || state.pushedValue == "14"  || state.pushedValue == "15" || state.pushedValue == "16" || state.pushedValue == "17" || state.pushedValue == "18") { state.action = "Knock" }
+	if(state.pushedValue == "19" || state.pushedValue == "20"  || state.pushedValue == "21" || state.pushedValue == "22" || state.pushedValue == "23" || state.pushedValue == "24") { state.action = "Rotate Right" }
+	if(state.pushedValue == "25" || state.pushedValue == "26"  || state.pushedValue == "27" || state.pushedValue == "28" || state.pushedValue == "29" || state.pushedValue == "30") { state.action = "Rotate Left" }
+	if(state.pushedValue == "31" || state.pushedValue == "32"  || state.pushedValue == "33" || state.pushedValue == "34" || state.pushedValue == "35" || state.pushedValue == "36") { state.action = "Shake" }
+	
 	magicHappensHandler()
 }
 
 def magicHappensHandler() {
 	LOGDEBUG("In magicHappensHandler...")
+	log.info("Cube: ${xCube}, Button Pushed: ${state.pushedValue} (Face: ${state.face} - ${state.action} - Angle: ${state.angleValue})") 
 //	if(state.enablerSwitch2 == "off") {
  		if(pause1 == false){
-			if((state.pushedValue == "1") && (f0FlipToOn)) { 
-				switchesOn = f0FlipToOn
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Flip To On")
-			}
-			if((state.pushedValue == "1") && (f0FlipToOff)) {
-				switchesOff = f0FlipToOff
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Flip To Off")
-			}
+			if((state.pushedValue == "1") && (f0FlipToOn)) { switchesOn = f0FlipToOn }
+			if((state.pushedValue == "1") && (f0FlipToOff)) { switchesOff = f0FlipToOff }
+			if((state.pushedValue == "1") && (f0FlipToToggle)) { switchesToggle = f0FlipToToggle }
+			if((state.pushedValue == "1") && (f0FlipTosetOnLC)) { setOnLC = f0FlipTosetOnLC; colorLC = f0FlipTocolorLC; levelLC = f0FlipTolevelLC }
+			if((state.pushedValue == "1") && (f0FlipTonewMode)) { newMode = f0FlipTonewMode }
+			
 			if((state.pushedValue == "2") && (f1FlipToOn)) { switchesOn = f1FlipToOn }
 			if((state.pushedValue == "2") && (f1FlipToOff)) { switchesOff = f1FlipToOff }
+			if((state.pushedValue == "2") && (f1FlipToToggle)) { switchesToggle = f1FlipToToggle }
+			if((state.pushedValue == "2") && (f1FlipTosetOnLC)) { setOnLC = f1FlipTosetOnLC; colorLC = f1FlipTocolorLC; levelLC = f1FlipTolevelLC }
+			if((state.pushedValue == "2") && (f1FlipTonewMode)) { newMode = f1FlipTonewMode }
+			
 			if((state.pushedValue == "3") && (f2FlipToOn)) { switchesOn = f2FlipToOn }
-			if((state.pushedValue == "3") && (f2FlipToOff)) { switchesOff = f2FlipToOff }				
+			if((state.pushedValue == "3") && (f2FlipToOff)) { switchesOff = f2FlipToOff }
+			if((state.pushedValue == "3") && (f2FlipToToggle)) { switchesToggle = f2FlipToToggle }
+			if((state.pushedValue == "3") && (f2FlipTosetOnLC)) { setOnLC = f2FlipTosetOnLC; colorLC = f2FlipTocolorLC; levelLC = f2FlipTolevelLC }
+			if((state.pushedValue == "3") && (f2FlipTonewMode)) { newMode = f2FlipTonewMode }
+			
 			if((state.pushedValue == "4") && (f3FlipToOn)) { switchesOn = f3FlipToOn }
-			if((state.pushedValue == "4") && (f3FlipToOff)) { switchesOff = f3FlipToOff }				
+			if((state.pushedValue == "4") && (f3FlipToOff)) { switchesOff = f3FlipToOff }	
+			if((state.pushedValue == "4") && (f3FlipToToggle)) { switchesToggle = f3FlipToToggle }
+			if((state.pushedValue == "4") && (f3FlipTosetOnLC)) { setOnLC = f3FlipTosetOnLC; colorLC = f3FlipTocolorLC; levelLC = f3FlipTolevelLC }
+			if((state.pushedValue == "4") && (f3FlipTonewMode)) { newMode = f3FlipTonewMode }
+			
 			if((state.pushedValue == "5") && (f4FlipToOn)) { switchesOn = f4FlipToOn }
-			if((state.pushedValue == "5") && (f4FlipToOff)) { switchesOff = f4FlipToOff }				
+			if((state.pushedValue == "5") && (f4FlipToOff)) { switchesOff = f4FlipToOff }		
+			if((state.pushedValue == "5") && (f4FlipToToggle)) { switchesToggle = f4FlipToToggle }
+			if((state.pushedValue == "5") && (f4FlipTosetOnLC)) { setOnLC = f4FlipTosetOnLC; colorLC = f4FlipTocolorLC; levelLC = f4FlipTolevelLC }
+			if((state.pushedValue == "5") && (f4FlipTonewMode)) { newMode = f4FlipTonewMode }
+			
 			if((state.pushedValue == "6") && (f5FlipToOn)) { switchesOn = f5FlipToOn }
-			if((state.pushedValue == "6") && (f5FlipToOff)) { switchesOff = f5FlipToOff }				
+			if((state.pushedValue == "6") && (f5FlipToOff)) { switchesOff = f5FlipToOff }	
+			if((state.pushedValue == "6") && (f5FlipToToggle)) { switchesToggle = f5FlipToToggle }
+			if((state.pushedValue == "6") && (f5FlipTosetOnLC)) { setOnLC = f5FlipTosetOnLC; colorLC = f5FlipTocolorLC; levelLC = f5FlipTolevelLC }
+			if((state.pushedValue == "6") && (f5FlipTonewMode)) { newMode = f5FlipTonewMode }
 											
-			if((state.pushedValue == "7") && (f0SlideOn)) { 
-				switchesOn = f0SlideOn
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Slide On")
-			}
-			if((state.pushedValue == "7") && (f0SlideOff)) {
-				switchesOff = f0SlideOff
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Slide Off")
-			}
+			if((state.pushedValue == "7") && (f0SlideOn)) { switchesOn = f0SlideOn }
+			if((state.pushedValue == "7") && (f0SlideOff)) { switchesOff = f0SlideOff }
+			if((state.pushedValue == "7") && (f0SlideToggle)) { switchesToggle = f0SlideToggle }
+			if((state.pushedValue == "7") && (f0SlidesetOnLC)) { setOnLC = f0SlidesetOnLC; colorLC = f0SlidecolorLC; levelLC = f0SlidelevelLC }
+			if((state.pushedValue == "7") && (f0SlidenewMode)) { newMode = f0SlidenewMode }
+			
 			if((state.pushedValue == "8") && (f1SlideOn)) { switchesOn = f1SlideOn }
 			if((state.pushedValue == "8") && (f1SlideOff)) { switchesOff = f1SlideOff }
+			if((state.pushedValue == "8") && (f1SlideToggle)) { switchesToggle = f1SlideToggle }
+			if((state.pushedValue == "8") && (f1SlidesetOnLC)) { setOnLC = f1SlidesetOnLC; colorLC = f1SlidecolorLC; levelLC = f1SlidelevelLC }
+			if((state.pushedValue == "8") && (f1SlidenewMode)) { newMode = f1SlidenewMode }
+			
 			if((state.pushedValue == "9") && (f2SlideOn)) { switchesOn = f2SlideOn }
 			if((state.pushedValue == "9") && (f2SlideOff)) { switchesOff = f2SlideOff }
+			if((state.pushedValue == "9") && (f2SlideToggle)) { switchesToggle = f2SlideToggle }
+			if((state.pushedValue == "9") && (f2SlidesetOnLC)) { setOnLC = f2SlidesetOnLC; colorLC = f2SlidecolorLC; levelLC = f2SlidelevelLC }
+			if((state.pushedValue == "9") && (f2SlidenewMode)) { newMode = f2SlidenewMode }
+			
 			if((state.pushedValue == "10") && (f3SlideOn)) { switchesOn = f3SlideOn }
 			if((state.pushedValue == "10") && (f3SlideOff)) { switchesOff = f3SlideOff }
+			if((state.pushedValue == "10") && (f3SlideToggle)) { switchesToggle = f3SlideToggle }
+			if((state.pushedValue == "10") && (f3SlidesetOnLC)) { setOnLC = f3SlidesetOnLC; colorLC = f3SlidecolorLC; levelLC = f3SlidelevelLC }
+			if((state.pushedValue == "10") && (f3SlidenewMode)) { newMode = f3SlidenewMode }
+			
 			if((state.pushedValue == "11") && (f4SlideOn)) { switchesOn = f4SlideOn }
 			if((state.pushedValue == "11") && (f4SlideOff)) { switchesOff = f4SlideOff }
-			if((state.pushedValue == "12") && (f5SlideOn)) { switchesOn = f5SlideOn }
-			if((state.pushedValue == "12") && (f5SlideOff)) { switchesOff = f5SlideOff }				
+			if((state.pushedValue == "11") && (f4SlideToggle)) { switchesToggle = f4SlideToggle }
+			if((state.pushedValue == "11") && (f4SlidesetOnLC)) { setOnLC = f4SlidesetOnLC; colorLC = f4SlidecolorLC; levelLC = f4SlidelevelLC }
+			if((state.pushedValue == "11") && (f4SlidenewMode)) { newMode = f4SlidenewMode }
 			
-			if((state.pushedValue == "13") && (f0KnockOn)) {
-				switchesOn = f0KnockOn
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Knock On")
-			}
-			if((state.pushedValue == "13") && (f0KnockOff)) { 
-				switchesOff = f0KnockOff
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Knock Off")
-			}
+			if((state.pushedValue == "12") && (f5SlideOn)) { switchesOn = f5SlideOn }
+			if((state.pushedValue == "12") && (f5SlideOff)) { switchesOff = f5SlideOff }	
+			if((state.pushedValue == "12") && (f5SlideToggle)) { switchesToggle = f5SlideToggle }
+			if((state.pushedValue == "12") && (f5SlidesetOnLC)) { setOnLC = f5SlidesetOnLC; colorLC = f5SlidecolorLC; levelLC = f5SlidelevelLC }
+			if((state.pushedValue == "12") && (f5SlidenewMode)) { newMode = f5SlidenewMode }
+			
+			if((state.pushedValue == "13") && (f0KnockOn)) { switchesOn = f0KnockOn }
+			if((state.pushedValue == "13") && (f0KnockOff)) { switchesOff = f0KnockOff }
+			if((state.pushedValue == "13") && (f0KnockToggle)) { switchesToggle = f0KnockToggle }
+			if((state.pushedValue == "13") && (f0KnocksetOnLC)) { setOnLC = f0KnocksetOnLC; colorLC = f0KnockcolorLC; levelLC = f0KnocklevelLC }
+			if((state.pushedValue == "13") && (f0KnocknewMode)) { newMode = f0KnocknewMode }
+			
 			if((state.pushedValue == "14") && (f1KnockOn)) { switchesOn = f1KnockOn }
 			if((state.pushedValue == "14") && (f1KnockOff)) { switchesOff = f1KnockOff }
+			if((state.pushedValue == "14") && (f1KnockToggle)) { switchesToggle = f1KnockToggle }
+			if((state.pushedValue == "14") && (f1KnocksetOnLC)) { setOnLC = f1KnocksetOnLC; colorLC = f1KnockcolorLC; levelLC = f1KnocklevelLC }
+			if((state.pushedValue == "14") && (f1KnocknewMode)) { newMode = f1KnocknewMode }
+			
 			if((state.pushedValue == "15") && (f2KnockOn)) { switchesOn = f2KnockOn }
-			if((state.pushedValue == "15") && (f2KnockOff)) { switchesOff = f2KnockOff }				
+			if((state.pushedValue == "15") && (f2KnockOff)) { switchesOff = f2KnockOff }
+			if((state.pushedValue == "15") && (f2KnockToggle)) { switchesToggle = f2KnockToggle }
+			if((state.pushedValue == "15") && (f2KnocksetOnLC)) { setOnLC = f2KnocksetOnLC; colorLC = f2KnockcolorLC; levelLC = f2KnocklevelLC }
+			if((state.pushedValue == "15") && (f2KnocknewMode)) { newMode = f2KnocknewMode }
+			
 			if((state.pushedValue == "16") && (f3KnockOn)) { switchesOn = f3KnockOn }
-			if((state.pushedValue == "16") && (f3KnockOff)) { switchesOff = f3KnockOff }				
+			if((state.pushedValue == "16") && (f3KnockOff)) { switchesOff = f3KnockOff }	
+			if((state.pushedValue == "16") && (f3KnockToggle)) { switchesToggle = f3KnockToggle }
+			if((state.pushedValue == "16") && (f3KnocksetOnLC)) { setOnLC = f3KnocksetOnLC; colorLC = f3KnockcolorLC; levelLC = f3KnocklevelLC }
+			if((state.pushedValue == "16") && (f3KnocknewMode)) { newMode = f3KnocknewMode }
+			
 			if((state.pushedValue == "17") && (f4KnockOn)) { switchesOn = f4KnockOn }
-			if((state.pushedValue == "17") && (f4KnockOff)) { switchesOff = f4KnockOff }				
+			if((state.pushedValue == "17") && (f4KnockOff)) { switchesOff = f4KnockOff }	
+			if((state.pushedValue == "17") && (f4KnockToggle)) { switchesToggle = f4KnockToggle }
+			if((state.pushedValue == "17") && (f4KnocksetOnLC)) { setOnLC = f4KnocksetOnLC; colorLC = f4KnockcolorLC; levelLC = f4KnocklevelLC }
+			if((state.pushedValue == "17") && (f4KnocknewMode)) { newMode = f4KnocknewMode }
+			
 			if((state.pushedValue == "18") && (f5KnockOn)) { switchesOn = f5KnockOn }
-			if((state.pushedValue == "18") && (f5KnockOff)) { switchesOff = f5KnockOff }				
+			if((state.pushedValue == "18") && (f5KnockOff)) { switchesOff = f5KnockOff }	
+			if((state.pushedValue == "18") && (f5KnockToggle)) { switchesToggle = f5KnockToggle }
+			if((state.pushedValue == "18") && (f5KnocksetOnLC)) { setOnLC = f5KnocksetOnLC; colorLC = f5KnockcolorLC; levelLC = f5KnocklevelLC }
+			if((state.pushedValue == "18") && (f5KnocknewMode)) { newMode = f5KnocknewMode }
 							
-			if((state.pushedValue == "19") && (f0rRightOn)) {
-				switchesOn = f0rRightOn
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Rotate Right On")
-			}
-			if((state.pushedValue == "19") && (f0rRightOff)) { 
-				switchesOff = f0rRightOff
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Rotate Right Off")
-			}
+			if((state.pushedValue == "19") && (f0rRightOn)) { switchesOn = f0rRightOn }
+			if((state.pushedValue == "19") && (f0rRightOff)) { switchesOff = f0rRightOff }
+			if((state.pushedValue == "19") && (f0rRightToggle)) { switchesToggle = f0rRightToggle }
+			if((state.pushedValue == "19") && (f0rRightsetOnLC)) { setOnLC = f0rRightsetOnLC; colorLC = f0rRightcolorLC; levelLC = f0rRightlevelLC }
+			if((state.pushedValue == "19") && (f0rRightnewMode)) { newMode = f0rRightnewMode }
+			
 			if((state.pushedValue == "20") && (f1rRightOn)) { switchesOn = f1rRightOn }
 			if((state.pushedValue == "20") && (f1rRightOff)) { switchesOff = f1rRightOff }
+			if((state.pushedValue == "20") && (f1rRightToggle)) { switchesToggle = f1rRightToggle }
+			if((state.pushedValue == "20") && (f1rRightsetOnLC)) { setOnLC = f1rRightsetOnLC; colorLC = f1rRightcolorLC; levelLC = f1rRightlevelLC }
+			if((state.pushedValue == "20") && (f1rRightnewMode)) { newMode = f1rRightnewMode }
+			
 			if((state.pushedValue == "21") && (f2rRightOn)) { switchesOn = f2rRightOn }
-			if((state.pushedValue == "21") && (f2rRightOff)) { switchesOff = f2rRightOff }				
+			if((state.pushedValue == "21") && (f2rRightOff)) { switchesOff = f2rRightOff }	
+			if((state.pushedValue == "21") && (f2rRightToggle)) { switchesToggle = f2rRightToggle }
+			if((state.pushedValue == "21") && (f2rRightsetOnLC)) { setOnLC = f2rRightsetOnLC; colorLC = f2rRightcolorLC; levelLC = f2rRightlevelLC }
+			if((state.pushedValue == "21") && (f2rRightnewMode)) { newMode = f2rRightnewMode }
+			
 			if((state.pushedValue == "22") && (f3rRightOn)) { switchesOn = f3rRightOn }
-			if((state.pushedValue == "22") && (f3rRightOff)) { switchesOff = f3rRightOff }				
+			if((state.pushedValue == "22") && (f3rRightOff)) { switchesOff = f3rRightOff }	
+			if((state.pushedValue == "22") && (f3rRightToggle)) { switchesToggle = f3rRightToggle }
+			if((state.pushedValue == "22") && (f3rRightsetOnLC)) { setOnLC = f3rRightsetOnLC; colorLC = f3rRightcolorLC; levelLC = f3rRightlevelLC }
+			if((state.pushedValue == "22") && (f3rRightnewMode)) { newMode = f3rRightnewMode }
+			
 			if((state.pushedValue == "23") && (f4rRightOn)) { switchesOn = f4rRightOn }
-			if((state.pushedValue == "23") && (f4rRightOff)) { switchesOff = f4rRightOff }				
+			if((state.pushedValue == "23") && (f4rRightOff)) { switchesOff = f4rRightOff }	
+			if((state.pushedValue == "23") && (f4rRightToggle)) { switchesToggle = f4rRightToggle }
+			if((state.pushedValue == "23") && (f4rRightsetOnLC)) { setOnLC = f4rRightsetOnLC; colorLC = f4rRightcolorLC; levelLC = f4rRightlevelLC }
+			if((state.pushedValue == "23") && (f4rRightnewMode)) { newMode = f4rRightnewMode }
+			
 			if((state.pushedValue == "24") && (f5rRightOn)) { switchesOn = f5rRightOn }
-			if((state.pushedValue == "24") && (f5rRightOff)) { switchesOff = f5rRightOff }				
+			if((state.pushedValue == "24") && (f5rRightOff)) { switchesOff = f5rRightOff }	
+			if((state.pushedValue == "24") && (f5rRightToggle)) { switchesToggle = f5rRightToggle }
+			if((state.pushedValue == "24") && (f5rRightsetOnLC)) { setOnLC = f5rRightsetOnLC; colorLC = f5rRightcolorLC; levelLC = f5rRightlevelLC }
+			if((state.pushedValue == "24") && (f5rRightnewMode)) { newMode = f5rRightnewMode }
 											
-			if((state.pushedValue == "25") && (f0rLeftOn)) {
-				switchesOn = f0rLeftOn
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Rotate Left On")
-			}
-			if((state.pushedValue == "25") && (f0rLeftOff)) {
-				switchesOff = f0rLeftOff
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Rotate Left Off")
-			}
+			if((state.pushedValue == "25") && (f0rLeftOn)) { switchesOn = f0rLeftOn }
+			if((state.pushedValue == "25") && (f0rLeftOff)) { switchesOff = f0rLeftOff }
+			if((state.pushedValue == "25") && (f0rLeftToggle)) { switchesToggle = f0rLeftToggle }
+			if((state.pushedValue == "25") && (f0rLeftsetOnLC)) { setOnLC = f0rLeftsetOnLC; colorLC = f0rLeftcolorLC; levelLC = f0rLeftlevelLC }
+			if((state.pushedValue == "25") && (f0rLeftnewMode)) { newMode = f0rLeftnewMode }
+			
 			if((state.pushedValue == "26") && (f1rLeftOn)) { switchesOn = f1rLeftOn }
 			if((state.pushedValue == "26") && (f1rLeftOff)) { switchesOff = f1rLeftOff }
+			if((state.pushedValue == "26") && (f1rLeftToggle)) { switchesToggle = f1rLeftToggle }
+			if((state.pushedValue == "26") && (f1rLeftsetOnLC)) { setOnLC = f1rLeftsetOnLC; colorLC = f1rLeftcolorLC; levelLC = f1rLeftlevelLC }
+			if((state.pushedValue == "26") && (f1rLeftnewMode)) { newMode = f1rLeftnewMode }
+			
 			if((state.pushedValue == "27") && (f2rLeftOn)) { switchesOn = f2rLeftOn }
-			if((state.pushedValue == "27") && (f2rLeftOff)) { switchesOff = f2rLeftOff }				
+			if((state.pushedValue == "27") && (f2rLeftOff)) { switchesOff = f2rLeftOff }	
+			if((state.pushedValue == "27") && (f2rLeftToggle)) { switchesToggle = f2rLeftToggle }
+			if((state.pushedValue == "27") && (f2rLeftsetOnLC)) { setOnLC = f2rLeftsetOnLC; colorLC = f2rLeftcolorLC; levelLC = f2rLeftlevelLC }
+			if((state.pushedValue == "27") && (f2rLeftnewMode)) { newMode = f2rLeftnewMode }
+			
 			if((state.pushedValue == "28") && (f3rLeftOn)) { switchesOn = f3rLeftOn }
-			if((state.pushedValue == "28") && (f3rLeftOff)) { switchesOff = f3rLeftOff }				
+			if((state.pushedValue == "28") && (f3rLeftOff)) { switchesOff = f3rLeftOff }	
+			if((state.pushedValue == "28") && (f3rLeftToggle)) { switchesToggle = f3rLeftToggle }
+			if((state.pushedValue == "28") && (f3rLeftsetOnLC)) { setOnLC = f3rLeftsetOnLC; colorLC = f3rLeftcolorLC; levelLC = f3rLeftlevelLC }
+			if((state.pushedValue == "28") && (f3rLeftnewMode)) { newMode = f3rLeftnewMode }
+			
 			if((state.pushedValue == "29") && (f4rLeftOn)) { switchesOn = f4rLeftOn }
-			if((state.pushedValue == "29") && (f4rLeftOff)) { switchesOff = f4rLeftoff }				
+			if((state.pushedValue == "29") && (f4rLeftOff)) { switchesOff = f4rLeftoff }
+			if((state.pushedValue == "29") && (f4rLeftToggle)) { switchesToggle = f4rLeftToggle }
+			if((state.pushedValue == "29") && (f4rLeftsetOnLC)) { setOnLC = f4rLeftsetOnLC; colorLC = f4rLeftcolorLC; levelLC = f4rLeftlevelLC }
+			if((state.pushedValue == "29") && (f4rLeftnewMode)) { newMode = f4rLeftnewMode }
+			
 			if((state.pushedValue == "30") && (f5rLeftOn)) { switchesOn = f5rLeftOn }
-			if((state.pushedValue == "30") && (f5rLeftOff)) { switchesOff = f5rLeftOff }				
+			if((state.pushedValue == "30") && (f5rLeftOff)) { switchesOff = f5rLeftOff }
+			if((state.pushedValue == "30") && (f5rLeftToggle)) { switchesToggle = f5rLeftToggle }
+			if((state.pushedValue == "30") && (f5rLeftsetOnLC)) { setOnLC = f5rLeftsetOnLC; colorLC = f5rLeftcolorLC; levelLC = f5rLeftlevelLC }
+			if((state.pushedValue == "30") && (f5rLeftnewMode)) { newMode = f5rLeftnewMode }
 							
-			if((state.pushedValue == "31") && (f0ShakeOn)) { 
-				switchesOn = f0ShakeOn
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Shake On")
-			}
-			if((state.pushedValue == "31") && (f0ShakeOff)) { 
-				switchesOff = f0ShakeOff
-				LOGDEBUG("In magicHappensHandler...Cube: ${xCube}, Pushed: ${state.pushedValue} = Shake Off")
-			}
+			if((state.pushedValue == "31") && (f0ShakeOn)) { switchesOn = f0ShakeOn }
+			if((state.pushedValue == "31") && (f0ShakeOff)) { switchesOff = f0ShakeOff }
+			if((state.pushedValue == "31") && (f0ShakeToggle)) { switchesToggle = f0ShakeToggle }
+			if((state.pushedValue == "31") && (f0ShakesetOnLC)) { setOnLC = f0ShakesetOnLC; colorLC = f0ShakecolorLC; levelLC = f0ShakelevelLC }
+			if((state.pushedValue == "31") && (f0ShakenewMode)) { newMode = f0ShakenewMode }
+			
 			if((state.pushedValue == "32") && (f1ShakeOn)) { switchesOn = f1ShakeOn }
-			if((state.pushedValue == "32") && (f1ShakeOff)) { switchesOff = f1ShakeOff }	
+			if((state.pushedValue == "32") && (f1ShakeOff)) { switchesOff = f1ShakeOff }
+			if((state.pushedValue == "32") && (f1ShakeToggle)) { switchesToggle = f1ShakeToggle }
+			if((state.pushedValue == "32") && (f1ShakesetOnLC)) { setOnLC = f1ShakesetOnLC; colorLC = f1ShakecolorLC; levelLC = f1ShakelevelLC }
+			if((state.pushedValue == "32") && (f1ShakenewMode)) { newMode = f1ShakenewMode }
+			
 			if((state.pushedValue == "33") && (f2ShakeOn)) { switchesOn = f2ShakeOn }
 			if((state.pushedValue == "33") && (f2ShakeOff)) { switchesOff = f2ShakeOff }
+			if((state.pushedValue == "33") && (f2ShakeToggle)) { switchesToggle = f2ShakeToggle }
+			if((state.pushedValue == "33") && (f2ShakesetOnLC)) { setOnLC = f2ShakesetOnLC; colorLC = f2ShakecolorLC; levelLC = f2ShakelevelLC }
+			if((state.pushedValue == "33") && (f2ShakenewMode)) { newMode = f2ShakenewMode }
+			
 			if((state.pushedValue == "34") && (f3ShakeOn)) { switchesOn = f3ShakeOn }
 			if((state.pushedValue == "34") && (f3ShakeOff)) { switchesOff = f3ShakeOff }
+			if((state.pushedValue == "34") && (f3ShakeToggle)) { switchesToggle = f3ShakeToggle }
+			if((state.pushedValue == "34") && (f3ShakesetOnLC)) { setOnLC = f3ShakesetOnLC; colorLC = f3ShakecolorLC; levelLC = f3ShakelevelLC }
+			if((state.pushedValue == "34") && (f3ShakenewMode)) { newMode = f3ShakenewMode }
+			
 			if((state.pushedValue == "35") && (f4ShakeOn)) { witchesOn = f4ShakeOn }
 			if((state.pushedValue == "35") && (f4ShakeOff)) { switchesOff = f4ShakeOff }
+			if((state.pushedValue == "35") && (f4ShakeToggle)) { switchesToggle = f4ShakeToggle }
+			if((state.pushedValue == "35") && (f4ShakesetOnLC)) { setOnLC = f4ShakesetOnLC; colorLC = f4ShakecolorLC; levelLC = f4ShakelevelLC }
+			if((state.pushedValue == "35") && (f4ShakenewMode)) { newMode = f4ShakenewMode }
+			
 			if((state.pushedValue == "36") && (f5ShakeOn)) { switchesOn = f5ShakeOn }
 			if((state.pushedValue == "36") && (f5ShakeOff)) { switchesOff = f5ShakeOff }
+			if((state.pushedValue == "36") && (f5ShakeToggle)) { switchesToggle = f5ShakeToggle }
+			if((state.pushedValue == "36") && (f5ShakesetOnLC)) { setOnLC = f5ShakesetOnLC; colorLC = f5ShakecolorLC; levelLC = f5ShakelevelLC }
+			if((state.pushedValue == "36") && (f5ShakenewMode)) { newMode = f5ShakenewMode }
 							
 			if(switchesOn) switchesOnHandler()
 			if(switchesOff) switchesOffHandler()
+			if(switchesToggle) switchesToggleHandler()
+			if(setOnLC) dimmerOnHandler()
+			if(newMode) modeHandler()
 		} else {
 			log.info "${app.label} - Unable to continue - App paused"
 		}
@@ -616,6 +1165,118 @@ def switchesOffHandler() {
 		LOGDEBUG("In switchOffHandler - Turning off ${it}")
 		it.off()
 	}
+}
+
+def switchesToggleHandler() {
+	switchesToggle.each { it ->
+		dStatus = it.currentValue("switch")
+		LOGDEBUG("In switchToggleHandler - Toggle ${it}, current status: ${dStatus}")
+		if(dStatus == "on") it.off()
+		if(dStatus == "off") it.on()
+	}
+}
+
+def dimmerOnHandler() {
+	LOGDEBUG("In dimmerOnHandler...")
+	state.fromWhere = "dimmerOn"
+	state.color = "${colorLC}"
+	state.onLevel = levelLC
+	setLevelandColorHandler()
+}
+
+def setLevelandColorHandler() {
+	LOGDEBUG("In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}")
+    def hueColor = 0
+    def saturation = 100
+	int onLevel = state.onLevel
+    switch(state.color) {
+            case "White":
+            hueColor = 52
+            saturation = 19
+            break;
+        case "Daylight":
+            hueColor = 53
+            saturation = 91
+            break;
+        case "Soft White":
+            hueColor = 23
+            saturation = 56
+            break;
+        case "Warm White":
+            hueColor = 20
+            saturation = 80
+            break;
+        case "Blue":
+            hueColor = 70
+            break;
+        case "Green":
+            hueColor = 39
+            break;
+        case "Yellow":
+            hueColor = 25
+            break;
+        case "Orange":
+            hueColor = 10
+            break;
+        case "Purple":
+            hueColor = 75
+            break;
+        case "Pink":
+            hueColor = 83
+            break;
+        case "Red":
+            hueColor = 100
+            break;
+    }
+	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    LOGDEBUG("In setLevelandColorHandler - value: $value")
+	if(state.fromWhere == "dimmerOn") {
+    	setOnLC.each {
+        	if (it.hasCommand('setColor')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	it.setColor(value)
+        	} else if (it.hasCommand('setLevel')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	it.setLevel(onLevel as Integer ?: 100)
+        	} else {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	it.on()
+        	}
+    	}
+	}
+	if(state.fromWhere == "slowOn") {
+    	slowDimmerUp.each {
+        	if (it.hasCommand('setColor')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	it.setColor(value)
+        	} else if (it.hasCommand('setLevel')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	it.setLevel(onLevel as Integer ?: 100)
+        	} else {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	it.on()
+        	}
+    	}
+	}
+	if(state.fromWhere == "slowOff") {
+    	slowDimmerDn.each {
+        	if (it.hasCommand('setColor')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	it.setColor(value)
+        	} else if (it.hasCommand('setLevel')) {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	it.setLevel(level as Integer ?: 100)
+        	} else {
+            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	it.on()
+        	}
+    	}
+	}
+}
+
+def modeHandler() {
+	LOGDEBUG("In modeHandler - Changing mode to ${newMode}")
+	setLocationMode(newMode)
 }
 
 // ***** Normal Stuff *****
