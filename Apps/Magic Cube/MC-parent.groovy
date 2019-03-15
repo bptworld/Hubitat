@@ -2,7 +2,7 @@
  *  ****************  Magic Cube Parent ****************
  *
  *  Design Usage:
- *  Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.
+ *  Take control of your Xiaomi Aqara/Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -49,7 +49,7 @@ definition(
     name:"Magic Cube",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.",
+    description: "Take control of your Xiaomi Aqara/Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -83,12 +83,12 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.</div>"
+				paragraph "<div style='color:#1A77C9'>Take control of your Xiaomi Aqara/Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "For use with the Xiaomi Mi Cube using the 'Xiaomi Mi Cube Controller device driver'<br>Driver must have 'Cube Mode' set to 36"
+				paragraph "For use with the Xiaomi Aqara/Mi Cube using the 'Xiaomi Mi Cube Controller device driver'<br>Driver must have 'Cube Mode' set to 36"
 				paragraph "Driver information can be found here: <a href='https://community.hubitat.com/t/release-xiaomi-aqara-device-drivers/631/527' target='_Blank'>[TUTORIAL] Use of the Xiaomi Mi Cube Controller device driver</a>"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
