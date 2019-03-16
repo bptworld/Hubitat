@@ -44,7 +44,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-notif
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-at-a-time/7063" target="_blank">Go Here</a>
 <br><br>
 **Snapshot** - Monitor lights, devices and sensors. Easily see their status right on your dashboard.<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Not yet!</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snapshot/12042" target="_blank">Go Here</a>
 <br><br>
 **Send IP2IR** - Designed to send commands to an iTach IP2IR device.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667" target="_blank">Go Here</a>
