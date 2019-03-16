@@ -19,6 +19,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-
 **BI Control** - Designed to work locally with Blue Iris security software.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
+**Departures** - Let the rest of the house know when one or more people have left the area.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-departures/12039" target="_blank">Go Here</a>
+<br><br>
 **Device Sequencer** - Turn on/off several devices in a row, with a user defined pause in between each.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-sequencer/8596" target="_blank">Go Here</a>
 <br><br>
