@@ -235,7 +235,7 @@
   "WelcomeHomeUpdateNote": "V2.0.2 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Message from Parent app.",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.0.4",
+  "WhatDidISayDriver1Version": "v1.0.5",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -254,5 +254,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.0.4 - 03/02/19 - Fix the date being display on tile",
+  "WhatDidISayUpdateNote": "V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70 characters displayed. To reduce load on the Dashboards. This does NOT effect what is actually spoken.",
 }
