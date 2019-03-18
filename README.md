@@ -29,7 +29,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-devic
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-watchdog/7692" target="_blank">Go Here</a>
 <br><br>
 **Follow Me** - Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Not Yet</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-follow-me/12139" target="_blank">Go Here</a>
 <br><br>
 **Lighting Effects** - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
