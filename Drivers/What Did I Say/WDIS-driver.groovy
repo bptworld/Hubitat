@@ -2,7 +2,7 @@
  *  ****************  What Did I Say Driver  ****************
  *
  *  Design Usage:
- *  This driver formats Speech data to be displayed on Hubitat's Dashboards.
+ *  This driver formats Speech data to be displayed on Hubitat's Dashboards and also acts as a proxy speaker to 'Follow Me'.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *  
@@ -34,13 +34,15 @@
  *
  *  Changes:
  *
- *  V1.0.4 - 03/02/19 - Fix the date being display on tile
+ *  V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70
+ *  characters displayed. To reduce load on the Dashboards. This does NOT effect what is actually spoken.
+ *  V1.0.4 - 03/02/19 - Fixed the date being display on tile
  *  V1.0.2 - 02/18/19 - Adding command initialize
  *  V1.0.1 - 02/08/19 - Changed the 'How many lines' field from 5 or 10, to any number from 1 to 10. Attempt to fix a reported error.
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.4"}
+def version(){"v1.0.5"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
@@ -56,6 +58,7 @@ metadata {
 		
     	attribute "whatDidISay", "string"
 		attribute "lastSpoken", "string"
+		attribute "lastSpokenUnique", "string"
 	}
 	preferences() {    	
         section(){
@@ -70,27 +73,46 @@ metadata {
 
 //Received new messages from apps
 def sendSpeechMap(speechMap) {
-	state.speechReceived = speechMap
+	state.speechReceived = speechMap.take(70)
 	populateMap()
 }
 
 def playTextAndRestore(speechMap) {
-	state.speechReceived = speechMap
+	state.speechReceived = speechMap.take(70)
+	sendEvent(name: "playTextAndRestore", value: text)
 	populateMap()
 }
 
 def setVolumeSpeakAndRestore(speechMap) {
-	state.speechReceived = speechMap
+	state.speechReceived = speechMap.take(70)
+	sendEvent(name: "setVolumeSpeakAndRestore", value: text)
 	populateMap()
 }
 
 def speak(speechMap) {
-	state.speechReceived = speechMap
+	state.speechReceived = speechMap.take(70)
+	sendEvent(name: "speak", value: text)
 	populateMap()
+}
+
+def setLevel(level) {
+    sendEvent(name: "setLevel", value: level)    
+}
+
+def makeUnique() {
+	if(state.unique == null) state.unique = "a"
+	if(state.unique == "a") {
+		state.unique = "b"
+	} else {
+		state.unique = "a"
+	}
+	state.speechReceivedUnique = "${state.unique}" + "${state.speechReceived}"
+	sendEvent(name: "lastSpokenUnique", value: state.speechReceivedUnique, displayed: true)
 }
 
 def populateMap() {
 	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceived}")
+	makeUnique()
 	
 	sendEvent(name: "lastSpoken", value: state.speechReceived, displayed: true)
 	
@@ -190,8 +212,12 @@ def populateMap() {
 	}
 	state.speechTop+= "</td></tr></table>"
 	
-	LOGDEBUG("What Did I Say -<br>${state.speechTop}")
-	
+	state.speechTopCount = state.speechTop.length()
+	if(state.speechTopCount <= 1000) {
+		LOGDEBUG("What Did I Say - ${state.speechTopCount} Characters<br>${state.speechTop}")
+	} else {
+		state.speechTop = "Too many characters to display on Dashboard"
+	}
 	sendEvent(name: "whatDidISay", value: state.speechTop, displayed: true)
 }
 
@@ -207,8 +233,8 @@ def updated() {
 
 def getDateTime() {
 	def date = new Date()
-	if(hourType == false) state.newdate=date.format("MM-d HH:mm:ss")
-	if(hourType == true) state.newdate=date.format("MM-d hh:mm:ss")
+	if(hourType == false) state.newdate=date.format("MM-d HH:mm")
+	if(hourType == true) state.newdate=date.format("MM-d hh:mm")
 }
 
 def clearDataOff(){
