@@ -35,7 +35,7 @@
  *  Changes:
  *
  *  V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70
- *  characters displayed. To reduce load on the Dashboards. This does NOT effect what is actually spoken.
+ *  characters displayed. To reduce load on the Dashboards. This does NOT affect what is actually spoken.
  *  V1.0.4 - 03/02/19 - Fixed the date being display on tile
  *  V1.0.2 - 02/18/19 - Adding command initialize
  *  V1.0.1 - 02/08/19 - Changed the 'How many lines' field from 5 or 10, to any number from 1 to 10. Attempt to fix a reported error.
