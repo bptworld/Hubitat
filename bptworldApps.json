@@ -141,7 +141,7 @@
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
-  "FollowMeDiscussion": "NA",
+  "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
   "FollowMeUpdateNote": "V1.0.0 - 03/17/19 - Initial release",
   
   "LightingEffectsType": "App",
