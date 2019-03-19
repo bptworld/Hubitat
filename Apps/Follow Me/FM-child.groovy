@@ -35,12 +35,13 @@
  *  Changes:
  *
  *
+ *  V1.0.1 - 03/19/19 - Fixed a typo, stopping the Always On from working
  *  V1.0.0 - 03/17/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -118,7 +119,7 @@ def pageConfig() {
 		}
 		// both Speakers and Pushover
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Device")) {
-			paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device. If you already use our 'What Did I Say' driver...you're all set! Just select the same device used with 'What Did I Say'."
+			paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device. If you already use our 'What Did I Say' driver...you're allset! Just select the same device used with 'What Did I Say'."
 			paragraph "* Vitual Device must use our custom 'What Did I Say Driver'"
 			input "gvDevice", "capability.speechSynthesis", title: "Virtual Device created for Follow Me", required: true, multiple: false
 		}
@@ -376,7 +377,7 @@ def speechOff() {
 
 def letsTalk() {								// Modified from @Cobra Code
 	LOGDEBUG("In letsTalk...")
-	if(alwaysOn) alwaysOnHandler()
+	if(Always_On) alwaysOnHandler()
 	checkTime()
 	if(state.timeOK == true && state.sZone == true) {
 		LOGDEBUG("Speaker(s) in use: ${speaker}")
