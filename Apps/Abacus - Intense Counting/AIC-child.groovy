@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.9 - 03/20/19 - Major rewrite to comply with Hubitat's new dashboard requirements.
  *  V1.0.8 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.7 - 01/25/19 - Create a tile so counts can be used on Dashboard
  *  V1.0.6 - 01/15/19 - Updated footer with update check and links
@@ -48,7 +49,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.8"
+	state.version = "v1.0.9"
 }
 
 definition(
@@ -89,7 +90,7 @@ def pageConfig() {
 			paragraph "<b>Want to be able to view your counts on a Dashboard? Now you can, simply follow these instructions!</b>"
 			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Abacus - Counting Tile'<br> - Use our 'Abacus - Counting Tile' as the Driver<br> - Then select this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
-			paragraph "- Pick a device = Abacus - Counting Tile<br>- Pick a template = attribute<br>- 3rd box = abacusMotion, abacusContact, abacusSwitch or abacusThermostat"
+			paragraph "- Pick a device = Abacus - Counting Tile<br>- Pick a template = attribute<br>- 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are abacusMotion1-5, abacusContact1-5, abacusSwitch1-5 or abacusThermostat1"
 			}
 		section() {
 			input(name: "countTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Counts to:", submitOnChange: true, required: false, multiple: false)
@@ -106,60 +107,32 @@ def pageConfig() {
 
 def pageCounts(params) {
 	dynamicPage(name: "pageStatus", title: "<h2 style='color:#1A77C9;font-weight: bold'>Abacus - Intense Counting</h2>", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
-		if(state.motionMap) {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Motion Sensors")) {
-				if(state.motionMap) {
-					LOGDEBUG("In pageCounts...Motion Sensors")
-					paragraph "${state.motionMap}"
-				} else {
-					LOGDEBUG("In pageCounts...Motion Sensors")
-					paragraph "No Motion data to display."
-				}
-			}
+		buildMotionMaps()
+		buildContactMaps()
+		buildSwitchMaps()
+		buildThermostatMaps()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Motion Sensors")) {
+			LOGDEBUG("In pageCounts...Motion Sensors")
+			paragraph "${state.motionMap1S}${state.motionMap2S}${state.motionMap3S}${state.motionMap4S}${state.motionMap5S}"
 		}
-		if(state.contactMap) {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Contact Sensors")) {
-				if(state.contactMap) {
-					LOGDEBUG("In pageCounts...Contact Sensors")
-					paragraph "${state.contactMap}"
-				} else {
-					LOGDEBUG("In pageCounts...Contact Sensors")
-					paragraph "No Contact data to display."
-				}
-			}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Contact Sensors")) {
+			LOGDEBUG("In pageCounts...Contact Sensors")
+			paragraph "${state.contactMap1S}${state.contactMap2S}${state.contactMap3S}${state.contactMap4S}${state.contactMap5S}"
 		}
-		if(state.switchMap) {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Switch Events")) {
-				if(state.switchMap) {
-					LOGDEBUG("In pageCounts...Switch Events")
-					paragraph "${state.switchMap}"
-				} else {
-					LOGDEBUG("In pageCounts...Switch Events")
-					paragraph "No Switch data to display."
-				}
-			}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Switch Events")) {
+			LOGDEBUG("In pageCounts...Switch Events")
+			paragraph "${state.switchMap1S}${state.switchMap2S}${state.switchMap3S}${state.switchMap4S}${state.switchMap5S}"
 		}
-		if(state.thermostatMap) {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Thermostat Events")) {
-				if(state.thermostatMap) {
-					LOGDEBUG("In pageCounts...Thermostat Events")
-					paragraph "${state.thermostatMap}"
-				} else {
-					LOGDEBUG("In pageCounts...Thermostat Events")
-					paragraph "No Thermostat data to display."
-				}
-			}
-		}
-		section() {
-			if(state.motionMap == null && state.contactMap == null && state.switchMap == null && state.thermostatMap) {
-				paragraph "No data to display."
-			}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Thermostat Events")) {
+			LOGDEBUG("In pageCounts...Thermostat Events")
+			paragraph "${state.thermostatMap1S}"
 		}
 		section() {
 			paragraph getFormat("line")
 			def rightNow = new Date()
 			paragraph "<div style='color:#1A77C9'>Report generated: ${rightNow}</div>"
 		}
+		countMapHandler()
 	}
 }
 
@@ -192,23 +165,29 @@ def initialize() {
 }
 
 def countMapHandler(evt) {
-	def rightNow = new Date()
-	
-	def motionMap = "${state.motionMap}<br>${rightNow}"
 	LOGDEBUG("In countMapHandler...Sending new Abacus Motion Counts to ${countTileDevice}")
-    countTileDevice.sendMotionMap(motionMap)
+	countTileDevice.sendMotionMap1(state.motionMap1S)
+	countTileDevice.sendMotionMap2(state.motionMap2S)
+	countTileDevice.sendMotionMap3(state.motionMap3S)
+	countTileDevice.sendMotionMap4(state.motionMap4S)
+	countTileDevice.sendMotionMap5(state.motionMap5S)
 	
-	def contactMap = "${state.contactMap}<br>${rightNow}"
 	LOGDEBUG("In countMapHandler...Sending new Abacus Contact Counts to ${countTileDevice}")
-	countTileDevice.sendContactMap(contactMap)
+	countTileDevice.sendContactMap1(state.contactMap1S)
+	countTileDevice.sendContactMap2(state.contactMap2S)
+	countTileDevice.sendContactMap3(state.contactMap3S)
+	countTileDevice.sendContactMap4(state.contactMap4S)
+	countTileDevice.sendContactMap5(state.contactMap5S)
 	
-	def switchMap = "${state.switchMap}<br>${rightNow}"
 	LOGDEBUG("In countMapHandler...Sending new Abacus Switch Counts to ${countTileDevice}")
-	countTileDevice.sendSwitchMap(switchMap)
+	countTileDevice.sendSwitchMap1(state.switchMap1S)
+	countTileDevice.sendSwitchMap2(state.switchMap2S)
+	countTileDevice.sendSwitchMap3(state.switchMap3S)
+	countTileDevice.sendSwitchMap4(state.switchMap4S)
+	countTileDevice.sendSwitchMap5(state.switchMap5S)
 	
-	def thermostatMap = "${state.thermostatMap}<br>${rightNow}"
 	LOGDEBUG("In countMapHandler...Sending new Abacus Thermostat Counts to ${countTileDevice}")
-	countTileDevice.sendThermostatMap(thermostatMap)
+	countTileDevice.sendThermostatMap1(state.thermostatMap1S)
 }
 
 def setupNewStuff() {
@@ -217,8 +196,6 @@ def setupNewStuff() {
 	// ********** Starting Motion Devices **********
 	
 	LOGDEBUG("In setupNewStuff...Setting up Motion Maps")
-	
-	if(state.motionMap == null) resetMotionMapHandler()
 	if(state.motionMapD == null) resetMotionMapHandler()
 	if(state.motionMapW == null) resetMotionMapHandler()
 	if(state.motionMapM == null) resetMotionMapHandler()
@@ -250,8 +227,6 @@ def setupNewStuff() {
 	// ********** Starting Contact Devices **********
 	
 	LOGDEBUG("In setupNewStuff...Setting up Contact Maps")
-	
-	if(state.contactMap == null) resetContactMapHandler()
 	if(state.contactMapD == null) resetContactMapHandler()
 	if(state.contactMapW == null) resetContactMapHandler()
 	if(state.contactMapM == null) resetContactMapHandler()
@@ -283,8 +258,6 @@ def setupNewStuff() {
 	// ********** Starting Switch Devices **********
 	
 	LOGDEBUG("In setupNewStuff...Setting up Switch Maps")
-	
-	if(state.switchMap == null) resetSwitchMapHandler()
 	if(state.switchMapD == null) resetSwitchMapHandler()
 	if(state.switchMapW == null) resetSwitchMapHandler()
 	if(state.switchMapM == null) resetSwitchMapHandler()
@@ -316,8 +289,6 @@ def setupNewStuff() {
 	// ********** Starting Thermostat Devices **********
 	
 	LOGDEBUG("In setupNewStuff...Setting up Thermostat Maps")
-	
-	if(state.thermostatMap == null) resetThermostatMapHandler()
 	if(state.thermostatMapD == null) resetThermostatMapHandler()
 	if(state.thermostatMapW == null) resetThermostatMapHandler()
 	if(state.thermostatMapM == null) resetThermostatMapHandler()
@@ -350,7 +321,6 @@ def setupNewStuff() {
 def motionHandler(evt) {
 	LOGDEBUG("In motionHandler...")
 	LOGDEBUG("In motionHandler: Device: $evt.displayName is $evt.value")
-	state.motionMap = ""
 	try {
 		motionEvent.each { it -> 
 			if(evt.displayName == it.displayName) {
@@ -369,22 +339,11 @@ def motionHandler(evt) {
     			countY = state.motionMapY.get(evt.displayName)
     			newCountY = countY + 1
     			state.motionMapY.put(evt.displayName, newCountY)
-	
-				LOGDEBUG("Adding NEW In - ${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}")
-				state.motionMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}<br>"
-			} else {
-				countD = state.motionMapD.get(it.displayName)
-				countW = state.motionMapW.get(it.displayName)
-				countM = state.motionMapM.get(it.displayName)
-				countY = state.motionMapY.get(it.displayName)
-				LOGDEBUG("Adding OLD In - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-				state.motionMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
 			}
 		}
 	} 	
-	catch (e) {
-		
-	}
+	catch (e) {}
+	buildMotionMaps()
 }
 
 def contactHandler(evt) {
@@ -409,22 +368,10 @@ def contactHandler(evt) {
     			countY = state.contactMapY.get(evt.displayName)
     			newCountY = countY + 1
     			state.contactMapY.put(evt.displayName, newCountY)
-	
-				LOGDEBUG("Adding NEW In - ${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}")
-				state.contactMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}<br>"
-			} else {
-				countD = state.contactMapD.get(it.displayName)
-				countW = state.contactMapW.get(it.displayName)
-				countM = state.contactMapM.get(it.displayName)
-				countY = state.contactMapY.get(it.displayName)
-				LOGDEBUG("Adding OLD In - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-				state.contactMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
 			}
 		}
 	} 	
-	catch (e) {
-		
-	}
+	catch (e) {}
 }
 
 def switchHandler(evt) {
@@ -449,22 +396,10 @@ def switchHandler(evt) {
     			countY = state.switchMapY.get(evt.displayName)
     			newCountY = countY + 1
     			state.switchMapY.put(evt.displayName, newCountY)
-	
-				LOGDEBUG("Adding NEW In - ${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}")
-				state.switchMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}<br>"
-			} else {
-				countD = state.switchMapD.get(it.displayName)
-				countW = state.switchMapW.get(it.displayName)
-				countM = state.switchMapM.get(it.displayName)
-				countY = state.switchMapY.get(it.displayName)
-				LOGDEBUG("Adding OLD In - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-				state.switchMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
 			}
 		}
 	} 	
-	catch (e) {
-		
-	}		
+	catch (e) {}		
 }
 
 def thermostatHandler(evt) {
@@ -491,117 +426,17 @@ def thermostatHandler(evt) {
    	 				countY = state.thermostatMapY.get(evt.displayName)
    	 				newCountY = countY + 1
     				state.thermostatMapY.put(evt.displayName, newCountY)
-	
-					LOGDEBUG("Adding NEW In - ${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}")
-					state.thermostatMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${newCountW}, Month: ${newCountM}, Year: ${newCountY}<br>"
-				} else {
-					countD = state.thermostatMapD.get(it.displayName)
-					countW = state.thermostatMapW.get(it.displayName)
-					countM = state.thermostatMapM.get(it.displayName)
-					countY = state.thermostatMapY.get(it.displayName)
-					LOGDEBUG("Adding OLD In - ${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}")
-					state.thermostatMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
 				}
 			}
 		} 	
-		catch (e) {
-		
-		}
+		catch (e) {}
 	} else {
 		LOGDEBUG("In thermostatHandler...Nothing to do because it change to ${state.tStat}")
 	}
 }
 
-def removingFromMap() {
-	LOGDEBUG("In removingStuff...Time to Clean up the Maps")
-	LOGDEBUG("In removingStuff...Checking Motion Map: ${state.motionMap}")
-	if(state.motionMap) {
-		try {
-			state.motionMap.each { stuff2 -> 
-				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
-				if(motionEvents.contains(stuff2.key)) {
-					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
-				} else {
-					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
-					state.motionMap.remove(stuff2.key)
-					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
-				}
-			}
-		}
-		catch (e) {
-        	//log.error "Error:  $e"
-    	}
-		LOGDEBUG("In removingStuff...Finished Map: ${state.motionMap}")
-	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
-	
-	LOGDEBUG("In removingStuff...Checking Contact Map: ${state.contactMap}")
-	if(state.contactMap) {
-		try {
-			state.contactMap.each { stuff2 -> 
-				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
-				if(contactEvents.contains(stuff2.key)) {
-					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
-				} else {
-					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
-					state.contactMap.remove(stuff2.key)
-					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
-				}
-			}
-		}
-		catch (e) {
-        	//log.error "Error:  $e"
-    	}
-		LOGDEBUG("In removingStuff...Finished Map: ${state.contactMap}")
-	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
-	
-	LOGDEBUG("In removingStuff...Checking Switch Map: ${state.switchMap}")
-	if(state.switchMap) {
-		try {
-			state.switchMap.each { stuff2 -> 
-				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
-				if(switchEvents.contains(stuff2.key)) {
-					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
-				} else {
-					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
-					state.switchMap.remove(stuff2.key)
-					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
-				}
-			}
-		}
-		catch (e) {
-        	//log.error "Error:  $e"
-    	}
-		LOGDEBUG("In removingStuff...Finished Map: ${state.switchMap}")
-	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
-	
-	LOGDEBUG("In removingStuff...Checking Thermostat Map: ${state.thermostatMap}")
-	if(state.thermostatMap) {
-		try {
-			state.thermostatMap.each { stuff2 -> 
-				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
-				if(thermostatEvents.contains(stuff2.key)) {
-					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
-				} else {
-					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
-					state.thermostatMap.remove(stuff2.key)
-					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
-				}
-			}
-		}
-		catch (e) {
-        	//log.error "Error:  $e"
-    	}
-		LOGDEBUG("In removingStuff...Finished Map: ${state.thermostaMap}")
-	} else { LOGDEBUG("In removingStuff...state.motionMap was NULL") }
-}
-
 def resetMotionMapHandler() {
 	LOGDEBUG("In resetMotionMapHandler...")
-	if(state.motionMap == null) {
-		LOGDEBUG("In resetMotionMapHandler...Reseting motionMap")
-    	state.motionMap = [:]
-		state.motionMap = ""
-	}
 	if(state.motionMapD == null) {
 		LOGDEBUG("In resetMotionMapHandler...Reseting motionMapD")
     	state.motionMapD = [:]
@@ -626,11 +461,6 @@ def resetMotionMapHandler() {
 
 def resetContactMapHandler() {
 	LOGDEBUG("In resetContactMapHandler...")
-	if(state.contactMap == null) {
-		LOGDEBUG("In resetContactMapHandler...Reseting contactMap")
-    	state.contactMap = [:]
-		state.contactMap = ""
-	}
 	if(state.contactMapD == null) {
 		LOGDEBUG("In resetContactMapHandler...Reseting contactMapD")
     	state.contactMapD = [:]
@@ -655,11 +485,6 @@ def resetContactMapHandler() {
 
 def resetSwitchMapHandler() {
 	LOGDEBUG("In resetSwitchMapHandler...")
-	if(state.switchMap == null) {
-		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMap")
-    	state.switchMap = [:]
-		state.switchMap = ""
-	}
 	if(state.switchMapD == null) {
 		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMapD")
     	state.switchMapD = [:]
@@ -684,11 +509,6 @@ def resetSwitchMapHandler() {
 
 def resetThermostatMapHandler() {
 	LOGDEBUG("In resetThermostatMapHandler...")
-	if(state.thermostatMap == null) {
-		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMap")
-    	state.thermostatMap = [:]
-		state.thermostatMap = ""
-	}
 	if(state.thermostatMapD == null) {
 		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMapD")
     	state.thermostatMapD = [:]
@@ -714,63 +534,23 @@ def resetThermostatMapHandler() {
 def resetMotionCountHandler() {
 	LOGDEBUG("In resetMotionCountHandler...")
 	// Resetting Daily Counter
-		state.motionMap = ""
-		motionEvent.each { it -> 
-			countD = state.motionMapD.get(it.displayName)
-			countW = state.motionMapW.get(it.displayName)
-			countM = state.motionMapM.get(it.displayName)
-			countY = state.motionMapY.get(it.displayName)
-			newCountD = 0
-			state.motionMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-		}
-    	state.motionMapD = [:]
 		motionEvent.each { it -> state.motionMapD.put(it.displayName, 0)}
 	// Resetting Weekly Counter
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	if(dayOfWeek == 1) {
-		state.motionMap = ""
-		motionEvent.each { it -> 
-			countD = state.motionMapD.get(it.displayName)
-			countW = state.motionMapW.get(it.displayName)
-			countM = state.motionMapM.get(it.displayName)
-			countY = state.motionMapY.get(it.displayName)
-			newCountW = 0
-			state.motionMap += "${it.displayName} — Today's count: ${countD}, Week: ${newCountW}, Month: ${countM}, Year: ${countY}<br>"
-		}
-		state.motionMapW = [:]
 		motionEvent.each { it -> state.motionMapW.put(it.displayName, 0)}
 	}
 	// Resetting Monthly Counter
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
-		state.motionMap = ""
-		motionEvent.each { it -> 
-			countD = state.motionMapD.get(it.displayName)
-			countW = state.motionMapW.get(it.displayName)
-			countM = state.motionMapM.get(it.displayName)
-			countY = state.motionMapY.get(it.displayName)
-			newCountM = 0
-			state.motionMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${newCountM}, Year: ${countY}<br>"
-		}
-		state.motionMapM = [:]
 		motionEvent.each { it -> state.motionMapM.put(it.displayName, 0)}
 	}
 	// Resetting Yearly Counter
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
-		state.motionMap = ""
-		motionEvent.each { it -> 
-			countD = state.motionMapD.get(it.displayName)
-			countW = state.motionMapW.get(it.displayName)
-			countM = state.motionMapM.get(it.displayName)
-			countY = state.motionMapY.get(it.displayName)
-			newCountY = 0
-			state.motionMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${newCountY}<br>"
-		}
-		state.motionMapY = [:]
 		motionEvent.each { it -> state.motionMapY.put(it.displayName, 0)}
 	}
 }
@@ -778,15 +558,6 @@ def resetMotionCountHandler() {
 def resetContactCountHandler() {
 	LOGDEBUG("In resetContactCountHandler...")
 	// Resetting Daily Counter
-		state.contactMap = ""
-		contactEvent.each { it -> 
-			countD = state.contactMapD.get(it.displayName)
-			countW = state.contactMapW.get(it.displayName)
-			countM = state.contactMapM.get(it.displayName)
-			countY = state.contactMapY.get(it.displayName)
-			newCountD = 0
-			state.contactMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-		}
     	state.contactMapD = [:]
 		contactEvent.each { it -> state.contactMapD.put(it.displayName, 0)}
 	// Resetting Weekly Counter
@@ -794,15 +565,6 @@ def resetContactCountHandler() {
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	LOGDEBUG("In resetContactCountHandler...dayOfWeek: ${dayOfWeek}")
 	if(dayOfWeek == 1) {
-		state.contactMap = ""
-		contactEvent.each { it -> 
-			countD = state.contactMapD.get(it.displayName)
-			countW = state.contactMapW.get(it.displayName)
-			countM = state.contactMapM.get(it.displayName)
-			countY = state.contactMapY.get(it.displayName)
-			newCountW = 0
-			state.contactMap += "${it.displayName} — Today's count: ${countD}, Week: ${newCountW}, Month: ${countM}, Year: ${countY}<br>"
-		}
 		state.contactMapW = [:]
 		contactEvent.each { it -> state.contactMapW.put(it.displayName, 0)}
 	}
@@ -810,15 +572,6 @@ def resetContactCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
-		state.contactMap = ""
-		contactEvent.each { it -> 
-			countD = state.contactMapD.get(it.displayName)
-			countW = state.contactMapW.get(it.displayName)
-			countM = state.contactMapM.get(it.displayName)
-			countY = state.contactMapY.get(it.displayName)
-			newCountM = 0
-			state.contactMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${newCountM}, Year: ${countY}<br>"
-		}
 		state.contactMapM = [:]
 		contactEvent.each { it -> state.contactMapM.put(it.displayName, 0)}
 	}
@@ -826,15 +579,6 @@ def resetContactCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
-		state.contactMap = ""
-		contactEvent.each { it -> 
-			countD = state.contactMapD.get(it.displayName)
-			countW = state.contactMapW.get(it.displayName)
-			countM = state.contactMapM.get(it.displayName)
-			countY = state.contactMapY.get(it.displayName)
-			newCountY = 0
-			state.contactMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${newCountY}<br>"
-		}
 		state.contactMapY = [:]
 		contactEvent.each { it -> state.contactMapY.put(it.displayName, 0)}
 	}
@@ -843,30 +587,12 @@ def resetContactCountHandler() {
 def resetSwitchCountHandler() {
 	LOGDEBUG("In resetSwitchCountHandler...")
 	// Resetting Daily Counter
-		state.switchMap = ""
-		switchEvent.each { it -> 
-			countD = state.switchMapD.get(it.displayName)
-			countW = state.switchMapW.get(it.displayName)
-			countM = state.switchMapM.get(it.displayName)
-			countY = state.switchMapY.get(it.displayName)
-			newCountD = 0
-			state.switchMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-		}
     	state.switchMapD = [:]
 		switchEvent.each { it -> state.switchMapD.put(it.displayName, 0)}
 	// Resetting Weekly Counter
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	if(dayOfWeek == 1) {
-		state.switchMap = ""
-		switchEvent.each { it -> 
-			countD = state.switchMapD.get(it.displayName)
-			countW = state.switchMapW.get(it.displayName)
-			countM = state.switchMapM.get(it.displayName)
-			countY = state.switchMapY.get(it.displayName)
-			newCountW = 0
-			state.switchMap += "${it.displayName} — Today's count: ${countD}, Week: ${newCountW}, Month: ${countM}, Year: ${countY}<br>"
-		}
 		state.switchMapW = [:]
 		switchEvent.each { it -> state.switchMapW.put(it.displayName, 0)}
 	}
@@ -874,15 +600,6 @@ def resetSwitchCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
-		state.switchMap = ""
-		switchEvent.each { it -> 
-			countD = state.switchMapD.get(it.displayName)
-			countW = state.switchMapW.get(it.displayName)
-			countM = state.switchMapM.get(it.displayName)
-			countY = state.switchMapY.get(it.displayName)
-			newCountM = 0
-			state.switchMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${newCountM}, Year: ${countY}<br>"
-		}
 		state.switchMapM = [:]
 		switchEvent.each { it -> state.switchMapM.put(it.displayName, 0)}
 	}
@@ -890,15 +607,6 @@ def resetSwitchCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
-		state.switchMap = ""
-		switchEvent.each { it -> 
-			countD = state.switchMapD.get(it.displayName)
-			countW = state.switchMapW.get(it.displayName)
-			countM = state.switchMapM.get(it.displayName)
-			countY = state.switchMapY.get(it.displayName)
-			newCountY = 0
-			state.switchMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${newCountY}<br>"
-		}
 		state.switchMapY = [:]
 		switchEvent.each { it -> state.switchMapY.put(it.displayName, 0)}
 	}
@@ -907,30 +615,12 @@ def resetSwitchCountHandler() {
 def resetThermostatCountHandler() {
 	LOGDEBUG("In resetThermostatCountHandler...")
 	// Resetting Daily Counter
-		state.thermostatMap = ""
-		thermostatEvent.each { it -> 
-			countD = state.thermostatMapD.get(it.displayName)
-			countW = state.thermostatMapW.get(it.displayName)
-			countM = state.thermostatMapM.get(it.displayName)
-			countY = state.thermostatMapY.get(it.displayName)
-			newCountD = 0
-			state.thermostatMap += "${it.displayName} — Today's count: ${newCountD}, Week: ${countW}, Month: ${countM}, Year: ${countY}<br>"
-		}
     	state.thermostatMapD = [:]
 		thermostatEvent.each { it -> state.thermostatMapD.put(it.displayName, 0)}
 	// Resetting Weekly Counter
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
 	if(dayOfWeek == 1) {
-		state.thermostatMap = ""
-		thermostatEvent.each { it -> 
-			countD = state.thermostatMapD.get(it.displayName)
-			countW = state.thermostatMapW.get(it.displayName)
-			countM = state.thermostatMapM.get(it.displayName)
-			countY = state.thermostatMapY.get(it.displayName)
-			newCountW = 0
-			state.thermostatMap += "${it.displayName} — Today's count: ${countD}, Week: ${newCountW}, Month: ${countM}, Year: ${countY}<br>"
-		}
 		state.thermostatMapW = [:]
 		thermostatEvent.each { it -> state.thermostatMapW.put(it.displayName, 0)}
 	}
@@ -938,15 +628,6 @@ def resetThermostatCountHandler() {
 	def date2 = new Date()
 	def dayOfMonth = date2.getAt(Calendar.DAY_OF_MONTH)
 	if(dayOfMonth == 1) {
-		state.thermostatMap = ""
-		thermostatEvent.each { it -> 
-			countD = state.thermostatMapD.get(it.displayName)
-			countW = state.thermostatMapW.get(it.displayName)
-			countM = state.thermostatMapM.get(it.displayName)
-			countY = state.thermostatMapY.get(it.displayName)
-			newCountM = 0
-			state.thermostatMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${newCountM}, Year: ${countY}<br>"
-		}
 		state.thermostatMapM = [:]
 		thermostatEvent.each { it -> state.thermostatMapM.put(it.displayName, 0)}
 	}
@@ -954,15 +635,6 @@ def resetThermostatCountHandler() {
 	def date3 = new Date()
 	def dayOfYear = date3.getAt(Calendar.DAY_OF_YEAR)
 	if(dayOfYear == 1) {
-		state.thermostatMap = ""
-		thermostatEvent.each { it -> 
-			countD = state.thermostatMapD.get(it.displayName)
-			countW = state.thermostatMapW.get(it.displayName)
-			countM = state.thermostatMapM.get(it.displayName)
-			countY = state.thermostatMapY.get(it.displayName)
-			newCountY = 0
-			state.thermostatMap += "${it.displayName} — Today's count: ${countD}, Week: ${countW}, Month: ${countM}, Year: ${newCountY}<br>"
-		}
 		state.thermostatMapY = [:]
 		thermostatEvent.each { it -> state.thermostatMapY.put(it.displayName, 0)}
 	}
@@ -973,6 +645,198 @@ def sendMessage(msg) {
     if (pushNotification) {
         sendPush(msg)
     }
+}
+
+def buildMotionMaps() {
+	LOGDEBUG("In buildMotionMaps - Map: ${motionEvent}")
+	state.count = 0
+	if(motionEvent) {
+		state.motionEventS = motionEvent.sort{it.name}
+	} else {
+		state.motionEventS = ""
+	}
+	LOGDEBUG("In buildMotionMaps - Sorted Map: ${state.motionEventS}")
+	state.motionMap1S = "<table width='100%'>"
+	state.motionMap2S = "<table width='100%'>"
+	state.motionMap3S = "<table width='100%'>"
+	state.motionMap4S = "<table width='100%'>"
+	state.motionMap5S = "<table width='100%'>"
+	
+	state.motionEventS.each { it ->
+		state.count = state.count + 1
+		countD = state.motionMapD.get(it.displayName)
+		countW = state.motionMapW.get(it.displayName)
+		countM = state.motionMapM.get(it.displayName)
+		countY = state.motionMapY.get(it.displayName)
+		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(state.count == 1) {
+			state.motionMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.motionMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 2) && (state.count <= 5)) state.motionMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 6) {
+			state.motionMap2S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.motionMap2S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 7) && (state.count <= 10)) state.motionMap2S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 11) {
+			state.motionMap3S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.motionMap3S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 12) && (state.count <= 15)) state.motionMap3S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>{countY}</td></tr>"
+		if(state.count == 16) {
+			state.motionMap4S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.motionMap4S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 17) && (state.count <= 20)) state.motionMap4S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 21) {
+			state.motionMap5S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.motionMap5S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 22) && (state.count <= 25)) state.motionMap5S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+	}
+	state.motionMap1S += "</table>"
+	state.motionMap2S += "</table>"
+	state.motionMap3S += "</table>"
+	state.motionMap4S += "</table>"
+	state.motionMap5S += "</table>"
+}
+
+def buildContactMaps() {
+	LOGDEBUG("In buildContactMaps - Map: ${contactEvent}")
+	state.count = 0
+	if(contactEvent) {
+		state.contactEventS = contactEvent.sort{it.name}
+	} else {
+		state.contactEventS = ""
+	}
+	LOGDEBUG("In buildContactMaps - Sorted Map: ${state.contactEventS}")
+	state.contactMap1S = "<table width='100%'>"
+	state.contactMap2S = "<table width='100%'>"
+	state.contactMap3S = "<table width='100%'>"
+	state.contactMap4S = "<table width='100%'>"
+	state.contactMap5S = "<table width='100%'>"
+	
+	state.contactEventS.each { it ->
+		state.count = state.count + 1
+		countD = state.contactMapD.get(it.displayName)
+		countW = state.contactMapW.get(it.displayName)
+		countM = state.contactMapM.get(it.displayName)
+		countY = state.contactMapY.get(it.displayName)
+		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(state.count == 1) {
+			state.contactMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.contactMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 2) && (state.count <= 5)) state.contactMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 6) {
+			state.contactMap2S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.contactMap2S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 7) && (state.count <= 10)) state.contactMap2S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 11) {
+			state.contactMap3S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.contactMap3S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 12) && (state.count <= 15)) state.contactMap3S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 16) {
+			state.contactMap4S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.contactMap4S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 17) && (state.count <= 20)) state.contactMap4S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 21) {
+			state.contactMap5S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.contactMap5S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 22) && (state.count <= 25)) state.contactMap5S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+	}
+	state.contactMap1S += "</table>"
+	state.contactMap2S += "</table>"
+	state.contactMap3S += "</table>"
+	state.contactMap4S += "</table>"
+	state.contactMap5S += "</table>"
+}
+
+def buildSwitchMaps() {
+	LOGDEBUG("In buildSwitchMaps - Map: ${switchEvent}")
+	state.count = 0
+	if(switchEvent) {
+		state.switchEventS = switchEvent.sort{it.name}
+	} else {
+		state.switchEventS = ""
+	}
+	LOGDEBUG("In buildSwitchMaps - Sorted Map: ${state.switchEventS}")
+	state.switchMap1S = "<table width='100%'>"
+	state.switchMap2S = "<table width='100%'>"
+	state.switchMap3S = "<table width='100%'>"
+	state.switchMap4S = "<table width='100%'>"
+	state.switchMap5S = "<table width='100%'>"
+	
+	state.switchEventS.each { it ->
+		state.count = state.count + 1
+		countD = state.switchMapD.get(it.displayName)
+		countW = state.switchMapW.get(it.displayName)
+		countM = state.switchMapM.get(it.displayName)
+		countY = state.switchMapY.get(it.displayName)
+		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(state.count == 1) {
+			state.switchMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.switchMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 2) && (state.count <= 5)) state.switchMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 6) {
+			state.switchMap2S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.switchMap2S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 7) && (state.count <= 10)) state.switchMap2S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 11) {
+			state.switchMap3S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.switchMap3S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 12) && (state.count <= 15)) state.switchMap3S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 16) {
+			state.switchMap4S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.switchMap4S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 17) && (state.count <= 20)) state.switchMap4S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		if(state.count == 21) {
+			state.switchMap5S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.switchMap5S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 22) && (state.count <= 25)) state.switchMap5S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+	}
+	state.switchMap1S += "</table>"
+	state.switchMap2S += "</table>"
+	state.switchMap3S += "</table>"
+	state.switchMap4S += "</table>"
+	state.switchMap5S += "</table>"
+}
+
+def buildThermostatMaps() {
+	LOGDEBUG("In buildThermostatMaps - Map: ${thermostatEvent}")
+	state.count = 0
+	if(thermostatEvent) {
+		state.thermostatEventS = thermostatEvent.sort{it.name}
+	} else {
+		state.thermostatEventS = ""
+	}
+	LOGDEBUG("In buildThermostatMaps - Sorted Map: ${state.thermostatEventS}")
+	state.thermostatMap1S = "<table width='100%'>"
+	
+	state.thermostatEventS.each { it ->
+		state.count = state.count + 1
+		countD = state.thermostatMapD.get(it.displayName)
+		countW = state.thermostatMapW.get(it.displayName)
+		countM = state.thermostatMapM.get(it.displayName)
+		countY = state.thermostatMapY.get(it.displayName)
+		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(state.count == 1) {
+			state.thermostatMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
+			state.thermostatMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+		}
+		if((state.count >= 2) && (state.count <= 5)) state.thermostatMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
+	}
+	state.thermostatMap1S += "</table>"
 }
 
 // ********** Normal Stuff **********
@@ -1001,21 +865,11 @@ def pauseOrNot(){							// Modified from @Cobra Code
 }
 
 def setDefaults(){
-	setVersion()
 	setupNewStuff()
-	removingFromMap()
     pauseOrNot()
     if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	
-	editALine = "false"
-	whichMap = ""
-	lineToEdit = ""
-	ecountD = 0
-	ecountW = 0
-	ecountM = 0
-	ecountY = 0
 }
 
 def logCheck(){									// Modified from @Cobra Code
@@ -1055,6 +909,7 @@ def display() {
 }
 
 def display2(){
+	setVersion()
 	section() {
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>Abacus - Intense Counting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
