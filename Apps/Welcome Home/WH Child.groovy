@@ -35,6 +35,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.3 - 03/20/19 - Changed the wording on whether to turn the option for 'Echo Speaks' on or off.
  *  V2.0.2 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
  *						from Parent app.
  *  V2.0.1 - 02/11/19 - Trobleshooting problem with Friendly Name - Fixed
@@ -62,7 +63,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v2.0.2"
+	state.version = "v2.0.3"
 }
 
 definition(
@@ -128,7 +129,10 @@ def pageConfig() {
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
               	input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
-				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?")
+				paragraph "<hr>"
+				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
+				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device")
+				paragraph "<hr>"
 				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
               	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
 				input "fromTime2", "time", title: "Quiet Time Start", required: true
@@ -202,7 +206,7 @@ def pageConfig() {
 			input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Global Variables")) {
-			paragraph "This app requires a 'virtual device' to send variables between child apps. This is to prevent muliple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
+			paragraph "This app requires a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
 			paragraph "* Vitual Device must use our custom 'Global Variables Driver'"
 			input "gvDevice", "capability.actuator", title: "Virtual Device created for Welcome Home", required: true, multiple: false
 		}
