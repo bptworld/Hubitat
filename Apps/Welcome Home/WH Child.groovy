@@ -64,7 +64,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v2.0.3"
+	state.version = "v2.0.4"
 }
 
 definition(
