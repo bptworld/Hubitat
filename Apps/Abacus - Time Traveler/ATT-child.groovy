@@ -35,6 +35,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.5 - 03/22/19 - Maintenance release to prepare for V2.0.0. You will need this version to save all of your stats!
  *  V1.0.4 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.3 - 01/15/19 - Updated footer with update check and links
  *  V1.0.2 - 01/06/19 - Squashed a bug in the Weekly count reset. Also added in a way to delete a single line from the reports.
@@ -45,7 +46,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
@@ -63,6 +64,7 @@ definition(
 preferences {
     page(name: "pageConfig")
 	page(name: "pageCounts")
+	page(name: "rawStats")
 }
 
 def pageConfig() {
@@ -81,6 +83,14 @@ def pageConfig() {
 			input(name: "contactEvent", type: "capability.contactSensor", title: "Contact Sensor(s) to time", submitOnChange: true, required: false, multiple: true)
 			input(name: "switchEvent", type: "capability.switch", title: "Switch Device(s) to time", submitOnChange: true, required: false, multiple: true)
 			input(name: "thermostatEvent", type: "capability.thermostat", title: "Thermostat(s) to time", submitOnChange: true, required: false, multiple: true)
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance - Preparing for V2.0.0")) {}
+		section("Instructions for Maintenance section:", hideable: true, hidden: true) {
+			paragraph "If upgrading from v1.0.5 and want to keep your current stats. Run the report below. It will display all the numbers you need to make sure you don't lose your stats!"
+			paragraph "NOTE: The numbers produced here will need to be manually added into V2.0.0"
+		}
+		section() {
+			href "rawStats", title: "Run Stats Report", description: "Click here to run the stats report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
 		section() {
@@ -146,6 +156,24 @@ def pageCounts(params) {
 			paragraph getFormat("line")
 			def rightNow = new Date()
 			paragraph "<div style='color:#1A77C9'>Report generated: ${rightNow}</div>"
+		}
+	}
+}
+
+def rawStats(params) {
+	dynamicPage(name: "rawStats", title: "<h2 style='color:#1A77C9;font-weight: bold'>Abacus - Time Traveler</h2>", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
+		rawStatsHandler()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Raw Motion Stats")) {
+			if(state.rawMotionMap) paragraph "${state.rawMotionMap}"
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Raw Switch Stats")) {
+			if(state.rawSwitchMap) paragraph "${state.rawSwitchMap}"
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Raw Contact Stats")) {
+			if(state.rawContactMap) paragraph "${state.rawContactMap}"
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Raw Thermostat Stats")) {
+			if(state.rawThermostatMap) paragraph "${state.rawThermostatMap}"
 		}
 	}
 }
@@ -338,6 +366,65 @@ def setupNewStuff() {
 	}
 	
 	// ********** Ending Thermostat Devices **********
+}
+
+def rawStatsHandler() {
+	// Motion
+	if(motionEvent) {
+		state.motionEventS = motionEvent.sort{it.name}
+		state.rawMotionMap = "<table width='100%'>"
+		state.motionEventS.each { it ->
+			countD = state.motionMapD.get(it.displayName)
+			countW = state.motionMapW.get(it.displayName)
+			countM = state.motionMapM.get(it.displayName)
+			countY = state.motionMapY.get(it.displayName)
+			LOGDEBUG("Motion - ${it.displayName} - D: ${countD}, W: ${countW}, M: ${countM}, Y: ${countY}")
+			state.rawMotionMap += "<tr><td><b>${it.displayName}</b></td><td>D: ${countD}</td><td>W: ${countW}</td><td>M: ${countM}</td><td>Y: ${countY}</td></tr>"
+		}
+		state.rawMotionMap += "</table>"
+	}
+	// Switch
+	if(switchEvent) {
+		state.switchEventS = switchEvent.sort{it.name}
+		state.rawSwitchMap = "<table width='100%'>"
+		state.switchEventS.each { it ->
+			countD = state.switchMapD.get(it.displayName)
+			countW = state.switchMapW.get(it.displayName)
+			countM = state.switchMapM.get(it.displayName)
+			countY = state.switchMapY.get(it.displayName)
+			LOGDEBUG("Switch - ${it.displayName} - D: ${countD}, W: ${countW}, M: ${countM}, Y: ${countY}")
+			state.rawSwitchMap += "<tr><td><b>${it.displayName}</b></td><td>D: ${countD}</td><td>W: ${countW}</td><td>M: ${countM}</td><td>Y: ${countY}</td></tr>"
+		}
+		state.rawSwitchMap += "</table>"
+	}
+	//Contact
+	if(contactEvent) {
+		state.contactEventS = contactEvent.sort{it.name}
+		state.rawContactMap = "<table width='100%'>"
+		state.contactEventS.each { it ->
+			countD = state.contactMapD.get(it.displayName)
+			countW = state.contactMapW.get(it.displayName)
+			countM = state.contactMapM.get(it.displayName)
+			countY = state.contactMapY.get(it.displayName)
+			LOGDEBUG("Contact - ${it.displayName} - D: ${countD}, W: ${countW}, M: ${countM}, Y: ${countY}")
+			state.rawContactMap += "<tr><td><b>${it.displayName}</b></td><td>D: ${countD}</td><td>W: ${countW}</td><td>M: ${countM}</td><td>Y: ${countY}</td></tr>"
+		}
+		state.rawContactMap += "</table>"
+	}
+	// Thermostat
+	if(thermostatEvent) {
+		state.thermostatEventS = thermostatEvent.sort{it.name}
+		state.rawThermostatMap = "<table width='100%'>"
+		state.thermostatEventS.each { it ->
+			countD = state.thermostatMapD.get(it.displayName)
+			countW = state.thermostatMapW.get(it.displayName)
+			countM = state.thermostatMapM.get(it.displayName)
+			countY = state.thermostatMapY.get(it.displayName)
+			LOGDEBUG("Thermostat - ${it.displayName} - D: ${countD}, W: ${countW}, M: ${countM}, Y: ${countY}")
+			state.rawThermostatMap += "<tr><td><b>${it.displayName}</b></td><td>D: ${countD}</td><td>W: ${countW}</td><td>M: ${countM}</td><td>Y: ${countY}</td></tr>"
+		}
+		state.rawThermostatMap += "</table>"
+	}
 }
 
 def motionHandler(evt) {
