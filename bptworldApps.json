@@ -226,13 +226,13 @@
   
   "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.1",
-  "WelcomeHomeChildVersion": "v2.0.3",
+  "WelcomeHomeChildVersion": "v2.0.4",
   "WelcomeHomeDriverVersion": "v1.0.0",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDiscussion": "https://community.hubitat.com/t/release-welcome-home/6445",
-  "WelcomeHomeUpdateNote": "V2.0.3 - 03/20/19 - Changed the wording on whether to turn the option for 'Echo Speaks' on or off.",
+  "WelcomeHomeUpdateNote": "V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices",
   
   "WhatDidISayType": "Driver",
   "WhatDidISayDriver1Version": "v1.0.5",
