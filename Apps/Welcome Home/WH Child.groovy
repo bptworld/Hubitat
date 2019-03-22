@@ -35,6 +35,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices
  *  V2.0.3 - 03/20/19 - Changed the wording on whether to turn the option for 'Echo Speaks' on or off.
  *  V2.0.2 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
  *						from Parent app.
@@ -131,7 +132,8 @@ def pageConfig() {
               	input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
 				paragraph "<hr>"
 				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
-				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device")
+				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
+				if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
 				paragraph "<hr>"
 				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
               	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
@@ -673,7 +675,7 @@ def letsTalk() {								// Heavily Modified from @Cobra Code
     		LOGDEBUG("Music Player")
 			if(echoSpeaks) {
 				setVolume()
-				speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg)
+				speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg, restoreVolume)
 				state.canSpeak = "no"
 				LOGDEBUG("In letsTalk - Wow, that's it!")
 			}
@@ -701,18 +703,18 @@ def setVolume(){								// Modified from @Cobra Code
 	def timecheck = fromTime2
 	if (timecheck != null){
 		def between2 = timeOfDayIsBetween(toDateTime(fromTime2), toDateTime(toTime2), new Date(), location.timeZone)
-    if (between2) {
-    	state.volume = volume2
-   		if(!echoSpeaks) speakers.setLevel(state.volume)
-   		LOGDEBUG("In setVolume - Quiet Time = Yes - Setting Quiet time volume")
-   		LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks") 
-	}
-	if (!between2) {
-		state.volume = volume1
-		if(!echoSpeaks) speakers.setLevel(state.volume)
-		LOGDEBUG("In setVolume - Quiet Time = No - Setting Normal time volume")
-		LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks")
-	}
+   	 	if (between2) {
+    		state.volume = volume2
+   			if(!echoSpeaks) speakers.setLevel(state.volume)
+   			LOGDEBUG("In setVolume - Quiet Time = Yes - Setting Quiet time volume")
+   			LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks") 
+		}
+		if (!between2) {
+			state.volume = volume1
+			if(!echoSpeaks) speakers.setLevel(state.volume)
+			LOGDEBUG("In setVolume - Quiet Time = No - Setting Normal time volume")
+			LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks")
+		}
 	}
 	else if (timecheck == null){
 		state.volume = volume1
