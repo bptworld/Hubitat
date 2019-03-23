@@ -35,6 +35,7 @@
  *  Changes:
  *
  *
+ *  V1.0.1 - 03/23/19 - Adjusted for new Dashboard requirements
  *  V1.0.0 - 03/06/19 - Initial release
  */
 
@@ -42,13 +43,33 @@ metadata {
 	definition (name: "Snapshot Tile", namespace: "BPTWorld", author: "Bryan Turcotte") {
    		capability "Actuator"
 
-		command "sendSnapshotSwitchOnMap", ["string"]
-		command "sendSnapshotSwitchOffMap", ["string"]
-		command "sendSnapshotContactOpenMap", ["string"]
-		command "sendSnapshotContactClosedMap", ["string"]
+		command "sendSnapshotSwitchMap1", ["string"]
+		command "sendSnapshotSwitchMap2", ["string"]
+		command "sendSnapshotSwitchMap3", ["string"]
+		command "sendSnapshotSwitchMap4", ["string"]
+		command "sendSnapshotSwitchMap5", ["string"]
+		command "sendSnapshotSwitchMap6", ["string"]
 		
-    	attribute "snapshotSwitch", "string"
-		attribute "snapshotContact", "string"
+		command "sendSnapshotContactMap1", ["string"]
+		command "sendSnapshotContactMap2", ["string"]
+		command "sendSnapshotContactMap3", ["string"]
+		command "sendSnapshotContactMap4", ["string"]
+		command "sendSnapshotContactMap5", ["string"]
+		command "sendSnapshotContactMap6", ["string"]
+		
+    	attribute "snapshotSwitch1", "string"
+		attribute "snapshotSwitch2", "string"
+		attribute "snapshotSwitch3", "string"
+		attribute "snapshotSwitch4", "string"
+		attribute "snapshotSwitch5", "string"
+		attribute "snapshotSwitch6", "string"
+		
+		attribute "snapshotContact1", "string"
+		attribute "snapshotContact2", "string"
+		attribute "snapshotContact3", "string"
+		attribute "snapshotContact4", "string"
+		attribute "snapshotContact5", "string"
+		attribute "snapshotContact6", "string"
 	}
 	preferences() {    	
         section(){
@@ -59,70 +80,184 @@ metadata {
     }
 }
 
-def sendSnapshotSwitchOnMap(switchOnMap) {
-	state.switchOnDevice = "${switchOnMap}"
-	sendSnapshotMap()
-}
-
-def sendSnapshotSwitchOffMap(switchOffMap) {
-	state.switchOffDevice = "${switchOffMap}"
-	sendSnapshotMap()
-}
-
-def sendSnapshotMap() {
+def sendSnapshotSwitchMap1(switchMap1) {
+	state.switchDevice1a = "${switchMap1}"
 	state.switchDevice1 = "<table width='100%'><tr>"
 	state.switchDevice1 += "<td style='text-align: left; width: 100%'>"
-	state.switchDevice1 += "<div style='font-size: ${fontSize}px'> ${state.switchOnDevice}</div>"
+	state.switchDevice1 += "<div style='font-size: ${fontSize}px'> ${state.switchDevice1a}</div>"
 	state.switchDevice1 += "</td></tr></table>"
+	state.switchDevice1Count = state.switchDevice1.length()
+	if(state.contactDevice1Count <= 1000) {
+		LOGDEBUG("switchDevice1 - has ${state.contactDevice1Count} Characters<br>${state.switchDevice1}")
+	} else {
+		state.switchDevice1 = "Too many characters to display on Dashboard (${state.contactDevice1Count})"
+	}
+	sendEvent(name: "snapshotSwitch1", value: state.switchDevice1, displayed: true)
+}
 
+def sendSnapshotSwitchMap2(switchMap2) {
+	state.switchDevice2a = "${switchMap2}"
 	state.switchDevice2 = "<table width='100%'><tr>"
 	state.switchDevice2 += "<td style='text-align: left; width: 100%'>"
-	state.switchDevice2 += "<div style='font-size: ${fontSize}px'> ${state.switchOffDevice}</div>"
+	state.switchDevice2 += "<div style='font-size: ${fontSize}px'> ${state.switchDevice2a}</div>"
 	state.switchDevice2 += "</td></tr></table>"
-	
-	def rightNowS = new Date()
-	fontSizeS = 12
-	state.theDateS = "<table width='100%'><tr>"
-	state.theDateS += "<td style='text-align: left; width: 100%'>"
-	state.theDateS += "<div style='font-size: ${fontSizeS}px'> ${rightNowS}</div>"
-	state.theDateS += "</td></tr></table>"
-	
-	state.switchDevice = "${state.switchDevice1}${state.switchDevice2}${state.theDateS}"
-	sendEvent(name: "snapshotSwitch", value: state.switchDevice, displayed: true)
+	state.switchDevice2Count = state.switchDevice2.length()
+	if(state.contactDevice2Count <= 1000) {
+		LOGDEBUG("switchDevice2 - has ${state.contactDevice2Count} Characters<br>${state.switchDevice2}")
+	} else {
+		state.switchDevice2 = "Too many characters to display on Dashboard (${state.contactDevice2Count})"
+	}
+	sendEvent(name: "snapshotSwitch2", value: state.switchDevice2, displayed: true)
 }
 
-def sendSnapshotContactOpenMap(contactOpenMap) {
-	state.contactOpenDevice = "${contactOpenMap}"
-	sendSnapshotContactMap()
+def sendSnapshotSwitchMap3(switchMap3) {
+	state.switchDevice3a = "${switchMap3}"
+	state.switchDevice3 = "<table width='100%'><tr>"
+	state.switchDevice3 += "<td style='text-align: left; width: 100%'>"
+	state.switchDevice3 += "<div style='font-size: ${fontSize}px'> ${state.switchDevice3a}</div>"
+	state.switchDevice3 += "</td></tr></table>"
+	state.switchDevice3Count = state.switchDevice3.length()
+	if(state.contactDevice3Count <= 1000) {
+		LOGDEBUG("switchDevice3 - has ${state.contactDevice3Count} Characters<br>${state.switchDevice3}")
+	} else {
+		state.switchDevice3 = "Too many characters to display on Dashboard (${state.contactDevice3Count})"
+	}
+	sendEvent(name: "snapshotSwitch3", value: state.switchDevice3, displayed: true)
 }
 
-def sendSnapshotContactClosedMap(contactClosedMap) {
-	state.contactClosedDevice = "${contactClosedMap}"
-	sendSnapshotContactMap()
+def sendSnapshotSwitchMap4(switchMap4) {
+	state.switchDevice4a = "${switchMap4}"
+	state.switchDevice4 = "<table width='100%'><tr>"
+	state.switchDevice4 += "<td style='text-align: left; width: 100%'>"
+	state.switchDevice4 += "<div style='font-size: ${fontSize}px'> ${state.switchDevice4a}</div>"
+	state.switchDevice4 += "</td></tr></table>"
+	state.switchDevice4Count = state.switchDevice4.length()
+	if(state.contactDevice4Count <= 1000) {
+		LOGDEBUG("switchDevice4 - has ${state.contactDevice4Count} Characters<br>${state.switchDevice4}")
+	} else {
+		state.switchDevice4 = "Too many characters to display on Dashboard (${state.contactDevice4Count})"
+	}
+	sendEvent(name: "snapshotSwitch4", value: state.switchDevice4, displayed: true)
 }
 
-def sendSnapshotContactMap() {
-    LOGDEBUG("In Snapshot Tile - Received new Contact data!")
-	
+def sendSnapshotSwitchMap5(switchMap5) {
+	state.switchDevice5a = "${switchMap5}"
+	state.switchDevice5 = "<table width='100%'><tr>"
+	state.switchDevice5 += "<td style='text-align: left; width: 100%'>"
+	state.switchDevice5 += "<div style='font-size: ${fontSize}px'> ${state.switchDevice5a}</div>"
+	state.switchDevice5 += "</td></tr></table>"
+	state.switchDevice5Count = state.switchDevice5.length()
+	if(state.contactDevice5Count <= 1000) {
+		LOGDEBUG("switchDevice5 - has ${state.contactDevice5Count} Characters<br>${state.switchDevice5}")
+	} else {
+		state.switchDevice5 = "Too many characters to display on Dashboard (${state.contactDevice5Count})"
+	}
+	sendEvent(name: "snapshotSwitch5", value: state.switchDevice5, displayed: true)
+}
+
+def sendSnapshotSwitchMap6(switchMap6) {
+	state.switchDevice6a = "${switchMap6}"
+	state.switchDevice6 = "<table width='100%'><tr>"
+	state.switchDevice6 += "<td style='text-align: left; width: 100%'>"
+	state.switchDevice6 += "<div style='font-size: ${fontSize}px'> ${state.switchDevice6a}</div>"
+	state.switchDevice6 += "</td></tr></table>"
+	state.switchDevice6Count = state.switchDevice6.length()
+	if(state.contactDevice6Count <= 1000) {
+		LOGDEBUG("switchDevice6 - has ${state.contactDevice6Count} Characters<br>${state.switchDevice6}")
+	} else {
+		state.switchDevice6 = "Too many characters to display on Dashboard (${state.contactDevice6Count})"
+	}
+	sendEvent(name: "snapshotSwitch6", value: state.switchDevice6, displayed: true)
+}
+
+def sendSnapshotContactMap1(contactMap1) {
+	state.contactDevice1a = "${contactMap1}"
 	state.contactDevice1 = "<table width='100%'><tr>"
 	state.contactDevice1 += "<td style='text-align: left; width: 100%'>"
-	state.contactDevice1 += "<div style='font-size: ${fontSize}px'> ${state.contactOpenDevice}</div>"
+	state.contactDevice1 += "<div style='font-size: ${fontSize}px'> ${state.contactDevice1a}</div>"
 	state.contactDevice1 += "</td></tr></table>"
+	state.contactDevice1Count = state.contactDevice1.length()
+	if(state.contactDevice1Count <= 1000) {
+		LOGDEBUG("contactDevice1 - has ${state.contactDevice1Count} Characters<br>${state.contactDevice1}")
+	} else {
+		state.contactDevice1 = "Too many characters to display on Dashboard (${state.contactDevice1Count})"
+	}
+	sendEvent(name: "snapshotContact1", value: state.contactDevice1, displayed: true)
+}
 
+def sendSnapshotContactMap2(contactMap2) {
+	state.contactDevice2a = "${contactMap2}"
 	state.contactDevice2 = "<table width='100%'><tr>"
 	state.contactDevice2 += "<td style='text-align: left; width: 100%'>"
-	state.contactDevice2 += "<div style='font-size: ${fontSize}px'> ${state.contactClosedDevice}</div>"
+	state.contactDevice2 += "<div style='font-size: ${fontSize}px'> ${state.contactDevice2a}</div>"
 	state.contactDevice2 += "</td></tr></table>"
-	
-	def rightNowC = new Date()
-	fontSizeS = 12
-	state.theDateC = "<table width='100%'><tr><td> </td></tr><tr>"
-	state.theDateC += "<td style='text-align: left; width: 100%'>"
-	state.theDateC += "<div style='font-size: ${fontSizeS}px'> ${rightNowC}</div>"
-	state.theDateC += "</td></tr></table>"
-	
-	state.contactDevice = "${state.contactDevice1}${state.contactDevice2}${state.theDateC}"
-	sendEvent(name: "snapshotContact", value: state.contactDevice, displayed: true)
+	state.contactDevice2Count = state.contactDevice2.length()
+	if(state.contactDevice2Count <= 1000) {
+		LOGDEBUG("contactDevice2 - has ${state.contactDevice2Count} Characters<br>${state.contactDevice2}")
+	} else {
+		state.contactDevice2 = "Too many characters to display on Dashboard (${state.contactDevice2Count})"
+	}
+	sendEvent(name: "snapshotContact2", value: state.contactDevice2, displayed: true)
+}
+
+def sendSnapshotContactMap3(contactMap3) {
+	state.contactDevice3a = "${contactMap3}"
+	state.contactDevice3 = "<table width='100%'><tr>"
+	state.contactDevice3 += "<td style='text-align: left; width: 100%'>"
+	state.contactDevice3 += "<div style='font-size: ${fontSize}px'> ${state.contactDevice3a}</div>"
+	state.contactDevice3 += "</td></tr></table>"
+	state.contactDevice3Count = state.contactDevice3.length()
+	if(state.contactDevice3Count <= 1000) {
+		LOGDEBUG("contactDevice3 - has ${state.contactDevice3Count} Characters<br>${state.contactDevice3}")
+	} else {
+		state.contactDevice3 = "Too many characters to display on Dashboard (${state.contactDevice3Count})"
+	}
+	sendEvent(name: "snapshotContact3", value: state.contactDevice3, displayed: true)
+}
+
+def sendSnapshotContactMap4(contactMap4) {
+	state.contactDevice4a = "${contactMap4}"
+	state.contactDevice4 = "<table width='100%'><tr>"
+	state.contactDevice4 += "<td style='text-align: left; width: 100%'>"
+	state.contactDevice4 += "<div style='font-size: ${fontSize}px'> ${state.contactDevice4a}</div>"
+	state.contactDevice4 += "</td></tr></table>"
+	state.contactDevice4Count = state.contactDevice4.length()
+	if(state.contactDevice4Count <= 1000) {
+		LOGDEBUG("contactDevice4 - has ${state.contactDevice4Count} Characters<br>${state.contactDevice4}")
+	} else {
+		state.contactDevice4 = "Too many characters to display on Dashboard (${state.contactDevice4Count})"
+	}
+	sendEvent(name: "snapshotContact4", value: state.contactDevice4, displayed: true)
+}
+
+def sendSnapshotContactMap5(contactMap5) {
+	state.contactDevice5a = "${contactMap5}"
+	state.contactDevice5 = "<table width='100%'><tr>"
+	state.contactDevice5 += "<td style='text-align: left; width: 100%'>"
+	state.contactDevice5 += "<div style='font-size: ${fontSize}px'> ${state.contactDevice5a}</div>"
+	state.contactDevice5 += "</td></tr></table>"
+	state.contactDevice5Count = state.contactDevice5.length()
+	if(state.contactDevice5Count <= 1000) {
+		LOGDEBUG("contactDevice5 - has ${state.contactDevice5Count} Characters<br>${state.contactDevice5}")
+	} else {
+		state.contactDevice5 = "Too many characters to display on Dashboard (${state.contactDevice5Count})"
+	}
+	sendEvent(name: "snapshotContact5", value: state.contactDevice5, displayed: true)
+}
+
+def sendSnapshotContactMap6(contactMap6) {
+	state.contactDevice6a = "${contactMap6}"
+	state.contactDevice6 = "<table width='100%'><tr>"
+	state.contactDevice6 += "<td style='text-align: left; width: 100%'>"
+	state.contactDevice6 += "<div style='font-size: ${fontSize}px'> ${state.contactDevice6a}</div>"
+	state.contactDevice6 += "</td></tr></table>"
+	state.contactDevice6Count = state.contactDevice6.length()
+	if(state.contactDevice6Count <= 1000) {
+		LOGDEBUG("contactDevice6 - has ${state.contactDevice6Count} Characters<br>${state.contactDevice6}")
+	} else {
+		state.contactDevice6 = "Too many characters to display on Dashboard (${state.contactDevice6Count})"
+	}
+	sendEvent(name: "snapshotContact6", value: state.contactDevice6, displayed: true)
 }
 
 def installed(){
