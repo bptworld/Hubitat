@@ -34,13 +34,13 @@
  *
  *  Changes:
  *
- *
+ *	V1.0.1 - 03/22/19 - Major update to comply with Hubitat's new dashboard requirements.
  *  V1.0.0 - 03/16/19 - Initial Release
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -84,6 +84,7 @@ def pageConfig() {
 			}
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Monitor")) {
+			paragraph "Note: Choose a max of 30 devices in each category."
             input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
             input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
         }
@@ -92,10 +93,10 @@ def pageConfig() {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
 			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Snapshot Tile'<br> - Use our 'Snapshot Tile' Driver<br> - Then select this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
-			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch or snapshotContact"
+			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch1-3 or snapshotContact1-3"
 			}
 		section() {
-			input(name: "snapshotTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Counts to:", submitOnChange: true, required: false, multiple: false)
+			input(name: "snapshotTileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true, required: false, multiple: false)
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Maintenance")) {
 			paragraph "When removing devices from app, it will be necessary to reset the maps. After turning on switch, Click the button that will appear. All tables will be cleared and repopulated with the current devices."
@@ -166,72 +167,116 @@ def onDemandSwitchHandler(evt) {
 def switchMapHandler() {
 	LOGDEBUG("In switchMapHandler...")
 	checkMaps()
-	//switchMapS = state.onSwitchMap.sort {it.value}
-	LOGDEBUG("In switchMapHandler - Map<br>${switchMapS}")
+	state.onSwitchMapS = state.onSwitchMap.sort { a, b -> a.key <=> b.key }
+	state.offSwitchMapS = state.offSwitchMap.sort { a, b -> a.key <=> b.key }
 	
-	LOGDEBUG("In switchMapHandler - Sorting Maps")
-	onSwitchMapS = state.onSwitchMap.sort { a, b -> a.key <=> b.key }
-	offSwitchMapS = state.offSwitchMap.sort { a, b -> a.key <=> b.key }
-	
-	def fOnSwitchMap = "<table width='100%'>"
-	try {
-		onSwitchMapS.each { stuffOn -> 
-			LOGDEBUG("In switchMapHandler - Building Table ON with ${stuffOn.key}")
-			fOnSwitchMap += "<tr><td style='text-align: left; width: 80%'> ${stuffOn.key}</td><td style='width: 20%'><div style='color: red;'>on</div></td></tr>"
-		}
-	} catch (e) {
-		if(fOnSwitchMap == null) fOnSwitchMap = " Nothing to display"
+	state.fSwitchMap1S = "<table width='100%'>"
+	state.fSwitchMap2S = "<table width='100%'>"
+	state.fSwitchMap3S = "<table width='100%'>"
+	state.fSwitchMap4S = "<table width='100%'>"
+	state.fSwitchMap5S = "<table width='100%'>"
+	state.fSwitchMap6S = "<table width='100%'>"
+	state.count = 0
+	state.onSwitchMapS.each { stuffOn -> 
+		state.count = state.count + 1
+		LOGDEBUG("In switchMapHandler - Building Table ON with ${stuffOn.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+		if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+		if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+		if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+		if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
 	}
-	fOnSwitchMap += "</table>"
-	LOGDEBUG("In switchMapHandler - On Map<br>${fOnSwitchMap}")
-    snapshotTileDevice.sendSnapshotSwitchOnMap(fOnSwitchMap)
 	
-	def fOffSwitchMap = "<table width='100%'>"
-	try {
-		offSwitchMapS.each { stuffOff -> 
-			LOGDEBUG("In switchMapHandler - Building Table OFF with ${stuffOff.key}")
-			fOffSwitchMap += "<tr><td style='text-align: left; width: 80%'> ${stuffOff.key}</td><td style='width: 20%'><div style='color: green;'>off</div></td></tr>"
-		}
-	} catch (e) {
-		if(fOffSwitchMap == null) fOffSwitchMap = " Nothing to display"
+	if((state.count >= 1) && (state.count <= 5)) { state.fSwitchMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 6) && (state.count <= 10)) { state.fSwitchMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 11) && (state.count <= 15)) { state.fSwitchMap3S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 16) && (state.count <= 20)) { state.fSwitchMap4S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 21) && (state.count <= 25)) { state.fSwitchMap5S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 26) && (state.count <= 30)) { state.fSwitchMap6S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	
+	state.offSwitchMapS.each { stuffOff -> 
+		state.count = state.count + 1
+		LOGDEBUG("In switchMapHandler - Building Table OFF with ${stuffOff.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
+		if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
+		if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+		if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+		if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
 	}
-	fOffSwitchMap += "</table>"
-	LOGDEBUG("In switchMapHandler - Off Map<br>${fOffSwitchMap}")
-    snapshotTileDevice.sendSnapshotSwitchOffMap(fOffSwitchMap)
+	state.fSwitchMap1S += "</table>"
+	state.fSwitchMap2S += "</table>"
+	state.fSwitchMap3S += "</table>"
+	state.fSwitchMap4S += "</table>"
+	state.fSwitchMap5S += "</table>"
+	state.fSwitchMap6S += "</table>"
+	
+	LOGDEBUG("In switchMapHandler - <br>fSwitchMap1S<br>${state.fSwitchMap1S}")
+    snapshotTileDevice.sendSnapshotSwitchMap1(state.fSwitchMap1S)
+	snapshotTileDevice.sendSnapshotSwitchMap2(state.fSwitchMap2S)
+	snapshotTileDevice.sendSnapshotSwitchMap3(state.fSwitchMap3S)
+	snapshotTileDevice.sendSnapshotSwitchMap4(state.fSwitchMap4S)
+	snapshotTileDevice.sendSnapshotSwitchMap5(state.fSwitchMap5S)
+	snapshotTileDevice.sendSnapshotSwitchMap6(state.fSwitchMap6S)
 }
 
 def contactMapHandler() {
 	LOGDEBUG("In contactMapHandler...")
 	checkMaps()
-	LOGDEBUG("In switchMapHandler - Sorting Maps")
-	openContactMapS = state.openContactMap.sort { a, b -> a.key <=> b.key }
-	closedContactMapS = state.closedContactMap.sort { a, b -> a.key <=> b.key }
+	LOGDEBUG("In contactMapHandler - Sorting Maps")
+	state.openContactMapS = state.openContactMap.sort { a, b -> a.key <=> b.key }
+	state.closedContactMapS = state.closedContactMap.sort { a, b -> a.key <=> b.key }
 	
-	// *** OPEN ***
-	def fOpenContactMap = "<table width='100%'>"
-	try {
-		openContactMapS.each { stuffOpen -> 
-			fOpenContactMap += "<tr><td style='text-align: left; width: 80%'> ${stuffOpen.key}</td><td style='width: 20%'><div style='color: red;'>open</div></td></tr>"
-		}
-	} catch (e) {
-		if(fOpenContactMap == null) fOpenContactMap = " Nothing to display"
+	state.fContactMap1S = "<table width='100%'>"
+	state.fContactMap2S = "<table width='100%'>"
+	state.fContactMap3S = "<table width='100%'>"
+	state.fContactMap4S = "<table width='100%'>"
+	state.fContactMap5S = "<table width='100%'>"
+	state.fContactMap6S = "<table width='100%'>"
+	state.count = 0
+	state.openContactMapS.each { stuffOpen -> 
+		state.count = state.count + 1
+		LOGDEBUG("In contactMapHandler - Building Table OPEN with ${stuffOpen.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+		if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+		if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+		if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+		if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
 	}
-	fOpenContactMap += "</table>"
-	LOGDEBUG("In contactMapHandler...<br>${fOpenContactMap}")
-    snapshotTileDevice.sendSnapshotContactOpenMap(fOpenContactMap)
 	
-	// *** CLOSED ***
-	def fClosedContactMap = "<table width='100%'>"
-	try {
-		closedContactMapS.each { stuffClosed -> 
-			fClosedContactMap += "<tr><td style='text-align: left; width: 80%'> ${stuffClosed.key}</td><td style='width: 20%'><div style='color: green;'>closed</div></td></tr>"
-		}
-	} catch (e) {
-		if(fClosedContactMap == null) fClosedContactMap = " Nothing to display"
+	if((state.count >= 1) && (state.count <= 5)) { state.fContactMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 6) && (state.count <= 10)) { state.fContactMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 11) && (state.count <= 15)) { state.fContactMap3S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 16) && (state.count <= 20)) { state.fContactMap4S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 21) && (state.count <= 25)) { state.fContactMap5S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	if((state.count >= 26) && (state.count <= 30)) { state.fContactMap6S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	
+	state.closedContactMapS.each { stuffClosed -> 
+		state.count = state.count + 1
+		LOGDEBUG("In contactMapHandler - Building Table CLOSED with ${stuffClosed.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+		if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+		if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+		if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+		if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
 	}
-	fClosedContactMap += "</table>"
-	LOGDEBUG("In contactMapHandler...<br>${fClosedContactMap}")
-    snapshotTileDevice.sendSnapshotContactClosedMap(fClosedContactMap)
+	state.fContactMap1S += "</table>"
+	state.fContactMap2S += "</table>"
+	state.fContactMap3S += "</table>"
+	state.fContactMap4S += "</table>"
+	state.fContactMap5S += "</table>"
+	state.fContactMap6S += "</table>"
+
+	LOGDEBUG("In contactMapHandler - <br>fContactMap1S<br>${state.fContactMap1S}")
+   	snapshotTileDevice.sendSnapshotContactMap1(state.fContactMap1S)
+	snapshotTileDevice.sendSnapshotContactMap2(state.fContactMap2S)
+	snapshotTileDevice.sendSnapshotContactMap3(state.fContactMap3S)
+	snapshotTileDevice.sendSnapshotContactMap4(state.fContactMap4S)
+	snapshotTileDevice.sendSnapshotContactMap5(state.fContactMap5S)
+	snapshotTileDevice.sendSnapshotContactMap6(state.fContactMap6S)
 }
 
 def switchHandler(evt){
@@ -269,6 +314,7 @@ def contactHandler(evt){
 }
 
 def checkMaps() {
+	LOGDEBUG("In checkMaps...") 
 	if(state.offSwitchMap == null) {
 		state.offSwitchMap = [:]
 	}
@@ -281,6 +327,7 @@ def checkMaps() {
 	if(state.openContactMap == null) {
 		state.openContactMap = [:]
 	}
+	LOGDEBUG("In checkMaps - Finished")
 }
 
 def maintHandler(evt){
