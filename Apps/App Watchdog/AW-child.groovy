@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 03/24/19 - Removed ability to send app data to dashboard tiles until I can find more time to make it compatible with
+ *			the new dashboards.
  *  V1.0.9 - 02/27/19 - App now sends 'All apps are up to date' to tile.
  *  V1.0.8 - 02/26/19 - Some test code had snuck in to the last update breaking the app.
  *  V1.0.7 - 02/24/19 - Fixed Pushover reports.
@@ -48,7 +50,7 @@
  */
 
 def setVersion(){
-	state.version = "v1.0.9"
+	state.version = "v1.1.0"
 }
 
 def sendVersionToAW(){
@@ -132,7 +134,8 @@ def pageConfig() {
 			paragraph "- Pick a device = App Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = appVersions"
 			}
 		section() {
-			input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
+			paragraph "Sorry, App Watchdog is not compatible with the new Dashboard. (yet!)"
+			//input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Maintenance")) {
 			paragraph "Once you've updated all of the apps, flip this switch on, a second switch will appear. Turn on the second switch to update ALL version data to Current. Use with caution, it can not be undone. After about 10 seconds you can turn this switch back off."
