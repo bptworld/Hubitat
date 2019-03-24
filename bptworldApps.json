@@ -76,13 +76,13 @@
 
   "AppWatchdogType": "App",
   "AppWatchdogParentVersion": "v1.0.0",
-  "AppWatchdogChildVersion": "v1.0.9",
+  "AppWatchdogChildVersion": "v1.1.0",
   "AppWatchdogDriverVersion": "v1.0.0",
   "AppWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
   "AppWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-driver.groovy",
   "AppWatchdogDiscussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdogUpdateNote": "V1.0.9 - 02/27/19 - App now sends 'All apps are up to date' to tile.",
+  "AppWatchdogUpdateNote": "V1.1.0 - 03/24/19 - Removed ability to send app data to dashboard tiles until I can find more time to make it compatible with the new dashboards.",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v1.0.0",
