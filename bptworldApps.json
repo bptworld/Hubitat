@@ -235,7 +235,7 @@
   "WelcomeHomeUpdateNote": "V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.0.5",
+  "WhatDidISayDriver1Version": "v1.0.6",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -254,5 +254,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70 characters displayed. To reduce load on the Dashboards. This does NOT effect what is actually spoken.",
+  "WhatDidISayUpdateNote": "V1.0.6 - 03/27/19 - More enhancements for 'Follow Me', color coded priority messages!",
 }
