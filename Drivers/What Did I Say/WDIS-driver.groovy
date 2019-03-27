@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 03/27/19 - More enhancements for 'Follow Me', color coded priority messages!
  *  V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70
  *  characters displayed. To reduce load on the Dashboards. This does NOT affect what is actually spoken.
  *  V1.0.4 - 03/02/19 - Fixed the date being display on tile
@@ -42,7 +43,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.5"}
+def version(){"v1.0.6"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
@@ -113,8 +114,17 @@ def makeUnique() {
 def populateMap() {
 	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceived}")
 	makeUnique()
-	
 	sendEvent(name: "lastSpoken", value: state.speechReceived, displayed: true)
+	
+	state.priority = state.speechReceived.take(3)
+	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
+		state.speech = state.speechReceived.drop(3)
+		if(state.priority == "[L]" || state.priority == "[l]") { state.lastSpoken = "<font color='white'>${state.speech}</font>" }
+		if(state.priority == "[M]" || state.priority == "[m]") { state.lastSpoken = "<font color='yellow'>${state.speech}</font>" }
+		if(state.priority == "[H]" || state.priority == "[h]") { state.lastSpoken = "<font color='red'>${state.speech}</font>" }
+	} else {
+		state.lastSpoken = state.speechReceived
+	}
 	
 	// Read in the maps
 	try {
@@ -158,7 +168,7 @@ def populateMap() {
 	mTwo = sOne
 	
 	getDateTime()
-	mOne = state.newdate + " - " + state.speechReceived
+	mOne = state.newdate + " - " + state.lastSpoken
 	
 	LOGDEBUG("What Did I Say - NEW -<br>mOne: ${mOne}<br>mTwo: ${mTwo}<br>mThree: ${mThree}<br>mFour: ${mFour}<br>mFive: ${mFive}")
 	
@@ -181,34 +191,34 @@ def populateMap() {
 	
 	state.speechTop = "<table width='100%'><tr><td align='left'>"
 	if(numOfLines == 1) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}</div>"
 	}
 	if(numOfLines == 2) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}</div>"
 	}
 	if(numOfLines == 3) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}</div>"
 	}
 	if(numOfLines == 4) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}</div>"
 	}
 	if(numOfLines == 5) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}</div>"
+		state.speechTop+= "<div style=';font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}</div>"
 	} 
 	if(numOfLines == 6) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}</div>"
 	}
 	if(numOfLines == 7) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}</div>"
 	}
 	if(numOfLines == 8) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}</div>"
 	}
 	if(numOfLines == 9) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}</div>"
 	}
 	if(numOfLines == 10) {
-		state.speechTop+= "<div style='line-height=75%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div>"
+		state.speechTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div>"
 	}
 	state.speechTop+= "</td></tr></table>"
 	
