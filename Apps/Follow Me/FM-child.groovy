@@ -34,14 +34,15 @@
  *
  *  Changes:
  *
- *
- *  V1.0.1 - 03/19/19 - Fixed a typo, stopping the Always On from working
+ *	V1.0.3 - 03/27/19 - Added volume control based on message priority.
+ *	V1.0.2 - 03/20/19 - Added another Google Initialize option, every x minutes
+ *  V1.0.1 - 03/19/19 - Fixed a typo, trying to fix the always on
  *  V1.0.0 - 03/17/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -67,7 +68,9 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "- Create a new child app for each room that has a speaker in it.<br>- Pushover child app can have up to 5 sensors defined<br>- If more than 5 sensors are needed, simply add another child device."
+			paragraph "- Create a new child app for each room that has a speaker in it.<br>- Pushover child app can have up to 5 sensors defined.<br>- If more than 5 sensors are needed, simply add another child device."
+			paragraph "<b>Priority Messages</b>"
+			paragraph "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>- Volume levels can then be adjusted by priority level.<br>- ie. (l)Dogs are hungry;(m)Door has been open too long;(h)Heat is on and window is open"
 			paragraph "<b>Requirements:</b>"
 			paragraph "- Virtual Device using our custom 'What Did I Say' driver"
 		}
@@ -95,21 +98,50 @@ def pageConfig() {
 					input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
-        	   input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
+			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
+				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
+			}
+			if(messagePriority) {
+				section("Instructions for Message Priority:", hideable: true, hidden: true) {
+					paragraph "<b>Notes:</b>"
+					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume will be adjusted accordingly.<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
+				paragraph "ie. [L]Amy is home or [M]Window has been open too long or [H]Heat is on and window is open"
+				paragraph "Notice there is no spaces between the option and the message."
+				}
+				section() {
+					paragraph "Low priority will use the standard volume set in the Volume Control Section"
+					input "volMed", "number", title: "Speaker volume for Medium priority", description: "0-100", required: true, width: 6
+					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
+				}
+			}
+			section() {
+        	   	input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
             	  	input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
-					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?")
-					input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
-            	  	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
-					input "fromTime2", "time", title: "Quiet Time Start", required: true
-    		 	 	input "toTime2", "time", title: "Quiet Time End", required: true
+					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?", submitOnChange: true)
           		}   
         		if (speechMode == "Speech Synth"){ 
          			input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
-					input "gInitialize", "bool", title: "'Initialize' Google devices before sending speech?", required: true, defaultValue: false
+					input(name: "gSpeaker", type: "bool", defaultValue: "false", title: "Is this a Google device?", description: "Google device?", submitOnChange: true)
+					if(gSpeaker) paragraph "If using Google speaker devices sometimes an Initialize is necessary (not always)."
+					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech?", required: true, defaultValue: false
+					if(gSpeaker) input "gInitRepeat", "number", title: "Initialize Google devices every X minutes?", required: false
          	 	}
       		}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+				paragraph "NOTE: Not all speakers can use volume controls."
+				if(speechMode == "Music Player") {
+					input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
+					input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+				}
+				if(speechMode == "Speech Synth") {
+					input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: false
+					input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: false
+				}
+            	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
+				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
+    		 	if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+			}
     		if(speechMode){ 
 				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         			input "fromTime", "time", title: "From", required: false
@@ -190,6 +222,7 @@ def initialize() {
 	if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler3)
 	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
 	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
+	if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
 }
 
 def enablerSwitchHandler(evt){
@@ -359,8 +392,14 @@ def switchHandler(evt) {
 def lastSpokenHandler(speech) { 
 	LOGDEBUG("In lastSpoken...")
 	unique = speech.value.toString()
-	state.lastSpoken = unique.drop(1)
-	LOGDEBUG("In lastSpoken...lastSpoken: ${state.lastSpoken}")
+	cleanUp = unique.drop(1)
+	state.priority = cleanUp.take(3)
+	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
+		state.lastSpoken = cleanUp.drop(3)
+	} else {
+		state.lastSpoken = cleanUp
+	}
+	LOGDEBUG("In lastSpoken...Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
 	letsTalk()
 	sendPush()
 }
@@ -375,57 +414,42 @@ def speechOff() {
 	}
 }
 
-def letsTalk() {								// Modified from @Cobra Code
+def initializeSpeaker() {
+	LOGDEBUG( "In initializeSpeaker - Initializing ${speaker}")
+	speaker.initialize()
+	repeat = gInitRepeat * 60
+	if(gInitRepeat) runIn(repeat,initializeSpeaker)
+}
+						  
+						  
+def letsTalk() {
 	LOGDEBUG("In letsTalk...")
 	if(Always_On) alwaysOnHandler()
 	checkTime()
+	checkVol()
 	if(state.timeOK == true && state.sZone == true) {
-		LOGDEBUG("Speaker(s) in use: ${speaker}")
-		LOGDEBUG("In letsTalk...")
+		LOGDEBUG("In letsTalk - ${speechMode} - ${speaker}")
   		if (speechMode == "Music Player"){ 
 			if(echoSpeaks) {
-				setVolume()
-				speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken)
-				LOGDEBUG("In letsTalk...Okay, I'm done!")
+				speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
 			}
 			if(!echoSpeaks) {
-    			setVolume()
-    			speaker.playTextAndRestore(state.lastSpoken)
-				LOGDEBUG("In letsTalk...Okay, I'm done!")
+    			if(volSpeech) speaker.setLevel(state.volume)
+    			speaker.playTextAndRestore(state.lastSpoken, volRestore)
 			}
   		}   
 		if (speechMode == "Speech Synth"){
-			if(gInitialize) speaker.initialize()
-			LOGDEBUG("Speech Synth - ${state.lastSpoken}")
+			speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
+			speechDuration2 = speechDuration * 1000
+			if(gInitialize) initializeSpeaker()
+			if(volSpeech) speaker.setVolume(state.volume)
 			speaker.speak(state.lastSpoken)
-			LOGDEBUG("In letsTalk...Okay, I'm done!")
+			pauseExecution(speechDuration2)
+			if(volRestore) speaker.setVolume(volRestore)
 		}
+		LOGDEBUG("In letsTalk...Okay, I'm done!")
 	} else {
-		LOGDEBUG("No speakers are active...Can't talk right now")
-	}
-}
-
-def setVolume(){								// Modified from @Cobra Code
-	LOGDEBUG("In setVolume...")
-	def timecheck = fromTime2
-	if (timecheck != null){
-		def between2 = timeOfDayIsBetween(toDateTime(fromTime2), toDateTime(toTime2), new Date(), location.timeZone)
-    if (between2) {
-    	state.volume = volume2
-   		if(!echoSpeaks) speaker.setLevel(state.volume)
-   		LOGDEBUG("Quiet Time = Yes - Setting Quiet time volume")
-   		LOGDEBUG("between2: $between2 - state.volume: $state.volume - Speaker: $speaker1 - Echo Speakes: $echoSpeaks") 
-	}
-	if (!between2) {
-		state.volume = volume1
-		if(!echoSpeaks) speaker.setLevel(state.volume)
-		LOGDEBUG("Quiet Time = No - Setting Normal time volume")
-		LOGDEBUG("between2: $between2 - state.volume: $state.volume - Speaker: $speaker1 - Echo Speakes: $echoSpeaks")
-	}
-	}
-	else if (timecheck == null){
-		state.volume = volume1
-		if(!echoSpeaks) speaker.setLevel(state.volume)
+		log.info "${app.label} - No speakers are active"
 	}
 }
 
@@ -448,6 +472,27 @@ def checkTime(){							// Modified from @Cobra Code
 		state.timeOK = true
   		LOGDEBUG("Time restrictions have not been configured - Continue")
   	}
+}
+
+def checkVol(){
+	LOGDEBUG("In checkVol")
+	if(QfromTime) {
+		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+    	if(state.quietTime) {
+    		state.volume = volQuiet
+		} else {
+			state.volume = volSpeech
+		}
+	} else {
+		state.volume = volSpeech
+	}
+	
+	if(messagePriority) {
+		LOGDEBUG("In checkVol - priority: ${state.priority}")
+		if(state.priority == "[L]" || state.priority == "[l]") { }			// No change
+		if(state.priority == "[M]" || state.priority == "[m]") {state.volume = volMed}
+		if(state.priority == "[H]" || state.priority == "[h]") {state.volume = volHigh}
+	}
 }
 
 def sendPush(){
