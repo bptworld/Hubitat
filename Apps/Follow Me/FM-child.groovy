@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.4 - 03/28/19 - Minor Tweaks
  *	V1.0.3 - 03/27/19 - Added volume control based on message priority.
  *	V1.0.2 - 03/20/19 - Added another Google Initialize option, every x minutes
  *  V1.0.1 - 03/19/19 - Fixed a typo, trying to fix the always on
@@ -42,7 +43,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -391,15 +392,15 @@ def switchHandler(evt) {
 
 def lastSpokenHandler(speech) { 
 	LOGDEBUG("In lastSpoken...")
-	unique = speech.value.toString()
-	cleanUp = unique.drop(1)
-	state.priority = cleanUp.take(3)
+	state.unique = speech.value.toString()
+	state.cleanUp = state.unique.drop(1)
+	state.priority = state.cleanUp.take(3)
 	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
-		state.lastSpoken = cleanUp.drop(3)
+		state.lastSpoken = state.cleanUp.drop(3)
 	} else {
-		state.lastSpoken = cleanUp
+		state.lastSpoken = state.cleanUp
 	}
-	LOGDEBUG("In lastSpoken...Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
+	LOGDEBUG("In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
 	letsTalk()
 	sendPush()
 }
@@ -562,6 +563,7 @@ def setDefaults(){
 	if(state.IH3 == null){state.IH3 = "blank"}
 	if(state.IH4 == null){state.IH4 = "blank"}
 	if(state.IH5 == null){state.IH5 = "blank"}
+	if(state.lastSpoken == null){state.lastSpoken = ""}
 }
 
 def logCheck(){					// Modified from @Cobra Code
