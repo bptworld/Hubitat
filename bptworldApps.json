@@ -136,13 +136,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.0.3",
+  "FollowMeChildVersion": "v1.0.4",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.0.3 - 03/27/19 - Added volume control based on message priority.",
+  "FollowMeUpdateNote": "V1.0.4 - 03/28/19 - Minor Tweaks",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
