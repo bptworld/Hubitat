@@ -38,7 +38,6 @@ Add a new tile with the following selections
 - Pick a device = Abacus Intense Counting
 - Pick a template = attribute
 - 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are switchDevice1-5, contactDevice1-5, motionDevice1-5 OR thermostatDevice1
-- 3rd box = switchDevice, contactDevice, motionDevice or thermostatDevice
 
 <br>
 Bryan<br>
