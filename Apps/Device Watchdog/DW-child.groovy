@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.2.8 - 03/30/19 - Fix push notifications going out even if there was nothing to report.
  *  V1.2.7 - 03/18/19 - BIG changes due to tile limit size.
  *  V1.2.6 - 03/12/19 - Battery report is now sorted lowest to highest battery percentage. Activity is sorted newest to oldest.
  *						Status is sorted by Device Name.
@@ -72,7 +73,7 @@
 
 
 def setVersion() {
-	state.version = "v1.2.7"
+	state.version = "v1.2.8"
 }
 
 definition(
@@ -128,6 +129,14 @@ def pageConfig() {
 			section() {
 				input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to run a new report", submitOnChange: true, required: false, multiple: false
 			}
+/**
+			section(getFormat("header-green", "${getImage("Blank")}"+" Report Sorting")) {
+				paragraph "Be sure to only select ONE option below."
+				input(name: "sortByLowToHigh", type: "bool", defaultValue: "false", submitOnChange: true, title: "Sort from Low to High", description: "Sort Low to High")
+				input(name: "sortByName", type: "bool", defaultValue: "false", submitOnChange: true, title: "Sort by Name (A to Z)", description: "Sort by Name")
+				if(sortByLowToHigh && sortByName) paragraph "<b>ONLY SELECT ONE SORTING OPTION!</b>"
+			}
+*/
 			section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 			section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 				paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
@@ -264,22 +273,22 @@ def pageStatus(params) {
 		activityHandler()
 		if(triggerMode == "Battery_Level") {  // Battery
 			if(badORgood == false) {  // less than
-				if(state.batteryMap1S) {
-        			section("Devices that have reported Battery levels less than $batteryThreshold - From low to high<br>* Only showing the lowest 25") {
+				if(state.count >= 1) {
+        			section("${state.count} devices have reported Battery levels less than $batteryThreshold - From low to high<br>* Only showing the lowest 25") {
 						paragraph "${state.batteryMap1S}<br>${state.batteryMap2S}<br>${state.batteryMap3S}<br>${state.batteryMap4S}<br>${state.batteryMap5S}<br>${state.batteryMap6S}"
         			}
 				} else {
-					section("Devices that have reported Battery levels less than $batteryThreshold") { 
+					section("${state.count} devices have reported Battery levels less than $batteryThreshold") { 
 						paragraph "Nothing to report"
 					}
 				}
 			} else {  // more than
-				if(state.batteryMap1S) {
-        			section("Devices with Battery reporting more than $batteryThreshold - From low to high<br>* Only showing the lowest 25") {
+				if(state.count >= 1) {
+        			section("${state.count} devices with Battery reporting more than $batteryThreshold - From low to high<br>* Only showing the lowest 25") {
 						paragraph "${state.batteryMap1S}<br>${state.batteryMap2S}<br>${state.batteryMap3S}<br>${state.batteryMap4S}<br>${state.batteryMap5S}<br>${state.batteryMap6S}"
         			}
 				} else {
-					section("Devices with Battery reporting more than $batteryThreshold") { 
+					section("${state.count} devices with Battery reporting more than $batteryThreshold") { 
 						paragraph "Nothing to report"
 					}
 				}
@@ -288,21 +297,21 @@ def pageStatus(params) {
 		if(triggerMode == "Activity") {
 			if(badORgood == false) {
 				if(state.timeSinceMap1S) {
-        			section("Devices that have not reported in for $timeAllowed hour(s)") {
+        			section("${state.count} devices have not reported in for $timeAllowed hour(s)") {
 						paragraph "${state.timeSinceMap1S}<br>${state.timeSinceMap2S}<br>${state.timeSinceMap3S}<br>${state.timeSinceMap4S}<br>${state.timeSinceMap5S}<br>${state.timeSinceMap6S}"
         			}
 				} else {
-					section("Devices that have not reported in for $timeAllowed hour(s)") {
+					section("${state.count} devices have not reported in for $timeAllowed hour(s)") {
 						paragraph "Nothing to report"
         			}
 				}
 			} else {
 				if(state.timeSinceMap1S) {
-        			section("Devices that have reported in less than $timeAllowed hour(s)") {
+        			section("${state.count} devices have reported in less than $timeAllowed hour(s)") {
 						paragraph "${state.timeSinceMap1S}<br>${state.timeSinceMap2S}<br>${state.timeSinceMap3S}<br>${state.timeSinceMap4S}<br>${state.timeSinceMap5S}<br>${state.timeSinceMap6S}"
         			}
 				} else {
-					section("Devices that have reported in less than $timeAllowed hour(s)") {
+					section("${state.count} devices have reported in less than $timeAllowed hour(s)") {
 						paragraph "Nothing to report"
 					}
 				}
@@ -537,6 +546,8 @@ def myBatteryHandler(myType, mySensors) {
 	state.batteryMap6S = ""
 	state.batteryMapPhoneS = ""
 	state.theBatteryMap = state.batteryMap.sort { a, b -> a.value <=> b.value }
+//	if(sortByLowToHigh) state.theBatteryMap = state.batteryMap.sort { a, b -> a.value <=> b.value }
+//	if(sortByName) state.theBatteryMap = state.batteryMap.sort { a, b -> a <=> b }
 	LOGDEBUG("In myBatteryHandler...${state.theBatteryMap}")				 
 	state.batteryMap1S = "<table width='100%'>"
 	state.batteryMap2S = "<table width='100%'>"
@@ -815,7 +826,7 @@ def isThereData(){
 def pushNow(){
 	LOGDEBUG("In pushNow...triggerMode: ${triggerMode}")
 	if(triggerMode == "Activity") {
-		if(state.timeSinceMapPhoneS) {
+		if(state.count >= 1) {
 			timeSincePhone = "${app.label} \n"
 			timeSincePhone += "${state.timeSinceMapPhoneS}"
 			LOGDEBUG("In pushNow...Sending message: ${timeSincePhone}")
@@ -832,7 +843,7 @@ def pushNow(){
 		}
 	}	
 	if(triggerMode == "Battery_Level") {
-		if(state.batteryMapPhoneS) {
+		if(state.count >= 1) {
 			batteryPhone = "${app.label} \n"
 			batteryPhone += "${state.batteryMapPhoneS}"
 			LOGDEBUG("In pushNow...Sending message: ${batteryPhone}")
@@ -849,7 +860,7 @@ def pushNow(){
 		}
 	}	
 	if(triggerMode == "Status") {
-		if(state.statusMapPhone) {
+		if(state.count >= 1) {
 			statusPhone = "${app.label} \n"
 			statusPhone += "${state.statusMapPhone}"
 			LOGDEBUG("In pushNow...Sending message: ${statusPhone}")
