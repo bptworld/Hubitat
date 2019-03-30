@@ -35,9 +35,9 @@ Preferences<br>
 <b>Usage:</b><br>
 Now all you have to do is add this device to one of your dashboards to see the data anytime!<br>
 Add a new tile with the following selections
-- Pick a device = Device Watchdog
+- Pick a device = Device Watchdog Tile
 - Pick a template = attribute
-- 3rd box = watchdogActivity, watchdogBattery or watchdogStatus
+- 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are watchdogActivity1-5 OR watchdogBattery1-5
 
 <br>
 Bryan<br>
