@@ -76,13 +76,13 @@
 
   "AppWatchdogType": "App",
   "AppWatchdogParentVersion": "v1.0.0",
-  "AppWatchdogChildVersion": "v1.1.0",
+  "AppWatchdogChildVersion": "v1.1.1",
   "AppWatchdogDriverVersion": "v1.0.0",
   "AppWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-parent.groovy",
   "AppWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
   "AppWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-driver.groovy",
   "AppWatchdogDiscussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdogUpdateNote": "V1.1.0 - 03/24/19 - Removed ability to send app data to dashboard tiles until I can find more time to make it compatible with the new dashboards.",
+  "AppWatchdogUpdateNote": "V1.1.1 - 03/31/19 - Added simplified dashboard tile back to app",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v1.0.0",
