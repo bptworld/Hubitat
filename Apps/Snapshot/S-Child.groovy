@@ -34,13 +34,14 @@
  *
  *  Changes:
  *
+ *	V1.0.2 - 03/30/19 - Added ability to select what type of data to report: Full, Only On/Off, Only Open/Closed. Also added count attributes.
  *	V1.0.1 - 03/22/19 - Major update to comply with Hubitat's new dashboard requirements.
  *  V1.0.0 - 03/16/19 - Initial Release
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -88,13 +89,22 @@ def pageConfig() {
             input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
             input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
         }
+		section(getFormat("header-green", "${getImage("Blank")}"+"  Display Options")) {
+			paragraph "Choose the amount/type of data to record"
+			if(switches) {
+				input "switchMode", "enum", required: true, title: "Select Switches Display Type", submitOnChange: true,  options: ["Full", "Only On", "Only Off"]
+			}
+			if(contacts) {
+				input "contactMode", "enum", required: true, title: "Select Contact Display Type", submitOnChange: true,  options: ["Full", "Only Open", "Only Closed"]
+			}
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
 			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Snapshot Tile'<br> - Use our 'Snapshot Tile' Driver<br> - Then select this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
-			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch1-3 or snapshotContact1-3"
-			}
+			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch1-6 or snapshotContact1-6"
+		}
 		section() {
 			input(name: "snapshotTileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true, required: false, multiple: false)
 		}
@@ -177,34 +187,46 @@ def switchMapHandler() {
 	state.fSwitchMap5S = "<table width='100%'>"
 	state.fSwitchMap6S = "<table width='100%'>"
 	state.count = 0
-	state.onSwitchMapS.each { stuffOn -> 
-		state.count = state.count + 1
-		LOGDEBUG("In switchMapHandler - Building Table ON with ${stuffOn.key} count: ${state.count}")
-		if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-		if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-		if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-		if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-		if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-		if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+	state.countOn = 0
+	state.countOff = 0
+	
+	if(switchMode == "Full" || switchMode == "Only On") {
+		state.onSwitchMapS.each { stuffOn -> 
+			state.count = state.count + 1
+			state.countOn = state.countOn + 1
+			LOGDEBUG("In switchMapHandler - Building Table ON with ${stuffOn.key} count: ${state.count}")
+			if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+			if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+			if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+		}
 	}
 	
-	if((state.count >= 1) && (state.count <= 5)) { state.fSwitchMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 6) && (state.count <= 10)) { state.fSwitchMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 11) && (state.count <= 15)) { state.fSwitchMap3S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 16) && (state.count <= 20)) { state.fSwitchMap4S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 21) && (state.count <= 25)) { state.fSwitchMap5S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 26) && (state.count <= 30)) { state.fSwitchMap6S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	
-	state.offSwitchMapS.each { stuffOff -> 
-		state.count = state.count + 1
-		LOGDEBUG("In switchMapHandler - Building Table OFF with ${stuffOff.key} count: ${state.count}")
-		if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
-		if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
-		if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
-		if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
-		if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
-		if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+	if(switchMode == "Full") {
+		if((state.count >= 1) && (state.count <= 5)) { state.fSwitchMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 6) && (state.count <= 10)) { state.fSwitchMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 11) && (state.count <= 15)) { state.fSwitchMap3S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 16) && (state.count <= 20)) { state.fSwitchMap4S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 21) && (state.count <= 25)) { state.fSwitchMap5S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 26) && (state.count <= 30)) { state.fSwitchMap6S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
 	}
+	
+	if(switchMode == "Full" || switchMode == "Only Off") {
+		state.offSwitchMapS.each { stuffOff -> 
+			state.count = state.count + 1
+			state.countOff = state.countOff + 1
+			LOGDEBUG("In switchMapHandler - Building Table OFF with ${stuffOff.key} count: ${state.count}")
+			if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+			if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+			if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+		}
+	}
+	
 	state.fSwitchMap1S += "</table>"
 	state.fSwitchMap2S += "</table>"
 	state.fSwitchMap3S += "</table>"
@@ -219,6 +241,8 @@ def switchMapHandler() {
 	snapshotTileDevice.sendSnapshotSwitchMap4(state.fSwitchMap4S)
 	snapshotTileDevice.sendSnapshotSwitchMap5(state.fSwitchMap5S)
 	snapshotTileDevice.sendSnapshotSwitchMap6(state.fSwitchMap6S)
+	snapshotTileDevice.sendSnapshotSwitchCountOn(state.countOn)
+	snapshotTileDevice.sendSnapshotSwitchCountOff(state.countOff)
 }
 
 def contactMapHandler() {
@@ -235,34 +259,46 @@ def contactMapHandler() {
 	state.fContactMap5S = "<table width='100%'>"
 	state.fContactMap6S = "<table width='100%'>"
 	state.count = 0
-	state.openContactMapS.each { stuffOpen -> 
-		state.count = state.count + 1
-		LOGDEBUG("In contactMapHandler - Building Table OPEN with ${stuffOpen.key} count: ${state.count}")
-		if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-		if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-		if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-		if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-		if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-		if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+	state.countOpen = 0
+	state.countClosed = 0
+	
+	if(contactMode == "Full" || contactMode == "Only Open") {
+		state.openContactMapS.each { stuffOpen -> 
+			state.count = state.count + 1
+			state.countOpen = state.countOpen + 1
+			LOGDEBUG("In contactMapHandler - Building Table OPEN with ${stuffOpen.key} count: ${state.count}")
+			if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+			if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+			if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+		}
 	}
 	
-	if((state.count >= 1) && (state.count <= 5)) { state.fContactMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 6) && (state.count <= 10)) { state.fContactMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 11) && (state.count <= 15)) { state.fContactMap3S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 16) && (state.count <= 20)) { state.fContactMap4S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 21) && (state.count <= 25)) { state.fContactMap5S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	if((state.count >= 26) && (state.count <= 30)) { state.fContactMap6S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-	
-	state.closedContactMapS.each { stuffClosed -> 
-		state.count = state.count + 1
-		LOGDEBUG("In contactMapHandler - Building Table CLOSED with ${stuffClosed.key} count: ${state.count}")
-		if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-		if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-		if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-		if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-		if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-		if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+	if(contactMode == "Full") {
+		if((state.count >= 1) && (state.count <= 5)) { state.fContactMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 6) && (state.count <= 10)) { state.fContactMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 11) && (state.count <= 15)) { state.fContactMap3S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 16) && (state.count <= 20)) { state.fContactMap4S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 21) && (state.count <= 25)) { state.fContactMap5S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 26) && (state.count <= 30)) { state.fContactMap6S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
 	}
+	
+	if(contactMode == "Full" || contactMode == "Only Closed") {
+		state.closedContactMapS.each { stuffClosed -> 
+			state.count = state.count + 1
+			state.countClosed = state.countClosed + 1
+			LOGDEBUG("In contactMapHandler - Building Table CLOSED with ${stuffClosed.key} count: ${state.count}")
+			if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+			if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+			if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+		}
+	}
+	
 	state.fContactMap1S += "</table>"
 	state.fContactMap2S += "</table>"
 	state.fContactMap3S += "</table>"
@@ -277,6 +313,8 @@ def contactMapHandler() {
 	snapshotTileDevice.sendSnapshotContactMap4(state.fContactMap4S)
 	snapshotTileDevice.sendSnapshotContactMap5(state.fContactMap5S)
 	snapshotTileDevice.sendSnapshotContactMap6(state.fContactMap6S)
+	snapshotTileDevice.sendSnapshotContactCountOpen(state.countOpen)
+	snapshotTileDevice.sendSnapshotContactCountClosed(state.countClosed)
 }
 
 def switchHandler(evt){
