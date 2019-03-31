@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.3 - 03/30/19 - Adjust driver for on/off and open/close type of tiles
+ *  V1.0.2 - 03/27/19 - Added support for counting how many devices are On/Off/Open/Closed
  *  V1.0.1 - 03/23/19 - Adjusted for new Dashboard requirements
  *  V1.0.0 - 03/06/19 - Initial release
  */
@@ -57,12 +58,19 @@ metadata {
 		command "sendSnapshotContactMap5", ["string"]
 		command "sendSnapshotContactMap6", ["string"]
 		
+		command "sendSnapshotSwitchCountOn", ["string"]
+		command "sendSnapshotSwitchCountOff", ["string"]
+		command "sendSnapshotContactCountOpen", ["string"]
+		command "sendSnapshotContactCountClosed", ["string"]
+		
     	attribute "snapshotSwitch1", "string"
 		attribute "snapshotSwitch2", "string"
 		attribute "snapshotSwitch3", "string"
 		attribute "snapshotSwitch4", "string"
 		attribute "snapshotSwitch5", "string"
 		attribute "snapshotSwitch6", "string"
+		attribute "snapshotSwitchCountOn", "string"
+		attribute "snapshotSwitchCountOff", "string"
 		
 		attribute "snapshotContact1", "string"
 		attribute "snapshotContact2", "string"
@@ -70,6 +78,8 @@ metadata {
 		attribute "snapshotContact4", "string"
 		attribute "snapshotContact5", "string"
 		attribute "snapshotContact6", "string"
+		attribute "snapshotSwitchCountOpen", "string"
+		attribute "snapshotSwitchCountClosed", "string"
 	}
 	preferences() {    	
         section(){
@@ -170,6 +180,14 @@ def sendSnapshotSwitchMap6(switchMap6) {
 	sendEvent(name: "snapshotSwitch6", value: state.switchDevice6, displayed: true)
 }
 
+def sendSnapshotSwitchCountOn(switchCountOn) {
+	sendEvent(name: "snapshotSwitchCountOn", value: switchCountOn, displayed: true)
+}
+
+def sendSnapshotSwitchCountOff(switchCountOff) {
+	sendEvent(name: "snapshotSwitchCountOff", value: switchCountOff, displayed: true)
+}
+
 def sendSnapshotContactMap1(contactMap1) {
 	state.contactDevice1a = "${contactMap1}"
 	state.contactDevice1 = "<table width='100%'><tr>"
@@ -258,6 +276,14 @@ def sendSnapshotContactMap6(contactMap6) {
 		state.contactDevice6 = "Too many characters to display on Dashboard (${state.contactDevice6Count})"
 	}
 	sendEvent(name: "snapshotContact6", value: state.contactDevice6, displayed: true)
+}
+
+def sendSnapshotContactCountOpen(contactCountOpen) {
+	sendEvent(name: "snapshotContactCountOpen", value: contactCountOpen, displayed: true)
+}
+
+def sendSnapshotContactCountClosed(contactCountClosed) {
+	sendEvent(name: "snapshotContactCountClosed", value: contactCountClosed, displayed: true)
 }
 
 def installed(){
