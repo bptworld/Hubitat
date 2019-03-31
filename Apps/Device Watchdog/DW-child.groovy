@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.2.9 - 03/31/19 - Fix bug in push for Device Status. Status report now available for dashboard tiles.
  *  V1.2.8 - 03/30/19 - Fix push notifications going out even if there was nothing to report.
  *  V1.2.7 - 03/18/19 - BIG changes due to tile limit size.
  *  V1.2.6 - 03/12/19 - Battery report is now sorted lowest to highest battery percentage. Activity is sorted newest to oldest.
@@ -73,7 +74,7 @@
 
 
 def setVersion() {
-	state.version = "v1.2.8"
+	state.version = "v1.2.9"
 }
 
 definition(
@@ -129,20 +130,13 @@ def pageConfig() {
 			section() {
 				input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to run a new report", submitOnChange: true, required: false, multiple: false
 			}
-/**
-			section(getFormat("header-green", "${getImage("Blank")}"+" Report Sorting")) {
-				paragraph "Be sure to only select ONE option below."
-				input(name: "sortByLowToHigh", type: "bool", defaultValue: "false", submitOnChange: true, title: "Sort from Low to High", description: "Sort Low to High")
-				input(name: "sortByName", type: "bool", defaultValue: "false", submitOnChange: true, title: "Sort by Name (A to Z)", description: "Sort by Name")
-				if(sortByLowToHigh && sortByName) paragraph "<b>ONLY SELECT ONE SORTING OPTION!</b>"
-			}
-*/
 			section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 			section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 				paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
 				paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Device Watchdog Tile'<br> - Use our 'Device Watchdog Tile' Driver<br> - Then select 	this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
 			paragraph "- Pick a device = Device Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are watchdogActivity1-5 OR watchdogBattery1-5"
+			paragraph "NOTE: There is a MAX of 25 devices that can be shown on the dashboard"
 			}
 			section() {
 				input(name: "watchdogTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
@@ -206,6 +200,7 @@ def pageConfig() {
 				paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Device Watchdog Tile'<br> - Use our 'Device Watchdog Tile' Driver<br> - Then select this new device below"
 				paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
 				paragraph "- Pick a device = Device Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are watchdogActivity1-5 OR watchdogBattery1-5"
+				paragraph "NOTE: There is a MAX of 25 devices that can be shown on the dashboard"
 			}
 			section() {
 				input(name: "watchdogTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
@@ -253,10 +248,11 @@ def pageConfig() {
 				paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
 				paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Device Watchdog Tile'<br> - Use our 'Device Watchdog Tile' Driver<br> - Then select this new device below"
 				paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
-				paragraph "- Pick a device = Device Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are watchdogActivity1-5 OR watchdogBattery1-5"
+				paragraph "- Pick a device = Device Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = EACH attribute holds 5 lines of data. So mulitple boxes are now necessary. The options are watchdogStatus1-5"
+				paragraph "NOTE: There is a MAX of 25 devices that can be shown on the dashboard"
 			}
 			section() {
-				paragraph "Device Status report is too big to display on the Dashboard.<br>Will continue to look at options for this."		
+				input(name: "watchdogTileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
@@ -296,7 +292,7 @@ def pageStatus(params) {
 		}
 		if(triggerMode == "Activity") {
 			if(badORgood == false) {
-				if(state.timeSinceMap1S) {
+				if(state.count >= 1) {
         			section("${state.count} devices have not reported in for $timeAllowed hour(s)") {
 						paragraph "${state.timeSinceMap1S}<br>${state.timeSinceMap2S}<br>${state.timeSinceMap3S}<br>${state.timeSinceMap4S}<br>${state.timeSinceMap5S}<br>${state.timeSinceMap6S}"
         			}
@@ -306,7 +302,7 @@ def pageStatus(params) {
         			}
 				}
 			} else {
-				if(state.timeSinceMap1S) {
+				if(state.count >= 1) {
         			section("${state.count} devices have reported in less than $timeAllowed hour(s)") {
 						paragraph "${state.timeSinceMap1S}<br>${state.timeSinceMap2S}<br>${state.timeSinceMap3S}<br>${state.timeSinceMap4S}<br>${state.timeSinceMap5S}<br>${state.timeSinceMap6S}"
         			}
@@ -319,7 +315,7 @@ def pageStatus(params) {
 		}
 		if(triggerMode == "Status") {
         	section("Device Status Report") {
-				paragraph "${state.statusMap}"
+				paragraph "${state.statusMap1S}<br>${state.statusMap2S}<br>${state.statusMap3S}<br>${state.statusMap4S}<br>${state.statusMap5S}"
 			}
 		}
 	}
@@ -393,9 +389,17 @@ def watchdogMapHandler(evt) {
 	}
 	if(triggerMode == "Status") {
 		try {
-			def watchdogStatusMap = "${state.statusMapS}"
-			LOGDEBUG("In watchdogStatusMap...Sending new Status Watchdog data to ${watchdogTileDevice}")
-    		watchdogTileDevice.sendWatchdogStatusMap(watchdogStatusMap)
+			def watchdogStatusMap1 = "${state.statusMap1S}"
+			def watchdogStatusMap2 = "${state.statusMap2S}"
+			def watchdogStatusMap3 = "${state.statusMap3S}"
+			def watchdogStatusMap4 = "${state.statusMap4S}"
+			def watchdogStatusMap5 = "${state.statusMap5S}"
+			LOGDEBUG("In watchdogStatusMap...Sending new Status Watchdog data to Tiles")
+    		watchdogTileDevice.sendWatchdogStatusMap1(watchdogStatusMap1)
+			watchdogTileDevice.sendWatchdogStatusMap2(watchdogStatusMap2)
+			watchdogTileDevice.sendWatchdogStatusMap3(watchdogStatusMap3)
+			watchdogTileDevice.sendWatchdogStatusMap4(watchdogStatusMap4)
+			watchdogTileDevice.sendWatchdogStatusMap5(watchdogStatusMap5)
 		} catch (e) {
 			log.warn "${app.label}...Can't send data to Tile Device."
 			LOGDEBUG("In watchdogStatusMap...${e}")
@@ -532,12 +536,16 @@ def activityHandler(evt) {
 def myBatteryHandler(myType, mySensors) {
 	log.info "     - - - - - Start (B) ${myType} - - - - -     "
 	LOGDEBUG("In myBatteryHandler...")
+	
 	mySensors.each { device ->
 		def currentValue = device.currentValue("battery")
 		if(currentValue == null) currentValue = -999  //RayzurMod
 		state.batteryMap.put(device, currentValue)
 		LOGDEBUG("Working on... ${device} - ${currentValue}")
 	}
+	
+	state.theBatteryMap = state.batteryMap.sort { a, b -> a.value <=> b.value }
+
 	state.batteryMap1S = ""
 	state.batteryMap2S = ""
 	state.batteryMap3S = ""
@@ -545,9 +553,7 @@ def myBatteryHandler(myType, mySensors) {
 	state.batteryMap5S = ""
 	state.batteryMap6S = ""
 	state.batteryMapPhoneS = ""
-	state.theBatteryMap = state.batteryMap.sort { a, b -> a.value <=> b.value }
-//	if(sortByLowToHigh) state.theBatteryMap = state.batteryMap.sort { a, b -> a.value <=> b.value }
-//	if(sortByName) state.theBatteryMap = state.batteryMap.sort { a, b -> a <=> b }
+	
 	LOGDEBUG("In myBatteryHandler...${state.theBatteryMap}")				 
 	state.batteryMap1S = "<table width='100%'>"
 	state.batteryMap2S = "<table width='100%'>"
@@ -564,32 +570,32 @@ def myBatteryHandler(myType, mySensors) {
 				if(badORgood == false) {
 					state.count = state.count + 1
 					log.info "mySensors: ${it.key} battery is ${it.value} less than ${batteryThreshold} threshold"
-					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${myType} - ${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${myType} - ${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${myType} - ${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${myType} - ${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${myType} - ${it.key} battery is ${it.value}</td></tr>"
+					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
+					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
+					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
+					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
+					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
 					state.batteryMapPhoneS += "${it.key} - ${it.value} \n"
 				}
 			} else {
 				if(badORgood == true && currentValue > -999) { //RayzurMod
 					state.count = state.count + 1
 					log.info "${it.key} battery is ${currentValue}, over threshold"
-					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${myType} - ${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${myType} - ${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${myType} - ${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${myType} - ${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${myType} - ${it.key} battery is ${it.value}, over threshold</td></tr>"
+					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
+					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
+					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
+					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
+					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
 					state.batteryMapPhoneS += "${it.key} - ${it.value} \n"
 				} else {
 					if (currentValue == -999) { //RayzurMod
 						state.count = state.count + 1
 						log.info "${myType} - ${it.key} battery hasn't reported in." //RayzurMod
-						if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${myType} - <i>${it.key} battery isn't reporting</i></td></tr>" //RayzurMod
-						if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${myType} - <i>${it.key} battery isn't reporting</i></td></tr>"
-						if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${myType} - <i>${it.key} battery isn't reporting</i></td></tr>"
-						if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${myType} - <i>${it.key} battery isn't reporting</i></td></tr>"
-						if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${myType} - <i>${it.key} battery isn't reporting</i></td></tr>"
+						if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>" //RayzurMod
+						if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
+						if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
+						if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
+						if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
 						state.batteryMapPhoneS += "${it.key} - isn't reporting \n" //RayzurMod
 					}
 				}
@@ -699,8 +705,6 @@ def mySensorHandler(myType, mySensors) {
 		log.warn "${app.label} - Activity 1 - Too many characters to display on Dashboard"
 		state.timeSinceMap1S = "Too many characters to display on Dashboard"
 	}
-	
-	
 	log.info "     - - - - - End (S) ${myType} - - - - -     "
 }
 
@@ -708,8 +712,24 @@ def myStatusHandler(myType, mySensors) {
 	log.info "     - - - - - Start (S) ${myType} - - - - -     "
 	LOGDEBUG("In myStatusHandler...")
 	state.statusMap = ""
+	state.statusDash = ""
 	state.statusMapPhone = ""
-	mySensors.each { device ->
+	
+	state.sortedMap = mySensors.sort { a, b -> a.displayName <=> b.displayName }
+	
+	state.statusMap1S = ""
+	state.statusMap2S = ""
+	state.statusMap3S = ""
+	state.statusMap4S = ""
+	state.statusMap5S = ""
+	state.statusMap1S = "<table width='100%'>"
+	state.statusMap2S = "<table width='100%'>"
+	state.statusMap3S = "<table width='100%'>"
+	state.statusMap4S = "<table width='100%'>"
+	state.statusMap5S = "<table width='100%'>"
+	state.count = 0
+	state.sortedMap.each { device ->
+		state.count = state.count + 1
 		log.info "Working on... ${device}"
 		if(myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
 		if(myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
@@ -738,10 +758,19 @@ def myStatusHandler(myType, mySensors) {
 		LOGDEBUG("In myStatusHandler - ${device} - ${newDate}")
 		
 		log.info "${myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
-		state.statusMap += "${device} is ${deviceStatus} - last checked in ${newDate}<br>"
+		if((state.count >= 1) && (state.count <= 5)) state.statusMap1S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.statusMap2S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
+		if((state.count >= 11) && (state.count <= 15)) state.statusMap3S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
+		if((state.count >= 16) && (state.count <= 20)) state.statusMap4S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
+		if((state.count >= 21) && (state.count <= 25)) state.statusMap5S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
 		state.statusMapPhone += "${device} \n"
 		state.statusMapPhone += "${deviceStatus} - ${newDate} \n"
 	}
+	state.statusMap1S += "</table>"
+	state.statusMap2S += "</table>"
+	state.statusMap3S += "</table>"
+	state.statusMap4S += "</table>"
+	state.statusMap5S += "</table>"
 	log.info "     - - - - - End (S) ${myType} - - - - -     "
 }
 
