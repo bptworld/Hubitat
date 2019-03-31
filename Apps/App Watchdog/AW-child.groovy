@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.1 - 03/31/19 - Added simplified dashboard tile back to app
  *  V1.1.0 - 03/24/19 - Removed ability to send app data to dashboard tiles until I can find more time to make it compatible with
  *			the new dashboards.
  *  V1.0.9 - 02/27/19 - App now sends 'All apps are up to date' to tile.
@@ -50,7 +51,7 @@
  */
 
 def setVersion(){
-	state.version = "v1.1.0"
+	state.version = "v1.1.1"
 }
 
 def sendVersionToAW(){
@@ -134,8 +135,7 @@ def pageConfig() {
 			paragraph "- Pick a device = App Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = appVersions"
 			}
 		section() {
-			paragraph "Sorry, App Watchdog is not compatible with the new Dashboard. (yet!)"
-			//input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
+			input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Maintenance")) {
 			paragraph "Once you've updated all of the apps, flip this switch on, a second switch will appear. Turn on the second switch to update ALL version data to Current. Use with caution, it can not be undone. After about 10 seconds you can turn this switch back off."
@@ -636,7 +636,7 @@ def checkTheAppData() {
 			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
 			if(state.appUpdateNote != "NA") { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
 			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
-			
+			state.appMapDash += "<tr><td>${dName}</td></tr>"
 			state.appMapPhone += "${dName} has an update available \n"
 		}
 	}
@@ -794,7 +794,7 @@ def checkTheDriverData() {
 				state.appMap += "<tr><td width='36%'>${d4new}${appDriver4RawCode2}</td><td width='32%'>${d5new}${appDriver5RawCode2}</td><td width='32%'>${d6new}${appDriver6RawCode2}</td></tr>"
 				state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 			}
-			
+			state.appMapDash += "<tr><td>${dName}</td></tr>"
 			state.appMapPhone += "${dName} has an update available \n"
 		}
 	}
@@ -811,9 +811,12 @@ def checkTheDriverData() {
 }
 
 def tileHandler(evt) {
-	if(state.appMap) appMap = "${state.appMap}"
-	if(state.appMap == "") appMap = "All Apps are up to date."
-
+	if(state.appMapDash) appMap = "${state.appMapDash}"
+	if(state.appMap == "") { 
+		appMap = "All Apps are up to date."
+	} else {
+		appMap = "<table width='100%'><b>Apps/Drivers to update</b><br>${appMap}</table>"
+	}
 	LOGDEBUG("In tileHandler...Sending new App Watchdog data to ${tileDevice} - ${appMap}")
     tileDevice.sendDataMap(appMap)
 }
@@ -833,6 +836,8 @@ def clearMaps() {
 	state.appAllMap = ""
 	state.appMapPhone = [:]
 	state.appMapPhone = ""
+	state.appMapDash = [:]
+	state.appMapDash = ""
 	LOGDEBUG("In clearMaps...Maps are clear")
 }
 
