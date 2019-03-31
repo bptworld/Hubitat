@@ -126,13 +126,13 @@
   
   "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v1.1.0",
-  "DeviceWatchdogChildVersion": "v1.2.8",
-  "DeviceWatchdogDriverVersion": "V1.0.2",
+  "DeviceWatchdogChildVersion": "v1.2.9",
+  "DeviceWatchdogDriverVersion": "V1.0.3",
   "DeviceWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
   "DeviceWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
   "DeviceWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
-  "DeviceWatchdogUpdateNote": "V1.2.8 - 03/30/19 - Fix push notifications going out even if there was nothing to report.",
+  "DeviceWatchdogUpdateNote": "V1.2.9 - 03/31/19 - Fix bug in push for Device Status. Status report now available for dashboard tiles.",
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
