@@ -136,7 +136,7 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.0.4",
+  "FollowMeChildVersion": "v1.0.5",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
