@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.4 - 04/01/19 - Added Lock options
  *	V1.0.3 - 04/01/19 - Added Priority Device Options
  *	V1.0.2 - 03/30/19 - Added ability to select what type of data to report: Full, Only On/Off, Only Open/Closed. Also added count attributes.
  *	V1.0.1 - 03/22/19 - Major update to comply with Hubitat's new dashboard requirements.
@@ -42,7 +43,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -75,10 +76,12 @@ def pageConfig() {
 			input "triggerMode", "enum", required: true, title: "Select Trigger Frequency", submitOnChange: true,  options: ["Real Time", "Every X minutes", "On Demand"]
 			if(triggerMode == "Real Time") {
 				paragraph "<b>Be careful with this option. Too many devices updating in real time <u>WILL</u> slow down and/or crash the hub.</b>"
+				paragraph "Remember to flip this switch off and back on again if any changes to this app have been made."
 				input "realTimeSwitch", "capability.switch", title: "App Control Switch", required: true
 			}
 			if(triggerMode == "Every X minutes") {
 				paragraph "<b>Choose how often to take a Snapshot of your selected devices.</b>"
+				paragraph "Remember to flip this switch off and back on again if any changes to this app have been made."
 				input "repeatSwitch", "capability.switch", title: "App Control Switch", required: true
 				input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: true, range: '1..60'
 			}
@@ -94,10 +97,13 @@ def pageConfig() {
 				input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple: true, required: false, submitOnChange: true
 				input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple: true, required: false, submitOnChange: true
 				input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple: true, required: false, submitOnChange: true
+				input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple: true, required: false, submitOnChange: true
+				input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple: true, required: false, submitOnChange: true
 			} else {
 				paragraph "Note: Choose a max of 30 devices in each category."
             	input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
             	input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
+				input "locks", "capability.lock", title: "Door Locks", multiple: true, required: false, submitOnChange: true
 			}
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
@@ -110,6 +116,9 @@ def pageConfig() {
 				}
 				if(contacts) {
 					input "contactMode", "enum", required: true, title: "Select Contact Display Output Type", submitOnChange: true,  options: ["Full", "Only Open", "Only Closed"]
+				}
+				if(locks) {
+					input "lockMode", "enum", required: true, title: "Select Lock Display Output Type", submitOnChange: true,  options: ["Full", "Only Unlocked", "Only Locked"]
 				}
 			}
 		}
@@ -167,11 +176,13 @@ def realTimeSwitchHandler(evt) {
 			LOGDEBUG("In realTimeSwitchHandler - subscribe")
 			subscribe(switches, "switch", switchHandler)
 			subscribe(contacts, "contact", contactHandler)
+			subscribe(locks, "lock", lockHandler)
 			runIn(1, maintHandler)
 		} else {
 			LOGDEBUG("In realTimeSwitchHandler - unsubscribe")
 			unsubscribe(switches)
 			unsubscribe(contacts)
+			unsubscribe(locks)
 		}
 	}
 	if(reportMode == "Priority") {
@@ -181,6 +192,8 @@ def realTimeSwitchHandler(evt) {
 			subscribe(switchesOff, "switch", priorityHandler)
 			subscribe(contactsOpen, "contact", priorityHandler)
 			subscribe(contactsClosed, "contact", priorityHandler)
+			subscribe(locksUnlocked, "lock", priorityHandler)
+			subscribe(locksLocked, "lock", priorityHandler)
 			runIn(1, priorityHandler)
 		} else {
 			LOGDEBUG("In realTimeSwitchHandler Priority - unsubscribe")
@@ -188,6 +201,8 @@ def realTimeSwitchHandler(evt) {
 			unsubscribe(switchesOff)
 			unsubscribe(contactsOpen)
 			unsubscribe(contactsClosed)
+			unsubscribe(locksUnlocked)
+			unsubscribe(locksLocked)
 		}
 	}
 }
@@ -382,6 +397,58 @@ def contactMapHandler() {
 	snapshotTileDevice.sendSnapshotContactCountClosed(state.countClosed)
 }
 
+def lockMapHandler() {
+	LOGDEBUG("In lockMapHandler...")
+	checkMaps()
+	state.unlockedLockMapS = state.unlockedLockMap.sort { a, b -> a.key <=> b.key }
+	state.lockedLockMapS = state.lockedLockMap.sort { a, b -> a.key <=> b.key }
+	LOGDEBUG("In lockMapHandler - Building Lock Maps")
+	state.fLockMap1S = "<table width='100%'>"
+	state.fLockMap2S = "<table width='100%'>"
+	state.count = 0
+	state.countUnlocked = 0
+	state.countLocked = 0
+	
+	if(lockMode == "Full" || lockMode == "Only Unlocked") {
+		state.unlockedLockMapS.each { stuffUnlocked -> 
+			state.count = state.count + 1
+			state.countUnlocked = state.countUnlocked + 1
+			LOGDEBUG("In lockMapHandler - Building Table UNLOCKED with ${stuffUnlocked.key} count: ${state.count}")
+			if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${stuffUnlocked.key}</td><td><div style='color: red;'>unlocked</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${stuffUnlocked.key}</td><td><div style='color: red;'>unlocked</div></td></tr>"
+		}
+	}
+	
+	if(lockMode == "Full") {
+		if((state.count >= 1) && (state.count <= 5)) { state.fLockMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 6) && (state.count <= 10)) { state.fLockMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	}
+	
+	if(lockMode == "Full" || lockMode == "Only Locked") {
+		state.lockedLockMapS.each { stuffLocked -> 
+			state.count = state.count + 1
+			state.countLocked = state.countLocked + 1
+			LOGDEBUG("In lockMapHandler - Building Table LOCKED with ${stuffLocked.key} count: ${state.count}")
+			if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${stuffLocked.key}</td><td><div style='color: green;'>locked</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${stuffLocked.key}</td><td><div style='color: green;'>locked</div></td></tr>"
+		}
+	}
+	
+	state.fLockMap1S += "</table>"
+	state.fLockMap2S += "</table>"
+	
+	if(state.count == 0) {
+		state.fLockMap1S = "<table width='100%'><tr><td><div style='color: green;'>No lock devices to report</div></td></tr></table>"
+		state.fLockMap2S = "<table width='100%'><tr><td><div style='color: green;'>No lock devices to report</div></td></tr></table>"
+	}
+
+	LOGDEBUG("In lockMapHandler - <br>fLockMap1S<br>${state.fLockMap1S}")
+   	snapshotTileDevice.sendSnapshotLockMap1(state.fLockMap1S)
+	snapshotTileDevice.sendSnapshotLockMap2(state.fLockMap2S)
+	snapshotTileDevice.sendSnapshotLockCountUnlocked(state.countUnlocked)
+	snapshotTileDevice.sendSnapshotLockCountLocked(state.countLocked)
+}
+
 def switchHandler(evt){
 	def switchName = evt.displayName
 	def switchStatus = evt.value
@@ -416,9 +483,27 @@ def contactHandler(evt){
 	contactMapHandler()
 }
 
+def lockHandler(evt){
+	def lockName = evt.displayName
+	def lockStatus = evt.value
+	LOGDEBUG("In lockHandler...${lockName}: ${lockStatus}")
+	if(lockStatus == "unlocked") {
+		state.lockedLockMap.remove(lockName)
+		state.unlockedLockMap.put(lockName, lockStatus)
+		LOGDEBUG("In lockHandler - UNLOCKED<br>${state.unlockedLockMap}")
+	}
+	if(lockStatus == "locked") {
+		state.unlockedLockMap.remove(lockName)
+		state.lockedLockMap.put(lockName, lockStatus)
+		LOGDEBUG("In lockHandler - LOCKED<br>${state.lockedLockMap}")
+	}
+	lockMapHandler()
+}
+
 def priorityHandler(evt){
 	state.wrongSwitchMap = [:]
 	state.wrongContactMap = [:]
+	state.wrongLockMap = [:]
 	switchesOn.each { sOn -> 
 		def switchName = sOn.displayName
 		def switchStatus = sOn.currentValue('switch')
@@ -443,11 +528,23 @@ def priorityHandler(evt){
 		LOGDEBUG("In priorityHandler - Contact Closed - ${contactName} - ${contactStatus}")
 		if(contactStatus == "open") state.wrongContactMap.put(contactName, contactStatus)
 	}
-	
+	locksUnlocked.each { lUnlocked ->
+		def lockName = lUnlocked.displayName
+		def lockStatus = lUnlocked.currentValue('lock')
+		LOGDEBUG("In priorityHandler - Locks Unlocked - ${lockName} - ${lockStatus}")
+		if(lockStatus == "locked") state.wrongLockMap.put(lockName, lockStatus)
+	}
+	locksLocked.each { lLocked ->
+		def lockName = lLocked.displayName
+		def lockStatus = lLocked.currentValue('lock')
+		LOGDEBUG("In priorityHandler - Locks Locked - ${lockName} - ${lockStatus}")
+		if(lockStatus == "unlocked") state.wrongLockMap.put(lockName, lockStatus)
+	}
 	checkMaps()
 	state.wrongSwitchMapS = state.wrongSwitchMap.sort { a, b -> a.key <=> b.key }
 	state.wrongContactMapS = state.wrongContactMap.sort { a, b -> a.key <=> b.key }
-// Start Switch
+	state.wrongLockMapS = state.wrongLockMap.sort { a, b -> a.key <=> b.key }
+// Start Priority Switch
 	state.pSwitchMap1S = "<table width='100%'>"
 	state.pSwitchMap2S = "<table width='100%'>"
 	state.count = 0
@@ -467,7 +564,7 @@ def priorityHandler(evt){
 		state.isPriorityData = "false"
 	}
 	
-// Start Contacts
+// Start Priority Contacts
 	state.pContactMap1S = "<table width='100%'>"
 	state.pContactMap2S = "<table width='100%'>"
 	state.count = 0
@@ -486,10 +583,33 @@ def priorityHandler(evt){
 		state.pContactMap2S = "<table width='100%'><tr><td><div style='color: green;'>Everything is OK</div></td></tr></table>"
 		state.isPriorityData = "false"
 	}
+// Start Priority Locks
+	state.pLockMap1S = "<table width='100%'>"
+	state.pLockMap2S = "<table width='100%'>"
+	state.count = 0
+	state.wrongLockMapS.each { wLock -> 
+		state.count = state.count + 1
+		state.isPriorityData = "true"
+		LOGDEBUG("In priorityHandler - Building Table Wrong Lock with ${wLock.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.pLockMap1S += "<tr><td><div style='color: red;'>${wLock.key}</div></td><td><div style='color: red;'>${wLock.value}</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.pLockMap2S += "<tr><td><div style='color: red;'>${wLock.key}</div></td><td><div style='color: red;'>${wLock.value}</div></td></tr>"
+	}
+	state.pLockMap1S += "</table>"
+	state.pLockMap2S += "</table>"
+	
+	if(state.count == 0) {
+		state.pLockMap1S = "<table width='100%'><tr><td><div style='color: green;'>Everything is OK</div></td></tr></table>"
+		state.pLockMap2S = "<table width='100%'><tr><td><div style='color: green;'>Everything is OK</div></td></tr></table>"
+		state.isPriorityData = "false"
+	}
+	
+// Sending to tile
 	snapshotTileDevice.sendSnapshotPrioritySwitchMap1(state.pSwitchMap1S)
 	snapshotTileDevice.sendSnapshotPrioritySwitchMap2(state.pSwitchMap2S)
 	snapshotTileDevice.sendSnapshotPriorityContactMap1(state.pContactMap1S)
 	snapshotTileDevice.sendSnapshotPriorityContactMap2(state.pContactMap2S)
+	snapshotTileDevice.sendSnapshotPriorityLockMap1(state.pLockMap1S)
+	snapshotTileDevice.sendSnapshotPriorityLockMap2(state.pLockMap2S)
 	
 	if((isDataDevice) && (state.isPriorityData == "true")) isDataDevice.on()
 	if((isDataDevice) && (state.isPriorityData == "false")) isDataDevice.off()
@@ -509,6 +629,12 @@ def checkMaps() {
 	if(state.openContactMap == null) {
 		state.openContactMap = [:]
 	}
+	if(state.lockedLockMap == null) {
+		state.lockedLockMap = [:]
+	}
+	if(state.unlockedLockMap == null) {
+		state.unlockedLockMap = [:]
+	}
 	if(state.wrongSwitchMap == null) {
 		state.wrongSwitchMap = [:]
 	}
@@ -524,6 +650,8 @@ def maintHandler(evt){
 	state.onSwitchMap = [:]
 	state.closedContactMap = [:]
 	state.openContactMap = [:] 
+	state.lockedLockMap = [:]
+	state.unlockedLockMap = [:]
 	LOGDEBUG("In maintHandler...Tables have been cleared!")
 	LOGDEBUG("In maintHandler...Repopulating tables")
 	switches.each { device ->
@@ -542,6 +670,14 @@ def maintHandler(evt){
 		if(contactStatus == "closed") state.closedContactMap.put(contactName, contactStatus)
 	}
 	contactMapHandler()
+	locks.each { device ->
+		def lockName = device.displayName
+		def lockStatus = device.currentValue('lock')
+		LOGDEBUG("In maintHandler - Working on ${lockName} - ${lockStatus}")
+		if(lockStatus == "locked") state.lockedLockMap.put(lockName, lockStatus)
+		if(lockStatus == "unlocked") state.unlockedLockMap.put(lockName, lockStatus)
+	}
+	lockMapHandler()
 }
 
 def appButtonHandler(btn){  // *****************************
@@ -552,7 +688,7 @@ def appButtonHandler(btn){  // *****************************
 
 // Normal Stuff
 
-def pauseOrNot(){							// Modified from @Cobra Code
+def pauseOrNot(){
 	LOGDEBUG("In pauseOrNot...")
     state.pauseNow = pause1
         if(state.pauseNow == true){
@@ -575,7 +711,7 @@ def pauseOrNot(){							// Modified from @Cobra Code
   }    
 }
 
-def logCheck(){								// Modified from @Cobra Code
+def logCheck(){
 	state.checkLog = debugMode
 	if(state.checkLog == true){
 		log.info "${app.label} - All Logging Enabled"
@@ -585,7 +721,7 @@ def logCheck(){								// Modified from @Cobra Code
 	}
 }
 
-def LOGDEBUG(txt){							// Modified from @Cobra Code
+def LOGDEBUG(txt){
     try {
 		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
     } catch(ex) {
