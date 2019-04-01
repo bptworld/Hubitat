@@ -142,7 +142,7 @@
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.0.4 - 03/28/19 - Minor Tweaks",
+  "FollowMeUpdateNote": "V1.0.5 - 03/31/19 - Attempt to fix 'Always_On' Speakers",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
