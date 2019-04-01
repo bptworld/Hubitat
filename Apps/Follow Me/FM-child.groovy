@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *	V1.0.5 - 03/31/19 - Attempt to fix 'Always_On' Speakers
+ *	V1.0.6 - 04/01/19 - Attempt to fix 'Enable/Disable Switch' and Activate by 'Switch'
+ *	V1.0.5 - 03/31/19 - Fixed 'Always_On' Speakers
  *	V1.0.4 - 03/28/19 - Minor Tweaks
  *	V1.0.3 - 03/27/19 - Added volume control based on message priority.
  *	V1.0.2 - 03/20/19 - Added another Google Initialize option, every x minutes
@@ -44,7 +45,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
 }
 
 definition(
@@ -218,24 +219,13 @@ def initialize() {
 	subscribe(gvDevice, "lastSpokenUnique", lastSpokenHandler)
 	if(myContact) subscribe(myContacts, "contact", contactSensorHandler)
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
-	if(mySwitches) subscribe(mySwitches, "switch", switchesHandler)
+	if(mySwitches) subscribe(mySwitches, "switch", switchHandler)
 	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
 	if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler2)
 	if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler3)
 	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
 	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
 	if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
-}
-
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	LOGDEBUG("In enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
-    }
 }
 
 def presenceSensorHandler1(evt){
@@ -343,7 +333,7 @@ def contactSensorHandler(evt) {
 			}
 		}
 	} else {
-			LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	}
 }
 
@@ -391,17 +381,21 @@ def switchHandler(evt) {
 
 def lastSpokenHandler(speech) { 
 	LOGDEBUG("In lastSpoken...")
-	state.unique = speech.value.toString()
-	state.cleanUp = state.unique.drop(1)
-	state.priority = state.cleanUp.take(3)
-	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
-		state.lastSpoken = state.cleanUp.drop(3)
-	} else {
-		state.lastSpoken = state.cleanUp
+	if(state.sZone == true) {
+		state.unique = speech.value.toString()
+		state.cleanUp = state.unique.drop(1)
+		state.priority = state.cleanUp.take(3)
+		if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
+			state.lastSpoken = state.cleanUp.drop(3)
+		} else {
+			state.lastSpoken = state.cleanUp
+		}
+		LOGDEBUG("In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
+		letsTalk()
+		sendPush()
+	} else{
+		log.info "${app.label} - Zone is Off, can not speak."
 	}
-	LOGDEBUG("In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
-	letsTalk()
-	sendPush()
 }
 
 def speechOff() {
@@ -424,32 +418,40 @@ def initializeSpeaker() {
 						  
 def letsTalk() {
 	LOGDEBUG("In letsTalk...")
-	if(triggerMode == "Always_On") alwaysOnHandler()
-	checkTime()
-	checkVol()
-	if(state.timeOK == true && state.sZone == true) {
-		LOGDEBUG("In letsTalk - ${speechMode} - ${speaker}")
-  		if (speechMode == "Music Player"){ 
-			if(echoSpeaks) {
-				speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
+	if(state.enablerSwitch2 == "off") {
+		if(state.sZone == true){
+			if(triggerMode == "Always_On") alwaysOnHandler()
+			checkTime()
+			checkVol()
+			if(state.timeOK == true) {
+				LOGDEBUG("In letsTalk - ${speechMode} - ${speaker}")
+  				if (speechMode == "Music Player"){ 
+					if(echoSpeaks) {
+						speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
+					}
+					if(!echoSpeaks) {
+    					if(volSpeech) speaker.setLevel(state.volume)
+    					speaker.playTextAndRestore(state.lastSpoken, volRestore)
+					}
+  				}   
+				if (speechMode == "Speech Synth"){
+					speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
+					speechDuration2 = speechDuration * 1000
+					if(gInitialize) initializeSpeaker()
+					if(volSpeech) speaker.setVolume(state.volume)
+					speaker.speak(state.lastSpoken)
+					pauseExecution(speechDuration2)
+					if(volRestore) speaker.setVolume(volRestore)
+				}
+				LOGDEBUG("In letsTalk...Okay, I'm done!")
+			} else {
+				log.info "${app.label} - Quiet Time, can not speak."
 			}
-			if(!echoSpeaks) {
-    			if(volSpeech) speaker.setLevel(state.volume)
-    			speaker.playTextAndRestore(state.lastSpoken, volRestore)
-			}
-  		}   
-		if (speechMode == "Speech Synth"){
-			speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
-			speechDuration2 = speechDuration * 1000
-			if(gInitialize) initializeSpeaker()
-			if(volSpeech) speaker.setVolume(state.volume)
-			speaker.speak(state.lastSpoken)
-			pauseExecution(speechDuration2)
-			if(volRestore) speaker.setVolume(volRestore)
+		} else {
+			log.info "${app.label} - Zone is Off, can not speak."
 		}
-		LOGDEBUG("In letsTalk...Okay, I'm done!")
 	} else {
-		log.info "${app.label} - No speakers are active"
+		log.info "${app.label} - Disable Switch is ON - can not speak."
 	}
 }
 
@@ -526,6 +528,15 @@ def sendPush(){
 }
 
 // ********** Normal Stuff **********
+def enablerSwitchHandler(evt){
+	state.enablerSwitch2 = evt.value
+	LOGDEBUG("In enablerSwitchHandler - Enabler Switch: ${enablerSwitch2}")
+    if(state.enablerSwitch2 == "on"){
+    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+	} else {
+		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
+    }
+}
 
 def pauseOrNot(){						// Modified from @Cobra Code
     state.pauseNow = pause1
