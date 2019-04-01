@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.3 - 04/01/19 - Added Priority Device Options
  *	V1.0.2 - 03/30/19 - Added ability to select what type of data to report: Full, Only On/Off, Only Open/Closed. Also added count attributes.
  *	V1.0.1 - 03/22/19 - Major update to comply with Hubitat's new dashboard requirements.
  *  V1.0.0 - 03/16/19 - Initial Release
@@ -41,7 +42,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -68,6 +69,9 @@ def pageConfig() {
 			paragraph "REAL TIME - Be careful with this option. Too many devices updating in real time <u>WILL</u> slow down and/or crash the hub."	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Type of Trigger")) {
+			input "reportMode", "enum", required: true, title: "Select Report Type", submitOnChange: true,  options: ["Regular", "Priority"]
+			if(reportMode == "Regular") paragraph "Regular - Will show device state based on options below"
+			if(reportMode == "Priority") paragraph "Priority - Show device state only when it's not what it should be based on options below"
 			input "triggerMode", "enum", required: true, title: "Select Trigger Frequency", submitOnChange: true,  options: ["Real Time", "Every X minutes", "On Demand"]
 			if(triggerMode == "Real Time") {
 				paragraph "<b>Be careful with this option. Too many devices updating in real time <u>WILL</u> slow down and/or crash the hub.</b>"
@@ -85,17 +89,28 @@ def pageConfig() {
 			}
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Monitor")) {
-			paragraph "Note: Choose a max of 30 devices in each category."
-            input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
-            input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
-        }
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Display Options")) {
-			paragraph "Choose the amount/type of data to record"
-			if(switches) {
-				input "switchMode", "enum", required: true, title: "Select Switches Display Type", submitOnChange: true,  options: ["Full", "Only On", "Only Off"]
+			if(reportMode == "Priority") {
+				input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false, submitOnChange: true
+				input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple: true, required: false, submitOnChange: true
+				input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple: true, required: false, submitOnChange: true
+				input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple: true, required: false, submitOnChange: true
+			} else {
+				paragraph "Note: Choose a max of 30 devices in each category."
+            	input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
+            	input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
 			}
-			if(contacts) {
-				input "contactMode", "enum", required: true, title: "Select Contact Display Type", submitOnChange: true,  options: ["Full", "Only Open", "Only Closed"]
+        }
+		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
+			if(reportMode == "Priority") {
+				input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange: true, required: false, multiple: false
+			} else {
+				paragraph "Choose the amount/type of data to record"
+				if(switches) {
+					input "switchMode", "enum", required: true, title: "Select Switches Display Output Type", submitOnChange: true,  options: ["Full", "Only On", "Only Off"]
+				}
+				if(contacts) {
+					input "contactMode", "enum", required: true, title: "Select Contact Display Output Type", submitOnChange: true,  options: ["Full", "Only Open", "Only Closed"]
+				}
 			}
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
@@ -103,7 +118,7 @@ def pageConfig() {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
 			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Snapshot Tile'<br> - Use our 'Snapshot Tile' Driver<br> - Then select this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
-			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch1-6 or snapshotContact1-6"
+			paragraph "- Pick a device = Snapshot Tile<br>- Pick a template = attribute<br>- 3rd box = snapshotSwitch1-6, snapshotContact1-6, snapshotPrioritySwitch1-2 or snapshotPriorityContact1-2"
 		}
 		section() {
 			input(name: "snapshotTileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true, required: false, multiple: false)
@@ -137,8 +152,9 @@ def updated() {
 }
 
 def initialize() {
+	LOGDEBUG("In initialize...")
 	if(enableSwitch1) subscribe(enableSwitch, "switch", switchEnable)
-	if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch", onDemandSwitchHandler)
+	if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch.on", onDemandSwitchHandler)
 	if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
 	if(triggerMode == "Real Time") subscribe(realTimeSwitch, "switch", realTimeSwitchHandler)
 }
@@ -146,15 +162,33 @@ def initialize() {
 def realTimeSwitchHandler(evt) {
 	LOGDEBUG("In realTimeSwitchHandler...")
 	state.realTimeSwitchStatus = evt.value
-	if(state.realTimeSwitchStatus == "on") {
-		LOGDEBUG("In realTimeSwitchHandler - subscribe")
-		subscribe(switches, "switch", switchHandler)
-		subscribe(contacts, "contact", contactHandler)
-		runIn(1, maintHandler)
-	} else {
-		LOGDEBUG("In realTimeSwitchHandler - unsubscribe")
-		unsubscribe(switches)
-		unsubscribe(contacts)
+	if(reportMode == "Regular") {
+		if(state.realTimeSwitchStatus == "on") {
+			LOGDEBUG("In realTimeSwitchHandler - subscribe")
+			subscribe(switches, "switch", switchHandler)
+			subscribe(contacts, "contact", contactHandler)
+			runIn(1, maintHandler)
+		} else {
+			LOGDEBUG("In realTimeSwitchHandler - unsubscribe")
+			unsubscribe(switches)
+			unsubscribe(contacts)
+		}
+	}
+	if(reportMode == "Priority") {
+		if(state.realTimeSwitchStatus == "on") {
+			LOGDEBUG("In realTimeSwitchHandler Priority - subscribe")
+			subscribe(switchesOn, "switch", priorityHandler)
+			subscribe(switchesOff, "switch", priorityHandler)
+			subscribe(contactsOpen, "contact", priorityHandler)
+			subscribe(contactsClosed, "contact", priorityHandler)
+			runIn(1, priorityHandler)
+		} else {
+			LOGDEBUG("In realTimeSwitchHandler Priority - unsubscribe")
+			unsubscribe(switchesOn)
+			unsubscribe(switchesOff)
+			unsubscribe(contactsOpen)
+			unsubscribe(contactsClosed)
+		}
 	}
 }
 
@@ -162,16 +196,29 @@ def repeatSwitchHandler(evt) {
 	LOGDEBUG("In repeatSwitchHandler...")
 	state.repeatSwitchStatus = repeatSwitch.currentValue("switch")
 	state.runDelay = timeDelay * 60
-	if(state.repeatSwitchStatus == "on") {
-		maintHandler()
+	if(reportMode == "Regular") {
+		if(state.repeatSwitchStatus == "on") {
+			maintHandler()
+		}
+		runIn(state.runDelay,repeatSwitchHandler)
 	}
-	runIn(state.runDelay,repeatSwitchHandler)
+	if(reportMode == "Priority") {
+		if(state.repeatSwitchStatus == "on") {
+			priorityHandler()
+		}
+		runIn(state.runDelay,priorityHandler)
+	}
 }
 
 def onDemandSwitchHandler(evt) {
 	LOGDEBUG("In onDemandSwitchHandler...")
 	state.onDemandSwitchStatus = evt.value
-	if(state.onDemandSwitchStatus == "on") maintHandler()
+	if(reportMode == "Regular") {
+		if(state.onDemandSwitchStatus == "on") maintHandler()
+	}
+	if(reportMode == "Priority") {
+		if(state.onDemandSwitchStatus == "on") priorityHandler()
+	}
 }
 
 def switchMapHandler() {
@@ -233,6 +280,15 @@ def switchMapHandler() {
 	state.fSwitchMap4S += "</table>"
 	state.fSwitchMap5S += "</table>"
 	state.fSwitchMap6S += "</table>"
+	
+	if(state.count == 0) {
+		state.fSwitchMap1S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap2S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap3S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap4S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap5S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap6S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+	}
 	
 	LOGDEBUG("In switchMapHandler - <br>fSwitchMap1S<br>${state.fSwitchMap1S}")
     snapshotTileDevice.sendSnapshotSwitchMap1(state.fSwitchMap1S)
@@ -305,6 +361,15 @@ def contactMapHandler() {
 	state.fContactMap4S += "</table>"
 	state.fContactMap5S += "</table>"
 	state.fContactMap6S += "</table>"
+	
+	if(state.count == 0) {
+		state.fContactMap1S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap2S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap3S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap4S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap5S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap6S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+	}
 
 	LOGDEBUG("In contactMapHandler - <br>fContactMap1S<br>${state.fContactMap1S}")
    	snapshotTileDevice.sendSnapshotContactMap1(state.fContactMap1S)
@@ -351,6 +416,85 @@ def contactHandler(evt){
 	contactMapHandler()
 }
 
+def priorityHandler(evt){
+	state.wrongSwitchMap = [:]
+	state.wrongContactMap = [:]
+	switchesOn.each { sOn -> 
+		def switchName = sOn.displayName
+		def switchStatus = sOn.currentValue('switch')
+		LOGDEBUG("In priorityHandler - Switch On - ${switchName} - ${switchStatus}")
+		if(switchStatus == "off") state.wrongSwitchMap.put(switchName, switchStatus)
+	}
+	switchesOff.each { sOff -> 
+		def switchName = sOff.displayName
+		def switchStatus = sOff.currentValue('switch')
+		LOGDEBUG("In priorityHandler - Switch Off - ${switchName} - ${switchStatus}")
+		if(switchStatus == "on") state.wrongSwitchMap.put(switchName, switchStatus)
+	}
+	contactsOpen.each { cOpen ->
+		def contactName = cOpen.displayName
+		def contactStatus = cOpen.currentValue('contact')
+		LOGDEBUG("In priorityHandler - Contact Open - ${contactName} - ${contactStatus}")
+		if(contactStatus == "closed") state.wrongContactMap.put(contactName, contactStatus)
+	}
+	contactsClosed.each { cClosed ->
+		def contactName = cClosed.displayName
+		def contactStatus = cClosed.currentValue('contact')
+		LOGDEBUG("In priorityHandler - Contact Closed - ${contactName} - ${contactStatus}")
+		if(contactStatus == "open") state.wrongContactMap.put(contactName, contactStatus)
+	}
+	
+	checkMaps()
+	state.wrongSwitchMapS = state.wrongSwitchMap.sort { a, b -> a.key <=> b.key }
+	state.wrongContactMapS = state.wrongContactMap.sort { a, b -> a.key <=> b.key }
+// Start Switch
+	state.pSwitchMap1S = "<table width='100%'>"
+	state.pSwitchMap2S = "<table width='100%'>"
+	state.count = 0
+	state.wrongSwitchMapS.each { wSwitch -> 
+		state.count = state.count + 1
+		state.isPriorityData = "true"
+		LOGDEBUG("In priorityHandler - Building Table Wrong Switch with ${wSwitch.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.pSwitchMap2S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+	}
+	state.pSwitchMap1S += "</table>"
+	state.pSwitchMap2S += "</table>"
+	
+	if(state.count == 0) {
+		state.pSwitchMap1S = "<table width='100%'><tr><td><div style='color: green;'>No devices to report<br>Everything is OK</div></td></tr></table>"
+		state.pSwitchMap2S = "<table width='100%'><tr><td><div style='color: green;'>No devices to report<br>Everything is OK</div></td></tr></table>"
+		state.isPriorityData = "false"
+	}
+	
+// Start Contacts
+	state.pContactMap1S = "<table width='100%'>"
+	state.pContactMap2S = "<table width='100%'>"
+	state.count = 0
+	state.wrongContactMapS.each { wContact -> 
+		state.count = state.count + 1
+		state.isPriorityData = "true"
+		LOGDEBUG("In priorityHandler - Building Table Wrong Contact with ${wContact.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) state.pContactMap1S += "<tr><td><div style='color: red;'>${wContact.key}</div></td><td><div style='color: red;'>${wContact.value}</div></td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.pContactMap2S += "<tr><td><div style='color: red;'>${wContact.key}</div></td><td><div style='color: red;'>${wContact.value}</div></td></tr>"
+	}
+	state.pContactMap1S += "</table>"
+	state.pContactMap2S += "</table>"
+	
+	if(state.count == 0) {
+		state.pContactMap1S = "<table width='100%'><tr><td><div style='color: green;'>Everything is OK</div></td></tr></table>"
+		state.pContactMap2S = "<table width='100%'><tr><td><div style='color: green;'>Everything is OK</div></td></tr></table>"
+		state.isPriorityData = "false"
+	}
+	snapshotTileDevice.sendSnapshotPrioritySwitchMap1(state.pSwitchMap1S)
+	snapshotTileDevice.sendSnapshotPrioritySwitchMap2(state.pSwitchMap2S)
+	snapshotTileDevice.sendSnapshotPriorityContactMap1(state.pContactMap1S)
+	snapshotTileDevice.sendSnapshotPriorityContactMap2(state.pContactMap2S)
+	
+	if((isDataDevice) && (state.isPriorityData == "true")) isDataDevice.on()
+	if((isDataDevice) && (state.isPriorityData == "false")) isDataDevice.off()
+}
+
 def checkMaps() {
 	LOGDEBUG("In checkMaps...") 
 	if(state.offSwitchMap == null) {
@@ -364,6 +508,12 @@ def checkMaps() {
 	}
 	if(state.openContactMap == null) {
 		state.openContactMap = [:]
+	}
+	if(state.wrongSwitchMap == null) {
+		state.wrongSwitchMap = [:]
+	}
+	if(state.wrongContactMap == null) {
+		state.wrongContactMap = [:]
 	}
 	LOGDEBUG("In checkMaps - Finished")
 }
@@ -396,7 +546,8 @@ def maintHandler(evt){
 
 def appButtonHandler(btn){  // *****************************
 	// section(){input "resetBtn", "button", title: "Click here to reset maps"}
-    runIn(1, maintHandler)
+    if(reportMode == "Regular") runIn(1, maintHandler)
+	if(reportMode == "Priority") runIn(1, priorityHandler)
 }  
 
 // Normal Stuff
