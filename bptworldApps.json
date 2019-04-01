@@ -136,13 +136,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.0.5",
+  "FollowMeChildVersion": "v1.0.6",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.0.5 - 03/31/19 - Attempt to fix 'Always_On' Speakers",
+  "FollowMeUpdateNote": "V1.0.6 - 04/01/19 - Attempt to fix 'Enable/Disable Switch' and Activate by 'Switch'",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
