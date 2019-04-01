@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 04/01/19 - Adjust driver for lock support
  *  V1.0.4 - 04/01/19 - Adjust driver for priority type of tiles
  *  V1.0.3 - 03/30/19 - Adjust driver for on/off and open/close type of tiles
  *  V1.0.2 - 03/27/19 - Added support for counting how many devices are On/Off/Open/Closed
@@ -59,15 +60,22 @@ metadata {
 		command "sendSnapshotContactMap5", ["string"]
 		command "sendSnapshotContactMap6", ["string"]
 		
+		command "sendSnapshotLockMap1", ["string"]
+		command "sendSnapshotLockMap2", ["string"]
+		
 		command "sendSnapshotSwitchCountOn", ["string"]
 		command "sendSnapshotSwitchCountOff", ["string"]
 		command "sendSnapshotContactCountOpen", ["string"]
 		command "sendSnapshotContactCountClosed", ["string"]
+		command "sendSnapshotLockCountUnlocked", ["string"]
+		command "sendSnapshotLockCountLocked", ["string"]
 		
 		command "sendSnapshotPrioritySwitchMap1", ["string"]
 		command "sendSnapshotPrioritySwitchMap2", ["string"]
 		command "sendSnapshotPriorityContactMap1", ["string"]
 		command "sendSnapshotPriorityContactMap2", ["string"]
+		command "sendSnapshotPriorityLockMap1", ["string"]
+		command "sendSnapshotPriorityLockMap2", ["string"]
 		
     	attribute "snapshotSwitch1", "string"
 		attribute "snapshotSwitch2", "string"
@@ -84,13 +92,20 @@ metadata {
 		attribute "snapshotContact4", "string"
 		attribute "snapshotContact5", "string"
 		attribute "snapshotContact6", "string"
-		attribute "snapshotSwitchCountOpen", "string"
-		attribute "snapshotSwitchCountClosed", "string"
+		attribute "snapshotContactCountOpen", "string"
+		attribute "snapshotCountactCountClosed", "string"
+		
+		attribute "snapshotLock1", "string"
+		attribute "snapshotLock2", "string"
+		attribute "snapshotLockCountUnlocked", "string"
+		attribute "snapshotLockCountLocked", "string"
 		
 		attribute "snapshotPrioritySwitch1", "string"
 		attribute "snapshotPrioritySwitch2", "string"
 		attribute "snapshotPriorityContact1", "string"
 		attribute "snapshotPriorityContact2", "string"
+		attribute "snapshotPriorityLock1", "string"
+		attribute "snapshotPriorityLock2", "string"
 	}
 	preferences() {    	
         section(){
@@ -297,6 +312,44 @@ def sendSnapshotContactCountClosed(contactCountClosed) {
 	sendEvent(name: "snapshotContactCountClosed", value: contactCountClosed, displayed: true)
 }
 
+def sendSnapshotLockMap1(lockMap1) {
+	state.lockDevice1a = "${lockMap1}"
+	state.lockDevice1 = "<table width='100%'><tr>"
+	state.lockDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.lockDevice1 += "<div style='font-size: ${fontSize}px'> ${state.lockDevice1a}</div>"
+	state.lockDevice1 += "</td></tr></table>"
+	state.lockDevice1Count = state.lockDevice1.length()
+	if(state.lockDevice1Count <= 1000) {
+		LOGDEBUG("lockDevice1 - has ${state.lockDevice1Count} Characters<br>${state.lockDevice1}")
+	} else {
+		state.lockDevice1 = "Too many characters to display on Dashboard (${state.lockDevice1Count})"
+	}
+	sendEvent(name: "snapshotLock1", value: state.lockDevice1, displayed: true)
+}
+
+def sendSnapshotLockMap2(lockMap2) {
+	state.lockDevice2a = "${lockMap2}"
+	state.lockDevice2 = "<table width='100%'><tr>"
+	state.lockDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.lockDevice2 += "<div style='font-size: ${fontSize}px'> ${state.lockDevice2a}</div>"
+	state.lockDevice2 += "</td></tr></table>"
+	state.lockDevice2Count = state.lockDevice2.length()
+	if(state.lockDevice2Count <= 1000) {
+		LOGDEBUG("lockDevice2 - has ${state.lockDevice2Count} Characters<br>${state.lockDevice2}")
+	} else {
+		state.lockDevice2 = "Too many characters to display on Dashboard (${state.lockDevice2Count})"
+	}
+	sendEvent(name: "snapshotLock2", value: state.lockDevice2, displayed: true)
+}
+
+def sendSnapshotLockCountUnlocked(lockCountUnlocked) {
+	sendEvent(name: "snapshotLockCountUnlocked", value: lockCountUnlocked, displayed: true)
+}
+
+def sendSnapshotLockCountLocked(lockCountLocked) {
+	sendEvent(name: "snapshotLockCountLocked", value: lockCountLocked, displayed: true)
+}
+
 def sendSnapshotPrioritySwitchMap1(pSwitchMap1S) {
 	state.pSwitchDevice1a = "${pSwitchMap1S}"
 	state.pSwitchDevice1 = "<table width='100%'><tr>"
@@ -355,6 +408,36 @@ def sendSnapshotPriorityContactMap2(pContactMap2S) {
 		state.pContactDevice2 = "Too many characters to display on Dashboard (${state.pContactDevice2Count})"
 	}
 	sendEvent(name: "snapshotPriorityContact2", value: state.pContactDevice2, displayed: true)
+}
+
+def sendSnapshotPriorityLockMap1(pLockMap1S) {
+	state.pLockDevice1a = "${pLockMap1S}"
+	state.pLockDevice1 = "<table width='100%'><tr>"
+	state.pLockDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.pLockDevice1 += "<div style='font-size: ${fontSize}px'> ${state.pLockDevice1a}</div>"
+	state.pLockDevice1 += "</td></tr></table>"
+	state.pLockDevice1Count = state.pLockDevice1.length()
+	if(state.pLockDevice1Count <= 1000) {
+		LOGDEBUG("pLockDevice1 - has ${state.pLockDevice1Count} Characters<br>${state.pLockDevice1}")
+	} else {
+		state.pLockDevice1 = "Too many characters to display on Dashboard (${state.pLockDevice1Count})"
+	}
+	sendEvent(name: "snapshotPriorityLock1", value: state.pLockDevice1, displayed: true)
+}
+
+def sendSnapshotPriorityLockMap2(pLockMap2S) {
+	state.pLockDevice2a = "${pLockMap2S}"
+	state.pLockDevice2 = "<table width='100%'><tr>"
+	state.pLockDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.pLockDevice2 += "<div style='font-size: ${fontSize}px'> ${state.pLockDevice2a}</div>"
+	state.pLockDevice2 += "</td></tr></table>"
+	state.pLockDevice2Count = state.pLockDevice2.length()
+	if(state.pLockDevice2Count <= 1000) {
+		LOGDEBUG("pLockDevice2 - has ${state.pLockDevice2Count} Characters<br>${state.pLockDevice2}")
+	} else {
+		state.pLockDevice2 = "Too many characters to display on Dashboard (${state.pLockDevice2Count})"
+	}
+	sendEvent(name: "snapshotPriorityLock2", value: state.pLockDevice2, displayed: true)
 }
 
 def installed(){
