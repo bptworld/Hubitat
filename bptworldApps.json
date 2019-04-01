@@ -206,13 +206,13 @@
   
   "SnapshotType": "App",
   "SnapshotParentVersion": "v1.0.0",
-  "SnapshotChildVersion": "v1.0.3",
-  "SnapshotDriverVersion": "v1.0.4",
+  "SnapshotChildVersion": "v1.0.4",
+  "SnapshotDriverVersion": "v1.0.5",
   "SnapshotParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy",
   "SnapshotChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-Child.groovy",
   "SnapshotDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-driver.groovy",
   "SnapshotDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
-  "SnapshotUpdateNote": "V1.0.3 - 04/01/19 - Added Priority Device Options",
+  "SnapshotUpdateNote": "V1.0.4 - 04/01/19 - Added Lock options",
   
   "WebPingerType": "App",
   "WebPingerParentVersion": "v1.0.2",
