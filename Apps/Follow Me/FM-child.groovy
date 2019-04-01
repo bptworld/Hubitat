@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.5 - 03/31/19 - Attempt to fix 'Always_On' Speakers
  *	V1.0.4 - 03/28/19 - Minor Tweaks
  *	V1.0.3 - 03/27/19 - Added volume control based on message priority.
  *	V1.0.2 - 03/20/19 - Added another Google Initialize option, every x minutes
@@ -43,7 +44,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
@@ -298,14 +299,12 @@ def presenceSensorHandler5(evt){
 }
 
 def alwaysOnHandler() {
-	LOGDEBUG("In alwaysOnHandler - alwaysOn: ${alwaysOn}")
+	LOGDEBUG("In alwaysOnHandler...")
 	if(state.enablerSwitch2 == "off") {
 		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     	if(pause1 == false){
-			if(alwaysOn) {
-				LOGDEBUG("In alwaysOnHandler - setting sZone to true")
-				state.sZone = true
-			}
+			LOGDEBUG("In alwaysOnHandler - setting sZone to true")
+			state.sZone = true
 		}
 	} else {
 		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
@@ -425,7 +424,7 @@ def initializeSpeaker() {
 						  
 def letsTalk() {
 	LOGDEBUG("In letsTalk...")
-	if(Always_On) alwaysOnHandler()
+	if(triggerMode == "Always_On") alwaysOnHandler()
 	checkTime()
 	checkVol()
 	if(state.timeOK == true && state.sZone == true) {
@@ -476,7 +475,7 @@ def checkTime(){							// Modified from @Cobra Code
 }
 
 def checkVol(){
-	LOGDEBUG("In checkVol")
+	LOGDEBUG("In checkVol...")
 	if(QfromTime) {
 		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
     	if(state.quietTime) {
@@ -487,12 +486,13 @@ def checkVol(){
 	} else {
 		state.volume = volSpeech
 	}
-	
+	LOGDEBUG("In checkVol - volume: ${state.volume}")
 	if(messagePriority) {
 		LOGDEBUG("In checkVol - priority: ${state.priority}")
 		if(state.priority == "[L]" || state.priority == "[l]") { }			// No change
 		if(state.priority == "[M]" || state.priority == "[m]") {state.volume = volMed}
 		if(state.priority == "[H]" || state.priority == "[h]") {state.volume = volHigh}
+		LOGDEBUG("In checkVol - priority volume: ${state.volume}")
 	}
 }
 
@@ -557,7 +557,6 @@ def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(state.sZone == null){state.sZone = false}
-	if(alwaysOn == null){alwaysOn = false}
 	if(state.IH1 == null){state.IH1 = "blank"}
 	if(state.IH2 == null){state.IH2 = "blank"}
 	if(state.IH3 == null){state.IH3 = "blank"}
