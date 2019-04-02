@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *	V1.0.6 - 04/01/19 - Attempt to fix 'Enable/Disable Switch' and Activate by 'Switch'
+ *	V1.0.7 - 04/02/19 - More minor tweaks. Added import URL
+ *	V1.0.6 - 04/01/19 - Fixed 'Enable/Disable Switch' and Activate by 'Switch'
  *	V1.0.5 - 03/31/19 - Fixed 'Always_On' Speakers
  *	V1.0.4 - 03/28/19 - Minor Tweaks
  *	V1.0.3 - 03/27/19 - Added volume control based on message priority.
@@ -45,7 +46,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.6"
+	state.version = "v1.0.7"
 }
 
 definition(
@@ -58,7 +59,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
 )
 
 preferences {
@@ -212,7 +213,6 @@ def updated() {
 }
 
 def initialize() {
-	logCheck()
     setDefaults()
 	
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
@@ -381,21 +381,18 @@ def switchHandler(evt) {
 
 def lastSpokenHandler(speech) { 
 	LOGDEBUG("In lastSpoken...")
-	if(state.sZone == true) {
-		state.unique = speech.value.toString()
-		state.cleanUp = state.unique.drop(1)
-		state.priority = state.cleanUp.take(3)
-		if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
-			state.lastSpoken = state.cleanUp.drop(3)
-		} else {
-			state.lastSpoken = state.cleanUp
-		}
-		LOGDEBUG("In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
-		letsTalk()
-		sendPush()
-	} else{
-		log.info "${app.label} - Zone is Off, can not speak."
+	if(triggerMode == "Always_On") alwaysOnHandler()
+	state.unique = speech.value.toString()
+	state.cleanUp = state.unique.drop(1)
+	state.priority = state.cleanUp.take(3)
+	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
+		state.lastSpoken = state.cleanUp.drop(3)
+	} else {
+		state.lastSpoken = state.cleanUp
 	}
+	LOGDEBUG("In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}")
+	letsTalk()
+	sendPush()
 }
 
 def speechOff() {
@@ -418,9 +415,9 @@ def initializeSpeaker() {
 						  
 def letsTalk() {
 	LOGDEBUG("In letsTalk...")
+	if(triggerMode == "Always_On") alwaysOnHandler()
 	if(state.enablerSwitch2 == "off") {
 		if(state.sZone == true){
-			if(triggerMode == "Always_On") alwaysOnHandler()
 			checkTime()
 			checkVol()
 			if(state.timeOK == true) {
@@ -455,7 +452,7 @@ def letsTalk() {
 	}
 }
 
-def checkTime(){							// Modified from @Cobra Code
+def checkTime(){							// Modified from @Cobra
 	LOGDEBUG("In checkTime...")
 	def timecheckNow = fromTime
 	if (timecheckNow != null){
@@ -530,7 +527,7 @@ def sendPush(){
 // ********** Normal Stuff **********
 def enablerSwitchHandler(evt){
 	state.enablerSwitch2 = evt.value
-	LOGDEBUG("In enablerSwitchHandler - Enabler Switch: ${enablerSwitch2}")
+	LOGDEBUG("In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}")
     if(state.enablerSwitch2 == "on"){
     	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
 	} else {
@@ -538,26 +535,25 @@ def enablerSwitchHandler(evt){
     }
 }
 
-def pauseOrNot(){						// Modified from @Cobra Code
+def pauseOrNot(){						// Modified from @Cobra
     state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
+    if(state.pauseNow == true){
+        state.pauseApp = true
+        if(app.label){
             if(app.label.contains('red')){
                 log.warn "Paused"}
             else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
+             	LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
             }
         }
-    
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
+    }
+    if(state.pauseNow == false){
+    	state.pauseApp = false
+        if(app.label){
      		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     		LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
+     			LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
           	}
-         }
+        }
 	}      
 }
 
@@ -576,30 +572,16 @@ def setDefaults(){
 	if(state.lastSpoken == null){state.lastSpoken = ""}
 }
 
-def logCheck(){					// Modified from @Cobra Code
-	state.checkLog = logEnable
-	if(state.logEnable == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.logEnable == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
+def LOGDEBUG(txt){
+	if(settings.logEnable) { log.debug("${app.label} - ${txt}") }
 }
 
-def LOGDEBUG(txt){				// Modified from @Cobra Code
-    try {
-		if (settings.logEnable) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {					// Modified from @Stephack Code
+def getImage(type){						// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code
+def getFormat(type, myText=""){			// Modified from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
