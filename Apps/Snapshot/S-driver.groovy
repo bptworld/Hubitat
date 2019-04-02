@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 04/02/19 - Adjust driver for Temperature support
  *  V1.0.5 - 04/01/19 - Adjust driver for lock support
  *  V1.0.4 - 04/01/19 - Adjust driver for priority type of tiles
  *  V1.0.3 - 03/30/19 - Adjust driver for on/off and open/close type of tiles
@@ -63,12 +64,17 @@ metadata {
 		command "sendSnapshotLockMap1", ["string"]
 		command "sendSnapshotLockMap2", ["string"]
 		
+		command "sendSnapshotTempMap1", ["string"]
+		command "sendSnapshotTempMap2", ["string"]
+		
 		command "sendSnapshotSwitchCountOn", ["string"]
 		command "sendSnapshotSwitchCountOff", ["string"]
 		command "sendSnapshotContactCountOpen", ["string"]
 		command "sendSnapshotContactCountClosed", ["string"]
 		command "sendSnapshotLockCountUnlocked", ["string"]
 		command "sendSnapshotLockCountLocked", ["string"]
+		command "sendSnapshotTempCountHigh", ["string"]
+		command "sendSnapshotTempCountLow", ["string"]
 		
 		command "sendSnapshotPrioritySwitchMap1", ["string"]
 		command "sendSnapshotPrioritySwitchMap2", ["string"]
@@ -76,6 +82,8 @@ metadata {
 		command "sendSnapshotPriorityContactMap2", ["string"]
 		command "sendSnapshotPriorityLockMap1", ["string"]
 		command "sendSnapshotPriorityLockMap2", ["string"]
+		command "sendSnapshotPriorityTempMap1", ["string"]
+		command "sendSnapshotPriorityTempMap2", ["string"]
 		
     	attribute "snapshotSwitch1", "string"
 		attribute "snapshotSwitch2", "string"
@@ -100,12 +108,19 @@ metadata {
 		attribute "snapshotLockCountUnlocked", "string"
 		attribute "snapshotLockCountLocked", "string"
 		
+		attribute "snapshotTemp1", "string"
+		attribute "snapshotTemp2", "string"
+		attribute "snapshotTempCountHigh", "string"
+		attribute "snapshotTempCountLow", "string"
+		
 		attribute "snapshotPrioritySwitch1", "string"
 		attribute "snapshotPrioritySwitch2", "string"
 		attribute "snapshotPriorityContact1", "string"
 		attribute "snapshotPriorityContact2", "string"
 		attribute "snapshotPriorityLock1", "string"
 		attribute "snapshotPriorityLock2", "string"
+		attribute "snapshotPriorityTemp1", "string"
+		attribute "snapshotPriorityTemp2", "string"
 	}
 	preferences() {    	
         section(){
@@ -350,6 +365,44 @@ def sendSnapshotLockCountLocked(lockCountLocked) {
 	sendEvent(name: "snapshotLockCountLocked", value: lockCountLocked, displayed: true)
 }
 
+def sendSnapshotTempMap1(tempMap1) {
+	state.tempDevice1a = "${tempMap1}"
+	state.tempDevice1 = "<table width='100%'><tr>"
+	state.tempDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.tempDevice1 += "<div style='font-size: ${fontSize}px'> ${state.tempDevice1a}</div>"
+	state.tempDevice1 += "</td></tr></table>"
+	state.tempDevice1Count = state.tempDevice1.length()
+	if(state.tempDevice1Count <= 1000) {
+		LOGDEBUG("tempDevice1 - has ${state.tempDevice1Count} Characters<br>${state.tempDevice1}")
+	} else {
+		state.tempDevice1 = "Too many characters to display on Dashboard (${state.tempDevice1Count})"
+	}
+	sendEvent(name: "snapshotTemp1", value: state.tempDevice1, displayed: true)
+}
+
+def sendSnapshotTempMap2(tempMap2) {
+	state.tempDevice2a = "${tempMap2}"
+	state.tempDevice2 = "<table width='100%'><tr>"
+	state.tempDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.tempDevice2 += "<div style='font-size: ${fontSize}px'> ${state.tempDevice2a}</div>"
+	state.tempDevice2 += "</td></tr></table>"
+	state.tempDevice2Count = state.tempDevice2.length()
+	if(state.tempDevice2Count <= 1000) {
+		LOGDEBUG("tempDevice2 - has ${state.tempDevice2Count} Characters<br>${state.tempDevice2}")
+	} else {
+		state.tempDevice2 = "Too many characters to display on Dashboard (${state.tempDevice2Count})"
+	}
+	sendEvent(name: "snapshotTemp2", value: state.tempDevice2, displayed: true)
+}
+
+def sendSnapshotTempCountHigh(tempCountHigh) {
+	sendEvent(name: "snapshotTempCountHigh", value: tempCountHigh, displayed: true)
+}
+
+def sendSnapshotTempCountLow(tempCountLow) {
+	sendEvent(name: "snapshotTempCountLow", value: tempCountLow, displayed: true)
+}
+
 def sendSnapshotPrioritySwitchMap1(pSwitchMap1S) {
 	state.pSwitchDevice1a = "${pSwitchMap1S}"
 	state.pSwitchDevice1 = "<table width='100%'><tr>"
@@ -438,6 +491,36 @@ def sendSnapshotPriorityLockMap2(pLockMap2S) {
 		state.pLockDevice2 = "Too many characters to display on Dashboard (${state.pLockDevice2Count})"
 	}
 	sendEvent(name: "snapshotPriorityLock2", value: state.pLockDevice2, displayed: true)
+}
+
+def sendSnapshotPriorityTempMap1(pTempMap1S) {
+	state.pTempDevice1a = "${pTempMap1S}"
+	state.pTempDevice1 = "<table width='100%'><tr>"
+	state.pTempDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.pTempDevice1 += "<div style='font-size: ${fontSize}px'> ${state.pTempDevice1a}</div>"
+	state.pTempDevice1 += "</td></tr></table>"
+	state.pTempDevice1Count = state.pTempDevice1.length()
+	if(state.pTempDevice1Count <= 1000) {
+		LOGDEBUG("pTempDevice1 - has ${state.pTempDevice1Count} Characters<br>${state.pTempDevice1}")
+	} else {
+		state.pTempDevice1 = "Too many characters to display on Dashboard (${state.pTempDevice1Count})"
+	}
+	sendEvent(name: "snapshotPriorityTemp1", value: state.pTempDevice1, displayed: true)
+}
+
+def sendSnapshotPriorityTempMap2(pTempMap2S) {
+	state.pTempDevice2a = "${pTempMap2S}"
+	state.pTempDevice2 = "<table width='100%'><tr>"
+	state.pTempDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.pTempDevice2 += "<div style='font-size: ${fontSize}px'> ${state.pTempDevice2a}</div>"
+	state.pTempDevice2 += "</td></tr></table>"
+	state.pTempDevice2Count = state.pTempDevice2.length()
+	if(state.pTempDevice2Count <= 1000) {
+		LOGDEBUG("pTempDevice2 - has ${state.pTempDevice2Count} Characters<br>${state.pTempDevice2}")
+	} else {
+		state.pTempDevice2 = "Too many characters to display on Dashboard (${state.pTempDevice2Count})"
+	}
+	sendEvent(name: "snapshotPriorityTemp2", value: state.pTempDevice2, displayed: true)
 }
 
 def installed(){
