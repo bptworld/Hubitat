@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *	V1.0.5 - 04/01/19 - Added Temp tile options
+ *	V1.0.5 - 04/02/19 - Added Temp tile options
  *	V1.0.4 - 04/01/19 - Added Lock options
  *	V1.0.3 - 04/01/19 - Added Priority Device Options
  *	V1.0.2 - 03/30/19 - Added ability to select what type of data to report: Full, Only On/Off, Only Open/Closed. Also added count attributes.
@@ -44,7 +44,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
