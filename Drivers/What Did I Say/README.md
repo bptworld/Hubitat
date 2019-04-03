@@ -34,6 +34,9 @@ Add a new tile with the following selections
 - Pick a template = attribute
 - 3rd box = whatDidISay
 
+If you are also using the Follow Me app, the following attributes will also be available.
+- speakerStatus1-5
+
 <br><br>
 Bryan<br>
 @BPTWorld
