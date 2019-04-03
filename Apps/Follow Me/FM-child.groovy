@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 04/03/19 - More tweaks to speaker status
+ *	V1.0.8 - 04/02/19 - App now sends speaker status to the driver, can be displayed on dashboards
  *	V1.0.7 - 04/02/19 - More minor tweaks. Added import URL
  *	V1.0.6 - 04/01/19 - Fixed 'Enable/Disable Switch' and Activate by 'Switch'
  *	V1.0.5 - 03/31/19 - Fixed 'Always_On' Speakers
@@ -46,7 +48,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.7"
+	state.version = "v1.0.9"
 }
 
 definition(
@@ -121,11 +123,11 @@ def pageConfig() {
 			section() {
         	   	input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
-            	  	input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+            	  	input "speaker", "capability.musicPlayer", title: "Choose speaker", required: true, submitOnChange: true
 					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?", submitOnChange: true)
           		}   
         		if (speechMode == "Speech Synth"){ 
-         			input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+         			input "speaker", "capability.speechSynthesis", title: "Choose speaker", required: true, submitOnChange: true
 					input(name: "gSpeaker", type: "bool", defaultValue: "false", title: "Is this a Google device?", description: "Google device?", submitOnChange: true)
 					if(gSpeaker) paragraph "If using Google speaker devices sometimes an Initialize is necessary (not always)."
 					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech?", required: true, defaultValue: false
@@ -295,6 +297,8 @@ def alwaysOnHandler() {
     	if(pause1 == false){
 			LOGDEBUG("In alwaysOnHandler - setting sZone to true")
 			state.sZone = true
+			speakerStatus = "${app.label}:${state.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
 	} else {
 		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
@@ -312,6 +316,8 @@ def contactSensorHandler(evt) {
     			if(pause1 == false){
 					LOGDEBUG("In contactSensorHandler - setting sZone to true")
 					state.sZone = true
+					speakerStatus = "${app.label}:${state.sZone}"
+					gvDevice.sendFollowMeSpeaker(speakerStatus)
 				}
 			}
 			if(state.contactStatus == "open") {
@@ -325,6 +331,8 @@ def contactSensorHandler(evt) {
     			if(pause1 == false){
 					LOGDEBUG("In contactSensorHandler - setting sZone to true")
 					state.sZone = true
+					speakerStatus = "${app.label}:${state.sZone}"
+					gvDevice.sendFollowMeSpeaker(speakerStatus)
 				}
 			}
 			if(state.contactStatus == "closed") {
@@ -347,6 +355,8 @@ def motionSensorHandler(evt) {
     		if(pause1 == false){
 				LOGDEBUG("In motionSensorHandler - setting sZone to true")
 				state.sZone = true
+				speakerStatus = "${app.label}:${state.sZone}"
+				gvDevice.sendFollowMeSpeaker(speakerStatus)
 			}
 		}
 		if(state.motionStatus == "inactive") {
@@ -368,6 +378,8 @@ def switchHandler(evt) {
     		if(pause1 == false){
 				LOGDEBUG("In switchHandler - setting sZone to true")
 				state.sZone = true
+				speakerStatus = "${app.label}:${state.sZone}"
+				gvDevice.sendFollowMeSpeaker(speakerStatus)
 			}
 		}
 		if(state.switchStatus == "off") {
@@ -401,6 +413,8 @@ def speechOff() {
 		LOGDEBUG( "In speechOff - Speech is on - sZone: ${state.sZone}")
 	} else{
 		state.sZone = false
+		speakerStatus = "${app.label}:${state.sZone}"
+		gvDevice.sendFollowMeSpeaker(speakerStatus)
 		LOGDEBUG( "In speechOff - Speech is off - sZone: ${state.sZone}")
 	}
 }
@@ -421,6 +435,9 @@ def letsTalk() {
 			checkTime()
 			checkVol()
 			if(state.timeOK == true) {
+				state.sStatus = "speaking"
+				speakerStatus = "${app.label}:${state.sStatus}"
+				gvDevice.sendFollowMeSpeaker(speakerStatus)
 				LOGDEBUG("In letsTalk - ${speechMode} - ${speaker}")
   				if (speechMode == "Music Player"){ 
 					if(echoSpeaks) {
@@ -440,6 +457,8 @@ def letsTalk() {
 					pauseExecution(speechDuration2)
 					if(volRestore) speaker.setVolume(volRestore)
 				}
+				speakerStatus = "${app.label}:${state.sZone}"
+				gvDevice.sendFollowMeSpeaker(speakerStatus)
 				LOGDEBUG("In letsTalk...Okay, I'm done!")
 			} else {
 				log.info "${app.label} - Quiet Time, can not speak."
