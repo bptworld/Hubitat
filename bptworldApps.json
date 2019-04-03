@@ -136,13 +136,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.0.8",
+  "FollowMeChildVersion": "v1.0.9",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.0.8 - 04/02/19 - App now sends speaker status to the driver, can be displayed on dashboards",
+  "FollowMeUpdateNote": "V1.0.9 - 04/03/19 - More tweaks to speaker status",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
@@ -235,7 +235,7 @@
   "WelcomeHomeUpdateNote": "V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.0.7",
+  "WhatDidISayDriver1Version": "v1.0.8",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -254,5 +254,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.0.7 - 04/03/19 - Add ability to display Speaker status on dashboards - requires Follow Me",
+  "WhatDidISayUpdateNote": "V1.0.8 - 04/03/19 - More tweaks to speaker status",
 }
