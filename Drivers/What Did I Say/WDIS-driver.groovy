@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 04/03/19 - Add ability to display Speaker status on dashboards 
  *  V1.0.6 - 03/27/19 - More enhancements for 'Follow Me', color coded priority messages!
  *  V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70
  *  characters displayed. To reduce load on the Dashboards. This does NOT affect what is actually spoken.
@@ -43,7 +44,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.6"}
+def version(){"v1.0.7"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
@@ -56,10 +57,15 @@ metadata {
 		command "playTextAndRestore", ["string"]
 		command "setVolumeSpeakAndRestore", ["string"]
 		command "speak", ["string"]
+		command "sendFollowMeSpeaker", ["string"]
 		
     	attribute "whatDidISay", "string"
 		attribute "lastSpoken", "string"
 		attribute "lastSpokenUnique", "string"
+		attribute "speakerStatus1", "string"
+		attribute "speakerStatus2", "string"
+		attribute "speakerStatus3", "string"
+		attribute "speakerStatus4", "string"
 	}
 	preferences() {    	
         section(){
@@ -281,11 +287,55 @@ def clearSpeechData(){
 	sendEvent(name: "whatDidISay", value: state.speechTop, displayed: true)
 	if (clearData) runIn(2,clearDataOff)
 }	
+
+def sendFollowMeSpeaker(status) {
+	LOGDEBUG("What Did I Say - Received new speaker status - ${status}")
+	def (sName, sStatus) = status.split(':')
+	LOGDEBUG("In sendFollowMeSpeaker...sName: ${sName} - sStatus: ${sStatus}")
+	state.speakerMap.put(sName, sStatus)
+	state.speakerMapS = [:]
+	state.sMap1S = [:]
+	state.sMap2S = [:]
+	state.sMap3S = [:]
+	state.sMap4S = [:]
+	state.speakerMapS = state.speakerMap.sort { a, b -> a.key <=> b.key }
+	state.count = 0
+	state.sMap1S = "<table width='100%'>"
+	state.sMap2S = "<table width='100%'>"
+	state.sMap3S = "<table width='100%'>"
+	state.sMap4S = "<table width='100%'>"
+	state.speakerMapS.each { it -> 
+		status = it.value
+		state.count = state.count + 1
+		LOGDEBUG("In sendFollowMeSpeaker - Building Speaker Table with ${it.key} count: ${state.count}")
+		if((state.count >= 1) && (state.count <= 5)) {
+			if(status == "true") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
+			if(status == "false") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+		}
+		if((state.count >= 6) && (state.count <= 10)) {
+			if(status == "true") state.sMap2S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
+			if(status == "false") state.sMap2S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+		}
+		if((state.count >= 11) && (state.count <= 15)) {
+			if(status == "true") state.sMap3S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
+			if(status == "false") state.sMap3S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+		}
+		if((state.count >= 16) && (state.count <= 20)) {
+			if(status == "true") state.sMap4S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
+			if(status == "false") state.sMap4S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+		}
+	}
+	state.sMap1S += "</table>"
+	state.sMap2S += "</table>"
+	state.sMap3S += "</table>"
+	state.sMap4S += "</table>"
 	
+	sendEvent(name: "speakerStatus1", value: state.sMap1S, displayed: true)
+	sendEvent(name: "speakerStatus2", value: state.sMap2S, displayed: true)
+	sendEvent(name: "speakerStatus3", value: state.sMap3S, displayed: true)
+	sendEvent(name: "speakerStatus4", value: state.sMap4S, displayed: true)
+}
+
 def LOGDEBUG(txt) {
-    try {
-    	if (settings.debugMode) { log.debug("${txt}") }
-    } catch(ex) {
-    	log.error("LOGDEBUG unable to output requested data!")
-    }
+    if (settings.debugMode) { log.debug("${txt}") }
 }
