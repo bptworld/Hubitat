@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 04/03/19 - More tweaks to speaker status
  *  V1.0.7 - 04/03/19 - Add ability to display Speaker status on dashboards 
  *  V1.0.6 - 03/27/19 - More enhancements for 'Follow Me', color coded priority messages!
  *  V1.0.5 - 03/17/19 - Added code to make this compatible with my 'Follow Me' app. Also each Message will now have a max length of 70
@@ -311,18 +312,22 @@ def sendFollowMeSpeaker(status) {
 		if((state.count >= 1) && (state.count <= 5)) {
 			if(status == "true") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
 			if(status == "false") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+			if(status == "speaking") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: blue;font-size:.${fontSize}em;'>Speaking</div></td></tr>"
 		}
 		if((state.count >= 6) && (state.count <= 10)) {
 			if(status == "true") state.sMap2S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
 			if(status == "false") state.sMap2S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+			if(status == "speaking") state.sMap2S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: blue;font-size:.${fontSize}em;'>Speaking</div></td></tr>"
 		}
 		if((state.count >= 11) && (state.count <= 15)) {
 			if(status == "true") state.sMap3S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
 			if(status == "false") state.sMap3S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+			if(status == "speaking") state.sMap3S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: blue;font-size:.${fontSize}em;'>Speaking</div></td></tr>"
 		}
 		if((state.count >= 16) && (state.count <= 20)) {
 			if(status == "true") state.sMap4S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
 			if(status == "false") state.sMap4S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
+			if(status == "speaking") state.sMap4S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: blue;font-size:.${fontSize}em;'>Speaking</div></td></tr>"
 		}
 	}
 	state.sMap1S += "</table>"
