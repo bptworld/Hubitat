@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 04/03/19 - Attempt to fix an error
  *  V1.0.8 - 04/03/19 - More tweaks to speaker status
  *  V1.0.7 - 04/03/19 - Add ability to display Speaker status on dashboards 
  *  V1.0.6 - 03/27/19 - More enhancements for 'Follow Me', color coded priority messages!
@@ -45,7 +46,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.8"}
+def version(){"v1.0.9"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
@@ -290,9 +291,10 @@ def clearSpeechData(){
 }	
 
 def sendFollowMeSpeaker(status) {
-	LOGDEBUG("What Did I Say - Received new speaker status - ${status}")
+	LOGDEBUG("In sendFollowMeSpeaker - Received new speaker status - ${status}")
 	def (sName, sStatus) = status.split(':')
-	LOGDEBUG("In sendFollowMeSpeaker...sName: ${sName} - sStatus: ${sStatus}")
+	LOGDEBUG("In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}")
+	if(state.speakerMap == null) state.speakerMap = [:]
 	state.speakerMap.put(sName, sStatus)
 	state.speakerMapS = [:]
 	state.sMap1S = [:]
