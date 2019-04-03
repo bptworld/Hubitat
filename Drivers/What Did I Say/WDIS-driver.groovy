@@ -45,7 +45,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.7"}
+def version(){"v1.0.8"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
