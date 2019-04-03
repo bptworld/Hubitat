@@ -35,7 +35,7 @@ Add a new tile with the following selections
 - 3rd box = whatDidISay
 
 If you are also using the Follow Me app, the following attributes will also be available.
-- speakerStatus1-5
+- speakerStatus1-4
 
 <br><br>
 Bryan<br>
