@@ -296,8 +296,8 @@ def alwaysOnHandler() {
 		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     	if(pause1 == false){
 			LOGDEBUG("In alwaysOnHandler - setting sZone to true")
-			state.sZone = true
-			speakerStatus = "${app.label}:${state.sZone}"
+			atomicState.sZone = true
+			speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
 	} else {
@@ -309,14 +309,14 @@ def contactSensorHandler(evt) {
 	LOGDEBUG("In contactSensorHandler...")
 	if(state.enablerSwitch2 == "off") {
 		state.contactStatus = evt.value
-		LOGDEBUG("In contactSensorHandler - sZone: ${state.sZone} - Status: ${state.contactStatus}")
+		LOGDEBUG("In contactSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.contactStatus}")
 		if(contactOption == "Closed") {
 			if(state.contactStatus == "closed") {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){
 					LOGDEBUG("In contactSensorHandler - setting sZone to true")
-					state.sZone = true
-					speakerStatus = "${app.label}:${state.sZone}"
+					atomicState.sZone = true
+					speakerStatus = "${app.label}:${atomicState.sZone}"
 					gvDevice.sendFollowMeSpeaker(speakerStatus)
 				}
 			}
@@ -330,8 +330,8 @@ def contactSensorHandler(evt) {
 				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     			if(pause1 == false){
 					LOGDEBUG("In contactSensorHandler - setting sZone to true")
-					state.sZone = true
-					speakerStatus = "${app.label}:${state.sZone}"
+					atomicState.sZone = true
+					speakerStatus = "${app.label}:${atomicState.sZone}"
 					gvDevice.sendFollowMeSpeaker(speakerStatus)
 				}
 			}
@@ -349,13 +349,13 @@ def motionSensorHandler(evt) {
 	LOGDEBUG("In motionSensorHandler...")
 	if(state.enablerSwitch2 == "off") {
 		state.motionStatus = evt.value
-		LOGDEBUG("In motionSensorHandler - sZone: ${state.sZone} - Status: ${state.motionStatus}")
+		LOGDEBUG("In motionSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.motionStatus}")
 		if(state.motionStatus == "active") {
 			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     		if(pause1 == false){
 				LOGDEBUG("In motionSensorHandler - setting sZone to true")
-				state.sZone = true
-				speakerStatus = "${app.label}:${state.sZone}"
+				atomicState.sZone = true
+				speakerStatus = "${app.label}:${atomicState.sZone}"
 				gvDevice.sendFollowMeSpeaker(speakerStatus)
 			}
 		}
@@ -372,13 +372,13 @@ def switchHandler(evt) {
 	LOGDEBUG("In switchHandler...")
 	if(state.enablerSwitch2 == "off") {
 		state.switchStatus = evt.value
-		LOGDEBUG("In switchHandler - sZone: ${state.sZone} - Status: ${state.switchStatus}")
+		LOGDEBUG("In switchHandler - sZone: ${atomicState.sZone} - Status: ${state.switchStatus}")
 		if(state.switchStatus == "on") {
 			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
     		if(pause1 == false){
 				LOGDEBUG("In switchHandler - setting sZone to true")
-				state.sZone = true
-				speakerStatus = "${app.label}:${state.sZone}"
+				atomicState.sZone = true
+				speakerStatus = "${app.label}:${atomicState.sZone}"
 				gvDevice.sendFollowMeSpeaker(speakerStatus)
 			}
 		}
@@ -409,13 +409,13 @@ def lastSpokenHandler(speech) {
 
 def speechOff() {
 	if(state.motionStatus == 'active'){
-		state.sZone = true
-		LOGDEBUG( "In speechOff - Speech is on - sZone: ${state.sZone}")
+		atomicState.sZone = true
+		LOGDEBUG( "In speechOff - Speech is on - sZone: ${atomicState.sZone}")
 	} else{
-		state.sZone = false
-		speakerStatus = "${app.label}:${state.sZone}"
+		atomicState.sZone = false
+		speakerStatus = "${app.label}:${atomicState.sZone}"
 		gvDevice.sendFollowMeSpeaker(speakerStatus)
-		LOGDEBUG( "In speechOff - Speech is off - sZone: ${state.sZone}")
+		LOGDEBUG( "In speechOff - Speech is off - sZone: ${atomicState.sZone}")
 	}
 }
 
@@ -431,9 +431,13 @@ def letsTalk() {
 	LOGDEBUG("In letsTalk...")
 	if(triggerMode == "Always_On") alwaysOnHandler()
 	if(state.enablerSwitch2 == "off") {
-		if(state.sZone == true){
+		if(atomicState.sZone == true){
 			checkTime()
 			checkVol()
+			atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+			LOGDEBUG("In letsTalk - pause: ${atomicState.randomPause}")
+			pauseExecution(atomicState.randomPause)
+			LOGDEBUG("In letsTalk - continuing")
 			if(state.timeOK == true) {
 				state.sStatus = "speaking"
 				speakerStatus = "${app.label}:${state.sStatus}"
@@ -450,14 +454,14 @@ def letsTalk() {
   				}   
 				if (speechMode == "Speech Synth"){
 					speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
-					speechDuration2 = speechDuration * 1000
+					atomicState.speechDuration2 = speechDuration * 1000
 					if(gInitialize) initializeSpeaker()
 					if(volSpeech) speaker.setVolume(state.volume)
 					speaker.speak(state.lastSpoken)
-					pauseExecution(speechDuration2)
+					pauseExecution(atomicState.speechDuration2)
 					if(volRestore) speaker.setVolume(volRestore)
 				}
-				speakerStatus = "${app.label}:${state.sZone}"
+				speakerStatus = "${app.label}:${atomicState.sZone}"
 				gvDevice.sendFollowMeSpeaker(speakerStatus)
 				LOGDEBUG("In letsTalk...Okay, I'm done!")
 			} else {
@@ -582,7 +586,7 @@ def setDefaults(){
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
-	if(state.sZone == null){state.sZone = false}
+	if(atomicState.sZone == null){atomicState.sZone = false}
 	if(state.IH1 == null){state.IH1 = "blank"}
 	if(state.IH2 == null){state.IH2 = "blank"}
 	if(state.IH3 == null){state.IH3 = "blank"}
