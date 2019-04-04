@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 04/04/19 - More tweaks
  *  V1.0.9 - 04/03/19 - More tweaks to speaker status
  *	V1.0.8 - 04/02/19 - App now sends speaker status to the driver, can be displayed on dashboards
  *	V1.0.7 - 04/02/19 - More minor tweaks. Added import URL
@@ -48,7 +49,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.9"
+	state.version = "v1.1.0"
 }
 
 definition(
@@ -422,7 +423,7 @@ def speechOff() {
 def initializeSpeaker() {
 	LOGDEBUG( "In initializeSpeaker - Initializing ${speaker}")
 	speaker.initialize()
-	repeat = gInitRepeat * 60
+	if(gInitRepeat) repeat = gInitRepeat * 60
 	if(gInitRepeat) runIn(repeat,initializeSpeaker)
 }
 						  
