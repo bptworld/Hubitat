@@ -136,13 +136,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.0.9",
+  "FollowMeChildVersion": "v1.1.0",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.0.9 - 04/03/19 - More tweaks to speaker status",
+  "FollowMeUpdateNote": "V1.1.0 - 04/04/19 - More tweaks",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
