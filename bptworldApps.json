@@ -235,7 +235,7 @@
   "WelcomeHomeUpdateNote": "V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.0.9",
+  "WhatDidISayDriver1Version": "v1.1.0",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -254,5 +254,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.0.9 - 04/03/19 - Attempt to fix an error",
+  "WhatDidISayUpdateNote": "V1.1.0 - 04/05/19 - Added importUrl to driver header. Added speaker status to 'Reset All Data' switch ",
 }
