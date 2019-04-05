@@ -1,6 +1,8 @@
 /**
  *  ****************  What Did I Say Driver  ****************
  *
+ *  importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy"
+ *
  *  Design Usage:
  *  This driver formats Speech data to be displayed on Hubitat's Dashboards and also acts as a proxy speaker to 'Follow Me'.
  *
@@ -34,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 04/05/19 - Added importUrl to driver header. Added speaker status to 'Reset All Data' switch 
  *  V1.0.9 - 04/03/19 - Attempt to fix an error
  *  V1.0.8 - 04/03/19 - More tweaks to speaker status
  *  V1.0.7 - 04/03/19 - Add ability to display Speaker status on dashboards 
@@ -75,7 +78,7 @@ metadata {
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
 			input("numOfLines", "number", title: "How many lines to display (from 1 to 10 only)", required:true, defaultValue: 5)
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
-			input("clearData", "bool", title: "Clear All Speech Data", required: false, defaultValue: false)
+			input("clearData", "bool", title: "Reset All Data", required: false, defaultValue: false)
         }
     }
 }
@@ -284,6 +287,21 @@ def clearSpeechData(){
 	state.speechMap9.put(state.s,state.nMessage)
 	state.speechMap10 = [:]
 	state.speechMap10.put(state.s,state.nMessage)
+	
+	state.speakerMap  = [:]
+	state.speakerMapS  = [:]
+	state.sMap1S = [:]
+	state.sMap2S = [:]
+	state.sMap3S = [:]
+	state.sMap4S = [:]
+	state.sMap1S = "Waiting for Data"
+	state.sMap2S = "Waiting for Data"
+	state.sMap3S = "Waiting for Data"
+	state.sMap4S = "Waiting for Data"
+	sendEvent(name: "speakerStatus1", value: state.sMap1S, displayed: true)
+	sendEvent(name: "speakerStatus2", value: state.sMap2S, displayed: true)
+	sendEvent(name: "speakerStatus3", value: state.sMap3S, displayed: true)
+	sendEvent(name: "speakerStatus4", value: state.sMap4S, displayed: true)
 	
 	state.speechTop = "Waiting for Data..."
 	sendEvent(name: "whatDidISay", value: state.speechTop, displayed: true)
