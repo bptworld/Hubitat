@@ -35,6 +35,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.5 - 04/06/19 - Added importUrl. Volume Control overhaul. Code cleanup.
  *  V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices
  *  V2.0.3 - 03/20/19 - Changed the wording on whether to turn the option for 'Echo Speaks' on or off.
  *  V2.0.2 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
@@ -64,7 +65,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v2.0.4"
+	state.version = "v2.0.5"
 }
 
 definition(
@@ -77,6 +78,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
 )
 
 preferences {
@@ -134,16 +136,19 @@ def pageConfig() {
 				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
 				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
 				if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
-				paragraph "<hr>"
-				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
-              	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
-				input "fromTime2", "time", title: "Quiet Time Start", required: true
-    		  	input "toTime2", "time", title: "Quiet Time End", required: true
           	}   
         	if (speechMode == "Speech Synth"){ 
          		input "speakers", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
       	}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+			paragraph "NOTE: Not all speakers can use volume controls."
+			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
+			input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+            input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
+			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
+    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+		}
     	if(speechMode){ 
 			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         		input "fromTime", "time", title: "From", required: false
@@ -229,14 +234,13 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
 	initialize()
 }
 
 def initialize() {
-	logCheck()
     setDefaults()
 	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
@@ -253,88 +257,83 @@ def initialize() {
 
 def enablerSwitchHandler(evt){
 	state.enablerSwitch2 = evt.value
-	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
-    }
+	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${enablerSwitch2}"
+    if(state.enablerSwitch2 == "on") log.info "${app.label} is disabled."
 }
 
 def setupNewStuff() {
-	LOGDEBUG("In setupNewStuff...Setting up Maps")
+	if(logEnable) log.debug "In setupNewStuff - Setting up Maps"
 	if(state.presenceMap == null) state.presenceMap = [:]
 }
 		
 def presenceSensorHandler1(evt){
 	state.presenceSensorValue1 = evt.value
-	LOGDEBUG("IN presenceSensorHandler1 - Presence Sensor = ${state.presenceSensorValue1}")
+	if(logEnable) log.debug "IN presenceSensorHandler1 - Presence Sensor: ${state.presenceSensorValue1}"
     if(state.presenceSensorValue1 == "not present"){
-    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+    	if(logEnable) log.debug "Presence Sensor is not present - Been Here is now off."
 		state.globalBH1 = "no"
 		gvDevice.sendDataMap1(state.globalBH1)
     } else {
-		LOGDEBUG("Presence Sensor is present - Let's go!")
+		if(logEnable) log.debug "Presence Sensor is present - Let's go!"
     }
 }
 
 def presenceSensorHandler2(evt){
 	state.presenceSensorValue2 = evt.value
-	LOGDEBUG("IN presenceSensorHandler2 - Presence Sensor = ${state.presenceSensorValue2}")
+	if(logEnable) log.debug "IN presenceSensorHandler2 - Presence Sensor: ${state.presenceSensorValue2}"
     if(state.presenceSensorValue2 == "not present"){
-    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+    	if(logEnable) log.debug "Presence Sensor is not present - Been Here is now off."
 		state.globalBH2 = "no"
 		gvDevice.sendDataMap2(state.globalBH2)
     } else {
-		LOGDEBUG("Presence Sensor is present - Let's go!")
+		if(logEnable) log.debug "Presence Sensor is present - Let's go!"
     }
 }
 
 def presenceSensorHandler3(evt){
 	state.presenceSensorValue3 = evt.value
-	LOGDEBUG("IN presenceSensorHandler3 - Presence Sensor = ${state.presenceSensorValue3}")
+	if(logEnable) log.debug "IN presenceSensorHandler3 - Presence Sensor: ${state.presenceSensorValue3}"
     if(state.presenceSensorValue3 == "not present"){
-    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+    	if(logEnable) log.debug "Presence Sensor is not present - Been Here is now off."
 		state.globalBH3 = "no"
 		gvDevice.sendDataMap3(state.globalBH3)
     } else {
-		LOGDEBUG("Presence Sensor is present - Let's go!")
+		if(logEnable) log.debug "Presence Sensor is present - Let's go!"
     }
 }
 
 def presenceSensorHandler4(evt){
 	state.presenceSensorValue4 = evt.value
-	LOGDEBUG("IN presenceSensorHandler4 - Presence Sensor = ${state.presenceSensorValue4}")
+	if(logEnable) log.debug "IN presenceSensorHandler4 - Presence Sensor: ${state.presenceSensorValue4}"
     if(state.presenceSensorValue4 == "not present"){
-    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+    	if(logEnable) log.debug "Presence Sensor is not present - Been Here is now off."
 		state.globalBH4 = "no"
 		gvDevice.sendDataMap4(state.globalBH4)
     } else {
-		LOGDEBUG("Presence Sensor is present - Let's go!")
+		if(logEnable) log.debug "Presence Sensor is present - Let's go!"
     }
 }
 
 def presenceSensorHandler5(evt){
 	state.presenceSensorValue5 = evt.value
-	LOGDEBUG("IN presenceSensorHandler5 - Presence Sensor = ${state.presenceSensorValue5}")
+	if(logEnable) log.debug "IN presenceSensorHandler5 - Presence Sensor: ${state.presenceSensorValue5}"
     if(state.presenceSensorValue5 == "not present"){
-    	LOGDEBUG("Presence Sensor is not present - Been Here is now off.")
+    	if(logEnable) log.debug "Presence Sensor is not present - Been Here is now off."
 		state.globalBH5 = "no"
 		gvDevice.sendDataMap5(state.globalBH5)
     } else {
-		LOGDEBUG("Presence Sensor is present - Let's go!")
+		if(logEnable) log.debug "Presence Sensor is present - Let's go!"
     }
 }
 
 def lockHandler(evt) {
 	if(state.enablerSwitch2 == "off") {
 		state.lockStatus = evt.value
-		LOGDEBUG("Lock Status: = ${state.lockStatus}")
+		if(logEnable) log.debug "Lock Status: ${state.lockStatus}"
 		if(state.lockStatus == "unlocked") {
-			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-				LOGDEBUG("In lockHandler...Pause: ${pause1}")
+			if(pause1 == true) log.info "${app.label} has been paused."
+    		if(pause1 == false) {
+				if(logEnable) log.debug "In lockHandler...Pause: ${pause1}"
 				state.presenceMap = [:]
 				state.nameCount = 0
 				state.canSpeak = "no"
@@ -347,23 +346,23 @@ def lockHandler(evt) {
 			}
 		}
 	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+		if(logEnable) log.info "${app.label} is disabled."
 	}
 }
 
 def contactSensorHandler(evt) {
 	if(state.enablerSwitch2 == "off") {
 		state.contactStatus = evt.value
-		LOGDEBUG("contact Status: = ${state.contactStatus}")
+		if(logEnable) log.debug "contact Status: ${state.contactStatus}"
 		if(csOpenClosed == "Open") {
 			if(state.contactStatus == "open") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+				if(pause1 == true) log.info "${app.label} has been paused."
+    			if(pause1 == false) {
+					if(logEnable) log.debug "In contactSensorHandler - Pause: ${pause1}"
 					state.presenceMap = [:]
 					state.nameCount = 0
 					state.canSpeak = "no"
-					LOGDEBUG("In contactSensorHandler...canSpeak: ${state.canSpeak}")
+					if(logEnable) log.debug "In contactSensorHandler - canSpeak: ${state.canSpeak}"
 					if(presenceSensor1) getTimeDiff1()
 					if(presenceSensor2) getTimeDiff2()
 					if(presenceSensor3) getTimeDiff3()
@@ -375,13 +374,13 @@ def contactSensorHandler(evt) {
 		}
 		if(csOpenClosed == "Closed") {
 			if(state.contactStatus == "closed") {
-				if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    			if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-					LOGDEBUG("In contactSensorHandler...Pause: ${pause1}")
+				if(pause1 == true) log.info "${app.label} has been paused."
+    			if(pause1 == false) {
+					if(logEnable) log.debug "In contactSensorHandler - Pause: ${pause1}"
 					state.presenceMap = [:]
 					state.nameCount = 0
 					state.canSpeak = "no"
-					LOGDEBUG("In contactSensorHandler...canSpeak: ${state.canSpeak}")
+					if(logEnable) log.debug "In contactSensorHandler - canSpeak: ${state.canSpeak}"
 					if(presenceSensor1) getTimeDiff1()
 					if(presenceSensor2) getTimeDiff2()
 					if(presenceSensor3) getTimeDiff3()
@@ -392,18 +391,18 @@ def contactSensorHandler(evt) {
 			}
 		}
 	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+		if(logEnable) log.info "${app.label} is disabled."
 	}
 }
 
 def motionSensorHandler(evt) {
 	if(state.enablerSwitch2 == "off") {
 		state.motionStatus = evt.value
-		LOGDEBUG("motion Status: = ${state.motionStatus}")
+		if(logEnable) log.debug "In motionSensorHandler - motion Status: ${state.motionStatus}"
 		if(state.motionStatus == "active") {
-			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-				LOGDEBUG("In motionSensorHandler...Pause: ${pause1}")
+			if(pause1 == true) log.info "${app.label} has been paused."
+    		if(pause1 == false) {
+				if(logEnable) log.debug "In motionSensorHandler - Pause: ${pause1}"
 				state.presenceMap = [:]
 				state.nameCount = 0
 				state.canSpeak = "no"
@@ -416,19 +415,19 @@ def motionSensorHandler(evt) {
 			}
 		}
 	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
+		if(logEnable) log.info "${app.label} is disabled."
 	}
 }
 										
 def getTimeDiff1() {
-	LOGDEBUG("In getTimeDiff1...")
+	if(logEnable) log.debug "In getTimeDiff1..."
 	def sensorStatus1 = presenceSensor1.currentValue("presence")
-	LOGDEBUG("Presence Sensor Status - 1: ${sensorStatus1}")
+	if(logEnable) log.debug "Presence Sensor Status - 1: ${sensorStatus1}"
 	if(sensorStatus1 == "present") {
-		LOGDEBUG("Global Been Here: ${state.globalBH1}")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH1}"
 		def lastActivity1 = presenceSensor1.getLastActivity()
 		
-		LOGDEBUG("lastActivity: ${lastActivity1}")
+		if(logEnable) log.debug "lastActivity: ${lastActivity1}"
     	long timeDiff
    		def now = new Date()
     	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity1}".replace("+00:00","+0000"))
@@ -439,7 +438,7 @@ def getTimeDiff1() {
     	timeDiff = Math.abs(unxNow-unxPrev)
     	timeDiff = Math.round(timeDiff/60)
     
-		LOGDEBUG("timeDiff: ${timeDiff}")	
+		if(logEnable) log.debug "timeDiff: ${timeDiff}"
   		if(timeDiff < timeHome) {
 			globalBeenHere()
 			if(state.globalBH1 == "no") {
@@ -460,8 +459,8 @@ def getTimeDiff1() {
 			log.info "${app.label} - ${parent.friendlyName1} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Global Been Here: ${state.globalBH1}")
-		LOGDEBUG("Presence Sensor: ${sensorStatus1} - No announcement needed.")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH1}"
+		if(logEnable) log.debug "Presence Sensor: ${sensorStatus1} - No announcement needed."
 		state.globalBH1 = "no"
 		dataMap1 = "globalBH1:no"
 		gvDevice.sendDataMap1(state.globalBH1)
@@ -469,14 +468,14 @@ def getTimeDiff1() {
 }
 
 def getTimeDiff2() {
-	LOGDEBUG("In getTimeDiff2...")
+	if(logEnable) log.debug "In getTimeDiff2..."
 	def sensorStatus2 = presenceSensor2.currentValue("presence")
-	LOGDEBUG("Presence Sensor Status - 2: ${sensorStatus2}")
+	if(logEnable) log.debug "Presence Sensor Status - 2: ${sensorStatus2}"
 	if(sensorStatus2 == "present") {
-		LOGDEBUG("Global Been Here: ${state.globalBH2}")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH2}"
 		def lastActivity2 = presenceSensor2.getLastActivity()
 			
-		LOGDEBUG("lastActivity: ${lastActivity2}")
+		if(logEnable) log.debug "lastActivity: ${lastActivity2}"
     	long timeDiff
    		def now = new Date()
     	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity2}".replace("+00:00","+0000"))
@@ -487,7 +486,7 @@ def getTimeDiff2() {
     	timeDiff = Math.abs(unxNow-unxPrev)
     	timeDiff = Math.round(timeDiff/60)
     
-		LOGDEBUG("timeDiff: ${timeDiff}")	
+		if(logEnable) log.debug "timeDiff: ${timeDiff}"	
   		if(timeDiff < timeHome) {
 			globalBeenHere()
 			if(state.globalBH2 == "no") {
@@ -509,8 +508,8 @@ def getTimeDiff2() {
 			log.info "${app.label} - ${parent.friendlyName2} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Global Been Here: ${state.globalBH2}")
-		LOGDEBUG("Presence Sensor: ${sensorStatus2} - No announcement needed.")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH2}"
+		if(logEnable) log.debug "Presence Sensor: ${sensorStatus2} - No announcement needed."
 		state.globalBH2 = "no"
 		dataMap2 = "globalBH2:no"
 		gvDevice.sendDataMap2(state.globalBH2)
@@ -518,14 +517,14 @@ def getTimeDiff2() {
 }
 
 def getTimeDiff3() {
-	LOGDEBUG("In getTimeDiff3...")
+	if(logEnable) log.debug "In getTimeDiff3..."
 	def sensorStatus3 = presenceSensor3.currentValue("presence")
-	LOGDEBUG("Presence Sensor Status - 3: ${sensorStatus3}")
+	if(logEnable) log.debug "Presence Sensor Status - 3: ${sensorStatus3}"
 	if(sensorStatus3 == "present") {
-		LOGDEBUG("Global Been Here: ${state.globalBH3}")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH3}"
 		def lastActivity3 = presenceSensor3.getLastActivity()
 			
-		LOGDEBUG("lastActivity: ${lastActivity3}")
+		if(logEnable) log.debug "lastActivity: ${lastActivity3}"
     	long timeDiff
    		def now = new Date()
     	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity3}".replace("+00:00","+0000"))
@@ -536,7 +535,7 @@ def getTimeDiff3() {
     	timeDiff = Math.abs(unxNow-unxPrev)
     	timeDiff = Math.round(timeDiff/60)
     
-		LOGDEBUG("timeDiff: ${timeDiff}")	
+		if(logEnable) log.debug "timeDiff: ${timeDiff}"
   		if(timeDiff < timeHome) {
 			globalBeenHere()
 			if(state.globalBH3 == "no") {
@@ -558,8 +557,8 @@ def getTimeDiff3() {
 			log.info "${app.label} - ${parent.friendlyName3} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Global Been Here: ${state.globalBH3}")
-		LOGDEBUG("Presence Sensor: ${sensorStatus3} - No announcement needed.")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH3}"
+		if(logEnable) log.debug "Presence Sensor: ${sensorStatus3} - No announcement needed."
 		state.globalBH3 = "no"
 		dataMap3 = "globalBH3:no"
 		gvDevice.sendDataMap3(state.globalBH3)
@@ -567,14 +566,14 @@ def getTimeDiff3() {
 }
 
 def getTimeDiff4() {
-	LOGDEBUG("In getTimeDiff4...")
+	if(logEnable) log.debug "In getTimeDiff4..."
 	def sensorStatus4 = presenceSensor4.currentValue("presence")
-	LOGDEBUG("getTimeDiff4 - Presence Sensor Status - 4: ${sensorStatus4}")
+	if(logEnable) log.debug "getTimeDiff4 - Presence Sensor Status - 4: ${sensorStatus4}"
 	if(sensorStatus4 == "present") {
-		LOGDEBUG("getTimeDiff4 - Global Been Here: ${state.globalBH4}")
+		if(logEnable) log.debug "getTimeDiff4 - Global Been Here: ${state.globalBH4}"
 		def lastActivity4 = presenceSensor4.getLastActivity()
 			
-		LOGDEBUG("getTimeDiff4 - lastActivity: ${lastActivity4}")
+		if(logEnable) log.debug "getTimeDiff4 - lastActivity: ${lastActivity4}"
     	long timeDiff
    		def now = new Date()
     	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity4}".replace("+00:00","+0000"))
@@ -585,7 +584,7 @@ def getTimeDiff4() {
     	timeDiff = Math.abs(unxNow-unxPrev)
     	timeDiff = Math.round(timeDiff/60)
     
-		LOGDEBUG("getTimeDiff4 - getTimeDiff4 - timeDiff: ${timeDiff}")
+		if(logEnable) log.debug "getTimeDiff4 - getTimeDiff4 - timeDiff: ${timeDiff}"
   		if(timeDiff < timeHome) {
 			globalBeenHere()
 			if(state.globalBH4 == "no") {
@@ -605,22 +604,22 @@ def getTimeDiff4() {
 			log.info "${app.label} - ${parent.friendlyName4} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("getTimeDiff4 - Global Been Here: ${state.globalBH4}")
-		LOGDEBUG("getTimeDiff4 - Presence Sensor: ${sensorStatus4} - No announcement needed.")
+		if(logEnable) log.debug "getTimeDiff4 - Global Been Here: ${state.globalBH4}"
+		if(logEnable) log.debug "getTimeDiff4 - Presence Sensor: ${sensorStatus4} - No announcement needed."
 		state.globalBH4 = "no"
 		gvDevice.sendDataMap4(state.globalBH4)
 	}
 }
 
 def getTimeDiff5() {
-	LOGDEBUG("In getTimeDiff5...")
+	if(logEnable) log.debug "In getTimeDiff5..."
 	def sensorStatus5 = presenceSensor5.currentValue("presence")
-	LOGDEBUG("Presence Sensor Status - 5: ${sensorStatus5}")
+	if(logEnable) log.debug "Presence Sensor Status - 5: ${sensorStatus5}"
 	if(sensorStatus5 == "present") {
-		LOGDEBUG("Global Been Here: ${state.globalBH5}")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH5}"
 		def lastActivity5 = presenceSensor5.getLastActivity()
 			
-		LOGDEBUG("lastActivity: ${lastActivity5}")
+		if(logEnable) log.debug "lastActivity: ${lastActivity5}"
     	long timeDiff
    		def now = new Date()
     	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity5}".replace("+00:00","+0000"))
@@ -631,7 +630,7 @@ def getTimeDiff5() {
     	timeDiff = Math.abs(unxNow-unxPrev)
     	timeDiff = Math.round(timeDiff/60)
     
-		LOGDEBUG("timeDiff: ${timeDiff}")	
+		if(logEnable) log.debug "timeDiff: ${timeDiff}"
   		if(timeDiff < timeHome) {
 			globalBeenHere()
 			if(state.globalBH5 == "no") {
@@ -653,108 +652,113 @@ def getTimeDiff5() {
 			log.info "${app.label} - ${parent.friendlyName5} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
-		LOGDEBUG("Global Been Here: ${state.globalBH5}")
-		LOGDEBUG("Presence Sensor: ${sensorStatus5} - No announcement needed.")
+		if(logEnable) log.debug "Global Been Here: ${state.globalBH5}"
+		if(logEnable) log.debug "Presence Sensor: ${sensorStatus5} - No announcement needed."
 		state.globalBH5 = "no"
 		dataMap5 = "globalBH5:no"
 		gvDevice.sendDataMap5(state.globalBH5)
 	}
 }
 
-def letsTalk() {								// Heavily Modified from @Cobra Code
-	LOGDEBUG("In letsTalk...")
-	checkTime()
-	if(state.timeOK == true) {
-		messageHandler()
-		LOGDEBUG("Speaker(s) in use: ${speakers}")
-		state.theMsg = "${state.theMessage}"
-		LOGDEBUG("In letsTalk - Waiting ${delay1} seconds to Speak")
-		def delay1ms = delay1 * 1000
-		pauseExecution(delay1ms)
-  		if (speechMode == "Music Player"){ 
-    		LOGDEBUG("Music Player")
-			if(echoSpeaks) {
-				setVolume()
-				speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg, restoreVolume)
+def letsTalk() {
+	if(logEnable) log.debug "In letsTalk..."
+	if(state.enablerSwitch2 == "off") {
+		checkTime()
+		checkVol()
+		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+		pauseExecution(atomicState.randomPause)
+		if(logEnable) log.debug "In letsTalk - continuing"
+		if(state.timeOK == true) {
+			messageHandler()
+			if(logEnable) log.debug "Speaker(s) in use: ${speakers}"
+			state.theMsg = "${state.theMessage}"
+			if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
+			def delay1ms = delay1 * 1000
+			pauseExecution(delay1ms)
+  			if (speechMode == "Music Player"){ 
+    			if(logEnable) log.debug "Music Player"
+				if(echoSpeaks) {
+					speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+				}
+				if(!echoSpeaks) {
+    				if(volSpeech) speakers.setLevel(state.volume)
+    				speakers.playTextAndRestore(state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+				}
+  			}   
+			if(speechMode == "Speech Synth"){ 
+				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+				atomicState.speechDuration2 = speechDuration * 1000
+				if(logEnable) log.debug "Speech Synth - speakers: ${speakers}, vol: ${state.volume}, msg: ${state.theMsg}"
+				if(volSpeech) speakers.setVolume(state.volume)
+				speakers.speak(state.theMsg)
+				pauseExecution(atomicState.speechDuration2)
+				if(volRestore) speakers.setVolume(volRestore)
 				state.canSpeak = "no"
-				LOGDEBUG("In letsTalk - Wow, that's it!")
+				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 			}
-			if(!echoSpeaks) {
-    			setVolume()
-    			speakers.playTextAndRestore(state.theMsg)
-				state.canSpeak = "no"
-				LOGDEBUG("In letsTalk - Wow, that's it!")
-			}
-  		}   
-		if (speechMode == "Speech Synth"){ 
-			LOGDEBUG("Speech Synth - ${state.theMsg}")
-			speakers.speak(state.theMsg)
+		} else {
 			state.canSpeak = "no"
-			LOGDEBUG("In letsTalk - Wow, that's it!")
+			if(logEnable) log.debug "In letsTalk - It's quiet time"
 		}
 	} else {
 		state.canSpeak = "no"
-		LOGDEBUG("In letsTalk - It's quiet time...Can't talk right now")
+		if(logEnable) log.info "${app.label} is disabled."
 	}
 }
 
-def setVolume(){								// Modified from @Cobra Code
-	LOGDEBUG("In setVolume...")
-	def timecheck = fromTime2
-	if (timecheck != null){
-		def between2 = timeOfDayIsBetween(toDateTime(fromTime2), toDateTime(toTime2), new Date(), location.timeZone)
-   	 	if (between2) {
-    		state.volume = volume2
-   			if(!echoSpeaks) speakers.setLevel(state.volume)
-   			LOGDEBUG("In setVolume - Quiet Time = Yes - Setting Quiet time volume")
-   			LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks") 
+def checkVol(){
+	if(logEnable) log.debug "In checkVol..."
+	if(QfromTime) {
+		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+    	if(state.quietTime) {
+    		state.volume = volQuiet
+		} else {
+			state.volume = volSpeech
 		}
-		if (!between2) {
-			state.volume = volume1
-			if(!echoSpeaks) speakers.setLevel(state.volume)
-			LOGDEBUG("In setVolume - Quiet Time = No - Setting Normal time volume")
-			LOGDEBUG("In setVolume - between2 = $between2 - state.volume = $state.volume - Speaker = $speakers - Echo Speakes = $echoSpeaks")
-		}
+	} else {
+		state.volume = volSpeech
 	}
-	else if (timecheck == null){
-		state.volume = volume1
-		if(!echoSpeaks) speakers.setLevel(state.volume)
-	}
+	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 }
 
 def checkTime(){							// Modified from @Cobra Code
-	LOGDEBUG("In checkTime...")
+	if(logEnable) log.debug "In checkTime..."
 	def timecheckNow = fromTime
 	if (timecheckNow != null){
     
 	def between = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
     if (between) {
     	state.timeOK = true
-   		LOGDEBUG("In checkTime - Time is ok so can continue")
+   		if(logEnable) log.debug "In checkTime - Time is ok, continue"
 	}
 	else if (!between) {
 		state.timeOK = false
-		LOGDEBUG("In checkTime - Time is NOT ok so can't continue")
+		if(logEnable) log.debug "In checkTime - Time is NOT ok, can't continue"
 	}
   	}
 	else if (timecheckNow == null){  
 		state.timeOK = true
-  		LOGDEBUG("In checkTime - Time restrictions have not been configured - Continue")
+  		if(logEnable) log.debug "In checkTime - No Time restrictions - Continue"
   	}
 }
 
 def messageHandler() {
-	LOGDEBUG("In messageHandler...")
+	if(logEnable) log.debug "In messageHandler..."
 	if(oRandom) {
 		def values = "${message}".split(";")
 		vSize = values.size()
 		count = vSize.toInteger()
     	def randomKey = new Random().nextInt(count)
 		theMessage = values[randomKey]
-		LOGDEBUG("In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}") 
+		if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}"
 	} else {
 		theMessage = "${message}"
-		LOGDEBUG("In messageHandler - Static - theMessage: ${theMessage}")
+		if(logEnable) log.debug "In messageHandler - Static - theMessage: ${theMessage}"
 	}
    	theMessage = theMessage.toLowerCase()
 	if (theMessage.toLowerCase().contains("%greeting%")) {theMessage = theMessage.toLowerCase().replace('%greeting%', getGreeting() )}
@@ -766,19 +770,18 @@ def messageHandler() {
 }
 
 private getName(){
-	LOGDEBUG("In getName...")
-	LOGDEBUG("In getName...Number of Names: ${state.nameCount} - Names: ${state.presenceMap}")
+	if(logEnable) log.debug "In getName - Number of Names: ${state.nameCount}, Names: ${state.presenceMap}"
 	name = ""
 	myCount = 0
 	if(state.nameCount == 1) {
 		state.presenceMap.each { it -> 
-			LOGDEBUG("*********** In nameCount=1: myCount = ${myCount}")
+			if(logEnable) log.debug "*********** In nameCount=1: myCount = ${myCount}"
 			name = "${it.value}"
 		}
 	}
 	if(state.nameCount == 2) {
 		state.presenceMap.each { it -> 
-			LOGDEBUG("*********** In nameCount=2: myCount = ${myCount}")
+			if(logEnable) log.debug "*********** In nameCount=2: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it.value} "
 			if(myCount == 1) name = "${name}" + "and "
@@ -787,7 +790,7 @@ private getName(){
 	}
 	if(state.nameCount == 3) {
 		state.presenceMap.each { it -> 
-			LOGDEBUG("*********** In nameCount=3: myCount = ${myCount}")
+			if(logEnable) log.debug "*********** In nameCount=3: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it.value}, "
 			if(myCount == 2) name = "${name}" + "and "
@@ -795,7 +798,7 @@ private getName(){
 	}
 	if(state.nameCount == 4) {
 		state.presenceMap.each { it -> 
-			LOGDEBUG("*********** In nameCount=4: myCount = ${myCount}")
+			if(logEnable) log.debug "*********** In nameCount=4: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it.value}, "
 			if(myCount == 3) name = "${name}" + "and "
@@ -803,7 +806,7 @@ private getName(){
 	}
 	if(state.nameCount == 5) {
 		state.presenceMap.each { it -> 
-			LOGDEBUG("*********** In nameCount=5: myCount = ${myCount}")
+			if(logEnable) log.debug "*********** In nameCount=5: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it.value}, "
 			if(myCount == 4) name = "${name}" + "and "
@@ -813,17 +816,17 @@ private getName(){
 	has_have = (name.contains(' and ') ? 'have' : 'has')
 	if(name == null) names = "Whoever you are"
 	if(name == "") names = "Whoever you are"
-	LOGDEBUG("AGAIN...Name = ${name}")
+	if(logEnable) log.debug "AGAIN...Name = ${name}"
 	return name
 }
 
-private getGreeting(){						// Modified from @Cobra Code
-	LOGDEBUG("In getGreeting...")
+private getGreeting(){						// Heavily modified from @Cobra Code
+	if(logEnable) log.debug "In getGreeting..."
     def calendar = Calendar.getInstance()
 	calendar.setTimeZone(location.timeZone)
 	def timeHH = calendar.get(Calendar.HOUR) toInteger()
     def timeampm = calendar.get(Calendar.AM_PM) ? "pm" : "am" 
-	LOGDEBUG("timeHH = $timeHH")
+	if(logEnable) log.debug "timeHH = $timeHH"
 	if(timeampm == 'am'){
 		if(oRandomG1) {
 			def values = "${greeting1}".split(";")
@@ -831,10 +834,10 @@ private getGreeting(){						// Modified from @Cobra Code
 			count = vSize.toInteger()
     		def randomKey = new Random().nextInt(count)
 			state.greeting = values[randomKey]
-			LOGDEBUG("In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}") 
+			if(logEnable) log.debug "In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
 		} else {
 			state.greeting = "${greeting1}"
-			LOGDEBUG("In getGreeting - Static - greeting: ${state.greeting}")
+			if(logEnable) log.debug "In getGreeting - Static - greeting: ${state.greeting}"
 		}
 	}
 	else if(timeampm == 'pm' && timeHH < 6){
@@ -844,10 +847,10 @@ private getGreeting(){						// Modified from @Cobra Code
 			count = vSize.toInteger()
     		def randomKey = new Random().nextInt(count)
 			state.greeting = values[randomKey]
-			LOGDEBUG("In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}") 
+			if(logEnable) log.debug "In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
 		} else {
 			state.greeting = "${greeting2}"
-			LOGDEBUG("In getGreeting - Static - greeting: ${state.greeting}")
+			Lif(logEnable) log.debug "In getGreeting - Static - greeting: ${state.greeting}"
 		}
 	}
 	else if(timeampm == 'pm' && timeHH >= 6){
@@ -857,10 +860,10 @@ private getGreeting(){						// Modified from @Cobra Code
 			count = vSize.toInteger()
     		def randomKey = new Random().nextInt(count)
 			state.greeting = values[randomKey]
-			LOGDEBUG("In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}") 
+			if(logEnable) log.debug "In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}"
 		} else {
 			state.greeting = "${greeting3}"
-			LOGDEBUG("In getGreeting - Static - greeting: ${state.greeting}")
+			if(logEnable) log.debug "In getGreeting - Static - greeting: ${state.greeting}"
 		}
 	}
 	return state.greeting
@@ -872,12 +875,12 @@ def globalBeenHere() {
 	state.globalBH3 = gvDevice.currentValue("globalBH3")
 	state.globalBH4 = gvDevice.currentValue("globalBH4")
 	state.globalBH5 = gvDevice.currentValue("globalBH5")
-	LOGDEBUG("${gDevice}: globalBH1: ${state.globalBH1} - globalBH2: ${state.globalBH2} - globalBH3: ${state.globalBH3} - globalBH4: ${state.globalBH4} - globalBH5: ${state.globalBH5}")
+	if(logEnable) log.debug "globalBH1: ${state.globalBH1} - globalBH2: ${state.globalBH2} - globalBH3: ${state.globalBH3} - globalBH4: ${state.globalBH4} - globalBH5: ${state.globalBH5}"
 }
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){						// Modified from @Cobra Code
+def pauseOrNot(){						// Modified from @Cobra
     state.pauseNow = pause1
     if(state.pauseNow == true){
     	state.pauseApp = true
@@ -885,7 +888,7 @@ def pauseOrNot(){						// Modified from @Cobra Code
             if(app.label.contains('red')){
                 log.warn "Paused"}
             else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              	LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
+              	if(logEnable) log.debug "App Paused - state.pauseApp: $state.pauseApp"
             }
         }
     }
@@ -893,7 +896,7 @@ def pauseOrNot(){						// Modified from @Cobra Code
     	state.pauseApp = false
         if(app.label){
      		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     		LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
+     		if(logEnable) log.debug "App Released - state.pauseApp: $state.pauseApp"                         
           	}
          }
 	}      
@@ -911,30 +914,12 @@ def setDefaults(){
 	state.canSpeak = "no"
 }
 
-def logCheck(){					// Modified from @Cobra Code
-	state.checkLog = logEnable
-	if(state.logEnable == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.logEnable == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){				// Modified from @Cobra Code
-    try {
-		if (settings.logEnable) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {					// Modified from @Stephack Code
+def getImage(type) {					// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code
+def getFormat(type, myText=""){			// Modified from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
