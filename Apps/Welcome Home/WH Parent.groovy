@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 04/06/19 - Added importUrl
  *  V2.0.1 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
  *						from Parent app.
  *  V2.0.0 - 02/11/19 - Major rewrite. Presence sensors are now in Parent app, so they can be shared across multiple child apps.
@@ -57,7 +58,7 @@
  */
 
 def setVersion() {
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
 }
 
 definition(
@@ -68,7 +69,8 @@ definition(
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
-    iconX3Url: ""
+    iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
 )
 
 preferences {
