@@ -471,8 +471,8 @@ def letsTalk() {
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime..."
-	if(fromTime != null) {
+	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
+	if((fromTime != null) && (toTime != null)) {
 		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
 		if(state.betweenTime) {
 			state.timeBetween = true
