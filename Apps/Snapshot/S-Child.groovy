@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.7 - 04/09/19 - Chasing gremlins
  *	V1.0.6 - 04/06/19 - Code cleanup
  *	V1.0.5 - 04/02/19 - Added Temp tile options
  *	V1.0.4 - 04/01/19 - Added Lock options
@@ -45,7 +46,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.6"
+	state.version = "v1.0.7"
 }
 
 definition(
@@ -173,11 +174,13 @@ def installed() {
 def updated() {
 	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
+	unschedule()
 	initialize()
 }
 
 def initialize() {
-	if(logEnable) log.debug "In initialize..."
+	setDefaults()
+	if(logEnable) log.debug "In initialize - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch.on", onDemandSwitchHandler)
 	if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
@@ -185,7 +188,7 @@ def initialize() {
 }
 
 def realTimeSwitchHandler(evt) {
-	if(logEnable) log.debug "In realTimeSwitchHandler..."
+	if(logEnable) log.debug "In realTimeSwitchHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 	if(state.enablerSwitch2 == "off") {
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
@@ -235,7 +238,7 @@ def realTimeSwitchHandler(evt) {
 }
 
 def repeatSwitchHandler(evt) {
-	if(logEnable) log.debug "In repeatSwitchHandler..."
+	if(logEnable) log.debug "In repeatSwitchHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 	if(state.enablerSwitch2 == "off") {
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
@@ -260,7 +263,7 @@ def repeatSwitchHandler(evt) {
 }
 
 def onDemandSwitchHandler(evt) {
-	if(logEnable) log.debug "In onDemandSwitchHandler..."
+	if(logEnable) log.debug "In onDemandSwitchHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 	if(state.enablerSwitch2 == "off") {
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
@@ -814,7 +817,7 @@ def priorityHandler(evt){
 }
 
 def checkMaps() {
-	if(logEnable) log.debug "In checkMaps..."
+	if(logEnable) log.debug "In checkMaps - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 	if(state.offSwitchMap == null) {
 		state.offSwitchMap = [:]
 	}
@@ -852,7 +855,7 @@ def checkMaps() {
 }
 
 def maintHandler(evt){
-	if(logEnable) log.debug "In maintHandler..."
+	if(logEnable) log.debug "In maintHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 	state.offSwitchMap = [:]
 	state.onSwitchMap = [:]
 	state.closedContactMap = [:]
@@ -914,13 +917,16 @@ def appButtonHandler(btn){  // *****************************
 }  
 
 // ********** Normal Stuff **********
+
 def enablerSwitchHandler(evt){
 	state.enablerSwitch2 = evt.value
+	if(state.enablerSwitch2 == null) state.enablerSwitch2 = "off"
 	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}"
 	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
 }
 
 def pauseAppHandler(){
+	if(logEnable) log.debug "In pauseAppHandler..."
     if(pauseApp == true){
         if(app.label.contains('Paused')){
 			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
@@ -935,6 +941,14 @@ def pauseAppHandler(){
 			if(logEnable) log.debug "App no longer Paused - state.pauseApp: ${state.pauseApp}"                        
         }
 	}      
+}
+
+def setDefaults(){
+    pauseAppHandler()
+	if(logEnable) log.debug "In setDefaults..."
+    if(pauseApp == null){pauseApp = false}
+	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
+	if(logEnable) log.debug "In setDefaults - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 }
 
 def getImage(type){							// Modified from @Stephack
