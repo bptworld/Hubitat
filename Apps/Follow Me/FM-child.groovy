@@ -82,12 +82,12 @@ def pageConfig() {
 			paragraph "<b>Requirements:</b>"
 			paragraph "- Virtual Device using our custom 'What Did I Say' driver"
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Select Activation Type for Room Speakers")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Message destination")) {
     		input "messageDest", "enum", title: "Select message destination", submitOnChange: true,  options: ["Speakers","Pushover"], required: true
 		}
 		// Speakers
 		if(messageDest == "Speakers") {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Select Activation Type for Room Speakers")) {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Activation Type for Room Speakers")) {
     			input "triggerMode", "enum", title: "Select message activation Type", submitOnChange: true, options: ["Always_On","Contact_Sensor","Motion_Sensor","Switch"], required: true, Multiple: false
 				if(triggerMode == "Always_On"){
 					paragraph "Selected speakers will always play messages."	
