@@ -13,6 +13,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacu
 **App Watchdog** - See if any compatible app needs an update, all in one place. DEVELOPERS WELCOME!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-app-watchdog/9952" target="_blank">Go Here</a>
 <br><br>
+**Asthma Forecaster** (Driver) - Retrieve data from asthmaforecast.com. For use with Hubitat dashboards.<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not Yet!</a>
+<br><br>
 **At Home Simulator** - Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-simulator/8697" target="_blank">Go Here</a>
 <br><br>
@@ -46,6 +49,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-notif
 **One at a Time** - Designed to allow only one switch, in a group of switches, to be on at a time.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-at-a-time/7063" target="_blank">Go Here</a>
 <br><br>
+**Pollen Forecaster** (Driver) - Retrieve data from pollen.com. For use with Hubitat dashboards.<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not Yet!</a>
+<br><br>
 **Snapshot** - Monitor lights, devices and sensors. Easily see their status right on your dashboard.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snapshot/12042" target="_blank">Go Here</a>
 <br><br>
@@ -58,7 +64,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-p
 **Welcome Home** - Designed to give a personal welcome announcement after you have entered the home.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-welcome-home/6445" target="_blank">Go Here</a>
 <br><br>
-**What Did I Say** - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
+**What Did I Say**(Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
 <br><br>
 Bryan<br>
