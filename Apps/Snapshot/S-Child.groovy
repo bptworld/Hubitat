@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *	V1.0.8 - 04/09/19 - Fixed Temp maps
  *	V1.0.7 - 04/09/19 - Chasing gremlins
  *	V1.0.6 - 04/06/19 - Code cleanup
  *	V1.0.5 - 04/02/19 - Added Temp tile options
@@ -46,7 +47,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
 }
 
 definition(
@@ -519,6 +520,7 @@ def tempMapHandler() {
 	if(tempMode == "Full") {
 		state.normalTempMapS.each { stuffNormal ->
 			state.count = state.count + 1
+			if(logEnable) log.debug "In tempMapHandler - Building Table Normal with ${stuffNormal.key} count: ${state.count}"
 			if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${stuffNormal.key}</td><td>${stuffNormal.value}</td></tr>"
 			if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${stuffNormal.key}</td><td>${stuffNormal.value}</td></tr>"
 		}
@@ -542,7 +544,7 @@ def tempMapHandler() {
 		state.fTempMap2S = "<table width='100%'><tr><td><div style='color: green;'>No temp devices to report</div></td></tr></table>"
 	}
 
-	if(logEnable) log.debug "In tempMapHandler - <br>fTempMap1S<br>${state.fTempMap1S}"
+	if(logEnable) log.debug "In tempMapHandler - <br>${state.fTempMap1S}"
    	snapshotTileDevice.sendSnapshotTempMap1(state.fTempMap1S)
 	snapshotTileDevice.sendSnapshotTempMap2(state.fTempMap2S)
 	snapshotTileDevice.sendSnapshotTempCountHigh(state.countHigh)
@@ -603,16 +605,32 @@ def lockHandler(evt){
 def temperatureHandler(evt){
 	def tempName = evt.displayName
 	def tempStatus = evt.value
-	if(logEnable) log.debug "In temperatureHandler...${tempName}: ${tempStatus}"
-	if(tempStatus >= tempHigh) {
-		state.highTempMap.remove(tempName)
-		state.highTempMap.put(tempName, tempStatus)
-		if(logEnable) log.debug "In temperatureHandler - HIGH<br>${state.highTempMap}"
-	}
-	if(tempStatus <= tempLow) {
+	def tempStatusI = tempStatus.toFloat()
+	def tempHighI = tempHigh.toFloat()
+	def tempLowI = tempLow.toFloat()
+	if(logEnable) log.debug "In temperatureHandler...${tempName}: ${tempStatus} (high: ${tempHigh}, low: ${tempLow})"
+	if(tempStatusI >= tempHighI) {
+		if(logEnable) log.debug "In temperatureHandler - High"
+		state.normalTempMap.remove(tempName)
 		state.lowTempMap.remove(tempName)
-		state.lowTempMap.put(tempName, tempStatus)
+		state.highTempMap.put(tempName, tempStatusI)
+		if(logEnable) log.debug "In temperatureHandler - HIGH<br>${state.highTempMap}"
+	} else 
+	if(tempStatusI <= tempLowI) {
+		if(logEnable) log.debug "In temperatureHandler - Low"
+		state.normalTempMap.remove(tempName)
+		state.highTempMap.remove(tempName)
+		state.lowTempMap.put(tempName, tempStatusI)
 		if(logEnable) log.debug "In temperatureHandler - LOW<br>${state.lowTempMap}"
+	} else 
+	if((tempStatusI > tempLowI) && (tempStatusI < tempHighI)) {
+		if(logEnable) log.debug "In temperatureHandler - Normal"
+		state.highTempMap.remove(tempName)
+		state.lowTempMap.remove(tempName)
+		state.normalTempMap.put(tempName, tempStatusI)
+		if(logEnable) log.debug "In temperatureHandler - Normal<br>${state.normalTempMap}"
+	} else {
+		if(logEnable) log.debug "In temperatureHandler - Something isn't right"	
 	}
 	tempMapHandler()
 }
@@ -901,10 +919,13 @@ def maintHandler(evt){
 		temps.each { device ->
 			def tempName = device.displayName
 			def tempStatus = device.currentValue('temperature')
-			if(logEnable) log.debug "In maintHandler - Working on ${tempName} - ${tempStatus}"
-			if(tempStatus <= tempLow) state.lowTempMap.put(tempName, tempStatus)
-			if(tempStatus >= tempHigh) state.highTempMap.put(tempName, tempStatus)
-			if((tempStatus > tempLow) && (tempStatus < tempHigh)) state.normalTempMap.put(tempName, tempStatus)
+			def tempStatusI = tempStatus.toFloat()
+			def tempHighI = tempHigh.toFloat()
+			def tempLowI = tempLow.toFloat()
+			if(logEnable) log.debug "In maintHandler - Working on ${tempName} - ${tempStatusI}"
+			if(tempStatusI <= tempLowI) state.lowTempMap.put(tempName, tempStatusI)
+			if(tempStatusI >= tempHighI) state.highTempMap.put(tempName, tempStatusI)
+			if((tempStatusI > tempLowI) && (tempStatusI < tempHighI)) state.normalTempMap.put(tempName, tempStatusI)
 		}
 		tempMapHandler()
 	}
