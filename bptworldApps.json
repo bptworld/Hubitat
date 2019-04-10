@@ -206,13 +206,13 @@
   
   "SnapshotType": "App",
   "SnapshotParentVersion": "v1.0.0",
-  "SnapshotChildVersion": "v1.0.7",
+  "SnapshotChildVersion": "v1.0.8",
   "SnapshotDriverVersion": "v1.0.6",
   "SnapshotParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy",
   "SnapshotChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-Child.groovy",
   "SnapshotDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-driver.groovy",
   "SnapshotDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
-  "SnapshotUpdateNote": "V1.0.7 - 04/09/19 - Chasing gremlins",
+  "SnapshotUpdateNote": "V1.0.8 - 04/09/19 - Fixed Temp maps",
   
   "WebPingerType": "App",
   "WebPingerParentVersion": "v1.0.2",
