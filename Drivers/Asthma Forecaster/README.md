@@ -10,3 +10,5 @@ Retrieve data from asthmaforecast.com. For use with Hubitat dashboards.<br><br>
 * Select ‘Asthma Forecaster’ under ‘Type’
 * Click 'Save Device'
 <br><br>
+Bryan<br>
+@BPTWorld
