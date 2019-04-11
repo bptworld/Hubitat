@@ -73,7 +73,7 @@ def pageConfig() {
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "REAL TIME - Be careful with this option. Too many devices updating in real time <u>WILL</u> slow down and/or crash the hub."	
+			paragraph ""	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Type of Trigger")) {
 			input "reportMode", "enum", required: true, title: "Select Report Type", submitOnChange: true,  options: ["Regular", "Priority"]
@@ -81,7 +81,7 @@ def pageConfig() {
 			if(reportMode == "Priority") paragraph "Priority - Show device state only when it's not what it should be based on options below"
 			input "triggerMode", "enum", required: true, title: "Select Trigger Frequency", submitOnChange: true,  options: ["Real Time", "Every X minutes", "On Demand"]
 			if(triggerMode == "Real Time") {
-				paragraph "<b>Be careful with this option. Too many devices updating in real time <u>WILL</u> slow down and/or crash the hub.</b>"
+				paragraph "<b>Be careful with this option. Too many devices updating in real time can slow down and/or crash the hub.</b>"
 				paragraph "Remember to flip this switch off and back on again if any changes to this app have been made."
 				input "realTimeSwitch", "capability.switch", title: "App Control Switch", required: true
 			}
