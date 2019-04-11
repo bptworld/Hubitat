@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 04/10/19 - Fixed a typo in repeatSwitchHandler
  *	V1.0.8 - 04/09/19 - Fixed Temp maps
  *	V1.0.7 - 04/09/19 - Chasing gremlins
  *	V1.0.6 - 04/06/19 - Code cleanup
@@ -47,7 +48,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.8"
+	state.version = "v1.0.9"
 }
 
 definition(
@@ -255,7 +256,7 @@ def repeatSwitchHandler(evt) {
 				if(state.repeatSwitchStatus == "on") {
 					priorityHandler()
 				}
-				runIn(state.runDelay,priorityHandler)
+				runIn(state.runDelay,repeatSwitchHandler)
 			}
 		}
 	} else {
