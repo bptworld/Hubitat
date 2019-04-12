@@ -235,7 +235,7 @@
   "WelcomeHomeUpdateNote": "V2.0.5 - 04/06/19 - Added importUrl. Volume Control overhaul. Code cleanup.",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.1.0",
+  "WhatDidISayDriver1Version": "v1.1.2",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -254,5 +254,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.1.0 - 04/05/19 - Added importUrl to driver header. Added speaker status to 'Reset All Data' switch ",
+  "WhatDidISayUpdateNote": "V1.1.2 - 04/12/19 - Fixed length of message typo",
 }
