@@ -145,7 +145,7 @@ def pageConfig() {
 		}
 		if(reportMode == "Priority") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Priority Notification Options")) {
-				paragraph "Priority Devices can be checked at anytime and will answer with a voice announcement and/or a pushover message. Great before leaving the house or going to bed."
+				paragraph "Receive priority device notifications on demand with both voice and pushover options. Great before leaving the house or going to bed."
 				paragraph "Recommended to create a virtual device with 'Enable auto off' set to '1s'"
 				input "priorityCheckSwitch", "capability.switch", title: "Priority Check Switch", required: false
 				paragraph "Each of the following messages will only be spoken if necessary..."
