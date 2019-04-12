@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V1.1.2 - 04/12/19 - Fixed length of message typo
+ *  V1.1.1 - 04/06/19 - Added setVolume to code
  *  V1.1.0 - 04/05/19 - Added importUrl to driver header. Added speaker status to 'Reset All Data' switch 
  *  V1.0.9 - 04/03/19 - Attempt to fix an error
  *  V1.0.8 - 04/03/19 - More tweaks to speaker status
@@ -49,7 +51,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.0.9"}
+def version(){"v1.1.2"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
@@ -61,6 +63,8 @@ metadata {
 		command "sendSpeechMap", ["string"]
 		command "playTextAndRestore", ["string"]
 		command "setVolumeSpeakAndRestore", ["string"]
+		command "setVolume", ["string"]
+		command "setLevel", ["string"]
 		command "speak", ["string"]
 		command "sendFollowMeSpeaker", ["string"]
 		
@@ -85,23 +89,27 @@ metadata {
 
 //Received new messages from apps
 def sendSpeechMap(speechMap) {
+	state.speechReceivedFULL = speechMap
 	state.speechReceived = speechMap.take(70)
 	populateMap()
 }
 
 def playTextAndRestore(speechMap) {
+	state.speechReceivedFULL = speechMap
 	state.speechReceived = speechMap.take(70)
 	sendEvent(name: "playTextAndRestore", value: text)
 	populateMap()
 }
 
 def setVolumeSpeakAndRestore(speechMap) {
+	state.speechReceivedFULL = speechMap
 	state.speechReceived = speechMap.take(70)
 	sendEvent(name: "setVolumeSpeakAndRestore", value: text)
 	populateMap()
 }
 
 def speak(speechMap) {
+	state.speechReceivedFULL = speechMap
 	state.speechReceived = speechMap.take(70)
 	sendEvent(name: "speak", value: text)
 	populateMap()
@@ -111,6 +119,10 @@ def setLevel(level) {
     sendEvent(name: "setLevel", value: level)    
 }
 
+def setVolume(volume) {
+    sendEvent(name: "setVolume", value: volume)    
+}
+
 def makeUnique() {
 	if(state.unique == null) state.unique = "a"
 	if(state.unique == "a") {
@@ -118,14 +130,14 @@ def makeUnique() {
 	} else {
 		state.unique = "a"
 	}
-	state.speechReceivedUnique = "${state.unique}" + "${state.speechReceived}"
+	state.speechReceivedUnique = "${state.unique}" + "${state.speechReceivedFULL}"
 	sendEvent(name: "lastSpokenUnique", value: state.speechReceivedUnique, displayed: true)
 }
 
 def populateMap() {
-	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceived}")
+	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceivedFULL}")
 	makeUnique()
-	sendEvent(name: "lastSpoken", value: state.speechReceived, displayed: true)
+	sendEvent(name: "lastSpoken", value: state.speechReceivedFULL, displayed: true)
 	
 	state.priority = state.speechReceived.take(3)
 	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
