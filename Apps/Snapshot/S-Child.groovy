@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 04/12/19 - Added voice and pushover notifications to Priority Devices
  *  V1.0.9 - 04/10/19 - Fixed a typo in repeatSwitchHandler
  *	V1.0.8 - 04/09/19 - Fixed Temp maps
  *	V1.0.7 - 04/09/19 - Chasing gremlins
@@ -48,7 +49,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.9"
+	state.version = "v1.1.0"
 }
 
 definition(
@@ -142,6 +143,68 @@ def pageConfig() {
 				}
 			}
 		}
+		if(reportMode == "Priority") {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Priority Notification Options")) {
+				paragraph "Priority Devices can be checked at anytime and will answer with a voice announcement and/or a pushover message. Great before leaving the house or going to bed."
+				paragraph "Recommended to create a virtual device with 'Enable auto off' set to '1s'"
+				input "priorityCheckSwitch", "capability.switch", title: "Priority Check Switch", required: false
+				paragraph "Each of the following messages will only be spoken if necessary..."
+				input(name: "oRandomPre", type: "bool", defaultValue: "false", title: "Random Pre Message?", description: "Random", submitOnChange: "true")
+				if(!oRandomPre) input "preMsg", "text", required: true, title: "Pre Message - Single message", defaultValue: "Warning"
+				if(oRandomPre) {
+					input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+					input(name: "oPreList", type: "bool", defaultValue: "false", title: "Show a list view of the random pre messages?", description: "List View", submitOnChange: "true")
+					if(oPreList) {
+						def valuesPre = "${preMsg}".split(";")
+						listMapPre = ""
+    					valuesPre.each { itemPre -> listMapPre += "${itemPre}<br>" }
+						paragraph "${listMapPre}"
+					}
+				}
+				input "msgDevice", "text", required: true, title: "Message to speak when a device isn't in the correct state... Will be followed by device names", defaultValue: "The following devices are in the wrong state"
+				input(name: "oRandomPost", type: "bool", defaultValue: "false", title: "Random Post Message?", description: "Random", submitOnChange: "true")
+				if(!oRandomPost) input "postMsg", "text", required: true, title: "Post Message - Single message", defaultValue: "This is all I have to say"
+				if(oRandomPost) {
+					input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+					input(name: "oPostList", type: "bool", defaultValue: "false", title: "Show a list view of the random post messages?", description: "List View", submitOnChange: "true")
+					if(oPostList) {
+						def valuesPost = "${postMsg}".split(";")
+						listMapPost = ""
+    					valuesPost.each { itemPost -> listMapPost += "${itemPost}<br>" }
+						paragraph "${listMapPost}"
+					}
+				}
+			}	
+        	section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
+          		input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
+				if (speechMode == "Music Player"){ 
+              		input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+					paragraph "<hr>"
+					paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
+					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
+					if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
+          		}   
+        		if (speechMode == "Speech Synth"){ 
+         			input "speakers", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+          		}
+				input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
+				if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
+      		}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+				paragraph "NOTE: Not all speakers can use volume controls."
+				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
+				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+            	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
+				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
+    			if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+			}
+    		if(speechMode){ 
+				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+        			input "fromTime", "time", title: "From", required: false
+        			input "toTime", "time", title: "To", required: false
+				}
+    		}
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
@@ -186,7 +249,10 @@ def initialize() {
 	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch.on", onDemandSwitchHandler)
 	if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
-	if(triggerMode == "Real Time") subscribe(realTimeSwitch, "switch", realTimeSwitchHandler)
+	if(triggerMode == "Real Time") {
+		subscribe(realTimeSwitch, "switch", realTimeSwitchHandler)
+		subscribe(priorityCheckSwitch, "switch.on", priorityCheckHandler)
+	}
 }
 
 def realTimeSwitchHandler(evt) {
@@ -641,6 +707,8 @@ def priorityHandler(evt){
 // Start Priority Switch
 	if(switchesOn || switchesOff) {
 		state.wrongSwitchMap = [:]
+		state.wrongSwitchPushMap = ""
+		state.wrongStateSwitchMap = ""
 		if(switchesOn) {
 			switchesOn.each { sOn -> 
 				def switchName = sOn.displayName
@@ -664,9 +732,12 @@ def priorityHandler(evt){
 		state.wrongSwitchMapS.each { wSwitch -> 
 			state.count = state.count + 1
 			state.isPriorityData = "true"
+			state.prioritySwitch = "true"
+			state.wrongStateSwitchMap += "${wSwitch.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Switch with ${wSwitch.key} count: ${state.count}"
 			if((state.count >= 1) && (state.count <= 5)) state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
 			if((state.count >= 6) && (state.count <= 10)) state.pSwitchMap2S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+			state.wrongSwitchPushMap += "${wSwitch.key} \n"
 		}
 		state.pSwitchMap1S += "</table>"
 		state.pSwitchMap2S += "</table>"
@@ -674,7 +745,9 @@ def priorityHandler(evt){
 		if(state.count == 0) {
 			state.pSwitchMap1S = "<table width='100%'><tr><td><div style='color: green;'>No devices to report</div></td></tr></table>"
 			state.pSwitchMap2S = "<table width='100%'><tr><td><div style='color: green;'>No devices to report</div></td></tr></table>"
+			state.wrongSwitchPushMap = ""
 			state.isPriorityData = "false"
+			state.prioritySwitch = "false"
 		}
 		snapshotTileDevice.sendSnapshotPrioritySwitchMap1(state.pSwitchMap1S)
 		snapshotTileDevice.sendSnapshotPrioritySwitchMap2(state.pSwitchMap2S)
@@ -683,6 +756,8 @@ def priorityHandler(evt){
 // Start Priority Contacts
 	if(contactsOpen || contactsClosed) {
 		state.wrongContactMap = [:]
+		state.wrongStateContactMap = ""
+		state.wrongContactPushMap = ""
 		if(contactsOpen) {
 			contactsOpen.each { cOpen ->
 				def contactName = cOpen.displayName
@@ -706,9 +781,12 @@ def priorityHandler(evt){
 		state.wrongContactMapS.each { wContact -> 
 			state.count = state.count + 1
 			state.isPriorityData = "true"
+			state.priorityContact = "true"
+			state.wrongStateContactMap += "${wContact.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Contact with ${wContact.key} count: ${state.count}"
 			if((state.count >= 1) && (state.count <= 5)) state.pContactMap1S += "<tr><td><div style='color: red;'>${wContact.key}</div></td><td><div style='color: red;'>${wContact.value}</div></td></tr>"
 			if((state.count >= 6) && (state.count <= 10)) state.pContactMap2S += "<tr><td><div style='color: red;'>${wContact.key}</div></td><td><div style='color: red;'>${wContact.value}</div></td></tr>"
+			state.wrongContactPushMap += "${wContact.key} \n"
 		}
 		state.pContactMap1S += "</table>"
 		state.pContactMap2S += "</table>"
@@ -716,7 +794,9 @@ def priorityHandler(evt){
 		if(state.count == 0) {
 			state.pContactMap1S = "<table width='100%'><tr><td><div style='color: green;'>No contacts to report</div></td></tr></table>"
 			state.pContactMap2S = "<table width='100%'><tr><td><div style='color: green;'>No contacts to report</div></td></tr></table>"
+			state.wrongContactPushMap = ""
 			state.isPriorityData = "false"
+			state.priorityContact = "false"
 		}
 		snapshotTileDevice.sendSnapshotPriorityContactMap1(state.pContactMap1S)
 		snapshotTileDevice.sendSnapshotPriorityContactMap2(state.pContactMap2S)
@@ -725,6 +805,8 @@ def priorityHandler(evt){
 // Start Priority Locks
 	if(locksUnlocked || locksLocked) {
 		state.wrongLockMap = [:]
+		state.wrongStateLockMap = ""
+		state.wrongLockPushMap = ""
 		if(locksUnlocked) {
 			locksUnlocked.each { lUnlocked ->
 				def lockName = lUnlocked.displayName
@@ -748,9 +830,12 @@ def priorityHandler(evt){
 		state.wrongLockMapS.each { wLock -> 
 			state.count = state.count + 1
 			state.isPriorityData = "true"
+			state.priorityLock = "true"
+			state.wrongStateLockMap += "${wLock.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Lock with ${wLock.key} count: ${state.count}"
 			if((state.count >= 1) && (state.count <= 5)) state.pLockMap1S += "<tr><td><div style='color: red;'>${wLock.key}</div></td><td><div style='color: red;'>${wLock.value}</div></td></tr>"
 			if((state.count >= 6) && (state.count <= 10)) state.pLockMap2S += "<tr><td><div style='color: red;'>${wLock.key}</div></td><td><div style='color: red;'>${wLock.value}</div></td></tr>"
+			state.wrongLockPushMap += "${wLock.key} \n"
 		}
 		state.pLockMap1S += "</table>"
 		state.pLockMap2S += "</table>"
@@ -758,7 +843,9 @@ def priorityHandler(evt){
 		if(state.count == 0) {
 			state.pLockMap1S = "<table width='100%'><tr><td><div style='color: green;'>No locks to report</div></td></tr></table>"
 			state.pLockMap2S = "<table width='100%'><tr><td><div style='color: green;'>No locks to report</div></td></tr></table>"
+			state.wrongLockPushMap = ""
 			state.isPriorityData = "false"
+			state.priorityLock = "false"
 		}
 		snapshotTileDevice.sendSnapshotPriorityLockMap1(state.pLockMap1S)
 		snapshotTileDevice.sendSnapshotPriorityLockMap2(state.pLockMap2S)
@@ -932,11 +1019,146 @@ def maintHandler(evt){
 	}
 }
 
+def priorityCheckHandler(evt) {
+	if(logEnable) log.debug "In priorityCheckHandler..."
+	priorityHandler()
+	if(speakers) letsTalk()
+	if(sendPushMessage) pushNow()
+}
+
+def letsTalk() {
+	if(logEnable) log.debug "In letsTalk..."
+	if(state.enablerSwitch2 == "off") {
+		checkTime()
+		checkVol()
+		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+		pauseExecution(atomicState.randomPause)
+		if(logEnable) log.debug "In letsTalk - continuing"
+		if(state.timeBetween == true) {
+			messageHandler()
+			if(logEnable) log.debug "Speaker(s) in use: ${speakers}"
+  			if (speechMode == "Music Player"){ 
+    			if(logEnable) log.debug "Music Player"
+				if(echoSpeaks) {
+					speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+					if(logEnable) log.debug "In letsTalk - MP Echo Speaks - Wow, that's it!"
+				}
+				if(!echoSpeaks) {
+    				if(volSpeech) speakers.setLevel(state.volume)
+    				speakers.playTextAndRestore(state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Music Player - Wow, that's it!"
+				}
+  			}   
+			if(speechMode == "Speech Synth"){ 
+				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+				atomicState.speechDuration2 = speechDuration * 1000
+				if(logEnable) log.debug "Speech Synth - speakers: ${speakers}, vol: ${state.volume}, msg: ${state.theMsg}"
+				if(volSpeech) speakers.setVolume(state.volume)
+				speakers.speak(state.theMsg)
+				pauseExecution(atomicState.speechDuration2)
+				if(volRestore) speakers.setVolume(volRestore)
+				if(logEnable) log.debug "In letsTalk - Speech Synth - Wow, that's it!"
+			}
+		} else {
+			if(logEnable) log.debug "In letsTalk - It's quiet time"
+		}
+	} else {
+		if(logEnable) log.info "${app.label} is disabled."
+	}
+}
+
+def checkTime() {
+	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
+	if((fromTime != null) && (toTime != null)) {
+		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+		if(state.betweenTime) {
+			state.timeBetween = true
+		} else {
+			state.timeBetween = false
+		}
+  	} else {  
+		state.timeBetween = true
+  	}
+	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+}
+
+def checkVol() {
+	if(logEnable) log.debug "In checkVol..."
+	if(QfromTime) {
+		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+    	if(state.quietTime) {
+    		state.volume = volQuiet
+		} else {
+			state.volume = volSpeech
+		}
+	} else {
+		state.volume = volSpeech
+	}
+	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
+}
+
+def messageHandler() {
+	if(logEnable) log.debug "In messageHandler..."
+	
+	if(oRandomPre) {
+		def values = "${preMsg}".split(";")
+		vSize = values.size()
+		count = vSize.toInteger()
+    	def randomKey = new Random().nextInt(count)
+		state.preMsgR = values[randomKey]
+		if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Pre Msg: ${state.preMsgR}"
+	} else {
+		state.preMsgR = "${preMsg}"
+		if(logEnable) log.debug "In messageHandler - Static - Pre Msg: ${state.preMsgR}"
+	}
+	
+	if(oRandomPost) {
+		def values = "${postMsg}".split(";")
+		vSize = values.size()
+		count = vSize.toInteger()
+    	def randomKey = new Random().nextInt(count)
+		state.postMsgR = values[randomKey]
+		if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Post Msg: ${state.postMsgR}"
+	} else {
+		state.postMsgR = "${postMsg}"
+		if(logEnable) log.debug "In messageHandler - Static - Post Msg: ${state.postMsgR}"
+	}
+	
+	state.theMsg = "${state.preMsgR}, ${msgDevice},"
+	if(state.prioritySwitch == "true") state.theMsg += " ${state.wrongStateSwitchMap}"
+	if(state.priorityContact == "true") state.theMsg += " ${state.wrongStateContactMap}"
+	if(state.priorityLock == "true") state.theMsg += " ${state.wrongStateLockMap}"
+	state.theMsg += ". ${state.postMsgR}"
+	if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+}
+
 def appButtonHandler(btn){  // *****************************
 	// section(){input "resetBtn", "button", title: "Click here to reset maps"}
     if(reportMode == "Regular") runIn(1, maintHandler)
 	if(reportMode == "Priority") runIn(1, priorityHandler)
 }  
+
+def pushNow(){
+	if(logEnable) log.debug "In pushNow..."
+	if(state.prioritySwitch == "true") {
+		state.wrongSwitchPushMap2 = "PRIORITY SWITCHES IN WRONG STATE \n"
+		state.wrongSwitchPushMap2 += "${state.wrongSwitchPushMap} \n"
+		theMsg = "${state.wrongSwitchPushMap2} \n"
+	}
+	if(state.priorityContact == "true") {
+		state.wrongContactPushMap2 = "PRIORITY CONTACTS IN WRONG STATE \n"
+		state.wrongContactPushMap2 += "${state.wrongContactPushMap} \n"
+		theMsg += "${state.wrongContactPushMap2} \n"
+	}
+	if(state.priorityLock == "true") {
+		state.wrongLockPushMap2 = "PRIORITY LOCKS IN WRONG STATE \n"
+		state.wrongLockPushMap2 += "${state.wrongLockPushMap} \n"
+		theMsg += "${state.wrongLockPushMap2} \n"
+	}
+	pushMessage = "${theMsg}"
+    if(theMsg) sendPushMessage.deviceNotification(pushMessage)
+}
 
 // ********** Normal Stuff **********
 
@@ -969,6 +1191,7 @@ def setDefaults(){
     pauseAppHandler()
 	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
+	if(priorityCheckSwitch == null){priorityCheckSwitch = "off"}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(logEnable) log.debug "In setDefaults - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
 }
