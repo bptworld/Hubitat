@@ -1141,6 +1141,7 @@ def appButtonHandler(btn){  // *****************************
 
 def pushNow(){
 	if(logEnable) log.debug "In pushNow..."
+	theMsg = ""
 	if(state.prioritySwitch == "true") {
 		state.wrongSwitchPushMap2 = "PRIORITY SWITCHES IN WRONG STATE \n"
 		state.wrongSwitchPushMap2 += "${state.wrongSwitchPushMap} \n"
