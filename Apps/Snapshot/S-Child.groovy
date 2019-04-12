@@ -176,7 +176,7 @@ def pageConfig() {
 				}
 			}	
         	section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
-          		input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
+          		input "speechMode", "enum", required: false, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
               		input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
 					paragraph "<hr>"
