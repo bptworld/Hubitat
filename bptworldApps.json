@@ -226,13 +226,13 @@
   
   "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.2",
-  "WelcomeHomeChildVersion": "v2.0.5",
+  "WelcomeHomeChildVersion": "v2.0.6",
   "WelcomeHomeDriverVersion": "v1.0.0",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDiscussion": "https://community.hubitat.com/t/release-welcome-home/6445",
-  "WelcomeHomeUpdateNote": "V2.0.5 - 04/06/19 - Added importUrl. Volume Control overhaul. Code cleanup.",
+  "WelcomeHomeUpdateNote": "V2.0.6 - 04/13/19 - Made a ton of debug and info enhancements to try and make it easier to see what's going on!",
   
   "WhatDidISayType": "Driver",
   "WhatDidISayDriver1Version": "v1.1.2",
