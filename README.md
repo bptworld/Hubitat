@@ -40,7 +40,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-light
 **Magic Cube** - Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-magic-cube/11987" target="_blank">Go Here</a>
 <br><br>
-**Marine Weather**(Driver) - This driver formats the Marine Weather - Storm Glass data to be used with Hubitat.<br>
+**Marine Weather** (Driver) - This driver formats the Marine Weather - Storm Glass data to be used with Hubitat.<br>
 Hubitat Forum Discussion: <a href="" target="_blank">Go Here</a>
 <br><br>
 **Motion Controlled Scene Lighting** - Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.<br>
@@ -67,7 +67,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-p
 **Welcome Home** - Designed to give a personal welcome announcement after you have entered the home.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-welcome-home/6445" target="_blank">Go Here</a>
 <br><br>
-**What Did I Say**(Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
+**What Did I Say** (Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
 <br><br>
 Bryan<br>
