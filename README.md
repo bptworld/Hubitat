@@ -41,7 +41,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-light
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-magic-cube/11987" target="_blank">Go Here</a>
 <br><br>
 **Marine Weather** (Driver) - This driver formats the Marine Weather - Storm Glass data to be used with Hubitat.<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Go Here</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-marine-weather/13826" target="_blank">Go Here</a>
 <br><br>
 **Motion Controlled Scene Lighting** - Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419" target="_blank">Go Here</a>
