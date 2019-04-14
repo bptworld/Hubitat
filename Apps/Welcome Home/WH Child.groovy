@@ -852,7 +852,7 @@ private getGreeting(){						// Heavily modified from @Cobra Code
 			if(logEnable) log.debug "In getGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
 		} else {
 			state.greeting = "${greeting2}"
-			Lif(logEnable) log.debug "In getGreeting - Static - greeting: ${state.greeting}"
+			if(logEnable) log.debug "In getGreeting - Static - greeting: ${state.greeting}"
 		}
 	}
 	else if(timeampm == 'pm' && timeHH >= 6){
