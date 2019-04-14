@@ -931,7 +931,7 @@ def enablerSwitchHandler(evt){
 	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
 }
 
-def pauseAppHandler(){
+def pauseAppHandler(){							// Modified Code from @Cobra
 	if(logEnable) log.debug "In pauseAppHandler..."
     if(pauseApp == true){
         if(app.label.contains('Paused')){
@@ -960,12 +960,12 @@ def setDefaults(){
 	if(state.reportCount == null){state.reportCount = 0}
 }
 
-def getImage(type) {							// Modified from @Stephack Code
+def getImage(type) {							// Modified Code from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){					// Modified from @Stephack Code
+def getFormat(type, myText=""){					// Modified Code from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
