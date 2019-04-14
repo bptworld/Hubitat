@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.3.0 - 04/14/19 - Adjusted reports, added importUrl and some code cleanup.
  *  V1.2.9 - 03/31/19 - Fix bug in push for Device Status. Status report now available for dashboard tiles.
  *  V1.2.8 - 03/30/19 - Fix push notifications going out even if there was nothing to report.
  *  V1.2.7 - 03/18/19 - BIG changes due to tile limit size.
@@ -74,7 +75,7 @@
 
 
 def setVersion() {
-	state.version = "v1.2.9"
+	state.version = "v1.3.0"
 }
 
 definition(
@@ -87,6 +88,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
 )
 
 preferences {
@@ -144,7 +146,7 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
 				input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-				input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+				input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     		}
 		}
 // **** Activity ****		
@@ -208,7 +210,7 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
 				input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-				input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+				input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 			}
 		}
 // **** Device Status ****
@@ -257,7 +259,7 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
 				input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-				input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+				input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 			}
 		}
 		display2()
@@ -330,9 +332,8 @@ def updated() {
 	if(state.mySensors) state.remove('mySensors')
 	if(state.myType) state.remove('myType')
 	
-    LOGDEBUG("Updated with settings: ${settings}")
+   	if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
-	logCheck()
 	initialize()
 }
 
@@ -358,15 +359,15 @@ def watchdogMapHandler(evt) {
 			def watchdogActivityMap3 = "${state.timeSinceMap3S}"
 			def watchdogActivityMap4 = "${state.timeSinceMap4S}"
 			def watchdogActivityMap5 = "${state.timeSinceMap5S}"
-			LOGDEBUG("In watchdogMapHandler...Sending new Device Watchdog data to Tiles")
+			if(logEnable) log.debug "In watchdogMapHandler - Sending new Device Watchdog data to Tiles"
     		watchdogTileDevice.sendWatchdogActivityMap1(watchdogActivityMap1)
 			watchdogTileDevice.sendWatchdogActivityMap2(watchdogActivityMap2)
 			watchdogTileDevice.sendWatchdogActivityMap3(watchdogActivityMap3)
 			watchdogTileDevice.sendWatchdogActivityMap4(watchdogActivityMap4)
 			watchdogTileDevice.sendWatchdogActivityMap5(watchdogActivityMap5)
 		} catch (e) {
-			log.warn "${app.label}...Can't send data to Tile Device."
-			LOGDEBUG("In watchdogMapHandler...${e}")
+			log.warn "${app.label} - Can't send data to Tile Device."
+			if(logEnable) log.debug "In watchdogMapHandler - ${e}"
 		}
 	}
 	if(triggerMode == "Battery_Level") {
@@ -376,15 +377,15 @@ def watchdogMapHandler(evt) {
 			def watchdogBatteryMap3 = "${state.batteryMap3S}"
 			def watchdogBatteryMap4 = "${state.batteryMap4S}"
 			def watchdogBatteryMap5 = "${state.batteryMap5S}"
-			LOGDEBUG("In watchdogMapHandler...Sending new Battery Watchdog data to Tiles")
+			if(logEnable) log.debug "In watchdogMapHandler - Sending new Battery Watchdog data to Tiles"
     		watchdogTileDevice.sendWatchdogBatteryMap1(watchdogBatteryMap1)
 			watchdogTileDevice.sendWatchdogBatteryMap2(watchdogBatteryMap2)
 			watchdogTileDevice.sendWatchdogBatteryMap3(watchdogBatteryMap3)
 			watchdogTileDevice.sendWatchdogBatteryMap4(watchdogBatteryMap4)
 			watchdogTileDevice.sendWatchdogBatteryMap5(watchdogBatteryMap5)
 		} catch (e) {
-			log.warn "${app.label}...Can't send data to Tile Device."
-			LOGDEBUG("In watchdogMapHandler...${e}")
+			log.warn "${app.label} - Can't send data to Tile Device."
+			if(logEnable) log.debug "In watchdogMapHandler - ${e}"
 		}
 	}
 	if(triggerMode == "Status") {
@@ -394,15 +395,15 @@ def watchdogMapHandler(evt) {
 			def watchdogStatusMap3 = "${state.statusMap3S}"
 			def watchdogStatusMap4 = "${state.statusMap4S}"
 			def watchdogStatusMap5 = "${state.statusMap5S}"
-			LOGDEBUG("In watchdogStatusMap...Sending new Status Watchdog data to Tiles")
+			if(logEnable) log.debug "In watchdogStatusMap - Sending new Status Watchdog data to Tiles"
     		watchdogTileDevice.sendWatchdogStatusMap1(watchdogStatusMap1)
 			watchdogTileDevice.sendWatchdogStatusMap2(watchdogStatusMap2)
 			watchdogTileDevice.sendWatchdogStatusMap3(watchdogStatusMap3)
 			watchdogTileDevice.sendWatchdogStatusMap4(watchdogStatusMap4)
 			watchdogTileDevice.sendWatchdogStatusMap5(watchdogStatusMap5)
 		} catch (e) {
-			log.warn "${app.label}...Can't send data to Tile Device."
-			LOGDEBUG("In watchdogStatusMap...${e}")
+			log.warn "${app.label} - Can't send data to Tile Device."
+			if(logEnable) log.debug "In watchdogStatusMap - ${e}"
 		}
 	}
 }
@@ -410,9 +411,9 @@ def watchdogMapHandler(evt) {
 def activityHandler(evt) {
 	clearMaps()
 	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-   		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-			log.info "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
+		if(pauseApp == true){log.warn "${app.label} - App paused"}
+    		if(pauseApp == false){
+			if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
 			if(actuatorDevice) {
 				if(triggerMode == "Activity") mySensorHandler("Actuator", actuatorDevice)
 				if(triggerMode == "Battery_Level") myBatteryHandler("Actuator", actuatorDevice)
@@ -523,25 +524,27 @@ def activityHandler(evt) {
 				if(triggerMode == "Battery_Level") myBatteryHandler("Water Sensor", waterSensorDevice)
 				if(triggerMode == "Status") myStatusHandler("Water Sensor", waterSensorDevice)
 			}
-			log.info "     * * * * * * * * End ${app.label} * * * * * * * *     "
+			if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
 			if(watchdogTileDevice) watchdogMapHandler()
 			if(isDataActivityDevice) isThereData()
 			if(isDataBatteryDevice) isThereData()
 			if(isDataStatusDevice) isThereData()
 			if(sendPushMessage) pushNow()
 		}
+	} else {
+		if(logEnable) log.debug "${app.label} is disabled."
 	}
 }	
 
 def myBatteryHandler(myType, mySensors) {
-	log.info "     - - - - - Start (B) ${myType} - - - - -     "
-	LOGDEBUG("In myBatteryHandler...")
+	if(logEnable) log.debug "     - - - - - Start (B) ${myType} - - - - -     "
+	if(logEnable) log.debug "In myBatteryHandler..."
 	
 	mySensors.each { device ->
 		def currentValue = device.currentValue("battery")
 		if(currentValue == null) currentValue = -999  //RayzurMod
 		state.batteryMap.put(device, currentValue)
-		LOGDEBUG("Working on... ${device} - ${currentValue}")
+		if(logEnable) log.debug "Working on: ${device} - ${currentValue}"
 	}
 	
 	state.theBatteryMap = state.batteryMap.sort { a, b -> a.value <=> b.value }
@@ -554,7 +557,7 @@ def myBatteryHandler(myType, mySensors) {
 	state.batteryMap6S = ""
 	state.batteryMapPhoneS = ""
 	
-	LOGDEBUG("In myBatteryHandler...${state.theBatteryMap}")				 
+	if(logEnable) log.debug "In myBatteryHandler - ${state.theBatteryMap}"			 
 	state.batteryMap1S = "<table width='100%'>"
 	state.batteryMap2S = "<table width='100%'>"
 	state.batteryMap3S = "<table width='100%'>"
@@ -563,39 +566,42 @@ def myBatteryHandler(myType, mySensors) {
 	if(state.theBatteryMap) {
 		state.count = 0
 		state.theBatteryMap.each { it -> 
-			LOGDEBUG("In buildBatteryMapHandler - Building Table with ${it.key}")
+			if(logEnable) log.debug "In buildBatteryMapHandler - Building Table with ${it.key}"
 			def currentValue = it.value
-			LOGDEBUG("In myBatteryHandler...${device} - ${currentValue}")
+			if(logEnable) log.debug "In myBatteryHandler - ${device} - ${currentValue}"
 			if(currentValue < batteryThreshold && currentValue > -999) { //RayzurMod
 				if(badORgood == false) {
 					state.count = state.count + 1
-					log.info "mySensors: ${it.key} battery is ${it.value} less than ${batteryThreshold} threshold"
-					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
-					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${it.key} battery is ${it.value}</td></tr>"
+					if(logEnable) log.debug "mySensors: ${it.key} battery is ${it.value} less than ${batteryThreshold} threshold"
+					if(state.count == 1) state.batteryMap1S += "<tr><td width='90%'><b>Battery Devices</b></td><td width='10%'><b>Value</b></td></tr>"
+					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
 					state.batteryMapPhoneS += "${it.key} - ${it.value} \n"
 				}
 			} else {
 				if(badORgood == true && currentValue > -999) { //RayzurMod
 					state.count = state.count + 1
-					log.info "${it.key} battery is ${currentValue}, over threshold"
-					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
-					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td>${it.key} battery is ${it.value}, over threshold</td></tr>"
+					if(logEnable) log.debug "${it.key} battery is ${currentValue}, over threshold"
+					if(state.count == 1) state.batteryMap1S += "<tr><td width='90%'><b>Battery Devices - over threshold</b></td><td width='10%'><b>Value</b></td></tr>"
+					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
+					if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
 					state.batteryMapPhoneS += "${it.key} - ${it.value} \n"
 				} else {
 					if (currentValue == -999) { //RayzurMod
 						state.count = state.count + 1
-						log.info "${myType} - ${it.key} battery hasn't reported in." //RayzurMod
-						if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>" //RayzurMod
-						if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
-						if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
-						if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
-						if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td><i>${it.key} battery isn't reporting</i></td></tr>"
+						if(logEnable) log.debug "${myType} - ${it.key} battery hasn't reported in." //RayzurMod
+						if(state.count == 1) state.batteryMap1S += "<tr><td width='90%'><b>Battery Devices - over threshold</b></td><td width='10%'><b>Value</b></td></tr>"
+						if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td colspan='2'><i>${it.key} hasn't reported in</i></td></tr>" //RayzurMod
+						if((state.count >= 6) && (state.count <= 10)) state.batteryMap2S += "<tr><td colspan='2'><i>${it.key} hasn't reported in</i></td></tr>"
+						if((state.count >= 11) && (state.count <= 15)) state.batteryMap3S += "<tr><td colspan='2'><i>${it.key} hasn't reported in</i></td></tr>"
+						if((state.count >= 16) && (state.count <= 20)) state.batteryMap4S += "<tr><td colspan='2'><i>${it.key} hasn't reported in</i></td></tr>"
+						if((state.count >= 21) && (state.count <= 25)) state.batteryMap5S += "<tr><td colspan='2'><i>${it.key} hasn't reported in</i></td></tr>"
 						state.batteryMapPhoneS += "${it.key} - isn't reporting \n" //RayzurMod
 					}
 				}
@@ -610,18 +616,18 @@ def myBatteryHandler(myType, mySensors) {
 	state.batteryMap3S += "</table>"
 	state.batteryMap4S += "</table>"
 	state.batteryMap5S += "</table>"
-	state.batteryMap6S += "<table width='100%'><tr><td>Report generated: ${rightNow}</td></tr></table>"
+	state.batteryMap6S += "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</td></tr></table>"
 	state.batteryMapPhoneS += "Report generated: ${rightNow} \n"
-	log.info "     - - - - - End (B) ${myType} - - - - -     "
+	if(logEnable) log.debug "     - - - - - End (B) ${myType} - - - - -     "
 }
 
 def mySensorHandler(myType, mySensors) {
-	log.info "     - - - - - Start (S) ${myType} - - - - -     "
-	LOGDEBUG("In mySensorHandler...${mySensors}")
+	lif(logEnable) log.debug "     - - - - - Start (S) ${myType} - - - - -     "
+	if(logEnable) log.debug "In mySensorHandler - ${mySensors}"
 	mySensors.each { device ->
 		def lastActivity = device.getLastActivity()
 		state.timeSinceMap.put(device, lastActivity)
-		LOGDEBUG("Working on... ${device} - ${lastActivity}")
+		if(logEnable) log.debug "Working on - ${device} - ${lastActivity}"
 	}
 	state.timeSinceMap1S = ""
 	state.timeSinceMap2S = ""
@@ -630,7 +636,7 @@ def mySensorHandler(myType, mySensors) {
 	state.timeSinceMap5S = ""
 	state.timeSinceMapPhoneS = ""
 	state.theTimeSinceMap = state.timeSinceMap.sort { a, b -> b.value <=> a.value }
-	LOGDEBUG("In mySensorHandler...${state.theTimeSinceMap}")				 
+	if(logEnable) log.debug "In mySensorHandler - $state.theTimeSinceMap}"			 
 	state.timeSinceMap1S = "<table width='100%'>"
 	state.timeSinceMap2S = "<table width='100%'>"
 	state.timeSinceMap3S = "<table width='100%'>"
@@ -639,7 +645,7 @@ def mySensorHandler(myType, mySensors) {
 	state.timeSinceMap6S = "<table width='100%'>"
 	state.count = 0
 	state.theTimeSinceMap.each { device ->
-		log.info "Working on... ${device.key} ${state.count}"
+		if(logEnable) log.debug "Working on: ${device.key} ${state.count}"
 		def theName = device.key
 		def lastActivity = device.value
     	long timeDiff
@@ -654,17 +660,18 @@ def mySensorHandler(myType, mySensors) {
 		hourDiff = timeDiff / 60
     	int hour = Math.floor(timeDiff / 60)
 		int min = timeDiff % 60
-		LOGDEBUG("mySensors: ${theName} hour: ${hour} min: ${min}")
-		LOGDEBUG("mySensors: ${theName} hourDiff: ${hourDiff} vs timeAllowed: ${timeAllowed}")
+		if(logEnable) log.debug "mySensors: ${theName} hour: ${hour} min: ${min}"
+		if(logEnable) log.debug "mySensors: ${theName} hourDiff: ${hourDiff} vs timeAllowed: ${timeAllowed}"
   		if(hourDiff > timeAllowed) {
 			if(badORgood == false) {
 				state.count = state.count + 1
-				log.info "${device} hasn't checked in since ${hour}h ${min}m ago."
-				if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
+				if(logEnable) log.debug "${device} hasn't checked in since ${hour}h ${min}m ago."
+				if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
+				if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td width='80%'>${theName}</td><td width='20%'>in ${hour}h ${min}m</td></tr>"
+				if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
 				state.timeSinceMapPhoneS += "${theName} - ${hour}h ${min}m \n"
 				state.reportCount = state.reportCount + 1
 				if(pushOnline) {
@@ -674,12 +681,13 @@ def mySensorHandler(myType, mySensors) {
 		} else {
 			if(badORgood == true) {
 				state.count = state.count + 1
-				log.info "${myType} - mySensors: ${theName} last checked in ${hour}h ${min}m ago.<br>"
-				if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
-				if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td>${theName} checked in ${hour}h ${min}m ago</td></tr>"
+				if(logEnable) log.debug "${myType} - mySensors: ${theName} last checked in ${hour}h ${min}m ago.<br>"
+				if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
+				if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+				if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
 				state.timeSinceMapPhoneS += "${theName} - ${hour}h ${min}m \n"
 			}
 		}
@@ -690,7 +698,7 @@ def mySensorHandler(myType, mySensors) {
 	state.timeSinceMap3S += "</table>"
 	state.timeSinceMap4S += "</table>"
 	state.timeSinceMap5S += "</table>"
-	state.timeSinceMap6S += "<table><tr><td>Report generated: ${rightNow}</td></tr></table>"
+	state.timeSinceMap6S += "<table><tr><td colspan='2'>Report generated: ${rightNow}</td></tr></table>"
 	state.timeSinceMapPhoneS += "Report generated: ${rightNow} \n"
 	
 	tsMap1Size = state.timeSinceMap1S.length()
@@ -700,17 +708,17 @@ def mySensorHandler(myType, mySensors) {
 	tsMap5Size = state.timeSinceMap5S.length()
 	
 	if(tsMap1Size <= 1000) {
-		LOGDEBUG("${app.label} - Activity 1 - Characters: ${tsMap1Size}")
+		if(logEnable) log.debug "${app.label} - Activity 1 - Characters: ${tsMap1Size}"
 	} else {
 		log.warn "${app.label} - Activity 1 - Too many characters to display on Dashboard"
 		state.timeSinceMap1S = "Too many characters to display on Dashboard"
 	}
-	log.info "     - - - - - End (S) ${myType} - - - - -     "
+	if(logEnable) log.debug "     - - - - - End (S) ${myType} - - - - -     "
 }
 
 def myStatusHandler(myType, mySensors) {
-	log.info "     - - - - - Start (S) ${myType} - - - - -     "
-	LOGDEBUG("In myStatusHandler...")
+	if(logEnable) log.debug "     - - - - - Start (S) ${myType} - - - - -     "
+	if(logEnable) log.debug "In myStatusHandler..."
 	state.statusMap = ""
 	state.statusDash = ""
 	state.statusMapPhone = ""
@@ -730,7 +738,7 @@ def myStatusHandler(myType, mySensors) {
 	state.count = 0
 	state.sortedMap.each { device ->
 		state.count = state.count + 1
-		log.info "Working on... ${device}"
+		if(logEnable) log.debug "Working on: ${device}"
 		if(myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
 		if(myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
 		if(myType == "Battery") { deviceStatus = device.currentValue("battery") }
@@ -752,12 +760,12 @@ def myStatusHandler(myType, mySensors) {
 		if(myType == "Voltage Measurement") { deviceStatus = device.currentValue("voltageMeasurement") }
 		if(myType == "Water Sensor") { deviceStatus = device.currentValue("waterSensor") }
 		
-		LOGDEBUG("In myStatusHandler - Working On: ${device}, myType: ${myType}, deviceStatus: ${deviceStatus}")
+		if(logEnable) log.debug "In myStatusHandler - Working On: ${device}, myType: ${myType}, deviceStatus: ${deviceStatus}"
 		def lastActivity = device.getLastActivity()
 		def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
-		LOGDEBUG("In myStatusHandler - ${device} - ${newDate}")
+		if(logEnable) log.debug "In myStatusHandler - ${device} - ${newDate}"
 		
-		log.info "${myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
+		if(logEnable) log.debug "${myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
 		if((state.count >= 1) && (state.count <= 5)) state.statusMap1S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
 		if((state.count >= 6) && (state.count <= 10)) state.statusMap2S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
 		if((state.count >= 11) && (state.count <= 15)) state.statusMap3S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
@@ -771,11 +779,11 @@ def myStatusHandler(myType, mySensors) {
 	state.statusMap3S += "</table>"
 	state.statusMap4S += "</table>"
 	state.statusMap5S += "</table>"
-	log.info "     - - - - - End (S) ${myType} - - - - -     "
+	if(logEnable) log.debug "     - - - - - End (S) ${myType} - - - - -     "
 }
 
 def setupNewStuff() {
-	LOGDEBUG("In setupNewStuff...")
+	if(logEnable) log.debug "In setupNewStuff..."
 	if(state.timeSinceMap == null) clearMaps()
 	if(state.timeSinceMapPhone == null) clearMaps()
 	if(state.batteryMap == null) clearMaps()
@@ -825,9 +833,9 @@ def clearMaps() {
 }
 
 def isThereData(){
-	LOGDEBUG("In isThereData...")
+	if(logEnable) log.debug "In isThereData..."
 	if(triggerMode == "Activity") {
-		LOGDEBUG("In isThereData...Activity")
+		if(logEnable) log.debug "In isThereData - Activity"
 		if(state.timeSinceMapPhoneS) {
 			isDataActivityDevice.on()
 		} else {
@@ -835,7 +843,7 @@ def isThereData(){
 		}
 	}
 	if(triggerMode == "Battery_Level") {
-		LOGDEBUG("In isThereData...Battery")
+		if(logEnable) log.debug "In isThereData - Battery"
 		if(state.batteryMapPhoneS) {
 			isDataBatteryDevice.on()
 		} else {
@@ -843,7 +851,7 @@ def isThereData(){
 		}
 	}
 	if(triggerMode == "Status") {
-		LOGDEBUG("In isThereData...Status")
+		if(logEnable) log.debug "In isThereData - Status"
 		if(state.statusMapPhoneS) {
 			isDataStatusDevice.on()
 		} else {
@@ -853,20 +861,20 @@ def isThereData(){
 }
 
 def pushNow(){
-	LOGDEBUG("In pushNow...triggerMode: ${triggerMode}")
+	if(logEnable) log.debug "In pushNow - triggerMode: ${triggerMode}"
 	if(triggerMode == "Activity") {
 		if(state.count >= 1) {
 			timeSincePhone = "${app.label} \n"
 			timeSincePhone += "${state.timeSinceMapPhoneS}"
-			LOGDEBUG("In pushNow...Sending message: ${timeSincePhone}")
+			if(logEnable) log.debug "In pushNow - Sending message: ${timeSincePhone}"
         	sendPushMessage.deviceNotification(timeSincePhone)
 		} else {
 			if(pushAll == true) {
-				log.info "${app.label} - No push needed...Nothing to report."
+				if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
 			} else {
 				emptyMapPhone = "${app.label} \n"
 				emptyMapPhone += "Nothing to report."
-				LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
+				if(logEnable) log.debug "In pushNow - Sending message: ${emptyMapPhone}"
         		sendPushMessage.deviceNotification(emptyMapPhone)
 			}
 		}
@@ -875,15 +883,15 @@ def pushNow(){
 		if(state.count >= 1) {
 			batteryPhone = "${app.label} \n"
 			batteryPhone += "${state.batteryMapPhoneS}"
-			LOGDEBUG("In pushNow...Sending message: ${batteryPhone}")
+			if(logEnable) log.debug "In pushNow - Sending message: ${batteryPhone}"
 			sendPushMessage.deviceNotification(batteryPhone)
 		} else {
 			if(pushAll == true) {
-				log.info "${app.label} - No push needed...Nothing to report."
+				if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
 			} else {
 				emptyBatteryPhone = "${app.label} \n"
 				emptyBatteryPhone += "Nothing to report."
-				LOGDEBUG("In pushNow...Sending message: ${emptyBatteryPhone}")
+				if(logEnable) log.debug "In pushNow - Sending message: ${emptyBatteryPhone}"
         		sendPushMessage.deviceNotification(emptyBatteryPhone)
 			}
 		}
@@ -892,15 +900,15 @@ def pushNow(){
 		if(state.count >= 1) {
 			statusPhone = "${app.label} \n"
 			statusPhone += "${state.statusMapPhone}"
-			LOGDEBUG("In pushNow...Sending message: ${statusPhone}")
+			if(logEnable) log.debug "In pushNow - Sending message: ${statusPhone}"
 			sendPushMessage.deviceNotification(statusPhone)
 		} else {
 			if(pushAll == true) {
-				log.info "${app.label} - No push needed...Nothing to report."
+				if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
 			} else {
 				emptyStatusPhone = "${app.label} \n"
 				emptyStatusPhone += "Nothing to report."
-				LOGDEBUG("In pushNow...Sending message: ${emptyStatusPhone}")
+				if(logEnable) log.debug "In pushNow - Sending message: ${emptyStatusPhone}"
         		sendPushMessage.deviceNotification(emptyStatusPhone)
 			}
 		}
@@ -909,63 +917,47 @@ def pushNow(){
 
 def eventCheck(evt) {						// Added by @gabriele
 	def device = evt.getDevice()
-	LOGDEBUG("In eventCheck - ${device} is back online, sending Pushover message")
+	if(logEnable) log.debug "In eventCheck - ${device} is back online, sending Pushover message"
 	sendPushMessage.deviceNotification("${device} is back online!")
 	unsubscribe(device)
 }
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){								// Modified from @Cobra Code
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
+def enablerSwitchHandler(evt){
+	state.enablerSwitch2 = evt.value
+	if(state.enablerSwitch2 == null) state.enablerSwitch2 = "off"
+	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}"
+	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
+}
+
+def pauseAppHandler(){
+	if(logEnable) log.debug "In pauseAppHandler..."
+    if(pauseApp == true){
+        if(app.label.contains('Paused')){
+			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
+		} else {
+			app.updateLabel(app.label + ("<font color='red'> (Paused) </font>"))
+			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
+       	}
+    }
+    if(pauseApp == false){
+     	if(app.label.contains('Paused')){
+			app.updateLabel(app.label.minus("<font color='red'> (Paused) </font>"))
+			if(logEnable) log.debug "App no longer Paused - state.pauseApp: ${state.pauseApp}"                        
         }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
+	}      
 }
 
 def setDefaults(){
 	setupNewStuff()
     pauseOrNot()
-    if(pause1 == null){pause1 = false}
+    if(pauseApp == null){pauseApp = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(pushAll == null){pushAll = false}
 	if(state.reportCount == null){state.reportCount = 0}
-}
-
-def logCheck(){									// Modified from @Cobra Code
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){								// Modified from @Cobra Code
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
 }
 
 def getImage(type) {							// Modified from @Stephack Code
@@ -982,7 +974,7 @@ def getFormat(type, myText=""){					// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
 	}
 }
 
