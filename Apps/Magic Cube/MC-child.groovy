@@ -852,7 +852,7 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	initialize()
 }
@@ -865,20 +865,20 @@ def initialize() {
 
 def faceHandler(msg) {
 	state.faceValue = msg.value.toString()
-	LOGDEBUG("In faceHandler - Face: ${state.faceValue}")
+	if(logEnable) log.debug "In faceHandler - Face: ${state.faceValue}"
 	waitHere()
 }
 
 def pushedHandler(msg) {
 	state.pushedValue = msg.value.toString()
-	LOGDEBUG("In pushedHandler - Pushed: ${state.pushedValue}")
+	if(logEnable) log.debug "In pushedHandler - Pushed: ${state.pushedValue}"
 	waitHere()
 }
 
 def angleHandler(msg) {
 	state.OLDangleValue = state.angleValue
 	state.angleValue = msg.value.toString()
-	LOGDEBUG("In angleHandler - Angle: ${state.angleValue}")
+	if(logEnable) log.debug "In angleHandler - Angle: ${state.angleValue}"
 	waitHere()
 }
 
@@ -889,7 +889,7 @@ def waitHere() {
 }
 
 def doSomethingHandler() {
-	LOGDEBUG("In doSomethingHandler - Face: ${state.faceValue}, Pushed: ${state.pushedValue}, Angle: ${state.angleValue}")
+	if(logEnable) log.debug "In doSomethingHandler - Face: ${state.faceValue}, Pushed: ${state.pushedValue}, Angle: ${state.angleValue}"
 	if(state.pushedValue == "1" || state.pushedValue == "7"  || state.pushedValue == "13" || state.pushedValue == "19" || state.pushedValue == "25" || state.pushedValue == "31") { state.face = "f0" } 
 	if(state.pushedValue == "2" || state.pushedValue == "8"  || state.pushedValue == "14" || state.pushedValue == "20" || state.pushedValue == "26" || state.pushedValue == "32") { state.face = "f1" }
 	if(state.pushedValue == "3" || state.pushedValue == "9"  || state.pushedValue == "15" || state.pushedValue == "21" || state.pushedValue == "27" || state.pushedValue == "33") { state.face = "f2" }
@@ -908,7 +908,7 @@ def doSomethingHandler() {
 }
 
 def magicHappensHandler() {
-	LOGDEBUG("In magicHappensHandler...")
+	if(logEnable) log.debug "In magicHappensHandler..."
 	log.info("Cube: ${xCube}, Button Pushed: ${state.pushedValue} (Face: ${state.face} - ${state.action} - Angle: ${state.angleValue})") 
  		if(pauseApp == false){
 			if((state.pushedValue == "1") && (f0FlipToOn)) { switchesOn = f0FlipToOn }
@@ -1139,14 +1139,14 @@ def magicHappensHandler() {
 
 def switchesOnHandler() {
 	switchesOn.each { it ->
-		LOGDEBUG("In switchOnHandler - Turning on ${it}")
+		if(logEnable) log.debug "In switchOnHandler - Turning on ${it}"
 		it.on()
 	}
 }
 
 def switchesOffHandler() {
 	switchesOff.each { it ->
-		LOGDEBUG("In switchOffHandler - Turning off ${it}")
+		if(logEnable) log.debug "In switchOffHandler - Turning off ${it}"
 		it.off()
 	}
 }
@@ -1154,14 +1154,14 @@ def switchesOffHandler() {
 def switchesToggleHandler() {
 	switchesToggle.each { it ->
 		dStatus = it.currentValue("switch")
-		LOGDEBUG("In switchToggleHandler - Toggle ${it}, current status: ${dStatus}")
+		if(logEnable) log.debug "In switchToggleHandler - Toggle ${it}, current status: ${dStatus}"
 		if(dStatus == "on") it.off()
 		if(dStatus == "off") it.on()
 	}
 }
 
 def dimmerOnHandler() {
-	LOGDEBUG("In dimmerOnHandler...")
+	if(logEnable) log.debug "In dimmerOnHandler..."
 	state.fromWhere = "dimmerOn"
 	state.color = "${colorLC}"
 	state.onLevel = levelLC
@@ -1169,7 +1169,7 @@ def dimmerOnHandler() {
 }
 
 def setLevelandColorHandler() {
-	LOGDEBUG("In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}")
+	if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}"
     def hueColor = 0
     def saturation = 100
 	int onLevel = state.onLevel
@@ -1213,17 +1213,17 @@ def setLevelandColorHandler() {
             break;
     }
 	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
-    LOGDEBUG("In setLevelandColorHandler - value: $value")
+    if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
 	if(state.fromWhere == "dimmerOn") {
     	setOnLC.each {
         	if (it.hasCommand('setColor')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(onLevel as Integer ?: 100)
         	} else {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
         	}
     	}
@@ -1231,13 +1231,13 @@ def setLevelandColorHandler() {
 	if(state.fromWhere == "slowOn") {
     	slowDimmerUp.each {
         	if (it.hasCommand('setColor')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(onLevel as Integer ?: 100)
         	} else {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
         	}
     	}
@@ -1245,13 +1245,13 @@ def setLevelandColorHandler() {
 	if(state.fromWhere == "slowOff") {
     	slowDimmerDn.each {
         	if (it.hasCommand('setColor')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(level as Integer ?: 100)
         	} else {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
         	}
     	}
@@ -1259,7 +1259,7 @@ def setLevelandColorHandler() {
 }
 
 def modeHandler() {
-	LOGDEBUG("In modeHandler - Changing mode to ${newMode}")
+	if(logEnable) log.debug "In modeHandler - Changing mode to ${newMode}"
 	setLocationMode(newMode)
 }
 
