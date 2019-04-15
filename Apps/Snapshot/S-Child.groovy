@@ -13,17 +13,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -34,6 +35,8 @@
  *
  *  Changes:
  *
+ *  V1.1.2 - 04/15/19 - Code cleanup
+ *  V1.1.1 - 04/12/19 - Added Presence Sensor tracking
  *  V1.1.0 - 04/12/19 - Added voice and pushover notifications to Priority Devices
  *  V1.0.9 - 04/10/19 - Fixed a typo in repeatSwitchHandler
  *	V1.0.8 - 04/09/19 - Fixed Temp maps
@@ -49,7 +52,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.0"
+	state.version = "v1.1.2"
 }
 
 definition(
@@ -115,6 +118,7 @@ def pageConfig() {
             	input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
             	input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
 				input "locks", "capability.lock", title: "Door Locks", multiple: true, required: false, submitOnChange: true
+				input "presence", "capability.presenceSensor", title: "Presence Sensors", multiple: true, required: false, submitOnChange: true
 				input "temps", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: false, submitOnChange: true
 				if(temps) input "tempHigh", "number", title: "Temp to consider High if over X", required: true, submitOnChange: true
 				if(temps) input "tempLow", "number", title: "Temp to consider Low if under X", required: true, submitOnChange: true
@@ -137,6 +141,9 @@ def pageConfig() {
 				}
 				if(locks) {
 					input "lockMode", "enum", required: true, title: "Select Lock Display Output Type", submitOnChange: true,  options: ["Full", "Only Unlocked", "Only Locked"]
+				}
+				if(presence) {
+					input "presenceMode", "enum", required: true, title: "Select Presence Display Output Type", submitOnChange: true,  options: ["Full", "Only Present", "Only Not Present"]
 				}
 				if(temps) {
 					input "tempMode", "enum", required: true, title: "Select Temperature Display Output Type", submitOnChange: true,  options: ["Full", "Only High", "Only Low"]
@@ -221,9 +228,6 @@ def pageConfig() {
 			if(maintSwitch) input "resetBtn", "button", title: "Click here to reset maps"
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false, submitOnChange: true}
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
@@ -245,8 +249,7 @@ def updated() {
 
 def initialize() {
 	setDefaults()
-	if(logEnable) log.debug "In initialize - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
-	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
+	if(logEnable) log.debug "In initialize - pauseApp: ${pauseApp}"
 	if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch.on", onDemandSwitchHandler)
 	if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
 	if(triggerMode == "Real Time") {
@@ -256,8 +259,7 @@ def initialize() {
 }
 
 def realTimeSwitchHandler(evt) {
-	if(logEnable) log.debug "In realTimeSwitchHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
-	if(state.enablerSwitch2 == "off") {
+	if(logEnable) log.debug "In realTimeSwitchHandler - pauseApp: ${pauseApp}"
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
 			state.realTimeSwitchStatus = evt.value
@@ -267,6 +269,7 @@ def realTimeSwitchHandler(evt) {
 					if(switches) subscribe(switches, "switch", switchHandler)
 					if(contacts) subscribe(contacts, "contact", contactHandler)
 					if(locks) subscribe(locks, "lock", lockHandler)
+					if(presence) subscribe(presence, "presence", presenceHandler)
 					if(temps) subscribe(temps, "temperature", temperatureHandler)
 					runIn(1, maintHandler)
 				} else {
@@ -274,6 +277,7 @@ def realTimeSwitchHandler(evt) {
 					unsubscribe(switches)
 					unsubscribe(contacts)
 					unsubscribe(locks)
+					unsubscribe(presence)
 					unsubscribe(temps)
 				}
 			}
@@ -300,14 +304,10 @@ def realTimeSwitchHandler(evt) {
 				}
 			}
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def repeatSwitchHandler(evt) {
-	if(logEnable) log.debug "In repeatSwitchHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
-	if(state.enablerSwitch2 == "off") {
+	if(logEnable) log.debug "In repeatSwitchHandler - pauseApp: ${pauseApp}"
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
 			state.repeatSwitchStatus = repeatSwitch.currentValue("switch")
@@ -325,14 +325,10 @@ def repeatSwitchHandler(evt) {
 				runIn(state.runDelay,repeatSwitchHandler)
 			}
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def onDemandSwitchHandler(evt) {
-	if(logEnable) log.debug "In onDemandSwitchHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
-	if(state.enablerSwitch2 == "off") {
+	if(logEnable) log.debug "In onDemandSwitchHandler - pauseApp: ${pauseApp}"
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
 			state.onDemandSwitchStatus = evt.value
@@ -343,9 +339,6 @@ def onDemandSwitchHandler(evt) {
 				if(state.onDemandSwitchStatus == "on") priorityHandler()
 			}
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def switchMapHandler() {
@@ -559,6 +552,58 @@ def lockMapHandler() {
 	snapshotTileDevice.sendSnapshotLockMap2(state.fLockMap2S)
 	snapshotTileDevice.sendSnapshotLockCountUnlocked(state.countUnlocked)
 	snapshotTileDevice.sendSnapshotLockCountLocked(state.countLocked)
+}
+
+def presenceMapHandler() {
+	if(logEnable) log.debug "In presenceMapHandler..."
+	checkMaps()
+	state.notPresentMapS = state.notPresentMap.sort { a, b -> a.key <=> b.key }
+	state.presentMapS = state.presentMap.sort { a, b -> a.key <=> b.key }
+	if(logEnable) log.debug "In presenceMapHandler - Building Presence Maps"
+	state.fPresenceMap1S = "<table width='100%'>"
+	state.fPresenceMap2S = "<table width='100%'>"
+	state.count = 0
+	state.countnotPresent = 0
+	state.countPresent = 0
+	
+	if(presenceMode == "Full" || presenceMode == "Only Not Present") {
+		state.notPresentMapS.each { stuffNotPresent -> 
+			state.count = state.count + 1
+			state.countNotPresent = state.countNotPresent + 1
+			if(logEnable) log.debug "In presenceMapHandler - Building Table Not Present with ${stuffNotPresent.key} count: ${state.count}"
+			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: red;'>not present</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: red;'>not present</div></td></tr>"
+		}
+	}
+	
+	if(presenceMode == "Full") {
+		if((state.count >= 1) && (state.count <= 5)) { state.fPresenceMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 6) && (state.count <= 10)) { state.fPresenceMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	}
+	
+	if(presenceMode == "Full" || presenceMode == "Only Present") {
+		state.presentMapS.each { stuffPresent -> 
+			state.count = state.count + 1
+			state.countPresent = state.countPresent + 1
+			if(logEnable) log.debug "In presenceMapHandler - Building Table Present with ${stuffPresent.key} count: ${state.count}"
+			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffPresent.key}</td><td><div style='color: green;'>present</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffPresent.key}</td><td><div style='color: green;'>present</div></td></tr>"
+		}
+	}
+	
+	state.fPresenceMap1S += "</table>"
+	state.fPresenceMap2S += "</table>"
+	
+	if(state.count == 0) {
+		state.fPresenceMap1S = "<table width='100%'><tr><td><div style='color: green;'>No presence devices to report</div></td></tr></table>"
+		state.fPresenceMap2S = "<table width='100%'><tr><td><div style='color: green;'>No presence devices to report</div></td></tr></table>"
+	}
+
+	if(logEnable) log.debug "In presenceMapHandler - <br>fPresenceMap1S<br>${state.fPresenceMap1S}"
+   	snapshotTileDevice.sendSnapshotPresenceMap1(state.fPresenceMap1S)
+	snapshotTileDevice.sendSnapshotPresenceMap2(state.fPresenceMap2S)
+	snapshotTileDevice.sendSnapshotPresenceCountNotPresent(state.countNotPresent)
+	snapshotTileDevice.sendSnapshotPresenceCountPresent(state.countPresent)
 }
 
 def tempMapHandler() {
@@ -923,7 +968,7 @@ def priorityHandler(evt){
 }
 
 def checkMaps() {
-	if(logEnable) log.debug "In checkMaps - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
+	if(logEnable) log.debug "In checkMaps - pauseApp: ${pauseApp}"
 	if(state.offSwitchMap == null) {
 		state.offSwitchMap = [:]
 	}
@@ -935,6 +980,12 @@ def checkMaps() {
 	}
 	if(state.openContactMap == null) {
 		state.openContactMap = [:]
+	}
+	if(state.presentMap == null) {
+		state.presentMap = [:]
+	}
+	if(state.notPresentMap == null) {
+		state.notPresentMap = [:]
 	}
 	if(state.lockedLockMap == null) {
 		state.lockedLockMap = [:]
@@ -961,18 +1012,20 @@ def checkMaps() {
 }
 
 def maintHandler(evt){
-	if(logEnable) log.debug "In maintHandler - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
+	if(logEnable) log.debug "In maintHandler - pauseApp: ${pauseApp}"
 	state.offSwitchMap = [:]
 	state.onSwitchMap = [:]
 	state.closedContactMap = [:]
 	state.openContactMap = [:] 
+	state.presentMap = [:]
+	state.notpresentMap = [:]
 	state.lockedLockMap = [:]
 	state.unlockedLockMap = [:]
 	state.highTempMap = [:]
 	state.lowTempMap = [:]
 	state.normalTempMap = [:]
-	if(logEnable) log.debug "In maintHandler...Tables have been cleared!"
-	if(logEnable) log.debug "In maintHandler...Repopulating tables"
+	if(logEnable) log.debug "In maintHandler - Tables have been cleared!"
+	if(logEnable) log.debug "In maintHandler - Repopulating tables"
 	if(switches) {
 		switches.each { device ->
 			def switchName = device.displayName
@@ -992,6 +1045,16 @@ def maintHandler(evt){
 			if(contactStatus == "closed") state.closedContactMap.put(contactName, contactStatus)
 		}
 		contactMapHandler()
+	}
+	if(presence) {
+		presence.each { device ->
+			def presenceName = device.displayName
+			def presenceStatus = device.currentValue('presence')
+			if(logEnable) log.debug "In maintHandler - Working on ${presenceName} - ${presenceStatus}"
+			if(presenceStatus == "present") state.presentMap.put(presenceName, presenceStatus)
+			if(presenceStatus == "not present") state.notPresentMap.put(presenceName, presenceStatus)
+		}
+		presenceMapHandler()
 	}
 	if(locks) {
 		locks.each { device ->
@@ -1028,7 +1091,6 @@ def priorityCheckHandler(evt) {
 
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
-	if(state.enablerSwitch2 == "off") {
 		checkTime()
 		checkVol()
 		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
@@ -1063,9 +1125,6 @@ def letsTalk() {
 		} else {
 			if(logEnable) log.debug "In letsTalk - It's quiet time"
 		}
-	} else {
-		if(logEnable) log.info "${app.label} is disabled."
-	}
 }
 
 def checkTime() {
@@ -1163,38 +1222,11 @@ def pushNow(){
 
 // ********** Normal Stuff **********
 
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	if(state.enablerSwitch2 == null) state.enablerSwitch2 = "off"
-	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}"
-	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
-}
-
-def pauseAppHandler(){
-	if(logEnable) log.debug "In pauseAppHandler..."
-    if(pauseApp == true){
-        if(app.label.contains('Paused')){
-			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
-		} else {
-			app.updateLabel(app.label + ("<font color='red'> (Paused) </font>"))
-			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
-       	}
-    }
-    if(pauseApp == false){
-     	if(app.label.contains('Paused')){
-			app.updateLabel(app.label.minus("<font color='red'> (Paused) </font>"))
-			if(logEnable) log.debug "App no longer Paused - state.pauseApp: ${state.pauseApp}"                        
-        }
-	}      
-}
-
 def setDefaults(){
-    pauseAppHandler()
 	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
 	if(priorityCheckSwitch == null){priorityCheckSwitch = "off"}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
-	if(logEnable) log.debug "In setDefaults - pauseApp: ${pauseApp}, enablerSwitch2: ${state.enablerSwitch2}"
+	if(logEnable) log.debug "In setDefaults - pauseApp: ${pauseApp}"
 }
 
 def getImage(type){							// Modified from @Stephack
@@ -1212,6 +1244,8 @@ def display() {
 	section() {
 		paragraph getFormat("line")
 		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
