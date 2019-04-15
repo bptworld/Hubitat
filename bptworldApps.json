@@ -86,13 +86,13 @@
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v1.0.0",
-  "AtHomeSimulatorChildVersion": "v1.0.1",
+  "AtHomeSimulatorChildVersion": "v1.0.2",
   "AtHomeSimulatorDriverVersion": "NA",
   "AtHomeSimulatorParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-parent.groovy",
   "AtHomeSimulatorChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-child.groovy",
   "AtHomeSimulatorDriverRawCode": "NA",
   "AtHomeSimulatorDiscussion": "https://community.hubitat.com/t/beta-at-home-simulator/8697",
-  "AtHomeSimulatorUpdateNote": "NA",
+  "AtHomeSimulatorUpdateNote": "V1.0.2 - 04/15/19 - Code cleanup",
   
   "BIControlType": "App",
   "BIControlParentVersion": "v1.0.5",
