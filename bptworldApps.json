@@ -102,7 +102,7 @@
   "BIControlChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Child.groovy",
   "BIControlDriverRawCode": "NA",
   "BIControlDiscussion": "https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454",
-  "BIControlUpdateNote": "V1.0.7 - 04/15/19 - Code cleanup,
+  "BIControlUpdateNote": "V1.0.7 - 04/15/19 - Code cleanup",
   
   "DeparturesType": "App",
   "DeparturesParentVersion": "v1.0.0",
