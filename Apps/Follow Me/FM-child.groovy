@@ -514,7 +514,6 @@ def sendPush() {
 // ********** Normal Stuff **********
 
 def setDefaults(){
-    pauseHandler()
 	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
 	if(atomicState.sZone == null){atomicState.sZone = false}
