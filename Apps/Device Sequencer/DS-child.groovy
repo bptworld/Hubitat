@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 04/15/19 - Code cleanup
  *  V1.0.3 - 03/12/19 - Fixed pause
  *  V1.0.2 - 01/15/19 - Updated footer with update check and links
  *  V1.0.1 - 01/12/19 - Made the Control switch stand out more.
@@ -43,7 +44,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
