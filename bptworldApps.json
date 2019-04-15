@@ -156,13 +156,13 @@
   
   "MagicCubeType": "App",
   "MagicCubeParentVersion": "V1.0.0",
-  "MagicCubeChildVersion": "V1.0.1",
+  "MagicCubeChildVersion": "V1.0.2",
   "MagicCubeDriverVersion": "NA",
   "MagicCubeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-parent.groovy",
   "MagicCubeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-child.groovy",
   "MagicCubeDriverRawCode": "NA",
   "MagicCubeDiscussion": "https://community.hubitat.com/t/release-magic-cube/11987",
-  "MagicCubeUpdateNote": "V1.0.1 - 03/15/19 - Added Change Mode, Toggle, Dim and Set Color to device options.",
+  "MagicCubeUpdateNote": "V1.0.2 - 04/15/19 - Code cleanup",
   
   "MotionControlledSceneLightingType": "App",
   "MotionControlledSceneLightingParentVersion": "v1.0.3",
