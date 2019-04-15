@@ -176,13 +176,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.0.8",
+  "NotifierPlusChildVersion": "v1.1.0",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.0.8 - 03/04/19 - Added Temp, Humidity and Power Triggers",
+  "NotifierPlusUpdateNote": "V1.1.0 - 04/15/19 - Code cleanup",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
