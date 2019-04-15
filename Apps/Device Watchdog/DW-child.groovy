@@ -13,17 +13,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -34,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.3.1 - 04/15/19 - More Code cleanup
  *  V1.3.0 - 04/14/19 - Adjusted reports, added importUrl and some code cleanup.
  *  V1.2.9 - 03/31/19 - Fix bug in push for Device Status. Status report now available for dashboard tiles.
  *  V1.2.8 - 03/30/19 - Fix push notifications going out even if there was nothing to report.
@@ -75,7 +77,7 @@
 
 
 def setVersion() {
-	state.version = "v1.3.0"
+	state.version = "v1.3.1"
 }
 
 definition(
@@ -145,7 +147,6 @@ def pageConfig() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
-				input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 				input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     		}
 		}
@@ -209,7 +210,6 @@ def pageConfig() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
-				input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 				input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 			}
 		}
@@ -258,7 +258,6 @@ def pageConfig() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 			section() {
-				input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 				input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 			}
 		}
@@ -410,9 +409,8 @@ def watchdogMapHandler(evt) {
 
 def activityHandler(evt) {
 	clearMaps()
-	if(state.enablerSwitch2 == "off") {
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    		if(pauseApp == false){
+    	if(pauseApp == false){
 			if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
 			if(actuatorDevice) {
 				if(triggerMode == "Activity") mySensorHandler("Actuator", actuatorDevice)
@@ -531,9 +529,6 @@ def activityHandler(evt) {
 			if(isDataStatusDevice) isThereData()
 			if(sendPushMessage) pushNow()
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }	
 
 def myBatteryHandler(myType, mySensors) {
@@ -622,7 +617,7 @@ def myBatteryHandler(myType, mySensors) {
 }
 
 def mySensorHandler(myType, mySensors) {
-	lif(logEnable) log.debug "     - - - - - Start (S) ${myType} - - - - -     "
+	if(logEnable) log.debug "     - - - - - Start (S) ${myType} - - - - -     "
 	if(logEnable) log.debug "In mySensorHandler - ${mySensors}"
 	mySensors.each { device ->
 		def lastActivity = device.getLastActivity()
@@ -924,38 +919,10 @@ def eventCheck(evt) {						// Added by @gabriele
 
 // ********** Normal Stuff **********
 
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	if(state.enablerSwitch2 == null) state.enablerSwitch2 = "off"
-	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}"
-	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
-}
-
-def pauseAppHandler(){							// Modified Code from @Cobra
-	if(logEnable) log.debug "In pauseAppHandler..."
-    if(pauseApp == true){
-        if(app.label.contains('Paused')){
-			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
-		} else {
-			app.updateLabel(app.label + ("<font color='red'> (Paused) </font>"))
-			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
-       	}
-    }
-    if(pauseApp == false){
-     	if(app.label.contains('Paused')){
-			app.updateLabel(app.label.minus("<font color='red'> (Paused) </font>"))
-			if(logEnable) log.debug "App no longer Paused - state.pauseApp: ${state.pauseApp}"                        
-        }
-	}      
-}
-
 def setDefaults(){
 	setupNewStuff()
-    pauseOrNot()
     if(pauseApp == null){pauseApp = false}
-    if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(pushAll == null){pushAll = false}
 	if(state.reportCount == null){state.reportCount = 0}
 }
@@ -975,6 +942,8 @@ def display() {
 	section() {
 		paragraph getFormat("line")
 		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
