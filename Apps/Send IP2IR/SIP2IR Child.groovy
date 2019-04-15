@@ -6,10 +6,9 @@
  *
  *  IR Codes can be found using Global Cache Control Tower IR Database, https://irdb.globalcache.com/
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to Andrew Parker (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Also thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
+ *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -18,17 +17,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 04/15/19 - Code cleanup
  *  V1.1.7 - 01/15/19 - Updated footer with update check and links
  *  V1.1.6 - 12/30/18 - Updated to my new color theme.
  *  V1.1.5 - 12/06/18 - Code cleanup, removal of IP Address from Child Apps as it was not needed anymore.
@@ -56,7 +57,9 @@
  *  V1.0.0 - 10/15/18 - Initial release
  */
  
-def version(){"v1.1.7"}
+def setVersion() {
+	state.version = "v1.1.8"
+}
 
 definition(
     name: "Send IP2IR Child",
@@ -64,13 +67,12 @@ definition(
     author: "Bryan Turcotte",
     description: "This app is designed to send commands to an iTach IP2IR device.",
     category: "",
-    
-parent: "BPTWorld:Send IP2IR",
-    
+	parent: "BPTWorld:Send IP2IR",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Child.groovy",
+)
 
 preferences {
     page(name: "pageConfig")
@@ -147,10 +149,7 @@ def pageConfig() {
             label title: "Enter a name for this child app", required: true
         }
 		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
-		section() {
-            input "debugMode", "bool", title: "Enable logging", required: true, defaultValue: true
+            input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
   	    }
 		display2()
 	}
@@ -169,16 +168,14 @@ def updated() {
 }
 
 def initialize(){
-	LOGDEBUG("Inside Initialize...")
-	logCheck()
+	if(logEnable) log.debug "Inside Initialize..."
     setDefaults()
-	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
     if(triggerMode == "Switch"){
-		LOGDEBUG("Initialize... triggerMode=Switch")
+		if(logEnable) log.debug "Initialize... triggerMode=Switch"
 		subscribe(switch1, "switch", switchHandler1)
 	}
     if(triggerMode == "Button"){
-		LOGDEBUG("Initialize... triggerMode=Button")
+		if(logEnable) log.debug "Initialize... triggerMode=Button"
         if(buttonNumber == '1'){subscribe(button1, "pushed.1", buttonHandler1)}
         if(buttonNumber == '2'){subscribe(button1, "pushed.2", buttonHandler2)}
         if(buttonNumber == '3'){subscribe(button1, "pushed.3", buttonHandler3)}
@@ -186,7 +183,7 @@ def initialize(){
         if(buttonNumber == '5'){subscribe(button1, "pushed.5", buttonHandler5)}
     }
     if(triggerMode == "Channel_Button"){
-		LOGDEBUG("Initialize... triggerMode=Channel_Button")
+		if(logEnable) log.debug "Initialize... triggerMode=Channel_Button"
         if(buttonNumber == '1'){subscribe(button1, "pushed.1", channelHandler1)}
         if(buttonNumber == '2'){subscribe(button1, "pushed.2", channelHandler1)}
         if(buttonNumber == '3'){subscribe(button1, "pushed.3", channelHandler1)}
@@ -194,31 +191,19 @@ def initialize(){
         if(buttonNumber == '5'){subscribe(button1, "pushed.5", channelHandler1)}
 	}
 	if(triggerMode == "Channel_Switch"){
-		LOGDEBUG("Initialize... triggerMode=Channel_Switch")
+		if(logEnable) log.debug "Initialize... triggerMode=Channel_Switch"
 		subscribe(switch2, "switch", channelHandlerSwitch)
 	}
 }
 
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
-    }
-}
-
 def switchHandler1 (evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 			def switching = evt.value
     		if(switching == "on"){
-        		LOGDEBUG("Switch is turned on")
-        		LOGDEBUG("Msg to send Switch On: ${msgToSendOn}")
-				LOGDEBUG("mCommands = ${mCommands}")
+        		if(logEnable) log.debug "Switch is turned on"
+        		if(logEnable) log.debug "Msg to send Switch On: ${msgToSendOn}"
+				if(logEnable) log.debug "mCommands = ${mCommands}"
 				if(mCommands == "No") {speaker.speak(msgToSendOn)}
 					if(xTimesOn == "1") {
 					speaker.speak(msgToSendOn)
@@ -247,9 +232,9 @@ def switchHandler1 (evt) {
 			}
         
     		if(switching == "off"){
-        		LOGDEBUG("Switch is turned off")
-        		LOGDEBUG("Msg to send Switch Off: ${msgToSendOff}")
-				LOGDEBUG("mCommands = ${mCommands}")
+        		if(logEnable) log.debug "Switch is turned off"
+        		if(logEnable) log.debug "Msg to send Switch Off: ${msgToSendOff}"
+				if(logEnable) log.debug "mCommands = ${mCommands}"
 				if(mCommands == "No") {speaker.speak(msgToSendOff)}
 				if(xTimesOn == "1") {
 					speaker.speak(msgToSendOff)
@@ -277,17 +262,13 @@ def switchHandler1 (evt) {
 				}
     		}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def buttonHandler1(evt){
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-    	LOGDEBUG("You pressed button 1")
-    	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+    	if(logEnable) log.debug "You pressed button 1"
+    	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
 			speaker.speak(msgToSendPushed)
 		}
@@ -313,17 +294,13 @@ def buttonHandler1(evt){
 			speaker.speak(msgToSendPushed)
 		}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def buttonHandler2(evt){
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-    	LOGDEBUG("You pressed button 2")
-    	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+    	if(logEnable) log.debug "You pressed button 2"
+    	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
 			speaker.speak(msgToSendPushed)
 		}
@@ -349,17 +326,13 @@ def buttonHandler2(evt){
 			speaker.speak(msgToSendPushed)
 		}
 		}  
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def buttonHandler3(evt){
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-    	LOGDEBUG("You pressed button 3")
-    	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+    	if(logEnable) log.debug "You pressed button 3"
+    	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
 			speaker.speak(msgToSendPushed)
 		}
@@ -385,17 +358,13 @@ def buttonHandler3(evt){
 			speaker.speak(msgToSendPushed)
 		}
 		}  
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def buttonHandler4(evt){
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-    	LOGDEBUG("You pressed button 4")
-    	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+    	if(logEnable) log.debug "You pressed button 4"
+    	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
 			speaker.speak(msgToSendPushed)
 		}
@@ -421,17 +390,13 @@ def buttonHandler4(evt){
 			speaker.speak(msgToSendPushed)
 		}
 		}  
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def buttonHandler5(evt){
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-    	LOGDEBUG("You pressed button 5")
-    	LOGDEBUG("Msg to send Pushed: ${msgToSendPushed}")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+    	if(logEnable) log.debug "You pressed button 5"
+    	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
 			speaker.speak(msgToSendPushed)
 		}
@@ -457,9 +422,6 @@ def buttonHandler5(evt){
 			speaker.speak(msgToSendPushed)
 		}
 		}    
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def PresetToSend1(){
@@ -473,7 +435,7 @@ def PresetToSend1(){
 	if(Digit1 == "8") {msgToSend1 = parent.msgDigit8}
 	if(Digit1 == "9") {msgToSend1 = parent.msgDigit9}
 	if(Digit1 == "0") {msgToSend1 = parent.msgDigit0}
-    LOGDEBUG("Getting Digit 1...${Digit1} - ${msgToSend1}")
+    if(logEnable) log.debug "Getting Digit 1...${Digit1} - ${msgToSend1}"
 }
 
 def PresetToSend2(){
@@ -487,7 +449,7 @@ def PresetToSend2(){
 	if(Digit2 == "8") {msgToSend2 = parent.msgDigit8}
 	if(Digit2 == "9") {msgToSend2 = parent.msgDigit9}
 	if(Digit2 == "0") {msgToSend2 = parent.msgDigit0}
-    LOGDEBUG("Getting Digit 2...${Digit2} - ${msgToSend2}")
+    if(logEnable) log.debug "Getting Digit 2...${Digit2} - ${msgToSend2}"
 }
 
 def PresetToSend3(){
@@ -501,7 +463,7 @@ def PresetToSend3(){
 	if(Digit3 == "8") {msgToSend3 = parent.msgDigit8}
 	if(Digit3 == "9") {msgToSend3 = parent.msgDigit9}
 	if(Digit3 == "0") {msgToSend3 = parent.msgDigit0}
-    LOGDEBUG("Getting Digit 3...${Digit3} - ${msgToSend3}")
+    if(logEnable) log.debug "Getting Digit 3...${Digit3} - ${msgToSend3}"
 }
 
 def PresetToSend4(){
@@ -515,386 +477,312 @@ def PresetToSend4(){
 	if(Digit4 == "8") {msgToSend4 = parent.msgDigit8}
 	if(Digit4 == "9") {msgToSend4 = parent.msgDigit9}
 	if(Digit4 == "0") {msgToSend4 = parent.msgDigit0}
-    LOGDEBUG("Getting Digit 4...${Digit4} - ${msgToSend4}")
+    if(logEnable) log.debug "Getting Digit 4...${Digit4} - ${msgToSend4}"
 }
 
 def PresetToSendS(){
     msgToSendE = parent.msgDigitE
-    LOGDEBUG("Getting Digit E...${PresetToSendS} - ${msgToSendE}")
+    if(logEnable) log.debug "Getting Digit E...${PresetToSendS} - ${msgToSendE}"
 }
 
 def channelHandlerSwitch(evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 			def switching = evt.value
     		if(switching == "on"){
-        		LOGDEBUG("You pressed Channel Switch On")
+        		if(logEnable) log.debug "You pressed Channel Switch On"
     			PresetToSend1()
     			PresetToSend2()
 				PresetToSend3()
 				PresetToSend4()
    				PresetToSendS()
     
-				LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+				if(logEnable) log.debug "Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
-				LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+				if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 				speaker.speak(msgToSend1)
     			pauseExecution(Delay)
 
 				if(Digit2 != "null") {
-    				LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+    				if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
 					speaker.speak(msgToSend2)
 					pauseExecution(Delay)
 				} else{
-					LOGDEBUG("Did not send Channel Digit 2")
+					if(logEnable) log.debug "Did not send Channel Digit 2"
 				}
 				if(Digit3 != "null") {
-    				LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+    				if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 					speaker.speak(msgToSend3)
     				pauseExecution(Delay)
 				} else{
-					LOGDEBUG("Did not send Channel Digit 3")
+					if(logEnable) log.debug "Did not send Channel Digit 3"
 				}
 				if(Digit4 != "null") {
-    				LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+    				if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 					speaker.speak(msgToSend4)
     				pauseExecution(Delay)
 				} else{
-					LOGDEBUG("Did not send Channel Digit 4")
+					if(logEnable) log.debug "Did not send Channel Digit 4"
 				}
-				LOGDEBUG("${EnterCode}")			 
+				if(logEnable) log.debug "${EnterCode}"
 				if(EnterCode == true) {
-    				LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    				if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     				speaker.speak(msgToSendE)
 				} else{
-					LOGDEBUG("Did not send Channel Enter")
+					if(logEnable) log.debug "Did not send Channel Enter"
 				}
 			}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def channelHandler1(evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-        	LOGDEBUG("You pressed Channel button 1")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+        	if(logEnable) log.debug "You pressed Channel button 1"
     		PresetToSend1()
     		PresetToSend2()
 			PresetToSend3()
 			PresetToSend4()
    			PresetToSendS()
     
-			LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+			if(logEnable) log.debug "Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
-			LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+			if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 			speaker.speak(msgToSend1)
     		pauseExecution(Delay)
 
 			if(Digit2 != "null") {
-    			LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+    			if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
 				speaker.speak(msgToSend2)
 				pauseExecution(Delay)
 			} else{
-				LOGDEBUG("Did not send Channel Digit 2")
+				if(logEnable) log.debug "Did not send Channel Digit 2"
 			}
 			if(Digit3 != "null") {
-    			LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+    			if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 				speaker.speak(msgToSend3)
     			pauseExecution(Delay)
 			} else{
-				LOGDEBUG("Did not send Channel Digit 3")
+				if(logEnable) log.debug "Did not send Channel Digit 3"
 			}
 			if(Digit4 != "null") {
-    			LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+    			if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 				speaker.speak(msgToSend4)
     			pauseExecution(Delay)
 			} else{
-				LOGDEBUG("Did not send Channel Digit 4")
+				if(logEnable) log.debug "Did not send Channel Digit 4"
 			}
-			LOGDEBUG("${EnterCode}")			 
+			if(logEnable) log.debug "${EnterCode}"		 
 			if(EnterCode == true) {
-    			LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    			if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     			speaker.speak(msgToSendE)
 			} else{
-				LOGDEBUG("Did not send Channel Enter")
+				if(logEnable) log.debug "Did not send Channel Enter"
 			}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def channelHandler2(evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-        LOGDEBUG("You pressed Channel button 2")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+        if(logEnable) log.debug "You pressed Channel button 2"
     	PresetToSend1()
     	PresetToSend2()
 		PresetToSend3()
 		PresetToSend4()
    		PresetToSendS()
     
-		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+		if(logEnable) log.debug "Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
-		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 		speaker.speak(msgToSend1)
     	pauseExecution(Delay)
 
 		if(Digit2 != "null") {
-    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+    		if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
 			speaker.speak(msgToSend2)
 			pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 2")
+			if(logEnable) log.debug "Did not send Channel Digit 2"
 		}
 		if(Digit3 != "null") {
-    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+    		if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 			speaker.speak(msgToSend3)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 3")
+			if(logEnable) log.debug "Did not send Channel Digit 3"
 		}
 		if(Digit4 != "null") {
-    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+    		if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 			speaker.speak(msgToSend4)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 4")
+			if(logEnable) log.debug "Did not send Channel Digit 4"
 		}
-		LOGDEBUG("${EnterCode}")			 
+		if(logEnable) log.debug "${EnterCode}"
 		if(EnterCode == true) {
-    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     		speaker.speak(msgToSendE)
 		} else{
-			LOGDEBUG("Did not send Channel Enter")
+			if(logEnable) log.debug "Did not send Channel Enter"
 		}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def channelHandler3(evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-        LOGDEBUG("You pressed Channel button 3")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+        if(logEnable) log.debug "You pressed Channel button 3"
     	PresetToSend1()
     	PresetToSend2()
 		PresetToSend3()
 		PresetToSend4()
    		PresetToSendS()
     
-		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+		if(logEnable) log.debug "Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
-		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 		speaker.speak(msgToSend1)
     	pauseExecution(Delay)
 
 		if(Digit2 != "null") {
-    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+    		if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
 			speaker.speak(msgToSend2)
 			pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 2")
+			if(logEnable) log.debug "Did not send Channel Digit 2"
 		}
 		if(Digit3 != "null") {
-    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+    		if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 			speaker.speak(msgToSend3)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 3")
+			if(logEnable) log.debug "Did not send Channel Digit 3"
 		}
 		if(Digit4 != "null") {
-    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+    		if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 			speaker.speak(msgToSend4)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 4")
+			if(logEnable) log.debug "Did not send Channel Digit 4"
 		}
-		LOGDEBUG("${EnterCode}")			 
+		if(logEnable) log.debug "${EnterCode}"		 
 		if(EnterCode == true) {
-    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     		speaker.speak(msgToSendE)
 		} else{
-			LOGDEBUG("Did not send Channel Enter")
+			if(logEnable) log.debug "Did not send Channel Enter"
 		}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def channelHandler4(evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-        LOGDEBUG("You pressed Channel button 4")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+        if(logEnable) log.debug "You pressed Channel button 4"
     	PresetToSend1()
     	PresetToSend2()
 		PresetToSend3()
 		PresetToSend4()
    		PresetToSendS()
     
-		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+		if(logEnable) log.debug "Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
-		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 		speaker.speak(msgToSend1)
     	pauseExecution(Delay)
 
 		if(Digit2 != "null") {
-    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+    		if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
 			speaker.speak(msgToSend2)
 			pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 2")
+			if(logEnable) log.debug "Did not send Channel Digit 2"
 		}
 		if(Digit3 != "null") {
-    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+    		if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 			speaker.speak(msgToSend3)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 3")
+			if(logEnable) log.debug "Did not send Channel Digit 3"
 		}
 		if(Digit4 != "null") {
-    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+    		if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 			speaker.speak(msgToSend4)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 4")
+			if(logEnable) log.debug "Did not send Channel Digit 4"
 		}
-		LOGDEBUG("${EnterCode}")			 
+		if(logEnable) log.debug "${EnterCode}"
 		if(EnterCode == true) {
-    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     		speaker.speak(msgToSendE)
 		} else{
-			LOGDEBUG("Did not send Channel Enter")
+			if(logEnable) log.debug "Did not send Channel Enter"
 		}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def channelHandler5(evt) {
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-        LOGDEBUG("You pressed Channel button 5")
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+        if(logEnable) log.debug "You pressed Channel button 5"
     	PresetToSend1()
     	PresetToSend2()
 		PresetToSend3()
 		PresetToSend4()
    		PresetToSendS()
     
-		LOGDEBUG("Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}")
+		if(logEnable) log.debug "Inside channelHandlerSwitch Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
-		LOGDEBUG("Msg to send Digit One: ${Digit1} - ${msgToSend1}")
+		if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 		speaker.speak(msgToSend1)
     	pauseExecution(Delay)
 
 		if(Digit2 != "null") {
-    		LOGDEBUG("Msg to send Digit Two: ${Digit2} - ${msgToSend2}")
+    		if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
 			speaker.speak(msgToSend2)
 			pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 2")
+			if(logEnable) log.debug "Did not send Channel Digit 2"
 		}
 		if(Digit3 != "null") {
-    		LOGDEBUG("Msg to send Digit Three: ${Digit3} - ${msgToSend3}")
+    		if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 			speaker.speak(msgToSend3)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 3")
+			if(logEnable) log.debug "Did not send Channel Digit 3"
 		}
 		if(Digit4 != "null") {
-    		LOGDEBUG("Msg to send Digit Four: ${Digit4} - ${msgToSend4}")
+    		if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 			speaker.speak(msgToSend4)
     		pauseExecution(Delay)
 		} else{
-			LOGDEBUG("Did not send Channel Digit 4")
+			if(logEnable) log.debug "Did not send Channel Digit 4"
 		}
-		LOGDEBUG("${EnterCode}")			 
+		if(logEnable) log.debug "${EnterCode}" 
 		if(EnterCode == true) {
-    		LOGDEBUG("Msg to send Enter: ${EnterCode} - ${msgToSendE}")
+    		if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     		speaker.speak(msgToSendE)
 		} else{
-			LOGDEBUG("Did not send Channel Enter")
+			if(logEnable) log.debug "Did not send Channel Enter"
 		}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 // ********** Normal Stuff **********
 
-def logsOff(){
-    log.warn "${app.label} - debug logging auto disabled"
-    device.updateSetting("logEnable",[value:"false",type:"bool"])
-}
-
-def pauseOrNot(){
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-    
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     		LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-          	}
-         }
-	}      
-}
-
 def setDefaults(){
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
-    if(state.pauseApp == null){state.pauseApp = false}
+    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
-	if(state.beenHere == null){state.beenHere = "no"}
 }
 
-def logCheck(){
-	state.checkLog = logEnable
-	if(state.logEnable == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.logEnable == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){
-    try {
-		if (settings.logEnable) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {
+def getImage(type) {									// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){							// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -903,37 +791,17 @@ def getFormat(type, myText=""){
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display2(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Send IP2IR - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Send IP2IR - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 } 
 
