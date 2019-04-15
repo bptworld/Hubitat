@@ -186,13 +186,13 @@
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
-  "OneataTimeChildVersion": "v1.1.2",
+  "OneataTimeChildVersion": "v1.1.3",
   "OneataTimeDriverVersion": "NA",
   "OneataTimeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Parent.groovy",
   "OneataTimeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Child.groovy",
   "OneataTimeDriverRawCode": "NA",
   "OneataTimeDiscussion": "https://community.hubitat.com/t/release-one-at-a-time/7063",
-  "OneataTimeUpdateNote": "NA",
+  "OneataTimeUpdateNote": "V1.1.3 - 04/15/19 - Code cleanup",
   
   "SendIP2IRType": "App",
   "SendIP2IRParentVersion": "v1.1.7",
