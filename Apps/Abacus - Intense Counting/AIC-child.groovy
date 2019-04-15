@@ -13,7 +13,11 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -34,6 +38,7 @@
  *
  *  Changes:
  *
+ *	V1.1.0 - 04/15/19 - Code cleanup
  *	V1.0.9 - 03/20/19 - Major rewrite to comply with Hubitat's new dashboard requirements.
  *  V1.0.8 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.7 - 01/25/19 - Create a tile so counts can be used on Dashboard
@@ -49,7 +54,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.9"
+	state.version = "v1.1.0"
 }
 
 definition(
@@ -62,6 +67,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy",
 )
 
 preferences {
@@ -98,8 +104,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
 		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+			input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
 		display2()
 	}
@@ -112,19 +117,19 @@ def pageCounts(params) {
 		buildSwitchMaps()
 		buildThermostatMaps()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Motion Sensors")) {
-			LOGDEBUG("In pageCounts...Motion Sensors")
+			if(logEnable) log.debug "In pageCounts...Motion Sensors"
 			paragraph "${state.motionMap1S}${state.motionMap2S}${state.motionMap3S}${state.motionMap4S}${state.motionMap5S}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Contact Sensors")) {
-			LOGDEBUG("In pageCounts...Contact Sensors")
+			if(logEnable) log.debug "In pageCounts...Contact Sensors"
 			paragraph "${state.contactMap1S}${state.contactMap2S}${state.contactMap3S}${state.contactMap4S}${state.contactMap5S}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Switch Events")) {
-			LOGDEBUG("In pageCounts...Switch Events")
+			if(logEnable) log.debug "In pageCounts...Switch Events"
 			paragraph "${state.switchMap1S}${state.switchMap2S}${state.switchMap3S}${state.switchMap4S}${state.switchMap5S}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Thermostat Events")) {
-			LOGDEBUG("In pageCounts...Thermostat Events")
+			if(logEnable) log.debug "In pageCounts...Thermostat Events"
 			paragraph "${state.thermostatMap1S}"
 		}
 		section() {
@@ -142,14 +147,13 @@ def installed() {
 }
 
 def updated() {
-	LOGDEBUG("Updated with settings: ${settings}")
+	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
-	logCheck()
 	initialize()
 }
 
 def initialize() {
-	LOGDEBUG("In initialize...")
+	if(logEnable) log.debug "In initialize..."
 	setDefaults()
 	subscribe(motionEvent, "motion.active", motionHandler)
 	subscribe(contactEvent, "contact.open", contactHandler)
@@ -165,59 +169,59 @@ def initialize() {
 }
 
 def countMapHandler(evt) {
-	LOGDEBUG("In countMapHandler...Sending new Abacus Motion Counts to ${countTileDevice}")
+	if(logEnable) log.debug "In countMapHandler...Sending new Abacus Motion Counts to ${countTileDevice}"
 	countTileDevice.sendMotionMap1(state.motionMap1S)
 	countTileDevice.sendMotionMap2(state.motionMap2S)
 	countTileDevice.sendMotionMap3(state.motionMap3S)
 	countTileDevice.sendMotionMap4(state.motionMap4S)
 	countTileDevice.sendMotionMap5(state.motionMap5S)
 	
-	LOGDEBUG("In countMapHandler...Sending new Abacus Contact Counts to ${countTileDevice}")
+	if(logEnable) log.debug "In countMapHandler...Sending new Abacus Contact Counts to ${countTileDevice}"
 	countTileDevice.sendContactMap1(state.contactMap1S)
 	countTileDevice.sendContactMap2(state.contactMap2S)
 	countTileDevice.sendContactMap3(state.contactMap3S)
 	countTileDevice.sendContactMap4(state.contactMap4S)
 	countTileDevice.sendContactMap5(state.contactMap5S)
 	
-	LOGDEBUG("In countMapHandler...Sending new Abacus Switch Counts to ${countTileDevice}")
+	if(logEnable) log.debug "In countMapHandler...Sending new Abacus Switch Counts to ${countTileDevice}"
 	countTileDevice.sendSwitchMap1(state.switchMap1S)
 	countTileDevice.sendSwitchMap2(state.switchMap2S)
 	countTileDevice.sendSwitchMap3(state.switchMap3S)
 	countTileDevice.sendSwitchMap4(state.switchMap4S)
 	countTileDevice.sendSwitchMap5(state.switchMap5S)
 	
-	LOGDEBUG("In countMapHandler...Sending new Abacus Thermostat Counts to ${countTileDevice}")
+	if(logEnable) log.debug "In countMapHandler...Sending new Abacus Thermostat Counts to ${countTileDevice}"
 	countTileDevice.sendThermostatMap1(state.thermostatMap1S)
 }
 
 def setupNewStuff() {
-	LOGDEBUG("In setupNewStuff...")
+	if(logEnable) log.debug "In setupNewStuff..."
 	
 	// ********** Starting Motion Devices **********
 	
-	LOGDEBUG("In setupNewStuff...Setting up Motion Maps")
+	if(logEnable) log.debug "In setupNewStuff...Setting up Motion Maps"
 	if(state.motionMapD == null) resetMotionMapHandler()
 	if(state.motionMapW == null) resetMotionMapHandler()
 	if(state.motionMapM == null) resetMotionMapHandler()
 	if(state.motionMapY == null) resetMotionMapHandler()
 
-	LOGDEBUG("In setupNewStuff...Looking for new Motion devices")
+	if(logEnable) log.debug "In setupNewStuff...Looking for new Motion devices"
 	motionEvent.each { it -> 
-		LOGDEBUG("Working on... ${it.displayName}")
+		if(logEnable) log.debug "Working on... ${it.displayName}"
 		if(state.motionMapD.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map D...Adding it in."
 			state.motionMapD.put(it.displayName, 0)
 		}
 		if(state.motionMapW.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map W...Adding it in."
 			state.motionMapW.put(it.displayName, 0)
 		}
 		if(state.motionMapM.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map M...Adding it in."
 			state.motionMapM.put(it.displayName, 0)
 		}
 		if(state.motionMapY.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in."
 			state.motionMapY.put(it.displayName, 0)
 		}
 	}
@@ -226,29 +230,29 @@ def setupNewStuff() {
 	
 	// ********** Starting Contact Devices **********
 	
-	LOGDEBUG("In setupNewStuff...Setting up Contact Maps")
+	if(logEnable) log.debug "In setupNewStuff...Setting up Contact Maps"
 	if(state.contactMapD == null) resetContactMapHandler()
 	if(state.contactMapW == null) resetContactMapHandler()
 	if(state.contactMapM == null) resetContactMapHandler()
 	if(state.contactMapY == null) resetContactMapHandler()
 
-	LOGDEBUG("In setupNewStuff...Looking for new Contact devices")
+	if(logEnable) log.debug "In setupNewStuff...Looking for new Contact devices"
 	contactEvent.each { it -> 
-		LOGDEBUG("Working on... ${it.displayName}")
+		if(logEnable) log.debug "Working on... ${it.displayName}"
 		if(state.contactMapD.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map D...Adding it in."
 			state.contactMapD.put(it.displayName, 0)
 		}
 		if(state.contactMapW.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map W...Adding it in."
 			state.contactMapW.put(it.displayName, 0)
 		}
 		if(state.contactMapM.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map M...Adding it in."
 			state.contactMapM.put(it.displayName, 0)
 		}
 		if(state.contactMapY.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in."
 			state.contactMapY.put(it.displayName, 0)
 		}
 	}
@@ -257,29 +261,29 @@ def setupNewStuff() {
 	
 	// ********** Starting Switch Devices **********
 	
-	LOGDEBUG("In setupNewStuff...Setting up Switch Maps")
+	if(logEnable) log.debug "In setupNewStuff...Setting up Switch Maps"
 	if(state.switchMapD == null) resetSwitchMapHandler()
 	if(state.switchMapW == null) resetSwitchMapHandler()
 	if(state.switchMapM == null) resetSwitchMapHandler()
 	if(state.switchMapY == null) resetSwitchMapHandler()
 
-	LOGDEBUG("In setupNewStuff...Looking for new Switch devices")
+	if(logEnable) log.debug "In setupNewStuff...Looking for new Switch devices"
 	switchEvent.each { it -> 
-		LOGDEBUG("Working on... ${it.displayName}")
+		if(logEnable) log.debug "Working on... ${it.displayName}"
 		if(state.switchMapD.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map D...Adding it in."
 			state.switchMapD.put(it.displayName, 0)
 		}
 		if(state.switchMapW.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map W...Adding it in."
 			state.switchMapW.put(it.displayName, 0)
 		}
 		if(state.switchMapM.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map M...Adding it in."
 			state.switchMapM.put(it.displayName, 0)
 		}
 		if(state.switchMapY.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in."
 			state.switchMapY.put(it.displayName, 0)
 		}
 	}
@@ -288,29 +292,29 @@ def setupNewStuff() {
 	
 	// ********** Starting Thermostat Devices **********
 	
-	LOGDEBUG("In setupNewStuff...Setting up Thermostat Maps")
+	if(logEnable) log.debug "In setupNewStuff...Setting up Thermostat Maps"
 	if(state.thermostatMapD == null) resetThermostatMapHandler()
 	if(state.thermostatMapW == null) resetThermostatMapHandler()
 	if(state.thermostatMapM == null) resetThermostatMapHandler()
 	if(state.thermostatMapY == null) resetThermostatMapHandler()
 
-	LOGDEBUG("In setupNewStuff...Looking for new Thermostat devices")
+	if(logEnable) log.debug "In setupNewStuff...Looking for new Thermostat devices"
 	thermostatEvent.each { it -> 
-		LOGDEBUG("Working on... ${it.displayName}")
+		if(logEnable) log.debug "Working on... ${it.displayName}"
 		if(state.thermostatMapD.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map D...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map D...Adding it in."
 			state.thermostatMapD.put(it.displayName, 0)
 		}
 		if(state.thermostatMapW.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map W...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map W...Adding it in."
 			state.thermostatMapW.put(it.displayName, 0)
 		}
 		if(state.thermostatMapM.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map M...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map M...Adding it in."
 			state.thermostatMapM.put(it.displayName, 0)
 		}
 		if(state.thermostatMapY.get(it.displayName) == null) {
-			LOGDEBUG("In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in.")
+			if(logEnable) log.debug "In setupNewStuff: ${it.displayName} not found in Map Y...Adding it in."
 			state.thermostatMapY.put(it.displayName, 0)
 		}
 	}
@@ -319,8 +323,7 @@ def setupNewStuff() {
 }
 
 def motionHandler(evt) {
-	LOGDEBUG("In motionHandler...")
-	LOGDEBUG("In motionHandler: Device: $evt.displayName is $evt.value")
+	if(logEnable) log.debug "In motionHandler: Device: $evt.displayName is $evt.value"
 	try {
 		motionEvent.each { it -> 
 			if(evt.displayName == it.displayName) {
@@ -347,8 +350,7 @@ def motionHandler(evt) {
 }
 
 def contactHandler(evt) {
-	LOGDEBUG("In contactHandler...")
-	LOGDEBUG("$evt.displayName: $evt.value")
+	if(logEnable) log.debug "In contactHandler: $evt.displayName: $evt.value"
 	state.contactMap = ""
 	try {
 		contactEvent.each { it -> 
@@ -375,8 +377,7 @@ def contactHandler(evt) {
 }
 
 def switchHandler(evt) {
-	LOGDEBUG("In switchHandler...")
-	LOGDEBUG("$evt.displayName: $evt.value")
+	if(logEnable) log.debug "In switchHandler: $evt.displayName: $evt.value"
 	state.switchMap = ""
 	try {
 		switchEvent.each { it -> 
@@ -404,9 +405,9 @@ def switchHandler(evt) {
 
 def thermostatHandler(evt) {
 	state.tStat = evt.value
-	LOGDEBUG("In thermostatHandler...Current Status: ${state.tStat}")
+	if(logEnable) log.debug "In thermostatHandler...Current Status: ${state.tStat}"
 	if(state.tStat != "idle") {
-		LOGDEBUG("In thermostatHandler...Starting to count: ${state.tStat}")
+		if(logEnable) log.debug "In thermostatHandler...Starting to count: ${state.tStat}"
 		state.thermostatMap = ""
 		try {
 			thermostatEvent.each { it -> 
@@ -431,108 +432,108 @@ def thermostatHandler(evt) {
 		} 	
 		catch (e) {}
 	} else {
-		LOGDEBUG("In thermostatHandler...Nothing to do because it change to ${state.tStat}")
+		if(logEnable) log.debug "In thermostatHandler...Nothing to do because it change to ${state.tStat}"
 	}
 }
 
 def resetMotionMapHandler() {
-	LOGDEBUG("In resetMotionMapHandler...")
+	if(logEnable) log.debug "In resetMotionMapHandler..."
 	if(state.motionMapD == null) {
-		LOGDEBUG("In resetMotionMapHandler...Reseting motionMapD")
+		if(logEnable) log.debug "In resetMotionMapHandler...Reseting motionMapD"
     	state.motionMapD = [:]
 		motionEvent.each { it -> state.motionMapD.put(it.displayName, 0)}
 	}
 	if(state.motionMapW == null) {
-		LOGDEBUG("In resetMotionMapHandler...Reseting motionMapW")
+		if(logEnable) log.debug "In resetMotionMapHandler...Reseting motionMapW"
     	state.motionMapW = [:]
 		motionEvent.each { it -> state.motionMapW.put(it.displayName, 0)}
 	}
 	if(state.motionMapM == null) {
-		LOGDEBUG("In resetMotionMapHandler...Reseting motionMapM")
+		if(logEnable) log.debug "In resetMotionMapHandler...Reseting motionMapM"
     	state.motionMapM = [:]
 		motionEvent.each { it -> state.motionMapM.put(it.displayName, 0)}
 	}
 	if(state.motionMapY == null) {
-		LOGDEBUG("In resetMotionMapHandler...Reseting motionMapY")
+		if(logEnable) log.debug "In resetMotionMapHandler...Reseting motionMapY"
     	state.motionMapY = [:]
 		motionEvent.each { it -> state.motionMapY.put(it.displayName, 0)}
 	}
 }
 
 def resetContactMapHandler() {
-	LOGDEBUG("In resetContactMapHandler...")
+	if(logEnable) log.debug "In resetContactMapHandler..."
 	if(state.contactMapD == null) {
-		LOGDEBUG("In resetContactMapHandler...Reseting contactMapD")
+		if(logEnable) log.debug "In resetContactMapHandler...Reseting contactMapD"
     	state.contactMapD = [:]
 		contactEvent.each { it -> state.contactMapD.put(it.displayName, 0)}
 	}
 	if(state.contactMapW == null) {
-		LOGDEBUG("In resetContactMapHandler...Reseting contactMapW")
+		if(logEnable) log.debug "In resetContactMapHandler...Reseting contactMapW"
     	state.contactMapW = [:]
 		contactEvent.each { it -> state.contactMapW.put(it.displayName, 0)}
 	}
 	if(state.contactMapM == null) {
-		LOGDEBUG("In resetContactMapHandler...Reseting contactMapM")
+		if(logEnable) log.debug "In resetContactMapHandler...Reseting contactMapM"
     	state.contactMapM = [:]
 		contactEvent.each { it -> state.contactMapM.put(it.displayName, 0)}
 	}
 	if(state.contactMapY == null) {
-		LOGDEBUG("In resetContactMapHandler...Reseting contactMapY")
+		if(logEnable) log.debug "In resetContactMapHandler...Reseting contactMapY"
     	state.contactMapY = [:]
 		contactEvent.each { it -> state.contactMapY.put(it.displayName, 0)}
 	}
 }
 
 def resetSwitchMapHandler() {
-	LOGDEBUG("In resetSwitchMapHandler...")
+	if(logEnable) log.debug "In resetSwitchMapHandler..."
 	if(state.switchMapD == null) {
-		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMapD")
+		if(logEnable) log.debug "In resetSwitchMapHandler...Reseting switchMapD"
     	state.switchMapD = [:]
 		switchEvent.each { it -> state.switchMapD.put(it.displayName, 0)}
 	}
 	if(state.switchMapW == null) {
-		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMapW")
+		if(logEnable) log.debug "In resetSwitchMapHandler...Reseting switchMapW"
     	state.switchMapW = [:]
 		switchEvent.each { it -> state.switchMapW.put(it.displayName, 0)}
 	}
 	if(state.switchMapM == null) {
-		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMapM")
+		if(logEnable) log.debug "In resetSwitchMapHandler...Reseting switchMapM"
     	state.switchMapM = [:]
 		switchEvent.each { it -> state.switchMapM.put(it.displayName, 0)}
 	}
 	if(state.switchMapY == null) {
-		LOGDEBUG("In resetSwitchMapHandler...Reseting switchMapY")
+		if(logEnable) log.debug "In resetSwitchMapHandler...Reseting switchMapY"
     	state.switchMapY = [:]
 		switchEvent.each { it -> state.switchMapY.put(it.displayName, 0)}
 	}
 }
 
 def resetThermostatMapHandler() {
-	LOGDEBUG("In resetThermostatMapHandler...")
+	if(logEnable) log.debug "In resetThermostatMapHandler..."
 	if(state.thermostatMapD == null) {
-		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMapD")
+		if(logEnable) log.debug "In resetThermostatMapHandler...Reseting thermostatMapD"
     	state.thermostatMapD = [:]
 		thermostatEvent.each { it -> state.thermostatMapD.put(it.displayName, 0)}
 	}
 	if(state.thermostatMapW == null) {
-		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMapW")
+		if(logEnable) log.debug "In resetThermostatMapHandler...Reseting thermostatMapW"
     	state.thermostatMapW = [:]
 		thermostatEvent.each { it -> state.thermostatMapW.put(it.displayName, 0)}
 	}
 	if(state.thermostatMapM == null) {
-		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMapM")
+		if(logEnable) log.debug "In resetThermostatMapHandler...Reseting thermostatMapM"
     	state.thermostatMapM = [:]
 		thermostatEvent.each { it -> state.thermostatMapM.put(it.displayName, 0)}
 	}
 	if(state.thermostatMapY == null) {
-		LOGDEBUG("In resetThermostatMapHandler...Reseting thermostatMapY")
+		if(logEnable) log.debug "In resetThermostatMapHandler...Reseting thermostatMapY"
     	state.thermostatMapY = [:]
 		thermostatEvent.each { it -> state.thermostatMapY.put(it.displayName, 0)}
 	}
 }
 
 def resetMotionCountHandler() {
-	LOGDEBUG("In resetMotionCountHandler...")
+	if(logEnable) log.debug "In resetMotionCountHandler..."
 	// Resetting Daily Counter
 		motionEvent.each { it -> state.motionMapD.put(it.displayName, 0)}
 	// Resetting Weekly Counter
@@ -556,14 +557,14 @@ def resetMotionCountHandler() {
 }
 
 def resetContactCountHandler() {
-	LOGDEBUG("In resetContactCountHandler...")
+	if(logEnable) log.debug "In resetContactCountHandler..."
 	// Resetting Daily Counter
     	state.contactMapD = [:]
 		contactEvent.each { it -> state.contactMapD.put(it.displayName, 0)}
 	// Resetting Weekly Counter
 	def date1 = new Date()
 	def dayOfWeek = date1.getAt(Calendar.DAY_OF_WEEK)
-	LOGDEBUG("In resetContactCountHandler...dayOfWeek: ${dayOfWeek}")
+	if(logEnable) log.debug "In resetContactCountHandler...dayOfWeek: ${dayOfWeek}"
 	if(dayOfWeek == 1) {
 		state.contactMapW = [:]
 		contactEvent.each { it -> state.contactMapW.put(it.displayName, 0)}
@@ -585,7 +586,7 @@ def resetContactCountHandler() {
 }
 
 def resetSwitchCountHandler() {
-	LOGDEBUG("In resetSwitchCountHandler...")
+	if(logEnable) log.debug "In resetSwitchCountHandler..."
 	// Resetting Daily Counter
     	state.switchMapD = [:]
 		switchEvent.each { it -> state.switchMapD.put(it.displayName, 0)}
@@ -613,7 +614,7 @@ def resetSwitchCountHandler() {
 }
 
 def resetThermostatCountHandler() {
-	LOGDEBUG("In resetThermostatCountHandler...")
+	if(logEnable) log.debug "In resetThermostatCountHandler..."
 	// Resetting Daily Counter
     	state.thermostatMapD = [:]
 		thermostatEvent.each { it -> state.thermostatMapD.put(it.displayName, 0)}
@@ -641,21 +642,21 @@ def resetThermostatCountHandler() {
 }
 
 def sendMessage(msg) {
-	LOGDEBUG("${msg}")
+	if(logEnable) log.debug "${msg}"
     if (pushNotification) {
         sendPush(msg)
     }
 }
 
 def buildMotionMaps() {
-	LOGDEBUG("In buildMotionMaps - Map: ${motionEvent}")
+	if(logEnable) log.debug "In buildMotionMaps - Map: ${motionEvent}"
 	state.count = 0
 	if(motionEvent) {
 		state.motionEventS = motionEvent.sort{it.name}
 	} else {
 		state.motionEventS = ""
 	}
-	LOGDEBUG("In buildMotionMaps - Sorted Map: ${state.motionEventS}")
+	if(logEnable) log.debug "In buildMotionMaps - Sorted Map: ${state.motionEventS}"
 	state.motionMap1S = "<table width='100%'>"
 	state.motionMap2S = "<table width='100%'>"
 	state.motionMap3S = "<table width='100%'>"
@@ -668,7 +669,7 @@ def buildMotionMaps() {
 		countW = state.motionMapW.get(it.displayName)
 		countM = state.motionMapM.get(it.displayName)
 		countY = state.motionMapY.get(it.displayName)
-		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(logEnable) log.debug "Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}"
 		if(state.count == 1) {
 			state.motionMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
 			state.motionMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
@@ -703,14 +704,14 @@ def buildMotionMaps() {
 }
 
 def buildContactMaps() {
-	LOGDEBUG("In buildContactMaps - Map: ${contactEvent}")
+	if(logEnable) log.debug "In buildContactMaps - Map: ${contactEvent}"
 	state.count = 0
 	if(contactEvent) {
 		state.contactEventS = contactEvent.sort{it.name}
 	} else {
 		state.contactEventS = ""
 	}
-	LOGDEBUG("In buildContactMaps - Sorted Map: ${state.contactEventS}")
+	if(logEnable) log.debug "In buildContactMaps - Sorted Map: ${state.contactEventS}"
 	state.contactMap1S = "<table width='100%'>"
 	state.contactMap2S = "<table width='100%'>"
 	state.contactMap3S = "<table width='100%'>"
@@ -723,7 +724,7 @@ def buildContactMaps() {
 		countW = state.contactMapW.get(it.displayName)
 		countM = state.contactMapM.get(it.displayName)
 		countY = state.contactMapY.get(it.displayName)
-		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(logEnable) log.debug "Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}"
 		if(state.count == 1) {
 			state.contactMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
 			state.contactMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
@@ -758,14 +759,14 @@ def buildContactMaps() {
 }
 
 def buildSwitchMaps() {
-	LOGDEBUG("In buildSwitchMaps - Map: ${switchEvent}")
+	if(logEnable) log.debug "In buildSwitchMaps - Map: ${switchEvent}"
 	state.count = 0
 	if(switchEvent) {
 		state.switchEventS = switchEvent.sort{it.name}
 	} else {
 		state.switchEventS = ""
 	}
-	LOGDEBUG("In buildSwitchMaps - Sorted Map: ${state.switchEventS}")
+	if(logEnable) log.debug "In buildSwitchMaps - Sorted Map: ${state.switchEventS}"
 	state.switchMap1S = "<table width='100%'>"
 	state.switchMap2S = "<table width='100%'>"
 	state.switchMap3S = "<table width='100%'>"
@@ -778,7 +779,7 @@ def buildSwitchMaps() {
 		countW = state.switchMapW.get(it.displayName)
 		countM = state.switchMapM.get(it.displayName)
 		countY = state.switchMapY.get(it.displayName)
-		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(logEnable) log.debug "Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}"
 		if(state.count == 1) {
 			state.switchMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
 			state.switchMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
@@ -813,14 +814,14 @@ def buildSwitchMaps() {
 }
 
 def buildThermostatMaps() {
-	LOGDEBUG("In buildThermostatMaps - Map: ${thermostatEvent}")
+	if(logEnable) log.debug "In buildThermostatMaps - Map: ${thermostatEvent}"
 	state.count = 0
 	if(thermostatEvent) {
 		state.thermostatEventS = thermostatEvent.sort{it.name}
 	} else {
 		state.thermostatEventS = ""
 	}
-	LOGDEBUG("In buildThermostatMaps - Sorted Map: ${state.thermostatEventS}")
+	if(logEnable) log.debug "In buildThermostatMaps - Sorted Map: ${state.thermostatEventS}"
 	state.thermostatMap1S = "<table width='100%'>"
 	
 	state.thermostatEventS.each { it ->
@@ -829,7 +830,7 @@ def buildThermostatMaps() {
 		countW = state.thermostatMapW.get(it.displayName)
 		countM = state.thermostatMapM.get(it.displayName)
 		countY = state.thermostatMapY.get(it.displayName)
-		LOGDEBUG("Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}")
+		if(logEnable) log.debug "Adding - ${it.displayName} — Today: ${countD} Week: ${countW} Month: ${countM} Year: ${countY}"
 		if(state.count == 1) {
 			state.thermostatMap1S += "<tr><td><b>Name</b></td><td><b>Today</b></td><td><b>Week</b></td><td><b>Month</b></td><td><b>Year</b></td></tr>"
 			state.thermostatMap1S += "<tr><td>${it.displayName}</td><td>${countD}</td><td>${countW}</td><td>${countM}</td><td>${countY}</td></tr>"
@@ -841,61 +842,18 @@ def buildThermostatMaps() {
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){							// Modified from @Cobra Code
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
-}
-
 def setDefaults(){
 	setupNewStuff()
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
-    if(state.pauseApp == null){state.pauseApp = false}
+	if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 }
 
-def logCheck(){									// Modified from @Cobra Code
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){								// Modified from @Cobra Code
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {							// Modified from @Stephack Code
+def getImage(type) {							// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){					// Modified from @Stephack Code
+def getFormat(type, myText=""){					// Modified from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -904,7 +862,9 @@ def getFormat(type, myText=""){					// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
