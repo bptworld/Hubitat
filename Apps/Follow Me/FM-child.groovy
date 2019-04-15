@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.1.2 - 04/15/19 - More Code cleanup
  *  V1.1.1 - 04/06/19 - Code cleanup
  *  V1.1.0 - 04/04/19 - More tweaks
  *  V1.0.9 - 04/03/19 - More tweaks to speaker status
@@ -50,7 +51,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.1"
+	state.version = "v1.1.2"
 }
 
 definition(
@@ -537,31 +538,16 @@ def sendPush() {
 }
 
 // ********** Normal Stuff **********
+
 def enablerSwitchHandler(evt){
 	state.enablerSwitch2 = evt.value
 	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}"
 	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
 }
 
-def pauseAppHandler(){
-    if(pauseApp == true){
-        if(app.label.contains('Paused')){
-			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
-		} else {
-			app.updateLabel(app.label + ("<font color='red'> (Paused) </font>"))
-			if(logEnable) log.debug "App Paused - state.pauseApp: ${state.pauseApp}"
-       	}
-    }
-    if(pauseApp == false){
-     	if(app.label.contains('Paused')){
-			app.updateLabel(app.label.minus("<font color='red'> (Paused) </font>"))
-			if(logEnable) log.debug "App no longer Paused - state.pauseApp: ${state.pauseApp}"                        
-        }
-	}      
-}
-
 def setDefaults(){
-    pauseAppHandler()
+    pauseHandler()
+	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
 	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(atomicState.sZone == null){atomicState.sZone = false}
@@ -588,6 +574,8 @@ def display() {
 	section() {
 		paragraph getFormat("line")
 		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
