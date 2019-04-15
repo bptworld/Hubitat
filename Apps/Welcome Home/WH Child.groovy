@@ -14,17 +14,18 @@ import groovy.time.TimeCategory
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -35,6 +36,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.7 - 04/15/19 - Code cleanup
  *  V2.0.6 - 04/13/19 - Made a ton of debug and info enhancements to try and make it easier to see what's going on!
  *  V2.0.5 - 04/06/19 - Added importUrl. Volume Control overhaul. Code cleanup.
  *  V2.0.4 - 03/22/19 - Added a new option: restoreVolume for Echo Speaks devices
@@ -66,7 +68,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v2.0.6"
+	state.version = "v2.0.7"
 }
 
 definition(
@@ -219,9 +221,6 @@ def pageConfig() {
 			input "gvDevice", "capability.actuator", title: "Virtual Device created for Welcome Home", required: true, multiple: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
@@ -243,8 +242,7 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	
-	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
+
 	subscribe(presenceSensor1, "presence", presenceSensorHandler1)
 	subscribe(presenceSensor2, "presence", presenceSensorHandler2)
 	subscribe(presenceSensor3, "presence", presenceSensorHandler3)
@@ -254,12 +252,6 @@ def initialize() {
 	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
-}
-
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${enablerSwitch2}"
-    if(state.enablerSwitch2 == "on") log.info "${app.label} is disabled."
 }
 
 def setupNewStuff() {
@@ -328,14 +320,13 @@ def presenceSensorHandler5(evt){
 }
 
 def lockHandler(evt) {
-	if(state.enablerSwitch2 == "off") {
 		state.lockStatus = evt.value
 		state.lockName = evt.displayName
 		if(logEnable) log.debug "In lockHandler - Lock: ${state.lockName} - Status: ${state.lockStatus}"
 		if(state.lockStatus == "unlocked") {
-			if(pause1 == true) log.info "${app.label} has been paused."
-    		if(pause1 == false) {
-				if(logEnable) log.debug "In lockHandler - Pause: ${pause1}"
+			if(pauseApp == true) log.info "${app.label} has been paused."
+    		if(pauseApp == false) {
+				if(logEnable) log.debug "In lockHandler..."
 				state.presenceMap = [:]
 				state.nameCount = 0
 				state.canSpeak = "no"
@@ -347,21 +338,17 @@ def lockHandler(evt) {
 				if(state.canSpeak == "yes") letsTalk()
 			}
 		}
-	} else {
-		if(logEnable) log.info "${app.label} is disabled."
-	}
 }
 
 def contactSensorHandler(evt) {
-	if(state.enablerSwitch2 == "off") {
 		state.contactStatus = evt.value
 		state.contactName = evt.displayName
 		if(logEnable) log.debug "In contactSensorHandler - Contact: ${state.contactName} - Status: ${state.contactStatus}"
 		if(csOpenClosed == "Open") {
 			if(state.contactStatus == "open") {
-				if(pause1 == true) log.info "${app.label} has been paused."
-    			if(pause1 == false) {
-					if(logEnable) log.debug "In contactSensorHandler - Pause: ${pause1}"
+				if(pauseApp == true) log.info "${app.label} has been paused."
+    			if(pauseApp == false) {
+					if(logEnable) log.debug "In contactSensorHandler..."
 					state.presenceMap = [:]
 					state.nameCount = 0
 					state.canSpeak = "no"
@@ -376,9 +363,9 @@ def contactSensorHandler(evt) {
 		}
 		if(csOpenClosed == "Closed") {
 			if(state.contactStatus == "closed") {
-				if(pause1 == true) log.info "${app.label} has been paused."
-    			if(pause1 == false) {
-					if(logEnable) log.debug "In contactSensorHandler - Pause: ${pause1}"
+				if(pauseApp == true) log.info "${app.label} has been paused."
+    			if(pauseApp == false) {
+					if(logEnable) log.debug "In contactSensorHandler..."
 					state.presenceMap = [:]
 					state.nameCount = 0
 					state.canSpeak = "no"
@@ -391,20 +378,16 @@ def contactSensorHandler(evt) {
 				}
 			}
 		}
-	} else {
-		if(logEnable) log.info "${app.label} is disabled."
-	}
 }
 
 def motionSensorHandler(evt) {
-	if(state.enablerSwitch2 == "off") {
 		state.motionStatus = evt.value
 		state.motionName = evt.displayName
 		if(logEnable) log.debug "In motionSensorHandler - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
 		if(state.motionStatus == "active") {
-			if(pause1 == true) log.info "${app.label} has been paused."
-    		if(pause1 == false) {
-				if(logEnable) log.debug "In motionSensorHandler - Pause: ${pause1}"
+			if(pauseApp == true) log.info "${app.label} has been paused."
+    		if(pauseApp == false) {
+				if(logEnable) log.debug "In motionSensorHandler..."
 				state.presenceMap = [:]
 				state.nameCount = 0
 				state.canSpeak = "no"
@@ -416,9 +399,6 @@ def motionSensorHandler(evt) {
 				if(state.canSpeak == "yes") letsTalk()
 			}
 		}
-	} else {
-		if(logEnable) log.info "${app.label} is disabled."
-	}
 }
 										
 def getTimeDiff1() {
@@ -664,7 +644,6 @@ def getTimeDiff5() {
 
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
-	if(state.enablerSwitch2 == "off") {
 		checkTime()
 		checkVol()
 		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
@@ -707,10 +686,6 @@ def letsTalk() {
 			state.canSpeak = "no"
 			if(logEnable) log.debug "In letsTalk - It's quiet time"
 		}
-	} else {
-		state.canSpeak = "no"
-		if(logEnable) log.info "${app.label} is disabled."
-	}
 }
 
 def checkVol(){
@@ -882,36 +857,11 @@ def globalBeenHere() {
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){						// Modified from @Cobra
-    state.pauseNow = pause1
-    if(state.pauseNow == true){
-    	state.pauseApp = true
-        if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              	if(logEnable) log.debug "App Paused - state.pauseApp: $state.pauseApp"
-            }
-        }
-    }
-    if(state.pauseNow == false){
-    	state.pauseApp = false
-        if(app.label){
-     		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     		if(logEnable) log.debug "App Released - state.pauseApp: $state.pauseApp"                         
-          	}
-         }
-	}      
-}
-
 def setDefaults(){
 	setupNewStuff()
 	globalBeenHere()
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
-    if(state.pauseApp == null){state.pauseApp = false}
+    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	state.nameCount = 0
 	state.canSpeak = "no"
 }
@@ -930,7 +880,9 @@ def getFormat(type, myText=""){			// Modified from @Stephack
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
