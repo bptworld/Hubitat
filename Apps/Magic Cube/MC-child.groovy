@@ -15,17 +15,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -36,13 +37,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 04/15/19 - Code cleanup
  *  V1.0.1 - 03/15/19 - Added Change Mode, Toggle, Dim and Set Color to device options.
  *  V1.0.0 - 03/14/19 - Initial Release
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -55,6 +57,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-child.groovy",
 )
 
 preferences {
@@ -91,11 +94,8 @@ def pageConfig() {
 			input "oXDelay", "number", title: "Delay X number of seconds BEFORE sending command", required: true, defaultValue: 2
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-		section() {
-		//	input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false)
-		}
         section() {
-            input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
 	}
@@ -854,25 +854,13 @@ def installed() {
 def updated() {	
     LOGDEBUG("Updated with settings: ${settings}")
     unsubscribe()
-	logCheck()
 	initialize()
 }
 
 def initialize() {
-	if(enableSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	subscribe(xCube, "pushed", pushedHandler)
 	subscribe(xCube, "face", faceHandler)
 	subscribe(xCube, "angle", angleHandler)
-}
-
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	LOGDEBUG("In enablerSwitchHandler - Enabler Switch = ${state.enablerSwitch2}")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("In enablerSwitchHandler - Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("In enablerSwitchHandler - Enabler Switch is OFF - Child app is active.")
-    }
 }
 
 def faceHandler(msg) {
@@ -922,8 +910,7 @@ def doSomethingHandler() {
 def magicHappensHandler() {
 	LOGDEBUG("In magicHappensHandler...")
 	log.info("Cube: ${xCube}, Button Pushed: ${state.pushedValue} (Face: ${state.face} - ${state.action} - Angle: ${state.angleValue})") 
-//	if(state.enablerSwitch2 == "off") {
- 		if(pause1 == false){
+ 		if(pauseApp == false){
 			if((state.pushedValue == "1") && (f0FlipToOn)) { switchesOn = f0FlipToOn }
 			if((state.pushedValue == "1") && (f0FlipToOff)) { switchesOff = f0FlipToOff }
 			if((state.pushedValue == "1") && (f0FlipToToggle)) { switchesToggle = f0FlipToToggle }
@@ -1148,9 +1135,6 @@ def magicHappensHandler() {
 		} else {
 			log.info "${app.label} - Unable to continue - App paused"
 		}
-//	} else {
-//		log.info "${app.label} - Enabler Switch is ON - Child app is disabled."
-//	}
 }
 
 def switchesOnHandler() {
@@ -1281,53 +1265,9 @@ def modeHandler() {
 
 // ***** Normal Stuff *****
 
-def pauseOrNot(){										// Modified from @Cobra Code
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
-}
-
 def setDefaults(){
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
-    if(state.pauseApp == null){state.pauseApp = false}
+    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
-}
-
-def logCheck(){											// Modified from @Cobra Code
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){										// Modified from @Cobra Code
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
 }
 
 def getImage(type) {									// Modified from @Stephack Code
@@ -1344,7 +1284,9 @@ def getFormat(type, myText=""){							// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
