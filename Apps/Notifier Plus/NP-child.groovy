@@ -13,17 +13,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -34,6 +35,8 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 04/15/19 - Code cleanup
+ *  V1.0.9 - 03/07/19 - Reworked Message Section so Control Switch is only needed if Repeat Messages is selected.
  *  V1.0.8 - 03/04/19 - Added Temp, Humidity and Power Triggers
  *  V1.0.7 - 03/02/19 - Added more options to 'repeat message' section.
  *  V1.0.6 - 03/01/19 - Fixed 'pause' button. Fixed 'by Day of the Week'. Special Thank you to RCJordan for all the testing!
@@ -50,7 +53,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.8"
+	state.version = "v1.1.0"
 }
 
 definition(
@@ -63,6 +66,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
 )
 
 preferences {
@@ -215,7 +219,7 @@ def pageConfig() {
 		}
 		if(oControl) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
-				paragraph "This is your child app on/off switch. <b>Required if using Lighting and/or Message Options.</b>"
+				paragraph "This is your child app on/off switch. <b>Required if using Lighting and/or Message Repeat Options.</b>"
 				paragraph "If choosing to use either Contact, Motion or Switch for Control...Be sure to remove any device from the control switch option below."
 				if(xContact) input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
 				if(xMotion) input(name: "oControlMotion", type: "bool", defaultValue: "false", title: "<b>Use Trigger Motion Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
@@ -283,27 +287,13 @@ def pageConfig() {
 		}
 		if(oMessage) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
-				if(oMessage && !oControl) paragraph "<b>* Control Switch is required when using Message options.</b>"
 				input(name: "oRandom", type: "bool", defaultValue: "false", title: "<b>Random Message?</b>", description: "Random", submitOnChange: "true")
 				paragraph "%device% - will speak the Device Name"
 				if(!oRandom) {
-					if(xHumidity) {
-						if(oSetPointHigh) input "messageHH", "text", title: "Message to speak when Humidity is too high", required: true, submitOnChange: true, defaultValue: "Power is too high"
-						if(oSetPointLow) input "messageHL", "text", title: "Message to speak when Humidity is too low", required: true, submitOnChange: true, defaultValue: "Power is too low"
-						if(oSetPointLow) input "messageHB", "text", title: "Message to speak when Humidity is both too high and too low", required: true, submitOnChange: true, defaultValue: "Humidity is out of range"
-					}
-					if(xPower) {
-						if(oSetPointHigh) input "messagePH", "text", title: "Message to speak when Power is too high", required: true, submitOnChange: true, defaultValue: "Power is too high"
-						if(oSetPointLow) input "messagePL", "text", title: "Message to speak when Power is too low", required: true, submitOnChange: true, defaultValue: "Power is too low"
-						if(oSetPointLow) input "messagePB", "text", title: "Message to speak when Power is both too high and too low", required: true, submitOnChange: true, defaultValue: "Power is out of range"
-					}
-					if(xTemp) {
-						if(oSetPointHigh) input "messageTH", "text", title: "Message to speak when Temp is too high", required: true, submitOnChange: true, defaultValue: "Temp is too high"
-						if(oSetPointLow) input "messageTL", "text", title: "Message to speak when Temp is too low", required: true, submitOnChange: true, defaultValue: "Temp is too low"
-						if(oSetPointLow) input "messageTB", "text", title: "Message to speak when Temp is both too high and too low", required: true, submitOnChange: true, defaultValue: "Temp is out of range"
-					}
 					if(xPower || xTemp || xHumidity) {
-						paragraph ""
+						if(oSetPointHigh) input "messageH", "text", title: "Message to speak when reading is too high", required: true, submitOnChange: true, defaultValue: "Temp is too high"
+						if(oSetPointLow) input "messageL", "text", title: "Message to speak when reading is too low", required: true, submitOnChange: true, defaultValue: "Temp is too low"
+						if(oSetPointLow) input "messageB", "text", title: "Message to speak when reading is both too high and too low", required: true, submitOnChange: true, defaultValue: "Temp is out of range"
 					} else {
 						input "message", "text", title: "Message to speak", required: true, submitOnChange: true
 					}
@@ -320,6 +310,7 @@ def pageConfig() {
 				}
 				input(name: "oRepeat", type: "bool", defaultValue: "false", title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: "true")
 				if(oRepeat) {
+					paragraph "<b>* Control Switch is required when using Message Repeat option.</b>"
 					paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
 					input "repeatSeconds", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
 					input "maxRepeats", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: "true"
@@ -331,7 +322,7 @@ def pageConfig() {
 						int nHrsNow = (inputNow % 86400 ) / 3600
 						int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
 						int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
-						paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Secs to reach the max number of repeats (if Control Switch is not turned off)"
+						paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Seconds to reach the max number of repeats (if Control Switch is not turned off)"
 					}
 				}
 				input(name: "oSpeech", type: "bool", defaultValue: "false", title: "<b>Speech Options</b>", description: "Speech Options", submitOnChange: "true", width: 6)
@@ -359,10 +350,6 @@ def pageConfig() {
 			}
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-		section() {
-			paragraph "Global on/off switch. Use it to turn off multiple apps at one time. This switch is included in all BPTWorld Apps."
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable multiple apps with one switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
@@ -376,24 +363,21 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
 	initialize()
 }
 
 def initialize() {
-	logCheck()
     setDefaults()
 	scheduleHandler()
 }
 
 def scheduleHandler(){
-	LOGDEBUG("In scheduleHandler...") 
-	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
- 	   	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+	if(logEnable) log.debug "In scheduleHandler..."
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+ 	   	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 			if(xDate) {
 				state.monthName = month   
  		 	  	if(state.monthName == "Jan") {state.theMonth = "1"}
@@ -408,14 +392,14 @@ def scheduleHandler(){
     			if(state.monthName == "Oct") {state.theMonth = "10"}
     			if(state.monthName == "Nov") {state.theMonth = "11"}
     			if(state.monthName == "Dec") {state.theMonth = "12"}
-				LOGDEBUG("In scheduleHandler - day: ${day}")
+				if(logEnable) log.debug "In scheduleHandler - day: ${day}"
 				String jDays = day.join(",")
 				state.theDays = jDays
 				state.theHour = hour
 				state.theMin = min
 	
     			state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
-				LOGDEBUG("In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *")
+				if(logEnable) log.debug "In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
     			schedule(state.schedule, magicHappensHandler)
 			}			
 			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
@@ -427,26 +411,13 @@ def scheduleHandler(){
 			if(xPower) subscribe(powerEvent, "power", setPointHandler)
 			if(xHumidity) subscribe(humidityEvent, "humidity", setPointHandler)
 		}
-	} else {
-		LOGDEBUG("In scheduleHandler - Enabler Switch is ON - Child app is disabled.")
-	}
-}
-	
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	LOGDEBUG("In enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("In enablerSwitchHandler - Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("In enablerSwitchHandler - Enabler Switch is OFF - Child app is active.")
-    }
 }
 
 def controlSwitchHandler(evt){
-	LOGDEBUG("In controlSwitchHandler...Checking what type of trigger to use")
+	if(logEnable) log.debug "In controlSwitchHandler...Checking what type of trigger to use"
 	if(state.controlSW == "yes") {
 		state.controlSwitch2 = controlSwitch.currentValue("switch")
-		LOGDEBUG("In controlSwitchHandler - Control Switch: ${state.controlSwitch2}")
+		if(logEnable) log.debug "In controlSwitchHandler - Control Switch: ${state.controlSwitch2}"
     	if(state.controlSwitch2 == "on"){
     		log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
 		} else {
@@ -455,7 +426,7 @@ def controlSwitchHandler(evt){
 	}
 	if(oControlContact) {
 		if(csOpenClosed) {
-			LOGDEBUG("In controlSwitchHandler - Contact Sensor: ${state.contactStatus}")
+			if(logEnable) log.debug "In controlSwitchHandler - Contact Sensor: ${state.contactStatus}"
     		if(state.contactStatus == "open"){
 				state.controlSwitch2 = "on"
     			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -465,7 +436,7 @@ def controlSwitchHandler(evt){
     		}
 		}
 		if(!csOpenClosed) {
-			LOGDEBUG("In controlSwitchHandler - Contact Sensor: ${state.contactStatus}")
+			if(logEnable) log.debug "In controlSwitchHandler - Contact Sensor: ${state.contactStatus}"
     		if(state.contactStatus == "open"){
 				state.controlSwitch2 = "off"
     			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -477,7 +448,7 @@ def controlSwitchHandler(evt){
 	}
 	if(oControlSwitch) {
 		if(seOnOff) {
-			LOGDEBUG("In controlSwitchHandler - Switch: ${state.switchStatus}")
+			if(logEnable) log.debug "In controlSwitchHandler - Switch: ${state.switchStatus}"
     		if(state.switchStatus == "on"){
 				state.controlSwitch2 = "on"
     			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -487,7 +458,7 @@ def controlSwitchHandler(evt){
     		}
 		}
 		if(!seOnOff) {
-			LOGDEBUG("In controlSwitchHandler - Switch: ${state.switchStatus}")
+			if(logEnable) log.debug "In controlSwitchHandler - Switch: ${state.switchStatus}"
     		if(state.switchStatus == "on"){
 				state.controlSwitch2 = "off"
     			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -499,7 +470,7 @@ def controlSwitchHandler(evt){
 	}
 	if(oControlMotion) {
 		if(meOnOff) {
-			LOGDEBUG("In controlSwitchHandler - Motion: ${state.motionStatus}")
+			if(logEnable) log.debug "In controlSwitchHandler - Motion: ${state.motionStatus}"
     		if(state.motionStatus == "active"){
 				state.controlSwitch2 = "on"
     			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -509,7 +480,7 @@ def controlSwitchHandler(evt){
     		}
 		}
 		if(!meOnOff) {
-			LOGDEBUG("In controlSwitchHandler - Motion: ${state.motionStatus}")
+			if(logEnable) log.debug "In controlSwitchHandler - Motion: ${state.motionStatus}"
     		if(state.motionStatus == "active"){
 				state.controlSwitch2 = "off"
     			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
@@ -534,7 +505,7 @@ def contactSensorHandler(evt) {
 			if(state.contactStatus == "open") {reverseTheMagicHandler()}
 		}
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+		if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
 	}
 }
 
@@ -551,7 +522,7 @@ def switchHandler(evt) {
 			if(state.switchStatus == "on") {reverseTheMagicHandler()}
 		}
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+		if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
 	}
 }
 
@@ -568,7 +539,7 @@ def motionHandler(evt) {
 			if(state.motionStatus == "active") {reverseTheMagicHandler()}
 		}
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+		if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
 	}
 }
 
@@ -578,25 +549,25 @@ def setPointHandler(evt) {
 	controlSwitchHandler()
 	if(state.controlSwitch2 == "on") {
 		setPointValue1 = setPointValue.toDouble()
-		LOGDEBUG("In setPointHandler - Device: ${state.setPointDevice}, setPointHigh: ${setPointHigh}, setPointLow: ${setPointLow}, Acutal value: ${setPointValue1} - setPointHighOK: ${state.setPointHighOK}, setPointLowOK: ${state.setPointLowOK}")
+		if(logEnable) log.debug "In setPointHandler - Device: ${state.setPointDevice}, setPointHigh: ${setPointHigh}, setPointLow: ${setPointLow}, Acutal value: ${setPointValue1} - setPointHighOK: ${state.setPointHighOK}, setPointLowOK: ${state.setPointLowOK}"
 		// *** setPointHigh ***
 		if(oSetPointHigh && !oSetPointLow) {
 			if(setPointValue1 > setPointHigh) {
 				if(state.setPointHighOK != "no") {
-					LOGDEBUG("In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}")
+					if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
 					state.setPointHighOK = "no"
 					magicHappensHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 			if(setPointValue1 < setPointHigh) {
 				if(state.setPointHighOK == "no") {
-					LOGDEBUG("In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${setPointHigh}")
+					if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${setPointHigh}"
 					state.setPointHighOK = "yes"
 					reverseTheMagicHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 		}
@@ -604,20 +575,20 @@ def setPointHandler(evt) {
 		if(oSetPointLow && !oSetPointHigh) {
 			if(setPointValue1 < setPointLow) {
 				if(state.setPointLowOK != "no") {
-					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}")
+					if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
 					state.setPointLowOK = "no"
 					magicHappensHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 			if(setPointValue1 > setPointLow) {
 				if(state.setPointLowOK == "no") {
-					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${setPointLow}")
+					if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${setPointLow}"
 					state.setPointLowOK = "yes"
 					reverseTheMagicHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 		}
@@ -625,69 +596,68 @@ def setPointHandler(evt) {
 		if(oSetPointHigh && oSetPointLow) {
 			if(setPointValue1 > setPointHigh) {
 				if(state.setPointHighOK != "no") {
-					LOGDEBUG("In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}")
+					if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
 					state.setPointHighOK = "no"
 					magicHappensHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 			if(setPointValue1 < setPointLow) {
 				if(state.setPointLowOK != "no") {
-					LOGDEBUG("In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}")
+					if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
 					state.setPointLowOK = "no"
 					magicHappensHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 			if((setPointValue1 <= setPointHigh) && (setPointValue1 >= setPointLow)) {
 				if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
-					LOGDEBUG("InsetPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${setPointHigh} and setPointLow: ${setPointLow}")
+					if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${setPointHigh} and setPointLow: ${setPointLow}"
 					state.setPointHighOK = "yes"
 					state.setPointLowOK = "yes"
 					reverseTheMagicHandler()
 				} else {
-					LOGDEBUG("In setPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do.")
+					if(logEnable) log.debug "In setPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
 				}
 			}
 		}
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+		if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
 	}
 }
 
 def magicHappensHandler() {
-	LOGDEBUG("In magicHappensHandler...CS: ${state.controlSwitch2}")
-	if(state.enablerSwitch2 == "off") {
+	if(logEnable) log.debug "In magicHappensHandler...CS: ${state.controlSwitch2}"
 		if(state.controlSwitch2 == "on") {
-			if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
- 	 	  	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+			if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+ 	 	  	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 				if(oDelay) {
-					LOGDEBUG("In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}")
+					if(logEnable) log.debug "In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}"
 					if(minutesUp) state.realSeconds = minutesUp * 60
 					if(notifyDelay) state.notifyDel = notifyDelay * 60
 					if(maxRepeats) state.numRepeats = 1
 					if(oDimUp && oControl) slowOnHandler()
 					if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
 					if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
-					if(oMessage && oControl) runIn(state.realSeconds,messageHandler)
-					if(oPush && oControl) runIn(state.realSeconds,pushHandler)
-					if(oSpeech && oControl) runIn(state.realSeconds,letsTalk)
+					if(oMessage) runIn(state.realSeconds,messageHandler)
+					if(oPush) runIn(state.realSeconds,pushHandler)
+					if(oSpeech) runIn(state.realSeconds,letsTalk)
 					if(oDevice) runIn(state.realSeconds,switchesOnHandler)
 					if(oDevice) runIn(state.realSeconds,switchesOffHandler)
 					if(newMode) runIn(state.realSeconds, modeHandler)
 				} else if(notifyDelay) {
-					LOGDEBUG("In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}")
+					if(logEnable) log.debug "In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}"
 					if(minutesUp) state.realSeconds = minutesUp * 60
 					if(notifyDelay) state.notifyDel = notifyDelay * 60
 					if(maxRepeats) state.numRepeats = 1
 					if(oDimUp && oControl) slowOnHandler()
 					if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
 					if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
-					if(oMessage && oControl) runIn(state.notifyDel,messageHandler)
-					if(oPush && oControl) runIn(state.notifyDel,pushHandler)
-					if(oSpeech && oControl) runIn(state.notifyDel,letsTalk)
+					if(oMessage) runIn(state.notifyDel,messageHandler)
+					if(oPush) runIn(state.notifyDel,pushHandler)
+					if(oSpeech) runIn(state.notifyDel,letsTalk)
 					if(oDevice) runIn(state.notifyDel,switchesOnHandler)
 					if(oDevice) runIn(state.notifyDel,switchesOffHandler)
 					if(newMode) runIn(state.notifyDel, modeHandler)
@@ -697,9 +667,9 @@ def magicHappensHandler() {
 					if(oDimUp && oControl) slowOnHandler()
 					if(oDimDn && oControl) slowOffHandler()
 					if(oSetLC && oControl) dimmerOnHandler()
-					if(oMessage && oControl) messageHandler()
-					if(oPush && oControl) pushHandler()
-					if(oSpeech && oControl) letsTalk()
+					if(oMessage) messageHandler()
+					if(oPush) pushHandler()
+					if(oSpeech) letsTalk()
 					if(oDevice) switchesOnHandler()
 					if(oDevice) switchesOffHandler()
 					if(newMode) modeHandler()
@@ -708,13 +678,10 @@ def magicHappensHandler() {
 		} else {
 			log.info "${app.label} - Control Switch is OFF - No need to run."
 		}
-	} else {
-		log.info "${app.label} - Enabler Switch is ON - Child app is disabled."
-	}
 }
 
 def reverseTheMagicHandler() {
-	LOGDEBUG("In reverseTheMagicHandler...CS: ${state.controlSwitch2}")
+	if(logEnable) log.debug "In reverseTheMagicHandler...CS: ${state.controlSwitch2}"
 	if(minutesUp) state.realSeconds = minutesUp * 60
 	if(notifyDelay) state.notifyDel = notifyDelay * 60
 	if(oDimUp && oControl) slowDimmerUp.off()
@@ -727,8 +694,7 @@ def reverseTheMagicHandler() {
 def slowOnHandler(evt) {
 	if(state.controlSwitch2 == "on") {
 		dayOfTheWeekHandler()
-		LOGDEBUG("In slowOnHandler...")
-		LOGDEBUG("In slowOnHandler...Pause: ${pause1}")
+		if(logEnable) log.debug "In slowOnHandler..."
 		state.fromWhere = "slowOn"
 		state.onLevel = 1
 		state.color = "${colorUp}"
@@ -738,18 +704,18 @@ def slowOnHandler(evt) {
     	seconds = minutesUp * 6
     	state.dimStep = targetLevelHigh / seconds
     	state.dimLevel = state.currentLevel
-    	LOGDEBUG("slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+    	if(logEnable) log.debug "slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
 		if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
 		runIn(10,dimStepUp)
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is OFF - No need to run.")
+		if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
 	}
 }
 
 def slowOffHandler(evt) {
 	if(state.controlSwitch2 == "on") {
 		dayOfTheWeekHandler()
-		LOGDEBUG("In slowOffHandler...")
+		if(logEnable) log.debug "In slowOffHandler..."
 		state.fromWhere = "slowOff"
 		state.onLevel = 99
 		state.color = "${colorDn}"
@@ -759,24 +725,24 @@ def slowOffHandler(evt) {
     	seconds = minutesDn * 6
     	state.dimStep1 = (targetLevelLow / seconds) * 100
     	state.dimLevel = state.currentLevel
-   		LOGDEBUG("slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+   		if(logEnable) log.debug "slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
 	} else {
-		LOGDEBUG("${app.label} - Control Switch is ${state.controlSwitch2} - No need to run.")
+		if(logEnable) log.debug "${app.label} - Control Switch is ${state.controlSwitch2} - No need to run."
 	}
 }
 
 def dimStepUp() {
-	LOGDEBUG("In dimStepUp...")
+	if(logEnable) log.debug "In dimStepUp..."
 	if(state.controlSwitch2 == "on") {
     	if(state.currentLevel < targetLevelHigh) {
         	state.dimLevel = state.dimLevel + state.dimStep
         	if(state.dimLevel > targetLevelHigh) {state.dimLevel = targetLevelHigh}
        	 	state.currentLevel = state.dimLevel.toInteger()
     		slowDimmerUp.setLevel(state.currentLevel)
-       	 	LOGDEBUG("dimStepUp - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+       	 	if(logEnable) log.debug "dimStepUp - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
         	runIn(10,dimStepUp)				
 		} else {
-			LOGDEBUG("dimStepUp - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}")
+			if(logEnable) log.debug "dimStepUp - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
 			log.info "${app.label} - Target Level has been reached"
 		}
 	} else {
@@ -785,7 +751,7 @@ def dimStepUp() {
 }
 
 def dimStepDown() {
-	LOGDEBUG("In dimStepDown...")			
+	if(logEnable) log.debug "In dimStepDown..."
     if(state.controlSwitch2 == "on") {
     	if(state.currentLevel > targetLevelLow) {
             state.dimStep = state.dimStep1
@@ -793,114 +759,100 @@ def dimStepDown() {
             if(state.dimLevel < targetLevelLow) {state.dimLevel = targetLevelLow}
         	state.currentLevel = state.dimLevel.toInteger()
     		slowDimmerDn.setLevel(state.currentLevel)
-            LOGDEBUG("dimStepDown - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+            if(logEnable) log.debug "dimStepDown - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
         	runIn(10,dimStepDown)
     	} else {
 			if(dimDnOff) slowDimmerDn.off()
-			LOGDEBUG("dimStepDown - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}")
+			if(logEnable) log.debug "dimStepDown - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
 			log.info "${app.label} - Target Level has been reached"
 		} 
     } else{
-        LOGDEBUG("${app.label} - Control Switch is ${state.controlSwitch2}")
+        if(logEnable) log.debug "${app.label} - Control Switch is ${state.controlSwitch2}"
     }						
 }
 
 def letsTalk() {							// Modified from @Cobra Code
-	LOGDEBUG("In letsTalk...")
-	if(state.controlSwitch2 == "on") {
-		if(speaker) LOGDEBUG("In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}")
-		if(gSpeaker) LOGDEBUG("In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}")
-		messageHandler()
-		LOGDEBUG("In letsTalk...Back from messageHandler")
-  		if(speechMode == "Music Player"){
-			LOGDEBUG("In letsTalk - Music Player - ${state.msg}")
-			if(echoSpeaks) {
-				speaker.setLevel(volume1)
-				speaker.setVolumeSpeakAndRestore(state.volume, state.msg)
-			}
-			if(!echoSpeaks) {
-    			speaker.setLevel(volume1)
-    			speaker.playTextAndRestore(state.msg)
-			}
-  		}   
-		if(speechMode == "Speech Synth"){
-			LOGDEBUG("In letsTalk - Speech Synth - ${state.msg}")
-			if(gInitialize) gSpeaker.initialize()
-			if(gSpeaker) gSpeaker.speak(state.msg)
-			if(speaker) speaker.speak(state.msg)
+	if(logEnable) log.debug "In letsTalk..."
+	if(speaker) if(logEnable) log.debug "In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}"
+	if(gSpeaker) if(logEnable) log.debug "In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}"
+	messageHandler()
+	if(logEnable) log.debug "In letsTalk...Back from messageHandler"
+  	if(speechMode == "Music Player"){
+		if(logEnable) log.debug "In letsTalk - Music Player - ${state.msg}"
+		if(echoSpeaks) {
+			speaker.setLevel(volume1)
+			speaker.setVolumeSpeakAndRestore(state.volume, state.msg)
 		}
-		if(oRepeat) {
-			LOGDEBUG("In letsTalk - oRepeat - ${state.numRepeats}")
+		if(!echoSpeaks) {
+   			speaker.setLevel(volume1)
+   			speaker.playTextAndRestore(state.msg)
+		}
+  	}   
+	if(speechMode == "Speech Synth"){
+		if(logEnable) log.debug "In letsTalk - Speech Synth - ${state.msg}"
+		if(gInitialize) gSpeaker.initialize()
+		if(gSpeaker) gSpeaker.speak(state.msg)
+		if(speaker) speaker.speak(state.msg)
+	}
+	if(oRepeat) {
+		if(state.controlSwitch2 == "on") {
+			if(logEnable) log.debug "In letsTalk - oRepeat - ${state.numRepeats}"
 			if(state.numRepeats < maxRepeats) {
 				state.numRepeats = state.numRepeats + 1
 				runIn(repeatSeconds,letsTalk)
 			} else {
 				log.info "${app.label} - Max repeats has been reached."
 			}
+		} else {
+			log.info "${app.label} - Set to repeat but Control Switch is Off."
 		}
 	} else {
 		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
-		LOGDEBUG("In letsTalk...Okay, I'm done!")
+		if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 	}
 }
 
 def messageHandler() {
-	LOGDEBUG("In messageHandler - Control Switch: ${state.controlSwitch2}")
-	if(state.controlSwitch2 == "on") {
-		if(oRandom) {
-			def values = "${message}".split(";")
-			vSize = values.size()
-			count = vSize.toInteger()
-    		def randomKey = new Random().nextInt(count)
-			state.msg = values[randomKey]
-			LOGDEBUG("In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}")
-		} else {
-			if(xHumidity) {
-				LOGDEBUG("In messageHandler (Humidity) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}")
-				if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messageHH}"
-				if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messageHL}"
-				if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messageHB}"
-			}
-			if(xPower) {
-				LOGDEBUG("In messageHandler (Power) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}")
-				if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messagePH}"
-				if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messagePL}"
-				if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messagePB}"
-			}
-			if(xTemp) {
-				LOGDEBUG("In messageHandler (Temp) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}")
-				if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messageTH}"
-				if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messageTL}"
-				if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messageTB}"
-			}
-			if(!xPower && !xTemp && !xHumidity) theMessage = "${message}"
-		}
-		LOGDEBUG("In messageHandler - theMessage: ${theMessage}")
-		theMessage = theMessage.toLowerCase()
-		if (theMessage.toLowerCase().contains("%device%")) {theMessage = theMessage.toLowerCase().replace('%device%', state.setPointDevice)}
-		state.msg = "${theMessage}"
-		LOGDEBUG("In messageHandler - msg: ${state.msg}")
+	if(logEnable) log.debug "In messageHandler - Control Switch: ${state.controlSwitch2}"
+	if(oRandom) {
+		def values = "${message}".split(";")
+		vSize = values.size()
+		count = vSize.toInteger()
+    	def randomKey = new Random().nextInt(count)
+		state.msg = values[randomKey]
+		if(logEnable) log.debug "In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}"
 	} else {
-		LOGDEBUG("In messageHandler - Control Switch is ${state.controlSwitch2}")
+		if(xHumidity || xPower || xTemp) {
+			if(logEnable) log.debug "In messageHandler (Humidity) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}"
+			if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messageH}"
+			if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messageL}"
+			if((oSetPointHigh && state.setPointHighOK == "no") && (oSetPointLow && state.setPointLowOK == "no")) theMessage = "${messageB}"
+		}
+		if(!xPower && !xTemp && !xHumidity) theMessage = "${message}"
 	}
+	if(logEnable) log.debug "In messageHandler - theMessage: ${theMessage}"
+	theMessage = theMessage.toLowerCase()
+	if (theMessage.toLowerCase().contains("%device%")) {theMessage = theMessage.toLowerCase().replace('%device%', state.setPointDevice)}
+	state.msg = "${theMessage}"
+	if(logEnable) log.debug "In messageHandler - msg: ${state.msg}"
 }
 
 def switchesOnHandler() {
 	switchesOn.each { it ->
-		LOGDEBUG("In switchOnHandler - Turning on ${it}")
+		if(logEnable) log.debug "In switchOnHandler - Turning on ${it}"
 		it.on()
 	}
 }
 
 def switchesOffHandler() {
 	switchesOff.each { it ->
-		LOGDEBUG("In switchOffHandler - Turning off ${it}")
+		if(logEnable) log.debug "In switchOffHandler - Turning off ${it}"
 		it.off()
 	}
 }
 
 def dimmerOnHandler() {
-	LOGDEBUG("In dimmerOnHandler...")
+	if(logEnable) log.debug "In dimmerOnHandler..."
 	state.fromWhere = "dimmerOn"
 	state.color = "${colorLC}"
 	state.onLevel = levelLC
@@ -908,12 +860,12 @@ def dimmerOnHandler() {
 }
 
 def modeHandler() {
-	LOGDEBUG("In modeHandler - Changing mode to ${newMode}")
+	if(logEnable) log.debug "In modeHandler - Changing mode to ${newMode}"
 	setLocationMode(newMode)
 }
 
 def dayOfTheWeekHandler() {
-	LOGDEBUG("In dayOfTheWeek...")
+	if(logEnable) log.debug "In dayOfTheWeek..."
 	if(xDay) {
 		Calendar date = Calendar.getInstance()
 		int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
@@ -924,18 +876,18 @@ def dayOfTheWeekHandler() {
 		if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
 		if(dayOfTheWeek == 6) state.dotWeek = "Friday"
 		if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
-		LOGDEBUG("In dayOfTheWeek...dayOfTheWeek: ${dayOfTheWeek} dotWeek: ${state.dotWeek}")
-		LOGDEBUG("In dayOfTheWeek...days: ${days}")
+		if(logEnable) log.debug "In dayOfTheWeek...dayOfTheWeek: ${dayOfTheWeek} dotWeek: ${state.dotWeek}"
+		if(logEnable) log.debug "In dayOfTheWeek...days: ${days}"
 		def values = "${days}".split(",")
 		values.each { it ->
 			it2 = it.replace("[","")
 			it3 = it2.replace("]","")
 			it4 = it3.replace(" ","")
 			if(it4 == state.dotWeek) {
-				LOGDEBUG("In dayOfTheWeekHandler - Match: state.dotWeek: ${state.dotWeek} - values: ${it4}")
+				if(logEnable) log.debug "In dayOfTheWeekHandler - Match: state.dotWeek: ${state.dotWeek} - values: ${it4}"
 				magicHappensHandler()
 			} else {
-				LOGDEBUG("In dayOfTheWeekHandler - Days set to run (${it4}) does not match today (${state.dotWeek})")
+				if(logEnable) log.debug "In dayOfTheWeekHandler - Days set to run (${it4}) does not match today (${state.dotWeek})"
 			}
 		}
 	}
@@ -944,16 +896,16 @@ def dayOfTheWeekHandler() {
 def pushHandler(){
 	count = 0
 	if(count == 0) {
-		LOGDEBUG("In pushNow...")
+		if(logEnable) log.debug "In pushNow..."
 		theMessage = "${app.label} - ${state.msg}"
-		LOGDEBUG("In pushNow...Sending message: ${theMessage}")
+		if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
     	sendPushMessage.deviceNotification(theMessage)
 		count = count + 1
 	}
 }
 
 def setLevelandColorHandler() {
-	LOGDEBUG("In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}")
+	if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}"
     def hueColor = 0
     def saturation = 100
 	int onLevel = state.onLevel
@@ -997,17 +949,17 @@ def setLevelandColorHandler() {
             break;
     }
 	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
-    LOGDEBUG("In setLevelandColorHandler - value: $value")
+    if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
 	if(state.fromWhere == "dimmerOn") {
     	setOnLC.each {
         	if (it.hasCommand('setColor')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(onLevel as Integer ?: 100)
         	} else {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
         	}
     	}
@@ -1015,13 +967,13 @@ def setLevelandColorHandler() {
 	if(state.fromWhere == "slowOn") {
     	slowDimmerUp.each {
         	if (it.hasCommand('setColor')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(onLevel as Integer ?: 100)
         	} else {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
         	}
     	}
@@ -1029,13 +981,13 @@ def setLevelandColorHandler() {
 	if(state.fromWhere == "slowOff") {
     	slowDimmerDn.each {
         	if (it.hasCommand('setColor')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setColor($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, setLevel($value)")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(level as Integer ?: 100)
         	} else {
-            	LOGDEBUG("In setLevelandColorHandler - $it.displayName, on()")
+            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
         	}
     	}
@@ -1044,34 +996,9 @@ def setLevelandColorHandler() {
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){						// Modified from @Cobra Code
-    state.pauseNow = pause1
-    if(state.pauseNow == true){
-        state.pauseApp = true
-        if(app.label){
-        	if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              	LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-        }
-	}
-    if(state.pauseNow == false){
-        state.pauseApp = false
-        if(app.label){
-     		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     			LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-          	}
-        }
-	}      
-}
-
 def setDefaults(){
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
-    if(state.pauseApp == null){state.pauseApp = false}
+    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(state.controlSwitch2 == null){state.controlSwitch2 = "off"}
 	if(notifyDelay == null){notifyDelay = 0}
 	if(minutesUp == null){minutesUp = 0}
@@ -1083,24 +1010,6 @@ def setDefaults(){
 	if(setPointLow == null){setPointLow = 0}
 	if(state.setPointHighOK == null){state.setPointHighOK = "yes"}
 	if(state.setPointLowOK == null){state.setPointLowOK = "yes"}
-}
-
-def logCheck(){					// Modified from @Cobra Code
-	state.checkLog = logEnable
-	if(state.logEnable == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.logEnable == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){				// Modified from @Cobra Code
-    try {
-		if (settings.logEnable) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -1117,7 +1026,9 @@ def getFormat(type, myText=""){			// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
