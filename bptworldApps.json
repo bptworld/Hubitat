@@ -216,13 +216,13 @@
   
   "WebPingerType": "App",
   "WebPingerParentVersion": "v1.0.2",
-  "WebPingerChildVersion": "v1.0.2",
+  "WebPingerChildVersion": "v1.0.4",
   "WebPingerDriverVersion": "NA",
   "WebPingerParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-parent.groovy",
   "WebPingerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-child.groovy",
   "WebPingerDriverRawCode": "NA",
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
-  "WebPingerUpdateNote": "NA",
+  "WebPingerUpdateNote": "V1.0.4 - 04/15/19 - Code cleanup",
   
   "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.2",
