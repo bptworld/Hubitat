@@ -5,8 +5,6 @@
  *	Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
- *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -15,17 +13,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -36,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 04/15/19 - Code cleanup
  *  V1.0.1 - 01/22/19 - Added more randomness to Random section.
  *  V1.0.0 - 01/19/19 - Officially out of beta! (hopefully)
  *  V0.0.9 - 01/19/19 - More testing, more bug fixing.
@@ -50,7 +50,9 @@
  *
  */
 
-def version(){"v1.0.1"}
+def setVersion() {
+	state.version = "v1.0.2"
+}
 
 definition(
     name: "At Home Simulator Child",
@@ -58,13 +60,12 @@ definition(
     author: "Bryan Turcotte",
     description: "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.",
     category: "",
-    
-parent: "BPTWorld:At Home Simulator",
-    
+	parent: "BPTWorld:At Home Simulator",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-child.groovy",
+)
 
 preferences {
     page name: "pageConfig"
@@ -142,12 +143,8 @@ def pageConfig() {
 			if(gRSwitches) input "pToR", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false, submitOnChange: true}
-		
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
-            input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
 	}
@@ -159,7 +156,7 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
 	initialize()
@@ -167,8 +164,6 @@ def updated() {
 
 def initialize() {
 	setDefaults()
-	logCheck()
-	
 	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	subscribe(controlSwitch, "switch", deviceHandler)
 	
@@ -177,31 +172,30 @@ def initialize() {
 }
 
 def deviceHandler(evt) {
-	LOGDEBUG("In DeviceHandler...")
+	if(logEnable) log.debug "In DeviceHandler..."
 	state.controllerSwitch = evt.value
 	if(state.controllerSwitch == "on") {
 		atomicState.cSwitch = 1
-		LOGDEBUG("In deviceHandler...CS JUST TURNED ON.")
+		if(logEnable) log.debug "In deviceHandler...CS JUST TURNED ON."
 	}
 	
 	if(state.controllerSwitch == "off") {
 		atomicState.cSwitch = 0
-		LOGDEBUG("In deviceHandler...CS JUST TURNED OFF.")
+		if(logEnable) log.debug "In deviceHandler...CS JUST TURNED OFF."
 	}
 	
-	LOGDEBUG("In deviceHandler... cs: ${atomicState.cSwitch}")
-	if(state.enablerSwitch2 == "off") {
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+	if(logEnable) log.debug "In deviceHandler... cs: ${atomicState.cSwitch}"
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 			if(atomicState.cSwitch == 1) {
 				def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
-				LOGDEBUG("In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group - cs: ${atomicState.cSwitch} **********")
+				if(logEnable) log.debug "In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group - cs: ${atomicState.cSwitch} **********"
 				int delaySc = (delaySb * 60) * 1000			// Minutes
 				log.info "Starting - Waiting Random Pause: ${delaySb} minutes"
 				if(atomicState.cSwitch == 1) pauseExecution(delaySc)
 				if(gRSwitches) randomSwitchesHandler()
 				
-				LOGDEBUG("In between S and 1 ... cs: ${atomicState.cSwitch}   *   *   *")
+				if(logEnable) log.debug "In between S and 1 ... cs: ${atomicState.cSwitch}   *   *   *"
 				
 				if(atomicState.cSwitch == 1 && g1Switches) {
 					int delay1 = (timeToPause1 * 1000)			// Seconds
@@ -212,7 +206,7 @@ def deviceHandler(evt) {
 					if(totalDevices == 1) {
 						g1Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
-								LOGDEBUG("In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 1 - Turning on ${device}"
 								device.on()
 							}
@@ -222,7 +216,7 @@ def deviceHandler(evt) {
    						g1Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
 								numOfDevices = numOfDevices + 1
-								LOGDEBUG("In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}"
 								log.info "Group 1 - Turning on ${device}"
         						device.on()
 								if(numOfDevices < totalDevices) log.info "Group 1 - Waiting Pause between devices: ${timeToPause1} seconds"
@@ -232,13 +226,13 @@ def deviceHandler(evt) {
     				}
 					runIn(g1TTSO, g1SwitchesOff)
 					def delay1b = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-					LOGDEBUG("In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********")
+					if(logEnable) log.debug "In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********"
 					int delay1c = (delay1b * 60) * 1000			// Minutes
 					if(atomicState.cSwitch == 1 && g2Switches) log.info "Group 1 - Waiting Random Pause: ${delay1b} minutes before heading to Group 2"
 					if(atomicState.cSwitch == 1 && g2Switches) pauseExecution(delay1c)
 				}
 				
-				LOGDEBUG("In between 1 and 2 ... cs: ${atomicState.cSwitch}   *   *   *")
+				if(logEnable) log.debug "In between 1 and 2 ... cs: ${atomicState.cSwitch}   *   *   *"
 				
 				if(atomicState.cSwitch == 1 && g2Switches) {
 					int delay2 = (timeToPause2 * 1000) 			// Seconds
@@ -249,7 +243,7 @@ def deviceHandler(evt) {
 					if(totalDevices == 1) {
 						g2Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
-								LOGDEBUG("In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 2 - Turning on ${device}"
 								device.on()
 							}
@@ -259,7 +253,7 @@ def deviceHandler(evt) {
    						g2Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
 								numOfDevices = numOfDevices + 1
-								LOGDEBUG("In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 2 - Turning on ${device}"
 								device.on()
 								if(numOfDevices < totalDevices) log.info "Group 2 - Waiting Pause between devices: ${timeToPause2} seconds"
@@ -269,7 +263,7 @@ def deviceHandler(evt) {
 					}
 					runIn(g2TTSO, g2SwitchesOff)
 					def delay2b = Math.abs(new Random().nextInt() % ([pTo2] - [pFrom2])) + [pFrom2]
-					LOGDEBUG("In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********")
+					if(logEnable) log.debug "In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********"
 					int delay2c = (delay2b * 60) * 1000			// Minutes
 					if(atomicState.cSwitch == 1 && g3Switches) log.info "Group 2 - Waiting Random Pause: ${delay2b} minutes before heading to Group 3"
 					if(atomicState.cSwitch == 1 && g3Switches) pauseExecution(delay2c)
@@ -284,7 +278,7 @@ def deviceHandler(evt) {
 					if(totalDevices == 1) {
 						g3Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
-								LOGDEBUG("In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 3 - Turning on ${device}"
 								device.on()
 							}
@@ -294,7 +288,7 @@ def deviceHandler(evt) {
    						g3Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
 								numOfDevices = numOfDevices + 1
-								LOGDEBUG("In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 3 - Turning on ${device}"
 								device.on()
 								if(numOfDevices < totalDevices) log.info "Group 3 - Waiting Pause between devices: ${timeToPause3} seconds"
@@ -304,7 +298,7 @@ def deviceHandler(evt) {
 					}
 					runIn(g3TTSO, g3SwitchesOff)
 					def delay3b = Math.abs(new Random().nextInt() % ([pTo3] - [pFrom3])) + [pFrom3]
-					LOGDEBUG("In deviceOnHandler 3...Delay: ${pFrom3} to ${pTo3} = ${delay3b} till next Group **********")
+					if(logEnable) log.debug "In deviceOnHandler 3...Delay: ${pFrom3} to ${pTo3} = ${delay3b} till next Group **********"
 					int delay3c = (delay3b * 60) * 1000			// Minutes
 					if(atomicState.cSwitch == 1 && g4Switches)log.info "Group 3 - Waiting Random Pause: ${delay3b} minutes before heading to Group 4"
 					if(atomicState.cSwitch == 1 && g4Switches) pauseExecution(delay3c)
@@ -319,7 +313,7 @@ def deviceHandler(evt) {
 					if(totalDevices == 1) {
 						g4Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
-								LOGDEBUG("In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 4 - Turning on ${device}"
 								device.on()
 							}
@@ -329,7 +323,7 @@ def deviceHandler(evt) {
    						g4Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
 								numOfDevices = numOfDevices + 1
-								LOGDEBUG("In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 4 - Turning on ${device}"
 								device.on()
 								if(numOfDevices < totalDevices) log.info "Group 4 - Waiting Pause between devices: ${timeToPause4} seconds"
@@ -339,7 +333,7 @@ def deviceHandler(evt) {
     				}
 					runIn(g4TTSO, g4SwitchesOff)
 					def delay4b = Math.abs(new Random().nextInt() % ([pTo4] - [pFrom4])) + [pFrom4]
-					LOGDEBUG("In deviceOnHandler 4...Delay: ${pFrom4} to ${pTo4} = ${delay4b} till next Group **********")
+					if(logEnable) log.debug "In deviceOnHandler 4...Delay: ${pFrom4} to ${pTo4} = ${delay4b} till next Group **********"
 					int delay4c = (delay4b * 60) * 1000			// Minutes
 					if(atomicState.cSwitch == 1 && g5Switches)log.info "Group 4 - Waiting Random Pause: ${delay4b} minutes before heading to Group 5"
 					if(atomicState.cSwitch == 1 && g5Switches) pauseExecution(delay4c)			
@@ -354,7 +348,7 @@ def deviceHandler(evt) {
 					if(totalDevices == 1) {
 						g5Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
-								LOGDEBUG("In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 5 - Turning on ${device}"
 								device.on()
 							}
@@ -364,7 +358,7 @@ def deviceHandler(evt) {
    						g5Switches.each { device ->
 							if(atomicState.cSwitch == 1) {
 								numOfDevices = numOfDevices + 1
-								LOGDEBUG("In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}")
+								if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}"
         						log.info "Group 5 - Turning on ${device}"
 								device.on()
 								if(numOfDevices < totalDevices) log.info "Group 5 - Waiting Pause between devices: ${timeToPause5} seconds"
@@ -374,7 +368,7 @@ def deviceHandler(evt) {
 					}
 					runIn(g5TTSO, g5SwitchesOff)
 					def delay5b = Math.abs(new Random().nextInt() % ([pTo5] - [pFrom5])) + [pFrom5]
-					LOGDEBUG("In deviceOnHandler 5...Delay: ${pFrom5} to ${pTo5} = ${delay5b} till Simulation Finished **********")
+					if(logEnable) log.debug "In deviceOnHandler 5...Delay: ${pFrom5} to ${pTo5} = ${delay5b} till Simulation Finished **********"
 					int delay5c = (delay5b * 60) * 1000			// Minutes
 					if(atomicState.cSwitch == 1) pauseExecution(delay5c)
 				}
@@ -382,14 +376,11 @@ def deviceHandler(evt) {
 				deviceOffHandler()
 			}
 		}
-	} else {
-		LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	}
 }
 
 def randomSwitchesHandler() {
 	if(atomicState.cSwitch == 1) {
-		LOGDEBUG("In randomSwitchesHandler...cs: ${atomicState.cSwitch}")
+		if(logEnable) log.debug "In randomSwitchesHandler...cs: ${atomicState.cSwitch}"
 		
 		int rTTSOa = Math.abs(new Random().nextInt() % ([tToR] - [tFromR])) + [tFromR]
 		int rTTSO = (rTTSOa * 60)			// Minutes
@@ -401,9 +392,9 @@ def randomSwitchesHandler() {
 		def randomKey1 = Math.abs(new Random().nextInt() % randomS)
 		rSwitch = gRSwitches[randomKey1]
 	
-		LOGDEBUG("In randomSwitchesHandler...Delay: ${pFromR} to ${pToR} = ${delayRb}")
+		if(logEnable) log.debug "In randomSwitchesHandler...Delay: ${pFromR} to ${pToR} = ${delayRb}"
 				 
-		LOGDEBUG("In randomSwitchesHandler...turning on ${rSwitch}, Time to Stay On: ${rTTSOa} ----------")
+		if(logEnable) log.debug "In randomSwitchesHandler...turning on ${rSwitch}, Time to Stay On: ${rTTSOa} ----------"
 		log.info "Random - Turning on Random switch: ${rSwitch}, Time to Stay On: ${rTTSOa} minutes"
     	if(atomicState.cSwitch == 1) rSwitch.on()
 		if(atomicState.cSwitch == 1) runIn(rTTSO, gRSwitchesOff)
@@ -416,7 +407,7 @@ def randomSwitchesHandler() {
 def g1SwitchesOff() { 
 	int delay1 = timeToPause1 * 1000 		// Seconds
    	g1Switches.each { device ->
-		LOGDEBUG("In g1SwitchesOff 1...turning off ${device}")
+		if(logEnable) log.debug "In g1SwitchesOff 1...turning off ${device}"
 		log.info "offGroup 1 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay1)
@@ -426,7 +417,7 @@ def g1SwitchesOff() {
 def g2SwitchesOff() { 
 	int delay2 = timeToPause2 * 1000 		// Seconds
    	g2Switches.each { device ->
-		LOGDEBUG("In g2witchesOff 2...turning off ${device}")
+		if(logEnable) log.debug "In g2witchesOff 2...turning off ${device}"
 		log.info "offGroup 2 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay2)
@@ -436,7 +427,7 @@ def g2SwitchesOff() {
 def g3SwitchesOff() { 
 	int delay3 = timeToPause3 * 1000 		// Seconds
    	g3Switches.each { device ->
-		LOGDEBUG("In g3witchesOff 3...turning off ${device}")
+		if(logEnable) log.debug "In g3witchesOff 3...turning off ${device}"
 		log.info "offGroup 3 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay3)
@@ -446,7 +437,7 @@ def g3SwitchesOff() {
 def g4SwitchesOff() { 
 	int delay4 = timeToPause4 * 1000 		// Seconds
    	g4Switches.each { device ->
-		LOGDEBUG("In g4witchesOff 4...turning off ${device}")
+		if(logEnable) log.debug "In g4witchesOff 4...turning off ${device}"
 		log.info "offGroup 4 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay4)
@@ -456,7 +447,7 @@ def g4SwitchesOff() {
 def g5SwitchesOff() { 
 	int delay5 = timeToPause5 * 1000 		// Seconds
    	g5Switches.each { device ->
-		LOGDEBUG("In g5witchesOff 5...turning off ${device}")
+		if(logEnable) log.debug "In g5witchesOff 5...turning off ${device}"
 		log.info "offGroup 5 - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delay5)
@@ -468,7 +459,7 @@ def gRSwitchesOff() {
 	int delayR = (rTTSOa * 60) * 1000			// Minutes
 	
    	gRSwitches.each { device ->
-		LOGDEBUG("In gRwitchesOff R...turning off ${device}")
+		if(logEnable) log.debug "In gRwitchesOff R...turning off ${device}"
 		log.info "offGroup R - Turning Off ${device}"
         device.off()
 		if(atomicState.cSwitch == 1) pauseExecution(delayR)
@@ -477,163 +468,88 @@ def gRSwitchesOff() {
 
 def deviceOffHandler() {
 	atomicState.cSwitch = 0
-	LOGDEBUG("In deviceOffHandler... cs: ${atomicState.cSwitch}")
+	if(logEnable) log.debug "In deviceOffHandler... cs: ${atomicState.cSwitch}"
 	if(g1Switches) { 
    		g1Switches.each { device ->
-			LOGDEBUG("In deviceOffHandler 1...turning all lights off ${device}")
+			if(logEnable) log.debug "In deviceOffHandler 1...turning all lights off ${device}"
 			log.info "End of Sim - Group 1 - Turning off device: ${device}"
         	device.off()
     	}
 	}
 	if(g2Switches) { 
    		g2Switches.each { device ->
-			LOGDEBUG("In deviceOffHandler 2...turning all lights off ${device}")
+			if(logEnable) log.debug "In deviceOffHandler 2...turning all lights off ${device}"
 			log.info "End of Sim - Group 2 - Turning off device: ${device}"
         	device.off()
     	}
 	}
 	if(g3Switches) { 
    		g3Switches.each { device ->
-			LOGDEBUG("In deviceOffHandler 3...turning all lights off ${device}")
+			if(logEnable) log.debug "In deviceOffHandler 3...turning all lights off ${device}"
 			log.info "End of Sim - Group 3 - Turning off device: ${device}"
         	device.off()
     	}
 	}
 	if(g4Switches) { 
    		g4Switches.each { device ->
-			LOGDEBUG("In deviceOffHandler 4...turning all lights off ${device}")
+			if(logEnable) log.debug "In deviceOffHandler 4...turning all lights off ${device}"
 			log.info "End of Sim - Group 4 - Turning off device: ${device}"
         	device.off()
     	}
 	}
 	if(g5Switches) { 
    		g5Switches.each { device ->
-			LOGDEBUG("In deviceOffHandler 5...turning all lights off ${device}")
+			if(logEnable) log.debug "In deviceOffHandler 5...turning all lights off ${device}"
 			log.info "End of Sim - Group 5 - Turning off device: ${device}"
         	device.off()
     	}
 	}
 	if(gRSwitches) { 
    		gRSwitches.each { device ->
-			LOGDEBUG("In deviceOffHandler R...turning all lights off ${device}")
+			if(logEnable) log.debug "In deviceOffHandler R...turning all lights off ${device}"
 			log.info "End of Sim - Group R - Turning off device: ${device}"
         	device.off()
     	}
 	}
 	unschedule()
 	controlSwitch.off()
-	LOGDEBUG("In deviceOffHandler... cs: ${atomicState.cSwitch}")
-	LOGDEBUG("Finishing up...")
+	if(logEnable) log.debug "In deviceOffHandler... cs: ${atomicState.cSwitch}"
+	if(logEnable) log.debug "Finishing up..."
 }
 
 // ***** Normal Stuff *****
 
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
-    }
-}
-
-def pauseOrNot(){
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
-}
-
-def logCheck(){
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
 def setDefaults(){
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(atomicState.cSwitch == null){atomicState.cSwitch = 1}
 	if(numOfDevices == null){numOfDevices = 0}
 }
 
-def getImage(type) {
+def getImage(type) {					// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=35 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){			// Modified from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currChildVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currChildVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
 def display2() {
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>At Home Simulator - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>At Home Simulator - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}
 }
