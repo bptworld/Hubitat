@@ -165,9 +165,6 @@ def pageConfig() {
 		}
 		// both Speakers and Pushover
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
@@ -212,8 +209,6 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	
-	if(enablerSwitch1) subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
 	subscribe(gvDevice, "lastSpokenUnique", lastSpokenHandler)
 	if(myContact) subscribe(myContacts, "contact", contactSensorHandler)
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
@@ -288,7 +283,6 @@ def presenceSensorHandler5(evt){
 
 def alwaysOnHandler() {
 	if(logEnable) log.debug "In alwaysOnHandler..."
-	if(state.enablerSwitch2 == "off") {
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
     	if(pauseApp == false){
 			if(logEnable) log.debug "In alwaysOnHandler - setting sZone to true"
@@ -296,14 +290,10 @@ def alwaysOnHandler() {
 			speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def contactSensorHandler(evt) {
 	if(logEnable) log.debug "In contactSensorHandler..."
-	if(state.enablerSwitch2 == "off") {
 		state.contactStatus = evt.value
 		if(logEnable) log.debug "In contactSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.contactStatus}"
 		if(contactOption == "Closed") {
@@ -336,14 +326,10 @@ def contactSensorHandler(evt) {
 				runIn(sOff,speechOff)
 			}
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def motionSensorHandler(evt) {
 	if(logEnable) log.debug "In motionSensorHandler..."
-	if(state.enablerSwitch2 == "off") {
 		state.motionStatus = evt.value
 		if(logEnable) log.debug "In motionSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.motionStatus}"
 		if(state.motionStatus == "active") {
@@ -359,14 +345,10 @@ def motionSensorHandler(evt) {
 			sOff = sZoneWaiting * 60
 			runIn(sOff,speechOff)
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def switchHandler(evt) {
 	if(logEnable) log.debug "In switchHandler..."
-	if(state.enablerSwitch2 == "off") {
 		state.switchStatus = evt.value
 		if(logEnable) log.debug "In switchHandler - sZone: ${atomicState.sZone} - Status: ${state.switchStatus}"
 		if(state.switchStatus == "on") {
@@ -382,9 +364,6 @@ def switchHandler(evt) {
 			sOff = sZoneWaiting * 60
 			runIn(sOff,speechOff)
 		}
-	} else {
-		if(logEnable) log.debug "${app.label} is disabled."
-	}
 }
 
 def lastSpokenHandler(speech) { 
@@ -425,7 +404,6 @@ def initializeSpeaker() {
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
 	if(triggerMode == "Always_On") alwaysOnHandler()
-	if(state.enablerSwitch2 == "off") {
 		if(atomicState.sZone == true){
 			checkTime()
 			checkVol()
@@ -465,9 +443,6 @@ def letsTalk() {
 		} else {
 			log.info "${app.label} - Zone is Off, can not speak."
 		}
-	} else {
-		log.info "${app.label} is disabled."
-	}
 }
 
 def checkTime() {
@@ -538,17 +513,10 @@ def sendPush() {
 
 // ********** Normal Stuff **********
 
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	if(logEnable) log.debug "In enablerSwitchHandler - Enabler Switch: ${state.enablerSwitch2}"
-	if(state.enablerSwitch2 == "on") { if(logEnable) log.debug "${app.label} is disabled." }
-}
-
 def setDefaults(){
     pauseHandler()
 	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(atomicState.sZone == null){atomicState.sZone = false}
 	if(state.IH1 == null){state.IH1 = "blank"}
 	if(state.IH2 == null){state.IH2 = "blank"}
