@@ -146,13 +146,13 @@
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
-  "LightingEffectsChildVersion": "v1.2.0",
+  "LightingEffectsChildVersion": "v1.2.1",
   "LightingEffectsDriverVersion": "NA",
   "LightingEffectsParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy",
   "LightingEffectsChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy",
   "LightingEffectsDriverRawCode": "NA",
   "LightingEffectsDiscussion": "https://community.hubitat.com/t/release-lighting-effects/4330",
-  "LightingEffectsUpdateNote": "NA",
+  "LightingEffectsUpdateNote": "V1.2.1 - 04/15/19 - Code cleanup",
   
   "MagicCubeType": "App",
   "MagicCubeParentVersion": "V1.0.0",
