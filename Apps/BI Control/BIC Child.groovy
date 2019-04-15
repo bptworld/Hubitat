@@ -4,10 +4,9 @@
  *  Design Usage:
  *  This app is designed to work locally with Blue Iris security software.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Also thanks to (@jpark40) for the original 'Blue Iris Profiles based on Modes' code that I based this app off of.
+ *  Thanks to (@jpark40) for the original 'Blue Iris Profiles based on Modes' code that I based this app off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -16,17 +15,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 04/15/19 - Code cleanup
+ *  V1.0.6 - 02/14/19 - If manual recording (camera trigger) doesn't work - add '//' to line 471 and remove them from line 472 and try again.
  *  V1.0.5 - 01/15/19 - Updated footer with update check and links
  *  V1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
  *						support for Blue Iris schedules.
@@ -48,7 +50,9 @@
  *
  */
 
-def version(){"v1.0.5"}
+def setVersion() {
+	state.version = "v1.0.7"
+}
 
 definition(
 	name: "BI Control Child",
@@ -56,10 +60,10 @@ definition(
 	author: "Bryan Turcotte",
 	description: "This app is designed to work locally with Blue Iris security software.",
 	category: "Convenience",
+	parent: "BPTWorld:BI Control",
 	iconUrl: "",
 	iconX2Url: "",
-	
-	parent: "BPTWorld:BI Control",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Child.groovy",
 )
 
 preferences {
@@ -197,7 +201,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
 		section() {
-        	input "debugMode", "bool", title: "Enable Debug Logging", required: true, defaultValue: false
+        	input "logEnable", "bool", title: "Enable Debug Logging", required: true, defaultValue: false
    		}
 		display2()
 	}
@@ -216,8 +220,8 @@ def updated() {
 }
 
 def initialize() {
-	LOGDEBUG("Initializing...")
-	LOGDEBUG("triggerMode = ${triggerMode}")
+	if(logEnable) log.debug "Initializing..."
+	if(logEnable) log.debug "triggerMode = ${triggerMode}"
 	if(triggerType == "Profile") {
 		if(triggerMode == "Mode"){subscribe(location, "mode", profileModeChangeHandler)}
 		if(triggerMode == "Switch"){subscribe(switches, "switch", profileSwitchHandler)}
@@ -232,52 +236,52 @@ def initialize() {
 }
 
 def profileModeChangeHandler(evt) {
-	LOGDEBUG("BI Control-modeChangeHandler...")
-	LOGDEBUG("Mode changed to ${evt.value}")
+	if(logEnable) log.debug "BI Control-modeChangeHandler..."
+	if(logEnable) log.debug "Mode changed to ${evt.value}"
 
 	if(biProfile1 != null && evt.value in biProfile1) {
     	def setProfile = "1"
 		biChangeProfile(setProfile)
-		LOGDEBUG("biProfile1 ${settings.biProfile1}")
+		if(logEnable) log.debug "biProfile1 ${settings.biProfile1}"
     } 
     else if(biProfile2 != null && evt.value in biProfile2) {
 		def setProfile = "2"
         biChangeProfile(setProfile)
-		LOGDEBUG("biProfile2 ${settings.biProfile2}")
+		if(logEnable) log.debug "biProfile2 ${settings.biProfile2}"
 	} 
     else if(biProfile3 != null && evt.value in biProfile3) {
     	def setProfile = "3"
 		biChangeProfile(setProfile)
-		LOGDEBUG("biProfile3 ${settings.biProfile3}")
+		if(logEnable) log.debug "biProfile3 ${settings.biProfile3}"
     }
 	else if(biProfile4 != null && evt.value in biProfile4) {
     	def setProfile = "4"
 		biChangeProfile(setProfile)
-		LOGDEBUG("biProfile4 ${settings.biProfile4}")
+		if(logEnable) log.debug "biProfile4 ${settings.biProfile4}"
     }
 	else if(biProfile5 != null && evt.value in biProfile5) {
     	def setProfile = "5"
 		biChangeProfile(setProfile)
-		LOGDEBUG("biProfile5 ${settings.biProfile5}")
+		if(logEnable) log.debug "biProfile5 ${settings.biProfile5}"
     }
 	else if(biProfile6 != null && evt.value in biProfile6) {
     	def setProfile = "6"
 		biChangeProfile(setProfile)
-		LOGDEBUG("biProfile6 ${settings.biProfile6}")
+		if(logEnable) log.debug "biProfile6 ${settings.biProfile6}"
     }
 	else if(biProfile7 != null && evt.value in biProfile7) {
     	def setProfile = "7"
 		biChangeProfile(setProfile)
-		LOGDEBUG("biProfile7 ${settings.biProfile7}")
+		if(logEnable) log.debug "biProfile7 ${settings.biProfile7}"
     }
 }
 
 def profileSwitchHandler(evt) {
-	LOGDEBUG("BI Control-switchChangeHandler...")
-	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+	if(logEnable) log.debug "BI Control-switchChangeHandler..."
+	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
 	if(switches.currentValue("switch") == "on") {
-		LOGDEBUG("switchChangeHandler - switchProfileOn = ${switchProfileOn}")
+		if(logEnable) log.debug "switchChangeHandler - switchProfileOn = ${switchProfileOn}"
 		if(switchProfileOn == "Pon1") {
 			def setProfile = "1"
 			biChangeProfile(setProfile)
@@ -310,51 +314,51 @@ def profileSwitchHandler(evt) {
 }
 
 def scheduleModeChangeHandler(evt) {
-	LOGDEBUG("BI Control-modeChangeHandler...")
-	LOGDEBUG("Mode changed to ${evt.value}")
+	if(logEnable) log.debug "BI Control-modeChangeHandler..."
+	if(logEnable) log.debug "Mode changed to ${evt.value}"
 
 	if(biScheduleName1 != null && evt.value in biSchedule1) {
         biChangeSchedule(biScheduleName1)
-		LOGDEBUG("biSchedule1 ${settings.biScheduleName1}")
+		if(logEnable) log.debug "biSchedule1 ${settings.biScheduleName1}"
     }
     else if(biScheduleName2 != null && evt.value in biSchedule2) {
         biChangeSchedule(biScheduleName2)
-		LOGDEBUG("biSchedule2 ${settings.biScheduleName2}")
+		if(logEnable) log.debug "biSchedule2 ${settings.biScheduleName2}"
 	}
     else if(biScheduleName3 != null && evt.value in biSchedule3) {
 		biChangeSchedule(biScheduleName3)
-		LOGDEBUG("biSchedule3 ${settings.biScheduleName3}")
+		if(logEnable) log.debug "biSchedule3 ${settings.biScheduleName3}"
     }
     else if(biScheduleName4 != null && evt.value in biSchedule4) {
 		biChangeSchedule(biScheduleName4)
-		LOGDEBUG("biSchedule4 ${settings.biScheduleName4}")
+		if(logEnable) log.debug "biSchedule4 ${settings.biScheduleName4}"
     }
     else if(biScheduleName5 != null && evt.value in biSchedule5) {
 		biChangeSchedule(biScheduleName5)
-		LOGDEBUG("biSchedule4 ${settings.biScheduleName5}")
+		if(logEnable) log.debug "biSchedule4 ${settings.biScheduleName5}"
     }
     else if(biScheduleName6 != null && evt.value in biSchedule6) {
 		biChangeSchedule(biScheduleName6)
-		LOGDEBUG("biSchedule6 ${settings.biScheduleName6}")
+		if(logEnable) log.debug "biSchedule6 ${settings.biScheduleName6}"
     }
 }
 
 def scheduleSwitchHandler(evt) {
-	LOGDEBUG("BI Control-switchChangeHandler...")
-	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+	if(logEnable) log.debug "BI Control-switchChangeHandler..."
+	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
 	if(switches.currentValue("switch") == "on") {
-        LOGDEBUG("scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}")
+        if(logEnable) log.debug "scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
         biChangeSchedule(biScheduleSwitch)
     }
 }
 
 def cameraPresetHandler(evt) {
-	LOGDEBUG("BI Control-cameraPresetHandler...")
-	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+	if(logEnable) log.debug "BI Control-cameraPresetHandler..."
+	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
 	if(switches.currentValue("switch") == "on") {
-		LOGDEBUG("cameraPresetHandler - biCameraPreset = ${biCameraPreset}")
+		if(logEnable) log.debug "cameraPresetHandler - biCameraPreset = ${biCameraPreset}"
 		if(biCameraPreset == "PS1") {
 			def setPreset = "1"
 			biChangeProfile(setPreset)
@@ -379,38 +383,38 @@ def cameraPresetHandler(evt) {
 }	
 
 def cameraSnapshotHandler(evt) {
-	LOGDEBUG("BI Control-cameraSnapshotHandler...")
-	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+	if(logEnable) log.debug "BI Control-cameraSnapshotHandler..."
+	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
 	if(switches.currentValue("switch") == "on") {
-		LOGDEBUG("cameraSnapshotHandler - Nothing")
+		if(logEnable) log.debug "cameraSnapshotHandler - Nothing"
 		def setPreset = "0"
 		biChangeProfile(setPreset)
 	}
 }
 
 def cameraTriggerHandler(evt) {
-	LOGDEBUG("BI Control-cameraTriggerHandler...")
-	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+	if(logEnable) log.debug "BI Control-cameraTriggerHandler..."
+	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
 	if(switches.currentValue("switch") == "on") {
-		LOGDEBUG("cameraTriggerHandler - On")
+		if(logEnable) log.debug "cameraTriggerHandler - On"
 		def setPreset = "1"
 		biChangeProfile(setPreset)
 	} else
 	if(switches.currentValue("switch") == "off") {
-		LOGDEBUG("cameraTriggerHandler - Off")
+		if(logEnable) log.debug "cameraTriggerHandler - Off"
 		def setPreset = "0"
 		biChangeProfile(setPreset)
 	}
 }
 
 def cameraPTZHandler(evt) {
-	LOGDEBUG("BI Control-cameraPTZHandler...")
-	LOGDEBUG("Switch on/off - $evt.device : $evt.value")
+	if(logEnable) log.debug "BI Control-cameraPTZHandler..."
+	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
 	if(switches.currentValue("switch") == "on") {
-		LOGDEBUG("cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}")
+		if(logEnable) log.debug "cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}"
 		if(biCameraPTZ == "PTZ0") {
 			def setPreset = "0"
 			biChangeProfile(setPreset)
@@ -443,41 +447,43 @@ def cameraPTZHandler(evt) {
 }
 
 def biChangeProfile(num) {
-    LOGDEBUG("BI Control-biChangeProfile...")
+    if(logEnable) log.debug "BI Control-biChangeProfile..."
 	
 	biHost = "${parent.biServer}:${parent.biPort}"
 	
 	if(triggerMode == "Mode") {
-		LOGDEBUG("I'm in Mode")
+		if(logEnable) log.debug "I'm in Mode"
 		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
 	} else
 	if(triggerMode == "Switch") {
-		LOGDEBUG("I'm in Switch")
+		if(logEnable) log.debug "I'm in Switch"
 		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
 	} else
 	if(triggerMode == "Camera_Preset") {
-		LOGDEBUG("I'm in Camera_Preset")
+		if(logEnable) log.debug "I'm in Camera_Preset"
 		biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"
 		// /admin?camera=x&preset=x
 	} else
 	if(triggerMode == "Camera_Snapshot") {
-		LOGDEBUG("I'm in Camera_Snapshot")
+		if(logEnable) log.debug "I'm in Camera_Snapshot"
 		biRawCommand = "/admin?camera=${biCamera}/snapshot&user=${parent.biUser}&pw=${parent.biPass}"
 		// /admin?camera=x&snapshot
 	} else
 	if(triggerMode == "Camera_Trigger") {
-		LOGDEBUG("I'm in Camera_Trigger")
+		if(logEnable) log.debug "I'm in Camera_Trigger"
 		biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+		// biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
+		// NOTE: if this Command doesn't work for you, try the second one instead...
 		// /admin?camera=x&manrec=1
 	} else
 	if(triggerMode == "Camera_PTZ") {
-		LOGDEBUG("I'm in Camera_PTZ")
+		if(logEnable) log.debug "I'm in Camera_PTZ"
 		biRawCommand = "/cam/${biCamera}/pos=${num}"
 		// /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
 	}
 	
-	LOGDEBUG("sending GET to URL http://${biHost}${biRawCommand}")
-	LOGDEBUG("biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}")
+	if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
+	if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
 	
 	def httpMethod = "GET"
 	def httpRequest = [
@@ -493,14 +499,14 @@ def biChangeProfile(num) {
 }
 
 def biChangeSchedule(schedule) {
-    LOGDEBUG("BI Control-biChangeSchedule...")
+    if(logEnable) log.debug "BI Control-biChangeSchedule..."
 
     biHost = "${parent.biServer}:${parent.biPort}"
 
     biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
 
-    LOGDEBUG("sending GET to URL http://${biHost}${biRawCommand}")
-    LOGDEBUG("biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}")
+    if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
+    if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
 
     def httpMethod = "GET"
     def httpRequest = [
@@ -515,70 +521,37 @@ def biChangeSchedule(schedule) {
     sendHubCommand(hubAction)
 }
 
-// define debug action
-def logCheck(){
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "Further Logging Disabled"
-	}
+// ********** Normal Stuff **********
+
+def setDefaults(){
+	if(logEnable) log.debug "In setDefaults..."
+    if(pauseApp == null){pauseApp = false}
 }
 
-// logging...
-def LOGDEBUG(txt){
-    try {
-    	if (settings.debugMode) { log.debug("${txt}") }
-    } catch(ex) {
-    	log.error("LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {
+def getImage(type) {								// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){						// Modified from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
 def display2(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }   
