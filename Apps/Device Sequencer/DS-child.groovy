@@ -4,10 +4,8 @@
  *  Design Usage:
  *  Turn on/off several devices in a row, with a user defined pause in between each.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
@@ -15,17 +13,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -36,13 +35,16 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 03/12/19 - Fixed pause
  *  V1.0.2 - 01/15/19 - Updated footer with update check and links
  *  V1.0.1 - 01/12/19 - Made the Control switch stand out more.
  *  V1.0.0 - 01/12/19 - Initial Release
  *
  */
 
-def version(){"v1.0.2"}
+def setVersion() {
+	state.version = "v1.0.3"
+}
 
 definition(
     name: "Device Sequencer Child",
@@ -50,13 +52,12 @@ definition(
     author: "Bryan Turcotte",
     description: "Turn on/off several devices in a row, with a user defined pause in between each.",
     category: "",
-    
-parent: "BPTWorld:Device Sequencer",
-    
+	parent: "BPTWorld:Device Sequencer",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-child.groovy",
+)
 
 preferences {
     page(name: "pageConfig")
@@ -94,10 +95,6 @@ def pageConfig() {
 			input "controlSwitch", "capability.switch", title: "Select the switch to control the sequence (on/off)", required: true, multiple: false 
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-		
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
             input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
@@ -113,7 +110,6 @@ def installed() {
 def updated() {	
     LOGDEBUG("Updated with settings: ${settings}")
     unsubscribe()
-	logCheck()
 	initialize()
 }
 
@@ -123,6 +119,8 @@ def initialize() {
 }
 
 def deviceOnHandler(evt) {
+	if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    if(pauseApp == false){LOGDEBUG("Continue - App NOT paused")
 	if(g1Switches) { 
 		int delay1 = timeToPause1 * 1000
    		g1Switches.each { device ->
@@ -171,9 +169,12 @@ def deviceOnHandler(evt) {
 			pauseExecution(delay5)
     	}
 	}
+	}
 }
 
 def deviceOffHandler(evt) {
+	if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+    if(pauseApp == false){LOGDEBUG("Continue - App NOT paused")
 	if(g1Switches) { 
 		int delay1 = timeToPause1 * 1000
    		g1Switches.each { device ->
@@ -222,95 +223,35 @@ def deviceOffHandler(evt) {
 			pauseExecution(delay5)
     	}
 	}
+	}
 }
 
 // ***** Normal Stuff *****
 
-def pauseOrNot(){
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
-}
-
-def logCheck(){
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {
+def getImage(type) {										// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){								// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
 def display2(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Sequencer - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Sequencer - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }         
