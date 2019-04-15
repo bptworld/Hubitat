@@ -166,13 +166,13 @@
   
   "MotionControlledSceneLightingType": "App",
   "MotionControlledSceneLightingParentVersion": "v1.0.3",
-  "MotionControlledSceneLightingChildVersion": "v1.0.3",
+  "MotionControlledSceneLightingChildVersion": "v1.0.5",
   "MotionControlledSceneLightingDriverVersion": "NA",
   "MotionControlledSceneLightingParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/MCSL-Parent.groovy",
   "MotionControlledSceneLightingChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/MCSL-Child.groovy",
   "MotionControlledSceneLightingDriverRawCode": "NA",
   "MotionControlledSceneLightingDiscussion": "https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419",
-  "MotionControlledSceneLightingUpdateNote": "NA",
+  "MotionControlledSceneLightingUpdateNote": "V1.0.5 - 04/15/19 - Code cleanup",
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
