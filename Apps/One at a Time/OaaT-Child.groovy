@@ -79,11 +79,8 @@ def pageConfig() {
 			input "switches", "capability.switch", title: "Select the switches to group", required: true, multiple: true
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
-		}
         section() {
-            input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
 	}
@@ -108,17 +105,26 @@ def initialize() {
 }
 
 def eventHandler(evt) {
-    switches.each { device ->
-        def target = device.toString()
-        def current = evt.device.toString()
-        if (target != current) {
-			if(logEnable) log.debug "Turning ${target} off because ${current} is on"
-        	device.off()
-        }
-    }	
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+   	 	switches.each { device ->
+    	    def target = device.toString()
+    	    def current = evt.device.toString()
+     	   	if (target != current) {
+				if(logEnable) log.debug "Turning ${target} off because ${current} is on"
+      	  		device.off()
+      	  	}
+		}
+   	}	
 }
 
 // ********** Normal Stuff **********
+
+def setDefaults(){
+	if(logEnable) log.debug "In setDefaults..."
+    if(pauseApp == null){pauseApp = false}
+	if(logEnable == null){logEnable = false}
+}
 
 def getImage(type) {								// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
