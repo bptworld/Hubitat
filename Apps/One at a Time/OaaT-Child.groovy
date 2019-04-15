@@ -5,10 +5,9 @@
  *  This app is designed to allow only one switch, in a group of switches, to be on at a time.
  *	When one switch is turned on, the other swithes in the group will turn off.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Also thanks to Jody Albritton for the original 'One At A Time Please' code that I based this app off of.
+ *  Thanks to Jody Albritton for the original 'One At A Time Please' code that I based this app off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -17,17 +16,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 04/15/19 - Code cleanup
  *  V1.1.2 - 01/15/19 - Updated footer with update check and links
  *  V1.1.1 - 12/30/18 - Updated to my new color theme.
  *  V1.1.0 - 12/10/18 - Changed over to Parent/Child type app. Create as many groups as you like. Also added in all the normal
@@ -46,7 +47,9 @@
  *
  */
 
-def version(){"v1.1.2"}
+def setVersion() {
+	state.version = "v1.1.3"
+}
 
 definition(
     name: "One at a Time Child",
@@ -54,13 +57,12 @@ definition(
     author: "Bryan Turcotte",
     description: "This app is designed to allow only one switch, in a group of switches, to be on at a time.",
     category: "",
-    
-parent: "BPTWorld:One at a Time",
-    
+	parent: "BPTWorld:One at a Time", 
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Child.groovy",
+)
 
 preferences {
     page(name: "pageConfig")
@@ -96,9 +98,8 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
-	logCheck()
 	initialize()
 }
 
@@ -111,59 +112,20 @@ def eventHandler(evt) {
         def target = device.toString()
         def current = evt.device.toString()
         if (target != current) {
-			LOGDEBUG("Turning ${target} off because ${current} is on")
+			if(logEnable) log.debug "Turning ${target} off because ${current} is on"
         	device.off()
         }
     }	
 }
 
-def pauseOrNot(){
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     	LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        }
-     }
-  }    
-}
+// ********** Normal Stuff **********
 
-def logCheck(){
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {
+def getImage(type) {								// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){						// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -172,38 +134,17 @@ def getFormat(type, myText=""){
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display2(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>One at a Time - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>One at a Time - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
-
 
