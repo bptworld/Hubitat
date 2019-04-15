@@ -21,12 +21,8 @@
  *		- Displays the current Mode next to the Parent App Name for easy reference
  *
  *	
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *
- *  Also thanks to Stephan Hackett (@stephacka) for sharing his code/app on how to dim lights when there is no motion.
- *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
@@ -34,17 +30,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -55,6 +52,8 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 04/15/19 - Code cleanup
+ *  V1.0.4 - 02/13/19 - Bug fixes
  *  V1.0.3 - 01/15/19 - Updated footer with update check and links
  *  V1.0.2 - 01/10/19 - Fixed Enabler/Disable switch. It wasn't working.
  *  V1.0.1 - 12/30/18 - Updated to new color theme.
@@ -62,7 +61,9 @@
  *
  */
 
-def version(){"v1.0.3"}
+def version() {
+	state.version = "v1.0.5"
+}
 
 definition(
     name: "Motion Controlled Scene Lighting Child",
@@ -70,13 +71,12 @@ definition(
     author: "Bryan Turcotte",
     description: "Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.",
     category: "",
-    
-parent: "BPTWorld:Motion Controlled Scene Lighting",
-    
+	parent: "BPTWorld:Motion Controlled Scene Lighting",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    )
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/MCSL-Child.groovy",
+)
 
 preferences {
     page(name: "pageConfig")
@@ -89,7 +89,7 @@ def pageConfig() {
         	paragraph "<b>Info:</b>"
     		paragraph "Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'."
 			paragraph "<b>Prerequisites:</b>"
-			paragraph "- Must already have at least one Scene setup in Hubitats 'Groups and Scenes' built in app.<br>- Have at least one dimmable buld included in each Scene.<br>- (Optional) Have a virutal switch created to Enable/Disable each child app."
+			paragraph "- Must already have at least one Scene setup in Hubitats 'Groups and Scenes' built in app.<br>- Have at least one dimmable buld included in each Scene."
 		}
     	section(getFormat("header-green", "${getImage("Blank")}"+" Setup")) {
 			input "motionSensors", "capability.motionSensor", title: "Select Motion Sensor(s):", required: true, multiple:true
@@ -179,7 +179,6 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
     	}
 		display2()
@@ -198,147 +197,135 @@ def updated() {
 }
 
 def initialize() {
-	logCheck()
     setDefaults()
 	subscribe(location, "mode", modeHandler)
-    subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
     subscribe(motionSensors, "motion", motionHandler)
 }
 
-def enablerSwitchHandler(evt){
-	state.enablerSwitch2 = evt.value
-	LOGDEBUG("IN enablerSwitchHandler - Enabler Switch = ${enablerSwitch2}")
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-    if(state.enablerSwitch2 == "on"){
-    	LOGDEBUG("Enabler Switch is ON - Child app is disabled.")
-	} else {
-		LOGDEBUG("Enabler Switch is OFF - Child app is active.")
-    }
-}
-
 def modeHandler(evt){
-if(state.enablerSwitch2 == "off"){
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-	allInactive()
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In modeHandler...Before if's - Thinks it's Mode: ${state.modeNow} - Actual mode: ${location.mode}")
-	state.prevMode = state.modeNow
-	state.modeNow = location.mode
-	if(state.modeNow.contains(modeName1)){
-		state.currentMode = "1"
-		state.dimTime = dimTime1
-		state.offTime = offTime1
-		LOGDEBUG("In modeHandler...Match Found - modeName1: ${modeName1} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} ")
-		if(state.allInactive == "false") {
-			if(state.prevMode != state.modeNow) {setScene()}
-		}
-	}
-	else
-		if(state.modeNow.contains(modeName2)){
-			state.currentMode = "2"
-			state.dimTime = dimTime2
-			state.offTime = offTime2
-			LOGDEBUG("In modeHandler...Match Found - modeName2: ${modeName2} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode}")
+		allInactive()
+		if(logEnable) log.debug "In modeHandler...Before if's - Thinks it's Mode: ${state.modeNow} - Actual mode: ${location.mode}"
+		state.prevMode = state.modeNow
+		state.modeNow = location.mode
+		if(state.modeNow.contains(modeName1)){
+			state.currentMode = "1"
+			state.dimTime = dimTime1
+			state.offTime = offTime1
+			if(logEnable) log.debug "In modeHandler 1...Match Found - modeName1: ${modeName1} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} "
+			log.info "Setting Mode 1 - ${modeName1}"
 			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+				if(state.prevMode != state.modeNow) { setScene() }
 			}
 		}
-	else
-		if(state.modeNow.contains(modeName3)){
-			state.currentMode = "3"
-			state.dimTime = dimTime3
-			state.offTime = offTime3
-			LOGDEBUG("In modeHandler...Match Found - modeName3: ${modeName3} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode}")
-			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+		if(modeName2 != null) {
+			if(state.modeNow.contains(modeName2)){
+				state.currentMode = "2"
+				state.dimTime = dimTime2
+				state.offTime = offTime2
+				if(logEnable) log.debug "In modeHandler 2...Match Found - modeName2: ${modeName2} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode}"
+				log.info "Setting Mode 2 - ${modeName2}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
 			}
 		}
-	else
-		if(state.modeNow.contains(modeName4)){
-			state.currentMode = "4"
-			state.dimTime = dimTime4
-			state.offTime = offTime4
-			LOGDEBUG("In modeHandler...Match Found - modeName4: ${modeName4} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode}")
-			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+		if(modeName3 != null) {
+			if(state.modeNow.contains(modeName3)){
+				state.currentMode = "3"
+				state.dimTime = dimTime3
+				state.offTime = offTime3
+				if(logEnable) log.debug "In modeHandler 3...Match Found - modeName3: ${modeName3} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode}"
+				log.info "Setting Mode 3 - ${modeName3}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
 			}
 		}
-	else
-		if(state.modeNow.contains(modeName5)){
-			state.currentMode = "5"
-			state.dimTime = dimTime5
-			state.offTime = offTime5
-			LOGDEBUG("In modeHandler...Match Found - modeName5: ${modeName5} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} ")
-			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+		if(modeName4 != null) {
+			if(state.modeNow.contains(modeName4)){
+				state.currentMode = "4"
+				state.dimTime = dimTime4
+				state.offTime = offTime4
+				if(logEnable) log.debug "In modeHandler 4...Match Found - modeName4: ${modeName4} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode}"
+				log.info "Setting Mode 4 - ${modeName4}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
 			}
 		}
-	else
-		if(state.modeNow.contains(modeName6)){
-			state.currentMode = "6"
-			state.dimTime = dimTime6
-			state.offTime = offTime6
-			LOGDEBUG("In modeHandler...Match Found - modeName6: ${modeName6} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} ")
-			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+		if(modeName5 != null) {
+			if(state.modeNow.contains(modeName5)){
+				state.currentMode = "5"
+				state.dimTime = dimTime5
+				state.offTime = offTime5
+				if(logEnable) log.debug "In modeHandler 5...Match Found - modeName5: ${modeName5} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} "
+				log.info "Setting Mode 5 - ${modeName5}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
 			}
 		}
-	else
-		if(state.modeNow.contains(modeName7)){
-			state.currentMode = "7"
-			state.dimTime = dimTime7
-			state.offTime = offTime7
-			LOGDEBUG("In modeHandler...Match Found - modeName7: ${modeName7} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} ")
-			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+		if(modeName6 != null) {
+			if(state.modeNow.contains(modeName6)){
+				state.currentMode = "6"
+				state.dimTime = dimTime6
+				state.offTime = offTime6
+				if(logEnable) log.debug "In modeHandler 6...Match Found - modeName6: ${modeName6} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} "
+				log.info "Setting Mode 6 - ${modeName6}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
 			}
 		}
-	else
-		if(state.modeNow.contains(modeName8)){
-			state.currentMode = "8"
-			state.dimTime = dimTime8
-			state.offTime = offTime8
-			LOGDEBUG("In modeHandler...Match Found - modeName8: ${modeName8} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} ")
-			if(state.allInactive == "false") {
-				if(state.prevMode != state.modeNow) {setScene()}
+		if(modeName7 != null) {
+			if(state.modeNow.contains(modeName7)){
+				state.currentMode = "7"
+				state.dimTime = dimTime7
+				state.offTime = offTime7
+				if(logEnable) log.debug "In modeHandler 7...Match Found - modeName7: ${modeName7} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} "
+				log.info "Setting Mode 7 - ${modeName7}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
 			}
 		}
-	else{
-		LOGDEBUG("In modeHandler...Something went wrong, no Mode matched!")
-		state.currentMode = "NONE"
-	}
-}
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
+		if(modeName8 != null) {
+			if(state.modeNow.contains(modeName8)){
+				state.currentMode = "8"
+				state.dimTime = dimTime8
+				state.offTime = offTime8
+				if(logEnable) log.debug "In modeHandler 8...Match Found - modeName8: ${modeName8} modeNow: ${state.modeNow}-So state.currentMode: ${state.currentMode} "
+				log.info "Setting Mode 8 - ${modeName8}"
+				if(state.allInactive == "false") {
+					if(state.prevMode != state.modeNow) { setScene() }
+				}
+			}
+		}
 }
 
 def allInactive(){
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In allInactive...")
+	if(logEnable) log.debug "In allInactive..."
     state.allInactive = "true"
 	motionSensors.each {eachMotion->
         if(eachMotion.currentValue("motion") == "active"){
             state.allInactive = "false"
-			LOGDEBUG("In allInactive...allInactive: ${state.allInactive}")
+			if(logEnable) log.debug "In allInactive...${eachMotion} - allInactive: ${state.allInactive}"
 		} else {
-			LOGDEBUG("In allInactive...allInactive: ${state.allInactive}")
+			if(logEnable) log.debug "In allInactive...${eachMotion} - allInactive: ${state.allInactive}"
 		}
 	}
 }
 
 def motionHandler(evt) {
-if(state.enablerSwitch2 == "off"){
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In motionHandler...")
-	if(pause1 == true){log.warn "Unable to continue - App paused"}
-    if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
+	if(logEnable) log.debug "In motionHandler..."
+	if(pauseApp == true){log.warn "Unable to continue - App paused"}
+    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 		modeHandler()
-		LOGDEBUG("In motionHandler...Mode: ${state.modeNow}")
-		if(!enableSwitch1 || enableSwitch.currentValue("switch") == "on"){
+		if(logEnable) log.debug "In motionHandler...Mode: ${state.modeNow}"
     		if(evt.value == "inactive" && state.allInactive == "true") {
-        		LOGDEBUG("Inactive received, Starting timers")
+        		if(logEnable) log.debug "Inactive received, Starting timers"
 				dimTimeSec = (state.dimTime * 60)
-				LOGDEBUG("Time to dimLights ${dimTimeSec}")
+				if(logEnable) log.debug "Time to dimLights ${dimTimeSec}"
     			runIn(dimTimeSec, dimLights)
     		}
     		if(evt.value == "active") {
@@ -347,19 +334,16 @@ if(state.enablerSwitch2 == "off"){
 				modeHandler()
     			setScene()
     		}
-		}
 	}
 }
-	LOGDEBUG("Enabler Switch = $state.enablerSwitch2")
-}
+
 
 def setScene() {
 	luxLevel()
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In setScene...Mode is ${state.currentMode} Mode: ${state.modeNow}")
+	if(logEnable) log.debug "In setScene...Mode is ${state.currentMode} Mode: ${state.modeNow}"
 	if(state.isItDark == "true") {
 		if(state.currentMode == "1"){
-			LOGDEBUG("In setScene...1: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...1: currentMode: ${state.currentMode}"
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
 			if(state.prevMode == "4") sceneSwitch4.off()
@@ -370,7 +354,7 @@ def setScene() {
 			sceneSwitch1.on()
 		} else
 		if(state.currentMode == "2"){
-			LOGDEBUG("In setScene...2: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...2: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
 			if(state.prevMode == "4") sceneSwitch4.off()
@@ -381,7 +365,7 @@ def setScene() {
 			sceneSwitch2.on()
 		} else
 		if(state.currentMode == "3"){
-			LOGDEBUG("In setScene...3: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...3: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "4") sceneSwitch4.off()
@@ -392,7 +376,7 @@ def setScene() {
 			sceneSwitch3.on()
 		} else
 		if(state.currentMode == "4"){
-			LOGDEBUG("In setScene...4: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...4: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
@@ -403,7 +387,7 @@ def setScene() {
 			sceneSwitch4.on()
 		} else
 		if(state.currentMode == "5"){
-			LOGDEBUG("In setScene...5: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...5: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
@@ -414,7 +398,7 @@ def setScene() {
 			sceneSwitch5.on()
 		} else
 		if(state.currentMode == "6"){
-			LOGDEBUG("In setScene...6: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...6: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
@@ -425,7 +409,7 @@ def setScene() {
 			sceneSwitch6.on()
 		} else
 		if(state.currentMode == "7"){
-			LOGDEBUG("In setScene...7: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...7: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
@@ -436,7 +420,7 @@ def setScene() {
 			sceneSwitch7.on()
 		} else
 		if(state.currentMode == "8"){
-			LOGDEBUG("In setScene...8: currentMode: ${state.currentMode}")
+			if(logEnable) log.debug "In setScene...8: currentMode: ${state.currentMode}"
 			if(state.prevMode == "1") sceneSwitch1.off()
 			if(state.prevMode == "2") sceneSwitch2.off()
 			if(state.prevMode == "3") sceneSwitch3.off()
@@ -447,7 +431,7 @@ def setScene() {
 			sceneSwitch8.on()
 		} else	
 		if(state.currentMode == "NONE"){
-			LOGDEBUG("In setScene...Something went wrong, no Mode matched!")
+			if(logEnable) log.debug "In setScene...Something went wrong, no Mode matched!"
 		}
 	} else{
 		log.info "It's too light in here, no Scenes activated."
@@ -455,33 +439,31 @@ def setScene() {
 }
 
 def luxLevel() {
-	LOGDEBUG("       - - - - - -     ")
-    LOGDEBUG("In luxLevel...")
+    if(logEnable) log.debug "In luxLevel..."
     if (lightSensor != null) {
 		if(lightLevel == null) {lightLevel = 0}
         def curLev = lightSensor.currentValue("illuminance").toInteger()
         if (curLev >= lightLevel.toInteger()) {
-            LOGDEBUG("In luxLevel...Current Light Level: ${curLev} is greater than lightValue: ${lightLevel}")
+            if(logEnable) log.debug "In luxLevel...Current Light Level: ${curLev} is greater than lightValue: ${lightLevel}"
 			state.isItDark = "false"
         } else {
-            LOGDEBUG("In luxLevel...Current Light Level: ${curLev} is less than lightValue: ${lightLevel}")
+            if(logEnable) log.debug "In luxLevel...Current Light Level: ${curLev} is less than lightValue: ${lightLevel}"
 			state.isItDark = "true"
         }
     }
 }
 
 def dimLights() {
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In dimLights...Mode: ${state.modeNow}")
+	if(logEnable) log.debug "In dimLights...Mode: ${state.modeNow}"
 	dimTimeSec = (state.dimTime * 60)
 	safetyTimeSec = (safetyTime * 60)
-	LOGDEBUG("In dimLights...dimTimeSec: ${dimTimeSec}")
+	if(logEnable) log.debug "In dimLights...dimTimeSec: ${dimTimeSec}"
     def delta = (now() - (state.lastActive ?:0))/1000
     if(delta < dimTimeSec) {
-        LOGDEBUG("In dimLights...Time Since Last Active = ${delta} less than time to Dim = ${dimTimeSec}")
+        if(logEnable) log.debug "In dimLights...Time Since Last Active = ${delta} less than time to Dim = ${dimTimeSec}"
 		setScene()
     } else {
-		LOGDEBUG("In dimLights...Time Since Last Active = ${delta} greater than time to Dim = ${dimTimeSec}")
+		if(logEnable) log.debug "In dimLights...Time Since Last Active = ${delta} greater than time to Dim = ${dimTimeSec}"
 		if(state.currentMode == "1") {lightsToDim = lightsToDim1}
 		if(state.currentMode == "2") {lightsToDim = lightsToDim2}
 		if(state.currentMode == "3") {lightsToDim = lightsToDim3}
@@ -495,24 +477,23 @@ def dimLights() {
 				startLevel = eachLight.currentLevel.toInteger()
 				setDimLevel1 = (startLevel * 0.5)
 				setDimLevel = (startLevel - setDimLevel1)
-				LOGDEBUG("In dimLights...eachlight: ${eachLight}, startLevel: ${startLevel}, dimLevel: ${setDimLevel} and is ${eachLight.currentSwitch}")
+				if(logEnable) log.debug "In dimLights...eachlight: ${eachLight}, startLevel: ${startLevel}, dimLevel: ${setDimLevel} and is ${eachLight.currentSwitch}"
 				log.info "Motion has been inactive for ${delta} seconds - Starting Dim Warning"
     			if(eachLight.currentSwitch == "on") eachLight.setLevel(setDimLevel)
 				runIn(state.offTime, setOff)
 				runIn(safetyTimeSec, safetyNet)
 			}
 		} else{
-			LOGDEBUG("In dimLights...Something went wrong, no Mode matched!")
+			if(logEnable) log.debug "In dimLights...Something went wrong, no Mode matched!"
 		}
 	}
 }
 
 def setOff() {
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In setOff...currentMode: ${state.currentMode} Mode: ${state.modeNow}")
+	if(logEnable) log.debug "In setOff...currentMode: ${state.currentMode} Mode: ${state.modeNow}"
     def delta = (now() - (state.lastActive ?:0))/1000
     if(delta < state.offTime) {
-        LOGDEBUG("In setOff...Cancelling setOff: Time Since Last Active: ${delta} and OffTime: ${state.offTime}")
+        if(logEnable) log.debug "In setOff...Cancelling setOff: Time Since Last Active: ${delta} and OffTime: ${state.offTime}"
 	} else {
 		if(sceneSwitch1 != null) sceneSwitch1.off()
 		if(sceneSwitch2 != null) sceneSwitch2.off()
@@ -526,12 +507,11 @@ def setOff() {
 }
 
 def safetyNet() {
-	LOGDEBUG("       - - - - - -     ")
-	LOGDEBUG("In safetyNet...Mode: ${state.modeNow}")
+	if(logEnable) log.debug "In safetyNet...Mode: ${state.modeNow}"
 	safetyTimeSec = (safetyTime * 60)
     def delta = (now() - (state.lastActive ?:0))/1000
     if(delta < safetyTimeSec) {
-        LOGDEBUG("In safetyNet...Cancelling safetyNet: Time Since Last Active= ${delta} and Off Window = ${safetyTimeSec}")
+        if(logEnable) log.debug "In safetyNet...Cancelling safetyNet: Time Since Last Active= ${delta} and Off Window = ${safetyTimeSec}"
 	} else {
 		log.info "Motion Safety Net - turning all selected lights off"
 		safetySwitches.off()
@@ -540,61 +520,18 @@ def safetyNet() {
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){
-    state.pauseNow = pause1
-        if(state.pauseNow == true){
-            state.pauseApp = true
-            if(app.label){
-            if(app.label.contains('red')){
-                log.warn "Paused"}
-            else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-              LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-            }
-        }
-     if(state.pauseNow == false){
-         state.pauseApp = false
-         if(app.label){
-     		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     		LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-          	}
-         }
-	}      
-}
-
 def setDefaults(){
-    pauseOrNot()
-    if(pause1 == null){pause1 = false}
-    if(state.pauseApp == null){state.pauseApp = false}
+    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(state.currentMode == null){state.currentMode = "NONE"}
 }
 
-def logCheck(){
-	state.checkLog = logEnable
-	if(state.logEnable == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.logEnable == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){
-    try {
-		if (settings.logEnable) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {
+def getImage(type) {									// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){							// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -603,36 +540,16 @@ def getFormat(type, myText=""){
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Motion%20Controlled%20Scene%20Lighting/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display2(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Motion Controlled Scene Lighting - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
