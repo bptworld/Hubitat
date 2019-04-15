@@ -13,17 +13,18 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  *-------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
- *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
@@ -34,7 +35,8 @@
  *
  *  Changes:
  *
- *  V1.1.1 - 03/31/19 - Added simplified dashboard tile back to app
+ *  V1.1.2 - 04/15/19 - Code cleanup
+ *  V1.1.1 - 03/31/19 - Added dashboard tile back to app
  *  V1.1.0 - 03/24/19 - Removed ability to send app data to dashboard tiles until I can find more time to make it compatible with
  *			the new dashboards.
  *  V1.0.9 - 02/27/19 - App now sends 'All apps are up to date' to tile.
@@ -51,7 +53,7 @@
  */
 
 def setVersion(){
-	state.version = "v1.1.1"
+	state.version = "v1.1.2"
 }
 
 def sendVersionToAW(){
@@ -71,6 +73,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
 )
 
 preferences {
@@ -150,7 +153,6 @@ def pageConfig() {
 		section() {
 		//	input(name: "sendToAW", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Send version information to App Watcher", description: "Send version to App Watcher")
 		//	if(sendToAW) input(name: "sendToAWSwitch", type: "capability.actuator", title: "App Watcher device...", required: false, multiple: false)
-			input(name: "enablerSwitch1", type: "capability.switch", title: "Enable/Disable child app with this switch - If Switch is ON then app is disabled, if Switch is OFF then app is active.", required: false, multiple: false)
 			input(name: "debugMode", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
@@ -199,10 +201,9 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
-	logCheck()
 	initialize()
 }
 
@@ -212,7 +213,7 @@ def initialize() {
 }
 
 def setupNewStuff() {
-	LOGDEBUG("In setupNewStuff...")
+	if(logEnable) log.debug "In setupNewStuff..."
 	if(state.oldParentMap == null) {
 		state.oldParentMap = [:]
 		state.oldChildMap = [:]
@@ -228,11 +229,11 @@ def setupNewStuff() {
 		installedApps.each { stuff -> 
 			def stuffing = "NA"
 			def oldParentMap = state.oldParentMap.get(stuff)
-			LOGDEBUG("In setupNewStuff...Checking to see if ${stuff} is in map...${state.oldParentMap}")
+			if(logEnable) log.debug "In setupNewStuff...Checking to see if ${stuff} is in map...${state.oldParentMap}"
 			if(oldParentMap != null) {
-				LOGDEBUG("In setupNewStuff...Found ${stuff}! All is good.")
+				if(logEnable) log.debug "In setupNewStuff...Found ${stuff}! All is good."
 			} else {
-				LOGDEBUG("In setupNewStuff...Did not find ${stuff}. Adding it in.")	 
+				if(logEnable) log.debug "In setupNewStuff...Did not find ${stuff}. Adding it in."
 				state.oldParentMap.put(stuff, stuffing)
 				state.oldChildMap.put(stuff, stuffing)
 				state.oldDriverMap.put(stuff, stuffing)
@@ -248,23 +249,22 @@ def setupNewStuff() {
 	catch (e) {
         	//log.error "Error:  $e"
     }
-	LOGDEBUG("In setupNewStuff...Here is the oldParentMap: ${state.oldParentMap} **********")
-	LOGDEBUG("In setupNewStuff...End New Stuff")
+	if(logEnable) log.debug "In setupNewStuff...Here is the oldParentMap: ${state.oldParentMap} **********"
+	if(logEnable) log.debug "In setupNewStuff...End New Stuff"
 	removingStuff()
 }
 
 def removingStuff() {	
-	LOGDEBUG("In removingStuff...")
-	LOGDEBUG("In removingStuff...Time to Clean up the Maps")
-	LOGDEBUG("In removingStuff...Checking Map: ${state.oldParentMap}")
+	if(logEnable) log.debug "In removingStuff...Time to Clean up the Maps"
+	if(logEnable) log.debug "In removingStuff...Checking Map: ${state.oldParentMap}"
 	if(state.oldParentMap) {
 		try {
 			state.oldParentMap.each { stuff2 -> 
-				LOGDEBUG("In removingStuff...Checking: ${stuff2.key}")
+				if(logEnable) log.debug "In removingStuff...Checking: ${stuff2.key}"
 				if(installedApps.contains(stuff2.key)) {
-					LOGDEBUG("In removingStuff...Found ${stuff2.key}! All is good.")
+					if(logEnable) log.debug "In removingStuff...Found ${stuff2.key}! All is good."
 				} else {
-					LOGDEBUG("In removingStuff...Did not find ${stuff2.key}. Removing from Maps.")	 
+					if(logEnable) log.debug "In removingStuff...Did not find ${stuff2.key}. Removing from Maps." 
 					state.oldParentMap.remove(stuff2.key)
 					state.oldChildMap.remove(stuff2.key)
 					state.oldDriverMap.remove(stuff2.key)
@@ -274,20 +274,20 @@ def removingStuff() {
 					state.oldDriver4Map.remove(stuff2.key)
 					state.oldDriver5Map.remove(stuff2.key)
 					state.oldDriver6Map.remove(stuff2.key)
-					LOGDEBUG("In removingStuff...${stuff2.key} was removed.")
+					if(logEnable) log.debug "In removingStuff...${stuff2.key} was removed."
 				}
 			}
 		}
 		catch (e) {
         	//log.error "Error:  $e"
     	}
-		LOGDEBUG("In removingStuff...Finished Map: ${state.oldParentMap}")
-	} else { LOGDEBUG("In removingStuff...state.oldParentMap was NULL") }
+		if(logEnable) log.debug "In removingStuff...Finished Map: ${state.oldParentMap}"
+	} else { if(logEnable) log.debug "In removingStuff...state.oldParentMap was NULL" }
 }
 
 def gitHubCheck() {
 	def params = [uri: "${gitHubURL}", contentType: "application/json"]
-	LOGDEBUG("In gitHubCheck... About to 'try' - ${gitHubURL}")
+	if(logEnable) log.debug "In gitHubCheck... About to 'try' - ${gitHubURL}"
     try {
 		httpGet(params) { response ->
 			results = response.data
@@ -443,27 +443,25 @@ def gitHubCheck() {
 }
 
 def appMapHandler(evt) {
-	LOGDEBUG("In appMapHandler...")
-	if(state.enablerSwitch2 == "off") {
-		LOGDEBUG("In appMapHandler - Enabler Switch is Off")
-		if(pause1 == true){log.warn "${app.label} - Unable to continue - App paused"}
-   		if(pause1 == false){LOGDEBUG("Continue - App NOT paused")
-			LOGDEBUG("In appMapHandler - pause is Off")
+	if(logEnable) log.debug "In appMapHandler..."
+		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
+   		if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+			if(logEnable) log.debug "In appMapHandler - pause is Off"
 			clearMaps()
 			if(installedApps) {
 				installedApps.each { item ->
 					state.appsName = item
-					LOGDEBUG("----------- Starting App: ${item} -----------")
+					if(logEnable) log.debug "----------- Starting App: ${item} -----------"
 					
 					def params = [uri: "${gitHubURL}", contentType: "application/json"]
-					LOGDEBUG("In appMapHandler... About to 'try' - ${item}")
+					if(logEnable) log.debug "In appMapHandler... About to 'try' - ${item}"
        				try {
 						httpGet(params) { response ->
 							results = response.data
 					
 							state.aType = results."${item}Type"
 							// Get Current Data from json
-							LOGDEBUG("Getting NEW Versions from json - AppName: ${item} - Type: ${state.aType}")
+							if(logEnable) log.debug "Getting NEW Versions from json - AppName: ${item} - Type: ${state.aType}"
 							if(state.aType == "App") {
 								state.appParentVersion = results."${item}ParentVersion"
 								state.appChildVersion = results."${item}ChildVersion"
@@ -498,7 +496,7 @@ def appMapHandler(evt) {
 							}
 							
 							if(maintSwitch == true && maintSwitch2 == true) {
-								LOGDEBUG("Maintenance... Replacing Old data with New")
+								if(logEnable) log.debug "Maintenance... Replacing Old data with New"
 								state.oldParentMap.put(item, state.appParentVersion)
 								state.oldChildMap.put(item, state.appChildVersion)
 								state.oldDriverMap.put(item, state.appDriverVersion)
@@ -509,7 +507,7 @@ def appMapHandler(evt) {
 								state.oldDriver4Map.put(item, state.appDriver4Version)
 								state.oldDriver5Map.put(item, state.appDriver5Version)
 								state.oldDriver6Map.put(item, state.appDriver6Version)
-								LOGDEBUG("Maintenance... Finished")
+								if(logEnable) log.debug "Maintenance... Finished"
 								state.buttonPress = "false"
 							}
 								
@@ -527,7 +525,7 @@ def appMapHandler(evt) {
 								state.oldAppDriver6Version = state.oldDriver6Map.get(item)
 							}
 							catch (e) {
-									
+								if(logEnable) log.debug "***** In appMapHandler - Something went wrong!  *****"
 							}
 							
 							if(state.aType == "App") checkTheAppData()
@@ -537,11 +535,10 @@ def appMapHandler(evt) {
        			 	catch (e) {
         				log.error "Error:  $e"
     				}
-					LOGDEBUG("----------- End App: ${item} -----------")		 
+					if(logEnable) log.debug "----------- End App: ${item} -----------"		 
 				}
 			}			
 		}
-	}
 	if(maintSwitch2 != true) {
 		if(sendPushMessage) pushNow()
 		if(tileDevice) tileHandler()
@@ -550,40 +547,40 @@ def appMapHandler(evt) {
 
 def checkTheAppData() {
 	// Parent Check
-	LOGDEBUG("Check Parent - old: ${state.oldAppParentVersion} vs. new: ${state.appParentVersion} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Parent - old: ${state.oldAppParentVersion} vs. new: ${state.appParentVersion} +++++++++++++++++++++++"
 	if(state.oldAppParentVersion == state.appParentVersion){
 		parentCheck = "no"
 		pnew = ""
-		LOGDEBUG("In checkTheData...Old Parent Version: ${state.oldAppParentVersion} - No Update Available - New: ${state.appParentVersion}")
+		if(logEnable) log.debug "In checkTheData...Old Parent Version: ${state.oldAppParentVersion} - No Update Available - New: ${state.appParentVersion}"
 	}
 	else {
 		parentCheck = "yes"
 		pnew = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheData...Old Parent Version: ${state.oldAppParentVersion} - Update Available! - New: ${state.appParentVersion}")
+		if(logEnable) log.debug "In checkTheData...Old Parent Version: ${state.oldAppParentVersion} - Update Available! - New: ${state.appParentVersion}"
 	}
 							
 	// Child Check
 	if(state.oldAppChildVersion == state.appChildVersion){
 		childCheck = "no"
 		cnew = ""
-		LOGDEBUG("In checkTheData...Old Child Version: ${state.oldAppChildVersion} - No Update Available - New: ${state.appChildVersion}")
+		if(logEnable) log.debug "In checkTheData...Old Child Version: ${state.oldAppChildVersion} - No Update Available - New: ${state.appChildVersion}"
 	}
 	else {
 		childCheck = "yes"
 		cnew = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheData...Old Child Version: ${state.oldAppChildVersion} - Update Available! - New: ${state.appChildVersion}")
+		if(logEnable) log.debug "In checkTheData...Old Child Version: ${state.oldAppChildVersion} - Update Available! - New: ${state.appChildVersion}"
 	}
 							
 	// Driver Check
 	if(state.oldAppDriverVersion == state.appDriverVersion){
 		driverCheck = "no"
 		dnew = ""
-		LOGDEBUG("In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - No Update Available - New: ${state.appDriverVersion}")
+		if(logEnable) log.debug "In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - No Update Available - New: ${state.appDriverVersion}"
 	}
 	else {
 		driverCheck = "yes"
 		dnew = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - Update Available!- New: ${state.appDriverVersion}")
+		if(logEnable) log.debug "In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - Update Available!- New: ${state.appDriverVersion}"
 	}
 
 		if(state.appDiscussion != "NA") {
@@ -649,76 +646,76 @@ def checkTheAppData() {
 
 def checkTheDriverData() {
 	// Driver1 Check
-	LOGDEBUG("Check Driver 1 - old: ${state.oldAppDriver1Version} vs. new: ${state.appDriver1Version} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Driver 1 - old: ${state.oldAppDriver1Version} vs. new: ${state.appDriver1Version} +++++++++++++++++++++++"
 	if(state.oldAppDriver1Version == state.appDriver1Version){
 		driver1Check = "no"
 		d1new = ""
-		LOGDEBUG("In checkTheDriverData...Old Driver1 Version: ${state.oldAppDriver1Version} - No Update Available - New: ${state.appDriver1Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver1 Version: ${state.oldAppDriver1Version} - No Update Available - New: ${state.appDriver1Version}"
 	}
 	else {
 		driver1Check = "yes"
 		d1new = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheDriverData...Old Driver1 Version: ${state.oldAppDriver1Version} - Update Available! - New: ${state.appDriver1Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver1 Version: ${state.oldAppDriver1Version} - Update Available! - New: ${state.appDriver1Version}"
 	}
 	// Driver2 Check
-	LOGDEBUG("Check Driver 2 - old: ${state.oldAppDriver2Version} vs. new: ${state.appDriver2Version} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Driver 2 - old: ${state.oldAppDriver2Version} vs. new: ${state.appDriver2Version} +++++++++++++++++++++++"
 	if(state.oldAppDriver2Version == state.appDriver2Version){
 		driver2Check = "no"
 		d2new = ""
-		LOGDEBUG("In checkTheDriverData...Old Driver2 Version: ${state.oldAppDriver2Version} - No Update Available - New: ${state.appDriver2Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver2 Version: ${state.oldAppDriver2Version} - No Update Available - New: ${state.appDriver2Version}"
 	}
 	else {
 		driver2Check = "yes"
 		d2new = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheDriverData...Old Driver2 Version: ${state.oldAppDriver2Version} - Update Available! - New: ${state.appDriver2Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver2 Version: ${state.oldAppDriver2Version} - Update Available! - New: ${state.appDriver2Version}"
 	}
 	// Driver3 Check
-	LOGDEBUG("Check Driver 3 - old: ${state.oldAppDriver3Version} vs. new: ${state.appDriver3Version} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Driver 3 - old: ${state.oldAppDriver3Version} vs. new: ${state.appDriver3Version} +++++++++++++++++++++++"
 	if(state.oldAppDriver3Version == state.appDriver3Version){
 		driver3Check = "no"
 		d3new = ""
-		LOGDEBUG("In checkTheDriverData...Old Driver3 Version: ${state.oldAppDriver3Version} - No Update Available - New: ${state.appDriver3Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver3 Version: ${state.oldAppDriver3Version} - No Update Available - New: ${state.appDriver3Version}"
 	}
 	else {
 		driver3Check = "yes"
 		d3new = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheDriverData...Old Driver3 Version: ${state.oldAppDriver3Version} - Update Available! - New: ${state.appDriver3Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver3 Version: ${state.oldAppDriver3Version} - Update Available! - New: ${state.appDriver3Version}"
 	}
 	// Driver4 Check
-	LOGDEBUG("Check Driver 4 - old: ${state.oldAppDriver4Version} vs. new: ${state.appDriver4Version} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Driver 4 - old: ${state.oldAppDriver4Version} vs. new: ${state.appDriver4Version} +++++++++++++++++++++++"
 	if(state.oldAppDriver4Version == state.appDriver4Version){
 		driver4Check = "no"
 		d4new = ""
-		LOGDEBUG("In checkTheDriverData...Old Driver4 Version: ${state.oldAppDriver4Version} - No Update Available - New: ${state.appDriver4Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver4 Version: ${state.oldAppDriver4Version} - No Update Available - New: ${state.appDriver4Version}"
 	}
 	else {
 		driver4Check = "yes"
 		d4new = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheDriverData...Old Driver4 Version: ${state.oldAppDriver4Version} - Update Available! - New: ${state.appDriver4Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver4 Version: ${state.oldAppDriver4Version} - Update Available! - New: ${state.appDriver4Version}"
 	}
 	// Driver5 Check
-	LOGDEBUG("Check Driver 5 - old: ${state.oldAppDriver5Version} vs. new: ${state.appDriver5Version} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Driver 5 - old: ${state.oldAppDriver5Version} vs. new: ${state.appDriver5Version} +++++++++++++++++++++++"
 	if(state.oldAppDriver5Version == state.appDriver5Version){
 		driver5Check = "no"
 		d5new = ""
-		LOGDEBUG("In checkTheDriverData...Old Driver5 Version: ${state.oldAppDriver5Version} - No Update Available - New: ${state.appDriver5Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver5 Version: ${state.oldAppDriver5Version} - No Update Available - New: ${state.appDriver5Version}"
 	}
 	else {
 		driver5Check = "yes"
 		d5new = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheDriverData...Old Driver5 Version: ${state.oldAppDriver5Version} - Update Available! - New: ${state.appDriver5Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver5 Version: ${state.oldAppDriver5Version} - Update Available! - New: ${state.appDriver5Version}"
 	}
 	// Driver6 Check
-	LOGDEBUG("Check Driver 6 - old: ${state.oldAppDriver6Version} vs. new: ${state.appDriver6Version} +++++++++++++++++++++++")
+	if(logEnable) log.debug "Check Driver 6 - old: ${state.oldAppDriver6Version} vs. new: ${state.appDriver6Version} +++++++++++++++++++++++"
 	if(state.oldAppDriver6Version == state.appDriver6Version){
 		driver6Check = "no"
 		d6new = ""
-		LOGDEBUG("In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - No Update Available - New: ${state.appDriver6Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - No Update Available - New: ${state.appDriver6Version}"
 	}
 	else {
 		driver6Check = "yes"
 		d6new = "<span style='color:red'>NEW </span>"
-		LOGDEBUG("In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - Update Available! - New: ${state.appDriver6Version}")
+		if(logEnable) log.debug "In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - Update Available! - New: ${state.appDriver6Version}"
 	}
 		if(state.appDiscussion != "NA") {
 			appDiscussion2 = "<a href='${state.appDiscussion}' target='_blank'>[Driver Discussion]</a>"
@@ -817,7 +814,7 @@ def tileHandler(evt) {
 	} else {
 		appMap = "<table width='100%'><b>Apps/Drivers to update</b><br>${appMap}</table>"
 	}
-	LOGDEBUG("In tileHandler...Sending new App Watchdog data to ${tileDevice} - ${appMap}")
+	if(logEnable) log.debug "In tileHandler...Sending new App Watchdog data to ${tileDevice} - ${appMap}"
     tileDevice.sendDataMap(appMap)
 }
 
@@ -829,7 +826,7 @@ def tileVersionHandler() {
 }
 
 def clearMaps() {
-	LOGDEBUG("In clearMaps...")
+	if(logEnable) log.debug "In clearMaps..."
 	state.appMap = [:]
 	state.appMap = ""
 	state.appAllMap = [:]
@@ -838,11 +835,11 @@ def clearMaps() {
 	state.appMapPhone = ""
 	state.appMapDash = [:]
 	state.appMapDash = ""
-	LOGDEBUG("In clearMaps...Maps are clear")
+	if(logEnable) log.debug "In clearMaps...Maps are clear"
 }
 
 def isThereData(){
-	LOGDEBUG("In isThereData...")
+	if(logEnable) log.debug "In isThereData..."
 	if(state.appMapPhone) {
 		isDataDevice.on()
 	} else {
@@ -851,12 +848,12 @@ def isThereData(){
 }
 
 def pushNow(){
-	LOGDEBUG("In pushNow...")
+	if(logEnable) log.debug "In pushNow..."
 	if(sendPushMessage) {
 		if(state.appMapPhone) {
 			pushMessage = "${app.label} \n"
 			pushMessage += "${state.appMapPhone}"
-			LOGDEBUG("In pushNow...Sending message: ${pushMessage}")
+			if(logEnable) log.debug "In pushNow...Sending message: ${pushMessage}"
         	sendPushMessage.deviceNotification(pushMessage)
 		} else {
 			if(pushAll == true) {
@@ -864,7 +861,7 @@ def pushNow(){
 			} else {
 				emptyMapPhone = "${app.label} \n"
 				emptyMapPhone += "Nothing to report."
-				LOGDEBUG("In pushNow...Sending message: ${emptyMapPhone}")
+				if(logEnable) log.debug "In pushNow...Sending message: ${emptyMapPhone}"
         		sendPushMessage.deviceNotification(emptyMapPhone)
 			}
 		}
@@ -873,65 +870,21 @@ def pushNow(){
 
 // ********** Normal Stuff **********
 
-def pauseOrNot(){			// Modified from @Cobra Code
-	LOGDEBUG("In pauseOrNot...")
-    state.pauseNow = pause1
-    if(state.pauseNow == true){
-    	state.pauseApp = true
-        if(app.label){
-        	if(app.label.contains('red')){
-            	log.warn "Paused"}
-           	else{app.updateLabel(app.label + ("<font color = 'red'> (Paused) </font>" ))
-            	LOGDEBUG("App Paused - state.pauseApp = $state.pauseApp ")   
-            }
-        }
-    }
-    if(state.pauseNow == false){
-    	state.pauseApp = false
-        if(app.label){
-     		if(app.label.contains('red')){ app.updateLabel(app.label.minus("<font color = 'red'> (Paused) </font>" ))
-     			LOGDEBUG("App Released - state.pauseApp = $state.pauseApp ")                          
-        	}
-		}
-    }  
-}
-
 def setDefaults(){
-	LOGDEBUG("In setDefaults...")
+	if(logEnable) log.debug "In setDefaults..."
 	setupNewStuff()
-	pauseOrNot()
-    if(pause1 == null){pause1 = false}
     if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
-	if(state.enablerSwitch2 == null){state.enablerSwitch2 = "off"}
 	if(pushAll == null){pushAll = false}
-	LOGDEBUG("In setDefaults - Finished defaults")
+	if(logEnable) log.debug "In setDefaults - Finished defaults"
 }
 
-def logCheck(){			// Modified from @Cobra Code
-	state.checkLog = debugMode
-	if(state.checkLog == true){
-		log.info "${app.label} - All Logging Enabled"
-	}
-	else if(state.checkLog == false){
-		log.info "${app.label} - Further Logging Disabled"
-	}
-}
-
-def LOGDEBUG(txt){		// Modified from @Cobra Code
-    try {
-		if (settings.debugMode) { log.debug("${app.label} - ${txt}") }
-    } catch(ex) {
-    	log.error("${app.label} - LOGDEBUG unable to output requested data!")
-    }
-}
-
-def getImage(type) {				// Modified from @Stephack Code
+def getImage(type) {				// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
 }
 
-def getFormat(type, myText=""){		// Modified from @Stephack Code
+def getFormat(type, myText=""){		// Modified from @Stephack
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
 	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
@@ -940,7 +893,9 @@ def getFormat(type, myText=""){		// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pause1", "bool", title: "Pause This App", required: true, submitOnChange: true, defaultValue: false
+		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
+		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
+		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
