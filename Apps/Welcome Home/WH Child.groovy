@@ -703,25 +703,19 @@ def checkVol(){
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 }
 
-def checkTime(){							// Modified from @Cobra Code
-	if(logEnable) log.debug "In checkTime..."
-	def timecheckNow = fromTime
-	if (timecheckNow != null){
-    
-	def between = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-    if (between) {
-    	state.timeOK = true
-   		if(logEnable) log.debug "In checkTime - Time is ok, continue"
-	}
-	else if (!between) {
-		state.timeOK = false
-		if(logEnable) log.debug "In checkTime - Time is NOT ok, can't continue"
-	}
+def checkTime() {
+	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
+	if((fromTime != null) && (toTime != null)) {
+		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+		if(state.betweenTime) {
+			state.timeBetween = true
+		} else {
+			state.timeBetween = false
+		}
+  	} else {  
+		state.timeBetween = true
   	}
-	else if (timecheckNow == null){  
-		state.timeOK = true
-  		if(logEnable) log.debug "In checkTime - No Time restrictions - Continue"
-  	}
+	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
 def messageHandler() {
@@ -797,7 +791,7 @@ private getName(){
 	return name
 }
 
-private getGreeting(){						// Heavily modified from @Cobra Code
+private getGreeting(){						// modified from @Cobra Code
 	if(logEnable) log.debug "In getGreeting..."
     def calendar = Calendar.getInstance()
 	calendar.setTimeZone(location.timeZone)
