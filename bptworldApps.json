@@ -235,7 +235,7 @@
   "WelcomeHomeUpdateNote": "V2.0.7 - 04/15/19 - Code cleanup",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.1.2",
+  "WhatDidISayDriver1Version": "v1.1.3",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -254,5 +254,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.1.2 - 04/12/19 - Fixed length of message typo",
+  "WhatDidISayUpdateNote": "V1.1.3 - 04/16/19 - Code cleanup, added importUrl",
 }
