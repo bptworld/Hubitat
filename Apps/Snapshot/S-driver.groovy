@@ -14,6 +14,10 @@
  *
  *  Paypal at: https://paypal.me/bptworld
  *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -34,8 +38,10 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 04/16/19 - Code cleanup, added importUrl
+ *  V1.0.7 - 04/12/19 - Adjust driver for Presence support
  *  V1.0.6 - 04/02/19 - Adjust driver for Temperature support
- *  V1.0.5 - 04/01/19 - Adjust driver for lock support
+ *  V1.0.5 - 04/01/19 - Adjust driver for Lock support
  *  V1.0.4 - 04/01/19 - Adjust driver for priority type of tiles
  *  V1.0.3 - 03/30/19 - Adjust driver for on/off and open/close type of tiles
  *  V1.0.2 - 03/27/19 - Added support for counting how many devices are On/Off/Open/Closed
@@ -44,7 +50,7 @@
  */
 
 metadata {
-	definition (name: "Snapshot Tile", namespace: "BPTWorld", author: "Bryan Turcotte") {
+	definition (name: "Snapshot Tile", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy") {
    		capability "Actuator"
 
 		command "sendSnapshotSwitchMap1", ["string"]
@@ -61,6 +67,9 @@ metadata {
 		command "sendSnapshotContactMap5", ["string"]
 		command "sendSnapshotContactMap6", ["string"]
 		
+		command "sendSnapshotPresenceMap1", ["string"]
+		command "sendSnapshotPresenceMap2", ["string"]
+		
 		command "sendSnapshotLockMap1", ["string"]
 		command "sendSnapshotLockMap2", ["string"]
 		
@@ -71,6 +80,8 @@ metadata {
 		command "sendSnapshotSwitchCountOff", ["string"]
 		command "sendSnapshotContactCountOpen", ["string"]
 		command "sendSnapshotContactCountClosed", ["string"]
+		command "sendSnapshotPresenceCountNotPresent", ["string"]
+		command "sendSnapshotPresenceCountPresent", ["string"]
 		command "sendSnapshotLockCountUnlocked", ["string"]
 		command "sendSnapshotLockCountLocked", ["string"]
 		command "sendSnapshotTempCountHigh", ["string"]
@@ -103,6 +114,11 @@ metadata {
 		attribute "snapshotContactCountOpen", "string"
 		attribute "snapshotCountactCountClosed", "string"
 		
+		attribute "snapshotPresence1", "string"
+		attribute "snapshotPresence2", "string"
+		attribute "snapshotPresenceCountPresent", "string"
+		attribute "snapshotPresenceCountNotPresent", "string"
+		
 		attribute "snapshotLock1", "string"
 		attribute "snapshotLock2", "string"
 		attribute "snapshotLockCountUnlocked", "string"
@@ -126,7 +142,7 @@ metadata {
         section(){
 			input("fontSize", "text", title: "Data Font Size", required: true, defaultValue: "15")
 			input("fontSizeS", "text", title: "Date Font Size", required: true, defaultValue: "12")
-            input("debugMode", "bool", title: "Enable logging", required: true, defaultValue: true)
+            input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: true)
         }
     }
 }
@@ -139,7 +155,7 @@ def sendSnapshotSwitchMap1(switchMap1) {
 	state.switchDevice1 += "</td></tr></table>"
 	state.switchDevice1Count = state.switchDevice1.length()
 	if(state.switchDevice1Count <= 1000) {
-		LOGDEBUG("switchDevice1 - has ${state.switchDevice1Count} Characters<br>${state.switchDevice1}")
+		if(logEnable) log.debug "switchDevice1 - has ${state.switchDevice1Count} Characters<br>${state.switchDevice1}"
 	} else {
 		state.switchDevice1 = "Too many characters to display on Dashboard (${state.switchDevice1Count})"
 	}
@@ -154,7 +170,7 @@ def sendSnapshotSwitchMap2(switchMap2) {
 	state.switchDevice2 += "</td></tr></table>"
 	state.switchDevice2Count = state.switchDevice2.length()
 	if(state.switchtDevice2Count <= 1000) {
-		LOGDEBUG("switchDevice2 - has ${state.switchDevice2Count} Characters<br>${state.switchDevice2}")
+		if(logEnable) log.debug "switchDevice2 - has ${state.switchDevice2Count} Characters<br>${state.switchDevice2}"
 	} else {
 		state.switchDevice2 = "Too many characters to display on Dashboard (${state.switchDevice2Count})"
 	}
@@ -169,7 +185,7 @@ def sendSnapshotSwitchMap3(switchMap3) {
 	state.switchDevice3 += "</td></tr></table>"
 	state.switchDevice3Count = state.switchDevice3.length()
 	if(state.switchDevice3Count <= 1000) {
-		LOGDEBUG("switchDevice3 - has ${state.switchDevice3Count} Characters<br>${state.switchDevice3}")
+		if(logEnable) log.debug "switchDevice3 - has ${state.switchDevice3Count} Characters<br>${state.switchDevice3}"
 	} else {
 		state.switchDevice3 = "Too many characters to display on Dashboard (${state.switchDevice3Count})"
 	}
@@ -184,7 +200,7 @@ def sendSnapshotSwitchMap4(switchMap4) {
 	state.switchDevice4 += "</td></tr></table>"
 	state.switchDevice4Count = state.switchDevice4.length()
 	if(state.switchDevice4Count <= 1000) {
-		LOGDEBUG("switchDevice4 - has ${state.switchDevice4Count} Characters<br>${state.switchDevice4}")
+		if(logEnable) log.debug "switchDevice4 - has ${state.switchDevice4Count} Characters<br>${state.switchDevice4}"
 	} else {
 		state.switchDevice4 = "Too many characters to display on Dashboard (${state.switchDevice4Count})"
 	}
@@ -199,7 +215,7 @@ def sendSnapshotSwitchMap5(switchMap5) {
 	state.switchDevice5 += "</td></tr></table>"
 	state.switchDevice5Count = state.switchDevice5.length()
 	if(state.switchDevice5Count <= 1000) {
-		LOGDEBUG("switchDevice5 - has ${state.switchDevice5Count} Characters<br>${state.switchDevice5}")
+		if(logEnable) log.debug "switchDevice5 - has ${state.switchDevice5Count} Characters<br>${state.switchDevice5}"
 	} else {
 		state.switchDevice5 = "Too many characters to display on Dashboard (${state.switchDevice5Count})"
 	}
@@ -214,7 +230,7 @@ def sendSnapshotSwitchMap6(switchMap6) {
 	state.switchDevice6 += "</td></tr></table>"
 	state.switchDevice6Count = state.switchDevice6.length()
 	if(state.switchDevice6Count <= 1000) {
-		LOGDEBUG("switchDevice6 - has ${state.switchDevice6Count} Characters<br>${state.switchDevice6}")
+		if(logEnable) log.debug "switchDevice6 - has ${state.switchDevice6Count} Characters<br>${state.switchDevice6}"
 	} else {
 		state.switchDevice6 = "Too many characters to display on Dashboard (${state.switchDevice6Count})"
 	}
@@ -237,7 +253,7 @@ def sendSnapshotContactMap1(contactMap1) {
 	state.contactDevice1 += "</td></tr></table>"
 	state.contactDevice1Count = state.contactDevice1.length()
 	if(state.contactDevice1Count <= 1000) {
-		LOGDEBUG("contactDevice1 - has ${state.contactDevice1Count} Characters<br>${state.contactDevice1}")
+		if(logEnable) log.debug "contactDevice1 - has ${state.contactDevice1Count} Characters<br>${state.contactDevice1}"
 	} else {
 		state.contactDevice1 = "Too many characters to display on Dashboard (${state.contactDevice1Count})"
 	}
@@ -252,7 +268,7 @@ def sendSnapshotContactMap2(contactMap2) {
 	state.contactDevice2 += "</td></tr></table>"
 	state.contactDevice2Count = state.contactDevice2.length()
 	if(state.contactDevice2Count <= 1000) {
-		LOGDEBUG("contactDevice2 - has ${state.contactDevice2Count} Characters<br>${state.contactDevice2}")
+		if(logEnable) log.debug "contactDevice2 - has ${state.contactDevice2Count} Characters<br>${state.contactDevice2}"
 	} else {
 		state.contactDevice2 = "Too many characters to display on Dashboard (${state.contactDevice2Count})"
 	}
@@ -267,7 +283,7 @@ def sendSnapshotContactMap3(contactMap3) {
 	state.contactDevice3 += "</td></tr></table>"
 	state.contactDevice3Count = state.contactDevice3.length()
 	if(state.contactDevice3Count <= 1000) {
-		LOGDEBUG("contactDevice3 - has ${state.contactDevice3Count} Characters<br>${state.contactDevice3}")
+		if(logEnable) log.debug "contactDevice3 - has ${state.contactDevice3Count} Characters<br>${state.contactDevice3}"
 	} else {
 		state.contactDevice3 = "Too many characters to display on Dashboard (${state.contactDevice3Count})"
 	}
@@ -282,7 +298,7 @@ def sendSnapshotContactMap4(contactMap4) {
 	state.contactDevice4 += "</td></tr></table>"
 	state.contactDevice4Count = state.contactDevice4.length()
 	if(state.contactDevice4Count <= 1000) {
-		LOGDEBUG("contactDevice4 - has ${state.contactDevice4Count} Characters<br>${state.contactDevice4}")
+		if(logEnable) log.debug "contactDevice4 - has ${state.contactDevice4Count} Characters<br>${state.contactDevice4}"
 	} else {
 		state.contactDevice4 = "Too many characters to display on Dashboard (${state.contactDevice4Count})"
 	}
@@ -297,7 +313,7 @@ def sendSnapshotContactMap5(contactMap5) {
 	state.contactDevice5 += "</td></tr></table>"
 	state.contactDevice5Count = state.contactDevice5.length()
 	if(state.contactDevice5Count <= 1000) {
-		LOGDEBUG("contactDevice5 - has ${state.contactDevice5Count} Characters<br>${state.contactDevice5}")
+		if(logEnable) log.debug "contactDevice5 - has ${state.contactDevice5Count} Characters<br>${state.contactDevice5}"
 	} else {
 		state.contactDevice5 = "Too many characters to display on Dashboard (${state.contactDevice5Count})"
 	}
@@ -312,7 +328,7 @@ def sendSnapshotContactMap6(contactMap6) {
 	state.contactDevice6 += "</td></tr></table>"
 	state.contactDevice6Count = state.contactDevice6.length()
 	if(state.contactDevice6Count <= 1000) {
-		LOGDEBUG("contactDevice6 - has ${state.contactDevice6Count} Characters<br>${state.contactDevice6}")
+		if(logEnable) log.debug "contactDevice6 - has ${state.contactDevice6Count} Characters<br>${state.contactDevice6}"
 	} else {
 		state.contactDevice6 = "Too many characters to display on Dashboard (${state.contactDevice6Count})"
 	}
@@ -327,6 +343,44 @@ def sendSnapshotContactCountClosed(contactCountClosed) {
 	sendEvent(name: "snapshotContactCountClosed", value: contactCountClosed, displayed: true)
 }
 
+def sendSnapshotPresenceMap1(presenceMap1) {
+	state.presenceDevice1a = "${presenceMap1}"
+	state.presenceDevice1 = "<table width='100%'><tr>"
+	state.presenceDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.presenceDevice1 += "<div style='font-size: ${fontSize}px'> ${state.presenceDevice1a}</div>"
+	state.presenceDevice1 += "</td></tr></table>"
+	state.presenceDevice1Count = state.presenceDevice1.length()
+	if(state.presenceDevice1Count <= 1000) {
+		if(logEnable) log.debug "presenceDevice1 - has ${state.presenceDevice1Count} Characters<br>${state.presenceDevice1}"
+	} else {
+		state.presenceDevice1 = "Too many characters to display on Dashboard (${state.presenceDevice1Count})"
+	}
+	sendEvent(name: "snapshotPresence1", value: state.presenceDevice1, displayed: true)
+}
+
+def sendSnapshotPresenceMap2(presenceMap2) {
+	state.presenceDevice2a = "${presenceMap2}"
+	state.presenceDevice2 = "<table width='100%'><tr>"
+	state.presenceDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.presenceDevice2 += "<div style='font-size: ${fontSize}px'> ${state.presenceDevice2a}</div>"
+	state.presenceDevice2 += "</td></tr></table>"
+	state.presenceDevice2Count = state.presenceDevice2.length()
+	if(state.presenceDevice2Count <= 1000) {
+		if(logEnable) log.debug "presenceDevice2 - has ${state.presenceDevice2Count} Characters<br>${state.presenceDevice2}"
+	} else {
+		state.presenceDevice2 = "Too many characters to display on Dashboard (${state.presenceDevice2Count})"
+	}
+	sendEvent(name: "snapshotPresence2", value: state.presenceDevice2, displayed: true)
+}
+
+def sendSnapshotPresenceCountNotPresent(presenceCountNotPresent) {
+	sendEvent(name: "snapshotPresenceCountNotPresent", value: presenceCountNotPresent, displayed: true)
+}
+
+def sendSnapshotPresenceCountPresent(presenceCountPresent) {
+	sendEvent(name: "snapshotPresenceCountPresent", value: presenceCountPresent, displayed: true)
+}
+
 def sendSnapshotLockMap1(lockMap1) {
 	state.lockDevice1a = "${lockMap1}"
 	state.lockDevice1 = "<table width='100%'><tr>"
@@ -335,7 +389,7 @@ def sendSnapshotLockMap1(lockMap1) {
 	state.lockDevice1 += "</td></tr></table>"
 	state.lockDevice1Count = state.lockDevice1.length()
 	if(state.lockDevice1Count <= 1000) {
-		LOGDEBUG("lockDevice1 - has ${state.lockDevice1Count} Characters<br>${state.lockDevice1}")
+		if(logEnable) log.debug "lockDevice1 - has ${state.lockDevice1Count} Characters<br>${state.lockDevice1}"
 	} else {
 		state.lockDevice1 = "Too many characters to display on Dashboard (${state.lockDevice1Count})"
 	}
@@ -350,7 +404,7 @@ def sendSnapshotLockMap2(lockMap2) {
 	state.lockDevice2 += "</td></tr></table>"
 	state.lockDevice2Count = state.lockDevice2.length()
 	if(state.lockDevice2Count <= 1000) {
-		LOGDEBUG("lockDevice2 - has ${state.lockDevice2Count} Characters<br>${state.lockDevice2}")
+		if(logEnable) log.debug "lockDevice2 - has ${state.lockDevice2Count} Characters<br>${state.lockDevice2}"
 	} else {
 		state.lockDevice2 = "Too many characters to display on Dashboard (${state.lockDevice2Count})"
 	}
@@ -373,7 +427,7 @@ def sendSnapshotTempMap1(tempMap1) {
 	state.tempDevice1 += "</td></tr></table>"
 	state.tempDevice1Count = state.tempDevice1.length()
 	if(state.tempDevice1Count <= 1000) {
-		LOGDEBUG("tempDevice1 - has ${state.tempDevice1Count} Characters<br>${state.tempDevice1}")
+		if(logEnable) log.debug "tempDevice1 - has ${state.tempDevice1Count} Characters<br>${state.tempDevice1}"
 	} else {
 		state.tempDevice1 = "Too many characters to display on Dashboard (${state.tempDevice1Count})"
 	}
@@ -388,7 +442,7 @@ def sendSnapshotTempMap2(tempMap2) {
 	state.tempDevice2 += "</td></tr></table>"
 	state.tempDevice2Count = state.tempDevice2.length()
 	if(state.tempDevice2Count <= 1000) {
-		LOGDEBUG("tempDevice2 - has ${state.tempDevice2Count} Characters<br>${state.tempDevice2}")
+		if(logEnable) log.debug "tempDevice2 - has ${state.tempDevice2Count} Characters<br>${state.tempDevice2}"
 	} else {
 		state.tempDevice2 = "Too many characters to display on Dashboard (${state.tempDevice2Count})"
 	}
@@ -411,7 +465,7 @@ def sendSnapshotPrioritySwitchMap1(pSwitchMap1S) {
 	state.pSwitchDevice1 += "</td></tr></table>"
 	state.pSwitchDevice1Count = state.pSwitchDevice1.length()
 	if(state.pSwitchDevice1Count <= 1000) {
-		LOGDEBUG("pSwitchDevice1 - has ${state.pSwitchDevice1Count} Characters<br>${state.pSwitchDevice1}")
+		if(logEnable) log.debug "pSwitchDevice1 - has ${state.pSwitchDevice1Count} Characters<br>${state.pSwitchDevice1}"
 	} else {
 		state.pSwitchDevice1 = "Too many characters to display on Dashboard (${state.pSwitchDevice1Count})"
 	}
@@ -426,7 +480,7 @@ def sendSnapshotPrioritySwitchMap2(pSwitchMap2S) {
 	state.pSwitchDevice2 += "</td></tr></table>"
 	state.pSwitchDevice2Count = state.pSwitchDevice2.length()
 	if(state.pSwitchDevice2Count <= 1000) {
-		LOGDEBUG("pSwitchDevice2 - has ${state.pSwitchDevice2Count} Characters<br>${state.pSwitchDevice2}")
+		if(logEnable) log.debug "pSwitchDevice2 - has ${state.pSwitchDevice2Count} Characters<br>${state.pSwitchDevice2}"
 	} else {
 		state.pSwitchDevice2 = "Too many characters to display on Dashboard (${state.pSwitchDevice2Count})"
 	}
@@ -441,7 +495,7 @@ def sendSnapshotPriorityContactMap1(pContactMap1S) {
 	state.pContactDevice1 += "</td></tr></table>"
 	state.pContactDevice1Count = state.pContactDevice1.length()
 	if(state.pContactDevice1Count <= 1000) {
-		LOGDEBUG("pContactDevice1 - has ${state.pContactDevice1Count} Characters<br>${state.pContactDevice1}")
+		if(logEnable) log.debug "pContactDevice1 - has ${state.pContactDevice1Count} Characters<br>${state.pContactDevice1}"
 	} else {
 		state.pContactDevice1 = "Too many characters to display on Dashboard (${state.pContactDevice1Count})"
 	}
@@ -456,7 +510,7 @@ def sendSnapshotPriorityContactMap2(pContactMap2S) {
 	state.pContactDevice2 += "</td></tr></table>"
 	state.pContactDevice2Count = state.pContactDevice2.length()
 	if(state.pContactDevice2Count <= 1000) {
-		LOGDEBUG("pContactDevice2 - has ${state.pContactDevice2ount} Characters<br>${state.pContactDevice2}")
+		if(logEnable) log.debug "pContactDevice2 - has ${state.pContactDevice2ount} Characters<br>${state.pContactDevice2}"
 	} else {
 		state.pContactDevice2 = "Too many characters to display on Dashboard (${state.pContactDevice2Count})"
 	}
@@ -471,7 +525,7 @@ def sendSnapshotPriorityLockMap1(pLockMap1S) {
 	state.pLockDevice1 += "</td></tr></table>"
 	state.pLockDevice1Count = state.pLockDevice1.length()
 	if(state.pLockDevice1Count <= 1000) {
-		LOGDEBUG("pLockDevice1 - has ${state.pLockDevice1Count} Characters<br>${state.pLockDevice1}")
+		if(logEnable) log.debug "pLockDevice1 - has ${state.pLockDevice1Count} Characters<br>${state.pLockDevice1}"
 	} else {
 		state.pLockDevice1 = "Too many characters to display on Dashboard (${state.pLockDevice1Count})"
 	}
@@ -486,7 +540,7 @@ def sendSnapshotPriorityLockMap2(pLockMap2S) {
 	state.pLockDevice2 += "</td></tr></table>"
 	state.pLockDevice2Count = state.pLockDevice2.length()
 	if(state.pLockDevice2Count <= 1000) {
-		LOGDEBUG("pLockDevice2 - has ${state.pLockDevice2Count} Characters<br>${state.pLockDevice2}")
+		if(logEnable) log.debug "pLockDevice2 - has ${state.pLockDevice2Count} Characters<br>${state.pLockDevice2}"
 	} else {
 		state.pLockDevice2 = "Too many characters to display on Dashboard (${state.pLockDevice2Count})"
 	}
@@ -501,7 +555,7 @@ def sendSnapshotPriorityTempMap1(pTempMap1S) {
 	state.pTempDevice1 += "</td></tr></table>"
 	state.pTempDevice1Count = state.pTempDevice1.length()
 	if(state.pTempDevice1Count <= 1000) {
-		LOGDEBUG("pTempDevice1 - has ${state.pTempDevice1Count} Characters<br>${state.pTempDevice1}")
+		if(logEnable) log.debug "pTempDevice1 - has ${state.pTempDevice1Count} Characters<br>${state.pTempDevice1}"
 	} else {
 		state.pTempDevice1 = "Too many characters to display on Dashboard (${state.pTempDevice1Count})"
 	}
@@ -516,7 +570,7 @@ def sendSnapshotPriorityTempMap2(pTempMap2S) {
 	state.pTempDevice2 += "</td></tr></table>"
 	state.pTempDevice2Count = state.pTempDevice2.length()
 	if(state.pTempDevice2Count <= 1000) {
-		LOGDEBUG("pTempDevice2 - has ${state.pTempDevice2Count} Characters<br>${state.pTempDevice2}")
+		if(logEnable) log.debug "pTempDevice2 - has ${state.pTempDevice2Count} Characters<br>${state.pTempDevice2}"
 	} else {
 		state.pTempDevice2 = "Too many characters to display on Dashboard (${state.pTempDevice2Count})"
 	}
@@ -530,12 +584,3 @@ def installed(){
 def updated() {
     log.info "Snap Tile has been Updated"
 }
-
-def LOGDEBUG(txt) {
-    try {
-    	if (settings.debugMode) { log.debug("${txt}") }
-    } catch(ex) {
-    	log.error("LOGDEBUG unable to output requested data!")
-    }
-}
-	
