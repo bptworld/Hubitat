@@ -6,10 +6,9 @@
  *
  *  IR Codes can be found using Global Cache Control Tower IR Database, https://irdb.globalcache.com/
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  Special thanks to Andrew Parker (@Cobra) for use of his Parent/Child code and various other bits and pieces.
- *  Also thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
+ *  Thanks to Carson Dallum's (@cdallum) for the original IP2IR driver code that I based my driver off of.
  *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -18,7 +17,11 @@
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- *
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
  ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -39,14 +42,15 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 12/06/18 - Minor changes and additional error message. If the IP2IR unit is unplugged or loses connection for any
- *			reason, simply go into the IP2IR Telnet device and press the 'Initialize' button.
+ *  V1.0.3 - 04/16/19 - Code cleanup
+ *  V1.0.2 - 12/06/18 - Minor changes and additonal error message. If the IP2IR unit is unplugged or loses connection for any
+ *			 			reason, simply go into the IP2IR Telnet device and press the 'Initialize' button.
  *  V1.0.1 - 11/01/18 - Merged pull request from DTTerastar resend the command if busy is received. 
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
 metadata {
-	definition (name: "IP2IR Telnet", namespace: "BPTWorld", author: "Bryan Turcotte") {
+	definition (name: "IP2IR Telnet", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy") {
 	capability "Initialize"
     capability "Telnet"
     capability "Notification"
@@ -58,14 +62,14 @@ metadata {
 preferences() {    	
         section(""){
             input "ipaddress", "text", required: true, title: "iTach IP2IR IP Address", defaultValue: "0.0.0.0"
-            input "debugMode", "bool", title: "Enable logging", required: true, defaultValue: true
+            input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
         }
     }
 }
 
 def speak(msg) {
     state.lastmsg = msg
-    LOGDEBUG("Sending Message: ${msg}")
+    if(logEnable) log.debug "Sending Message: ${msg}"
     return new hubitat.device.HubAction("${msg}\n", hubitat.device.Protocol.TELNET)
 }
 
@@ -74,21 +78,21 @@ def deviceNotification(message) {
 }
 
 def resend(){
-    LOGDEBUG("RESEND!")
+    if(logEnable) log.debug "RESEND!"
     speak(state.lastmsg)
 }
 
 def initialize(){
 	try {
-		LOGDEBUG("Opening telnet connection")
+		if(logEnable) log.debug "Opening telnet connection"
 		sendEvent([name: "telnet", value: "Opening"])
         //telnetConnect([terminalType: 'VT100', termChars:[13]], "${ipaddress}", 4998, null, null)
 		telnetConnect([terminalType: 'VT100'], "${ipaddress}", 4998, null, null)
 		//give it a chance to start
 		pauseExecution(1000)
-		LOGDEBUG("Telnet connection established")
+		if(logEnable) log.debug "Telnet connection established"
     } catch(e) {
-		LOGDEBUG("Initialize Error: ${e.message}")
+		if(logEnable) log.debug "Initialize Error: ${e.message}"
     }
 }
 
@@ -101,7 +105,7 @@ def updated() {
 }
 
 def parse(String msg) {
-    LOGDEBUG "parse ${msg}"
+    if(logEnable) log.debug "parse ${msg}"
 	sendEvent([name: "telnet", value: "Connected"])
     if (msg == "busyIR,1:1,1"){
         runIn(1, resend)
@@ -109,19 +113,11 @@ def parse(String msg) {
 }
 
 def telnetStatus(String status) {
-	LOGDEBUG "telnetStatus: ${status}"
+	if(logEnable) log.debug "telnetStatus: ${status}"
 	if (status == "receive error: Stream is closed" || status == "send error: Broken pipe (Write failed)") {
 		log.error("Telnet connection dropped...PLEASE OPEN THE IP2IR TELNET DEVICE IN HE AND PRESS THE 'INITIALIZE' BUTTON")
         sendEvent([name: "telnet", value: "Disconnected"])
 		telnetClose()
 		runIn(60, initialize)
-    }
-}
-
-def LOGDEBUG(txt) {
-    try {
-    	if (settings.debugMode) { log.debug("${txt}") }
-    } catch(ex) {
-    	log.error("LOGDEBUG unable to output requested data!")
     }
 }
