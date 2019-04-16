@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 04/16/19 - Fixed a bug, thank you @NickP!
  *  V1.1.8 - 04/15/19 - Code cleanup
  *  V1.1.7 - 01/15/19 - Updated footer with update check and links
  *  V1.1.6 - 12/30/18 - Updated to my new color theme.
@@ -236,7 +237,7 @@ def switchHandler1 (evt) {
         		if(logEnable) log.debug "Msg to send Switch Off: ${msgToSendOff}"
 				if(logEnable) log.debug "mCommands = ${mCommands}"
 				if(mCommands == "No") {speaker.speak(msgToSendOff)}
-				if(xTimesOn == "1") {
+				if(xTimesOff == "1") {
 					speaker.speak(msgToSendOff)
 				}
 				if(xTimesOff == "2") {
