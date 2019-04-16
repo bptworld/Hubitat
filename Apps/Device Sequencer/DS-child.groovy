@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 04/16/19 - Fixed some code 
  *  V1.0.4 - 04/15/19 - Code cleanup
  *  V1.0.3 - 03/12/19 - Fixed pause
  *  V1.0.2 - 01/15/19 - Updated footer with update check and links
@@ -44,7 +45,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
@@ -97,7 +98,7 @@ def pageConfig() {
 		} 
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input(name: "debugMode", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
 	}
@@ -109,7 +110,7 @@ def installed() {
 }
 
 def updated() {	
-    LOGDEBUG("Updated with settings: ${settings}")
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	initialize()
 }
@@ -121,11 +122,11 @@ def initialize() {
 
 def deviceOnHandler(evt) {
 	if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    if(pauseApp == false){LOGDEBUG("Continue - App NOT paused")
+    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 	if(g1Switches) { 
 		int delay1 = timeToPause1 * 1000
    		g1Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 1...turning on ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
         	device.on()
 			pauseExecution(delay1)
     	}
@@ -135,7 +136,7 @@ def deviceOnHandler(evt) {
 	if(g2Switches) { 
 		int delay2 = timeToPause2 * 1000	
 		g2Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 2...turning on ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}"
         	device.on()
 			pauseExecution(delay2)
     	}
@@ -145,7 +146,7 @@ def deviceOnHandler(evt) {
 	if(g3Switches) { 
 		int delay3 = timeToPause3 * 1000
 		g3Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 3...turning on ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}"
         	device.on()
 			pauseExecution(delay3)
     	}
@@ -155,7 +156,7 @@ def deviceOnHandler(evt) {
 	if(g4Switches) { 
 		int delay4 = timeToPause4 * 1000
 		g4Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 4...turning on ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}"
         	device.on()
 			pauseExecution(delay4)
     	}
@@ -165,7 +166,7 @@ def deviceOnHandler(evt) {
 	if(g5Switches) { 
 		int delay5 = timeToPause5 * 1000
 		g5Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 5...turning on ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}"
         	device.on()
 			pauseExecution(delay5)
     	}
@@ -175,11 +176,11 @@ def deviceOnHandler(evt) {
 
 def deviceOffHandler(evt) {
 	if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    if(pauseApp == false){LOGDEBUG("Continue - App NOT paused")
+    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 	if(g1Switches) { 
 		int delay1 = timeToPause1 * 1000
    		g1Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 1...turning on ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
         	device.off()
 			pauseExecution(delay1)
     	}
@@ -189,7 +190,7 @@ def deviceOffHandler(evt) {
 	if(g2Switches) { 
 		int delay2 = timeToPause2 * 1000	
 		g2Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 2...turning off ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 2...turning off ${device}"
         	device.off()
 			pauseExecution(delay2)
     	}
@@ -199,7 +200,7 @@ def deviceOffHandler(evt) {
 	if(g3Switches) { 
 		int delay3 = timeToPause3 * 1000
 		g3Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 3...turning off ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 3...turning off ${device}"
         	device.off()
 			pauseExecution(delay3)
     	}
@@ -209,7 +210,7 @@ def deviceOffHandler(evt) {
 	if(g4Switches) { 
 		int delay4 = timeToPause4 * 1000
 		g4Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 4...turning off ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 4...turning off ${device}"
         	device.off()
 			pauseExecution(delay4)
     	}
@@ -219,7 +220,7 @@ def deviceOffHandler(evt) {
 	if(g5Switches) { 
 		int delay5 = timeToPause5 * 1000
 		g5Switches.each { device ->
-			LOGDEBUG("In deviceOnHandler 5...turning off ${device}")
+			if(logEnable) log.debug "In deviceOnHandler 5...turning off ${device}"
         	device.off()
 			pauseExecution(delay5)
     	}
