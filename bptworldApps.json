@@ -116,13 +116,13 @@
   
   "DeviceSequencerType": "App",
   "DeviceSequencerParentVersion": "v1.0.2",
-  "DeviceSequencerChildVersion": "v1.0.4",
+  "DeviceSequencerChildVersion": "v1.0.5",
   "DeviceSequencerDriverVersion": "NA",
   "DeviceSequencerParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-parent.groovy",
   "DeviceSequencerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-child.groovy",
   "DeviceSequencerDriverRawCode": "NA",
   "DeviceSequencerDiscussion": "https://community.hubitat.com/t/release-device-sequencer/8596",
-  "DeviceSequencerUpdateNote": "V1.0.4 - 04/15/19 - Code cleanup",
+  "DeviceSequencerUpdateNote": "V1.0.5 - 04/16/19 - Fixed some code",
   
   "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v1.1.0",
