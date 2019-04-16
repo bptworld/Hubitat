@@ -36,9 +36,10 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 04/16/19 - Code cleanup, added importUrl
  *  V1.1.2 - 04/12/19 - Fixed length of message typo
  *  V1.1.1 - 04/06/19 - Added setVolume to code
- *  V1.1.0 - 04/05/19 - Added importUrl to driver header. Added speaker status to 'Reset All Data' switch 
+ *  V1.1.0 - 04/05/19 - Added speaker status to 'Reset All Data' switch 
  *  V1.0.9 - 04/03/19 - Attempt to fix an error
  *  V1.0.8 - 04/03/19 - More tweaks to speaker status
  *  V1.0.7 - 04/03/19 - Add ability to display Speaker status on dashboards 
@@ -51,10 +52,10 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.1.2"}
+def version(){"v1.1.3"}
 
 metadata {
-	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte") {
+	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
    		capability "Initialize"
 		capability "Actuator"
 		capability "Speech Synthesis"
@@ -78,11 +79,11 @@ metadata {
 	}
 	preferences() {    	
         section(){
-            input("debugMode", "bool", title: "Enable logging", required: false, defaultValue: false)
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
 			input("numOfLines", "number", title: "How many lines to display (from 1 to 10 only)", required:true, defaultValue: 5)
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
 			input("clearData", "bool", title: "Reset All Data", required: false, defaultValue: false)
+			input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
     }
 }
@@ -135,7 +136,7 @@ def makeUnique() {
 }
 
 def populateMap() {
-	LOGDEBUG("What Did I Say - Received new Speech! ${state.speechReceivedFULL}")
+	if(logEnable) log.debug "What Did I Say - Received new Speech! ${state.speechReceivedFULL}"
 	makeUnique()
 	sendEvent(name: "lastSpoken", value: state.speechReceivedFULL, displayed: true)
 	
@@ -166,7 +167,7 @@ def populateMap() {
         //log.error "Error:  $e"
     }
 	
-	LOGDEBUG("What Did I Say - OLD -<br>sOne: ${sOne}<br>sTwo: ${sTwo}<br>sThree: ${sThree}<br>sFour: ${sFour}<br>sFive: ${sFive}")
+	if(logEnable) log.debug "What Did I Say - OLD -<br>sOne: ${sOne}<br>sTwo: ${sTwo}<br>sThree: ${sThree}<br>sFour: ${sFour}<br>sFive: ${sFive}"
 	
 	if(sOne == null) sOne = "${state.nMessage}"
 	if(sTwo == null) sTwo = "${state.nMessage}"
@@ -193,7 +194,7 @@ def populateMap() {
 	getDateTime()
 	mOne = state.newdate + " - " + state.lastSpoken
 	
-	LOGDEBUG("What Did I Say - NEW -<br>mOne: ${mOne}<br>mTwo: ${mTwo}<br>mThree: ${mThree}<br>mFour: ${mFour}<br>mFive: ${mFive}")
+	if(logEnable) log.debug "What Did I Say - NEW -<br>mOne: ${mOne}<br>mTwo: ${mTwo}<br>mThree: ${mThree}<br>mFour: ${mFour}<br>mFive: ${mFive}"
 	
 	// Fill the maps back in
 	try {
@@ -247,7 +248,7 @@ def populateMap() {
 	
 	state.speechTopCount = state.speechTop.length()
 	if(state.speechTopCount <= 1000) {
-		LOGDEBUG("What Did I Say - ${state.speechTopCount} Characters<br>${state.speechTop}")
+		if(logEnable) log.debug "What Did I Say - ${state.speechTopCount} Characters<br>${state.speechTop}"
 	} else {
 		state.speechTop = "Too many characters to display on Dashboard"
 	}
@@ -276,7 +277,7 @@ def clearDataOff(){
 }
 
 def clearSpeechData(){
-	LOGDEBUG("What Did I Say - clearing the data")
+	if(logEnable) log.debug "What Did I Say - clearing the data"
 	state.nMessage = "No Data"
 	state.s = "s"
 	state.speechMap1 = [:]
@@ -321,9 +322,9 @@ def clearSpeechData(){
 }	
 
 def sendFollowMeSpeaker(status) {
-	LOGDEBUG("In sendFollowMeSpeaker - Received new speaker status - ${status}")
+	if(logEnable) log.debug "In sendFollowMeSpeaker - Received new speaker status - ${status}"
 	def (sName, sStatus) = status.split(':')
-	LOGDEBUG("In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}")
+	if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
 	if(state.speakerMap == null) state.speakerMap = [:]
 	state.speakerMap.put(sName, sStatus)
 	state.speakerMapS = [:]
@@ -340,7 +341,7 @@ def sendFollowMeSpeaker(status) {
 	state.speakerMapS.each { it -> 
 		status = it.value
 		state.count = state.count + 1
-		LOGDEBUG("In sendFollowMeSpeaker - Building Speaker Table with ${it.key} count: ${state.count}")
+		if(logEnable) log.debug "In sendFollowMeSpeaker - Building Speaker Table with ${it.key} count: ${state.count}"
 		if((state.count >= 1) && (state.count <= 5)) {
 			if(status == "true") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: green;font-size:.${fontSize}em;'>Active</div></td></tr>"
 			if(status == "false") state.sMap1S += "<tr><td align='left'><div style='font-size:.${fontSize}em;'>${it.key}</div></td><td><div style='color: red;font-size:.${fontSize}em;'>Inactive</div></td></tr>"
@@ -371,8 +372,4 @@ def sendFollowMeSpeaker(status) {
 	sendEvent(name: "speakerStatus2", value: state.sMap2S, displayed: true)
 	sendEvent(name: "speakerStatus3", value: state.sMap3S, displayed: true)
 	sendEvent(name: "speakerStatus4", value: state.sMap4S, displayed: true)
-}
-
-def LOGDEBUG(txt) {
-    if (settings.debugMode) { log.debug("${txt}") }
 }
