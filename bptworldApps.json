@@ -207,7 +207,7 @@
   "SnapshotType": "App",
   "SnapshotParentVersion": "v1.0.0",
   "SnapshotChildVersion": "v1.1.2",
-  "SnapshotDriverVersion": "v1.0.6",
+  "SnapshotDriverVersion": "v1.0.8",
   "SnapshotParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy",
   "SnapshotChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-Child.groovy",
   "SnapshotDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-driver.groovy",
