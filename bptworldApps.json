@@ -57,7 +57,7 @@
   "AbacusIntenseCountingType": "App",
   "AbacusIntenseCountingParentVersion": "v1.0.7",
   "AbacusIntenseCountingChildVersion": "v1.1.0",
-  "AbacusIntenseCountingDriverVersion": "V1.0.1",
+  "AbacusIntenseCountingDriverVersion": "V1.0.2",
   "AbacusIntenseCountingParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-parent.groovy",
   "AbacusIntenseCountingChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy",
   "AbacusIntenseCountingDriverRawCode": "https://github.com/bptworld/Hubitat/blob/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy",
