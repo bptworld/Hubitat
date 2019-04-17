@@ -61,7 +61,7 @@
  *
  */
 
-def version() {
+def setVersion() {
 	state.version = "v1.0.5"
 }
 
