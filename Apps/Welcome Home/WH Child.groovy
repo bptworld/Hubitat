@@ -36,6 +36,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.8 - 04/18/19 - Fixed quiet time
  *  V2.0.7 - 04/15/19 - Code cleanup
  *  V2.0.6 - 04/13/19 - Made a ton of debug and info enhancements to try and make it easier to see what's going on!
  *  V2.0.5 - 04/06/19 - Added importUrl. Volume Control overhaul. Code cleanup.
@@ -68,7 +69,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v2.0.7"
+	state.version = "v2.0.8"
 }
 
 definition(
@@ -650,7 +651,7 @@ def letsTalk() {
 		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
 		pauseExecution(atomicState.randomPause)
 		if(logEnable) log.debug "In letsTalk - continuing"
-		if(state.timeOK == true) {
+		if(state.timeBetween == true) {
 			messageHandler()
 			if(logEnable) log.debug "Speaker(s) in use: ${speakers}"
 			state.theMsg = "${state.theMessage}"
@@ -684,7 +685,7 @@ def letsTalk() {
 			}
 		} else {
 			state.canSpeak = "no"
-			if(logEnable) log.debug "In letsTalk - It's quiet time"
+			if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 		}
 }
 
@@ -692,11 +693,9 @@ def checkVol(){
 	if(logEnable) log.debug "In checkVol..."
 	if(QfromTime) {
 		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-    	if(state.quietTime) {
-    		state.volume = volQuiet
-		} else {
-			state.volume = volSpeech
-		}
+		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
+    	if(state.quietTime) state.volume = volQuiet
+		if(!state.quietTime) state.volume = volSpeech
 	} else {
 		state.volume = volSpeech
 	}
@@ -707,11 +706,9 @@ def checkTime() {
 	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
 	if((fromTime != null) && (toTime != null)) {
 		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) {
-			state.timeBetween = true
-		} else {
-			state.timeBetween = false
-		}
+		if(state.betweenTime) state.timeBetween = true
+		if(!state.betweenTime) state.timeBetween = false
+
   	} else {  
 		state.timeBetween = true
   	}
