@@ -226,13 +226,13 @@
   
   "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.2",
-  "WelcomeHomeChildVersion": "v2.0.7",
+  "WelcomeHomeChildVersion": "v2.0.8",
   "WelcomeHomeDriverVersion": "v1.0.2",
   "WelcomeHomeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Parent.groovy",
   "WelcomeHomeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Child.groovy",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDiscussion": "https://community.hubitat.com/t/release-welcome-home/6445",
-  "WelcomeHomeUpdateNote": "V2.0.7 - 04/15/19 - Code cleanup",
+  "WelcomeHomeUpdateNote": "V2.0.8 - 04/18/19 - Fixed quiet time",
   
   "WhatDidISayType": "Driver",
   "WhatDidISayDriver1Version": "v1.1.3",
