@@ -36,13 +36,14 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.2 - 04/19/19 - Fixed a typo
  *  V1.0.1 - 04/15/19 - Code cleanup
  *  V1.0.0 - 03/15/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -87,7 +88,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
-              	input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+              	input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
 				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?")
 				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
               	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
@@ -95,7 +96,7 @@ def pageConfig() {
     		  	input "toTime2", "time", title: "Quiet Time End", required: true
           	}   
         	if (speechMode == "Speech Synth"){ 
-         		input "speakers", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+         		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
       	}
     	if(speechMode){ 
