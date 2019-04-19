@@ -36,6 +36,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.3 - 04/19/19 - Found another typo!
  *  V1.0.2 - 04/19/19 - Fixed a typo
  *  V1.0.1 - 04/15/19 - Code cleanup
  *  V1.0.0 - 03/15/19 - Initial release.
@@ -43,7 +44,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -393,22 +394,23 @@ def letsTalk() {
 			if(logEnable) log.debug "In letsTalk - ${speechMode} - ${speaker}"
   			if (speechMode == "Music Player"){ 
 				if(echoSpeaks) {
-					speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
+					speaker.setVolumeSpeakAndRestore(state.volume, state.theMessage, volRestore)
 				}
 				if(!echoSpeaks) {
     				if(volSpeech) speaker.setLevel(state.volume)
-    				speaker.playTextAndRestore(state.lastSpoken, volRestore)
+    				speaker.playTextAndRestore(state.theMessage, volRestore)
 				}
   			}   
 			if (speechMode == "Speech Synth"){
-				speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
+				speechDuration = Math.max(Math.round(state.theMessage.length()/12),2)+3		// Code from @djgutheinz
 				atomicState.speechDuration2 = speechDuration * 1000
 				if(gInitialize) initializeSpeaker()
 				if(volSpeech) speaker.setVolume(state.volume)
-				speaker.speak(state.lastSpoken)
+				speaker.speak(state.theMessage)
 				pauseExecution(atomicState.speechDuration2)
 				if(volRestore) speaker.setVolume(volRestore)
 			}
+			log.info "${app.label} - ${state.theMessage}"
 			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 		} else {
 			log.info "${app.label} - Quiet Time, can not speak."
