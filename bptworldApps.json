@@ -106,13 +106,13 @@
   
   "DeparturesType": "App",
   "DeparturesParentVersion": "v1.0.0",
-  "DeparturesChildVersion": "v1.0.2",
+  "DeparturesChildVersion": "v1.0.3",
   "DeparturesDriverVersion": "NA",
   "DeparturesParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-parent.groovy",
   "DeparturesChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy",
   "DeparturesDriverRawCode": "NA",
   "DeparturesDiscussion": "https://community.hubitat.com/t/release-departures/12039",
-  "DeparturesUpdateNote": "V1.0.2 - 04/19/19 - Fixed a typo",
+  "DeparturesUpdateNote": "V1.0.3 - 04/19/19 - Found another typo!",
   
   "DeviceSequencerType": "App",
   "DeviceSequencerParentVersion": "v1.0.2",
