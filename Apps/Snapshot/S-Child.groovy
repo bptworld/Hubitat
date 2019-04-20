@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 04/19/19 - Fixed a bug with Presence Sensors
  *  V1.1.2 - 04/15/19 - Code cleanup
  *  V1.1.1 - 04/12/19 - Added Presence Sensor tracking
  *  V1.1.0 - 04/12/19 - Added voice and pushover notifications to Priority Devices
@@ -52,7 +53,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.2"
+	state.version = "v1.1.3"
 }
 
 definition(
@@ -563,7 +564,7 @@ def presenceMapHandler() {
 	state.fPresenceMap1S = "<table width='100%'>"
 	state.fPresenceMap2S = "<table width='100%'>"
 	state.count = 0
-	state.countnotPresent = 0
+	state.countNotPresent = 0
 	state.countPresent = 0
 	
 	if(presenceMode == "Full" || presenceMode == "Only Not Present") {
@@ -574,11 +575,6 @@ def presenceMapHandler() {
 			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: red;'>not present</div></td></tr>"
 			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: red;'>not present</div></td></tr>"
 		}
-	}
-	
-	if(presenceMode == "Full") {
-		if((state.count >= 1) && (state.count <= 5)) { state.fPresenceMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
-		if((state.count >= 6) && (state.count <= 10)) { state.fPresenceMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
 	}
 	
 	if(presenceMode == "Full" || presenceMode == "Only Present") {
@@ -1122,6 +1118,7 @@ def letsTalk() {
 				if(volRestore) speakers.setVolume(volRestore)
 				if(logEnable) log.debug "In letsTalk - Speech Synth - Wow, that's it!"
 			}
+			log.info "${app.label} - ${state.theMsg}"
 		} else {
 			if(logEnable) log.debug "In letsTalk - It's quiet time"
 		}
