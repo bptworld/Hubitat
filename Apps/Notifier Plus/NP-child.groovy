@@ -35,6 +35,8 @@
  *
  *  Changes:
  *
+ *  V1.1.1 - 04/20/19 - Reworked speech options to match my other apps. Added Notifications by Mode. Added 'Hourly option' and an
+ *						'every other option' to 'By Day of the week' trigger. Added %time% to speech options.
  *  V1.1.0 - 04/15/19 - Code cleanup
  *  V1.0.9 - 03/07/19 - Reworked Message Section so Control Switch is only needed if Repeat Messages is selected.
  *  V1.0.8 - 03/04/19 - Added Temp, Humidity and Power Triggers
@@ -53,7 +55,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.0"
+	state.version = "v1.1.1"
 }
 
 definition(
@@ -91,6 +93,7 @@ def pageConfig() {
 			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true", width: 6)
 			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
 			input(name: "xHumidity", type: "bool", defaultValue: "false", title: "<b>by Humidity Level?</b><br>Power Notifications", description: "Humidity Notifications", submitOnChange: "true", width: 6)
+			input(name: "xMode", type: "bool", defaultValue: "false", title: "<b>by Mode?</b><br>Power Notifications", description: "Mode Notifications", submitOnChange: "true", width: 6)
 			input(name: "xMotion", type: "bool", defaultValue: "false", title: "<b>by Motion Sensor?</b><br>Motion Sensor Notifications", description: "Motion Sensor Notifications", submitOnChange: "true", width: 6)
 			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Switch?</b><br>Switch Notifications", description: "Switch Notifications", submitOnChange: "true", width: 6)
 			input(name: "xTemp", type: "bool", defaultValue: "false", title: "<b>by Temperature?</b><br>Temperature Notifications", description: "Temperature Notifications", submitOnChange: "true", width: 6)
@@ -108,8 +111,16 @@ def pageConfig() {
 				input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 			}
 			if(xDay) {
-				input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
-				input(name: "startTime", type: "time", title: "Time to notify", description: "Time", required: true)
+				input(name: "everyOther", type: "bool", defaultValue: "false", title: "Only run every other week on the day created?", description: "by every other", submitOnChange: "true")
+				if(everyOther) {
+					paragraph "In order for this to work, you must create the child app ON the day you want it to run, every other week."
+					paragraph "<b>ie.</b> If created on Tuesday, it will run every other Tuesday and notify you at the time selected below."
+				}
+				if(!everyOther) input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+				if(!everyOther) input(name: "startTimeHourly", type: "bool", defaultValue: "false", title: "Every hour?", description: "by hour", submitOnChange: "true")
+				if((!startTimeHourly) && (!everyOther)) input(name: "startTime", type: "time", title: "Time to notify", description: "Time", required: false)
+				if(everyOther) input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
+				if(everyOther) input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 			}
 			if(xContact) {
 				paragraph "<b>by Contact Sensor</b>"
@@ -142,13 +153,27 @@ def pageConfig() {
 					}
 				}
 			}
+			if(xMode) {
+				paragraph "<b>by Mode Changes</b>"
+				input(name: "modeEvent", type: "mode", title: "Trigger Notifications based on a Mode", multiple: true, submitOnChange: true)
+				if(modeEvent) {
+					input(name: "modeOnOff", type: "bool", defaultValue: "false", title: "<b>Mode Inactive or Active? (off=Inactive, on=Active)</b>", description: "Mode status", submitOnChange: "true")
+					if(modeOnOff) paragraph "You will recieve notifications if any of the modes are on."
+					if(!modeOnOff) paragraph "You will recieve notifications if any of the modes are off."
+					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
+					if(oSwitchTime) {
+						paragraph "Delay the notification until the mode has been in state for XX minutes."
+						input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					}
+				}
+			}
 			if(xMotion) {
 				paragraph "<b>by Motion Sensor</b>"
 				input(name: "motionEvent", type: "capability.motionSensor", title: "Trigger Notifications based on a Motion Sensor", required: true, multiple: true, submitOnChange: true)
 				if(motionEvent) {
 					input(name: "meOnOff", type: "bool", defaultValue: "false", title: "<b>Motion Inactive or Active? (off=Inactive, on=Active)</b>", description: "Motion status", submitOnChange: "true")
-					if(seOnOff) paragraph "You will recieve notifications if any of the sensors are on."
-					if(!seOnOff) paragraph "You will recieve notifications if any of the sensors are off."
+					if(meOnOff) paragraph "You will recieve notifications if any of the sensors are on."
+					if(!meOnOff) paragraph "You will recieve notifications if any of the sensors are off."
 					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
 					if(oSwitchTime) {
 						paragraph "Delay the notification until the device has been in state for XX minutes."
@@ -288,7 +313,7 @@ def pageConfig() {
 		if(oMessage) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 				input(name: "oRandom", type: "bool", defaultValue: "false", title: "<b>Random Message?</b>", description: "Random", submitOnChange: "true")
-				paragraph "%device% - will speak the Device Name"
+				paragraph "%device% - will speak the Device Name, %time% - will speak the current time"
 				if(!oRandom) {
 					if(xPower || xTemp || xHumidity) {
 						if(oSetPointHigh) input "messageH", "text", title: "Message to speak when reading is too high", required: true, submitOnChange: true, defaultValue: "Temp is too high"
@@ -330,19 +355,33 @@ def pageConfig() {
 			}
 		}
 		if(oSpeech) {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            		input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
-              		input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: false, multiple: true, submitOnChange: true
-					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device")
-					input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
+              		input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+					paragraph "<hr>"
+					paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
+					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
+					if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
           		}   
         		if (speechMode == "Speech Synth"){ 
-					input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: false, multiple: false
-         			input "gSpeaker", "capability.speechSynthesis", title: "Choose Google speaker(s) (Home, Hub, Max and Mini's)", required: false, multiple: true, submitOnChange: true
-					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech", required: true, defaultValue: false
+         			input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+          		}
+      		}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+				paragraph "NOTE: Not all speakers can use volume controls."
+				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
+				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+         	   input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
+				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
+    			if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+			}
+    		if(speechMode){ 
+				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+        			input "fromTime", "time", title: "From", required: false
+        			input "toTime", "time", title: "To", required: false
 				}
-          	}
+    		}
       	}
 		if(oPush) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Pushover Options")) {
@@ -376,8 +415,8 @@ def initialize() {
 
 def scheduleHandler(){
 	if(logEnable) log.debug "In scheduleHandler..."
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
- 	   	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+		if(pauseApp == true){log.warn "${app.label} - App paused"}
+ 	   	if(pauseApp == false){
 			if(xDate) {
 				state.monthName = month   
  		 	  	if(state.monthName == "Jan") {state.theMonth = "1"}
@@ -401,15 +440,24 @@ def scheduleHandler(){
     			state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
 				if(logEnable) log.debug "In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
     			schedule(state.schedule, magicHappensHandler)
-			}			
+			}
+			stHourly = "0 0 */2 ? * *"
+			Date futureDate = new Date().plus(14)
+			futureDateS = futureDate.format("MM-dd")
+			fDateS = futureDateS.split("-")
+			if(logEnable) log.debug "In scheduleHandler - New Date: ${futureDateS}"
+			everyOther = "0 ${min} ${hour} ${fDateS[0]} ${fDateS[1]} ? *"
 			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-			if(xDay) schedule(startTime, dayOfTheWeekHandler)
+			if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
+			if(xDay && startTimeHourly) schedule(stHourly, dayOfTheWeekHandler)
+			if(xDay && everyOther) schedule(everyOther, magicHappensHandler)
 			if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
 			if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
 			if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
 			if(xTemp) subscribe(tempEvent, "temperature", setPointHandler)
 			if(xPower) subscribe(powerEvent, "power", setPointHandler)
 			if(xHumidity) subscribe(humidityEvent, "humidity", setPointHandler)
+			if(xMode) subscribe(location, "mode", modeHandler)
 		}
 }
 
@@ -490,6 +538,28 @@ def controlSwitchHandler(evt){
     		}
 		}
 	}
+	if(oControlMode) {
+		if(modeOnOff) {
+			if(logEnable) log.debug "In controlSwitchHandler - Mode: ${state.modeStatus}"
+    		if(state.modeStatus){
+				state.controlSwitch2 = "on"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "off"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
+		if(!modeOnOff) {
+			if(logEnable) log.debug "In controlSwitchHandler - Mode: ${state.modeStatus}"
+    		if(state.modeStatus){
+				state.controlSwitch2 = "off"
+    			log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+			} else {
+				state.controlSwitch2 = "on"
+				log.info "${app.label} - Control Switch is set to ${state.controlSwitch2}."
+    		}
+		}
+	}
 }
 
 def contactSensorHandler(evt) {
@@ -523,6 +593,28 @@ def switchHandler(evt) {
 		}
 	} else {
 		if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
+	}
+}
+
+def modeHandler(evt) {
+	state.modeStatus = evt.value
+	def modeMatch = modeEvent.contains(location.mode)
+	if(modeMatch){
+		controlSwitchHandler()
+		if(state.controlSwitch2 == "on") {
+			if(modeOnOff) {
+				if(state.modeStatus) {magicHappensHandler()}
+				if(!state.modeStatus) {reverseTheMagicHandler()}
+			}
+			if(!meOnOff) {
+				if(!state.modeStatus) {magicHappensHandler()}
+				if(state.modeStatus) {reverseTheMagicHandler()}
+			}
+		} else {
+			if(logEnable) log.debug "${app.label} - Control Switch is OFF - No need to run."
+		}
+	} else {
+		if(logEnable) log.debug "${app.label} - Mode does not match - No need to run."
 	}
 }
 
@@ -631,8 +723,8 @@ def setPointHandler(evt) {
 def magicHappensHandler() {
 	if(logEnable) log.debug "In magicHappensHandler...CS: ${state.controlSwitch2}"
 		if(state.controlSwitch2 == "on") {
-			if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
- 	 	  	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
+			if(pauseApp == true){log.warn "${app.label} - App paused"}
+ 	 	  	if(pauseApp == false){
 				if(oDelay) {
 					if(logEnable) log.debug "In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}"
 					if(minutesUp) state.realSeconds = minutesUp * 60
@@ -771,28 +863,46 @@ def dimStepDown() {
     }						
 }
 
-def letsTalk() {							// Modified from @Cobra Code
+def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
 	if(speaker) if(logEnable) log.debug "In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}"
 	if(gSpeaker) if(logEnable) log.debug "In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}"
-	messageHandler()
-	if(logEnable) log.debug "In letsTalk...Back from messageHandler"
-  	if(speechMode == "Music Player"){
-		if(logEnable) log.debug "In letsTalk - Music Player - ${state.msg}"
-		if(echoSpeaks) {
-			speaker.setLevel(volume1)
-			speaker.setVolumeSpeakAndRestore(state.volume, state.msg)
+	checkTime()
+	checkVol()
+	atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+	if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+	pauseExecution(atomicState.randomPause)
+	if(logEnable) log.debug "In letsTalk - continuing"
+	if(state.timeBetween == true) {
+		messageHandler()
+		if(logEnable) log.debug "Speaker in use: ${speaker}"
+		state.theMsg = "${state.theMessage}"
+  		if (speechMode == "Music Player"){ 
+    		if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+			if(echoSpeaks) {
+				speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+				state.canSpeak = "no"
+				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+			}
+			if(!echoSpeaks) {
+    				if(volSpeech) speaker.setLevel(state.volume)
+    				speaker.playTextAndRestore(state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+			}
+  		}   
+		if(speechMode == "Speech Synth"){ 
+			speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+			atomicState.speechDuration2 = speechDuration * 1000
+			if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+			if(volSpeech) speaker.setVolume(state.volume)
+			speaker.speak(state.theMsg)
+			pauseExecution(atomicState.speechDuration2)
+			if(volRestore) speaker.setVolume(volRestore)
+			state.canSpeak = "no"
+			if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 		}
-		if(!echoSpeaks) {
-   			speaker.setLevel(volume1)
-   			speaker.playTextAndRestore(state.msg)
-		}
-  	}   
-	if(speechMode == "Speech Synth"){
-		if(logEnable) log.debug "In letsTalk - Speech Synth - ${state.msg}"
-		if(gInitialize) gSpeaker.initialize()
-		if(gSpeaker) gSpeaker.speak(state.msg)
-		if(speaker) speaker.speak(state.msg)
+		log.info "${app.label} - ${state.theMsg}"
 	}
 	if(oRepeat) {
 		if(state.controlSwitch2 == "on") {
@@ -808,12 +918,40 @@ def letsTalk() {							// Modified from @Cobra Code
 		}
 	} else {
 		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
+		
 		if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 	}
 }
 
+def checkVol(){
+	if(logEnable) log.debug "In checkVol..."
+	if(QfromTime) {
+		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
+    	if(state.quietTime) state.volume = volQuiet
+		if(!state.quietTime) state.volume = volSpeech
+	} else {
+		state.volume = volSpeech
+	}
+	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
+}
+
+def checkTime() {
+	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
+	if((fromTime != null) && (toTime != null)) {
+		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+		if(state.betweenTime) state.timeBetween = true
+		if(!state.betweenTime) state.timeBetween = false
+
+  	} else {  
+		state.timeBetween = true
+  	}
+	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+}
+
 def messageHandler() {
 	if(logEnable) log.debug "In messageHandler - Control Switch: ${state.controlSwitch2}"
+	currentDateTime()
 	if(oRandom) {
 		def values = "${message}".split(";")
 		vSize = values.size()
@@ -833,8 +971,18 @@ def messageHandler() {
 	if(logEnable) log.debug "In messageHandler - theMessage: ${theMessage}"
 	theMessage = theMessage.toLowerCase()
 	if (theMessage.toLowerCase().contains("%device%")) {theMessage = theMessage.toLowerCase().replace('%device%', state.setPointDevice)}
-	state.msg = "${theMessage}"
-	if(logEnable) log.debug "In messageHandler - msg: ${state.msg}"
+	if (theMessage.toLowerCase().contains("%time%")) {theMessage = theMessage.toLowerCase().replace('%time%', state.theTime)}
+	state.theMessage = "${theMessage}"
+	if(logEnable) log.debug "In messageHandler - msg: ${state.theMessage}"
+}
+
+def currentDateTime() {
+	if(logEnable) log.debug "In currentDateTime - Control Switch: ${state.controlSwitch2}"
+	Date date = new Date()
+	String datePart = date.format("dd/MM/yyyy")
+	String timePart = date.format("HH:mm")
+	state.theTime = timePart
+	if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
 }
 
 def switchesOnHandler() {
@@ -1002,6 +1150,7 @@ def setDefaults(){
 	if(state.controlSwitch2 == null){state.controlSwitch2 = "off"}
 	if(notifyDelay == null){notifyDelay = 0}
 	if(minutesUp == null){minutesUp = 0}
+	if(startTimeHourly == null){startTimeHourly = false}
 	if(oControlContact == null){oControlContact = false}
 	if(oControlMotion == null){oControlMotion = false}
 	if(oControlSwitch == null){oControlSwitch = false}
