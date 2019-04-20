@@ -442,15 +442,17 @@ def scheduleHandler(){
     			schedule(state.schedule, magicHappensHandler)
 			}
 			stHourly = "0 0 */2 ? * *"
-			Date futureDate = new Date().plus(14)
-			futureDateS = futureDate.format("MM-dd")
-			fDateS = futureDateS.split("-")
-			if(logEnable) log.debug "In scheduleHandler - New Date: ${futureDateS}"
-			everyOther = "0 ${min} ${hour} ${fDateS[0]} ${fDateS[1]} ? *"
+			if(everyOther) {
+				Date futureDate = new Date().plus(14)
+				futureDateS = futureDate.format("MM-dd")
+				fDateS = futureDateS.split("-")
+				if(logEnable) log.debug "In scheduleHandler - 14 Date: ${futureDateS}"
+				everyO = "0 ${min} ${hour} ${fDateS[0]} ${fDateS[1]} ? *"
+			}
 			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
 			if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
 			if(xDay && startTimeHourly) schedule(stHourly, dayOfTheWeekHandler)
-			if(xDay && everyOther) schedule(everyOther, magicHappensHandler)
+			if(xDay && everyOther) schedule(everyO, magicHappensHandler)
 			if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
 			if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
 			if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
