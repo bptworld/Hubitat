@@ -1014,7 +1014,7 @@ def maintHandler(evt){
 	state.closedContactMap = [:]
 	state.openContactMap = [:] 
 	state.presentMap = [:]
-	state.notpresentMap = [:]
+	state.notPresentMap = [:]
 	state.lockedLockMap = [:]
 	state.unlockedLockMap = [:]
 	state.highTempMap = [:]
