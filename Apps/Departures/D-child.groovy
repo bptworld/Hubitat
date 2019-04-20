@@ -36,6 +36,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V1.0.4 - 04/20/19 - Updated speaker/speech options
  *  V1.0.3 - 04/19/19 - Found another typo!
  *  V1.0.2 - 04/19/19 - Fixed a typo
  *  V1.0.1 - 04/15/19 - Code cleanup
@@ -44,7 +45,7 @@ import groovy.time.TimeCategory
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -90,16 +91,23 @@ def pageConfig() {
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
               	input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
-				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?")
-				input "volume1", "number", title: "Speaker volume", description: "0-100%", required: true, defaultValue: "75"
-              	input "volume2", "number", title: "Quiet Time Speaker volume", description: "0-100%",  required: true, defaultValue: "30"		
-				input "fromTime2", "time", title: "Quiet Time Start", required: true
-    		  	input "toTime2", "time", title: "Quiet Time End", required: true
+				paragraph "<hr>"
+				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
+				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
+				if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
           	}   
         	if (speechMode == "Speech Synth"){ 
          		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
       	}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+			paragraph "NOTE: Not all speakers can use volume controls."
+			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
+			input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+            input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
+			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
+    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+		}
     	if(speechMode){ 
 			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         		input "fromTime", "time", title: "From", required: false
@@ -389,45 +397,56 @@ def letsTalk() {
     if(pauseApp == false){
 		checkTime()
 		checkVol()
+		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+		pauseExecution(atomicState.randomPause)
+		if(logEnable) log.debug "In letsTalk - continuing"
 		if(state.timeBetween == true) {
 			messageHandler()
-			if(logEnable) log.debug "In letsTalk - ${speechMode} - ${speaker}"
+			if(logEnable) log.debug "Speaker in use: ${speaker}"
+			state.theMsg = "${state.theMessage}"
+			if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
+			def delay1ms = delay1 * 1000
+			pauseExecution(delay1ms)
   			if (speechMode == "Music Player"){ 
+    			if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
 				if(echoSpeaks) {
-					speaker.setVolumeSpeakAndRestore(state.volume, state.theMessage, volRestore)
+					speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 				}
 				if(!echoSpeaks) {
     				if(volSpeech) speaker.setLevel(state.volume)
-    				speaker.playTextAndRestore(state.theMessage, volRestore)
+    				speaker.playTextAndRestore(state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 				}
   			}   
-			if (speechMode == "Speech Synth"){
-				speechDuration = Math.max(Math.round(state.theMessage.length()/12),2)+3		// Code from @djgutheinz
+			if(speechMode == "Speech Synth"){ 
+				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
 				atomicState.speechDuration2 = speechDuration * 1000
-				if(gInitialize) initializeSpeaker()
+				if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
 				if(volSpeech) speaker.setVolume(state.volume)
-				speaker.speak(state.theMessage)
+				speaker.speak(state.theMsg)
 				pauseExecution(atomicState.speechDuration2)
 				if(volRestore) speaker.setVolume(volRestore)
+				state.canSpeak = "no"
+				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 			}
-			log.info "${app.label} - ${state.theMessage}"
-			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
+			log.info "${app.label} - ${state.theMsg}"
 		} else {
-			log.info "${app.label} - Quiet Time, can not speak."
+			if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 		}
 	}
 }
 
-
-def checkVol() {
+def checkVol(){
 	if(logEnable) log.debug "In checkVol..."
 	if(QfromTime) {
 		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-    	if(state.quietTime) {
-    		state.volume = volQuiet
-		} else {
-			state.volume = volSpeech
-		}
+		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
+    	if(state.quietTime) state.volume = volQuiet
+		if(!state.quietTime) state.volume = volSpeech
 	} else {
 		state.volume = volSpeech
 	}
@@ -438,11 +457,9 @@ def checkTime() {
 	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
 	if((fromTime != null) && (toTime != null)) {
 		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) {
-			state.timeBetween = true
-		} else {
-			state.timeBetween = false
-		}
+		if(state.betweenTime) state.timeBetween = true
+		if(!state.betweenTime) state.timeBetween = false
+
   	} else {  
 		state.timeBetween = true
   	}
