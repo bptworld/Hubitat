@@ -78,7 +78,7 @@
 
 
 def setVersion() {
-	state.version = "v1.3.1"
+	state.version = "v1.3.2"
 }
 
 definition(
