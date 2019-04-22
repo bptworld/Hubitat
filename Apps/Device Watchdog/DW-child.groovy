@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.3.2 - 04/22/19 - Put a trap in to catch devices that have no previous activity.
  *  V1.3.1 - 04/15/19 - More Code cleanup
  *  V1.3.0 - 04/14/19 - Adjusted reports, added importUrl and some code cleanup.
  *  V1.2.9 - 03/31/19 - Fix bug in push for Device Status. Status report now available for dashboard tiles.
@@ -643,48 +644,52 @@ def mySensorHandler(myType, mySensors) {
 		if(logEnable) log.debug "Working on: ${device.key} ${state.count}"
 		def theName = device.key
 		def lastActivity = device.value
-    	long timeDiff
-   		def now = new Date()
-    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
-    	long unxNow = now.getTime()
-    	long unxPrev = prev.getTime()
-    	unxNow = unxNow/1000
-    	unxPrev = unxPrev/1000
-    	timeDiff = Math.abs(unxNow-unxPrev)
-    	timeDiff = Math.round(timeDiff/60)
-		hourDiff = timeDiff / 60
-    	int hour = Math.floor(timeDiff / 60)
-		int min = timeDiff % 60
-		if(logEnable) log.debug "mySensors: ${theName} hour: ${hour} min: ${min}"
-		if(logEnable) log.debug "mySensors: ${theName} hourDiff: ${hourDiff} vs timeAllowed: ${timeAllowed}"
-  		if(hourDiff > timeAllowed) {
-			if(badORgood == false) {
-				state.count = state.count + 1
-				if(logEnable) log.debug "${device} hasn't checked in since ${hour}h ${min}m ago."
-				if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
-				if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td width='80%'>${theName}</td><td width='20%'>in ${hour}h ${min}m</td></tr>"
-				if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				state.timeSinceMapPhoneS += "${theName} - ${hour}h ${min}m \n"
-				state.reportCount = state.reportCount + 1
-				if(pushOnline) {
-					subscribe(device.key, myType, eventCheck)
+		if(lastActivity != null) {
+    		long timeDiff
+   			def now = new Date()
+    		def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
+    		long unxNow = now.getTime()
+    		long unxPrev = prev.getTime()
+    		unxNow = unxNow/1000
+    		unxPrev = unxPrev/1000
+    		timeDiff = Math.abs(unxNow-unxPrev)
+    		timeDiff = Math.round(timeDiff/60)
+			hourDiff = timeDiff / 60
+    		int hour = Math.floor(timeDiff / 60)
+			int min = timeDiff % 60
+			if(logEnable) log.debug "mySensors: ${theName} hour: ${hour} min: ${min}"
+			if(logEnable) log.debug "mySensors: ${theName} hourDiff: ${hourDiff} vs timeAllowed: ${timeAllowed}"
+  			if(hourDiff > timeAllowed) {
+				if(badORgood == false) {
+					state.count = state.count + 1
+					if(logEnable) log.debug "${device} hasn't checked in since ${hour}h ${min}m ago."
+					if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
+					if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td width='80%'>${theName}</td><td width='20%'>in ${hour}h ${min}m</td></tr>"
+					if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					state.timeSinceMapPhoneS += "${theName} - ${hour}h ${min}m \n"
+					state.reportCount = state.reportCount + 1
+					if(pushOnline) {
+						subscribe(device.key, myType, eventCheck)
+					}
+				}
+			} else {
+				if(badORgood == true) {
+					state.count = state.count + 1
+					if(logEnable) log.debug "${myType} - mySensors: ${theName} last checked in ${hour}h ${min}m ago.<br>"
+					if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
+					if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
+					state.timeSinceMapPhoneS += "${theName} - ${hour}h ${min}m \n"
 				}
 			}
 		} else {
-			if(badORgood == true) {
-				state.count = state.count + 1
-				if(logEnable) log.debug "${myType} - mySensors: ${theName} last checked in ${hour}h ${min}m ago.<br>"
-				if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
-				if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 6) && (state.count <= 10)) state.timeSinceMap2S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 11) && (state.count <= 15)) state.timeSinceMap3S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 16) && (state.count <= 20)) state.timeSinceMap4S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				if((state.count >= 21) && (state.count <= 25)) state.timeSinceMap5S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
-				state.timeSinceMapPhoneS += "${theName} - ${hour}h ${min}m \n"
-			}
+			log.warn "${app.label} - ${theName} has no activity. It will not show up in the reports."
 		}
 	}
 	def rightNow = new Date()
