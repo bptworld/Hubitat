@@ -2,7 +2,7 @@
  *  ****************  Simple Irrigation Child App  ****************
  *
  *  Design Usage:
- *  For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and
+ *  For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and
  *  restrictions.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
@@ -51,7 +51,7 @@ definition(
     name: "Simple Irrigation Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions.",
+    description: "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.",
     category: "",
 	parent: "BPTWorld:Simple Irrigation",
     iconUrl: "",
@@ -69,7 +69,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions."
+    		paragraph "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Valve Devices")) {
 			input "device", "capability.valve", title: "Select Valve Device", required: true	
