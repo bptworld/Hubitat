@@ -2,7 +2,7 @@
  *  ****************  Simple Irrigation Parent App  ****************
  *
  *  Design Usage:
- *  For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions.
+ *  For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -46,7 +46,7 @@ definition(
     name:"Simple Irrigation",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions.",
+    description: "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -80,12 +80,12 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions.</div>"
+				paragraph "<div style='color:#1A77C9'>For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Using mutiple timers and restrictions."
+				paragraph "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Using multiple timers and restrictions."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Simple Irrigation Child", namespace: "BPTWorld", title: "<b>Add a new 'Simple Irrigation' child</b>", multiple: true)
