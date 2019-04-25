@@ -61,6 +61,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snaps
 **Send IP2IR** - Designed to send commands to an iTach IP2IR device.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667" target="_blank">Go Here</a>
 <br><br>
+**Simple Irrigation** - For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-irrigation/14420" target="_blank">Go Here</a>
+<br><br>
 **Web Pinger** - Monitor a website and trigger automations if not found or if your internet goes down.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-pinger/8347" target="_blank">Go Here</a>
 <br><br>
