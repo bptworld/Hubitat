@@ -35,6 +35,9 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 04/25/19 - Some code tweaking. Killed a few bugs.
+ *  V1.1.2 - 04/22/19 - Fixed and error with Push messages. Finally fixed the code so you don't have to flick the 'control switch'
+ *						on and off after adjusting child apps!
  *  V1.1.1 - 04/20/19 - Reworked speech options to match my other apps. Added Notifications by Mode. Added 'Hourly option' and an
  *						'every other option' to 'By Day of the week' trigger. Added %time% to speech options.
  *  V1.1.0 - 04/15/19 - Code cleanup
@@ -55,7 +58,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.1"
+	state.version = "v1.1.3"
 }
 
 definition(
@@ -102,6 +105,7 @@ def pageConfig() {
 		section("<b>If you would like to change to a different trigger, be sure to remove all selections associated with that trigger before choosing a different trigger. It is strongly recommended to simply delete this child app and create a new one, if a different trigger is needed.</b>") {
 			paragraph "<hr>"
 			if(xDate) {
+				app.clearSetting("xDay")
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 				if(month == "Jan" || month == "Mar" || month == "May" || month == "Jun" || month == "Aug" || month == "Oct" || month == "Dec") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
 				if(month == "Apr" || month == "Jun" || month == "Sep" || month == "Nov") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
@@ -256,7 +260,6 @@ def pageConfig() {
 					input(name: "controlSwitch", type: "capability.switch", title: "Turn the app on or off with this switch", required: true, multiple: false)
 					state.controlSW = "yes"
 				}
-				paragraph "<b>Note:</b> Control switch must be triggered AFTER this child app has been saved to be considered active. This is a fail safe to not trigger the app until all changes have been made and saved correctly.<br>ex. The selected Control Switch is ON when child app is saved, it would have to change to OFF then back to ON to activate this child app."
 			}
 		}
 		if(oLighting) {
@@ -497,6 +500,7 @@ def controlSwitchHandler(evt){
 		}
 	}
 	if(oControlSwitch) {
+		state.controlSwitch2 = controlSwitch.currentValue("switch")
 		if(seOnOff) {
 			if(logEnable) log.debug "In controlSwitchHandler - Switch: ${state.switchStatus}"
     		if(state.switchStatus == "on"){
@@ -723,6 +727,7 @@ def setPointHandler(evt) {
 }
 
 def magicHappensHandler() {
+	controlSwitchHandler()
 	if(logEnable) log.debug "In magicHappensHandler...CS: ${state.controlSwitch2}"
 		if(state.controlSwitch2 == "on") {
 			if(pauseApp == true){log.warn "${app.label} - App paused"}
@@ -775,6 +780,7 @@ def magicHappensHandler() {
 }
 
 def reverseTheMagicHandler() {
+	controlSwitchHandler()
 	if(logEnable) log.debug "In reverseTheMagicHandler...CS: ${state.controlSwitch2}"
 	if(minutesUp) state.realSeconds = minutesUp * 60
 	if(notifyDelay) state.notifyDel = notifyDelay * 60
@@ -786,8 +792,8 @@ def reverseTheMagicHandler() {
 }
 
 def slowOnHandler(evt) {
+	controlSwitchHandler()
 	if(state.controlSwitch2 == "on") {
-		dayOfTheWeekHandler()
 		if(logEnable) log.debug "In slowOnHandler..."
 		state.fromWhere = "slowOn"
 		state.onLevel = 1
@@ -807,8 +813,8 @@ def slowOnHandler(evt) {
 }
 
 def slowOffHandler(evt) {
+	controlSwitchHandler()
 	if(state.controlSwitch2 == "on") {
-		dayOfTheWeekHandler()
 		if(logEnable) log.debug "In slowOffHandler..."
 		state.fromWhere = "slowOff"
 		state.onLevel = 99
@@ -826,6 +832,7 @@ def slowOffHandler(evt) {
 }
 
 def dimStepUp() {
+	controlSwitchHandler()
 	if(logEnable) log.debug "In dimStepUp..."
 	if(state.controlSwitch2 == "on") {
     	if(state.currentLevel < targetLevelHigh) {
@@ -845,6 +852,7 @@ def dimStepUp() {
 }
 
 def dimStepDown() {
+	controlSwitchHandler()
 	if(logEnable) log.debug "In dimStepDown..."
     if(state.controlSwitch2 == "on") {
     	if(state.currentLevel > targetLevelLow) {
@@ -866,61 +874,66 @@ def dimStepDown() {
 }
 
 def letsTalk() {
-	if(logEnable) log.debug "In letsTalk..."
-	if(speaker) if(logEnable) log.debug "In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}"
-	if(gSpeaker) if(logEnable) log.debug "In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}"
-	checkTime()
-	checkVol()
-	atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
-	if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
-	pauseExecution(atomicState.randomPause)
-	if(logEnable) log.debug "In letsTalk - continuing"
-	if(state.timeBetween == true) {
-		messageHandler()
-		if(logEnable) log.debug "Speaker in use: ${speaker}"
-		state.theMsg = "${state.theMessage}"
-  		if (speechMode == "Music Player"){ 
-    		if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-			if(echoSpeaks) {
-				speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+	controlSwitchHandler()
+	if(state.controlSwitch2 == "on") {
+		if(logEnable) log.debug "In letsTalk..."
+		if(speaker) if(logEnable) log.debug "In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}"
+		if(gSpeaker) if(logEnable) log.debug "In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}"
+		checkTime()
+		checkVol()
+		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+		pauseExecution(atomicState.randomPause)
+		if(logEnable) log.debug "In letsTalk - continuing"
+		if(state.timeBetween == true) {
+			messageHandler()
+			if(logEnable) log.debug "Speaker in use: ${speaker}"
+			state.theMsg = "${state.theMessage}"
+  			if (speechMode == "Music Player"){ 
+    			if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+				if(echoSpeaks) {
+					speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+					state.canSpeak = "no"
+					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+				}
+				if(!echoSpeaks) {
+    					if(volSpeech) speaker.setLevel(state.volume)
+    					speaker.playTextAndRestore(state.theMsg, volRestore)
+						state.canSpeak = "no"
+						if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+				}
+  			}   
+			if(speechMode == "Speech Synth"){ 
+				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+				atomicState.speechDuration2 = speechDuration * 1000
+				if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+				if(volSpeech) speaker.setVolume(state.volume)
+				speaker.speak(state.theMsg)
+				pauseExecution(atomicState.speechDuration2)
+				if(volRestore) speaker.setVolume(volRestore)
 				state.canSpeak = "no"
 				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 			}
-			if(!echoSpeaks) {
-    				if(volSpeech) speaker.setLevel(state.volume)
-    				speaker.playTextAndRestore(state.theMsg, volRestore)
-					state.canSpeak = "no"
-					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-			}
-  		}   
-		if(speechMode == "Speech Synth"){ 
-			speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
-			atomicState.speechDuration2 = speechDuration * 1000
-			if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-			if(volSpeech) speaker.setVolume(state.volume)
-			speaker.speak(state.theMsg)
-			pauseExecution(atomicState.speechDuration2)
-			if(volRestore) speaker.setVolume(volRestore)
-			state.canSpeak = "no"
-			if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+			log.info "${app.label} - ${state.theMsg}"
 		}
-		log.info "${app.label} - ${state.theMsg}"
-	}
-	if(oRepeat) {
-		if(state.controlSwitch2 == "on") {
-			if(logEnable) log.debug "In letsTalk - oRepeat - ${state.numRepeats}"
-			if(state.numRepeats < maxRepeats) {
-				state.numRepeats = state.numRepeats + 1
-				runIn(repeatSeconds,letsTalk)
+		if(oRepeat) {
+			if(state.controlSwitch2 == "on") {
+				if(logEnable) log.debug "In letsTalk - oRepeat - ${state.numRepeats}"
+				if(state.numRepeats < maxRepeats) {
+					state.numRepeats = state.numRepeats + 1
+					runIn(repeatSeconds,letsTalk)
+				} else {
+					log.info "${app.label} - Max repeats has been reached."
+				}
 			} else {
-				log.info "${app.label} - Max repeats has been reached."
+				log.info "${app.label} - Set to repeat but Control Switch is Off."
 			}
 		} else {
-			log.info "${app.label} - Set to repeat but Control Switch is Off."
+			log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
+			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 		}
 	} else {
 		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
-		
 		if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 	}
 }
@@ -959,8 +972,8 @@ def messageHandler() {
 		vSize = values.size()
 		count = vSize.toInteger()
     	def randomKey = new Random().nextInt(count)
-		state.msg = values[randomKey]
-		if(logEnable) log.debug "In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${state.msg}"
+		theMessage = values[randomKey]
+		if(logEnable) log.debug "In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${theMessage}"
 	} else {
 		if(xHumidity || xPower || xTemp) {
 			if(logEnable) log.debug "In messageHandler (Humidity) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}"
@@ -1016,6 +1029,7 @@ def modeHandler() {
 
 def dayOfTheWeekHandler() {
 	if(logEnable) log.debug "In dayOfTheWeek..."
+	dayMatches = "no"
 	if(xDay) {
 		Calendar date = Calendar.getInstance()
 		int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
@@ -1035,20 +1049,22 @@ def dayOfTheWeekHandler() {
 			it4 = it3.replace(" ","")
 			if(it4 == state.dotWeek) {
 				if(logEnable) log.debug "In dayOfTheWeekHandler - Match: state.dotWeek: ${state.dotWeek} - values: ${it4}"
-				magicHappensHandler()
+				dayMatches = "yes"
 			} else {
 				if(logEnable) log.debug "In dayOfTheWeekHandler - Days set to run (${it4}) does not match today (${state.dotWeek})"
 			}
 		}
+		if(dayMatches == "yes") magicHappensHandler()
 	}
 }
 
 def pushHandler(){
 	count = 0
 	if(count == 0) {
-		if(logEnable) log.debug "In pushNow..."
-		theMessage = "${app.label} - ${state.msg}"
-		if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
+		if(logEnable) log.debug "In pushHandler..."
+		state.theMsg = "${state.theMessage}"
+		theMessage = "${app.label} - ${state.theMsg}"
+		if(logEnable) log.debug "In pushHandler...Sending message: ${theMessage}"
     	sendPushMessage.deviceNotification(theMessage)
 		count = count + 1
 	}
