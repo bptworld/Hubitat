@@ -177,13 +177,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.1.1",
+  "NotifierPlusChildVersion": "v1.1.3",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.1.1 - 04/20/19 - Reworked speech options to match my other apps. Added Notifications by Mode. Added 'Hourly option' and an 'every other option' to 'By Day of the week' trigger. Added %time% to speech options.",
+  "NotifierPlusUpdateNote": "V1.1.3 - 04/25/19 - Some code tweaking. Killed a few bugs.",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
