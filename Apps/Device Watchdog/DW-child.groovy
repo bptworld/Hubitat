@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.3.3 - 04/26/19 - Fix Device turning on when there is nothing to report.
  *  V1.3.2 - 04/22/19 - Put a trap in to catch devices that have no previous activity.
  *  V1.3.1 - 04/15/19 - More Code cleanup
  *  V1.3.0 - 04/14/19 - Adjusted reports, added importUrl and some code cleanup.
@@ -76,9 +77,8 @@
  *
  */
 
-
 def setVersion() {
-	state.version = "v1.3.2"
+	state.version = "v1.3.3"
 }
 
 definition(
@@ -110,7 +110,7 @@ def pageConfig() {
 			href "pageStatus", title: "Device Report", description: "Click here to view the Device Report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Define whether this child app will be for checking Activity, Battery Levels or Status")) {
-			input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true,  options: ["Activity", "Battery_Level", "Status"]
+			input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true, options: ["Activity", "Battery_Level", "Status"]
 		}
 // **** Battery Level ****
 		if(triggerMode == "Battery_Level") {
@@ -561,6 +561,7 @@ def myBatteryHandler(myType, mySensors) {
 	state.batteryMap5S = "<table width='100%'>"
 	if(state.theBatteryMap) {
 		state.count = 0
+		state.batteryCount = 0
 		state.theBatteryMap.each { it -> 
 			if(logEnable) log.debug "In buildBatteryMapHandler - Building Table with ${it.key}"
 			def currentValue = it.value
@@ -568,6 +569,7 @@ def myBatteryHandler(myType, mySensors) {
 			if(currentValue < batteryThreshold && currentValue > -999) { //RayzurMod
 				if(badORgood == false) {
 					state.count = state.count + 1
+					state.batteryCount = state.batteryCount + 1
 					if(logEnable) log.debug "mySensors: ${it.key} battery is ${it.value} less than ${batteryThreshold} threshold"
 					if(state.count == 1) state.batteryMap1S += "<tr><td width='90%'><b>Battery Devices</b></td><td width='10%'><b>Value</b></td></tr>"
 					if((state.count >= 1) && (state.count <= 5)) state.batteryMap1S += "<tr><td width='90%'>${it.key}</td><td width='10%'>${it.value}</td></tr>"
@@ -640,6 +642,7 @@ def mySensorHandler(myType, mySensors) {
 	state.timeSinceMap5S = "<table width='100%'>"
 	state.timeSinceMap6S = "<table width='100%'>"
 	state.count = 0
+	state.timeSinceCount = 0
 	state.theTimeSinceMap.each { device ->
 		if(logEnable) log.debug "Working on: ${device.key} ${state.count}"
 		def theName = device.key
@@ -662,6 +665,7 @@ def mySensorHandler(myType, mySensors) {
   			if(hourDiff > timeAllowed) {
 				if(badORgood == false) {
 					state.count = state.count + 1
+					state.timeSinceCount = state.timeSinceCount + 1
 					if(logEnable) log.debug "${device} hasn't checked in since ${hour}h ${min}m ago."
 					if(state.count == 1) state.timeSinceMap1S += "<tr><td width='80%'><b>Device Last Checked In</b></td><td width='20%'><b>Value</b></td></tr>"
 					if((state.count >= 1) && (state.count <= 5)) state.timeSinceMap1S += "<tr><td width='80%'>${theName}</td><td width='20%'>${hour}h ${min}m</td></tr>"
@@ -736,8 +740,10 @@ def myStatusHandler(myType, mySensors) {
 	state.statusMap4S = "<table width='100%'>"
 	state.statusMap5S = "<table width='100%'>"
 	state.count = 0
+	state.statusCount = 0
 	state.sortedMap.each { device ->
 		state.count = state.count + 1
+		state.statusCount = state.statusCount + 1
 		if(logEnable) log.debug "Working on: ${device}"
 		if(myType == "Acceleration") { deviceStatus = device.currentValue("accelerationSensor") }
 		if(myType == "Alarm") { deviceStatus = device.currentValue("alarm") }
@@ -835,24 +841,24 @@ def clearMaps() {
 def isThereData(){
 	if(logEnable) log.debug "In isThereData..."
 	if(triggerMode == "Activity") {
-		if(logEnable) log.debug "In isThereData - Activity"
-		if(state.timeSinceMapPhoneS) {
+		if(logEnable) log.debug "In isThereData - Activity - ${state.timeSinceCount}"
+		if(timeSinceCount >= 0) {
 			isDataActivityDevice.on()
 		} else {
 			isDataActivityDevice.off()
 		}
 	}
 	if(triggerMode == "Battery_Level") {
-		if(logEnable) log.debug "In isThereData - Battery"
-		if(state.batteryMapPhoneS) {
+		if(logEnable) log.debug "In isThereData - Battery - ${state.batteryCount}"
+		if(state.batteryCount >= 0) {
 			isDataBatteryDevice.on()
 		} else {
 			isDataBatteryDevice.off()
 		}
 	}
 	if(triggerMode == "Status") {
-		if(logEnable) log.debug "In isThereData - Status"
-		if(state.statusMapPhoneS) {
+		if(logEnable) log.debug "In isThereData - Status - ${state.statusCount}"
+		if(state.statusCount >= 0) {
 			isDataStatusDevice.on()
 		} else {
 			isDataStatusDevice.off()
@@ -863,7 +869,8 @@ def isThereData(){
 def pushNow(){
 	if(logEnable) log.debug "In pushNow - triggerMode: ${triggerMode}"
 	if(triggerMode == "Activity") {
-		if(state.count >= 1) {
+		if(logEnable) log.debug "In pushNow - Activity - ${state.timeSinceCount}"
+		if(state.timeSinceCount >= 1) {
 			timeSincePhone = "${app.label} \n"
 			timeSincePhone += "${state.timeSinceMapPhoneS}"
 			if(logEnable) log.debug "In pushNow - Sending message: ${timeSincePhone}"
@@ -880,7 +887,8 @@ def pushNow(){
 		}
 	}	
 	if(triggerMode == "Battery_Level") {
-		if(state.count >= 1) {
+		if(state.batteryCount >= 1) {
+			if(logEnable) log.debug "In pushNow - Battery - ${state.batteryCount}"
 			batteryPhone = "${app.label} \n"
 			batteryPhone += "${state.batteryMapPhoneS}"
 			if(logEnable) log.debug "In pushNow - Sending message: ${batteryPhone}"
@@ -897,7 +905,8 @@ def pushNow(){
 		}
 	}	
 	if(triggerMode == "Status") {
-		if(state.count >= 1) {
+		if(logEnable) log.debug "In pushNow - Status - ${state.statusCount}"
+		if(state.statusCount >= 1) {
 			statusPhone = "${app.label} \n"
 			statusPhone += "${state.statusMapPhone}"
 			if(logEnable) log.debug "In pushNow - Sending message: ${statusPhone}"
