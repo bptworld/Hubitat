@@ -127,13 +127,13 @@
   
   "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v1.1.0",
-  "DeviceWatchdogChildVersion": "v1.3.2",
+  "DeviceWatchdogChildVersion": "v1.3.3",
   "DeviceWatchdogDriverVersion": "V1.0.4",
   "DeviceWatchdogParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
   "DeviceWatchdogChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
   "DeviceWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
-  "DeviceWatchdogUpdateNote": "V1.3.2 - 04/22/19 - Put a trap in to catch devices that have no previous activity.",
+  "DeviceWatchdogUpdateNote": "V1.3.3 - 04/26/19 - Fix Device turning on when there is nothing to report.",
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
