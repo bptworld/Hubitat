@@ -183,7 +183,7 @@
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.1.3 - 04/25/19 - Some code tweaking. Killed a few bugs.",
+  "NotifierPlusUpdateNote": "V1.1.4 - 04/25/19 - Fixed a bug when selecting 'Jun'",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
