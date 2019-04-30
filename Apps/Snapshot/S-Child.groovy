@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.4 - 04/30/19 - Added Water Sensor tracking
  *  V1.1.3 - 04/19/19 - Fixed a bug with Presence Sensors
  *  V1.1.2 - 04/15/19 - Code cleanup
  *  V1.1.1 - 04/12/19 - Added Presence Sensor tracking
@@ -53,7 +54,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.3"
+	state.version = "v1.1.4"
 }
 
 definition(
@@ -118,6 +119,7 @@ def pageConfig() {
 				paragraph "Note: Choose a max of 30 devices in each category."
             	input "switches", "capability.switch", title: "Switches", multiple: true, required: false, submitOnChange: true
             	input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false, submitOnChange: true
+				input "water", "capability.waterSensor", title: "Water Sensors", multiple: true, required: false, submitOnChange: true
 				input "locks", "capability.lock", title: "Door Locks", multiple: true, required: false, submitOnChange: true
 				input "presence", "capability.presenceSensor", title: "Presence Sensors", multiple: true, required: false, submitOnChange: true
 				input "temps", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: false, submitOnChange: true
@@ -139,6 +141,9 @@ def pageConfig() {
 				}
 				if(contacts) {
 					input "contactMode", "enum", required: true, title: "Select Contact Display Output Type", submitOnChange: true,  options: ["Full", "Only Open", "Only Closed"]
+				}
+				if(water) {
+					input "waterMode", "enum", required: true, title: "Select Water Display Output Type", submitOnChange: true,  options: ["Full", "Only Wet", "Only Dry"]
 				}
 				if(locks) {
 					input "lockMode", "enum", required: true, title: "Select Lock Display Output Type", submitOnChange: true,  options: ["Full", "Only Unlocked", "Only Locked"]
@@ -269,6 +274,7 @@ def realTimeSwitchHandler(evt) {
 					if(logEnable) log.debug "In realTimeSwitchHandler - subscribe"
 					if(switches) subscribe(switches, "switch", switchHandler)
 					if(contacts) subscribe(contacts, "contact", contactHandler)
+					if(water) subscribe(water, "water", waterHandler)
 					if(locks) subscribe(locks, "lock", lockHandler)
 					if(presence) subscribe(presence, "presence", presenceHandler)
 					if(temps) subscribe(temps, "temperature", temperatureHandler)
@@ -277,6 +283,7 @@ def realTimeSwitchHandler(evt) {
 					if(logEnable) log.debug "In realTimeSwitchHandler - unsubscribe"
 					unsubscribe(switches)
 					unsubscribe(contacts)
+					unsubscribe(water)
 					unsubscribe(locks)
 					unsubscribe(presence)
 					unsubscribe(temps)
@@ -503,6 +510,59 @@ def contactMapHandler() {
 	snapshotTileDevice.sendSnapshotContactCountClosed(state.countClosed)
 }
 
+def waterMapHandler() {
+	if(logEnable) log.debug "In waterMapHandler..."
+	checkMaps()
+	if(logEnable) log.debug "In waterMapHandler - Sorting Maps"
+	state.wetWaterMapS = state.wetWaterMap.sort { a, b -> a.key <=> b.key }
+	state.dryWaterMapS = state.dryWaterMap.sort { a, b -> a.key <=> b.key }
+	
+	state.fWaterMap1S = "<table width='100%'>"
+	state.fWaterMap2S = "<table width='100%'>"
+	state.count = 0
+	state.countWet = 0
+	state.countDry = 0
+	
+	if(waterMode == "Full" || waterMode == "Only Wet") {
+		state.wetWaterMapS.each { stuffWet -> 
+			state.count = state.count + 1
+			state.countWet = state.countWet + 1
+			if(logEnable) log.debug "In waterMapHandler - Building Table WET with ${stuffWet.key} count: ${state.count}"
+			if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${stuffWet.key}</td><td><div style='color: red;'>wet</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${stuffWet.key}</td><td><div style='color: red;'>wet</div></td></tr>"
+		}
+	}
+	
+	if(waterMode == "Full") {
+		if((state.count >= 1) && (state.count <= 5)) { state.fWaterMap1S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+		if((state.count >= 6) && (state.count <= 10)) { state.fWaterMap2S += "<tr><td colspan='2'><hr></td></tr>"; state.count = state.count + 1 }
+	}
+	
+	if(waterMode == "Full" || waterMode == "Only Dry") {
+		state.dryWaterMapS.each { stuffDry -> 
+			state.count = state.count + 1
+			state.countDry = state.countDry + 1
+			if(logEnable) log.debug "In waterMapHandler - Building Table DRY with ${stuffDry.key} count: ${state.count}"
+			if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${stuffDry.key}</td><td><div style='color: green;'>dry</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${stuffDry.key}</td><td><div style='color: green;'>dry</div></td></tr>"
+		}
+	}
+	
+	state.fWaterMap1S += "</table>"
+	state.fWaterMap2S += "</table>"
+	
+	if(state.count == 0) {
+		state.fWaterMap1S = "<table width='100%'><tr><td><div style='color: green;'>No water devices to report</div></td></tr></table>"
+		state.fWaterMap2S = "<table width='100%'><tr><td><div style='color: green;'>No water devices to report</div></td></tr></table>"
+	}
+
+	if(logEnable) log.debug "In waterMapHandler - <br>fWaterMap1S<br>${state.fWaterMap1S}"
+   	snapshotTileDevice.sendSnapshotWaterMap1(state.fWaterMap1S)
+	snapshotTileDevice.sendSnapshotWaterMap2(state.fWaterMap2S)
+	snapshotTileDevice.sendSnapshotWaterCountWet(state.countWet)
+	snapshotTileDevice.sendSnapshotWaterCountDry(state.countDry)
+}
+
 def lockMapHandler() {
 	if(logEnable) log.debug "In lockMapHandler..."
 	checkMaps()
@@ -691,6 +751,23 @@ def contactHandler(evt){
 		if(logEnable) log.debug "In contactHandler - CLOSED<br>${state.closedContactMap}"
 	}
 	contactMapHandler()
+}
+
+def waterHandler(evt){
+	def waterName = evt.displayName
+	def waterStatus = evt.value
+	if(logEnable) log.debug "In waterHandler...${waterName}: ${waterStatus}"
+	if(waterStatus == "wet") {
+		state.dryWaterMap.remove(waterName)
+		state.wetWaterMap.put(waterName, waterStatus)
+		if(logEnable) log.debug "In waterHandler - WET<br>${state.wetWaterMap}"
+	}
+	if(waterStatus == "dry") {
+		state.wetWaterMap.remove(waterName)
+		state.dryWaterMap.put(waterName, waterStatus)
+		if(logEnable) log.debug "In waterHandler - Dry<br>${state.dryWaterMap}"
+	}
+	waterMapHandler()
 }
 
 def lockHandler(evt){
@@ -977,6 +1054,12 @@ def checkMaps() {
 	if(state.openContactMap == null) {
 		state.openContactMap = [:]
 	}
+	if(state.dryWaterMap == null) {
+		state.dryWaterMap = [:]
+	}
+	if(state.wetWaterMap == null) {
+		state.wetWaterMap = [:]
+	}
 	if(state.presentMap == null) {
 		state.presentMap = [:]
 	}
@@ -1012,7 +1095,9 @@ def maintHandler(evt){
 	state.offSwitchMap = [:]
 	state.onSwitchMap = [:]
 	state.closedContactMap = [:]
-	state.openContactMap = [:] 
+	state.openContactMap = [:]
+	state.wetWaterMap = [:]
+	state.dryWaterMap = [:]
 	state.presentMap = [:]
 	state.notPresentMap = [:]
 	state.lockedLockMap = [:]
@@ -1041,6 +1126,16 @@ def maintHandler(evt){
 			if(contactStatus == "closed") state.closedContactMap.put(contactName, contactStatus)
 		}
 		contactMapHandler()
+	}
+	if(water) {
+		water.each { device ->
+			def waterName = device.displayName
+			def waterStatus = device.currentValue('water')
+			if(logEnable) log.debug "In maintHandler - Working on ${waterName} - ${waterStatus}"
+			if(waterStatus == "wet") state.wetWaterMap.put(waterName, waterStatus)
+			if(waterStatus == "dry") state.dryWaterMap.put(waterName, waterStatus)
+		}
+		waterMapHandler()
 	}
 	if(presence) {
 		presence.each { device ->
