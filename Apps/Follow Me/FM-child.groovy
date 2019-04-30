@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.1.3 - 04/30/19 - Attempt to fix bug in checkTime
  *  V1.1.2 - 04/15/19 - More Code cleanup
  *  V1.1.1 - 04/06/19 - Code cleanup
  *  V1.1.0 - 04/04/19 - More tweaks
@@ -50,7 +51,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.2"
+	state.version = "v1.1.3"
 }
 
 definition(
@@ -436,6 +437,7 @@ def letsTalk() {
 				}
 				speakerStatus = "${app.label}:${atomicState.sZone}"
 				gvDevice.sendFollowMeSpeaker(speakerStatus)
+				log.info "${app.label} - ${state.lastSpoken}"
 				if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 			} else {
 				log.info "${app.label} - Quiet Time, can not speak."
@@ -447,7 +449,7 @@ def letsTalk() {
 
 def checkTime() {
 	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
+	if(fromTime) {
 		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
 		if(state.betweenTime) {
 			state.timeBetween = true
@@ -516,6 +518,7 @@ def sendPush() {
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
+	if(logEnable == null){logEnable = false}
 	if(atomicState.sZone == null){atomicState.sZone = false}
 	if(state.IH1 == null){state.IH1 = "blank"}
 	if(state.IH2 == null){state.IH2 = "blank"}
