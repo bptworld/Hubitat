@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 04/30/19 - Adjust driver for Water support
  *  V1.0.8 - 04/16/19 - Code cleanup, added importUrl
  *  V1.0.7 - 04/12/19 - Adjust driver for Presence support
  *  V1.0.6 - 04/02/19 - Adjust driver for Temperature support
@@ -67,6 +68,9 @@ metadata {
 		command "sendSnapshotContactMap5", ["string"]
 		command "sendSnapshotContactMap6", ["string"]
 		
+		command "sendSnapshotWaterMap1", ["string"]
+		command "sendSnapshotWaterMap2", ["string"]
+		
 		command "sendSnapshotPresenceMap1", ["string"]
 		command "sendSnapshotPresenceMap2", ["string"]
 		
@@ -80,6 +84,8 @@ metadata {
 		command "sendSnapshotSwitchCountOff", ["string"]
 		command "sendSnapshotContactCountOpen", ["string"]
 		command "sendSnapshotContactCountClosed", ["string"]
+		command "sendSnapshotWaterCountWet", ["string"]
+		command "sendSnapshotWaterCountDry", ["string"]
 		command "sendSnapshotPresenceCountNotPresent", ["string"]
 		command "sendSnapshotPresenceCountPresent", ["string"]
 		command "sendSnapshotLockCountUnlocked", ["string"]
@@ -91,6 +97,8 @@ metadata {
 		command "sendSnapshotPrioritySwitchMap2", ["string"]
 		command "sendSnapshotPriorityContactMap1", ["string"]
 		command "sendSnapshotPriorityContactMap2", ["string"]
+		command "sendSnapshotPriorityWaterMap1", ["string"]
+		command "sendSnapshotPriorityWaterMap2", ["string"]
 		command "sendSnapshotPriorityLockMap1", ["string"]
 		command "sendSnapshotPriorityLockMap2", ["string"]
 		command "sendSnapshotPriorityTempMap1", ["string"]
@@ -114,6 +122,11 @@ metadata {
 		attribute "snapshotContactCountOpen", "string"
 		attribute "snapshotCountactCountClosed", "string"
 		
+		attribute "snapshotWater1", "string"
+		attribute "snapshotWater2", "string"
+		attribute "snapshotWaterCountWet", "string"
+		attribute "snapshotWaterCountDry", "string"
+		
 		attribute "snapshotPresence1", "string"
 		attribute "snapshotPresence2", "string"
 		attribute "snapshotPresenceCountPresent", "string"
@@ -133,6 +146,8 @@ metadata {
 		attribute "snapshotPrioritySwitch2", "string"
 		attribute "snapshotPriorityContact1", "string"
 		attribute "snapshotPriorityContact2", "string"
+		attribute "snapshotPriorityWater1", "string"
+		attribute "snapshotPriorityWater2", "string"
 		attribute "snapshotPriorityLock1", "string"
 		attribute "snapshotPriorityLock2", "string"
 		attribute "snapshotPriorityTemp1", "string"
@@ -343,6 +358,44 @@ def sendSnapshotContactCountClosed(contactCountClosed) {
 	sendEvent(name: "snapshotContactCountClosed", value: contactCountClosed, displayed: true)
 }
 
+def sendSnapshotWaterMap1(waterMap1) {
+	state.waterDevice1a = "${waterMap1}"
+	state.waterDevice1 = "<table width='100%'><tr>"
+	state.waterDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.waterDevice1 += "<div style='font-size: ${fontSize}px'> ${state.waterDevice1a}</div>"
+	state.waterDevice1 += "</td></tr></table>"
+	state.waterDevice1Count = state.waterDevice1.length()
+	if(state.waterDevice1Count <= 1000) {
+		if(logEnable) log.debug "waterDevice1 - has ${state.waterDevice1Count} Characters<br>${state.waterDevice1}"
+	} else {
+		state.waterDevice1 = "Too many characters to display on Dashboard (${state.waterDevice1Count})"
+	}
+	sendEvent(name: "snapshotWater1", value: state.waterDevice1, displayed: true)
+}
+
+def sendSnapshotWaterMap2(waterMap2) {
+	state.waterDevice2a = "${waterMap2}"
+	state.waterDevice2 = "<table width='100%'><tr>"
+	state.waterDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.waterDevice2 += "<div style='font-size: ${fontSize}px'> ${state.waterDevice2a}</div>"
+	state.waterDevice2 += "</td></tr></table>"
+	state.waterDevice2Count = state.waterDevice2.length()
+	if(state.waterDevice2Count <= 1000) {
+		if(logEnable) log.debug "waterDevice2 - has ${state.waterDevice2Count} Characters<br>${state.waterDevice2}"
+	} else {
+		state.waterDevice2 = "Too many characters to display on Dashboard (${state.waterDevice2Count})"
+	}
+	sendEvent(name: "snapshotWater2", value: state.waterDevice2, displayed: true)
+}
+
+def sendSnapshotWaterCountWet(waterCountWet) {
+	sendEvent(name: "snapshotWaterCountWet", value: waterCountWet, displayed: true)
+}
+
+def sendSnapshotWaterCountDry(waterCountDry) {
+	sendEvent(name: "snapshotWaterCountDry", value: waterCountDry, displayed: true)
+}
+
 def sendSnapshotPresenceMap1(presenceMap1) {
 	state.presenceDevice1a = "${presenceMap1}"
 	state.presenceDevice1 = "<table width='100%'><tr>"
@@ -515,6 +568,36 @@ def sendSnapshotPriorityContactMap2(pContactMap2S) {
 		state.pContactDevice2 = "Too many characters to display on Dashboard (${state.pContactDevice2Count})"
 	}
 	sendEvent(name: "snapshotPriorityContact2", value: state.pContactDevice2, displayed: true)
+}
+
+def sendSnapshotPriorityWaterMap1(pWaterMap1S) {
+	state.pWaterDevice1a = "${pWaterMap1S}"
+	state.pWaterDevice1 = "<table width='100%'><tr>"
+	state.pWaterDevice1 += "<td style='text-align: left; width: 100%'>"
+	state.pWaterDevice1 += "<div style='font-size: ${fontSize}px'> ${state.pWaterDevice1a}</div>"
+	state.pWaterDevice1 += "</td></tr></table>"
+	state.pWaterDevice1Count = state.pWaterDevice1.length()
+	if(state.pWaterDevice1Count <= 1000) {
+		if(logEnable) log.debug "pWaterDevice1 - has ${state.pWaterDevice1Count} Characters<br>${state.pWaterDevice1}"
+	} else {
+		state.pWaterDevice1 = "Too many characters to display on Dashboard (${state.pWaterDevice1Count})"
+	}
+	sendEvent(name: "snapshotPriorityWater1", value: state.pWaterDevice1, displayed: true)
+}
+
+def sendSnapshotPriorityWaterMap2(pWaterMap2S) {
+	state.pWaterDevice2a = "${pWaterMap2S}"
+	state.pWaterDevice2 = "<table width='100%'><tr>"
+	state.pWaterDevice2 += "<td style='text-align: left; width: 100%'>"
+	state.pWaterDevice2 += "<div style='font-size: ${fontSize}px'> ${state.pWaterDevice2a}</div>"
+	state.pWaterDevice2 += "</td></tr></table>"
+	state.pWaterDevice2Count = state.pWaterDevice2.length()
+	if(state.pWaterDevice2Count <= 1000) {
+		if(logEnable) log.debug "pWaterDevice2 - has ${state.pWaterDevice2Count} Characters<br>${state.pWaterDevice2}"
+	} else {
+		state.pWaterDevice2 = "Too many characters to display on Dashboard (${state.pWaterDevice2Count})"
+	}
+	sendEvent(name: "snapshotPriorityWater2", value: state.pWaterDevice2, displayed: true)
 }
 
 def sendSnapshotPriorityLockMap1(pLockMap1S) {
