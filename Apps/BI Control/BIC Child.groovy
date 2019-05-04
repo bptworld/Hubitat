@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 05/04/19 - Fixed 'pause'
  *  V1.0.7 - 04/15/19 - Code cleanup
  *  V1.0.6 - 02/14/19 - If manual recording (camera trigger) doesn't work - add '//' to line 471 and remove them from line 472 and try again.
  *  V1.0.5 - 01/15/19 - Updated footer with update check and links
@@ -51,7 +52,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
 }
 
 definition(
@@ -236,289 +237,319 @@ def initialize() {
 }
 
 def profileModeChangeHandler(evt) {
-	if(logEnable) log.debug "BI Control-modeChangeHandler..."
-	if(logEnable) log.debug "Mode changed to ${evt.value}"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-modeChangeHandler..."
+		if(logEnable) log.debug "Mode changed to ${evt.value}"
 
-	if(biProfile1 != null && evt.value in biProfile1) {
-    	def setProfile = "1"
-		biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile1 ${settings.biProfile1}"
-    } 
-    else if(biProfile2 != null && evt.value in biProfile2) {
-		def setProfile = "2"
-        biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile2 ${settings.biProfile2}"
-	} 
-    else if(biProfile3 != null && evt.value in biProfile3) {
-    	def setProfile = "3"
-		biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile3 ${settings.biProfile3}"
-    }
-	else if(biProfile4 != null && evt.value in biProfile4) {
-    	def setProfile = "4"
-		biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile4 ${settings.biProfile4}"
-    }
-	else if(biProfile5 != null && evt.value in biProfile5) {
-    	def setProfile = "5"
-		biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile5 ${settings.biProfile5}"
-    }
-	else if(biProfile6 != null && evt.value in biProfile6) {
-    	def setProfile = "6"
-		biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile6 ${settings.biProfile6}"
-    }
-	else if(biProfile7 != null && evt.value in biProfile7) {
-    	def setProfile = "7"
-		biChangeProfile(setProfile)
-		if(logEnable) log.debug "biProfile7 ${settings.biProfile7}"
-    }
+		if(biProfile1 != null && evt.value in biProfile1) {
+    		def setProfile = "1"
+			biChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile1 ${settings.biProfile1}"
+   	 } 
+   	 else if(biProfile2 != null && evt.value in biProfile2) {
+			def setProfile = "2"
+       	 b	iChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile2 ${settings.biProfile2}"
+		} 
+    	else if(biProfile3 != null && evt.value in biProfile3) {
+			def setProfile = "3"
+			biChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile3 ${settings.biProfile3}"
+    	}
+		else if(biProfile4 != null && evt.value in biProfile4) {
+    		def setProfile = "4"
+			biChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile4 ${settings.biProfile4}"
+    	}
+		else if(biProfile5 != null && evt.value in biProfile5) {
+    		def setProfile = "5"
+			biChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile5 ${settings.biProfile5}"
+   	 	}
+		else if(biProfile6 != null && evt.value in biProfile6) {
+    		def setProfile = "6"
+			biChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile6 ${settings.biProfile6}"
+    	}
+		else if(biProfile7 != null && evt.value in biProfile7) {
+    		def setProfile = "7"
+			biChangeProfile(setProfile)
+			if(logEnable) log.debug "biProfile7 ${settings.biProfile7}"
+   	 	}
+	}
 }
 
 def profileSwitchHandler(evt) {
-	if(logEnable) log.debug "BI Control-switchChangeHandler..."
-	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-switchChangeHandler..."
+		if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "switchChangeHandler - switchProfileOn = ${switchProfileOn}"
-		if(switchProfileOn == "Pon1") {
-			def setProfile = "1"
-			biChangeProfile(setProfile)
-		} else
-		if(switchProfileOn == "Pon2") {
-			def setProfile = "2"
-			biChangeProfile(setProfile)
-		} else
-		if(switchProfileOn == "Pon3") {
-			def setProfile = "3"
-			biChangeProfile(setProfile)
-		} else
-		if(switchProfileOn == "Pon4") {
-			def setProfile = "4"
-			biChangeProfile(setProfile)
-		} else
-		if(switchProfileOn == "Pon5") {
-			def setProfile = "5"
-			biChangeProfile(setProfile)
-		} else
-		if(switchProfileOn == "Pon6") {
-			def setProfile = "6"
-			biChangeProfile(setProfile)
-		} else
-		if(switchProfileOn == "Pon7") {
-			def setProfile = "7"
-			biChangeProfile(setProfile)
+		if(switches.currentValue("switch") == "on") {
+			if(logEnable) log.debug "switchChangeHandler - switchProfileOn = ${switchProfileOn}"
+			if(switchProfileOn == "Pon1") {
+				def setProfile = "1"
+				biChangeProfile(setProfile)
+			} else
+			if(switchProfileOn == "Pon2") {
+				def setProfile = "2"
+				biChangeProfile(setProfile)
+			} else
+			if(switchProfileOn == "Pon3") {
+				def setProfile = "3"
+				biChangeProfile(setProfile)
+			} else
+			if(switchProfileOn == "Pon4") {
+				def setProfile = "4"
+				biChangeProfile(setProfile)
+			} else
+			if(switchProfileOn == "Pon5") {
+				def setProfile = "5"
+				biChangeProfile(setProfile)
+			} else
+			if(switchProfileOn == "Pon6") {
+				def setProfile = "6"
+				biChangeProfile(setProfile)
+			} else
+			if(switchProfileOn == "Pon7") {
+				def setProfile = "7"
+				biChangeProfile(setProfile)
+			}
 		}
 	}
 }
 
 def scheduleModeChangeHandler(evt) {
-	if(logEnable) log.debug "BI Control-modeChangeHandler..."
-	if(logEnable) log.debug "Mode changed to ${evt.value}"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-modeChangeHandler..."
+		if(logEnable) log.debug "Mode changed to ${evt.value}"
 
-	if(biScheduleName1 != null && evt.value in biSchedule1) {
-        biChangeSchedule(biScheduleName1)
-		if(logEnable) log.debug "biSchedule1 ${settings.biScheduleName1}"
-    }
-    else if(biScheduleName2 != null && evt.value in biSchedule2) {
-        biChangeSchedule(biScheduleName2)
-		if(logEnable) log.debug "biSchedule2 ${settings.biScheduleName2}"
+		if(biScheduleName1 != null && evt.value in biSchedule1) {
+			biChangeSchedule(biScheduleName1)
+			if(logEnable) log.debug "biSchedule1 ${settings.biScheduleName1}"
+		}
+		else if(biScheduleName2 != null && evt.value in biSchedule2) {
+			biChangeSchedule(biScheduleName2)
+			if(logEnable) log.debug "biSchedule2 ${settings.biScheduleName2}"
+		}
+		else if(biScheduleName3 != null && evt.value in biSchedule3) {
+			biChangeSchedule(biScheduleName3)
+			if(logEnable) log.debug "biSchedule3 ${settings.biScheduleName3}"
+		}
+		else if(biScheduleName4 != null && evt.value in biSchedule4) {
+			biChangeSchedule(biScheduleName4)
+			if(logEnable) log.debug "biSchedule4 ${settings.biScheduleName4}"
+		}
+		else if(biScheduleName5 != null && evt.value in biSchedule5) {
+			biChangeSchedule(biScheduleName5)
+			if(logEnable) log.debug "biSchedule4 ${settings.biScheduleName5}"
+		}
+		else if(biScheduleName6 != null && evt.value in biSchedule6) {
+			biChangeSchedule(biScheduleName6)
+			if(logEnable) log.debug "biSchedule6 ${settings.biScheduleName6}"
+		}
 	}
-    else if(biScheduleName3 != null && evt.value in biSchedule3) {
-		biChangeSchedule(biScheduleName3)
-		if(logEnable) log.debug "biSchedule3 ${settings.biScheduleName3}"
-    }
-    else if(biScheduleName4 != null && evt.value in biSchedule4) {
-		biChangeSchedule(biScheduleName4)
-		if(logEnable) log.debug "biSchedule4 ${settings.biScheduleName4}"
-    }
-    else if(biScheduleName5 != null && evt.value in biSchedule5) {
-		biChangeSchedule(biScheduleName5)
-		if(logEnable) log.debug "biSchedule4 ${settings.biScheduleName5}"
-    }
-    else if(biScheduleName6 != null && evt.value in biSchedule6) {
-		biChangeSchedule(biScheduleName6)
-		if(logEnable) log.debug "biSchedule6 ${settings.biScheduleName6}"
-    }
 }
 
 def scheduleSwitchHandler(evt) {
-	if(logEnable) log.debug "BI Control-switchChangeHandler..."
-	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-switchChangeHandler..."
+		if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
-        if(logEnable) log.debug "scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
-        biChangeSchedule(biScheduleSwitch)
-    }
+		if(switches.currentValue("switch") == "on") {
+			if(logEnable) log.debug "scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
+			biChangeSchedule(biScheduleSwitch)
+		}
+	}
 }
 
 def cameraPresetHandler(evt) {
-	if(logEnable) log.debug "BI Control-cameraPresetHandler..."
-	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-cameraPresetHandler..."
+		if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "cameraPresetHandler - biCameraPreset = ${biCameraPreset}"
-		if(biCameraPreset == "PS1") {
-			def setPreset = "1"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPreset == "PS2") {
-			def setPreset = "2"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPreset == "PS3") {
-			def setPreset = "3"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPreset == "PS4") {
-			def setPreset = "4"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPreset == "PS5") {
-			def setPreset = "5"
-			biChangeProfile(setPreset)
-		}
-	}	
+		if(switches.currentValue("switch") == "on") {
+			if(logEnable) log.debug "cameraPresetHandler - biCameraPreset = ${biCameraPreset}"
+			if(biCameraPreset == "PS1") {
+				def setPreset = "1"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPreset == "PS2") {
+				def setPreset = "2"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPreset == "PS3") {
+				def setPreset = "3"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPreset == "PS4") {
+				def setPreset = "4"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPreset == "PS5") {
+				def setPreset = "5"
+				biChangeProfile(setPreset)
+			}
+		}	
+	}
 }	
 
 def cameraSnapshotHandler(evt) {
-	if(logEnable) log.debug "BI Control-cameraSnapshotHandler..."
-	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-cameraSnapshotHandler..."
+		if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "cameraSnapshotHandler - Nothing"
-		def setPreset = "0"
-		biChangeProfile(setPreset)
+		if(switches.currentValue("switch") == "on") {
+			if(logEnable) log.debug "cameraSnapshotHandler - Nothing"
+			def setPreset = "0"
+			biChangeProfile(setPreset)
+		}
 	}
 }
 
 def cameraTriggerHandler(evt) {
-	if(logEnable) log.debug "BI Control-cameraTriggerHandler..."
-	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-cameraTriggerHandler..."
+		if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "cameraTriggerHandler - On"
-		def setPreset = "1"
-		biChangeProfile(setPreset)
-	} else
-	if(switches.currentValue("switch") == "off") {
-		if(logEnable) log.debug "cameraTriggerHandler - Off"
-		def setPreset = "0"
-		biChangeProfile(setPreset)
+		if(switches.currentValue("switch") == "on") {
+			if(logEnable) log.debug "cameraTriggerHandler - On"
+			def setPreset = "1"
+			biChangeProfile(setPreset)
+		} else
+		if(switches.currentValue("switch") == "off") {
+			if(logEnable) log.debug "cameraTriggerHandler - Off"
+			def setPreset = "0"
+			biChangeProfile(setPreset)
+		}
 	}
 }
 
 def cameraPTZHandler(evt) {
-	if(logEnable) log.debug "BI Control-cameraPTZHandler..."
-	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-cameraPTZHandler..."
+		if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}"
-		if(biCameraPTZ == "PTZ0") {
-			def setPreset = "0"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPTZ == "PTZ1") {
-			def setPreset = "1"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPTZ == "PTZ2") {
-			def setPreset = "2"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPTZ == "PTZ3") {
-			def setPreset = "3"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPTZ == "PTZ4") {
-			def setPreset = "4"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPTZ == "PTZ5") {
-			def setPreset = "5"
-			biChangeProfile(setPreset)
-		} else
-		if(biCameraPTZ == "PTZ6") {
-			def setPreset = "6"
-			biChangeProfile(setPreset)
-		}
-	}	
+		if(switches.currentValue("switch") == "on") {
+			if(logEnable) log.debug "cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}"
+			if(biCameraPTZ == "PTZ0") {
+				def setPreset = "0"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPTZ == "PTZ1") {
+				def setPreset = "1"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPTZ == "PTZ2") {
+				def setPreset = "2"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPTZ == "PTZ3") {
+				def setPreset = "3"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPTZ == "PTZ4") {
+				def setPreset = "4"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPTZ == "PTZ5") {
+				def setPreset = "5"
+				biChangeProfile(setPreset)
+			} else
+			if(biCameraPTZ == "PTZ6") {
+				def setPreset = "6"
+				biChangeProfile(setPreset)
+			}
+		}	
+	}
 }
 
 def biChangeProfile(num) {
-    if(logEnable) log.debug "BI Control-biChangeProfile..."
-	
-	biHost = "${parent.biServer}:${parent.biPort}"
-	
-	if(triggerMode == "Mode") {
-		if(logEnable) log.debug "I'm in Mode"
-		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-	} else
-	if(triggerMode == "Switch") {
-		if(logEnable) log.debug "I'm in Switch"
-		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-	} else
-	if(triggerMode == "Camera_Preset") {
-		if(logEnable) log.debug "I'm in Camera_Preset"
-		biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-		// /admin?camera=x&preset=x
-	} else
-	if(triggerMode == "Camera_Snapshot") {
-		if(logEnable) log.debug "I'm in Camera_Snapshot"
-		biRawCommand = "/admin?camera=${biCamera}/snapshot&user=${parent.biUser}&pw=${parent.biPass}"
-		// /admin?camera=x&snapshot
-	} else
-	if(triggerMode == "Camera_Trigger") {
-		if(logEnable) log.debug "I'm in Camera_Trigger"
-		biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-		// biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
-		// NOTE: if this Command doesn't work for you, try the second one instead...
-		// /admin?camera=x&manrec=1
-	} else
-	if(triggerMode == "Camera_PTZ") {
-		if(logEnable) log.debug "I'm in Camera_PTZ"
-		biRawCommand = "/cam/${biCamera}/pos=${num}"
-		// /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-biChangeProfile..."
+
+		biHost = "${parent.biServer}:${parent.biPort}"
+
+		if(triggerMode == "Mode") {
+			if(logEnable) log.debug "I'm in Mode"
+			biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+		} else
+		if(triggerMode == "Switch") {
+			if(logEnable) log.debug "I'm in Switch"
+			biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+		} else
+		if(triggerMode == "Camera_Preset") {
+			if(logEnable) log.debug "I'm in Camera_Preset"
+			biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+			// /admin?camera=x&preset=x
+		} else
+		if(triggerMode == "Camera_Snapshot") {
+			if(logEnable) log.debug "I'm in Camera_Snapshot"
+			biRawCommand = "/admin?camera=${biCamera}/snapshot&user=${parent.biUser}&pw=${parent.biPass}"
+			// /admin?camera=x&snapshot
+		} else
+		if(triggerMode == "Camera_Trigger") {
+			if(logEnable) log.debug "I'm in Camera_Trigger"
+			biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+			// biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
+			// NOTE: if this Command doesn't work for you, try the second one instead...
+			// /admin?camera=x&manrec=1
+		} else
+		if(triggerMode == "Camera_PTZ") {
+			if(logEnable) log.debug "I'm in Camera_PTZ"
+			biRawCommand = "/cam/${biCamera}/pos=${num}"
+			// /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
+		}
+
+		if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
+		if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
+
+		def httpMethod = "GET"
+		def httpRequest = [
+			method:		httpMethod,
+			path: 		biRawCommand,
+			headers:	[
+						HOST:		biHost,
+						Accept: 	"*/*",
+						]
+			]
+		def hubAction = new hubitat.device.HubAction(httpRequest)
+		sendHubCommand(hubAction)
 	}
-	
-	if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
-	if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
-	
-	def httpMethod = "GET"
-	def httpRequest = [
-		method:		httpMethod,
-		path: 		biRawCommand,
-		headers:	[
-       				HOST:		biHost,
-					Accept: 	"*/*",
-                    ]
-		]
-	def hubAction = new hubitat.device.HubAction(httpRequest)
-	sendHubCommand(hubAction)
 }
 
 def biChangeSchedule(schedule) {
-    if(logEnable) log.debug "BI Control-biChangeSchedule..."
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "BI Control-biChangeSchedule..."
 
-    biHost = "${parent.biServer}:${parent.biPort}"
+		biHost = "${parent.biServer}:${parent.biPort}"
 
-    biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
+		biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
 
-    if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
-    if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
+		if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
+		if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
 
-    def httpMethod = "GET"
-    def httpRequest = [
-            method:		httpMethod,
-            path: 		biRawCommand,
-            headers:	[
-                    HOST:		biHost,
-                    Accept: 	"*/*",
-            ]
-    ]
-    def hubAction = new hubitat.device.HubAction(httpRequest)
-    sendHubCommand(hubAction)
+		def httpMethod = "GET"
+		def httpRequest = [
+				method:		httpMethod,
+				path: 		biRawCommand,
+				headers:	[
+						HOST:		biHost,
+						Accept: 	"*/*",
+				]
+		]
+		def hubAction = new hubitat.device.HubAction(httpRequest)
+		sendHubCommand(hubAction)
+	}
 }
 
 // ********** Normal Stuff **********
