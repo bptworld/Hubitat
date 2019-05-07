@@ -39,13 +39,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 05/07/19 - Fix one thing break another
  *  V1.0.1 - 05/07/19 - Fixed typo with selecting devices
  *  V1.0.0 - 04/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -121,7 +122,7 @@ def initialize() {
 }
 	
 def turnValveOn1() {
-	state.valveStatus = device.currentValue("valve")
+	state.valveStatus = valveDevice.currentValue("valve")
 	dayOfTheWeekHandler()
 	checkForWeather()
 	if(state.daysMatch == "yes") {
@@ -134,7 +135,7 @@ def turnValveOn1() {
 			} else {
 				def delay = onLength1 * 60
 				if(logEnable) log.debug "In turnValveOn1 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength1} minutes"
-				log.warn "${device} is now ${state.valveStatus}"
+				log.warn "${valveDevice} is now ${state.valveStatus}"
 				runIn(delay, turnValveOff)
 			}
 		} else {
@@ -148,7 +149,7 @@ def turnValveOn1() {
 }
 
 def turnValveOn2() {
-	state.valveStatus = device.currentValue("valve")
+	state.valveStatus = valveDevice.currentValue("valve")
 	checkForWeather()
 	if(state.canWater == "yes") {
 		if(logEnable) log.debug "In turnValveOn2..."
@@ -159,7 +160,7 @@ def turnValveOn2() {
 		} else {
 			def delay = onLength2 * 60
 			if(logEnable) log.debug "In turnValveOn2 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength2} minutes"
-			log.warn "${device} is now ${state.valveStatus}"
+			log.warn "${valveDevice} is now ${state.valveStatus}"
 			runIn(delay, turnValveOff)
 		}
 	} else {
@@ -169,7 +170,7 @@ def turnValveOn2() {
 }
 
 def turnValveOn3() {
-	state.valveStatus = device.currentValue("valve")
+	state.valveStatus = valveDevice.currentValue("valve")
 	checkForWeather()
 	if(state.canWater == "yes") {
 		if(logEnable) log.debug "In turnValveOn3..."
@@ -180,7 +181,7 @@ def turnValveOn3() {
 		} else {
 			def delay = onLength3 * 60
 			if(logEnable) log.debug "In turnValveOn3 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength3} minutes"
-			log.warn "${device} is now ${state.valveStatus}"
+			log.warn "${valveDevice} is now ${state.valveStatus}"
 			runIn(delay, turnValveOff)
 		}
 	} else {
@@ -190,7 +191,7 @@ def turnValveOn3() {
 }
 
 def turnValveOff() {
-	state.valveStatus = device.currentValue("valve")
+	state.valveStatus = valveDevice.currentValue("valve")
 	if(logEnable) log.debug "In turnValveOff..."
     if(state.valveStatus == "open") {
 		if(logEnable) log.debug "In turnValveOff - trying to close - will check again in 10 seconds"
@@ -198,7 +199,7 @@ def turnValveOff() {
     	runIn(10, turnValveOff)		// Repeat for safety
 	} else {
 		if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
-		log.warn "${device} is now ${state.valveStatus}"
+		log.warn "${valveDevice} is now ${state.valveStatus}"
 	}
 }
 
