@@ -39,12 +39,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 05/07/19 - Fixed typo with selecting devices
  *  V1.0.0 - 04/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -57,7 +58,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-child.groovy",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-child.groovy",
 )
 
 preferences {
@@ -72,7 +73,7 @@ def pageConfig() {
     		paragraph "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Valve Devices")) {
-			input "device", "capability.valve", title: "Select Valve Device", required: true	
+			input "valveDevice", "capability.valve", title: "Select Valve Device", required: true	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Schedule")) {
 			input(name: "days", type: "enum", title: "Only water on these days", description: "Days to water", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
