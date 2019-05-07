@@ -207,13 +207,13 @@
   
   "SimpleIrrigationType": "App",
   "SimpleIrrigationParentVersion": "v1.0.0",
-  "SimpleIrrigationChildVersion": "v1.0.1",
+  "SimpleIrrigationChildVersion": "v1.0.2",
   "SimpleIrrigationDriverVersion": "NA",
   "SimpleIrrigationParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-parent.groovy",
   "SimpleIrrigationChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-child.groovy",
   "SimpleIrrigationDriverRawCode": "NA",
   "SimpleIrrigationDiscussion": "-",
-  "SimpleIrrigationUpdateNote": "V1.0.1 - 05/07/19 - Fixed typo with selecting devices",
+  "SimpleIrrigationUpdateNote": "V1.0.2 - 05/07/19 - Fix one thing break another",
   
   "SnapshotType": "App",
   "SnapshotParentVersion": "v1.0.0",
