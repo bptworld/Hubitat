@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 05/08/19 - Fixed a typo
  *  V1.0.8 - 05/04/19 - Fixed 'pause'
  *  V1.0.7 - 04/15/19 - Code cleanup
  *  V1.0.6 - 02/14/19 - If manual recording (camera trigger) doesn't work - add '//' to line 471 and remove them from line 472 and try again.
@@ -52,7 +53,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.8"
+	state.version = "v1.0.9"
 }
 
 definition(
@@ -249,7 +250,7 @@ def profileModeChangeHandler(evt) {
    	 } 
    	 else if(biProfile2 != null && evt.value in biProfile2) {
 			def setProfile = "2"
-       	 b	iChangeProfile(setProfile)
+       	 	biChangeProfile(setProfile)
 			if(logEnable) log.debug "biProfile2 ${settings.biProfile2}"
 		} 
     	else if(biProfile3 != null && evt.value in biProfile3) {
