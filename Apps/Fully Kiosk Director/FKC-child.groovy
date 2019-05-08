@@ -1,5 +1,5 @@
 /**
- *  ****************  Fully Kiosk Control App  ****************
+ *  ****************  Fully Kiosk Director App  ****************
  *  Design Usage:
  *  Take control of a Fully Kiosk device!
  *
@@ -42,12 +42,12 @@ def setVersion() {
 }
 
 definition(
-    name: "Fully Kiosk Control Child",
+    name: "Fully Kiosk Director Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Take control of a Fully Kiosk device!",
     category: "",
-	parent: "BPTWorld:Fully Kiosk Control",
+	parent: "BPTWorld:Fully Kiosk Director",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -60,7 +60,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Fully Kiosk Control</h2>", install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Fully Kiosk Director</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
@@ -319,6 +319,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Fully Kiosk Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Fully Kiosk Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
