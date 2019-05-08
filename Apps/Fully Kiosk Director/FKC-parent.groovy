@@ -1,5 +1,5 @@
 /**
- *  **************** Fully Kiosk Control Parent ****************
+ *  **************** Fully Kiosk Director Parent ****************
  *
  *  Design Usage:
  *  Take control of a Fully Kiosk device!
@@ -43,7 +43,7 @@ def setVersion() {
 }
 
 definition(
-    name:"Fully Kiosk Control",
+    name:"Fully Kiosk Director",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Take control of a Fully Kiosk device!",
@@ -90,7 +90,7 @@ def mainPage() {
 				paragraph "* Vitual Device must use the <a href='https://community.hubitat.com/t/release-fully-kiosk-browser-controller/12223' target='_blank'>Fully Kiosk Browser Controller</a> driver by @GavinCampbell"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Fully Kiosk Control Child", namespace: "BPTWorld", title: "<b>Add a new 'Fully Kiosk Control' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Fully Kiosk Director Child", namespace: "BPTWorld", title: "<b>Add a new 'Fully Kiosk Director' child</b>", multiple: true)
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
@@ -125,6 +125,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Fully Kiosk Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Fully Kiosk Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }         
