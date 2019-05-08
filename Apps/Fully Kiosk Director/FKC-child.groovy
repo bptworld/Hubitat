@@ -33,12 +33,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 05/08/19 - Fixed an issue with loadStartURL
  *  V1.0.0 - 05/07/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -215,8 +216,8 @@ def beginHandler() {
 		if(logEnable) log.debug "In launchAppHandler..."
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
 		if(pauseApp == false){
+			if(optLoadStartURL1) fullyDevice.loadStartURL()
 			if(optBringFullyToFront1) fullyDevice.bringFullyToFront()
-			if(optLoadStartURL1) fullyDevice.loadStartURL(optLoadStartURL1)
 			if(optStartScreensaver1) fullyDevice.startScreensaver()
 			if(optStopScreensaver1) fullyDevice.stopScreensaver()
 			if(optScreenOn1) fullyDevice.screenOn()
@@ -248,8 +249,8 @@ def endHandler() {
 		if(logEnable) log.debug "In bringFullyToFrontHandler..."
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
 		if(pauseApp == false){
+			if(optLoadStartURL2) fullyDevice.loadStartURL()
 			if(optBringFullyToFront2) fullyDevice.bringFullyToFront()
-			if(optLoadStartURL2) fullyDevice.loadStartURL(optLoadStartURL2)
 			if(optStartScreensaver2) fullyDevice.startScreensaver()
 			if(optStopScreensaver2) fullyDevice.stopScreensaver()
 			if(optScreenOn2) fullyDevice.screenOn()
