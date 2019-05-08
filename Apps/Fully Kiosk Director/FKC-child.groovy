@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 05/08/19 - Fixed an issue with loadStartURL
+ *  V1.0.1 - 05/08/19 - Fixed an issue with loadStartURL, added a delay between commands
  *  V1.0.0 - 05/07/19 - Initial release.
  *
  */
@@ -212,31 +212,92 @@ def switchHandler(evt) {
 						  					  
 def beginHandler() {
 	checkTime()
+	thePause = 1000
 	if(state.timeBetween == true) {
-		if(logEnable) log.debug "In launchAppHandler..."
+		if(logEnable) log.debug "In beginHandler - pause between commands: ${thePause}"
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
 		if(pauseApp == false){
-			if(optLoadStartURL1) fullyDevice.loadStartURL()
-			if(optBringFullyToFront1) fullyDevice.bringFullyToFront()
-			if(optStartScreensaver1) fullyDevice.startScreensaver()
-			if(optStopScreensaver1) fullyDevice.stopScreensaver()
-			if(optScreenOn1) fullyDevice.screenOn()
-			if(optScreenOff1) fullyDevice.screenOff()
-			if(optSetVolume1) fullyDevice.setVolume(optSetVolume1)
-			if(optVolumeUp1) fullyDevice.volumeUp()
-			if(optVolumeDown1) fullyDevice.volumeDown()
-			if(optMute1) fullyDevice.mute()
-			if(optUnmute1) fullyDevice.unmute()
-			if(optPlaySound1) fullyDevice.playSound(optPlaySound1)
-			if(optStopSound1) fullyDevice.stopSound()
-			if(optSpeak1) fullyDevice.speak(optSpeak1)
-			if(optSiren1) fullyDevice.siren()
-			if(optStrobe1) fullyDevice.strobe()
-			if(optSetScreenBrightness1) fullyDevice.setScreenBrightness(optSetScreenBrightness1)
-			if(optTriggerMotion1) fullyDevice.triggerMotion()
+			if(optLoadStartURL1) {
+				fullyDevice.loadStartURL()
+				pauseExecution(thePause)
+			}
+			if(optBringFullyToFront1) {
+				fullyDevice.bringFullyToFront()
+				pauseExecution(thePause)
+			}
+			if(optStartScreensaver1) {
+				fullyDevice.startScreensaver()
+				pauseExecution(thePause)
+			}
+			if(optStopScreensaver1) {
+				fullyDevice.stopScreensaver()
+				pauseExecution(thePause)
+			}
+			if(optScreenOn1) {
+				fullyDevice.screenOn()
+				pauseExecution(thePause)
+			}
+			if(optScreenOff1) {
+				fullyDevice.screenOff()
+				pauseExecution(thePause)
+			}
+			if(optSetVolume1) {
+				fullyDevice.setVolume(optSetVolume1)
+				pauseExecution(thePause)
+			}
+			if(optVolumeUp1) {
+				fullyDevice.volumeUp()
+				pauseExecution(thePause)
+			}
+			if(optVolumeDown1) {
+				fullyDevice.volumeDown()
+				pauseExecution(thePause)
+			}
+			if(optMute1) {
+				fullyDevice.mute()
+				pauseExecution(thePause)
+			}
+			if(optUnmute1) {
+				fullyDevice.unmute()
+				pauseExecution(thePause)
+			}
+			if(optPlaySound1) {
+				fullyDevice.playSound(optPlaySound1)
+				pauseExecution(thePause)
+			}
+			if(optStopSound1) {
+				fullyDevice.stopSound()
+				pauseExecution(thePause)
+			}
+			if(optSpeak1) {
+				fullyDevice.speak(optSpeak1)
+				pauseExecution(thePause)
+			}
+			if(optSiren1) {
+				fullyDevice.siren()
+				pauseExecution(thePause)
+			}
+			if(optStrobe1) {
+				fullyDevice.strobe()
+				pauseExecution(thePause)
+			}
+			if(optSetScreenBrightness1) {
+				fullyDevice.setScreenBrightness(optSetScreenBrightness1)
+				pauseExecution(thePause)
+			}
+			if(optTriggerMotion1) {
+				fullyDevice.triggerMotion()
+				pauseExecution(thePause)
+			}
 			
-			if(optLaunchAppPackage) fullyDevice.launchAppPackage(optLaunchAppPackage)
-			if(optLoadURL) fullyDevice.loadURL(optLoadURL)
+			if(optLaunchAppPackage) {
+				fullyDevice.launchAppPackage(optLaunchAppPackage)
+				pauseExecution(thePause)
+			}
+			if(optLoadURL) {
+				fullyDevice.loadURL(optLoadURL)
+				pauseExecution(thePause)
+			}
 		}
 	} else {
 		if(logEnable) log.debug "In launchAppHandler - Not allowed at this time"
@@ -245,28 +306,83 @@ def beginHandler() {
 
 def endHandler() {
 	checkTime()
+	thePause = 1000
 	if(state.timeBetween == true) {
-		if(logEnable) log.debug "In bringFullyToFrontHandler..."
+		if(logEnable) log.debug "In endHandler - pause between commands: ${thePause}"
 		if(pauseApp == true){log.warn "${app.label} - App paused"}
 		if(pauseApp == false){
-			if(optLoadStartURL2) fullyDevice.loadStartURL()
-			if(optBringFullyToFront2) fullyDevice.bringFullyToFront()
-			if(optStartScreensaver2) fullyDevice.startScreensaver()
-			if(optStopScreensaver2) fullyDevice.stopScreensaver()
-			if(optScreenOn2) fullyDevice.screenOn()
-			if(optScreenOff2) fullyDevice.screenOff()
-			if(optSetVolume2) fullyDevice.setVolume(optSetVolume2)
-			if(optVolumeUp2) fullyDevice.volumeUp()
-			if(optVolumeDown2) fullyDevice.volumeDown()
-			if(optMute2) fullyDevice.mute()
-			if(optUnmute2) fullyDevice.unmute()
-			if(optPlaySound2) fullyDevice.playSound(optPlaySound2)
-			if(optStopSound2) fullyDevice.stopSound()
-			if(optSpeak2) fullyDevice.speak(optSpeak2)
-			if(optSiren2) fullyDevice.siren()
-			if(optStrobe2) fullyDevice.strobe()
-			if(optSetScreenBrightness2) fullyDevice.setScreenBrightness(optSetScreenBrightness2)
-			if(optTriggerMotion2) fullyDevice.triggerMotion()
+			if(optLoadStartURL2) {
+				fullyDevice.loadStartURL()
+				pauseExecution(thePause)
+			}
+			if(optBringFullyToFront2) {
+				fullyDevice.bringFullyToFront()
+				pauseExecution(thePause)
+			}
+			if(optStartScreensaver2) {
+				fullyDevice.startScreensaver()
+				pauseExecution(thePause)
+			}
+			if(optStopScreensaver2) {
+				fullyDevice.stopScreensaver()
+				pauseExecution(thePause)
+			}
+			if(optScreenOn2) {
+				fullyDevice.screenOn()
+				pauseExecution(thePause)
+			}
+			if(optScreenOff2) {
+				fullyDevice.screenOff()
+				pauseExecution(thePause)
+			}
+			if(optSetVolume2) {
+				fullyDevice.setVolume(optSetVolume2)
+				pauseExecution(thePause)
+			}
+			if(optVolumeUp2) {
+				fullyDevice.volumeUp()
+				pauseExecution(thePause)
+			}
+			if(optVolumeDown2) {
+				fullyDevice.volumeDown()
+				pauseExecution(thePause)
+			}
+			if(optMute2) {
+				fullyDevice.mute()
+				pauseExecution(thePause)
+			}
+			if(optUnmute2) {
+				fullyDevice.unmute()
+				pauseExecution(thePause)
+			}
+			if(optPlaySound2) {
+				fullyDevice.playSound(optPlaySound2)
+				pauseExecution(thePause)
+			}
+			if(optStopSound2) {
+				fullyDevice.stopSound()
+				pauseExecution(thePause)
+			}
+			if(optSpeak2) {
+				fullyDevice.speak(optSpeak2)
+				pauseExecution(thePause)
+			}
+			if(optSiren2) {
+				fullyDevice.siren()
+				pauseExecution(thePause)
+			}
+			if(optStrobe2) {
+				fullyDevice.strobe()
+				pauseExecution(thePause)
+			}
+			if(optSetScreenBrightness2) {
+				fullyDevice.setScreenBrightness(optSetScreenBrightness2)
+				pauseExecution(thePause)
+			}
+			if(optTriggerMotion2) {
+				fullyDevice.triggerMotion()
+				pauseExecution(thePause)
+			}
 		}
 	} else {
 		if(logEnable) log.debug "In bringFullyToFrontHandler - Not allowed at this time"
