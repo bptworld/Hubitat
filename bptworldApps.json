@@ -137,13 +137,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.1.3",
+  "FollowMeChildVersion": "v1.1.4",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.1.3 - 04/30/19 - Attempt to fix bug in checkTime",
+  "FollowMeUpdateNote": "V1.1.4 - 05/09/19 - Added ability to change the voice used by priority - speechSynth only",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
