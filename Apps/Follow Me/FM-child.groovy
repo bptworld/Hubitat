@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.1.4 - 05/09/19 - Added ability to change the voice used by priority - speechSynth only
  *  V1.1.3 - 04/30/19 - Attempt to fix bug in checkTime
  *  V1.1.2 - 04/15/19 - More Code cleanup
  *  V1.1.1 - 04/06/19 - Code cleanup
@@ -51,7 +52,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.3"
+	state.version = "v1.1.4"
 }
 
 definition(
@@ -74,7 +75,8 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Follow Me</h2>", install: true, uninstall: true, refreshInterval:0) {
-		display() 
+		display()
+		getVoices()
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "- Create a new child app for each room that has a speaker in it.<br>- Pushover child app can have up to 5 sensors defined.<br>- If more than 5 sensors are needed, simply add another child device."
@@ -84,7 +86,7 @@ def pageConfig() {
 			paragraph "- Virtual Device using our custom 'What Did I Say' driver"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Message destination")) {
-    		input "messageDest", "enum", title: "Select message destination", submitOnChange: true,  options: ["Speakers","Pushover"], required: true
+    		input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Pushover"], required: true
 		}
 		// Speakers
 		if(messageDest == "Speakers") {
@@ -107,23 +109,7 @@ def pageConfig() {
 					input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
-				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
-			}
-			if(messagePriority) {
-				section("Instructions for Message Priority:", hideable: true, hidden: true) {
-					paragraph "<b>Notes:</b>"
-					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume will be adjusted accordingly.<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
-				paragraph "ie. [L]Amy is home or [M]Window has been open too long or [H]Heat is on and window is open"
-				paragraph "Notice there is no spaces between the option and the message."
-				}
-				section() {
-					paragraph "Low priority will use the standard volume set in the Volume Control Section"
-					input "volMed", "number", title: "Speaker volume for Medium priority", description: "0-100", required: true, width: 6
-					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
-				}
-			}
-			section() {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) {
         	   	input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
             	  	input "speaker", "capability.musicPlayer", title: "Choose speaker", required: true, submitOnChange: true
@@ -145,6 +131,34 @@ def pageConfig() {
 				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
     		 	if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
 			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
+				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
+				if((messagePriority) && (speechMode == "Speech Synth")) input(name: "priorityVoices", type: "bool", defaultValue: "false", title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange: true)
+			}
+			if(messagePriority) {
+				section("Instructions for Message Priority:", hideable: true, hidden: true) {
+					paragraph "<b>Notes:</b>"
+					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
+				paragraph "ie. [L]Amy is home or [M]Window has been open too long or [H]Heat is on and window is open"
+				paragraph "Notice there is no spaces between the option and the message."
+				}
+				section() {
+					paragraph "Low priority will use the standard volume set in the Volume Control Section"
+					input "volMed", "number", title: "Speaker volume for Medium priority", description: "0-100", required: true, width: 6
+					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
+				}
+				if((priorityVoices) && (speechMode == "Speech Synth")) {
+					section("Select Voices for different priorities") {
+						input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false
+						input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
+						input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
+					}
+				} else {
+					section() {
+						paragraph "* Priority Voices are only available when using Speech Synth option."
+					}
+				}
+			}	
     		if(speechMode){ 
 				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         			input "fromTime", "time", title: "From", required: false
@@ -404,7 +418,8 @@ def initializeSpeaker() {
 						  					  
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
-	if(triggerMode == "Always_On") alwaysOnHandler()
+	if(pauseApp == false) {
+		if(triggerMode == "Always_On") alwaysOnHandler()
 		if(atomicState.sZone == true){
 			checkTime()
 			checkVol()
@@ -431,7 +446,17 @@ def letsTalk() {
 					atomicState.speechDuration2 = speechDuration * 1000
 					if(gInitialize) initializeSpeaker()
 					if(volSpeech) speaker.setVolume(state.volume)
-					speaker.speak(state.lastSpoken)
+					if(voiceSelection) {
+						if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected}"
+						def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
+						def ttsValues = "${tts}".split(",")
+						def ttsMessage = ttsValues[1].drop(5)
+						def newMessage = ttsMessage.replaceAll("]","")
+						if(logEnable) log.debug "In letsTalk - ${newMessage}"
+						speaker.playTrack(newMessage)
+					} else {
+						speaker.speak(state.lastSpoken)
+					}
 					pauseExecution(atomicState.speechDuration2)
 					if(volRestore) speaker.setVolume(volRestore)
 				}
@@ -445,6 +470,9 @@ def letsTalk() {
 		} else {
 			log.info "${app.label} - Zone is Off, can not speak."
 		}
+	} else {
+		log.info "${app.label} - App is paused, can not speak."
+	}
 }
 
 def checkTime() {
@@ -477,9 +505,17 @@ def checkVol() {
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 	if(messagePriority) {
 		if(logEnable) log.debug "In checkVol - priority: ${state.priority}"
-		if(state.priority == "[L]" || state.priority == "[l]") { }			// No change
-		if(state.priority == "[M]" || state.priority == "[m]") {state.volume = volMed}
-		if(state.priority == "[H]" || state.priority == "[h]") {state.volume = volHigh}
+		if(state.priority == "[L]" || state.priority == "[l]") {
+			state.voiceSelected = voiceLow
+		}
+		if(state.priority == "[M]" || state.priority == "[m]") {
+			state.volume = volMed
+			state.voiceSelected = voiceMed
+		}
+		if(state.priority == "[H]" || state.priority == "[h]") {
+			state.volume = volHigh
+			state.voiceSelected = voiceHigh
+		}
 		if(logEnable) log.debug "In checkVol - priority volume: ${state.volume}"
 	}
 }
@@ -513,12 +549,22 @@ def sendPush() {
 	}
 }
 
+def getVoices(){						// Modified from @mike.maxwell
+	if(logEnable) log.debug "In getVoices..."
+	def voices = getTTSVoices()
+	voices.sort{ a, b ->
+		a.language <=> b.language ?: a.gender <=> b.gender ?: a.gender <=> b.gender  
+	}    
+    state.list = voices.collect{ ["${it.name}": "${it.language}:${it.gender}:${it.name}"] }
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
     if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
+	if(messagePriority == null){messagePriority = false}
 	if(atomicState.sZone == null){atomicState.sZone = false}
 	if(state.IH1 == null){state.IH1 = "blank"}
 	if(state.IH2 == null){state.IH2 = "blank"}
