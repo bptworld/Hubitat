@@ -449,10 +449,8 @@ def letsTalk() {
 					if(voiceSelection) {
 						if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected}"
 						def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
-						def ttsValues = "${tts}".split(",")
-						def ttsMessage = ttsValues[1].drop(5)
-						def newMessage = ttsMessage.replaceAll("]","")
-						if(logEnable) log.debug "In letsTalk - ${newMessage}"
+						def uriMessage = "${tts.get('uri')}"
+						if(logEnable) log.debug "In letsTalk - ${uriMessage}"
 						speaker.playTrack(newMessage)
 					} else {
 						speaker.speak(state.lastSpoken)
