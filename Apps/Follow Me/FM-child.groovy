@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.1.5 - 05/11/19 - Added two more voice options, just for fun! - F1 and F2
  *  V1.1.4 - 05/09/19 - Added ability to change the voice used by priority - speechSynth only
  *  V1.1.3 - 04/30/19 - Attempt to fix bug in checkTime
  *  V1.1.2 - 04/15/19 - More Code cleanup
@@ -52,7 +53,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.4"
+	state.version = "v1.1.5"
 }
 
 definition(
@@ -138,7 +139,7 @@ def pageConfig() {
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
 					paragraph "<b>Notes:</b>"
-					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
+					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[F1]</b> - Fun 1<br><b>[F2]</b> - Fun 2<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
 				paragraph "ie. [L]Amy is home or [M]Window has been open too long or [H]Heat is on and window is open"
 				paragraph "Notice there is no spaces between the option and the message."
 				}
@@ -149,6 +150,8 @@ def pageConfig() {
 				}
 				if((priorityVoices) && (speechMode == "Speech Synth")) {
 					section("Select Voices for different priorities") {
+						input "voiceFun1", "enum", title: "Select Voice for priority - Fun 1", options: state.list, required: false
+						input "voiceFun2", "enum", title: "Select Voice for priority - Fun 2", options: state.list, required: false
 						input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false
 						input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
 						input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
@@ -503,6 +506,12 @@ def checkVol() {
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 	if(messagePriority) {
 		if(logEnable) log.debug "In checkVol - priority: ${state.priority}"
+		if(state.priority == "[F1]" || state.priority == "[f1]") {
+			state.voiceSelected = voiceFun1
+		}
+		if(state.priority == "[F2]" || state.priority == "[f2]") {
+			state.voiceSelected = voiceFun2
+		}
 		if(state.priority == "[L]" || state.priority == "[l]") {
 			state.voiceSelected = voiceLow
 		}
