@@ -38,8 +38,8 @@
  *
  *  Changes:
  *
- *
- * V1.0.3 - 04/16/19 - Code cleanup, added importUrl
+ * v2.0.4 - 05/12/2019 - Added Yesterday data by request
+ * V1.0.3 - 04/16/2019 - Code cleanup, added importUrl
  * v2.0.0 - 04/10/2019 - Code cleanup. Added 'Tomorrow forecast', Updated display for Hubitat dashboard tile (@bptworld)
  * v1.0.0 - 12/10/2017 - Original ST 'Pollen Virtual Sensor' - Author: jschlackman (james@schlackman.org)
  *			ST version: https://github.com/jschlackman/PollenThing
@@ -47,10 +47,13 @@
  */
 
 metadata {
-	definition (name: "Pollen Forecaster", namespace: "bptworld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy") {
+	definition (name: "Pollen Forecaster", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy") {
 		capability "Sensor"
 		capability "Polling"
 
+		attribute "indexYesterday", "number"
+		attribute "categoryYesterday", "string"
+		attribute "triggersYesterday", "string"
 		attribute "indexToday", "number"
 		attribute "categoryToday", "string"
 		attribute "triggersToday", "string"
@@ -59,6 +62,7 @@ metadata {
 		attribute "triggersTomorrow", "string"
 		attribute "location", "string"
 		
+		attribute "yesterdayTile", "string"
 		attribute "todayTile", "string"
 		attribute "tomorrowTile", "string"
 	}
@@ -107,6 +111,31 @@ def poll() {
 	try {
 		httpGet(params) {resp ->
 			resp.data.Location.periods.each {period ->
+				if(period.Type == 'Yesterday') {
+					def catName = ""
+					def indexNum = period.Index.toFloat()
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					def triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					state.indexYesterday = period.Index
+					state.categoryYesterday = catName
+					state.triggersYesterday = triggersList
+					
+					sendEvent(name: "indexYesterday", value: state.indexYesterday, displayed: true)
+					sendEvent(name: "categoryYesterday", value: state.categoryYesterday, displayed: true)
+					sendEvent(name: "triggersYesterday", value: state.triggersYesterday, displayed: true)
+				}
+				
 				if(period.Type == 'Today') {
 					def catName = ""
 					def indexNum = period.Index.toFloat()
@@ -169,12 +198,23 @@ def poll() {
 		if(logEnable) log.debug "Could not retrieve pollen data: $e"
 		sendEvent(name: "location", value: "Could not retrieve data from API", displayed: true)
 	}
+	yesterdayTileMap()
 	todayTileMap()
 	tomorrowTileMap()
 }
 
 def configure() {
 	poll()
+}
+
+def yesterdayTileMap() {
+	if(logEnable) log.debug "In yesterdayTileMap..."
+	state.appDataYesterday = "<table width='100%'>"
+	state.appDataYesterday+= "<tr><td><div style='font-size:.${fontSizeTriggers}em;'>Pollen Forecast Today<br>${state.location}</div></td></tr>"
+	state.appDataYesterday+= "<tr><td><div style='font-size:.${fontSizeIndex}em;'>${state.indexYesterday} - ${state.categoryYesterday}</div></td></tr>"
+	state.appDataYesterday+= "<tr><td><div style='font-size:.${fontSizeTriggers}em;'>${state.triggersYesterday}</div></td></tr>"
+	state.appDataYesterday+= "</table>"
+	sendEvent(name: "yesterdayTile", value: state.appDataYesterday, displayed: true)
 }
 
 def todayTileMap() {
@@ -196,4 +236,3 @@ def tomorrowTileMap() {
 	state.appDataTomorrow+= "</table>"
 	sendEvent(name: "tomorrowTile", value: state.appDataTomorrow, displayed: true)
 }	
-
