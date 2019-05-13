@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 05/13/19 - Added pushover notifications
  *  V1.0.2 - 05/07/19 - Fix one thing break another
  *  V1.0.1 - 05/07/19 - Fixed typo with selecting devices
  *  V1.0.0 - 04/22/19 - Initial release.
@@ -46,7 +47,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -54,7 +55,7 @@ definition(
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers and restrictions.",
-    category: "",
+    category: "Convenience",
 	parent: "BPTWorld:Simple Irrigation",
     iconUrl: "",
     iconX2Url: "",
@@ -94,6 +95,9 @@ def pageConfig() {
 			input "rainSensor", "capability.switch", title: "Rain Switch", required: false
 			input "windSensor", "capability.switch", title: "Wind Switch", required: false
 			input "otherSensor", "capability.switch", title: "Other Switch", required: false
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
+			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
@@ -136,6 +140,8 @@ def turnValveOn1() {
 				def delay = onLength1 * 60
 				if(logEnable) log.debug "In turnValveOn1 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength1} minutes"
 				log.warn "${valveDevice} is now ${state.valveStatus}"
+				state.msg = "${valveDevice} is now ${state.valveStatus}"
+				if(sendPushMessage) pushHandler()
 				runIn(delay, turnValveOff)
 			}
 		} else {
@@ -161,6 +167,8 @@ def turnValveOn2() {
 			def delay = onLength2 * 60
 			if(logEnable) log.debug "In turnValveOn2 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength2} minutes"
 			log.warn "${valveDevice} is now ${state.valveStatus}"
+			state.msg = "${valveDevice} is now ${state.valveStatus}"
+			if(sendPushMessage) pushHandler()
 			runIn(delay, turnValveOff)
 		}
 	} else {
@@ -182,12 +190,15 @@ def turnValveOn3() {
 			def delay = onLength3 * 60
 			if(logEnable) log.debug "In turnValveOn3 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength3} minutes"
 			log.warn "${valveDevice} is now ${state.valveStatus}"
+			state.msg += "${valveDevice} is now ${state.valveStatus}"
+			if(sendPushMessage) pushHandler()
 			runIn(delay, turnValveOff)
 		}
 	} else {
 		log.info "${app.label} didn't pass weather check. Water not turned on."
+		state.msg = "${app.label} didn't pass weather check. ${valveDevice} will not turn on."
 		turnValveOff()
-	}	
+	}
 }
 
 def turnValveOff() {
@@ -200,6 +211,8 @@ def turnValveOff() {
 	} else {
 		if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
 		log.warn "${valveDevice} is now ${state.valveStatus}"
+		state.msg = "${valveDevice} is now ${state.valveStatus}"
+		if(sendPushMessage) pushHandler()
 	}
 }
 
@@ -238,6 +251,14 @@ def dayOfTheWeekHandler() {
 	}
 }
 
+def pushHandler(){
+	if(logEnable) log.debug "In pushNow..."
+	theMessage = "${app.label} - ${state.msg}"
+	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
+   	sendPushMessage.deviceNotification(theMessage)
+	state.msg = ""
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
@@ -247,6 +268,7 @@ def setDefaults(){
 	if(state.windDevice == null){state.windDevice = "off"}
 	if(state.otherDevice == null){state.otherDevice = "off"}
 	if(state.daysMatch == null){state.daysMatch = "no"}
+	if(state.msg == null){state.msg = ""}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
