@@ -137,13 +137,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.1.5",
+  "FollowMeChildVersion": "v1.1.6",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.1.5 - 05/11/19 - Added two more voice options, just for fun! - F1 and F2",
+  "FollowMeUpdateNote": "V1.1.6 - 05/14/19 - Changed voice options to just one Fun (F) and a Random (R)",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
