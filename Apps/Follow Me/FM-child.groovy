@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.1.6 - 05/14/19 - Changed voice options to just one Fun (F) and a Random (R)
  *  V1.1.5 - 05/11/19 - Added two more voice options, just for fun! - F1 and F2
  *  V1.1.4 - 05/09/19 - Added ability to change the voice used by priority - speechSynth only
  *  V1.1.3 - 04/30/19 - Attempt to fix bug in checkTime
@@ -53,7 +54,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.5"
+	state.version = "v1.1.6"
 }
 
 definition(
@@ -139,7 +140,7 @@ def pageConfig() {
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
 					paragraph "<b>Notes:</b>"
-					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[F1]</b> - Fun 1<br><b>[F2]</b> - Fun 2<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
+					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[F]</b> - Fun<br><b>[R]</b> - Random<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
 				paragraph "ie. [L]Amy is home or [M]Window has been open too long or [H]Heat is on and window is open"
 				paragraph "Notice there is no spaces between the option and the message."
 				}
@@ -150,8 +151,8 @@ def pageConfig() {
 				}
 				if((priorityVoices) && (speechMode == "Speech Synth")) {
 					section("Select Voices for different priorities") {
-						input "voiceFun1", "enum", title: "Select Voice for priority - Fun 1", options: state.list, required: false
-						input "voiceFun2", "enum", title: "Select Voice for priority - Fun 2", options: state.list, required: false
+						input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false
+						input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true 
 						input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false
 						input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
 						input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
@@ -301,87 +302,87 @@ def presenceSensorHandler5(evt){
 
 def alwaysOnHandler() {
 	if(logEnable) log.debug "In alwaysOnHandler..."
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
-			if(logEnable) log.debug "In alwaysOnHandler - setting sZone to true"
-			atomicState.sZone = true
-			speakerStatus = "${app.label}:${atomicState.sZone}"
-			gvDevice.sendFollowMeSpeaker(speakerStatus)
-		}
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		if(logEnable) log.debug "In alwaysOnHandler - setting sZone to true"
+		atomicState.sZone = true
+		speakerStatus = "${app.label}:${atomicState.sZone}"
+		gvDevice.sendFollowMeSpeaker(speakerStatus)
+	}
 }
 
 def contactSensorHandler(evt) {
 	if(logEnable) log.debug "In contactSensorHandler..."
-		state.contactStatus = evt.value
-		if(logEnable) log.debug "In contactSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.contactStatus}"
-		if(contactOption == "Closed") {
-			if(state.contactStatus == "closed") {
-				if(pauseApp == true){log.warn "${app.label} - App paused"}
-    			if(pauseApp == false){
-					if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
-					atomicState.sZone = true
-					speakerStatus = "${app.label}:${atomicState.sZone}"
-					gvDevice.sendFollowMeSpeaker(speakerStatus)
-				}
-			}
-			if(state.contactStatus == "open") {
-				sOff = sZoneWaiting * 60
-				runIn(sOff,speechOff)
+	state.contactStatus = evt.value
+	if(logEnable) log.debug "In contactSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.contactStatus}"
+	if(contactOption == "Closed") {
+		if(state.contactStatus == "closed") {
+			if(pauseApp == true){log.warn "${app.label} - App paused"}
+    		if(pauseApp == false){
+				if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
+				atomicState.sZone = true
+				speakerStatus = "${app.label}:${atomicState.sZone}"
+				gvDevice.sendFollowMeSpeaker(speakerStatus)
 			}
 		}
-		if(contactOption == "Open") {
-			if(state.contactStatus == "open") {
-				if(pauseApp == true){log.warn "${app.label} - App paused"}
-    			if(pauseApp == false){
-					if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
-					atomicState.sZone = true
-					speakerStatus = "${app.label}:${atomicState.sZone}"
-					gvDevice.sendFollowMeSpeaker(speakerStatus)
-				}
-			}
-			if(state.contactStatus == "closed") {
-				sOff = sZoneWaiting * 60
-				runIn(sOff,speechOff)
+		if(state.contactStatus == "open") {
+			sOff = sZoneWaiting * 60
+			runIn(sOff,speechOff)
+		}
+	}
+	if(contactOption == "Open") {
+		if(state.contactStatus == "open") {
+			if(pauseApp == true){log.warn "${app.label} - App paused"}
+    		if(pauseApp == false){
+				if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
+				atomicState.sZone = true
+				speakerStatus = "${app.label}:${atomicState.sZone}"
+				gvDevice.sendFollowMeSpeaker(speakerStatus)
 			}
 		}
+		if(state.contactStatus == "closed") {
+			sOff = sZoneWaiting * 60
+			runIn(sOff,speechOff)
+		}
+	}
 }
 
 def motionSensorHandler(evt) {
 	if(logEnable) log.debug "In motionSensorHandler..."
-		state.motionStatus = evt.value
-		if(logEnable) log.debug "In motionSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.motionStatus}"
-		if(state.motionStatus == "active") {
-			if(pauseApp == true){log.warn "${app.label} - App paused"}
-    		if(pauseApp == false){
-				if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
-				atomicState.sZone = true
-				speakerStatus = "${app.label}:${atomicState.sZone}"
-				gvDevice.sendFollowMeSpeaker(speakerStatus)
-			}
+	state.motionStatus = evt.value
+	if(logEnable) log.debug "In motionSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.motionStatus}"
+	if(state.motionStatus == "active") {
+		if(pauseApp == true){log.warn "${app.label} - App paused"}
+    	if(pauseApp == false){
+			if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
+			atomicState.sZone = true
+			speakerStatus = "${app.label}:${atomicState.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
-		if(state.motionStatus == "inactive") {
-			sOff = sZoneWaiting * 60
-			runIn(sOff,speechOff)
-		}
+	}
+	if(state.motionStatus == "inactive") {
+		sOff = sZoneWaiting * 60
+		runIn(sOff,speechOff)
+	}
 }
 
 def switchHandler(evt) {
 	if(logEnable) log.debug "In switchHandler..."
-		state.switchStatus = evt.value
-		if(logEnable) log.debug "In switchHandler - sZone: ${atomicState.sZone} - Status: ${state.switchStatus}"
-		if(state.switchStatus == "on") {
-			if(pauseApp == true){log.warn "${app.label} - App paused"}
-    		if(pauseApp == false){
-				if(logEnable) log.debug "In switchHandler - setting sZone to true"
-				atomicState.sZone = true
-				speakerStatus = "${app.label}:${atomicState.sZone}"
-				gvDevice.sendFollowMeSpeaker(speakerStatus)
-			}
+	state.switchStatus = evt.value
+	if(logEnable) log.debug "In switchHandler - sZone: ${atomicState.sZone} - Status: ${state.switchStatus}"
+	if(state.switchStatus == "on") {
+		if(pauseApp == true){log.warn "${app.label} - App paused"}
+    	if(pauseApp == false){
+			if(logEnable) log.debug "In switchHandler - setting sZone to true"
+			atomicState.sZone = true
+			speakerStatus = "${app.label}:${atomicState.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
-		if(state.switchStatus == "off") {
-			sOff = sZoneWaiting * 60
-			runIn(sOff,speechOff)
-		}
+	}
+	if(state.switchStatus == "off") {
+		sOff = sZoneWaiting * 60
+		runIn(sOff,speechOff)
+	}
 }
 
 def lastSpokenHandler(speech) { 
@@ -390,7 +391,7 @@ def lastSpokenHandler(speech) {
 	state.unique = speech.value.toString()
 	state.cleanUp = state.unique.drop(1)
 	state.priority = state.cleanUp.take(3)
-	if(state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
+	if(state.priority == "[F]" || state.priority == "[R]" || state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[f]" || state.priority == "[r]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
 		state.lastSpoken = state.cleanUp.drop(3)
 	} else {
 		state.lastSpoken = state.cleanUp
@@ -449,13 +450,14 @@ def letsTalk() {
 					atomicState.speechDuration2 = speechDuration * 1000
 					if(gInitialize) initializeSpeaker()
 					if(volSpeech) speaker.setVolume(state.volume)
-					if(voiceSelection) {
-						if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected}"
+					if(priorityVoices) {
+						if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
 						def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 						def uriMessage = "${tts.get('uri')}"
 						if(logEnable) log.debug "In letsTalk - ${uriMessage}"
-						speaker.playTrack(newMessage)
+						speaker.playTrack(uriMessage)
 					} else {
+						if(logEnable) log.debug "In letsTalk - Using Hubitat's voice"
 						speaker.speak(state.lastSpoken)
 					}
 					pauseExecution(atomicState.speechDuration2)
@@ -506,11 +508,12 @@ def checkVol() {
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 	if(messagePriority) {
 		if(logEnable) log.debug "In checkVol - priority: ${state.priority}"
-		if(state.priority == "[F1]" || state.priority == "[f1]") {
-			state.voiceSelected = voiceFun1
+		if(state.priority == "[F]" || state.priority == "[f]") {
+			state.voiceSelected = voiceFun
 		}
-		if(state.priority == "[F2]" || state.priority == "[f2]") {
-			state.voiceSelected = voiceFun2
+		if(state.priority == "[R]" || state.priority == "[r]") {
+			randomHandler()
+			state.voiceSelected = state.randVoice
 		}
 		if(state.priority == "[L]" || state.priority == "[l]") {
 			state.voiceSelected = voiceLow
@@ -563,6 +566,15 @@ def getVoices(){						// Modified from @mike.maxwell
 		a.language <=> b.language ?: a.gender <=> b.gender ?: a.gender <=> b.gender  
 	}    
     state.list = voices.collect{ ["${it.name}": "${it.language}:${it.gender}:${it.name}"] }
+}
+
+def randomHandler() {
+	if(logEnable) log.debug "In randomHandler..."
+	vSize = voiceRandom.size()
+	count = vSize.toInteger()
+    def randomKey = new Random().nextInt(count)
+	state.randVoice = voiceRandom[randomKey]
+	if(logEnable) log.debug "In randomHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, randomVoice: ${state.randVoice}"
 }
 
 // ********** Normal Stuff **********
