@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.5 - 05/17/19 - Time can now be spoken in 24 or 12 hour formats
  *  V1.1.4 - 04/25/19 - Fixed a bug when selecting 'Jun'
  *  V1.1.3 - 04/25/19 - Some code tweaking. Killed a few bugs.
  *  V1.1.2 - 04/22/19 - Fixed and error with Push messages. Finally fixed the code so you don't have to flick the 'control switch'
@@ -59,7 +60,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.4"
+	state.version = "v1.1.5"
 }
 
 definition(
@@ -318,7 +319,7 @@ def pageConfig() {
 		if(oMessage) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 				input(name: "oRandom", type: "bool", defaultValue: "false", title: "<b>Random Message?</b>", description: "Random", submitOnChange: "true")
-				paragraph "%device% - will speak the Device Name, %time% - will speak the current time"
+				paragraph "%device% - will speak the Device Name<br>%time% - will speak the current time in 24 h<br>%time1% - will speak the current time in 12 h"
 				if(!oRandom) {
 					if(xPower || xTemp || xHumidity) {
 						if(oSetPointHigh) input "messageH", "text", title: "Message to speak when reading is too high", required: true, submitOnChange: true, defaultValue: "Temp is too high"
@@ -989,6 +990,7 @@ def messageHandler() {
 	theMessage = theMessage.toLowerCase()
 	if (theMessage.toLowerCase().contains("%device%")) {theMessage = theMessage.toLowerCase().replace('%device%', state.setPointDevice)}
 	if (theMessage.toLowerCase().contains("%time%")) {theMessage = theMessage.toLowerCase().replace('%time%', state.theTime)}
+	if (theMessage.toLowerCase().contains("%time1%")) {theMessage = theMessage.toLowerCase().replace('%time1%', state.theTime1)}
 	state.theMessage = "${theMessage}"
 	if(logEnable) log.debug "In messageHandler - msg: ${state.theMessage}"
 }
@@ -998,7 +1000,9 @@ def currentDateTime() {
 	Date date = new Date()
 	String datePart = date.format("dd/MM/yyyy")
 	String timePart = date.format("HH:mm")
-	state.theTime = timePart
+	String timePart1 = date.format("h:mm a")
+	state.theTime = timePart		// 24 h
+	state.theTime1 = timePart1		// AM PM
 	if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
 }
 
