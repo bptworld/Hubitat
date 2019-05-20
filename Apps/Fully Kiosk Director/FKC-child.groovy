@@ -33,13 +33,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 05/20/19 - Added Time to triggers
  *  V1.0.1 - 05/08/19 - Fixed an issue with loadStartURL, added a delay between commands
  *  V1.0.0 - 05/07/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -75,6 +76,7 @@ def pageConfig() {
 			input "myContact", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
 			input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the event", required: false, multiple: true
 			input "mySwitch", "capability.switch", title: "Select the switch to activate the event", required: false, multiple: true
+			input "timeToRun", "time", title: "Select time to activate the event", required: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" BEFORE Display Options")) {
 			input(name: "optBringFullyToFront1", type: "bool", defaultValue: "false", title: "Bring Fully to Front?", description: "bring to front", submitOnChange: "true", width: 6)
@@ -160,6 +162,7 @@ def initialize() {
 	if(myContact) subscribe(myContact, "contact", contactSensorHandler)
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
+	if(timeToRun) schedule(timeToRun, timeHandler)
 }
 
 def contactSensorHandler(evt) {
@@ -209,7 +212,16 @@ def switchHandler(evt) {
 		}
 	}
 }
-						  					  
+						  
+def timeHandler() {
+	if(logEnable) log.debug "In timeHandler..."
+	if(pauseApp == true){log.warn "${app.label} - App paused"}
+    if(pauseApp == false){
+		beginHandler()
+		if(triggerORTime) runIn(pTime,endHandler)
+	}
+}
+
 def beginHandler() {
 	checkTime()
 	thePause = 1000
