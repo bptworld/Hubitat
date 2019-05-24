@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.3.4 - 05/24/19 - Fixed typo
  *  V1.3.3 - 04/26/19 - Fix Device turning on when there is nothing to report.
  *  V1.3.2 - 04/22/19 - Put a trap in to catch devices that have no previous activity.
  *  V1.3.1 - 04/15/19 - More Code cleanup
@@ -78,7 +79,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.3.3"
+	state.version = "v1.3.4"
 }
 
 definition(
@@ -842,7 +843,7 @@ def isThereData(){
 	if(logEnable) log.debug "In isThereData..."
 	if(triggerMode == "Activity") {
 		if(logEnable) log.debug "In isThereData - Activity - ${state.timeSinceCount}"
-		if(timeSinceCount >= 0) {
+		if(state.timeSinceCount >= 0) {
 			isDataActivityDevice.on()
 		} else {
 			isDataActivityDevice.off()
