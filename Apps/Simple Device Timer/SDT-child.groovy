@@ -2,7 +2,7 @@
  *  ****************  Simple Device Timer Child App  ****************
  *
  *  Design Usage:
- *  Simple Device Timer with safety checks, reminders, multiple timers and restrictions.
+ *  Simple Device Timer with safety checks, multiple timers, notifications and restrictions.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
@@ -50,7 +50,7 @@ definition(
     name: "Simple Device Timer Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Simple Device Timer with safety checks, reminders, multiple timers and restrictions.",
+    description: "Simple Device Timer with safety checks, multiple timers, notifications and restrictions.",
     category: "Convenience",
 	parent: "BPTWorld:Simple Device Timer",
     iconUrl: "",
@@ -68,7 +68,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Simple Device Timer with safety checks, reminders, multiple timers and restrictions."
+    		paragraph "Simple Device Timer with safety checks, multiple timers, notifications and restrictions."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Devices")) {
 			input "valveDevice", "capability.switch", title: "Select Switch Device", required: true	
