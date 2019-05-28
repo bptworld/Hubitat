@@ -2,7 +2,7 @@
  *  ****************  Simple Device Timer Parent App  ****************
  *
  *  Design Usage:
- *  Simple Device Timer with safety checks, reminders, multiple timers and restrictions.
+ *  Simple Device Timer with safety checks, multiple timers, notifications and restrictions.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -46,7 +46,7 @@ definition(
     name:"Simple Device Timer",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Simple Device Timer with safety checks, reminders, multiple timers and restrictions.",
+    description: "Simple Device Timer with safety checks, multiple timers, notifications and restrictions.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -80,12 +80,12 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Simple Device Timer with safety checks, reminders, multiple timers and restrictions.</div>"
+				paragraph "<div style='color:#1A77C9'>Simple Device Timer with safety checks, multiple timers, notifications and restrictions.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "Simple Device Timer with safety checks, reminders, multiple timers and restrictions."
+				paragraph "Simple Device Timer with safety checks, multiple timers, notifications and restrictions."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Simple Device Timer Child", namespace: "BPTWorld", title: "<b>Add a new 'Simple Device Timer' child</b>", multiple: true)
