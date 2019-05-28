@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 05/24/19 - Added more safety features, max retries
  *  V1.0.3 - 05/13/19 - Added pushover notifications
  *  V1.0.2 - 05/07/19 - Fix one thing break another
  *  V1.0.1 - 05/07/19 - Fixed typo with selecting devices
@@ -47,7 +48,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -89,15 +90,20 @@ def pageConfig() {
 			input "startTime3", "time", title: "Time to turn on 3", required: false, width: 6
         	input "onLength3", "number", title: "Leave valve on for how long (in minutes)", required: false, width: 6
 		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" Safety Features")) {
+			paragraph "App can send the open/closed command several times with a 20 second delay between commands, until either max tries is reached or device reports that it is open/closed. Once max tries is reached, a notification will can be sent (if selected below)."
+			input "maxTriesOn", "number", title: "Attempts to OPEN", required: true, defaultValue: 3, width: 6
+			input "maxTriesOff", "number", title: "Attempts to CLOSE", required: true, defaultValue: 5, width: 6
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Check the Weather")) {
-			paragraph "Simple Irrigation can be disabled using any 'Switch' type device. I highly recommend using WATO to turn a virtual switch on/off based on any device parameter."
+			paragraph "Disable app using any 'Switch' type device. I highly recommend using WATO to turn a virtual switch on/off based on any device parameter."
 			paragraph "If ANY of the options below are ON, watering will be cancelled."
 			input "rainSensor", "capability.switch", title: "Rain Switch", required: false
 			input "windSensor", "capability.switch", title: "Wind Switch", required: false
 			input "otherSensor", "capability.switch", title: "Other Switch", required: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
+			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple: true, required: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
@@ -133,9 +139,15 @@ def turnValveOn1() {
 		if(state.canWater == "yes") {
 			if(logEnable) log.debug "In turnValveOn1..."
 			if(state.valveStatus == "closed") {
-				if(logEnable) log.debug "In turnValveOn1 - trying to open - will check again in 10 seconds"
+				valveTry1 = valveTry1 + 1
+				if(logEnable) log.debug "In turnValveOn1 - trying to turn on - will check again in 20 seconds"
 				valveDevice.open()
-    			runIn(10, turnValveOn1)		// Repeat for safety
+				if(valveTry1 <= maxTriesOn) runIn(20, turnValveOn1)		// Repeat for safety
+				if(valveTry1 > maxTriesOn) {
+					log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
+					state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
+					if(sendPushMessage) pushHandler()
+				}
 			} else {
 				def delay = onLength1 * 60
 				if(logEnable) log.debug "In turnValveOn1 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength1} minutes"
@@ -145,11 +157,12 @@ def turnValveOn1() {
 				runIn(delay, turnValveOff)
 			}
 		} else {
-			log.info "${app.label} didn't pass weather check. Water not turned on."
+			log.info "${app.label} didn't pass weather check. ${valveDevice} not turned on."
 			turnValveOff()
 		}
 	} else {
-		log.info "${app.label} didn't pass days check. Water not turned on."
+		log.info "${app.label} didn't pass weather check. Water not turned on."
+		state.msg = "${app.label} didn't pass weather check. ${valveDevice} will not turn on."
 		turnValveOff()
 	}	
 }
@@ -159,10 +172,17 @@ def turnValveOn2() {
 	checkForWeather()
 	if(state.canWater == "yes") {
 		if(logEnable) log.debug "In turnValveOn2..."
+		def valveTry2 = 1
 		if(state.valveStatus == "closed") {
-			if(logEnable) log.debug "In turnValveOn2 - trying to open - will check again in 10 seconds"
+			valveTry2 = valveTry2 + 1
+			if(logEnable) log.debug "In turnValveOn2 - trying to turn on - will check again in 20 seconds"
 			valveDevice.open()
-    		runIn(10, turnValveOn2)		// Repeat for safety
+    		if(valveTry2 <= maxTriesOn) runIn(20, turnValveOn2)		// Repeat for safety
+			if(valveTry2 > maxTriesOn) {
+				log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
+				state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
+				if(sendPushMessage) pushHandler()
+			}
 		} else {
 			def delay = onLength2 * 60
 			if(logEnable) log.debug "In turnValveOn2 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength2} minutes"
@@ -173,6 +193,7 @@ def turnValveOn2() {
 		}
 	} else {
 		log.info "${app.label} didn't pass weather check. Water not turned on."
+		state.msg = "${app.label} didn't pass weather check. ${valveDevice} will not turn on."
 		turnValveOff()
 	}	
 }
@@ -182,10 +203,17 @@ def turnValveOn3() {
 	checkForWeather()
 	if(state.canWater == "yes") {
 		if(logEnable) log.debug "In turnValveOn3..."
+		def valveTry3 = 1
 		if(state.valveStatus == "closed") {
-			if(logEnable) log.debug "In turnValveOn3 - trying to open - will check again in 10 seconds"
+			valveTry3 = valveTry3 + 1
+			if(logEnable) log.debug "In turnValveOn3 - trying to turn on - will check again in 20 seconds"
 			valveDevice.open()
-    		runIn(10, turnValveOn3)		// Repeat for safety
+    		if(valveTry3 <= maxTriesOn) runIn(20, turnValveOn3)		// Repeat for safety
+			if(valveTry3 > maxTriesOn) {
+				log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
+				state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
+				if(sendPushMessage) pushHandler()
+			}
 		} else {
 			def delay = onLength3 * 60
 			if(logEnable) log.debug "In turnValveOn3 - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength3} minutes"
@@ -204,14 +232,22 @@ def turnValveOn3() {
 def turnValveOff() {
 	state.valveStatus = valveDevice.currentValue("valve")
 	if(logEnable) log.debug "In turnValveOff..."
+	def valveTryOff = 1
     if(state.valveStatus == "open") {
-		if(logEnable) log.debug "In turnValveOff - trying to close - will check again in 10 seconds"
+		valveTryOff = valveTryOff + 1
+		if(logEnable) log.debug "In turnValveOff - trying to turn off - will check again in 20 seconds"
 		valveDevice.close()
-    	runIn(10, turnValveOff)		// Repeat for safety
+    	if(valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
+		if(valveTryOff > maxTriesOff) {
+			log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
+			state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
+			if(sendPushMessage) pushHandler()
+		}
 	} else {
 		if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
 		log.warn "${valveDevice} is now ${state.valveStatus}"
-		state.msg = "${valveDevice} is now ${state.valveStatus}"
+		if(state.canWater == "yes") state.msg = "${valveDevice} is now ${state.valveStatus}"
+		if(state.canWater == "no")  state.msg = "${app.label} didn't pass weather check. ${valveDevice} is now ${state.valveStatus}"
 		if(sendPushMessage) pushHandler()
 	}
 }
