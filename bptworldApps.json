@@ -177,13 +177,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.1.5",
+  "NotifierPlusChildVersion": "v1.1.6",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.1.5 - 05/17/19 - Time can now be spoken in 24 or 12 hour formats",
+  "NotifierPlusUpdateNote": "V1.1.6 - 06/03/19 - Fixed error with every other week option",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
