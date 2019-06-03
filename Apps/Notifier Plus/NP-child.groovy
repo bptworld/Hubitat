@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.6 - 06/03/19 - Fixed error with every other week option
  *  V1.1.5 - 05/17/19 - Time can now be spoken in 24 or 12 hour formats
  *  V1.1.4 - 04/25/19 - Fixed a bug when selecting 'Jun'
  *  V1.1.3 - 04/25/19 - Some code tweaking. Killed a few bugs.
@@ -60,7 +61,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.5"
+	state.version = "v1.1.6"
 }
 
 definition(
@@ -453,7 +454,8 @@ def scheduleHandler(){
 				futureDateS = futureDate.format("MM-dd")
 				fDateS = futureDateS.split("-")
 				if(logEnable) log.debug "In scheduleHandler - 14 Date: ${futureDateS}"
-				everyO = "0 ${min} ${hour} ${fDateS[0]} ${fDateS[1]} ? *"
+				everyO = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? *"
+				if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: *"
 			}
 			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
 			if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
