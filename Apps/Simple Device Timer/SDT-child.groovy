@@ -38,12 +38,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 06/03/19 - Code cleanup
  *  V1.0.0 - 05/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -56,7 +57,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/SDT-child.groovy",
 )
 
 preferences {
@@ -121,96 +122,38 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	schedule(startTime1, turnValveOn1)
+	schedule(startTime1, turnValveOn)
 	schedule(offTime1, turnValveOff)
-	if(startTime2) schedule(startTime2, turnValveOn2)
+	if(startTime2) schedule(startTime2, turnValveOn)
 	if(startTime2) schedule(offTime2, turnValveOff)
-	if(startTime3) schedule(startTime3, turnValveOn3)
+	if(startTime3) schedule(startTime3, turnValveOn)
 	if(startTime3) schedule(offTime3, turnValveOff)
 }
 	
-def turnValveOn1() {
+def turnValveOn() {
 	state.valveStatus = valveDevice.currentValue("switch")
 	dayOfTheWeekHandler()
 	checkForWeather()
 	if(state.daysMatch == "yes") {
 		if(state.canWater == "yes") {
-			if(logEnable) log.debug "In turnValveOn1..."
-			def valveTry1 = 1
+			if(logEnable) log.debug "In turnValveOn..."
+			def valveTry = 0
 			if(state.valveStatus == "off") {
-				valveTry1 = valveTry1 + 1
-				if(logEnable) log.debug "In turnValveOn1 - trying to turn on - will check again in 20 seconds"
+				valveTry = valveTry + 1
+				if(logEnable) log.debug "In turnValveOn - trying to turn on - will check again in 20 seconds"
 				valveDevice.on()
-				if(valveTry1 <= maxTriesOn) runIn(20, turnValveOn1)		// Repeat for safety
-				if(valveTry1 > maxTriesOn) {
+				if(valveTry <= maxTriesOn) runIn(20, turnValveOn)		// Repeat for safety
+				if(valveTry > maxTriesOn) {
 					log.warn "${valveDevice} didn't turn on after ${maxTriesOn} tries."
 					state.msg = "${valveDevice} didn't turn on after ${maxTriesOn} tries. Please CHECK device."
 					if(sendPushMessage) pushHandler()
 				}
 			} else {
-				if(logEnable) log.debug "In turnValveOn1 - Valve is now ${state.valveStatus}"
+				if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}"
 				log.warn "${valveDevice} is now ${state.valveStatus}"
 				state.msg = "${valveDevice} is now ${state.valveStatus}"
 				if(sendPushMessage) pushHandler()
 			}
-		}
-	} else {
-		log.info "${app.label} didn't pass other checks. ${valveDevice} not turned on."
-		state.msg = "${app.label} didn't pass other checks. ${valveDevice} will not turn on."
-		turnValveOff()
-	}
-}
-
-def turnValveOn2() {
-	state.valveStatus = valveDevice.currentValue("switch")
-	checkForWeather()
-	if(state.canWater == "yes") {
-		if(logEnable) log.debug "In turnValveOn2..."
-		def valveTry2 = 1
-		if(state.valveStatus == "off") {
-			valveTry2 = valveTry2 + 1
-			if(logEnable) log.debug "In turnValveOn2 - trying to turn on - will check again in 20 seconds"
-			valveDevice.on()
-    		if(valveTry2 <= maxTriesOn) runIn(20, turnValveOn2)		// Repeat for safety
-			if(valveTry2 > maxTriesOn) {
-				log.warn "${valveDevice} didn't turn on after ${maxTriesOn} tries."
-				state.msg = "${valveDevice} didn't turn on after ${maxTriesOn} tries. Please CHECK device."
-				if(sendPushMessage) pushHandler()
-			}
-		} else {
-			if(logEnable) log.debug "In turnValveOn2 - Valve is now ${state.valveStatus}"
-			log.warn "${valveDevice} is now ${state.valveStatus}"
-			state.msg = "${valveDevice} is now ${state.valveStatus}"
-			if(sendPushMessage) pushHandler()
-		}
-	} else {
-		log.info "${app.label} didn't pass other checks. ${valveDevice} not turned on."
-		state.msg = "${app.label} didn't pass other checks. ${valveDevice} will not turn on."
-		turnValveOff()
-	}	
-}
-
-def turnValveOn3() {
-	state.valveStatus = valveDevice.currentValue("switch")
-	checkForWeather()
-	if(state.canWater == "yes") {
-		if(logEnable) log.debug "In turnValveOn3..."
-		def valveTry3 = 1
-		if(state.valveStatus == "off") {
-			valveTry3 = valveTry3 + 1
-			if(logEnable) log.debug "In turnValveOn3 - trying to turn on - will check again in 20 seconds"
-			valveDevice.on()
-    		if(valveTry3 <= maxTriesOn) runIn(20, turnValveOn3)		// Repeat for safety
-			if(valveTry3 > maxTriesOn) {
-				log.warn "${valveDevice} didn't turn on after ${maxTriesOn} tries."
-				state.msg = "${valveDevice} didn't turn on after ${maxTriesOn} tries. Please CHECK device."
-				if(sendPushMessage) pushHandler()
-			}
-		} else {
-			if(logEnable) log.debug "In turnValveOn3 - Valve is now ${state.valveStatus}"
-			log.warn "${valveDevice} is now ${state.valveStatus}"
-			state.msg += "${valveDevice} is now ${state.valveStatus}"
-			if(sendPushMessage) pushHandler()
 		}
 	} else {
 		log.info "${app.label} didn't pass other checks. ${valveDevice} not turned on."
