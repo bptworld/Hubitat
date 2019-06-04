@@ -207,13 +207,13 @@
   
   "SimpleIrrigationType": "App",
   "SimpleIrrigationParentVersion": "v1.0.0",
-  "SimpleIrrigationChildVersion": "v1.0.4",
+  "SimpleIrrigationChildVersion": "v1.0.5",
   "SimpleIrrigationDriverVersion": "NA",
   "SimpleIrrigationParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-parent.groovy",
   "SimpleIrrigationChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-child.groovy",
   "SimpleIrrigationDriverRawCode": "NA",
   "SimpleIrrigationDiscussion": "-",
-  "SimpleIrrigationUpdateNote": " V1.0.4 - 05/24/19 - Added more safety features, max retries",
+  "SimpleIrrigationUpdateNote": " V1.0.5 - 06/03/19 - Code cleanup",
   
   "SnapshotType": "App",
   "SnapshotParentVersion": "v1.0.0",
