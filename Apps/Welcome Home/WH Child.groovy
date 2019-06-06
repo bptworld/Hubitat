@@ -36,6 +36,8 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.1.0 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.
+ *  V2.0.9 - 06/04/19 - More code cleanup
  *  V2.0.8 - 04/18/19 - Fixed quiet time
  *  V2.0.7 - 04/15/19 - Code cleanup
  *  V2.0.6 - 04/13/19 - Made a ton of debug and info enhancements to try and make it easier to see what's going on!
@@ -64,12 +66,12 @@ import groovy.time.TimeCategory
  *  V1.0.2 - 11/29/18 - Added an Enable/Disable child app switch. Fix an issue with multiple announcements on same arrival.
  *  V1.0.1 - 11/28/18 - Upgraded some of the logic and flow of the app. Added Motion Sensor Trigger, ability to choose multiple
  *  					door, locks or motion sensors. Updated the instructions.
- *  V1.0.0 - 11/25/18 - Initial release.
+ *  V1.0.0 - 11/25/18 - Initial release. This app was influnced by message central (@Cobra) and used a template. Thank you.
  *
  */
 
 def setVersion() {
-	state.version = "v2.0.8"
+	state.version = "v2.0.9"
 }
 
 definition(
@@ -135,18 +137,18 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
-              	input "speakers", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
+              	input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
 				paragraph "<hr>"
 				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
 				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
 				if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
           	}   
         	if (speechMode == "Speech Synth"){ 
-         		input "speakers", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+         		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
       	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-			paragraph "NOTE: Not all speakers can use volume controls."
+			paragraph "NOTE: Not all speakers can use volume controls. ie. Echo devices. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
 			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
 			input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
             input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
@@ -321,85 +323,73 @@ def presenceSensorHandler5(evt){
 }
 
 def lockHandler(evt) {
-		state.lockStatus = evt.value
-		state.lockName = evt.displayName
-		if(logEnable) log.debug "In lockHandler - Lock: ${state.lockName} - Status: ${state.lockStatus}"
-		if(state.lockStatus == "unlocked") {
-			if(pauseApp == true) log.info "${app.label} has been paused."
-    		if(pauseApp == false) {
-				if(logEnable) log.debug "In lockHandler..."
-				state.presenceMap = [:]
-				state.nameCount = 0
-				state.canSpeak = "no"
-				if(presenceSensor1) getTimeDiff1()
-				if(presenceSensor2) getTimeDiff2()
-				if(presenceSensor3) getTimeDiff3()
-				if(presenceSensor4) getTimeDiff4()
-				if(presenceSensor5) getTimeDiff5()
-				if(state.canSpeak == "yes") letsTalk()
-			}
-		}
+	state.lockStatus = evt.value
+	state.lockName = evt.displayName
+	if(logEnable) log.debug "In lockHandler - Lock: ${state.lockName} - Status: ${state.lockStatus}"
+	if(state.lockStatus == "unlocked") {
+		if(logEnable) log.debug "In lockHandler..."
+		state.presenceMap = [:]
+		state.nameCount = 0
+		state.canSpeak = "no"
+		if(presenceSensor1) getTimeDiff1()
+		if(presenceSensor2) getTimeDiff2()
+		if(presenceSensor3) getTimeDiff3()
+		if(presenceSensor4) getTimeDiff4()
+		if(presenceSensor5) getTimeDiff5()
+		if(state.canSpeak == "yes") letsTalk()
+	}
 }
 
 def contactSensorHandler(evt) {
-		state.contactStatus = evt.value
-		state.contactName = evt.displayName
-		if(logEnable) log.debug "In contactSensorHandler - Contact: ${state.contactName} - Status: ${state.contactStatus}"
-		if(csOpenClosed == "Open") {
-			if(state.contactStatus == "open") {
-				if(pauseApp == true) log.info "${app.label} has been paused."
-    			if(pauseApp == false) {
-					if(logEnable) log.debug "In contactSensorHandler..."
-					state.presenceMap = [:]
-					state.nameCount = 0
-					state.canSpeak = "no"
-					if(presenceSensor1) getTimeDiff1()
-					if(presenceSensor2) getTimeDiff2()
-					if(presenceSensor3) getTimeDiff3()
-					if(presenceSensor4) getTimeDiff4()
-					if(presenceSensor5) getTimeDiff5()
-					if(state.canSpeak == "yes") letsTalk()
-				}
-			}
+	state.contactStatus = evt.value
+	state.contactName = evt.displayName
+	if(logEnable) log.debug "In contactSensorHandler - Contact: ${state.contactName} - Status: ${state.contactStatus}"
+	if(csOpenClosed == "Open") {
+		if(state.contactStatus == "open") {
+			if(logEnable) log.debug "In contactSensorHandler..."
+			state.presenceMap = [:]
+			state.nameCount = 0
+			state.canSpeak = "no"
+			if(presenceSensor1) getTimeDiff1()
+			if(presenceSensor2) getTimeDiff2()
+			if(presenceSensor3) getTimeDiff3()
+			if(presenceSensor4) getTimeDiff4()
+			if(presenceSensor5) getTimeDiff5()
+			if(state.canSpeak == "yes") letsTalk()
 		}
-		if(csOpenClosed == "Closed") {
-			if(state.contactStatus == "closed") {
-				if(pauseApp == true) log.info "${app.label} has been paused."
-    			if(pauseApp == false) {
-					if(logEnable) log.debug "In contactSensorHandler..."
-					state.presenceMap = [:]
-					state.nameCount = 0
-					state.canSpeak = "no"
-					if(presenceSensor1) getTimeDiff1()
-					if(presenceSensor2) getTimeDiff2()
-					if(presenceSensor3) getTimeDiff3()
-					if(presenceSensor4) getTimeDiff4()
-					if(presenceSensor5) getTimeDiff5()
-					if(state.canSpeak == "yes") letsTalk()
-				}
-			}
+	}
+	if(csOpenClosed == "Closed") {
+		if(state.contactStatus == "closed") {
+			if(logEnable) log.debug "In contactSensorHandler..."
+			state.presenceMap = [:]
+			state.nameCount = 0
+			state.canSpeak = "no"
+			if(presenceSensor1) getTimeDiff1()
+			if(presenceSensor2) getTimeDiff2()
+			if(presenceSensor3) getTimeDiff3()
+			if(presenceSensor4) getTimeDiff4()
+			if(presenceSensor5) getTimeDiff5()
+			if(state.canSpeak == "yes") letsTalk()
 		}
+	}
 }
 
 def motionSensorHandler(evt) {
-		state.motionStatus = evt.value
-		state.motionName = evt.displayName
-		if(logEnable) log.debug "In motionSensorHandler - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
-		if(state.motionStatus == "active") {
-			if(pauseApp == true) log.info "${app.label} has been paused."
-    		if(pauseApp == false) {
-				if(logEnable) log.debug "In motionSensorHandler..."
-				state.presenceMap = [:]
-				state.nameCount = 0
-				state.canSpeak = "no"
-				if(presenceSensor1) getTimeDiff1()
-				if(presenceSensor2) getTimeDiff2()
-				if(presenceSensor3) getTimeDiff3()
-				if(presenceSensor4) getTimeDiff4()
-				if(presenceSensor5) getTimeDiff5()
-				if(state.canSpeak == "yes") letsTalk()
-			}
-		}
+	state.motionStatus = evt.value
+	state.motionName = evt.displayName
+	if(logEnable) log.debug "In motionSensorHandler - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
+	if(state.motionStatus == "active") {
+		if(logEnable) log.debug "In motionSensorHandler..."
+		state.presenceMap = [:]
+		state.nameCount = 0
+		state.canSpeak = "no"
+		if(presenceSensor1) getTimeDiff1()
+		if(presenceSensor2) getTimeDiff2()
+		if(presenceSensor3) getTimeDiff3()
+		if(presenceSensor4) getTimeDiff4()
+		if(presenceSensor5) getTimeDiff5()
+		if(state.canSpeak == "yes") letsTalk()
+	}
 }
 										
 def getTimeDiff1() {
@@ -653,21 +643,21 @@ def letsTalk() {
 		if(logEnable) log.debug "In letsTalk - continuing"
 		if(state.timeBetween == true) {
 			messageHandler()
-			if(logEnable) log.debug "Speaker(s) in use: ${speakers}"
+			if(logEnable) log.debug "Speaker in use: ${speaker}"
 			state.theMsg = "${state.theMessage}"
 			if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
 			def delay1ms = delay1 * 1000
 			pauseExecution(delay1ms)
   			if (speechMode == "Music Player"){ 
-    			if(logEnable) log.debug "In letsTalk - Music Player - speakers: ${speakers}, vol: ${state.volume}, msg: ${state.theMsg}"
+    			if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
 				if(echoSpeaks) {
-					speakers.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
+					speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
 					state.canSpeak = "no"
 					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 				}
 				if(!echoSpeaks) {
-    				if(volSpeech) speakers.setLevel(state.volume)
-    				speakers.playTextAndRestore(state.theMsg, volRestore)
+    				if(volSpeech) speaker.setLevel(state.volume)
+    				speaker.playTextAndRestore(state.theMsg, volRestore)
 					state.canSpeak = "no"
 					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 				}
@@ -675,14 +665,15 @@ def letsTalk() {
 			if(speechMode == "Speech Synth"){ 
 				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
 				atomicState.speechDuration2 = speechDuration * 1000
-				if(logEnable) log.debug "In letsTalk - Speech Synth - speakers: ${speakers}, vol: ${state.volume}, msg: ${state.theMsg}"
-				if(volSpeech) speakers.setVolume(state.volume)
-				speakers.speak(state.theMsg)
+				if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+				if(volSpeech) speaker.setVolume(state.volume)
+				speaker.speak(state.theMsg)
 				pauseExecution(atomicState.speechDuration2)
-				if(volRestore) speakers.setVolume(volRestore)
+				if(volRestore) speaker.setVolume(volRestore)
 				state.canSpeak = "no"
 				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 			}
+			log.info "${app.label} - ${state.theMsg}"
 		} else {
 			state.canSpeak = "no"
 			if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
@@ -851,7 +842,6 @@ def globalBeenHere() {
 def setDefaults(){
 	setupNewStuff()
 	globalBeenHere()
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	state.nameCount = 0
 	state.canSpeak = "no"
@@ -871,9 +861,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
