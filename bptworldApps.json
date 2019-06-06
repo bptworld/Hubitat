@@ -177,13 +177,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.1.6",
+  "NotifierPlusChildVersion": "v1.1.7",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.1.6 - 06/03/19 - Fixed error with every other week option",
+  "NotifierPlusUpdateNote": "V1.1.7 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
