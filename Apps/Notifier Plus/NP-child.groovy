@@ -377,7 +377,7 @@ def pageConfig() {
           		}
       		}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-				paragraph "NOTE: Not all speakers can use volume controls. ie. Echo devices. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
+				paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Speech Synth."
 				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
 				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
          	   	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
