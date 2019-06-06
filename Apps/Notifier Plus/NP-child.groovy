@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.7 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.
  *  V1.1.6 - 06/03/19 - Fixed error with every other week option
  *  V1.1.5 - 05/17/19 - Time can now be spoken in 24 or 12 hour formats
  *  V1.1.4 - 04/25/19 - Fixed a bug when selecting 'Jun'
@@ -376,10 +377,10 @@ def pageConfig() {
           		}
       		}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-				paragraph "NOTE: Not all speakers can use volume controls."
+				paragraph "NOTE: Not all speakers can use volume controls. ie. Echo devices. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
 				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
 				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-         	   input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
+         	   	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
 				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
     			if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
 			}
@@ -422,53 +423,50 @@ def initialize() {
 
 def scheduleHandler(){
 	if(logEnable) log.debug "In scheduleHandler..."
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
- 	   	if(pauseApp == false){
-			if(xDate) {
-				state.monthName = month   
- 		 	  	if(state.monthName == "Jan") {state.theMonth = "1"}
-    			if(state.monthName == "Feb") {state.theMonth = "2"}
-    			if(state.monthName == "Mar") {state.theMonth = "3"}
-    			if(state.monthName == "Apr") {state.theMonth = "4"}
-    			if(state.monthName == "May") {state.theMonth = "5"}
-   			 	if(state.monthName == "Jun") {state.theMonth = "6"}
-    			if(state.monthName == "Jul") {state.theMonth = "7"}
- 			   	if(state.monthName == "Aug") {state.theMonth = "8"}
-    			if(state.monthName == "Sep") {state.theMonth = "9"}
-    			if(state.monthName == "Oct") {state.theMonth = "10"}
-    			if(state.monthName == "Nov") {state.theMonth = "11"}
-    			if(state.monthName == "Dec") {state.theMonth = "12"}
-				if(logEnable) log.debug "In scheduleHandler - day: ${day}"
-				String jDays = day.join(",")
-				state.theDays = jDays
-				state.theHour = hour
-				state.theMin = min
+	if(xDate) {
+		state.monthName = month   
+ 		if(state.monthName == "Jan") {state.theMonth = "1"}
+    	if(state.monthName == "Feb") {state.theMonth = "2"}
+    	if(state.monthName == "Mar") {state.theMonth = "3"}
+    	if(state.monthName == "Apr") {state.theMonth = "4"}
+    	if(state.monthName == "May") {state.theMonth = "5"}
+   	 	if(state.monthName == "Jun") {state.theMonth = "6"}
+    	if(state.monthName == "Jul") {state.theMonth = "7"}
+ 	   	if(state.monthName == "Aug") {state.theMonth = "8"}
+    	if(state.monthName == "Sep") {state.theMonth = "9"}
+    	if(state.monthName == "Oct") {state.theMonth = "10"}
+    	if(state.monthName == "Nov") {state.theMonth = "11"}
+    	if(state.monthName == "Dec") {state.theMonth = "12"}
+		if(logEnable) log.debug "In scheduleHandler - day: ${day}"
+		String jDays = day.join(",")
+		state.theDays = jDays
+		state.theHour = hour
+		state.theMin = min
 	
-    			state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
-				if(logEnable) log.debug "In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
-    			schedule(state.schedule, magicHappensHandler)
-			}
-			stHourly = "0 0 */2 ? * *"
-			if(everyOther) {
-				Date futureDate = new Date().plus(14)
-				futureDateS = futureDate.format("MM-dd")
-				fDateS = futureDateS.split("-")
-				if(logEnable) log.debug "In scheduleHandler - 14 Date: ${futureDateS}"
-				everyO = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? *"
-				if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: *"
-			}
-			if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-			if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
-			if(xDay && startTimeHourly) schedule(stHourly, dayOfTheWeekHandler)
-			if(xDay && everyOther) schedule(everyO, magicHappensHandler)
-			if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
-			if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
-			if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
-			if(xTemp) subscribe(tempEvent, "temperature", setPointHandler)
-			if(xPower) subscribe(powerEvent, "power", setPointHandler)
-			if(xHumidity) subscribe(humidityEvent, "humidity", setPointHandler)
-			if(xMode) subscribe(location, "mode", modeHandler)
-		}
+    	state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
+		if(logEnable) log.debug "In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
+    	schedule(state.schedule, magicHappensHandler)
+	}
+	stHourly = "0 0 */2 ? * *"
+	if(everyOther) {
+		Date futureDate = new Date().plus(14)
+		futureDateS = futureDate.format("MM-dd")
+		fDateS = futureDateS.split("-")
+		if(logEnable) log.debug "In scheduleHandler - 14 Date: ${futureDateS}"
+		everyO = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? *"
+		if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: *"
+	}
+	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
+	if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
+	if(xDay && startTimeHourly) schedule(stHourly, dayOfTheWeekHandler)
+	if(xDay && everyOther) schedule(everyO, magicHappensHandler)
+	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
+	if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
+	if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
+	if(xTemp) subscribe(tempEvent, "temperature", setPointHandler)
+	if(xPower) subscribe(powerEvent, "power", setPointHandler)
+	if(xHumidity) subscribe(humidityEvent, "humidity", setPointHandler)
+	if(xMode) subscribe(location, "mode", modeHandler)
 }
 
 def controlSwitchHandler(evt){
@@ -734,54 +732,51 @@ def setPointHandler(evt) {
 def magicHappensHandler() {
 	controlSwitchHandler()
 	if(logEnable) log.debug "In magicHappensHandler...CS: ${state.controlSwitch2}"
-		if(state.controlSwitch2 == "on") {
-			if(pauseApp == true){log.warn "${app.label} - App paused"}
- 	 	  	if(pauseApp == false){
-				if(oDelay) {
-					if(logEnable) log.debug "In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}"
-					if(minutesUp) state.realSeconds = minutesUp * 60
-					if(notifyDelay) state.notifyDel = notifyDelay * 60
-					if(maxRepeats) state.numRepeats = 1
-					if(oDimUp && oControl) slowOnHandler()
-					if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
-					if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
-					if(oMessage) runIn(state.realSeconds,messageHandler)
-					if(oPush) runIn(state.realSeconds,pushHandler)
-					if(oSpeech) runIn(state.realSeconds,letsTalk)
-					if(oDevice) runIn(state.realSeconds,switchesOnHandler)
-					if(oDevice) runIn(state.realSeconds,switchesOffHandler)
-					if(newMode) runIn(state.realSeconds, modeHandler)
-				} else if(notifyDelay) {
-					if(logEnable) log.debug "In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}"
-					if(minutesUp) state.realSeconds = minutesUp * 60
-					if(notifyDelay) state.notifyDel = notifyDelay * 60
-					if(maxRepeats) state.numRepeats = 1
-					if(oDimUp && oControl) slowOnHandler()
-					if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
-					if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
-					if(oMessage) runIn(state.notifyDel,messageHandler)
-					if(oPush) runIn(state.notifyDel,pushHandler)
-					if(oSpeech) runIn(state.notifyDel,letsTalk)
-					if(oDevice) runIn(state.notifyDel,switchesOnHandler)
-					if(oDevice) runIn(state.notifyDel,switchesOffHandler)
-					if(newMode) runIn(state.notifyDel, modeHandler)
-				} else {
-					if(minutesUp) state.realSeconds = minutesUp * 60
-					if(notifyDelay) state.notifyDel = notifyDelay * 60
-					if(oDimUp && oControl) slowOnHandler()
-					if(oDimDn && oControl) slowOffHandler()
-					if(oSetLC && oControl) dimmerOnHandler()
-					if(oMessage) messageHandler()
-					if(oPush) pushHandler()
-					if(oSpeech) letsTalk()
-					if(oDevice) switchesOnHandler()
-					if(oDevice) switchesOffHandler()
-					if(newMode) modeHandler()
-				}
-			}
+	if(state.controlSwitch2 == "on") {
+		if(oDelay) {
+			if(logEnable) log.debug "In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}"
+			if(minutesUp) state.realSeconds = minutesUp * 60
+			if(notifyDelay) state.notifyDel = notifyDelay * 60
+			if(maxRepeats) state.numRepeats = 1
+			if(oDimUp && oControl) slowOnHandler()
+			if(oDimDn && oControl) runIn(state.realSeconds,slowOffHandler)
+			if(oSetLC && oControl) runIn(state.realSeconds,dimmerOnHandler)
+			if(oMessage) runIn(state.realSeconds,messageHandler)
+			if(oPush) runIn(state.realSeconds,pushHandler)
+			if(oSpeech) runIn(state.realSeconds,letsTalk)
+			if(oDevice) runIn(state.realSeconds,switchesOnHandler)
+			if(oDevice) runIn(state.realSeconds,switchesOffHandler)
+			if(newMode) runIn(state.realSeconds, modeHandler)
+		} else if(notifyDelay) {
+			if(logEnable) log.debug "In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}"
+			if(minutesUp) state.realSeconds = minutesUp * 60
+			if(notifyDelay) state.notifyDel = notifyDelay * 60
+			if(maxRepeats) state.numRepeats = 1
+			if(oDimUp && oControl) slowOnHandler()
+			if(oDimDn && oControl) runIn(state.notifyDel,slowOffHandler)
+			if(oSetLC && oControl) runIn(state.notifyDel,dimmerOnHandler)
+			if(oMessage) runIn(state.notifyDel,messageHandler)
+			if(oPush) runIn(state.notifyDel,pushHandler)
+			if(oSpeech) runIn(state.notifyDel,letsTalk)
+			if(oDevice) runIn(state.notifyDel,switchesOnHandler)
+			if(oDevice) runIn(state.notifyDel,switchesOffHandler)
+			if(newMode) runIn(state.notifyDel, modeHandler)
 		} else {
-			log.info "${app.label} - Control Switch is OFF - No need to run."
+			if(minutesUp) state.realSeconds = minutesUp * 60
+			if(notifyDelay) state.notifyDel = notifyDelay * 60
+			if(oDimUp && oControl) slowOnHandler()
+			if(oDimDn && oControl) slowOffHandler()
+			if(oSetLC && oControl) dimmerOnHandler()
+			if(oMessage) messageHandler()
+			if(oPush) pushHandler()
+			if(oSpeech) letsTalk()
+			if(oDevice) switchesOnHandler()
+			if(oDevice) switchesOffHandler()
+			if(newMode) modeHandler()
 		}
+	} else {
+		log.info "${app.label} - Control Switch is OFF - No need to run."
+	}
 }
 
 def reverseTheMagicHandler() {
@@ -1171,7 +1166,6 @@ def setLevelandColorHandler() {
 // ********** Normal Stuff **********
 
 def setDefaults(){
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.controlSwitch2 == null){state.controlSwitch2 = "off"}
 	if(notifyDelay == null){notifyDelay = 0}
@@ -1201,9 +1195,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
