@@ -39,6 +39,8 @@
  *
  *  Changes:
  *
+
+ *  V1.0.6 - 06/09/19 - Fixed issue with multiple schedules
  *  V1.0.5 - 06/03/19 - Code cleanup
  *  V1.0.4 - 05/24/19 - Added more safety features, max retries
  *  V1.0.3 - 05/13/19 - Added pushover notifications
@@ -49,7 +51,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
 }
 
 definition(
@@ -127,9 +129,9 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	if(startTime1) schedule(startTime1, turnValveOn)
-	if(startTime2) schedule(startTime2, turnValveOn)
-	if(startTime3) schedule(startTime3, turnValveOn)
+	if(startTime1) schedule(startTime1, turnValveOn, [overwrite: false])
+	if(startTime2) schedule(startTime2, turnValveOn, [overwrite: false])
+	if(startTime3) schedule(startTime3, turnValveOn, [overwrite: false])
 }
 	
 def turnValveOn() {
@@ -238,7 +240,6 @@ def pushHandler(){
 // ********** Normal Stuff **********
 
 def setDefaults(){
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.rainDevice == null){state.rainDevice = "off"}
 	if(state.windDevice == null){state.windDevice = "off"}
@@ -261,9 +262,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
