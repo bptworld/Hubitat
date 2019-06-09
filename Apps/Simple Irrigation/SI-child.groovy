@@ -39,7 +39,6 @@
  *
  *  Changes:
  *
-
  *  V1.0.6 - 06/09/19 - Fixed issue with multiple schedules
  *  V1.0.5 - 06/03/19 - Code cleanup
  *  V1.0.4 - 05/24/19 - Added more safety features, max retries
