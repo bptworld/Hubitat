@@ -38,13 +38,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 06/09/19 - Fixed issue with multiple schedules
  *  V1.0.1 - 06/03/19 - Code cleanup
  *  V1.0.0 - 05/22/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -75,7 +76,7 @@ def pageConfig() {
 			input "valveDevice", "capability.switch", title: "Select Switch Device", required: true	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Schedule")) {
-			input(name: "days", type: "enum", title: "Only run on these days", description: "Days to run pump", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+			input(name: "days", type: "enum", title: "Only run on these days", description: "Days to run device", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 			paragraph "Select up to 3 sessions per day."
 			input "startTime1", "time", title: "Time to turn on 1", required: true, width: 6
         	input "offTime1", "time", title: "Time to turn off 1", required: true, width: 6
@@ -122,12 +123,12 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	schedule(startTime1, turnValveOn)
-	schedule(offTime1, turnValveOff)
-	if(startTime2) schedule(startTime2, turnValveOn)
-	if(startTime2) schedule(offTime2, turnValveOff)
-	if(startTime3) schedule(startTime3, turnValveOn)
-	if(startTime3) schedule(offTime3, turnValveOff)
+	schedule(startTime1, turnValveOn, [overwrite: false])
+	schedule(offTime1, turnValveOff, [overwrite: false])
+	if(startTime2) schedule(startTime2, turnValveOn, [overwrite: false])
+	if(startTime2) schedule(offTime2, turnValveOff, [overwrite: false])
+	if(startTime3) schedule(startTime3, turnValveOn, [overwrite: false])
+	if(startTime3) schedule(offTime3, turnValveOff, [overwrite: false])
 }
 	
 def turnValveOn() {
@@ -231,7 +232,6 @@ def pushHandler(){
 // ********** Normal Stuff **********
 
 def setDefaults(){
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(state.rainDevice == null){state.rainDevice = "off"}
 	if(state.windDevice == null){state.windDevice = "off"}
@@ -254,9 +254,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
