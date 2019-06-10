@@ -33,7 +33,8 @@
  *
  *  Changes:
  *
- *  V1.1.6 - 05/14/19 - Changed voice options to just one Fun (F) and a Random (R)
+ *  V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for google and Echo Speaks devices.
+ *  V1.1.6 - 05/14/19 - Changed voice options to just one Fun [F] and a Random [R]
  *  V1.1.5 - 05/11/19 - Added two more voice options, just for fun! - F1 and F2
  *  V1.1.4 - 05/09/19 - Added ability to change the voice used by priority - speechSynth only
  *  V1.1.3 - 04/30/19 - Attempt to fix bug in checkTime
@@ -54,7 +55,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.6"
+	state.version = "v1.1.7"
 }
 
 definition(
@@ -126,7 +127,7 @@ def pageConfig() {
          	 	}
       		}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-				paragraph "NOTE: Not all speakers can use volume controls."
+				paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
 				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
 				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
             	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
@@ -136,13 +137,17 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
 				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
 				if((messagePriority) && (speechMode == "Speech Synth")) input(name: "priorityVoices", type: "bool", defaultValue: "false", title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange: true)
+				if((messagePriority) && (speechMode == "Speech Synth")) input(name: "messageSounds", type: "bool", defaultValue: "false", title: "Play a sound before message?", description: "Message Sounds", submitOnChange: true)
 			}
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
 					paragraph "<b>Notes:</b>"
 					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[F]</b> - Fun<br><b>[R]</b> - Random<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
-				paragraph "ie. [L]Amy is home or [M]Window has been open too long or [H]Heat is on and window is open"
-				paragraph "Notice there is no spaces between the option and the message."
+					paragraph "You can also specify a sound file to be played before a message!<br><br><b>[1] - [5]</b> - Specify a files URL"
+					paragraph "<b>Options can also be combined!</b> ie. [R2], [L2], etc."
+					paragraph "ie. [L]Amy is home or [M3]Window has been open too long or [H]Heat is on and window is open"
+					paragraph "If you JUST want a sound file played with NO speech after, use [L1]. or [M3]. etc. Notice the DOT after the [], that is the message and will not be spoken."
+					paragraph "Also notice there is no spaces between the option and the message."
 				}
 				section() {
 					paragraph "Low priority will use the standard volume set in the Volume Control Section"
@@ -157,12 +162,22 @@ def pageConfig() {
 						input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
 						input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
 					}
+					if(messageSounds) {
+						section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
+							paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
+							input "sound1", "text", title: "Sound - 1", required: false
+							input "sound2", "text", title: "Sound - 2", required: false
+							input "sound3", "text", title: "Sound - 3", required: false
+							input "sound4", "text", title: "Sound - 4", required: false
+							input "sound5", "text", title: "Sound - 5", required: false
+						}
+					}
 				} else {
 					section() {
-						paragraph "* Priority Voices are only available when using Speech Synth option."
+						paragraph "* Priority Options are only available when using Speech Synth option."
 					}
 				}
-			}	
+			}
     		if(speechMode){ 
 				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         			input "fromTime", "time", title: "From", required: false
@@ -222,7 +237,6 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
-	unschedule()
 	initialize()
 }
 
@@ -302,13 +316,10 @@ def presenceSensorHandler5(evt){
 
 def alwaysOnHandler() {
 	if(logEnable) log.debug "In alwaysOnHandler..."
-	if(pauseApp == true){log.warn "${app.label} - App paused"}
-    if(pauseApp == false){
-		if(logEnable) log.debug "In alwaysOnHandler - setting sZone to true"
-		atomicState.sZone = true
-		speakerStatus = "${app.label}:${atomicState.sZone}"
-		gvDevice.sendFollowMeSpeaker(speakerStatus)
-	}
+	if(logEnable) log.debug "In alwaysOnHandler - setting sZone to true"
+	atomicState.sZone = true
+	speakerStatus = "${app.label}:${atomicState.sZone}"
+	gvDevice.sendFollowMeSpeaker(speakerStatus)
 }
 
 def contactSensorHandler(evt) {
@@ -317,13 +328,10 @@ def contactSensorHandler(evt) {
 	if(logEnable) log.debug "In contactSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.contactStatus}"
 	if(contactOption == "Closed") {
 		if(state.contactStatus == "closed") {
-			if(pauseApp == true){log.warn "${app.label} - App paused"}
-    		if(pauseApp == false){
-				if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
-				atomicState.sZone = true
-				speakerStatus = "${app.label}:${atomicState.sZone}"
-				gvDevice.sendFollowMeSpeaker(speakerStatus)
-			}
+			if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
+			atomicState.sZone = true
+			speakerStatus = "${app.label}:${atomicState.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
 		if(state.contactStatus == "open") {
 			sOff = sZoneWaiting * 60
@@ -332,13 +340,10 @@ def contactSensorHandler(evt) {
 	}
 	if(contactOption == "Open") {
 		if(state.contactStatus == "open") {
-			if(pauseApp == true){log.warn "${app.label} - App paused"}
-    		if(pauseApp == false){
-				if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
-				atomicState.sZone = true
-				speakerStatus = "${app.label}:${atomicState.sZone}"
-				gvDevice.sendFollowMeSpeaker(speakerStatus)
-			}
+			if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
+			atomicState.sZone = true
+			speakerStatus = "${app.label}:${atomicState.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
 		}
 		if(state.contactStatus == "closed") {
 			sOff = sZoneWaiting * 60
@@ -352,13 +357,10 @@ def motionSensorHandler(evt) {
 	state.motionStatus = evt.value
 	if(logEnable) log.debug "In motionSensorHandler - sZone: ${atomicState.sZone} - Status: ${state.motionStatus}"
 	if(state.motionStatus == "active") {
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
-			if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
-			atomicState.sZone = true
-			speakerStatus = "${app.label}:${atomicState.sZone}"
-			gvDevice.sendFollowMeSpeaker(speakerStatus)
-		}
+		if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
+		atomicState.sZone = true
+		speakerStatus = "${app.label}:${atomicState.sZone}"
+		gvDevice.sendFollowMeSpeaker(speakerStatus)
 	}
 	if(state.motionStatus == "inactive") {
 		sOff = sZoneWaiting * 60
@@ -371,13 +373,10 @@ def switchHandler(evt) {
 	state.switchStatus = evt.value
 	if(logEnable) log.debug "In switchHandler - sZone: ${atomicState.sZone} - Status: ${state.switchStatus}"
 	if(state.switchStatus == "on") {
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
-			if(logEnable) log.debug "In switchHandler - setting sZone to true"
-			atomicState.sZone = true
-			speakerStatus = "${app.label}:${atomicState.sZone}"
-			gvDevice.sendFollowMeSpeaker(speakerStatus)
-		}
+		if(logEnable) log.debug "In switchHandler - setting sZone to true"
+		atomicState.sZone = true
+		speakerStatus = "${app.label}:${atomicState.sZone}"
+		gvDevice.sendFollowMeSpeaker(speakerStatus)
 	}
 	if(state.switchStatus == "off") {
 		sOff = sZoneWaiting * 60
@@ -390,12 +389,14 @@ def lastSpokenHandler(speech) {
 	if(triggerMode == "Always_On") alwaysOnHandler()
 	state.unique = speech.value.toString()
 	state.cleanUp = state.unique.drop(1)
-	state.priority = state.cleanUp.take(3)
-	if(state.priority == "[F]" || state.priority == "[R]" || state.priority == "[L]" || state.priority == "[M]" || state.priority == "[H]" || state.priority == "[f]" || state.priority == "[r]" || state.priority == "[l]" || state.priority == "[m]" || state.priority == "[h]") {
-		state.lastSpoken = state.cleanUp.drop(3)
-	} else {
+	if(state.cleanUp.contains("]")) {
+		def (priority, msgA) = state.cleanUp.split(']')
+		state.priority = priority.drop(1)
+		state.lastSpoken = msgA
+	} else{
 		state.lastSpoken = state.cleanUp
 	}
+	if(state.lastSpoken == null) state.lastSpoken = ""
 	if(logEnable) log.debug "In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}"
 	letsTalk()
 	sendPush()
@@ -422,59 +423,89 @@ def initializeSpeaker() {
 						  					  
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
-	if(pauseApp == false) {
-		if(triggerMode == "Always_On") alwaysOnHandler()
-		if(atomicState.sZone == true){
-			checkTime()
-			checkVol()
-			atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
-			if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
-			pauseExecution(atomicState.randomPause)
-			if(logEnable) log.debug "In letsTalk - continuing"
-			if(state.timeBetween == true) {
-				state.sStatus = "speaking"
-				speakerStatus = "${app.label}:${state.sStatus}"
-				gvDevice.sendFollowMeSpeaker(speakerStatus)
-				if(logEnable) log.debug "In letsTalk - ${speechMode} - ${speaker}"
-  				if (speechMode == "Music Player"){ 
-					if(echoSpeaks) {
-						speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
+	if(triggerMode == "Always_On") alwaysOnHandler()
+	if(atomicState.sZone == true){
+		checkTime()
+		checkVol()
+		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+		pauseExecution(atomicState.randomPause)
+		if(logEnable) log.debug "In letsTalk - continuing"
+		if(state.timeBetween == true) {
+			state.sStatus = "speaking"
+			speakerStatus = "${app.label}:${state.sStatus}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
+			if(logEnable) log.debug "In letsTalk - ${speechMode} - ${speaker}"
+  			if (speechMode == "Music Player"){ 
+				if(echoSpeaks) {
+					speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
+				}
+				if(!echoSpeaks) {
+    				if(volSpeech) speaker.setLevel(state.volume)
+    				speaker.playTextAndRestore(state.lastSpoken, volRestore)
+				}
+  			}   
+			if (speechMode == "Speech Synth"){
+				speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
+				atomicState.speechDuration2 = speechDuration * 1000
+				if(gInitialize) initializeSpeaker()
+				if(volSpeech) speaker.setVolume(state.volume)
+				if(priorityVoices) {
+					if(state.lastSpoken == ".") state.lastSpoken = ""
+					if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
+					def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
+					def uriMessage = "${tts.get('uri')}"
+					if(state.priority.contains("1")) {
+						if(sound1) {
+							speaker.playTrack(sound1)
+							pauseExecution(1000)
+						} else log.info "${app.label} - Sound 1 not defined"
 					}
-					if(!echoSpeaks) {
-    					if(volSpeech) speaker.setLevel(state.volume)
-    					speaker.playTextAndRestore(state.lastSpoken, volRestore)
+					if(state.priority.contains("2")) {
+						if(sound2) {
+							speaker.playTrack(sound2)
+							pauseExecution(1000)
+						} else log.info "${app.label} - Sound 2 not defined"
 					}
-  				}   
-				if (speechMode == "Speech Synth"){
-					speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
-					atomicState.speechDuration2 = speechDuration * 1000
-					if(gInitialize) initializeSpeaker()
-					if(volSpeech) speaker.setVolume(state.volume)
-					if(priorityVoices) {
-						if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
-						def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
-						def uriMessage = "${tts.get('uri')}"
+					if(state.priority.contains("3")) {
+						if(sound3) {
+							speaker.playTrack(sound3)
+							pauseExecution(1000)
+						} else log.info "${app.label} - Sound 3 not defined"
+					}
+					if(state.priority.contains("4")) {
+						if(sound4) {
+							speaker.playTrack(sound4)
+							pauseExecution(1000)
+						} else log.info "${app.label} - Sound 4 not defined"
+					}
+					if(state.priority.contains("5")) {
+						if(sound5) {
+							speaker.playTrack(sound5)
+							pauseExecution(1000)
+						} else log.info "${app.label} - Sound 5 not defined"
+					}
 						if(logEnable) log.debug "In letsTalk - ${uriMessage}"
 						speaker.playTrack(uriMessage)
-					} else {
-						if(logEnable) log.debug "In letsTalk - Using Hubitat's voice"
-						speaker.speak(state.lastSpoken)
-					}
-					pauseExecution(atomicState.speechDuration2)
-					if(volRestore) speaker.setVolume(volRestore)
+				} else {
+					if(logEnable) log.debug "In letsTalk - Using Hubitat's default voice"
+					speaker.speak(state.lastSpoken)
 				}
-				speakerStatus = "${app.label}:${atomicState.sZone}"
-				gvDevice.sendFollowMeSpeaker(speakerStatus)
-				log.info "${app.label} - ${state.lastSpoken}"
-				if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
-			} else {
-				log.info "${app.label} - Quiet Time, can not speak."
+				pauseExecution(atomicState.speechDuration2)
+				if(volRestore) {
+					speaker.setVolume(volRestore)
+					//speaker.stop()
+				}
 			}
+			speakerStatus = "${app.label}:${atomicState.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
+			log.info "${app.label} - ${state.lastSpoken}"
+			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
 		} else {
-			log.info "${app.label} - Zone is Off, can not speak."
+			log.info "${app.label} - Quiet Time, can not speak."
 		}
 	} else {
-		log.info "${app.label} - App is paused, can not speak."
+		log.info "${app.label} - Zone is Off, can not speak."
 	}
 }
 
@@ -508,21 +539,21 @@ def checkVol() {
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 	if(messagePriority) {
 		if(logEnable) log.debug "In checkVol - priority: ${state.priority}"
-		if(state.priority == "[F]" || state.priority == "[f]") {
+		if(state.priority.toLowerCase().contains("f")) {
 			state.voiceSelected = voiceFun
 		}
-		if(state.priority == "[R]" || state.priority == "[r]") {
+		if(state.priority.toLowerCase().contains("r")) {
 			randomHandler()
 			state.voiceSelected = state.randVoice
 		}
-		if(state.priority == "[L]" || state.priority == "[l]") {
+		if(state.priority.toLowerCase().contains("l")) {
 			state.voiceSelected = voiceLow
 		}
-		if(state.priority == "[M]" || state.priority == "[m]") {
+		if(state.priority.toLowerCase().contains("m")) {
 			state.volume = volMed
 			state.voiceSelected = voiceMed
 		}
-		if(state.priority == "[H]" || state.priority == "[h]") {
+		if(state.priority.toLowerCase().contains("h")) {
 			state.volume = volHigh
 			state.voiceSelected = voiceHigh
 		}
@@ -581,7 +612,6 @@ def randomHandler() {
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(messagePriority == null){messagePriority = false}
 	if(atomicState.sZone == null){atomicState.sZone = false}
@@ -607,9 +637,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
