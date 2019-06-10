@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for google and Echo Speaks devices.
+ *  V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for speech synth devices.
  *  V1.1.6 - 05/14/19 - Changed voice options to just one Fun [F] and a Random [R]
  *  V1.1.5 - 05/11/19 - Added two more voice options, just for fun! - F1 and F2
  *  V1.1.4 - 05/09/19 - Added ability to change the voice used by priority - speechSynth only
