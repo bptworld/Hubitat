@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 06/11/19 - Fixed when priority settings are visible
  *  V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for speech synth devices.
  *  V1.1.6 - 05/14/19 - Changed voice options to just one Fun [F] and a Random [R]
  *  V1.1.5 - 05/11/19 - Added two more voice options, just for fun! - F1 and F2
@@ -55,7 +56,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.7"
+	state.version = "v1.1.8"
 }
 
 definition(
@@ -154,27 +155,29 @@ def pageConfig() {
 					input "volMed", "number", title: "Speaker volume for Medium priority", description: "0-100", required: true, width: 6
 					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
 				}
-				if((priorityVoices) && (speechMode == "Speech Synth")) {
-					section("Select Voices for different priorities") {
-						input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false
-						input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true 
-						input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false
-						input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
-						input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
+				if(speechMode == "Speech Synth") {
+                    if(priorityVoices) {
+					    section("Select Voices for different priorities") {
+					    	input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false
+						    input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true 
+						    input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false
+						    input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
+						    input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
+                        }
 					}
-					if(messageSounds) {
-						section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
-							paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
-							input "sound1", "text", title: "Sound - 1", required: false
-							input "sound2", "text", title: "Sound - 2", required: false
-							input "sound3", "text", title: "Sound - 3", required: false
-							input "sound4", "text", title: "Sound - 4", required: false
-							input "sound5", "text", title: "Sound - 5", required: false
-						}
-					}
+				    if(messageSounds) {
+					    section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
+					    	paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
+					    	input "sound1", "text", title: "Sound - 1", required: false
+						    input "sound2", "text", title: "Sound - 2", required: false
+						    input "sound3", "text", title: "Sound - 3", required: false
+						    input "sound4", "text", title: "Sound - 4", required: false
+					    	input "sound5", "text", title: "Sound - 5", required: false
+					    }
+                    }
 				} else {
 					section() {
-						paragraph "* Priority Options are only available when using Speech Synth option."
+						paragraph "* Priority Voice and Sound options are only available when using Speech Synth option."
 					}
 				}
 			}
