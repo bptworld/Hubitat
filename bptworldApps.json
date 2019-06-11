@@ -137,13 +137,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.1.7",
+  "FollowMeChildVersion": "v1.1.8",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for speech synth devices.",
+  "FollowMeUpdateNote": "V1.1.8 - 06/11/19 - Fixed when priority settings are visible",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
