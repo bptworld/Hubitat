@@ -2,7 +2,7 @@
  *  ****************  Snapshot Child  ****************
  *
  *  Design Usage:
- *  Monitor lights, devices and sensors. Easily see their status right on your dashboard.
+ *  Monitor devices and sensors. Easily see their status right on your dashboard and/or get a notification - speech and phone.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.1.5 - 06/11/19 - Code cleanup
  *  V1.1.4 - 04/30/19 - Added Water Sensor tracking
  *  V1.1.3 - 04/19/19 - Fixed a bug with Presence Sensors
  *  V1.1.2 - 04/15/19 - Code cleanup
@@ -54,14 +55,14 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.4"
+	state.version = "v1.1.5"
 }
 
 definition(
 	name: "Snapshot Child",
 	namespace: "BPTWorld",
 	author: "Bryan Turcotte",
-	description: "Monitor lights, devices and sensors. Easily see their status right on your dashboard.",
+	description: "Monitor devices and sensors. Easily see their status right on your dashboard and/or get a notification - speech and phone.",
 	category: "Convenience",
 	parent: "BPTWorld:Snapshot",
 	iconUrl: "",
@@ -78,8 +79,7 @@ def pageConfig() {
 	dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Snapshot</h2>", install: true, uninstall: true, refreshInterval:0) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
-			paragraph "<b>Notes:</b>"
-			paragraph ""	
+			paragraph "Monitor devices and sensors. Easily see their status right on your dashboard and/or get a notification - speech and phone."	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Type of Trigger")) {
 			input "reportMode", "enum", required: true, title: "Select Report Type", submitOnChange: true,  options: ["Regular", "Priority"]
@@ -255,7 +255,7 @@ def updated() {
 
 def initialize() {
 	setDefaults()
-	if(logEnable) log.debug "In initialize - pauseApp: ${pauseApp}"
+	if(logEnable) log.debug "In initialize..."
 	if(triggerMode == "On Demand") subscribe(onDemandSwitch, "switch.on", onDemandSwitchHandler)
 	if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
 	if(triggerMode == "Real Time") {
@@ -265,88 +265,79 @@ def initialize() {
 }
 
 def realTimeSwitchHandler(evt) {
-	if(logEnable) log.debug "In realTimeSwitchHandler - pauseApp: ${pauseApp}"
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
-			state.realTimeSwitchStatus = evt.value
-			if(reportMode == "Regular") {
-				if(state.realTimeSwitchStatus == "on") {
-					if(logEnable) log.debug "In realTimeSwitchHandler - subscribe"
-					if(switches) subscribe(switches, "switch", switchHandler)
-					if(contacts) subscribe(contacts, "contact", contactHandler)
-					if(water) subscribe(water, "water", waterHandler)
-					if(locks) subscribe(locks, "lock", lockHandler)
-					if(presence) subscribe(presence, "presence", presenceHandler)
-					if(temps) subscribe(temps, "temperature", temperatureHandler)
-					runIn(1, maintHandler)
-				} else {
-					if(logEnable) log.debug "In realTimeSwitchHandler - unsubscribe"
-					unsubscribe(switches)
-					unsubscribe(contacts)
-					unsubscribe(water)
-					unsubscribe(locks)
-					unsubscribe(presence)
-					unsubscribe(temps)
-				}
-			}
-			if(reportMode == "Priority") {
-				if(state.realTimeSwitchStatus == "on") {
-					if(logEnable) log.debug "In realTimeSwitchHandler Priority - subscribe"
-					subscribe(switchesOn, "switch", priorityHandler)
-					subscribe(switchesOff, "switch", priorityHandler)
-					subscribe(contactsOpen, "contact", priorityHandler)
-					subscribe(contactsClosed, "contact", priorityHandler)
-					subscribe(locksUnlocked, "lock", priorityHandler)
-					subscribe(locksLocked, "lock", priorityHandler)
-					subscribe(temps, "temperature", priorityHandler)
-					runIn(1, priorityHandler)
-				} else {
-					if(logEnable) log.debug "In realTimeSwitchHandler Priority - unsubscribe"
-					unsubscribe(switchesOn)
-					unsubscribe(switchesOff)
-					unsubscribe(contactsOpen)
-					unsubscribe(contactsClosed)
-					unsubscribe(locksUnlocked)
-					unsubscribe(locksLocked)
-					unsubscribe(temps)
-				}
-			}
+	if(logEnable) log.debug "In realTimeSwitchHandler..."
+	state.realTimeSwitchStatus = evt.value
+	if(reportMode == "Regular") {
+		if(state.realTimeSwitchStatus == "on") {
+			if(logEnable) log.debug "In realTimeSwitchHandler - subscribe"
+			if(switches) subscribe(switches, "switch", switchHandler)
+			if(contacts) subscribe(contacts, "contact", contactHandler)
+			if(water) subscribe(water, "water", waterHandler)
+			if(locks) subscribe(locks, "lock", lockHandler)
+			if(presence) subscribe(presence, "presence", presenceHandler)
+			if(temps) subscribe(temps, "temperature", temperatureHandler)
+			runIn(1, maintHandler)
+		} else {
+			if(logEnable) log.debug "In realTimeSwitchHandler - unsubscribe"
+			unsubscribe(switches)
+			unsubscribe(contacts)
+			unsubscribe(water)
+			unsubscribe(locks)
+			unsubscribe(presence)
+			unsubscribe(temps)
 		}
+	}
+	if(reportMode == "Priority") {
+		if(state.realTimeSwitchStatus == "on") {
+			if(logEnable) log.debug "In realTimeSwitchHandler Priority - subscribe"
+			subscribe(switchesOn, "switch", priorityHandler)
+			subscribe(switchesOff, "switch", priorityHandler)
+			subscribe(contactsOpen, "contact", priorityHandler)
+			subscribe(contactsClosed, "contact", priorityHandler)
+			subscribe(locksUnlocked, "lock", priorityHandler)
+			subscribe(locksLocked, "lock", priorityHandler)
+			subscribe(temps, "temperature", priorityHandler)
+			runIn(1, priorityHandler)
+		} else {
+			if(logEnable) log.debug "In realTimeSwitchHandler Priority - unsubscribe"
+			unsubscribe(switchesOn)
+			unsubscribe(switchesOff)
+			unsubscribe(contactsOpen)
+			unsubscribe(contactsClosed)
+			unsubscribe(locksUnlocked)
+			unsubscribe(locksLocked)
+			unsubscribe(temps)
+		}
+	}
 }
 
 def repeatSwitchHandler(evt) {
-	if(logEnable) log.debug "In repeatSwitchHandler - pauseApp: ${pauseApp}"
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
-			state.repeatSwitchStatus = repeatSwitch.currentValue("switch")
-			state.runDelay = timeDelay * 60
-			if(reportMode == "Regular") {
-				if(state.repeatSwitchStatus == "on") {
-					maintHandler()
-				}
-				runIn(state.runDelay,repeatSwitchHandler)
-			}
-			if(reportMode == "Priority") {
-				if(state.repeatSwitchStatus == "on") {
-					priorityHandler()
-				}
-				runIn(state.runDelay,repeatSwitchHandler)
-			}
+	if(logEnable) log.debug "In repeatSwitchHandler..."
+	state.repeatSwitchStatus = repeatSwitch.currentValue("switch")
+	state.runDelay = timeDelay * 60
+	if(reportMode == "Regular") {
+		if(state.repeatSwitchStatus == "on") {
+			maintHandler()
 		}
+		runIn(state.runDelay,repeatSwitchHandler)
+	}
+	if(reportMode == "Priority") {
+		if(state.repeatSwitchStatus == "on") {
+			priorityHandler()
+		}
+		runIn(state.runDelay,repeatSwitchHandler)
+	}
 }
 
 def onDemandSwitchHandler(evt) {
-	if(logEnable) log.debug "In onDemandSwitchHandler - pauseApp: ${pauseApp}"
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
-			state.onDemandSwitchStatus = evt.value
-			if(reportMode == "Regular") {
-				if(state.onDemandSwitchStatus == "on") maintHandler()
-			}
-			if(reportMode == "Priority") {
-				if(state.onDemandSwitchStatus == "on") priorityHandler()
-			}
-		}
+	if(logEnable) log.debug "In onDemandSwitchHandler..."
+	state.onDemandSwitchStatus = evt.value
+	if(reportMode == "Regular") {
+		if(state.onDemandSwitchStatus == "on") maintHandler()
+	}
+	if(reportMode == "Priority") {
+		if(state.onDemandSwitchStatus == "on") priorityHandler()
+	}
 }
 
 def switchMapHandler() {
@@ -1041,7 +1032,7 @@ def priorityHandler(evt){
 }
 
 def checkMaps() {
-	if(logEnable) log.debug "In checkMaps - pauseApp: ${pauseApp}"
+	if(logEnable) log.debug "In checkMaps..."
 	if(state.offSwitchMap == null) {
 		state.offSwitchMap = [:]
 	}
@@ -1091,7 +1082,7 @@ def checkMaps() {
 }
 
 def maintHandler(evt){
-	if(logEnable) log.debug "In maintHandler - pauseApp: ${pauseApp}"
+	if(logEnable) log.debug "In maintHandler..."
 	state.offSwitchMap = [:]
 	state.onSwitchMap = [:]
 	state.closedContactMap = [:]
@@ -1184,7 +1175,6 @@ def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
 		checkTime()
 		checkVol()
-		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
 		pauseExecution(atomicState.randomPause)
 		if(logEnable) log.debug "In letsTalk - continuing"
 		if(state.timeBetween == true) {
@@ -1316,9 +1306,7 @@ def pushNow(){
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
-    if(pauseApp == null){pauseApp = false}
 	if(priorityCheckSwitch == null){priorityCheckSwitch = "off"}
-	if(logEnable) log.debug "In setDefaults - pauseApp: ${pauseApp}"
 }
 
 def getImage(type){							// Modified from @Stephack
@@ -1335,9 +1323,6 @@ def getFormat(type, myText=""){				// Modified from @Stephack
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
