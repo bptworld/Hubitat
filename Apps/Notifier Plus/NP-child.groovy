@@ -452,23 +452,14 @@ def hourlyHandler() {
 }
 
 def daysAfterHandler() {
-    if(state.runBefore == "no") {
-        if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
-        Date todayDate = new Date()
-        todayDateS = todayDate.format("MM-dd")
-    	tDateS = todayDateS.split("-")
-        state.schedule = "0 ${min} ${hour} ${tDateS[1]} ${tDateS[0]} ? *"
-    } else{
-        if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
-        int daysAfter1 = daysAfter
-        Date futureDate = new Date().plus(daysAfter1)
-        futureDateS = futureDate.format("MM-dd-yyy")
-    	fDateS = futureDateS.split("-")
-	    if(logEnable) log.debug "In scheduleHandler - Skip: ${daysAfter1} Date: ${futureDateS}"
-	    state.schedule = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? *"
-	    if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: ${fDateS[2]}" 
-        state.runBefore = "yes"
-    }
+    if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
+    int daysAfter1 = daysAfter
+    Date futureDate = new Date().plus(daysAfter1)
+    futureDateS = futureDate.format("MM-dd-yyy")
+    fDateS = futureDateS.split("-")
+	if(logEnable) log.debug "In scheduleHandler - Skip: ${daysAfter1} Date: ${futureDateS}"
+    state.schedule = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? ${fDateS[2]}"
+	if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: ${fDateS[2]}" 
     schedule(state.schedule, magicHappensHandler)
 }
 
