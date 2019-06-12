@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 06/12/19 - Added ability to select start date for 'Run every X days' option
  *  V1.1.8 - 06/12/19 - Removed the 'Every Other' option and added 'Run every X days'. Changes made to 'By Date' section, please
  *                      reselect the 'Month' on any child app.
  *  V1.1.7 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.
@@ -65,7 +66,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.8"
+	state.version = "v1.1.9"
 }
 
 definition(
@@ -123,10 +124,16 @@ def pageConfig() {
 				input "min", "enum", title: "Select Minute", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 			}
 			if(xDay) {
-                input "daysAfter", "number", title: "Run every X days from the day it was created (1 to 365)", required: false, multiple: false, range: '1..365', submitOnChange: "true"
-				if(daysAfter) {
-					paragraph "In order for this to work, you must create the child app ON the day you want it to start"
-					paragraph "<b>ie.</b> If created on Tuesday and X days is 14, it will run every other Tuesday.<br><b>OR</b> If created on Wed and X days is 17, it will 17 days later, and again 17 days after that, etc."
+                input "daysAfter", "number", title: "Run every X days (1 to 365)", required: false, multiple: false, range: '1..365', submitOnChange: "true"
+                if(daysAfter) {
+                    paragraph "Starting on"
+                    input "monthDA", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+			    	if(monthDA == "1" || monthDA == "2" || monthDA == "5" || monthDA == "7" || monthDA == "8" || monthDA == "10" || monthDA == "12") input "dayDA", "enum", title: "Select Day(s)", required: true, multiple: false, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+				    if(monthDA == "4" || monthDA == "6" || monthDA == "9" || monthDA == "11") input "dayDA", "enum", title: "Select Day(s)", required: true, multiple: false, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+				    if(monthDA == "2") input "dayDA", "enum", title: "Select Day(s)", required: true, multiple: false, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+				
+				    input "yearDA", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: ["2019", "2020", "2021", "2022"], defaultValue: "2019"
+                    paragraph "<small>* If selecting to start today, time MUST be after current time.</small>"
 				}
 				if(!daysAfter) input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 				if(!everyOther && !daysAfter) input(name: "startTimeHourly", type: "bool", defaultValue: "false", title: "Every hour?", description: "by hour", submitOnChange: "true")
@@ -452,14 +459,22 @@ def hourlyHandler() {
 }
 
 def daysAfterHandler() {
-    if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
-    int daysAfter1 = daysAfter
-    Date futureDate = new Date().plus(daysAfter1)
-    futureDateS = futureDate.format("MM-dd-yyy")
-    fDateS = futureDateS.split("-")
-	if(logEnable) log.debug "In scheduleHandler - Skip: ${daysAfter1} Date: ${futureDateS}"
-    state.schedule = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? ${fDateS[2]}"
-	if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: ${fDateS[2]}" 
+    if(state.runBefore == "no") {
+        if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
+        state.schedule = "0 ${min} ${hour} ${dayDA} ${monthDA} ? ${yearDA}"
+	    if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${dayDA} Month: ${monthDA} DoW: ? Year: ${yearDA}"
+        state.runBefore == "yes"
+    } else{
+        if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
+        int daysAfter1 = daysAfter
+        Date futureDate = new Date().plus(daysAfter1)
+        futureDateS = futureDate.format("MM-dd-yyy")
+        fDateS = futureDateS.split("-")
+	    if(logEnable) log.debug "In scheduleHandler - Skip: ${daysAfter1} Date: ${futureDateS}"
+        state.schedule = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? ${fDateS[2]}"
+	    if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: ${fDateS[2]}"
+        state.runBefore == "yes"
+    }
     schedule(state.schedule, magicHappensHandler)
 }
 
