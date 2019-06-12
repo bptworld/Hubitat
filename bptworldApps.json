@@ -177,13 +177,13 @@
   
   "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v1.0.1",
-  "NotifierPlusChildVersion": "v1.1.8",
+  "NotifierPlusChildVersion": "v1.1.9",
   "NotifierPlusDriverVersion": "NA",
   "NotifierPlusParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-parent.groovy",
   "NotifierPlusChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Notifier%20Plus/NP-child.groovy",
   "NotifierPlusDriverRawCode": "NA",
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
-  "NotifierPlusUpdateNote": "V1.1.8 - 06/12/19 - Removed the 'Every Other' option and added 'Run every X days'.",
+  "NotifierPlusUpdateNote": "V1.1.9 - 06/12/19 - Added ability to select start date for 'Run every X days' option",
   
   "OneataTimeType": "App",
   "OneataTimeParentVersion": "v1.1.2",
