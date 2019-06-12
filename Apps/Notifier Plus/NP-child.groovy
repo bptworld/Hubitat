@@ -2,9 +2,10 @@
  *  ****************  Notifier Plus Child App  ****************
  *
  *  Design Usage:
- *  Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.
+ *  Notifications based on date/day, time and more. A great way to get reminders or create a wakeup alarm.
  *	
  *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Thanks to JMZ and his 'Super Notifier' for some inspirations.
  * 
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -35,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 06/12/19 - Removed the 'Every Other' option and added 'Run every X days'. Changes made to 'By Date' section, please
+ *                      reselect the 'Month' on any child app.
  *  V1.1.7 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.
  *  V1.1.6 - 06/03/19 - Fixed error with every other week option
  *  V1.1.5 - 05/17/19 - Time can now be spoken in 24 or 12 hour formats
@@ -62,14 +65,14 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.6"
+	state.version = "v1.1.8"
 }
 
 definition(
     name: "Notifier Plus Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.",
+    description: "Notifications based on date/day, time and more. A great way to get reminders or create a wakeup alarm.",
     category: "",
 	parent: "BPTWorld:Notifier Plus",
     iconUrl: "",
@@ -87,7 +90,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm."
+			paragraph "Notifications based on date/day, time and more. A great way to get reminders or create a wakeup alarm."
 			paragraph "Get nofified when it's a holiday, birthday, special occasion, etc. Great for telling Hubitat when it's school vacation."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
@@ -110,26 +113,29 @@ def pageConfig() {
 			paragraph "<hr>"
 			if(xDate) {
 				app.clearSetting("xDay")
-				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-				if(month == "Jan" || month == "Mar" || month == "May" || month == "Jul" || month == "Aug" || month == "Oct" || month == "Dec") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
-				if(month == "Apr" || month == "Jun" || month == "Sep" || month == "Nov") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
-				if(month == "Feb") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+				if(month == "1" || month == "2" || month == "5" || month == "7" || month == "8" || month == "10" || month == "12") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+				if(month == "4" || month == "6" || month == "9" || month == "11") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+				if(month == "2") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
 				
 				input "year", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: ["2019", "2020", "2021", "2022"], defaultValue: "2019"
 				input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
 				input "min", "enum", title: "Select Minute", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 			}
 			if(xDay) {
-				input(name: "everyOther", type: "bool", defaultValue: "false", title: "Only run every other week on the day created?", description: "by every other", submitOnChange: "true")
-				if(everyOther) {
-					paragraph "In order for this to work, you must create the child app ON the day you want it to run, every other week."
-					paragraph "<b>ie.</b> If created on Tuesday, it will run every other Tuesday and notify you at the time selected below."
+                input "daysAfter", "number", title: "Run every X days from the day it was created (1 to 365)", required: false, multiple: false, range: '1..365', submitOnChange: "true"
+				if(daysAfter) {
+					paragraph "In order for this to work, you must create the child app ON the day you want it to start"
+					paragraph "<b>ie.</b> If created on Tuesday and X days is 14, it will run every other Tuesday.<br><b>OR</b> If created on Wed and X days is 17, it will 17 days later, and again 17 days after that, etc."
 				}
-				if(!everyOther) input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
-				if(!everyOther) input(name: "startTimeHourly", type: "bool", defaultValue: "false", title: "Every hour?", description: "by hour", submitOnChange: "true")
-				if((!startTimeHourly) && (!everyOther)) input(name: "startTime", type: "time", title: "Time to notify", description: "Time", required: false)
-				if(everyOther) input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
-				if(everyOther) input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
+				if(!daysAfter) input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+				if(!everyOther && !daysAfter) input(name: "startTimeHourly", type: "bool", defaultValue: "false", title: "Every hour?", description: "by hour", submitOnChange: "true")
+				if((!startTimeHourly) && (!daysAfter)) input(name: "startTime", type: "time", title: "Time to notify", description: "Time", required: false)
+                if(daysAfter) {
+                    paragraph "Notify at the time selected below"
+                    input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
+				if(everyOther || daysAfter) input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
+                }
 			}
 			if(xContact) {
 				paragraph "<b>by Contact Sensor</b>"
@@ -245,7 +251,7 @@ def pageConfig() {
 			}
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Choose Your Notify Options")) {
-			paragraph "Select as many options as you like. Control switch required for Lighting and/or Message Options."
+			paragraph "Select as many options as you like. Control switch required for Lighting, Message Options and/or Time options."
 			input(name: "oControl", type: "bool", defaultValue: "false", title: "<b>Control Switch Options</b>", description: "Control Options", submitOnChange: "true", width: 6)
 			input(name: "oLighting", type: "bool", defaultValue: "false", title: "<b>Lighting Options</b>", description: "Light Options", submitOnChange: "true", width: 6)
 			input(name: "oDevice", type: "bool", defaultValue: "false", title: "<b>Device Options</b>", description: "Device Options", submitOnChange: "true", width: 6)
@@ -253,7 +259,7 @@ def pageConfig() {
 		}
 		if(oControl) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
-				paragraph "This is your child app on/off switch. <b>Required if using Lighting and/or Message Repeat Options.</b>"
+				paragraph "This is your child app on/off switch. <b>Required if using Lighting, Message Options and/or Time options.</b>"
 				paragraph "If choosing to use either Contact, Motion or Switch for Control...Be sure to remove any device from the control switch option below."
 				if(xContact) input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
 				if(xMotion) input(name: "oControlMotion", type: "bool", defaultValue: "false", title: "<b>Use Trigger Motion Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
@@ -418,48 +424,56 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	scheduleHandler()
+	if(xDate) dateHandler()
+    if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
+    if(xDay && startTimeHourly) hourlyHandler()
+    if(xDay && daysAfter) daysAfterHandler()
+   
+    subcribeHandler()
 }
 
-def scheduleHandler(){
-	if(logEnable) log.debug "In scheduleHandler..."
-	if(xDate) {
-		state.monthName = month   
- 		if(state.monthName == "Jan") {state.theMonth = "1"}
-    	if(state.monthName == "Feb") {state.theMonth = "2"}
-    	if(state.monthName == "Mar") {state.theMonth = "3"}
-    	if(state.monthName == "Apr") {state.theMonth = "4"}
-    	if(state.monthName == "May") {state.theMonth = "5"}
-   	 	if(state.monthName == "Jun") {state.theMonth = "6"}
-    	if(state.monthName == "Jul") {state.theMonth = "7"}
- 	   	if(state.monthName == "Aug") {state.theMonth = "8"}
-    	if(state.monthName == "Sep") {state.theMonth = "9"}
-    	if(state.monthName == "Oct") {state.theMonth = "10"}
-    	if(state.monthName == "Nov") {state.theMonth = "11"}
-    	if(state.monthName == "Dec") {state.theMonth = "12"}
-		if(logEnable) log.debug "In scheduleHandler - day: ${day}"
-		String jDays = day.join(",")
-		state.theDays = jDays
-		state.theHour = hour
-		state.theMin = min
+def dateHandler(){
+	if(logEnable) log.debug "In dateHandler..."
+	state.theMonth = month
+	if(logEnable) log.debug "In dateHandler - day: ${day}"
+	String jDays = day.join(",")
+	state.theDays = jDays
+	state.theHour = hour
+	state.theMin = min
 	
-    	state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
-		if(logEnable) log.debug "In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
-    	schedule(state.schedule, magicHappensHandler)
-	}
-	stHourly = "0 0 */2 ? * *"
-	if(everyOther) {
-		Date futureDate = new Date().plus(14)
-		futureDateS = futureDate.format("MM-dd")
-		fDateS = futureDateS.split("-")
-		if(logEnable) log.debug "In scheduleHandler - 14 Date: ${futureDateS}"
-		everyO = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? *"
-		if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: *"
-	}
+    state.schedule = "0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
+	if(logEnable) log.debug "In scheduleHandler - xTime - schedule: 0 ${state.theMin} ${state.theHour} ${state.theDays} ${state.theMonth} ? *"
+    schedule(state.schedule, magicHappensHandler)
+}
+
+def hourlyHandler() {
+    state.schedule = "0 0 */2 ? * *"
+    schedule(state.schedule, dayOfTheWeekHandler)
+}
+
+def daysAfterHandler() {
+    if(state.runBefore == "no") {
+        if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
+        Date todayDate = new Date()
+        todayDateS = todayDate.format("MM-dd")
+    	tDateS = todayDateS.split("-")
+        state.schedule = "0 ${min} ${hour} ${tDateS[1]} ${tDateS[0]} ? *"
+    } else{
+        if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
+        int daysAfter1 = daysAfter
+        Date futureDate = new Date().plus(daysAfter1)
+        futureDateS = futureDate.format("MM-dd-yyy")
+    	fDateS = futureDateS.split("-")
+	    if(logEnable) log.debug "In scheduleHandler - Skip: ${daysAfter1} Date: ${futureDateS}"
+	    state.schedule = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? *"
+	    if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: ${fDateS[2]}" 
+        state.runBefore = "yes"
+    }
+    schedule(state.schedule, magicHappensHandler)
+}
+
+def subcribeHandler() { 
 	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-	if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
-	if(xDay && startTimeHourly) schedule(stHourly, dayOfTheWeekHandler)
-	if(xDay && everyOther) schedule(everyO, magicHappensHandler)
 	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
 	if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
 	if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
@@ -774,8 +788,16 @@ def magicHappensHandler() {
 			if(oDevice) switchesOffHandler()
 			if(newMode) modeHandler()
 		}
+        if(xDay && daysAfter) {
+            daysAfterHandler()
+            state.runBefore = "yes"
+        }
 	} else {
 		log.info "${app.label} - Control Switch is OFF - No need to run."
+        if(xDay && daysAfter) {
+            daysAfterHandler()
+            state.runBefore = "yes"
+        }
 	}
 }
 
@@ -1179,6 +1201,7 @@ def setDefaults(){
 	if(setPointLow == null){setPointLow = 0}
 	if(state.setPointHighOK == null){state.setPointHighOK = "yes"}
 	if(state.setPointLowOK == null){state.setPointLowOK = "yes"}
+    state.runBefore = "no"
 }
 
 def getImage(type) {					// Modified from @Stephack Code
