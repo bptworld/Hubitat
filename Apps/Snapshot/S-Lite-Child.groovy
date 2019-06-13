@@ -35,13 +35,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 06/13/19 - Added more triggers. Code cleanup.
  *  V1.0.1 - 06/13/19 - Fixed push messages
  *  V1.0.0 - 06/13/19 - Initial Release
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -68,9 +69,20 @@ def pageConfig() {
 			paragraph "Monitor devices and sensors. Easily get a notification by device, speech and phone."	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Type of Trigger")) {
-			paragraph "<b>Only take a snapshot when this switch is turned on</b>"
-			paragraph "Recommended to create a virtual device with 'Enable auto off' set to '1s'"
-			input "onDemandSwitch", "capability.switch", title: "App Control Switch", required: true
+			
+            input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true, options: ["Mode Change", "Switch On", "tStat Nest - Heat/Cool", "tStat Other - Heat/Cool"]
+            if(triggerMode == "Mode Change") {
+                paragraph "<b>Only take a snapshot when changing to this mode</b>"
+                input "modeSwitch", "mode", title: "Trigger Notifications based on a Mode", required: true, multiple: true
+            }
+            if(triggerMode == "Switch On") {
+		        paragraph "<b>Only take a snapshot when this switch is turned on</b><br>Recommended to create a virtual device with 'Enable auto off' set to '1s'"
+		    	input "onDemandSwitch", "capability.switch", title: "App Control Switch", required: true
+            }
+            if((triggerMode == "tStat Nest - Heat/Cool") || (triggerMode == "tStat Other - Heat/Cool")) {
+		        paragraph "<b>Only take a snapshot when this Thermostat is turned on or off (Heat or Cool)</b>"
+		    	input "tStatSwitch", "capability.thermostat", title: "App Control Switch", required: true
+            }   
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Monitor")) {
 			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false, submitOnChange: true
@@ -84,9 +96,6 @@ def pageConfig() {
 			if(temps) input "tempLow", "number", title: "Temp to consider Low if under X", required: true, submitOnChange: true
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-			if(temps) {
-				input "tempMode", "enum", required: true, title: "Select Temperature Display Output Type", submitOnChange: true,  options: ["Full", "Only High", "Only Low"]
-			}
 			input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange: true, required: false, multiple: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
@@ -105,7 +114,6 @@ def pageConfig() {
 				}
 			}
             paragraph "All switches/devices/contacts/locks/temps in the wrong state will then be spoken"
-			//input "msgDevice", "text", required: true, title: "Message to speak when a device isn't in the correct state... Will be followed by device names", defaultValue: "The following devices are in the wrong state"
 			input(name: "oRandomPost", type: "bool", defaultValue: "false", title: "Random Post Message?", description: "Random", submitOnChange: "true")
 			if(!oRandomPost) input "postMsg", "text", required: true, title: "Post Message - Single message", defaultValue: "This is all I have to say"
 			if(oRandomPost) {
@@ -169,7 +177,12 @@ def updated() {
 def initialize() {
 	setDefaults()
 	if(logEnable) log.debug "In initialize..."
-	subscribe(onDemandSwitch, "switch.on", priorityCheckHandler)
+    if(triggerMode == "Mode Change") subscribe(location, "mode", modeHandler)
+	if(triggerMode == "Switch On") subscribe(onDemandSwitch, "switch.on", priorityCheckHandler)
+    if(triggerMode == "tStat Nest - Heat/Cool") subscribe(tStatSwitch, "thermostatOperatingState.heating", priorityCheckHandler)
+    if(triggerMode == "tStat Nest - Heat/Cool") subscribe(tStatSwitch, "thermostatOperatingState.cooling", priorityCheckHandler) 
+	if(triggerMode == "tStat Other - Heat/Cool") subscribe(tStatSwitch, "thermostatMode.heat", priorityCheckHandler) 
+    if(triggerMode == "tStat Other - Heat/Cool") subscribe(tStatSwitch, "thermostatMode.cool", priorityCheckHandler) 
 }
 
 def priorityCheckHandler(evt) {
@@ -179,6 +192,16 @@ def priorityCheckHandler(evt) {
 	    if(speaker) letsTalk()
 	    if(sendPushMessage) pushNow()
     } else if(logEnable) log.debug "In priorityCheckHandler - No devices to report."
+}
+
+def modeHandler(evt) {
+    if(logEnable) log.debug "In modeHandler..."
+	state.modeStatus = evt.value
+	def modeMatch = modeSwitch.contains(location.mode)
+    if(modeMatch) {
+        if(logEnable) log.debug "In modeHandler - MATCH - modeSwitch: ${modeSwitch} - Current Mode: ${location.mode}"
+        priorityCheckHandler()
+    } else if(logEnable) log.debug "In modeHandler - NO MATCH - modeSwitch: ${modeSwitch} - Current Mode: ${location.mode}"
 }
 
 def priorityHandler(evt){
@@ -308,9 +331,7 @@ def letsTalk() {
 			if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 		}
 		log.info "${app.label} - ${state.theMsg}"
-	} else {
-		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	}
+	} else if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 }
 
 def checkTime() {
@@ -322,9 +343,7 @@ def checkTime() {
 		} else {
 			state.timeBetween = false
 		}
-  	} else {  
-		state.timeBetween = true
-  	}
+  	} else state.timeBetween = true
 	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
@@ -334,12 +353,8 @@ def checkVol() {
 		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
     	if(state.quietTime) {
     		state.volume = volQuiet
-		} else {
-			state.volume = volSpeech
-		}
-	} else {
-		state.volume = volSpeech
-	}
+		} else state.volume = volSpeech
+	} else state.volume = volSpeech
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
 }
 
