@@ -35,12 +35,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 06/13/19 - Fixed push messages
  *  V1.0.0 - 06/13/19 - Initial Release
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -131,7 +132,6 @@ def pageConfig() {
          		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
-			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
       	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 			paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
@@ -170,6 +170,15 @@ def initialize() {
 	setDefaults()
 	if(logEnable) log.debug "In initialize..."
 	subscribe(onDemandSwitch, "switch.on", priorityCheckHandler)
+}
+
+def priorityCheckHandler(evt) {
+	if(logEnable) log.debug "In priorityCheckHandler..."
+	priorityHandler()
+    if(state.isData == "yes") {
+	    if(speaker) letsTalk()
+	    if(sendPushMessage) pushNow()
+    } else if(logEnable) log.debug "In priorityCheckHandler - No devices to report."
 }
 
 def priorityHandler(evt){
@@ -263,15 +272,6 @@ def priorityHandler(evt){
             state.isData = "no"
         }
     }
-}
-
-def priorityCheckHandler(evt) {
-	if(logEnable) log.debug "In priorityCheckHandler..."
-	priorityHandler()
-    if(state.isData == "yes") {
-	    if(speakers) letsTalk()
-	    if(sendPushMessage) pushNow()
-    } else if(logEnable) log.debug "In priorityCheckHandler - No devices to report."
 }
 
 def letsTalk() {
@@ -388,21 +388,36 @@ def messageHandler() {
 def pushNow(){
 	if(logEnable) log.debug "In pushNow..."
 	theMsg = ""
-	if(state.prioritySwitch == "true") {
-		state.wrongSwitchPushMap2 = "PRIORITY SWITCHES IN WRONG STATE \n"
-		state.wrongSwitchPushMap2 += "${state.wrongSwitchPushMap} \n"
+    if(state.wrongSwitchesMSG) {
+		state.wrongSwitchPushMap2 = "SWITCHES IN WRONG STATE \n"
+		state.wrongSwitchPushMap2 += "${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)} \n"
 		theMsg = "${state.wrongSwitchPushMap2} \n"
-	}
-	if(state.priorityContact == "true") {
-		state.wrongContactPushMap2 = "PRIORITY CONTACTS IN WRONG STATE \n"
-		state.wrongContactPushMap2 += "${state.wrongContactPushMap} \n"
+    }
+    if(state.wrongDevicesMSG) { 
+        state.wrongDevicesPushMap2 = "DEVICES IN WRONG STATE \n"
+		state.wrongDevicesPushMap2 += "${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)} \n"
+		theMsg = "${state.wrongDevicesPushMap2} \n"
+    }
+    if(state.wrongContactsMSG) { 
+		state.wrongContactPushMap2 = "CONTACTS IN WRONG STATE \n"
+		state.wrongContactPushMap2 += "${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)} \n"
 		theMsg += "${state.wrongContactPushMap2} \n"
-	}
-	if(state.priorityLock == "true") {
-		state.wrongLockPushMap2 = "PRIORITY LOCKS IN WRONG STATE \n"
-		state.wrongLockPushMap2 += "${state.wrongLockPushMap} \n"
+    }
+    if(state.wrongLocksMSG) { 
+		state.wrongLockPushMap2 = "LOCKS IN WRONG STATE \n"
+		state.wrongLockPushMap2 += "${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)} \n"
 		theMsg += "${state.wrongLockPushMap2} \n"
-	}
+    }
+    if(state.tempLowMSG) { 
+		state.wrongTempsLowPushMap2 = "TEMPS LOW \n"
+		state.wrongTempsLowPushMap2 += "${state.tempLowMSG.substring(0, state.tempLowMSG.length() - 2)} \n"
+		theMsg += "${state.wrongTempsLowPushMap2} \n"
+    }
+    if(state.tempHighMSG) { 
+		state.wrongTempsHighPushMap2 = "TEMPS HIGH \n"
+		state.wrongTempsHighPushMap2 += "${state.tempHighMSG.substring(0, state.tempHighMSG.length() - 2)} \n"
+		theMsg += "${state.wrongTempsHighPushMap2} \n"
+    }    
 	pushMessage = "${theMsg}"
     if(theMsg) sendPushMessage.deviceNotification(pushMessage)
 }
