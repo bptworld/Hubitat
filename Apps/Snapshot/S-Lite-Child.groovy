@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 06/14/19 - Added even more triggers. 
  *  V1.0.2 - 06/13/19 - Added more triggers. Code cleanup.
  *  V1.0.1 - 06/13/19 - Fixed push messages
  *  V1.0.0 - 06/13/19 - Initial Release
@@ -42,7 +43,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -70,19 +71,35 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Type of Trigger")) {
 			
-            input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true, options: ["Mode Change", "Switch On", "tStat Nest - Heat/Cool", "tStat Other - Heat/Cool"]
+            input "triggerMode", "enum", title: "Select Trigger Type", required: true, submitOnChange: true, options: ["HSM Change","Mode Change", "Motion", "Presence", "Switch On", "Time", "tStat Nest - Heat/Cool", "tStat Other - Heat/Cool"]
+            if(triggerMode == "HSM Change") {
+                paragraph "<b>Only take a snapshot when HSM changes to...</b>"
+                input "hsmSwitch", "enum", title: "App Control Switch", required: true, multiple: true, options: ["armingAway", "armingHome", "armingNight", "armedAway", "armedHome", "armedNight", "disarmed", "allDisarmed"]
+            }
             if(triggerMode == "Mode Change") {
-                paragraph "<b>Only take a snapshot when changing to this mode</b>"
-                input "modeSwitch", "mode", title: "Trigger Notifications based on a Mode", required: true, multiple: true
+                paragraph "<b>Only take a snapshot when Mode changes to...</b>"
+                input "modeSwitch", "mode", title: "App Control Switch", required: true, multiple: true
+            }
+            if(triggerMode == "Motion") {
+                paragraph "<b>Only take a snapshot when any Motion Sensor selected becomes active.</b>"
+                input "motionSensors", "capability.motionSensor", title: "App Control Switch", required: true, multiple:true
+            }
+            if(triggerMode == "Presence") {
+                paragraph "<b>Only take a snapshot when all Presence Sensore selected are not present.</b>"
+                input "presenceSensors", "capability.presenceSensor", title: "App Control Switch", required: true, multiple:true
             }
             if(triggerMode == "Switch On") {
 		        paragraph "<b>Only take a snapshot when this switch is turned on</b><br>Recommended to create a virtual device with 'Enable auto off' set to '1s'"
 		    	input "onDemandSwitch", "capability.switch", title: "App Control Switch", required: true
             }
+            if(triggerMode == "Time") {
+		        paragraph "<b>Only take a snapshot at this Time</b><br>Not available yet."
+		    	input "timeToRun", "time", title: "App Control Switch", required: true
+            }
             if((triggerMode == "tStat Nest - Heat/Cool") || (triggerMode == "tStat Other - Heat/Cool")) {
 		        paragraph "<b>Only take a snapshot when this Thermostat is turned on or off (Heat or Cool)</b>"
 		    	input "tStatSwitch", "capability.thermostat", title: "App Control Switch", required: true
-            }   
+            }
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Monitor")) {
 			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false, submitOnChange: true
@@ -99,7 +116,7 @@ def pageConfig() {
 			input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange: true, required: false, multiple: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-			paragraph "Receive device notifications on demand with both voice and pushover options. Great before leaving the house or going to bed."
+			paragraph "Receive device notifications on demand with both voice and push options. Great before leaving the house or going to bed."
 			paragraph "Each of the following messages will only be spoken if necessary..."
 			input(name: "oRandomPre", type: "bool", defaultValue: "false", title: "Random Pre Message?", description: "Random", submitOnChange: "true")
 			if(!oRandomPre) input "preMsg", "text", required: true, title: "Pre Message - Single message", defaultValue: "Warning"
@@ -139,7 +156,7 @@ def pageConfig() {
         	if (speechMode == "Speech Synth"){ 
          		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
           	}
-			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false
+			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false
       	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 			paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
@@ -171,14 +188,19 @@ def installed() {
 def updated() {
 	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
+    unschedule()
 	initialize()
 }
 
 def initialize() {
 	setDefaults()
 	if(logEnable) log.debug "In initialize..."
+    if(triggerMode == "HSM Change") subscribe(location, "hsmStatus", hsmHandler)
     if(triggerMode == "Mode Change") subscribe(location, "mode", modeHandler)
+    if(triggerMode == "Motion") subscribe(motionSensors, "motion.active", priorityCheckHandler)
+    if(triggerMode == "Presence") subscribe(presenceSensors, "presence", presenceSensorHandler)
 	if(triggerMode == "Switch On") subscribe(onDemandSwitch, "switch.on", priorityCheckHandler)
+    if(triggerMode == "Time") schedule(timeToRun, priorityCheckHandler)
     if(triggerMode == "tStat Nest - Heat/Cool") subscribe(tStatSwitch, "thermostatOperatingState.heating", priorityCheckHandler)
     if(triggerMode == "tStat Nest - Heat/Cool") subscribe(tStatSwitch, "thermostatOperatingState.cooling", priorityCheckHandler) 
 	if(triggerMode == "tStat Other - Heat/Cool") subscribe(tStatSwitch, "thermostatMode.heat", priorityCheckHandler) 
@@ -194,6 +216,16 @@ def priorityCheckHandler(evt) {
     } else if(logEnable) log.debug "In priorityCheckHandler - No devices to report."
 }
 
+def hsmHandler(evt) {
+    if(logEnable) log.debug "In hsmHandler..."
+	state.hsmStatus = evt.value
+	def hsmMatch = hsmSwitch.contains(location.hsmStatus)
+    if(hsmMatch) {
+        if(logEnable) log.debug "In hsmHandler - MATCH - hsmSwitch: ${hsmSwitch} - Current HSM: ${location.hsmStatus}"
+        priorityCheckHandler()
+    } else if(logEnable) log.debug "In hsmHandler - NO MATCH - hsmSwitch: ${hsmSwitch} - Current HSM: ${location.hsmStatus}"
+}
+
 def modeHandler(evt) {
     if(logEnable) log.debug "In modeHandler..."
 	state.modeStatus = evt.value
@@ -202,6 +234,21 @@ def modeHandler(evt) {
         if(logEnable) log.debug "In modeHandler - MATCH - modeSwitch: ${modeSwitch} - Current Mode: ${location.mode}"
         priorityCheckHandler()
     } else if(logEnable) log.debug "In modeHandler - NO MATCH - modeSwitch: ${modeSwitch} - Current Mode: ${location.mode}"
+}
+
+def presenceSensorHandler(evt){
+	if(logEnable) log.debug "In presenceSensorHandler..."
+    presenceSensors.each { ps ->
+        presenceSensorValue = ps.currentValue('presence')
+        if(presenceSensorValue == "not present") {
+            if(logEnable) log.debug "In presenceSensorHandler - ${ps} is ${presenceSensorValue}."
+	    	state.presenceValue = "no"
+        } else {
+            if(logEnable) log.debug "In presenceSensorHandler - ${ps} is ${presenceSensorValue}!"
+            state.presenceValue = "yes"
+        }
+    }
+    if(state.presenceValue == "no") priorityCheckHandler()
 }
 
 def priorityHandler(evt){
