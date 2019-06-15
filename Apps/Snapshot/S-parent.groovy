@@ -2,7 +2,7 @@
  *  ****************  Snapshot Parent ****************
  *
  *  Design Usage:
- *  Monitor lights, devices and sensors. Easily see their status right on your dashboard.
+ *  Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -34,20 +34,20 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 06/13/19 - Added support for Snapshot Lite
  *  V1.0.0 - 03/16/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
     name:"Snapshot",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Monitor lights, devices and sensors. Easily see their status right on your dashboard.",
+    description: "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -82,15 +82,18 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Monitor lights, devices and sensors. Easily see their status right on your dashboard.</div>"
+				paragraph "<div style='color:#1A77C9'>Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Information</b>"
-				paragraph "Monitor lights, devices and sensors. Easily see their status right on your dashboard."
+				paragraph "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications."
+                paragraph "<b>Snapshot</b><br>Full app featuring dashboard support, speech, device or push notifications."
+                paragraph "<b>Snapshot Lite</b><br>Lite version, for those that only need speech, device or push notifications."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Snapshot Child", namespace: "BPTWorld", title: "<b>Add a new 'Snapshot' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Snapshot Lite Child", namespace: "BPTWorld", title: "<b>Add a new 'Snapshot Lite' child</b>", multiple: true)
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
