@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 06/14/19 - Added message to speak when there is no devices out of sync. Will only send push when there is data.
  *  V1.0.3 - 06/14/19 - Added even more triggers. 
  *  V1.0.2 - 06/13/19 - Added more triggers. Code cleanup.
  *  V1.0.1 - 06/13/19 - Fixed push messages
@@ -43,7 +44,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -143,6 +144,19 @@ def pageConfig() {
 					paragraph "${listMapPost}"
 				}
 			}
+            paragraph "If there are no devices to speak, enter something in here to speak instead."
+			input(name: "oRandomNothing", type: "bool", defaultValue: "false", title: "Random Nothing to Report Message?", description: "Random", submitOnChange: "true")
+			if(!oRandomNothing) input "nothingMsg", "text", required: true, title: "Nothing to Report Message - Single message", defaultValue: "No Devices to report."
+			if(oRandomNothing) {
+				input "nothingMsg", "text", title: "Random Nothing to Report Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oNothingList", type: "bool", defaultValue: "false", title: "Show a list view of the random Nothing to Report messages?", description: "List View", submitOnChange: "true")
+				if(oNothingList) {
+					def valuesNothing = "${nothingMsg}".split(";")
+					listMapNothing = ""
+    				valuesNothing.each { itemNothing -> listMapNothing += "${itemNothing}<br>" }
+					paragraph "${listMapNothing}"
+				}
+			}
 		}	
         section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
           	input "speechMode", "enum", required: false, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
@@ -210,10 +224,9 @@ def initialize() {
 def priorityCheckHandler(evt) {
 	if(logEnable) log.debug "In priorityCheckHandler..."
 	priorityHandler()
-    if(state.isData == "yes") {
-	    if(speaker) letsTalk()
-	    if(sendPushMessage) pushNow()
-    } else if(logEnable) log.debug "In priorityCheckHandler - No devices to report."
+	if(speaker) letsTalk()
+    if(state.isData == "yes") { if(sendPushMessage) pushNow() }
+    if(logEnable) log.debug "In priorityCheckHandler - No devices to report."
 }
 
 def hsmHandler(evt) {
@@ -253,7 +266,6 @@ def presenceSensorHandler(evt){
 
 def priorityHandler(evt){
     state.wrongSwitchesMSG = ""
-    state.wrongDevicesMSG = ""
     state.wrongContactsMSG = ""
     state.wrongLocksMSG = ""
     state.tempLowMSG = ""
@@ -330,17 +342,13 @@ def priorityHandler(evt){
 	}
     
 // Is there Data
-    if(isDataDevice) {
-        if((state.wrongSwitchesMSG != "") || (state.wrongDevicesMSG != "") || (state.wrongContactsMSG != "") || (state.wrongLocksMSG != "") || (state.tempLowMSG != "") || (state.tempHighMSG != "")) {
-            isDataDevice.on()
-            state.isData = "yes"
-        }
+    if((state.wrongSwitchesMSG != "") || (state.wrongContactsMSG != "") || (state.wrongLocksMSG != "") || (state.tempLowMSG != "") || (state.tempHighMSG != "")) {
+        if(isDataDevice) { isDataDevice.on() }
+        state.isData = "yes"
     }
-    if(isDataDevice) {
-        if((state.wrongSwitchesMSG == "") && (state.wrongDevicesMSG == "") && (state.wrongContactsMSG == "") && (state.wrongLocksMSG == "") && (state.tempLowMSG == "") && (state.tempHighMSG == "")) {
-            isDataDevice.off()
-            state.isData = "no"
-        }
+    if((state.wrongSwitchesMSG == "") && (state.wrongContactsMSG == "") && (state.wrongLocksMSG == "") && (state.tempLowMSG == "") && (state.tempHighMSG == "")) {
+        if(isDataDevice) { isDataDevice.off() }
+        state.isData = "no"
     }
 }
 
@@ -407,44 +415,58 @@ def checkVol() {
 
 def messageHandler() {
 	if(logEnable) log.debug "In messageHandler..."
-	state.theMsg = ""
+    if(state.isData == "yes") {
+	    state.theMsg = ""
     
-	if(oRandomPre) {
-		def values = "${preMsg}".split(";")
-		vSize = values.size()
-		count = vSize.toInteger()
-    	def randomKey = new Random().nextInt(count)
-		state.preMsgR = values[randomKey]
-		if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Pre Msg: ${state.preMsgR}"
-	} else {
-		state.preMsgR = "${preMsg}"
-		if(logEnable) log.debug "In messageHandler - Static - Pre Msg: ${state.preMsgR}"
-	}
+	    if(oRandomPre) {
+	    	def values = "${preMsg}".split(";")
+	    	vSize = values.size()
+		    count = vSize.toInteger()
+    	    def randomKey = new Random().nextInt(count)
+		    state.preMsgR = values[randomKey]
+		    if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Pre Msg: ${state.preMsgR}"
+	    } else {
+		    state.preMsgR = "${preMsg}"
+		    if(logEnable) log.debug "In messageHandler - Static - Pre Msg: ${state.preMsgR}"
+	    }
 	
-	if(oRandomPost) {
-		def values = "${postMsg}".split(";")
-		vSize = values.size()
-		count = vSize.toInteger()
-    	def randomKey = new Random().nextInt(count)
-		state.postMsgR = values[randomKey]
-		if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Post Msg: ${state.postMsgR}"
-	} else {
-		state.postMsgR = "${postMsg}"
-		if(logEnable) log.debug "In messageHandler - Static - Post Msg: ${state.postMsgR}"
-	}
+	    if(oRandomPost) {
+	    	def values = "${postMsg}".split(";")
+	    	vSize = values.size()
+		    count = vSize.toInteger()
+        	def randomKey = new Random().nextInt(count)
+		    state.postMsgR = values[randomKey]
+		    if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Post Msg: ${state.postMsgR}"
+	    } else {
+		    state.postMsgR = "${postMsg}"
+		    if(logEnable) log.debug "In messageHandler - Static - Post Msg: ${state.postMsgR}"
+	    }
 	
-	state.theMsg = "${state.preMsgR}, "
+	    state.theMsg = "${state.preMsgR}, "
     
-    if(state.wrongSwitchesMSG) { state.theMsg += " Switches: ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}." }
-    if(state.wrongDevicesMSG) { state.theMsg += " Devices: ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}." }
-    if(state.wrongContactsMSG) { state.theMsg += " Contacts: ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}." }
-    if(state.wrongLocksMSG) { state.theMsg += " Locks: ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}." }
+        if(state.wrongSwitchesMSG) { state.theMsg += " Switches: ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}." }
+        if(state.wrongDevicesMSG) { state.theMsg += " Devices: ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}." }
+        if(state.wrongContactsMSG) { state.theMsg += " Contacts: ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}." }
+        if(state.wrongLocksMSG) { state.theMsg += " Locks: ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}." }
     
-    if(state.tempLowMSG) { state.theMsg += " Temps low: ${state.tempLowMSG.substring(0, state.tempLowMSG.length() - 2)}." }
-    if(state.tempHighMSG) { state.theMsg += " Temps high: ${state.tempHighMSG.substring(0, state.tempHighMSG.length() - 2)}." }
+        if(state.tempLowMSG) { state.theMsg += " Temps low: ${state.tempLowMSG.substring(0, state.tempLowMSG.length() - 2)}." }
+        if(state.tempHighMSG) { state.theMsg += " Temps high: ${state.tempHighMSG.substring(0, state.tempHighMSG.length() - 2)}." }
     
-	state.theMsg += " ${state.postMsgR}"
-	if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+	    state.theMsg += " ${state.postMsgR}"
+	    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+    } else {
+        if(oRandomNothing) {
+	    	def values = "${nothingMsg}".split(";")
+	    	vSize = values.size()
+		    count = vSize.toInteger()
+        	def randomKey = new Random().nextInt(count)
+		    state.theMsg = values[randomKey]
+		    if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Nothing Msg: ${state.nothingMsgR}"
+	    } else {
+		    state.theMsg = "${nothingMsg}"
+		    if(logEnable) log.debug "In messageHandler - Static - Nothing Msg: ${state.nothingMsgR}"
+	    }
+    }
 }
 
 def pushNow(){
