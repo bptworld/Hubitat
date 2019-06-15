@@ -216,7 +216,7 @@
   "SimpleIrrigationUpdateNote": " V1.0.6 - 06/09/19 - Fixed issue with multiple schedules",
   
   "SnapshotType": "App",
-  "SnapshotParentVersion": "v1.0.0",
+  "SnapshotParentVersion": "v1.0.1",
   "SnapshotChildVersion": "v1.1.5",
   "SnapshotDriverVersion": "v1.0.9",
   "SnapshotParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy",
