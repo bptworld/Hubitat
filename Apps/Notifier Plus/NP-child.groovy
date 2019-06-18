@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.2.0 - 06/18/19 - Fixed a couple of typos, Attempt to fix the 'run every x days' option
  *  V1.1.9 - 06/12/19 - Added ability to select start date for 'Run every X days' option
  *  V1.1.8 - 06/12/19 - Removed the 'Every Other' option and added 'Run every X days'. Changes made to 'By Date' section, please
  *                      reselect the 'Month' on any child app.
@@ -66,7 +67,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.9"
+	state.version = "v1.2.0"
 }
 
 definition(
@@ -115,7 +116,7 @@ def pageConfig() {
 			if(xDate) {
 				app.clearSetting("xDay")
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
-				if(month == "1" || month == "2" || month == "5" || month == "7" || month == "8" || month == "10" || month == "12") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+				if(month == "1" || month == "3" || month == "5" || month == "7" || month == "8" || month == "10" || month == "12") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
 				if(month == "4" || month == "6" || month == "9" || month == "11") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
 				if(month == "2") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
 				
@@ -463,7 +464,7 @@ def daysAfterHandler() {
         if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
         state.schedule = "0 ${min} ${hour} ${dayDA} ${monthDA} ? ${yearDA}"
 	    if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${dayDA} Month: ${monthDA} DoW: ? Year: ${yearDA}"
-        state.runBefore == "yes"
+        state.runBefore = "yes"
     } else{
         if(logEnable) log.debug "In daysAfterHandler - runBefore: ${state.runBefore}"
         int daysAfter1 = daysAfter
@@ -473,7 +474,7 @@ def daysAfterHandler() {
 	    if(logEnable) log.debug "In scheduleHandler - Skip: ${daysAfter1} Date: ${futureDateS}"
         state.schedule = "0 ${min} ${hour} ${fDateS[1]} ${fDateS[0]} ? ${fDateS[2]}"
 	    if(logEnable) log.debug "In scheduleHandler - everyO cron: Sec: 0 Min: ${min} Hour: ${hour} Day: ${fDateS[1]} Month: ${fDateS[0]} DoW: ? Year: ${fDateS[2]}"
-        state.runBefore == "yes"
+        state.runBefore = "yes"
     }
     schedule(state.schedule, magicHappensHandler)
 }
@@ -795,14 +796,14 @@ def magicHappensHandler() {
 			if(newMode) modeHandler()
 		}
         if(xDay && daysAfter) {
-            daysAfterHandler()
             state.runBefore = "yes"
+            daysAfterHandler()
         }
 	} else {
 		log.info "${app.label} - Control Switch is OFF - No need to run."
         if(xDay && daysAfter) {
-            daysAfterHandler()
             state.runBefore = "yes"
+            daysAfterHandler()
         }
 	}
 }
