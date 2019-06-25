@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 06/25/19 - Can now select multiple switches to activate speaker
  *  V1.1.8 - 06/11/19 - Fixed when priority settings are visible
  *  V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for speech synth devices.
  *  V1.1.6 - 05/14/19 - Changed voice options to just one Fun [F] and a Random [R]
@@ -56,7 +57,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.8"
+	state.version = "v1.1.9"
 }
 
 definition(
@@ -100,16 +101,16 @@ def pageConfig() {
 					paragraph "Selected speakers will always play messages."	
 				}
 				if(triggerMode == "Contact_Sensor"){
-					input "myContacts", "capability.contactSensor", title: "Select the contact sensor to activate the speaker", required: true, multiple: true
+					input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the speaker", required: true, multiple: true
 					input "contactOption", "enum", title: "Select contact option - If (option), Speaker is On", options: ["Open","Closed"], required: true
 					input "sZoneWaiting", "number", title: "After contact changes, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 				if(triggerMode == "Motion_Sensor"){
-					input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the speaker", required: true, multiple: true
+					input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the speaker", required: true, multiple: true
 					input "sZoneWaiting", "number", title: "After motion stops, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 				if(triggerMode == "Switch"){
-					input "mySwitches", "capability.switch", title: "Select Switch to activate the speaker", required: true, multiple: false
+					input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the speaker", required: true, multiple: true
 					input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 			}
@@ -497,7 +498,6 @@ def letsTalk() {
 				pauseExecution(atomicState.speechDuration2)
 				if(volRestore) {
 					speaker.setVolume(volRestore)
-					//speaker.stop()
 				}
 			}
 			speakerStatus = "${app.label}:${atomicState.sZone}"
@@ -565,7 +565,7 @@ def checkVol() {
 }
 
 def sendPush() {
-	if(logEnable) log.debug "In sendPush..."
+	if(logEnable) log.debug "In sendPush - ${state.lastSpoken}"
 	if(state.IH1 == "no") {
 		theMessage = "${state.lastSpoken}"
 		if(logEnable) log.debug "In sendPush - IH1 Sending message: ${theMessage}"
