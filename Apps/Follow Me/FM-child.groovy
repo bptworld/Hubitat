@@ -121,10 +121,12 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) {
         	   	input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 				if (speechMode == "Music Player"){ 
+                    paragraph "NOTE: Music Player is typically used with Echo and Sonos devices but others may work. (Not Google/Nest)"
             	  	input "speaker", "capability.musicPlayer", title: "Choose speaker", required: true, submitOnChange: true
 					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?", submitOnChange: true)
           		}   
-        		if (speechMode == "Speech Synth"){ 
+        		if (speechMode == "Speech Synth"){
+                    paragraph "NOTE: Speech Synth is typically used with Google devices but others may work. (Not Echo)"
          			input "speaker", "capability.speechSynthesis", title: "Choose speaker", required: true, submitOnChange: true
 					input(name: "gSpeaker", type: "bool", defaultValue: "false", title: "Is this a Google device?", description: "Google device?", submitOnChange: true)
 					if(gSpeaker) paragraph "If using Google speaker devices sometimes an Initialize is necessary (not always)."
