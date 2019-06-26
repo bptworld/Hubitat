@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.2.1 - 06/26/19 - Fixed problem with testing Random Voice
  *  V1.2.0 - 06/26/19 - Added more sound options. Gave voice and sound options their own pages and added Test buttons to each.
  *  V1.1.9 - 06/25/19 - Can now select multiple switches to activate speaker
  *  V1.1.8 - 06/11/19 - Fixed when priority settings are visible
@@ -58,7 +59,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.0"
+	state.version = "v1.2.1"
 }
 
 definition(
@@ -739,7 +740,8 @@ def appButtonHandler(buttonPressed) {
     }
     if(state.whichButton == "testVoiceRandom"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice Random"
-        def tts = textToSpeech(testPhrase,voiceRandom)
+        randomHandler()
+        def tts = textToSpeech(testPhrase,state.randVoice)
 	    def uriMessage = "${tts.get('uri')}"
         testSpeaker.playTrack(uriMessage)
     }
