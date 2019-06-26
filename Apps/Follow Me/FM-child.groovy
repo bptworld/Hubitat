@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.2.0 - 06/26/19 - Added more sound options. Gave voice and sound options their own pages and added Test buttons to each.
  *  V1.1.9 - 06/25/19 - Can now select multiple switches to activate speaker
  *  V1.1.8 - 06/11/19 - Fixed when priority settings are visible
  *  V1.1.7 - 06/09/19 - Code changes to better handle priority messages. Added sounds for speech synth devices.
@@ -57,7 +58,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.9"
+	state.version = "v1.2.0"
 }
 
 definition(
@@ -76,6 +77,8 @@ definition(
 preferences {
     page(name: "pageConfig")
 	page name: "pushOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page name: "voiceOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page name: "soundOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -158,22 +161,13 @@ def pageConfig() {
 				}
 				if(speechMode == "Speech Synth") {
                     if(priorityVoices) {
-					    section("Select Voices for different priorities") {
-					    	input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false
-						    input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true 
-						    input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false
-						    input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false
-						    input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false
+                        section(getFormat("header-green", "${getImage("Blank")}"+" Voice Options")) {
+                            href "voiceOptions", title:"Voice Options Setup", description:"Click here to setup the voices"
                         }
 					}
 				    if(messageSounds) {
 					    section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
-					    	paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
-					    	input "sound1", "text", title: "Sound - 1", required: false
-						    input "sound2", "text", title: "Sound - 2", required: false
-						    input "sound3", "text", title: "Sound - 3", required: false
-						    input "sound4", "text", title: "Sound - 4", required: false
-					    	input "sound5", "text", title: "Sound - 5", required: false
+					    	href "soundOptions", title:"Sound Options Setup", description:"Click here to setup the sound files"
 					    }
                     }
 				} else {
@@ -232,7 +226,55 @@ def pushOptions(){
 		}
 	}
 }		
-			
+
+def voiceOptions(){
+    dynamicPage(name: "voiceOptions", title: "Voice Option Setup", install: false, uninstall:false){
+		section("Select Voices for different priorities") {
+            input "testSpeaker", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
+            input "testPhrase", "text", title: "Test Phrase", required: true, defaultValue: "This is a test", submitOnChange: true              
+			input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false, submitOnChange: true, width: 7
+            if(voiceFun) input "testVoiceFun", "button", title: "Test Voice Fun", width: 5
+			input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true, submitOnChange: true, width: 7
+            if(voiceRandom) input "testVoiceRandom", "button", title: "Test Voice Random", width: 5
+			input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false, submitOnChange: true, width: 7
+            if(voiceLow) input "testVoiceLow", "button", title: "Test Voice Low", width: 5
+			input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false, submitOnChange: true, width: 7
+            if(voiceMed) input "testVoiceMed", "button", title: "Test Voice Med", width: 5
+		    input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false, submitOnChange: true, width: 7
+            if(voiceHigh) input "testVoiceHigh", "button", title: "Test Voice High", width: 5
+        }
+	}
+}	
+
+def soundOptions(){
+    dynamicPage(name: "soundOptions", title: "Sound Option Setup", install: false, uninstall:false){
+		section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
+			paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
+            input "testSpeaker", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
+			input "sound1", "text", title: "Sound - 1", required: false, width: 9
+            if(sound1) input "testBtn1", "button", title: "Test Sound 1", width: 3
+			input "sound2", "text", title: "Sound - 2", required: false, width: 9
+            if(sound2) input "testBtn2", "button", title: "Test Sound 2", width: 3
+			input "sound3", "text", title: "Sound - 3", required: false, width: 9
+            if(sound3) input "testBtn3", "button", title: "Test Sound 3", width: 3
+			input "sound4", "text", title: "Sound - 4", required: false, width: 9
+            if(sound4) input "testBtn4", "button", title: "Test Sound 4", width: 3
+			input "sound5", "text", title: "Sound - 5", required: false, width: 9
+            if(sound5) input "testBtn5", "button", title: "Test Sound 5", width: 3
+            input "sound6", "text", title: "Sound - 6", required: false, width: 9
+            if(sound6) input "testBtn6", "button", title: "Test Sound 6", width: 3
+            input "sound7", "text", title: "Sound - 7", required: false, width: 9
+            if(sound7) input "testBtn7", "button", title: "Test Sound 7", width: 3
+            input "sound8", "text", title: "Sound - 8", required: false, width: 9
+            if(sound8) input "testBtn8", "button", title: "Test Sound 8", width: 3
+            input "sound9", "text", title: "Sound - 9", required: false, width: 9
+            if(sound9) input "testBtn9", "button", title: "Test Sound 9", width: 3
+            input "sound10", "text", title: "Sound - 10", required: false, width: 9
+            if(sound10) input "testBtn10", "button", title: "Test Sound 10", width: 3
+		}
+	}
+}		
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -455,42 +497,7 @@ def letsTalk() {
 				if(gInitialize) initializeSpeaker()
 				if(volSpeech) speaker.setVolume(state.volume)
 				if(priorityVoices) {
-					if(state.lastSpoken == ".") state.lastSpoken = ""
-					if(logEnable) log.debug "In letsTalk - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
-					def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
-					def uriMessage = "${tts.get('uri')}"
-					if(state.priority.contains("1")) {
-						if(sound1) {
-							speaker.playTrack(sound1)
-							pauseExecution(1000)
-						} else log.info "${app.label} - Sound 1 not defined"
-					}
-					if(state.priority.contains("2")) {
-						if(sound2) {
-							speaker.playTrack(sound2)
-							pauseExecution(1000)
-						} else log.info "${app.label} - Sound 2 not defined"
-					}
-					if(state.priority.contains("3")) {
-						if(sound3) {
-							speaker.playTrack(sound3)
-							pauseExecution(1000)
-						} else log.info "${app.label} - Sound 3 not defined"
-					}
-					if(state.priority.contains("4")) {
-						if(sound4) {
-							speaker.playTrack(sound4)
-							pauseExecution(1000)
-						} else log.info "${app.label} - Sound 4 not defined"
-					}
-					if(state.priority.contains("5")) {
-						if(sound5) {
-							speaker.playTrack(sound5)
-							pauseExecution(1000)
-						} else log.info "${app.label} - Sound 5 not defined"
-					}
-						if(logEnable) log.debug "In letsTalk - ${uriMessage}"
-						speaker.playTrack(uriMessage)
+					priorityVoicesHandler()
 				} else {
 					if(logEnable) log.debug "In letsTalk - Using Hubitat's default voice"
 					speaker.speak(state.lastSpoken)
@@ -564,6 +571,76 @@ def checkVol() {
 	}
 }
 
+def priorityVoicesHandler() {
+    if(state.lastSpoken == ".") state.lastSpoken = ""
+	if(logEnable) log.debug "In priorityVoicesHandler - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
+	def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
+	def uriMessage = "${tts.get('uri')}"
+	if(state.priority.contains("1")) {
+		if(sound1) {
+			speaker.playTrack(sound1)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 1 not defined"
+	}
+	if(state.priority.contains("2")) {
+		if(sound2) {
+			speaker.playTrack(sound2)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 2 not defined"
+	}
+	if(state.priority.contains("3")) {
+		if(sound3) {
+			speaker.playTrack(sound3)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 3 not defined"
+	}
+	if(state.priority.contains("4")) {
+		if(sound4) {
+			speaker.playTrack(sound4)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 4 not defined"
+	}
+	if(state.priority.contains("5")) {
+		if(sound5) {
+			speaker.playTrack(sound5)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 5 not defined"
+	}
+    if(state.priority.contains("6")) {
+		if(sound6) {
+			speaker.playTrack(sound6)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 6 not defined"
+	}
+    if(state.priority.contains("7")) {
+		if(sound7) {
+			speaker.playTrack(sound7)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 7 not defined"
+	}
+    if(state.priority.contains("8")) {
+		if(sound8) {
+			speaker.playTrack(sound8)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 8 not defined"
+	}
+    if(state.priority.contains("9")) {
+		if(sound9) {
+			speaker.playTrack(sound9)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 9 not defined"
+	}
+    if(state.priority.contains("10")) {
+		if(sound10) {
+			speaker.playTrack(sound10)
+			pauseExecution(1000)
+		} else log.info "${app.label} - Sound 10 not defined"
+	}
+    
+	if(logEnable) log.debug "In priorityVoicesHandler - ${uriMessage}"
+	speaker.playTrack(uriMessage)
+}
+
 def sendPush() {
 	if(logEnable) log.debug "In sendPush - ${state.lastSpoken}"
 	if(state.IH1 == "no") {
@@ -610,6 +687,81 @@ def randomHandler() {
 	state.randVoice = voiceRandom[randomKey]
 	if(logEnable) log.debug "In randomHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, randomVoice: ${state.randVoice}"
 }
+
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    if(logEnable) log.debug "In testButtonHandler - Button Pressed: ${state.whichButton}"
+    if(state.whichButton == "testBtn1"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 1"
+        testSpeaker.playTrack(sound1)
+    }
+    if(state.whichButton == "testBtn2"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 2"
+        testSpeaker.playTrack(sound2)
+    }
+    if(state.whichButton == "testBtn3"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 3"
+        testSpeaker.playTrack(sound3)
+    }
+    if(state.whichButton == "testBtn4"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 4"
+        testSpeaker.playTrack(sound4)
+    }
+    if(state.whichButton == "testBtn5"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 5"
+        testSpeaker.playTrack(sound5)
+    }
+    if(state.whichButton == "testBtn6"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 6"
+        testSpeaker.playTrack(sound6)
+    }
+    if(state.whichButton == "testBtn7"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 7"
+        testSpeaker.playTrack(sound7)
+    }
+    if(state.whichButton == "testBtn8"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 8"
+        testSpeaker.playTrack(sound8)
+    }
+    if(state.whichButton == "testBtn9"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 9"
+        testSpeaker.playTrack(sound9)
+    }
+    if(state.whichButton == "testBtn10"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 10"
+        testSpeaker.playTrack(sound10)
+    }
+    if(state.whichButton == "testVoiceFun"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Voice Fun"
+        def tts = textToSpeech(testPhrase,voiceFun)
+	    def uriMessage = "${tts.get('uri')}"
+        testSpeaker.playTrack(uriMessage)
+    }
+    if(state.whichButton == "testVoiceRandom"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Voice Random"
+        def tts = textToSpeech(testPhrase,voiceRandom)
+	    def uriMessage = "${tts.get('uri')}"
+        testSpeaker.playTrack(uriMessage)
+    }
+    if(state.whichButton == "testVoiceLow"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Voice Low"
+        def tts = textToSpeech(testPhrase,voiceLow)
+	    def uriMessage = "${tts.get('uri')}"
+        testSpeaker.playTrack(uriMessage)
+    }
+    if(state.whichButton == "testVoiceMed"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Voice Med"
+        def tts = textToSpeech(testPhrase,voiceMed)
+	    def uriMessage = "${tts.get('uri')}"
+        testSpeaker.playTrack(uriMessage)
+    }
+    if(state.whichButton == "testVoiceHigh"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Voice High"
+        def tts = textToSpeech(testPhrase,voiceHigh)
+	    def uriMessage = "${tts.get('uri')}"
+        testSpeaker.playTrack(uriMessage)
+    }
+}   
 
 // ********** Normal Stuff **********
 
