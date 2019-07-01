@@ -24,7 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
- *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions. Please read them! lol
+ *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions.
  *  v1.0.2 - 07/01/19 - More code cleanup. Combined pages and colorized headers. Added importURL. Fixed 'Now Connected' page with
  *                      Hubitat info. Added newClientID up top in app to make it easier when pasting in code.
  *  v1.0.1 - 06/30/19 - Added code to turn logging on and off. Tons of little code changes here and there for Hubitat (bptworld)
