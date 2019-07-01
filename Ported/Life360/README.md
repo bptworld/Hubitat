@@ -7,8 +7,6 @@ Connect Life360 to Hubitat including ALL stats.<br><br>
 * Go to ‘Apps’
 * Click ‘Load New Apps’
 * Select ‘Life360 (Connect)’ under ‘User Apps’
-* Click 'Done'
-* Go back to Apps and open 'Life360 (Connect)'
 * From here PLEASE READ THE INSTRUCTIONS IN THE APP!
 <br>
 Once again thanks to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible without his work.<br><br>
