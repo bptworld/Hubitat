@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions. Please read them! lol
  *  v1.0.2 - 07/01/19 - More code cleanup. Combined pages and colorized headers. Added importURL. Fixed 'Now Connected' page with
  *                      Hubitat info. Added newClientID up top in app to make it easier when pasting in code.
  *  v1.0.1 - 06/30/19 - Added code to turn logging on and off. Tons of little code changes here and there for Hubitat (bptworld)
@@ -37,7 +38,7 @@ def newClientID() {
 //***********************************************************
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -95,7 +96,33 @@ def authPage() {
     
 		return dynamicPage(name: "Credentials", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 (Connect)</h2>", uninstall: true, install: false) {
             display()
-		    section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Credentials")) {
+            section("LONG Instructions:", hideable: true, hidden: true) {
+                paragraph "<b>Install Instructions</b>"
+                paragraph "Please follow the instructions carefully! It seems complicated but it really only takes 2 minutes. I simply went into a lot of detail to avoid all the questions ;)."
+                paragraph "<hr>"
+                paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 (Connect)' and (c) Logs"
+                paragraph "<hr>"
+                paragraph "2. In tab (a), Click on the big 'Life360' button<br>3. Enter in your Life360 Username and Password<br>4. You WILL get an error screen like this...<br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-XMLError.png'><br>5. Highlight and COPY the long code of letters and numbers<br>ie. MWE2YTk3NGQtNGQ0YS00ODkzLWJlMzktN2E2MWU2NzZmMmRm"
+                paragraph "<hr>"
+                paragraph "6. Change browser tab to (b), Around Line 35 look for 'state.newClientID' and then paste in the long code you copied in the last step.<br>7. Save the app."
+                paragraph "<hr>"
+                paragraph "8. Change browser tab to (c). Locate 'Life360 (connect)' up top and click on it. Now down below look for this line. ie. ACCESS TOKEN: 735955da-7e31-4cef-81d2-ea10ebfc8416<br>9. Hightlight and COPY just the full set of numbers and letters (make sure there is no leading space)"
+                paragraph "<hr>"
+                paragraph "10. Change browser tab back to (a).<br>11. In the browser url bar look toward the middle and find 'access_token='.<br>12. Double click on the set of numbers and letters that are after that to hightlight it.<br>13. PASTE in the code saved in step 9. and then press 'ENTER' key."
+                paragraph "<img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL.png'><br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL2.png'>"
+                paragraph "<hr>"
+                paragraph "14. You should now see the 'You are now connected' screen. <b>Congratulations!</b>"
+            }
+            section("SHORT Instructions:", hideable: true, hidden: true) {
+                paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 (Connect)' and (c) Logs"
+                paragraph "2. In tab (a), Click the 'Life360' button and follow through the flow until you get the error XML screen."
+                paragraph "3. COPY the long code of letters and numbers<br>ie. MWE2YTk3NGQtNGQ0YS00ODkzLWJlMzktN2E2MWU2NzZmMmRm"
+                paragraph "4. Change browser tab to (b), Around Line 35 look for 'state.newClientID' and then paste in the long code you copied in the last step and 'SAVE' the app"
+                paragraph "5. Change browser tab to (c). Look for this line in logs: ACCESS TOKEN: 735955da-7e31-4cef-81d2-ea10ebfc8416 and COPY just the full set of letters and numbers."
+                paragraph "6. Change browser tab back to (a). Replace the access_token= in the URL with the one you copied in the last step and hit 'ENTER'."
+                paragraph "7. You should now see the 'You are now connected' screen. <b>Congratulations!</b>"  
+            }
+            section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Credentials")) {
     			href url:redirectUrl, style:"embedded", required:false, title:"Life360", description:description
 		    }
    	 	}
@@ -159,7 +186,6 @@ def buildRedirectUrl() {
     //log.debug "In buildRedirectUrl..."
 
     log.debug "ACCESS TOKEN: ${state.accessToken}"
-    testToken = "c4f25cb7-5a47-455c-a290-145131859fe2"
     return "${getApiServerUrl()}/${hubUID}/apps/${app.id}/receiveToken"
 }
 
