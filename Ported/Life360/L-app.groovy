@@ -1,5 +1,5 @@
 /**
- *  life360
+ *  life360 (Connect) - Hubitat Port
  *
  *	BTRIAL DISTANCE AND SLEEP PATCH 29-12-2017
  *	Updated Code to handle distance from, and sleep functionality
