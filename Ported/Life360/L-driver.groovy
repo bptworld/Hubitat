@@ -1,6 +1,8 @@
 /**
  *  Copyright 2015 SmartThings
  *
+ *  name: "Life360 User", namespace: "tmleafs", author: "tmleafs"
+ *
  *	BTRIAL DISTANCE AND SLEEP PATCH 29-12-2017
  *	Updated Code to handle distance from, and sleep functionality
  *
@@ -26,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.0.2 - 07/02/19 - Added clientID, updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.1 - 06/30/19 - Added code to turn debug logging on and off (bptworld)
  *  V1.0.0 - 06/30/19 - Initial port of driver for Hubitat (bptworld)
  */
@@ -33,11 +36,12 @@
 preferences {
 	input title:"Distance", description:"This feature allows you change the display of distance to either Miles or KM. Please note, any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
+    input "clientID", "text", title: "Saved clientID from Life360 Install - Just here for safekeeping!",  required: false
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
 } 
  
 metadata {
-	definition (name: "Life360 User", namespace: "tmleafs", author: "tmleafs") {
+	definition (name: "Life360 User", namespace: "BPTWorld", author: "Bryan Turcotte") {
 	capability "Presence Sensor"
 	capability "Sensor"
     capability "Refresh"
@@ -64,6 +68,7 @@ metadata {
     attribute "speedMiles", "number"
     attribute "speedKm", "number"
    	attribute "wifiState", "boolean"
+    attribute "clientID", "String"
 
 	command "refresh"
 	command "asleep"
@@ -141,8 +146,8 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	state.update = false}
 }
 
-private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState){
-	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
+private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,clientID){
+	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState | clientID = $clientID"
 	   
 	if(address1 != device.currentValue('address1')){
     sendEvent( name: "prevAddress1", value: device.currentValue('address1'), isStateChange: true, displayed: false )
@@ -188,6 +193,9 @@ private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriv
     if(wifiState != device.currentValue('wifiState'))
    	sendEvent( name: "wifiState", value: wifiState, isStateChange: true, displayed: false )
    	setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+    
+    if(clientID != device.currentValue('clientID'))
+   	sendEvent( name: "clientID", value: clientID, isStateChange: true, displayed: false )
 }
 
 def setMemberId (String memberId) {
