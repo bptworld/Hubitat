@@ -34,7 +34,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQtZjUzZi00M2JmLWEyYzctOWRkZDA4YjgyZjBj"
+    state.newClientID = "MGVhZGNiOGQtZjUzZ0000JmLWEyYzctOWRkZDA4YjgyZjBj"
 }
 //***********************************************************
 
