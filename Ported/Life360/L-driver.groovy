@@ -68,7 +68,6 @@ metadata {
     attribute "speedMiles", "number"
     attribute "speedKm", "number"
    	attribute "wifiState", "boolean"
-    attribute "clientID", "String"
 
 	command "refresh"
 	command "asleep"
@@ -193,9 +192,6 @@ private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriv
     if(wifiState != device.currentValue('wifiState'))
    	sendEvent( name: "wifiState", value: wifiState, isStateChange: true, displayed: false )
    	setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
-    
-    if(clientID != device.currentValue('clientID'))
-   	sendEvent( name: "clientID", value: clientID, isStateChange: true, displayed: false )
 }
 
 def setMemberId (String memberId) {
