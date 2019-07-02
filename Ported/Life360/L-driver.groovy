@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.0.3 - 07/03/19 - Changed booleans to strings so it'll work with RM. Thanks @doug
  *  V1.0.2 - 07/02/19 - Added clientID, updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.1 - 06/30/19 - Added code to turn debug logging on and off (bptworld)
  *  V1.0.0 - 06/30/19 - Initial port of driver for Hubitat (bptworld)
@@ -57,17 +58,17 @@ metadata {
 	attribute "address1", "String"
   	attribute "address2", "String"
   	attribute "battery", "number"
-   	attribute "charge", "boolean"
+   	attribute "charge", "String" //boolean
    	attribute "lastCheckin", "number"
-   	attribute "inTransit", "boolean"
-   	attribute "isDriving", "boolean"
+   	attribute "inTransit", "String" //boolean
+   	attribute "isDriving", "String" //boolean
    	attribute "latitude", "number"
    	attribute "longitude", "number"
    	attribute "since", "number"
    	attribute "speedMetric", "number"
     attribute "speedMiles", "number"
     attribute "speedKm", "number"
-   	attribute "wifiState", "boolean"
+   	attribute "wifiState", "String" //boolean
 
 	command "refresh"
 	command "asleep"
