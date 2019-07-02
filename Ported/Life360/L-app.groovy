@@ -34,7 +34,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQtZjUzZi000mLWEyYzctOWRkZDA4YjgyZjBj"
+    state.newClientID = "MGVhZGNiOGQtZ0000M2JmLWEyYzctOWRkZDA4YjgyZjBj"
 }
 //***********************************************************
 
@@ -101,13 +101,13 @@ def authPage() {
                 paragraph "<b>Install Instructions</b> - Either print the instructions OR leave them open in another tab!"
                 paragraph "Please follow the instructions carefully! It seems complicated but it really only takes 2 minutes. I simply went into a lot of detail to avoid all the questions ;)."
                 paragraph "<hr>"
-                paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 (Connect)' and (c) Logs"
+                paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 with States' and (c) Logs"
                 paragraph "<hr>"
                 paragraph "2. In tab (a), Click on the big 'Life360' button<br>3. Enter in your Life360 Username and Password<br>4. You WILL get an error screen like this...<br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-XMLError.png'><br>5. Highlight and COPY the long code of letters and numbers<br>ie. MWE2YTk3NGQtNGQ0JHF00ODkzL00000N2E2MWU2NzZmMmRm"
                 paragraph "<hr>"
                 paragraph "6. Change browser tab to (b), Around Line 35 look for 'state.newClientID' and then paste in the long code you copied in the last step.<br>7. Save the app."
                 paragraph "<hr>"
-                paragraph "8. Change browser tab to (c). Locate 'Life360 (connect)' up top and click on it. Now down below look for this line. ie. ACCESS TOKEN: 735955da-7e31-4cef-81d2-ea100000416<br>9. Hightlight and COPY just the full set of numbers and letters (make sure there is no leading space)"
+                paragraph "8. Change browser tab to (c). Locate 'Life360 with States' up top and click on it. Now down below look for this line. ie. ACCESS TOKEN: 735955da-7e31-4cef-81d2-ea100000416<br>9. Hightlight and COPY just the full set of numbers and letters (make sure there is no leading space)"
                 paragraph "<hr>"
                 paragraph "10. Change browser tab back to (a).<br>11. In the browser url bar look toward the middle and find 'access_token='.<br>12. Double click on the set of numbers and letters that are after that to hightlight it.<br>13. PASTE in the code saved in step 9. and then press 'ENTER' key."
                 paragraph "<img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL.png'><br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL2.png'>"
@@ -116,7 +116,7 @@ def authPage() {
             }
             section("SHORT Instructions:", hideable: true, hidden: true) {
                 paragraph "<b>Install Instructions</b> - Either print the instructions OR leave them open in another tab!"
-                paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 (Connect)' and (c) Logs"
+                paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 with States' and (c) Logs"
                 paragraph "2. In tab (a), Click the 'Life360' button and follow through the flow until you get the error XML screen."
                 paragraph "3. COPY the long code of letters and numbers<br>ie. MWE2YTk3N0648888800ODkzLWJlMzktN2E2MWU2NzZmMmRm"
                 paragraph "4. Change browser tab to (b), Around Line 35 look for 'state.newClientID' and then paste in the long code you copied in the last step and 'SAVE' the app"
@@ -151,7 +151,7 @@ def receiveToken() {
 <body>
 		<p align='center'><img src="https://s3.amazonaws.com/smartapp-icons/Partner/life360@2x.png" alt="Life360 icon" /></p>
 		<H1 align='center'><b>Your Life360 Account is connected to Hubitat!<b></H1>
-		<H3 align='center'><b>Now...<br>1. Go back to your hub<br>2. Click 'Add User App'<br>3. Select 'Life360 (Connect)' again<br>4. Finish setting up Life360 (Connect)!</b></H3>
+		<H3 align='center'><b>Now...<br>1. Go back to your hub<br>2. Click 'Add User App'<br>3. Select 'Life360 with States' again<br>4. Finish setting up Life360 with States</b></H3>
         <H3 align='center'><a href="http://${state.hubIP}/installedapp/list">CLICK HERE TO GO BACK TO YOUR HUB</a></H3>
 </body>
 </html>
@@ -204,7 +204,7 @@ def testLife360Connection() {
 
 def listCircles() {
     if(logEnable) log.debug "In listCircles..."
-    dynamicPage(name: "listCirclesPage", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 (Connect)</h2>", install: true, uninstall: true) {
+    dynamicPage(name: "listCirclesPage", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 with States</h2>", install: true, uninstall: true) {
         display()
 	    // get connected to life360 app
     	def urlCircles = "https://api.life360.com/v3/circles.json"
