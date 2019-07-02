@@ -12,7 +12,7 @@ Install Driver
 
 Go to ‘Apps’
 * Click ‘Load New Apps’
-* Select ‘Life360 (Connect)’ under ‘User Apps’
+* Select ‘Life360 with States’ under ‘User Apps’
 * From here PLEASE READ THE INSTRUCTIONS IN THE APP!
 <br>
 Once again thanks to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible without his work.<br><br>
