@@ -9,7 +9,8 @@ Install App
 
 Install Driver
 * Copy the Driver code from GitHub into a ‘New Driver’ under the 'Driver Code' menu then click ‘Done’
-* Go to ‘Apps’
+
+Go to ‘Apps’
 * Click ‘Load New Apps’
 * Select ‘Life360 (Connect)’ under ‘User Apps’
 * From here PLEASE READ THE INSTRUCTIONS IN THE APP!
