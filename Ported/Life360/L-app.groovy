@@ -39,7 +39,7 @@ def newClientID() {
 //***********************************************************
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
