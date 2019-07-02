@@ -1,5 +1,5 @@
 /**
- *  life360 (Connect) - Hubitat Port
+ *  Life360 with States - Hubitat Port
  *
  *	BTRIAL DISTANCE AND SLEEP PATCH 29-12-2017
  *	Updated Code to handle distance from, and sleep functionality
@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.0.4 - 07/02/19 - Name changed to 'Life360 with States' to avoid confusion.
  *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions.
  *  v1.0.2 - 07/01/19 - More code cleanup. Combined pages and colorized headers. Added importURL. Fixed 'Now Connected' page with
  *                      Hubitat info. Added newClientID up top in app to make it easier when pasting in code.
@@ -33,7 +34,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "YzdkODA2NDItMmY3Yy00OGQ5LTgxZGUtMGIzNmMzNmE1YmI1"
+    state.newClientID = "MGVhZGNiOGQtZjUzZi00M2JmLWEyYzctOWRkZDA4YjgyZjBj"
 }
 //***********************************************************
 
@@ -42,10 +43,10 @@ def setVersion() {
 }
 
 definition(
-    name: "Life360 (Connect)",
+    name: "Life360 with States",
     namespace: "tmleafs",
     author: "tmleafs",
-    description: "Life360 Service Manager",
+    description: "Life360 with all States Included",
 	category: "",
     iconUrl: "",
     iconX2Url: "",
@@ -94,7 +95,7 @@ def authPage() {
 
 		def redirectUrl = oauthInitUrl()
     
-		return dynamicPage(name: "Credentials", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 (Connect)</h2>", uninstall: true, install: false) {
+		return dynamicPage(name: "Credentials", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 with States</h2>", uninstall: true, install: false) {
             display()
             section("LONG Instructions:", hideable: true, hidden: true) {
                 paragraph "<b>Install Instructions</b>"
@@ -621,6 +622,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Life360 (Connect) - @cwwilson08 & @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Life360 with States - @cwwilson08 & @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
