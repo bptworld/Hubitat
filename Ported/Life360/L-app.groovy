@@ -34,7 +34,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQtZjUzZ0000JmLWEyYzctOWRkZDA4YjgyZjBj"
+    state.newClientID = "MGVhZGNiOGQtZjUzZi000mLWEyYzctOWRkZDA4YjgyZjBj"
 }
 //***********************************************************
 
@@ -98,7 +98,7 @@ def authPage() {
 		return dynamicPage(name: "Credentials", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 with States</h2>", uninstall: true, install: false) {
             display()
             section("LONG Instructions:", hideable: true, hidden: true) {
-                paragraph "<b>Install Instructions</b>"
+                paragraph "<b>Install Instructions</b> - Either print the instructions OR leave them open in another tab!"
                 paragraph "Please follow the instructions carefully! It seems complicated but it really only takes 2 minutes. I simply went into a lot of detail to avoid all the questions ;)."
                 paragraph "<hr>"
                 paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 (Connect)' and (c) Logs"
@@ -115,6 +115,7 @@ def authPage() {
                 paragraph "14. You should now see the 'You are now connected' screen. <b>Congratulations!</b>"
             }
             section("SHORT Instructions:", hideable: true, hidden: true) {
+                paragraph "<b>Install Instructions</b> - Either print the instructions OR leave them open in another tab!"
                 paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 (Connect)' and (c) Logs"
                 paragraph "2. In tab (a), Click the 'Life360' button and follow through the flow until you get the error XML screen."
                 paragraph "3. COPY the long code of letters and numbers<br>ie. MWE2YTk3N0648888800ODkzLWJlMzktN2E2MWU2NzZmMmRm"
