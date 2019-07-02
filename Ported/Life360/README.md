@@ -1,7 +1,7 @@
 # Life360 with States - PORT
 <b>Design Usage:</b><br>
 Connect Life360 to Hubitat including ALL stats.<br><br>
-<b>Be sure Hubitats built-in Lif360 Connector is Disabled</b>
+<b>Be sure Hubitats built-in Lif360 Connector is Disabled</b><br>
 <b>New Install:</b><br>
 Install App
 * Copy the App code from GitHub into a ‘New App’ under the ‘Apps Code’ menu
