@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.0.5 - 07/02/19 - Updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.4 - 07/02/19 - Name changed to 'Life360 with States' to avoid confusion.
  *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions.
  *  v1.0.2 - 07/01/19 - More code cleanup. Combined pages and colorized headers. Added importURL. Fixed 'Now Connected' page with
@@ -34,18 +35,19 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQtZ0000M2JmLWEyYzctOWRkZDA4YjgyZjBj"
+    state.newClientID = "MGVhZGNiOG00000M2JmLWEyYzctOWRkZDA4YjgyZjBj"
+    // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
     name: "Life360 with States",
-    namespace: "tmleafs",
-    author: "tmleafs",
+    namespace: "BPTWorld",
+    author: "Bryan Turcotte",
     description: "Life360 with all States Included",
 	category: "",
     iconUrl: "",
@@ -296,7 +298,7 @@ def installed() {
         // if(logEnable) log.debug "External Id=${app.id}:${member.id}"
        	// create the device
         if(member) {
-       		def childDevice = addChildDevice("tmleafs", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
+       		def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
     	}
     }
     refresh()
@@ -323,7 +325,7 @@ def updated() {
     		def member = state.members.find{it.id==memberId}
        
        		// create the device
-       		def childDevice = addChildDevice("tmleafs", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
+       		def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
         
         	if (childDevice)
         	{
