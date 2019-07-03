@@ -35,7 +35,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQ0000z00000mLWEyYzctOWRkZDA4YjgyZjBj"
+    state.newClientID = "MGVhZGNiOGQt00002JmLWEyYzctOWRkZDA4YjgyZjBj"
     // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
@@ -105,14 +105,14 @@ def authPage() {
                 paragraph "<hr>"
                 paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 with States' and (c) Logs"
                 paragraph "<hr>"
-                paragraph "2. In tab (a), Click on the big 'Life360' button<br>3. Enter in your Life360 Username and Password<br>4. You WILL get an error screen like this...<br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-XMLError.png'><br>5. Highlight and COPY the long code of letters and numbers<br>ie. MWE2YTk3NGQtNGQ0JHF00ODkzL00000N2E2MWU2NzZmMmRm"
+                paragraph "2. In tab (a), Click on the big 'Life360' button<br>3. Enter in your Life360 Username and Password<br>4. You WILL get an error screen like this...<br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-XMLError2.png'><br>5. Highlight and COPY the long code of letters and numbers<br>ie. MWE2YTk3NGQtNGQ0JHF00ODkzL00000N2E2MWU2NzZmMmRm"
                 paragraph "<hr>"
                 paragraph "6. Change browser tab to (b), Around Line 35 look for 'state.newClientID' and then paste in the long code you copied in the last step.<br>7. Save the app."
                 paragraph "<hr>"
-                paragraph "8. Change browser tab to (c). Locate 'Life360 with States' up top and click on it. Now down below look for this line. ie. ACCESS TOKEN: 735955da-7e31-4cef-81d2-ea100000416<br>9. Hightlight and COPY just the full set of numbers and letters (make sure there is no leading space)"
+                paragraph "8. Change browser tab to (c). Locate 'Life360 with States' up top and click on it. Now down below look for this line. ie. ACCESS TOKEN: 735955da-0000-0000-81d2-ea100000416<br>9. Hightlight and COPY just the full set of numbers and letters (make sure there is no leading space)"
                 paragraph "<hr>"
                 paragraph "10. Change browser tab back to (a).<br>11. In the browser url bar look toward the middle and find 'access_token='.<br>12. Double click on the set of numbers and letters that are after that to hightlight it.<br>13. PASTE in the code saved in step 9. and then press 'ENTER' key."
-                paragraph "<img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL.png'><br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL2.png'>"
+                paragraph "<img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL.png'><br><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/L360-URL2a.png'>"
                 paragraph "<hr>"
                 paragraph "14. You should now see the 'You are now connected' screen. <b>Congratulations!</b>"
             }
