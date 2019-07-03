@@ -56,7 +56,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/LT-child.groovy",
 )
 
 preferences {
