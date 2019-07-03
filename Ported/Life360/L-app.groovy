@@ -24,7 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
- *  V1.0.6 - 07/03/19 - More code cleanup 
+ *  V1.0.6 - 07/03/19 - More code cleanup
  *  V1.0.5 - 07/02/19 - Updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.4 - 07/02/19 - Name changed to 'Life360 with States' to avoid confusion.
  *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions.
@@ -36,7 +36,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQt00002JmLWEyYzctOWRkZDA4YjgyZjBj"
+    state.newClientID = "MGVhZGNiOGQtZjtOWRkZDA4YjgyZjBj"
     // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
@@ -121,9 +121,9 @@ def authPage() {
                 paragraph "<b>Install Instructions</b> - Either print the instructions OR leave them open in another tab!"
                 paragraph "1. In Hubitat open 3 tabs, (a) this one, (b) 'Apps Code', 'Life360 with States' and (c) Logs"
                 paragraph "2. In tab (a), Click the 'Life360' button and follow through the flow until you get the error XML screen."
-                paragraph "3. COPY the long code of letters and numbers<br>ie. MWE2YTk3N0648888800ODkzLWJlMzktN2E2MWU2NzZmMmRm"
+                paragraph "3. COPY the long code of letters and numbers<br>ie. MWE2YT64888000000zLWJlMzktN2E2MWU2NzZmMmRm"
                 paragraph "4. Change browser tab to (b), Around Line 35 look for 'state.newClientID' and then paste in the long code you copied in the last step and 'SAVE' the app"
-                paragraph "5. Change browser tab to (c). Look for this line in logs: ACCESS TOKEN: 7352345a-7e31-4cef-81d2-ea10ebfc8123 and COPY just the full set of letters and numbers."
+                paragraph "5. Change browser tab to (c). Look for this line in logs: ACCESS TOKEN: 7352345a-7e31-0000-0000-ea10ebfc8123 and COPY just the full set of letters and numbers."
                 paragraph "6. Change browser tab back to (a). Replace the access_token= in the URL with the one you copied in the last step and hit 'ENTER'."
                 paragraph "7. You should now see the 'You are now connected' screen. <b>Congratulations!</b>"  
             }
