@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.0.7 - 07/03/19 - More work done on webhooks and Oauth (cwwilson08)
  *  V1.0.6 - 07/03/19 - More code cleanup
  *  V1.0.5 - 07/02/19 - Updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.4 - 07/02/19 - Name changed to 'Life360 with States' to avoid confusion.
@@ -36,13 +37,13 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "MGVhZGNiOGQtZjtOWRkZDA4YjgyZjBj"
+    state.newClientID = "Zjk0NzNjN0000000000YzLThiNmQtNmUyMDg1ODVjYzlh"
     // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
 
 def setVersion() {
-	state.version = "v1.0.6"
+	state.version = "v1.0.7"
 }
 
 definition(
@@ -142,6 +143,7 @@ def authPage() {
 
 def receiveToken() {
 	state.life360AccessToken = params.access_token
+    log.debug "accesstoken from parameters = ${params.acess_toekn}"
     def hub = location.hubs[0]
     state.hubIP = "${hub.getDataValue("localIP")}"
     def html = """
@@ -300,10 +302,71 @@ def installed() {
        	// create the device
         if(member) {
        		def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
+    	        	
+            if (childDevice)
+        	{
+        		// log.debug "Child Device Successfully Created"
+     				generateInitialEvent (member, childDevice)
+       		}
     	}
     }
-    refresh()
-}
+
+    createCircleSubscription()
+
+    }
+
+    def createCircleSubscription() {
+    log.debug "In createCircleSubscription..."
+    // delete any existing webhook subscriptions for this circle
+
+    log.debug "Remove any existing Life360 Webhooks for this Circle."
+
+    def deleteUrl = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
+
+    try { // ignore any errors - there many not be any existing webhooks
+
+    	httpDelete (uri: deleteUrl, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
+     		result = response}
+    		}
+
+    catch (e) {
+
+    	//log.debug (e)
+    }
+
+    // subscribe to the life360 webhook to get push notifications on place events within this circle
+
+    log.debug "Create a new Life360 Webhooks for this Circle."
+
+    // createAccessToken() // create our own OAUTH access token to use in webhook url
+        log.debug "webook access tokein = ${state.accessToken}"
+
+    // def hookUrl = "${serverUrl}/api/smartapps/installations/${app.id}/placecallback?access_token=${state.accessToken}"//.encodeAsURL()
+        def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"//.encodeAsURL()
+         
+    //log.debug state.circle
+    def url = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
+        
+    def postBody =  "url=${hookUrl}"
+
+    def result = null
+
+    try {
+       
+     	    httpPost(uri: url, body: postBody, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
+     	    result = response}
+
+    } catch (e) {
+        log.debug (e)
+    }
+
+    log.debug "Response = ${result}"
+
+    if (result.data?.hookUrl) {
+    	    log.debug "Webhook creation successful. Response = ${result.data}"
+    	}
+    }
+
 
 def updated() {
     if(logEnable) log.debug "In updated..."
@@ -394,60 +457,60 @@ def generateInitialEvent (member, childDevice) {
 
 			if(logEnable) log.info "Life360 generateInitialEvent, member: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
               
-        def address1
-        def address2
-        def speed
-        def speedmeters
-        def speedMPH
-        def speedKPH 
+            def address1
+            def address2
+            def speed
+            def speedmeters
+            def speedMPH
+            def speedKPH 
         
-        if(member.location.address1 == null || member.location.address1 == "")
-        address1 = "No Data"
-        else
-        address1 = member.location.address1
+            if(member.location.address1 == null || member.location.address1 == "")
+                address1 = "No Data"
+            else
+                address1 = member.location.address1
         
-        if(member.location.address2 == null || member.location.address2 == "")
-        address2 = "No Data"
-        else
-        address2 = member.location.address2
+            if(member.location.address2 == null || member.location.address2 == "")
+                address2 = "No Data"
+            else
+                address2 = member.location.address2
         
-		//Covert 0 1 to False True	
-	    def charging = member.location.charge == "0" ? "false" : "true"
-        def moving = member.location.inTransit == "0" ? "false" : "true"
-		def driving = member.location.isDriving == "0" ? "false" : "true"
-	    def wifi = member.location.wifiState == "0" ? "false" : "true"
+		    //Covert 0 1 to False True	
+	        def charging = member.location.charge == "0" ? "false" : "true"
+            def moving = member.location.inTransit == "0" ? "false" : "true"
+		    def driving = member.location.isDriving == "0" ? "false" : "true"
+	        def wifi = member.location.wifiState == "0" ? "false" : "true"
         
-        //Fix Iphone -1 speed 
-        if(member.location.speed.toFloat() == -1){
-        speed = 0
-        speed = speed.toFloat()}
-        else
-        speed = member.location.speed.toFloat()
+            //Fix Iphone -1 speed 
+            if(member.location.speed.toFloat() == -1){
+                speed = 0
+                speed = speed.toFloat()}
+            else
+                speed = member.location.speed.toFloat()
 
-		if(speed > 0 ){
-        speedmeters = speed.toDouble().round(2)
-        speedMPH = speedmeters.toFloat() * 2.23694
-        speedMPH = speedMPH.toDouble().round(2)
-        speedKPH = speedmeters.toFloat() * 3.6
-        speedKPH = speedKPH.toDouble().round(2)
-        }else{
-        speedmeters = 0
-        speedMPH = 0
-        speedKPH = 0
-        }
+		    if(speed > 0 ){
+                speedmeters = speed.toDouble().round(2)
+                speedMPH = speedmeters.toFloat() * 2.23694
+                speedMPH = speedMPH.toDouble().round(2)
+                speedKPH = speedmeters.toFloat() * 3.6
+                speedKPH = speedKPH.toDouble().round(2)
+            }else{
+                speedmeters = 0
+                speedMPH = 0
+                speedKPH = 0
+            }
         
-        def battery = Math.round(member.location.battery.toDouble())
-        def latitude = member.location.latitude.toFloat()
-        def longitude = member.location.longitude.toFloat()
+            def battery = Math.round(member.location.battery.toDouble())
+            def latitude = member.location.latitude.toFloat()
+            def longitude = member.location.longitude.toFloat()
         
 		//Sent data	
         childDevice?.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedmeters,speedMPH,speedKPH,wifi)
        
-        childDevice?.generatePresenceEvent(isPresent, distanceAway)
+            childDevice?.generatePresenceEvent(isPresent, distanceAway)
         
         // if(logEnable) log.debug "After generating presence event."          
-    	}    
-     }
+    	    }    
+    }
     catch (e) {
     	// eat it
     }  
