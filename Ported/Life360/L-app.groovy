@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.0.6 - 07/03/19 - More code cleanup 
  *  V1.0.5 - 07/02/19 - Updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.4 - 07/02/19 - Name changed to 'Life360 with States' to avoid confusion.
  *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions.
@@ -41,7 +42,7 @@ def newClientID() {
 //***********************************************************
 
 def setVersion() {
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
 }
 
 definition(
