@@ -133,12 +133,12 @@ def pageConfig() {
 				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
 				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
                 if(echoSpeaks) {
-                    if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
-		                def volRestore = speaker.currentValue("volume")
-                        paragraph "Volume will be restored to previous level of ${volRestore}"
-	                } else {
+                //    if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
+		        //        def volRestore = speaker.currentValue("volume")
+                 //       paragraph "Volume will be restored to previous level of ${volRestore}"
+	             //   } else {
 		                input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-	                }
+	             //   }
                 }
           	}   
         	if (speechMode == "Speech Synth"){ 
@@ -149,12 +149,12 @@ def pageConfig() {
 			paragraph "NOTE: Not all speakers can use volume controls."
 			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
             
-	        if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
-		        def volRestore = speaker.currentValue("volume")
+	//        if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
+	//	        def volRestore = speaker.currentValue("volume")
                 paragraph "Volume will be restored to previous level of ${volRestore}"
-	        } else {
+	//        } else {
 		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-	        }
+	//        }
 
             input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
 			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
