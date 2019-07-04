@@ -38,13 +38,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 07/04/19 - Added an optional Map link to each push, added Options to turn Speaking on/off, changed/added some descriptions
  *  V1.0.1 - 07/04/19 - Added all attributes as wildcards
  *  V1.0.0 - 07/01/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -74,7 +75,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Device")) {
 			input "presenceDevice", "capability.presenceSensor", title: "Select Life360 User Device", required: true
-            input "friendlyName", "text", title: "Friendly Name for this Device", required: true, submitOnChange: "true"
+            input "friendlyName", "text", title: "Friendly Name used in messages for this Device", required: true, submitOnChange: "true"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Place Tracking")) {
             paragraph "This will track the coming and going of places."
@@ -95,19 +96,23 @@ def pageConfig() {
             input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
-			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Sensor<br>%place% - returns the place arrived or departed"
+			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
-			input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
-			input(name: "atMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(atMsgList) {
+            input(name: "speakHasArrived", type: "bool", defaultValue: "true", title: "Speak when someone 'Has arrived'", description: "Speak Has Arrived", submitOnChange: true)
+			if(speakHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
+			if(speakHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakHasArrived && atMsgList) {
 				def values = "${messageAT}".split(";")
 				listMapAT = ""
     			values.each { item -> listMapAT += "${item}<br>"}
 				paragraph "${listMapAT}"
 			}
-            input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
-			input(name: "moveMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(moveMsgList) {
+            if(speakHasArrived) paragraph "<hr>"
+            
+            input(name: "speakOnTheMove", type: "bool", defaultValue: "true", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
+            if(speakOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
+			if(speakOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakOnTheMove && moveMsgList) {
 				def values = "${messageMOVE}".split(";")
 				listMapMove = ""
     			values.each { item -> listMapMove += "${item}<br>"}
@@ -142,7 +147,9 @@ def pageConfig() {
 			}
     	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false
+			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
+            if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "true", title: "Send Map Link with Push", description: "Send Google Maps Link")
+            //Send test push
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
 //        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {
@@ -209,7 +216,7 @@ def userHandler(evt) {
                     if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     if(isDataDevice) isDataDevice.on()
-                    letsTalk()
+                    if(speakHasArrived) letsTalk()
                 } else {
                     if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
@@ -230,7 +237,7 @@ def userHandler(evt) {
                         if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                         state.msg = "${messageAT}"
                         if(isDataDevice) isDataDevice.on()
-                        letsTalk()
+                        if(speakHasArrived) letsTalk()
                     } else {
                         if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                     }
@@ -252,7 +259,7 @@ def userHandler(evt) {
         if(state.onTheMove == "no") {
             state.msg = "${messageMOVE}"
             if(isDataDevice) isDataDevice.off()
-            letsTalk()
+            if(speakOnTheMove) letsTalk()
         }
         state.prevPlace = state.address1Value
         state.beenHere = "no"
@@ -342,7 +349,6 @@ def checkTime() {
 		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
 		if(state.betweenTime) state.timeBetween = true
 		if(!state.betweenTime) state.timeBetween = false
-
   	} else {  
 		state.timeBetween = true
   	}
@@ -398,7 +404,8 @@ def isThereData(){
 
 def pushHandler() {
 	if(logEnable) log.debug "In pushNow..."
-	theMessage = "${state.theMessage}"
+    theMessage = "${state.theMessage}\n\n"
+    if(linkPush) {theMessage += "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"}
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
 	state.msg = ""
