@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, changed up how volume is restored (thanks @doug)
  *  V1.0.2 - 07/04/19 - Added an optional Map link to each push, added Options to turn Speaking on/off, changed/added some descriptions
  *  V1.0.1 - 07/04/19 - Added all attributes as wildcards
  *  V1.0.0 - 07/01/19 - Initial release.
@@ -45,7 +46,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -118,7 +119,12 @@ def pageConfig() {
     			values.each { item -> listMapMove += "${item}<br>"}
 				paragraph "${listMapMove}"
 			}
-		}   
+            if(speakOnTheMove) paragraph "<hr>"
+            
+            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
+            if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "true", title: "Send Map Link with Push", description: "Send Google Maps Link")
+		}
+        if(speakHasArrived || speakOnTheMove) {
         section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
            input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
 			if (speechMode == "Music Player"){ 
@@ -126,7 +132,14 @@ def pageConfig() {
 				paragraph "<hr>"
 				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
 				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
-				if(echoSpeaks) input "restoreVolume", "number", title: "Volume to restore speaker to AFTER anouncement", description: "0-100%", required: true, defaultValue: "30"
+                if(echoSpeaks) {
+                    if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
+		                def volRestore = speaker.currentValue("volume")
+                        paragraph "Volume will be restored to previous level of ${volRestore}"
+	                } else {
+		                input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+	                }
+                }
           	}   
         	if (speechMode == "Speech Synth"){ 
          		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
@@ -135,21 +148,26 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 			paragraph "NOTE: Not all speakers can use volume controls."
 			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
-			input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+            
+	        if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
+		        def volRestore = speaker.currentValue("volume")
+                paragraph "Volume will be restored to previous level of ${volRestore}"
+	        } else {
+		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
+	        }
+
             input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
 			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
     		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
 		}
+        }
     	if(speechMode){ 
 			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         		input "fromTime", "time", title: "From", required: false
         		input "toTime", "time", title: "To", required: false
 			}
     	}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
-            if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "true", title: "Send Map Link with Push", description: "Send Google Maps Link")
-            //Send test push
+		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
 //        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {
@@ -216,7 +234,7 @@ def userHandler(evt) {
                     if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     if(isDataDevice) isDataDevice.on()
-                    if(speakHasArrived) letsTalk()
+                    if(speakHasArrived) messageHandler()
                 } else {
                     if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
@@ -237,7 +255,7 @@ def userHandler(evt) {
                         if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                         state.msg = "${messageAT}"
                         if(isDataDevice) isDataDevice.on()
-                        if(speakHasArrived) letsTalk()
+                        if(speakHasArrived) messageHandler()
                     } else {
                         if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                     }
@@ -259,7 +277,7 @@ def userHandler(evt) {
         if(state.onTheMove == "no") {
             state.msg = "${messageMOVE}"
             if(isDataDevice) isDataDevice.off()
-            if(speakOnTheMove) letsTalk()
+            if(speakOnTheMove) messageHandler()
         }
         state.prevPlace = state.address1Value
         state.beenHere = "no"
@@ -295,7 +313,6 @@ def letsTalk() {
 	pauseExecution(atomicState.randomPause)
 	if(logEnable) log.debug "In letsTalk - continuing"
 	if(state.timeBetween == true) {
-		messageHandler()
 		if(logEnable) log.debug "Speaker in use: ${speaker}"
 		state.theMsg = "${state.theMessage}"
   		if (speechMode == "Music Player"){ 
@@ -327,7 +344,6 @@ def letsTalk() {
 	} else {
 		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	}
-    if(sendPushMessage) pushHandler()
 }
 
 def checkVol(){
@@ -390,7 +406,9 @@ def messageHandler() {
     if(theMessage.contains("%status%")) {theMessage = theMessage.replace('%status%', state.presenceDevice.currentValue("status") )}
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
-	return state.theMessage
+	
+    if(speakHasArrived || speakOnTheMove) letsTalk()
+    if(sendPushMessage) pushHandler()
 }
 
 def isThereData(){
