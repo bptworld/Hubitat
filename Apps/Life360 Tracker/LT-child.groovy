@@ -38,7 +38,7 @@
  *
  *  Changes:
  *
- *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, changed up how volume is restored (thanks @doug)
+ *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, Trying to chang up how volume is restored (thanks @doug)
  *  V1.0.2 - 07/04/19 - Added an optional Map link to each push, added Options to turn Speaking on/off, changed/added some descriptions
  *  V1.0.1 - 07/04/19 - Added all attributes as wildcards
  *  V1.0.0 - 07/01/19 - Initial release.
@@ -135,10 +135,10 @@ def pageConfig() {
                 if(echoSpeaks) {
                 //    if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
 		        //        def volRestore = speaker.currentValue("volume")
-                 //       paragraph "Volume will be restored to previous level of ${volRestore}"
-	             //   } else {
+                //        paragraph "Volume will be restored to previous level of ${volRestore}"
+	            //    } else {
 		                input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-	             //   }
+	            //    }
                 }
           	}   
         	if (speechMode == "Speech Synth"){ 
@@ -150,8 +150,8 @@ def pageConfig() {
 			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
             
 	//        if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
-	//	        def volRestore = speaker.currentValue("volume")
-                paragraph "Volume will be restored to previous level of ${volRestore}"
+	//	        def volRestore1 = speaker.currentValue("volume")
+    //            paragraph "Volume will be restored to previous level of ${volRestore1}"
 	//        } else {
 		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
 	//        }
