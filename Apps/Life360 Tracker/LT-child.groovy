@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 07/04/19 - Added all attributes as wildcards
  *  V1.0.0 - 07/01/19 - Initial release.
  *
  */
@@ -61,6 +62,7 @@ definition(
 
 preferences {
     page(name: "pageConfig")
+    page(name: "alertsConfig")
 }
 
 def pageConfig() {
@@ -94,6 +96,7 @@ def pageConfig() {
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Sensor<br>%place% - returns the place arrived or departed"
+            paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
 			input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
 			input(name: "atMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if(atMsgList) {
@@ -102,7 +105,7 @@ def pageConfig() {
     			values.each { item -> listMapAT += "${item}<br>"}
 				paragraph "${listMapAT}"
 			}
-            input "messageMOVE", "text", title: "Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
+            input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
 			input(name: "moveMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if(moveMsgList) {
 				def values = "${messageMOVE}".split(";")
@@ -142,21 +145,24 @@ def pageConfig() {
 			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {
-            paragraph "Coming soon..."
-        //    input "isDataDevice", "capability.switch", title: "Turn this device on/off based on requirements below", required: false, multiple: false
-        //    paragraph "<small>* Choose as many as you like!</small>"
-        //    input "allSpecific", "bool", title: "Based on Specific Places", description: "Specific places", defaultValue: false, submitOnChange: true, width:6
-            
-        //    if(allSpecific) input "dSpecific", "text", title: "", required: true, submitOnChange: true, defaultValue: "${trackSpecific}", width: 6
-        //    if(!allSpecific) paragraph " ", width: 6
-
-		}
+//        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {
+//            href "alertsConfig", title: "Alerts", description: "Click here to setup Alerts."
+//		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
+	}
+}
+
+def alertsConfig() {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 Tracker - Alerts</h2>", install: false, uninstall: false, refreshInterval:0) {
+		display() 
+		section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Alerts")) {
+            paragraph "<b>Battery Alert</b>"
+
+		}
 	}
 }
 
@@ -354,9 +360,29 @@ def messageHandler() {
 	theMessage = values[randomKey]
 	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}"
     
-   	theMessage = theMessage.toLowerCase()
-	if (theMessage.toLowerCase().contains("%name%")) {theMessage = theMessage.toLowerCase().replace('%name%', friendlyName )}
-    if (theMessage.toLowerCase().contains("%place%")) {theMessage = theMessage.toLowerCase().replace('%place%', state.address1Value )}
+	if(theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', friendlyName )}
+    if(theMessage.contains("%place%")) {theMessage = theMessage.replace('%place%', state.address1Value )}
+    if(theMessage.contains("%address1%")) {theMessage = theMessage.replace('%address1%', presenceDevice.currentValue("address1") )}
+    if(theMessage.contains("%address2%")) {theMessage = theMessage.replace('%address2%', presenceDevice.currentValue("address2") )}
+    if(theMessage.contains("%battery%")) {theMessage = theMessage.replace('%battery%', presenceDevice.currentValue("battery") )}
+    if(theMessage.contains("%charge%")) {theMessage = theMessage.replace('%charge%', presenceDevice.currentValue("charge") )}
+    if(theMessage.contains("%distanceKm%")) {theMessage = theMessage.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
+    if(theMessage.contains("%distanceMetric%")) {theMessage = theMessage.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
+    if(theMessage.contains("%distanceMiles%")) {theMessage = theMessage.replace('%distanceMiles%', presenceDevice.currentValue("distanceMiles") )}
+    if(theMessage.contains("%inTransit%")) {theMessage = theMessage.replace('%inTransit%', presenceDevice.currentValue("inTransit") )}
+    if(theMessage.contains("%isDriving%")) {theMessage = theMessage.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
+    if(theMessage.contains("%lastCheckin%")) {theMessage = theMessage.replace('%lastCheckin%', state.presenceDevice.currentValue("lastCheckin") )}
+    if(theMessage.contains("%latitude%")) {theMessage = theMessage.replace('%latitude%', state.presenceDevice.currentValue("latitude") )}
+    if(theMessage.contains("%longitude%")) {theMessage = theMessage.replace('%longitude%', state.presenceDevice.currentValue("longitude") )}
+    if(theMessage.contains("%powerSource%")) {theMessage = theMessage.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
+    if(theMessage.contains("%presence%")) {theMessage = theMessage.replace('%presence%', state.presenceDevice.currentValue("presence") )}
+    if(theMessage.contains("%speedKm%")) {theMessage = theMessage.replace('%speedKm%', state.presenceDevice.currentValue("speedKm") )}
+    if(theMessage.contains("%speedMetric%")) {theMessage = theMessage.replace('%speedMetric%', state.presenceDevice.currentValue("speedMetric") )}
+    if(theMessage.contains("%speedMiles%")) {theMessage = theMessage.replace('%speedMiles%', state.presenceDevice.currentValue("speedMiles") )}
+    if(theMessage.contains("%wifiState%")) {theMessage = theMessage.replace('%wifiState%', state.presenceDevice.currentValue("wifiState") )}
+    if(theMessage.contains("%display%")) {theMessage = theMessage.replace('%display%', state.presenceDevice.currentValue("display") )}
+    if(theMessage.contains("%status%")) {theMessage = theMessage.replace('%status%', state.presenceDevice.currentValue("status") )}
+    if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
 	return state.theMessage
 }
