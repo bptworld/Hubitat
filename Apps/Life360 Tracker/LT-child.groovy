@@ -38,7 +38,8 @@
  *
  *  Changes:
  *
- *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, Trying to chang up how volume is restored (thanks @doug)
+ *  V1.0.4 - 07/05/19 - Complete rewrite of how the app speaks
+ *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, Trying to change up how volume is restored (thanks @doug)
  *  V1.0.2 - 07/04/19 - Added an optional Map link to each push, added Options to turn Speaking on/off, changed/added some descriptions
  *  V1.0.1 - 07/04/19 - Added all attributes as wildcards
  *  V1.0.0 - 07/01/19 - Initial release.
@@ -46,7 +47,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -125,43 +126,21 @@ def pageConfig() {
             if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "true", title: "Send Map Link with Push", description: "Send Google Maps Link")
 		}
         if(speakHasArrived || speakOnTheMove) {
-        section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
-           input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
-			if (speechMode == "Music Player"){ 
-              	input "speaker", "capability.musicPlayer", title: "Choose speaker(s)", required: true, multiple: true, submitOnChange: true
-				paragraph "<hr>"
-				paragraph "If you are using the 'Echo Speaks' app with your Echo devices then turn this option ON.<br>If you are NOT using the 'Echo Speaks' app then please leave it OFF."
-				input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' app device?", description: "Echo speaks device", submitOnChange: true)
-                if(echoSpeaks) {
-                //    if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
-		        //        def volRestore = speaker.currentValue("volume")
-                //        paragraph "Volume will be restored to previous level of ${volRestore}"
-	            //    } else {
-		                input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-	            //    }
-                }
-          	}   
-        	if (speechMode == "Speech Synth"){ 
-         		input "speaker", "capability.speechSynthesis", title: "Choose speaker(s)", required: true, multiple: true
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
+                paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
+              	input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
+         		input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
           	}
-      	}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-			paragraph "NOTE: Not all speakers can use volume controls."
-			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
-            
-	//        if(speaker.hasCommand('setVolumeSpeakAndRestore')) {
-	//	        def volRestore1 = speaker.currentValue("volume")
-    //            paragraph "Volume will be restored to previous level of ${volRestore1}"
-	//        } else {
-		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-	//        }
-
-            input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
-			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
-    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
-		}
-        }
-    	if(speechMode){ 
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers. Then check your logs to see how they did.", width:8
+                input "testSpeaker", "button", title: "Test Speaker", submitOnChange: true, width: 4
+                paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
+		        input "volRestore", "number", title: "Restore speaker volume to X after speech (if restore is unavailable)", description: "0-100", required: true
+                input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
+			    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
+    		    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+		    }
 			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
         		input "fromTime", "time", title: "From", required: false
         		input "toTime", "time", title: "To", required: false
@@ -313,33 +292,36 @@ def letsTalk() {
 	pauseExecution(atomicState.randomPause)
 	if(logEnable) log.debug "In letsTalk - continuing"
 	if(state.timeBetween == true) {
-		if(logEnable) log.debug "Speaker in use: ${speaker}"
 		state.theMsg = "${state.theMessage}"
-  		if (speechMode == "Music Player"){ 
-    		if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-			if(echoSpeaks) {
-				speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
-				state.canSpeak = "no"
-				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-			}
-			if(!echoSpeaks) {
-    			if(volSpeech) speaker.setLevel(state.volume)
-    			speaker.playTextAndRestore(state.theMsg, volRestore)
-				state.canSpeak = "no"
-				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-			}
-  		}   
-		if(speechMode == "Speech Synth"){ 
-			speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
-			atomicState.speechDuration2 = speechDuration * 1000
-			if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-			if(volSpeech) speaker.setVolume(state.volume)
-			speaker.speak(state.theMsg)
-			pauseExecution(atomicState.speechDuration2)
-			if(volRestore) speaker.setVolume(volRestore)
-			state.canSpeak = "no"
-			if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-		}
+    	if(logEnable) log.debug "In letsTalk - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
+        speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+        atomicState.speechDuration2 = speechDuration * 1000
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+            state.speakers.each {
+                if(logEnable) log.debug "Speaker in use: ${it}"
+                if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it} - Yes!"
+                    def prevVolume = it.currentValue("volume")
+                    it.setVolumeSpeakAndRestore(state.volume, state.theMsg, prevVolume)
+                } else if(it.hasCommand('playTextAndRestore')) {   
+                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it} - Yes!"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    def prevVolume = it.currentValue("volume")
+                    it.playTextAndRestore(state.theMsg, prevVolume)
+                } else {		        
+                    if(logEnable) log.debug "In letsTalk - ${it} - OK!"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    it.speak(state.theMsg)
+                    pauseExecution(atomicState.speechDuration2)
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+                }
+            }
+        pauseExecution(atomicState.speechDuration2)
+        state.canSpeak = "no"
+	    if(logEnable) log.debug "In letsTalk - that's it!"  
 		log.info "${app.label} - ${state.theMsg}"
 	} else {
 		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
@@ -380,8 +362,8 @@ def messageHandler() {
 	count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
 	theMessage = values[randomKey]
-	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}"
     
+	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}" 
 	if(theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', friendlyName )}
     if(theMessage.contains("%place%")) {theMessage = theMessage.replace('%place%', state.address1Value )}
     if(theMessage.contains("%address1%")) {theMessage = theMessage.replace('%address1%', presenceDevice.currentValue("address1") )}
@@ -429,6 +411,30 @@ def pushHandler() {
 	state.msg = ""
 }
 
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    if(logEnable) log.debug "In testButtonHandler - Button Pressed: ${state.whichButton}"
+    if(state.whichButton == "testSpeaker"){
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+        if(logEnable) log.debug "In testButtonHandler - Testing Speaker"
+        testResult = "<table><tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
+        testResult += "<tr><td colspan=3 align=center><b>Speaker Test Results</b></td></tr>"
+        state.speakers.each {
+            if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses setVolumeSpeakAndRestore</td></tr>"
+            } else if(it.hasCommand('playTextAndRestore')) {
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"
+            } else {
+                testResult += "<tr><td>${it}</td><td> - </td><td>needs all volume fields filled in</td></tr>"
+            }
+        }
+        testResult += "<tr><td colspan=3><br>*Note: Speaker proxies can't be accurately tested.<br>If using a speaker proxy like 'What Did I Say', always fill in the failsafe fields.</td><tr>"
+        testResult += "<tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
+        testResult += "</table>"
+        log.info "${testResult}"
+    }
+}
+                   
 // ********** Normal Stuff **********
 
 def setDefaults(){
