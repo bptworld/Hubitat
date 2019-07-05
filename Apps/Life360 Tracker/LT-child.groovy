@@ -130,6 +130,7 @@ def pageConfig() {
                 paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
               	input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
          		input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
+                input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
           	}
 		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers. Then check your logs to see how they did.", width:8
@@ -299,18 +300,22 @@ def letsTalk() {
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
                 if(logEnable) log.debug "Speaker in use: ${it}"
-                if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it} - Yes!"
+
+                if(speakerProxy) {
+                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                    it.speak(state.theMsg)
+                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
                     it.setVolumeSpeakAndRestore(state.volume, state.theMsg, prevVolume)
                 } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it} - Yes!"
+                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
                     it.playTextAndRestore(state.theMsg, prevVolume)
                 } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it} - OK!"
+                    if(logEnable) log.debug "In letsTalk - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     it.speak(state.theMsg)
