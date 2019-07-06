@@ -1,7 +1,7 @@
 /**
  *  ****************  Follow Me App  ****************
  *  Design Usage:
- *  Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!
+ *  Never miss a message again. Send messages to your occupied room speakers when home or by push when away. Automatically!
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
@@ -33,6 +33,8 @@
  *
  *  Changes:
  *
+ *  V1.2.3 - 07/05/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.
+ *  V1.2.2 - 07/04/19 - Push messages now honor the speech priority settings, Please check your vol/speech settings.
  *  V1.2.1 - 06/26/19 - Fixed problem with testing Random Voice
  *  V1.2.0 - 06/26/19 - Added more sound options. Gave voice and sound options their own pages and added Test buttons to each.
  *  V1.1.9 - 06/25/19 - Can now select multiple switches to activate speaker
@@ -59,14 +61,14 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.1"
+	state.version = "v1.2.3"
 }
 
 definition(
     name: "Follow Me Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!",
+    description: "Never miss a message again. Send messages to your occupied room speakers when home or by push when away. Automatically!",
     category: "",
 	parent: "BPTWorld:Follow Me",
     iconUrl: "",
@@ -80,6 +82,8 @@ preferences {
 	page name: "pushOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "voiceOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "soundOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page name: "testSpeaker", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page name: "speakerStatus", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -88,14 +92,14 @@ def pageConfig() {
 		getVoices()
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "- Create a new child app for each room that has a speaker in it.<br>- Pushover child app can have up to 5 sensors defined.<br>- If more than 5 sensors are needed, simply add another child device."
+			paragraph "- Create a new child app for each room that has a speaker in it.<br>- Push child app can have up to 5 sensors defined.<br>- If more than 5 sensors are needed, simply add another child device."
 			paragraph "<b>Priority Messages</b>"
 			paragraph "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>- Volume levels can then be adjusted by priority level.<br>- ie. (l)Dogs are hungry;(m)Door has been open too long;(h)Heat is on and window is open"
 			paragraph "<b>Requirements:</b>"
 			paragraph "- Virtual Device using our custom 'What Did I Say' driver"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Message destination")) {
-    		input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Pushover"], required: true
+    		input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push"], required: true
 		}
 		// Speakers
 		if(messageDest == "Speakers") {
@@ -118,29 +122,32 @@ def pageConfig() {
 					input "sZoneWaiting", "number", title: "After Switch is off, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) {
-        	   	input "speechMode", "enum", required: true, title: "Select Speaker Type", submitOnChange: true,  options: ["Music Player", "Speech Synth"] 
-				if (speechMode == "Music Player"){ 
-                    paragraph "NOTE: Music Player is typically used with Echo and Sonos devices but others may work. (Not Google/Nest)"
-            	  	input "speaker", "capability.musicPlayer", title: "Choose speaker", required: true, submitOnChange: true
-					input(name: "echoSpeaks", type: "bool", defaultValue: "false", title: "Is this an 'echo speaks' device?", description: "Echo speaks device?", submitOnChange: true)
-          		}   
-        		if (speechMode == "Speech Synth"){
-                    paragraph "NOTE: Speech Synth is typically used with Google devices but others may work. (Not Echo)"
-         			input "speaker", "capability.speechSynthesis", title: "Choose speaker", required: true, submitOnChange: true
-					input(name: "gSpeaker", type: "bool", defaultValue: "false", title: "Is this a Google device?", description: "Google device?", submitOnChange: true)
-					if(gSpeaker) paragraph "If using Google speaker devices sometimes an Initialize is necessary (not always)."
+			
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
+                paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
+              	input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
+         		input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
+                input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
+                input(name: "gSpeaker", type: "bool", defaultValue: "false", title: "Is this a Google/Nest device?", description: "Google device?", submitOnChange: true)
+					if(gSpeaker) paragraph "If using Google/Nest speaker devices sometimes an Initialize is necessary (not always)."
 					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech?", required: true, defaultValue: false
-					if(gSpeaker) input "gInitRepeat", "number", title: "Initialize Google devices every X minutes?", required: false
-         	 	}
-      		}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-				paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
-				input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
-				input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
-            	input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
-				if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
-    		 	if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+					if(gSpeaker) input "gInitRepeat", "number", title: "Initialize Google devices every X minutes? (recommended: 4)", required: false
+          	}
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers or click the 'Known Speaker Abilities' button to see a list of known speaker abilites."
+                href "testSpeaker", title: "Test Speakers", description: "Click to see report.", width: 6
+                href "speakerStatus", title: "Known Speaker Abilities", description: "Click to see report.", width: 6
+          
+                paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
+		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
+                input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
+			    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
+    		    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+		    }
+			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+        		input "fromTime", "time", title: "From", required: false, width: 6
+        		input "toTime", "time", title: "To", required: false, width: 6
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
 				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
@@ -150,16 +157,16 @@ def pageConfig() {
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
 					paragraph "<b>Notes:</b>"
-					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[F]</b> - Fun<br><b>[R]</b> - Random<br><b>[L]</b> - Low<br><b>[M]</b> - Medium<br><b>[H]</b> - High"
+					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place one of the following options in front of any message to be spoken and the volume and/or voice will be adjusted accordingly.<br><b>[F]</b> - Fun<br><b>[R]</b> - Random<br><b>[L]</b> - Low<br><b>[N]</b> - Normal<br><b>[H]</b> - High"
 					paragraph "You can also specify a sound file to be played before a message!<br><br><b>[1] - [5]</b> - Specify a files URL"
 					paragraph "<b>Options can also be combined!</b> ie. [R2], [L2], etc."
-					paragraph "ie. [L]Amy is home or [M3]Window has been open too long or [H]Heat is on and window is open"
-					paragraph "If you JUST want a sound file played with NO speech after, use [L1]. or [M3]. etc. Notice the DOT after the [], that is the message and will not be spoken."
+					paragraph "ie. [L]Amy is home or [N3]Window has been open too long or [H]Heat is on and window is open"
+					paragraph "If you JUST want a sound file played with NO speech after, use [L1]. or [N3]. etc. Notice the DOT after the [], that is the message and will not be spoken."
 					paragraph "Also notice there is no spaces between the option and the message."
 				}
 				section() {
-					paragraph "Low priority will use the standard volume set in the Volume Control Section"
-					input "volMed", "number", title: "Speaker volume for Medium priority", description: "0-100", required: true, width: 6
+					paragraph "Normal priority will use the standard volume set in the Volume Control Section"
+					input "volLow", "number", title: "Speaker volume for Low priority", description: "0-100", required: true, width: 6
 					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
 				}
 				if(speechMode == "Speech Synth") {
@@ -179,26 +186,20 @@ def pageConfig() {
 					}
 				}
 			}
-    		if(speechMode){ 
-				section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-        			input "fromTime", "time", title: "From", required: false
-        			input "toTime", "time", title: "To", required: false
-				}
-    		}
 		}
-		// both Speakers and Pushover
+		// both Speakers and Push
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Device")) {
 			paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device. If you already use our 'What Did I Say' driver...you're allset! Just select the same device used with 'What Did I Say'."
 			paragraph "* Vitual Device must use our custom 'What Did I Say Driver'"
 			input "gvDevice", "capability.speechSynthesis", title: "Virtual Device created for Follow Me", required: true, multiple: false
 		}
-		// Pushover
-		if(messageDest == "Pushover") {
-			section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Pushover Messages")) {
-				href "pushOptions", title:"Presence and Pushover Setup", description:"Select up to 5 presence sensor / pushover combinations"
+		// Push
+		if(messageDest == "Push") {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Push Messages")) {
+				href "pushOptions", title:"Presence and Push Setup", description:"Select up to 5 presence sensor / push combinations"
 			}
 		}
-		// both Speakers and Pushover
+		// both Speakers and Push
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
@@ -208,24 +209,24 @@ def pageConfig() {
 }
 
 def pushOptions(){
-    dynamicPage(name: "pushOptions", title: "Presence and Pushover Setup", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Pushover Messages")) {
-			paragraph "Select up to 5 presence sensor/Pushover Device combinations to receive messages when away from home."
+    dynamicPage(name: "pushOptions", title: "Presence and Push Setup", install: false, uninstall:false){
+		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Push Messages")) {
+			paragraph "Select up to 5 presence sensor/Push Device combinations to receive messages when away from home."
 			paragraph "<b>Combination 1</b>"
 			input("presenceSensor1", "capability.presenceSensor", title: "Presence Sensor 1", required: false, width: 6)
-			input("sendPushMessage1", "capability.notification", title: "Pushover Device 1", required: false, width: 6)
+			input("sendPushMessage1", "capability.notification", title: "Push Device 1", required: false, width: 6)
 			paragraph "<b>Combination 2</b>"
 			input("presenceSensor2", "capability.presenceSensor", title: "Presence Sensor 2", required: false, width: 6)
-			input("sendPushMessage2", "capability.notification", title: "Pushover Device 2", required: false, width: 6)
+			input("sendPushMessage2", "capability.notification", title: "Push Device 2", required: false, width: 6)
 			paragraph "<b>Combination 3</b>"
 			input("presenceSensor3", "capability.presenceSensor", title: "Presence Sensor 3", required: false, width: 6)
-			input("sendPushMessage3", "capability.notification", title: "Pushover Device 3", required: false, width: 6)
+			input("sendPushMessage3", "capability.notification", title: "Push Device 3", required: false, width: 6)
 			paragraph "<b>Combination 4</b>"
 			input("presenceSensor4", "capability.presenceSensor", title: "Presence Sensor 4", required: false, width: 6)
-			input("sendPushMessage4", "capability.notification", title: "Pushover Device 4", required: false, width: 6)
+			input("sendPushMessage4", "capability.notification", title: "Push Device 4", required: false, width: 6)
 			paragraph "<b>Combination 5</b>"
 			input("presenceSensor5", "capability.presenceSensor", title: "Presence Sensor 5", required: false, width: 6)
-			input("sendPushMessage5", "capability.notification", title: "Pushover Device 5", required: false, width: 6)
+			input("sendPushMessage5", "capability.notification", title: "Push Device 5", required: false, width: 6)
 		}
 	}
 }		
@@ -236,15 +237,15 @@ def voiceOptions(){
             input "testSpeaker", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
             input "testPhrase", "text", title: "Test Phrase", required: true, defaultValue: "This is a test", submitOnChange: true              
 			input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false, submitOnChange: true, width: 7
-            if(voiceFun) input "testVoiceFun", "button", title: "Test Voice Fun", width: 5
+            if(voiceFun && testSpeaker) input "testVoiceFun", "button", title: "Test Voice Fun", width: 5
 			input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true, submitOnChange: true, width: 7
-            if(voiceRandom) input "testVoiceRandom", "button", title: "Test Voice Random", width: 5
+            if(voiceRandom && testSpeaker) input "testVoiceRandom", "button", title: "Test Voice Random", width: 5
 			input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false, submitOnChange: true, width: 7
-            if(voiceLow) input "testVoiceLow", "button", title: "Test Voice Low", width: 5
-			input "voiceMed", "enum", title: "Select Voice for priority - Medium", options: state.list, required: false, submitOnChange: true, width: 7
-            if(voiceMed) input "testVoiceMed", "button", title: "Test Voice Med", width: 5
+            if(voiceLow && testSpeaker) input "testVoiceLow", "button", title: "Test Voice Low", width: 5
+			input "voiceNorm", "enum", title: "Select Voice for priority - Normal", options: state.list, required: false, submitOnChange: true, width: 7
+            if(voiceNorm && testSpeaker) input "testVoiceNorm", "button", title: "Test Voice Normal", width: 5
 		    input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false, submitOnChange: true, width: 7
-            if(voiceHigh) input "testVoiceHigh", "button", title: "Test Voice High", width: 5
+            if(voiceHigh && testSpeaker) input "testVoiceHigh", "button", title: "Test Voice High", width: 5
         }
 	}
 }	
@@ -255,28 +256,92 @@ def soundOptions(){
 			paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
             input "testSpeaker", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
 			input "sound1", "text", title: "Sound - 1", required: false, width: 9
-            if(sound1) input "testBtn1", "button", title: "Test Sound 1", width: 3
+            if(sound1 && testSpeaker) input "testBtn1", "button", title: "Test Sound 1", width: 3
 			input "sound2", "text", title: "Sound - 2", required: false, width: 9
-            if(sound2) input "testBtn2", "button", title: "Test Sound 2", width: 3
+            if(sound2 && testSpeaker) input "testBtn2", "button", title: "Test Sound 2", width: 3
 			input "sound3", "text", title: "Sound - 3", required: false, width: 9
-            if(sound3) input "testBtn3", "button", title: "Test Sound 3", width: 3
+            if(sound3 && testSpeaker) input "testBtn3", "button", title: "Test Sound 3", width: 3
 			input "sound4", "text", title: "Sound - 4", required: false, width: 9
-            if(sound4) input "testBtn4", "button", title: "Test Sound 4", width: 3
+            if(sound4 && testSpeaker) input "testBtn4", "button", title: "Test Sound 4", width: 3
 			input "sound5", "text", title: "Sound - 5", required: false, width: 9
-            if(sound5) input "testBtn5", "button", title: "Test Sound 5", width: 3
+            if(sound5 && testSpeaker) input "testBtn5", "button", title: "Test Sound 5", width: 3
             input "sound6", "text", title: "Sound - 6", required: false, width: 9
-            if(sound6) input "testBtn6", "button", title: "Test Sound 6", width: 3
+            if(sound6 && testSpeaker) input "testBtn6", "button", title: "Test Sound 6", width: 3
             input "sound7", "text", title: "Sound - 7", required: false, width: 9
-            if(sound7) input "testBtn7", "button", title: "Test Sound 7", width: 3
+            if(sound7 && testSpeaker) input "testBtn7", "button", title: "Test Sound 7", width: 3
             input "sound8", "text", title: "Sound - 8", required: false, width: 9
-            if(sound8) input "testBtn8", "button", title: "Test Sound 8", width: 3
+            if(sound8 && testSpeaker) input "testBtn8", "button", title: "Test Sound 8", width: 3
             input "sound9", "text", title: "Sound - 9", required: false, width: 9
-            if(sound9) input "testBtn9", "button", title: "Test Sound 9", width: 3
+            if(sound9 && testSpeaker) input "testBtn9", "button", title: "Test Sound 9", width: 3
             input "sound10", "text", title: "Sound - 10", required: false, width: 9
-            if(sound10) input "testBtn10", "button", title: "Test Sound 10", width: 3
+            if(sound10 && testSpeaker) input "testBtn10", "button", title: "Test Sound 10", width: 3
 		}
 	}
 }		
+
+def testSpeaker() {
+    dynamicPage(name: "testSpeaker", title: "Speaker Test", install: false, uninstall:false){
+		section(getFormat("header-green", "${getImage("Blank")}"+"Selected Speakers")) {
+        if(logEnable) log.debug "In testSpeaker..."
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+        if(logEnable) log.debug "In testButtonHandler - Testing Speaker"
+        testResult = "<table align=center><tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
+        testResult += "<tr><td colspan=3 align=center><b>Speaker Test Results</b></td></tr>"
+        state.speakers.each {
+            if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses setVolumeSpeakAndRestore</td></tr>"
+            } else if(it.hasCommand('playTextAndRestore')) {
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"
+            } else {
+                testResult += "<tr><td>${it}</td><td> - </td><td>no restore, manual vol control</td></tr>"
+            }
+        }
+        testResult += "<tr><td colspan=3><br>*Note: Speaker proxies can't be accurately tested.<br>If using a speaker proxy like 'What Did I Say', always fill in the failsafe fields.</td><tr>"
+        testResult += "<tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
+        testResult += "</table>"
+        paragraph "${testResult}"
+        }
+    }
+}
+
+def speakerStatus(){
+    dynamicPage(name: "pushOptions", title: "What each type of Speaker can do", install: false, uninstall:false){
+		section() {
+			voiceSpeakers = "<table align=center width=100%>"
+            voiceSpeakers += "<tr><td><b>Google/Nest Speakers</b></td><td> - </td><td><b>Play<br>Sounds</b></td><td><b>Change<br>Voices</b></td><td><b>Auto Restore<br>Volume</b></td></tr>"
+            voiceSpeakers += "<tr><td>Nest Hub</td><td> - </td><td>yes</td><td>yes</td><td>no</td></tr>"
+            voiceSpeakers += "<tr><td>Google Home</td><td> - </td><td>yes</td><td>yes</td><td>no</td></tr>"
+            voiceSpeakers += "<tr><td>Google Mini</td><td> - </td><td>yes</td><td>yes</td><td>no</td></tr>"
+            voiceSpeakers += "<tr><td>Google Home Max</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
+            voiceSpeakers += "<tr><td>Insignia</td><td> - </td><td>yes</td><td>yes</td><td>no</td></tr>"
+            voiceSpeakers += "<tr><td colspan=5> </td></tr>"
+            voiceSpeakers += "<tr><td><b>Amazon Alexa Speakers</b></td><td> - </td><td><b>Play<br>Sounds</b></td><td><b>Change<br>Voices</b></td><td><b>Auto Restore<br>Volume</b></td></tr>"
+            voiceSpeakers += "<tr><td>Echo (1st Generation)</td><td> - </td><td>no</td><td>no</td><td>yes</td></tr>"
+            voiceSpeakers += "<tr><td>Echo Dot</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
+            voiceSpeakers += "<tr><td>Echo Show</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
+            voiceSpeakers += "<tr><td>Echo Spot</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
+            voiceSpeakers += "<tr><td colspan=5> </td></tr>"
+            voiceSpeakers += "<tr><td><b>Sonos Speakers</b></td><td> - </td><td><b>Play<br>Sounds</b></td><td><b>Change<br>Voices</b></td><td><b>Auto Restore<br>Volume</b></td></tr>"
+            voiceSpeakers += "<tr><td>Sonos One</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
+            voiceSpeakers += "<tr><td colspan=5> </td></tr>"
+            voiceSpeakers += "<tr><td><b>Other Speakers</b></td><td> - </td><td><b>Play<br>Sounds</b></td><td><b>Change<br>Voices</b></td><td><b>Auto Restore<br>Volume</b></td></tr>"
+            voiceSpeakers += "</table>"
+            paragraph "${voiceSpeakers}"
+            paragraph "<hr>"
+            byApp = "<table align=center width=100%>"
+            byApp += "<tr><td><b>App</b></td><td> - </td><td><b>Ability</b></td></tr>"
+            byApp += "<tr><td>alextts</td><td> - </td><td>no restore, manual vol control</td></tr>"
+            byApp += "<tr><td>Cast-Web</td><td> - </td><td>playTextAndRestore</td></tr>"
+            byApp += "<tr><td>Chromecast Integration</td><td> - </td><td>no restore, manual vol control</td></tr>"
+            byApp += "<tr><td>Echo Speaks</td><td> - </td><td>setVolumeSpeakAndRestore</td></tr>"
+
+            byApp += "</table>"
+            paragraph "${byApp}"
+            paragraph "<hr>"
+            paragraph "* If you have any info, please send it to @bptworld on the HE message board."
+        }
+    }
+}
 
 def installed() {
     log.debug "Installed with settings: ${settings}"
@@ -484,41 +549,50 @@ def letsTalk() {
 			state.sStatus = "speaking"
 			speakerStatus = "${app.label}:${state.sStatus}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
-			if(logEnable) log.debug "In letsTalk - ${speechMode} - ${speaker}"
-  			if (speechMode == "Music Player"){ 
-				if(echoSpeaks) {
-					speaker.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, volRestore)
-				}
-				if(!echoSpeaks) {
-    				if(volSpeech) speaker.setLevel(state.volume)
-    				speaker.playTextAndRestore(state.lastSpoken, volRestore)
-				}
-  			}   
-			if (speechMode == "Speech Synth"){
-				speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
-				atomicState.speechDuration2 = speechDuration * 1000
-				if(gInitialize) initializeSpeaker()
-				if(volSpeech) speaker.setVolume(state.volume)
-				if(priorityVoices) {
-					priorityVoicesHandler()
-				} else {
-					if(logEnable) log.debug "In letsTalk - Using Hubitat's default voice"
-					speaker.speak(state.lastSpoken)
-				}
-				pauseExecution(atomicState.speechDuration2)
-				if(volRestore) {
-					speaker.setVolume(volRestore)
-				}
-			}
-			speakerStatus = "${app.label}:${atomicState.sZone}"
+            speechDuration = Math.max(Math.round(state.lastSpoken.length()/12),2)+3		// Code from @djgutheinz
+            atomicState.speechDuration2 = speechDuration * 1000
+            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+            state.speakers.each {
+                if(logEnable) log.debug "Speaker in use: ${it}"
+                if(speakerProxy) {
+                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                    it.speak(state.lastSpoken)
+                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                    def prevVolume = it.currentValue("volume")
+                    it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
+                } else if(it.hasCommand('playTextAndRestore')) {   
+                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    def prevVolume = it.currentValue("volume")
+                    it.playTextAndRestore(state.lastSpoken, prevVolume)
+                } else {		        
+                    if(logEnable) log.debug "In letsTalk - ${it} - Okay!"
+                    if(gInitialize) initializeSpeaker()
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    if(priorityVoices) {
+                        speaker = it
+					    priorityVoicesHandler()
+				    } else {
+				        if(logEnable) log.debug "In letsTalk - Using Hubitat's default voice"
+					    it.speak(state.lastSpoken)
+				    }
+                    pauseExecution(atomicState.speechDuration2)
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+                }
+            }
+            speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
 			log.info "${app.label} - ${state.lastSpoken}"
 			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
-		} else {
-			log.info "${app.label} - Quiet Time, can not speak."
-		}
+        } else {
+		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+	    }
 	} else {
-		log.info "${app.label} - Zone is Off, can not speak."
+		if(logEnable) log.debug "In letsTalk - Zone is off"
 	}
 }
 
@@ -550,93 +624,114 @@ def checkVol() {
 		state.volume = volSpeech
 	}
 	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
+    
 	if(messagePriority) {
 		if(logEnable) log.debug "In checkVol - priority: ${state.priority}"
 		if(state.priority.toLowerCase().contains("f")) {
 			state.voiceSelected = voiceFun
-		}
-		if(state.priority.toLowerCase().contains("r")) {
+        } else if(state.priority.toLowerCase().contains("r")) {
 			randomHandler()
 			state.voiceSelected = state.randVoice
-		}
-		if(state.priority.toLowerCase().contains("l")) {
+        } else if(state.priority.toLowerCase().contains("l")) {
 			state.voiceSelected = voiceLow
-		}
-		if(state.priority.toLowerCase().contains("m")) {
-			state.volume = volMed
-			state.voiceSelected = voiceMed
-		}
-		if(state.priority.toLowerCase().contains("h")) {
+        } else if(state.priority.toLowerCase().contains("n")) {
+			state.volume = volSpeech
+			state.voiceSelected = voiceNorm
+        } else if(state.priority.toLowerCase().contains("h")) {
 			state.volume = volHigh
 			state.voiceSelected = voiceHigh
-		}
-		if(logEnable) log.debug "In checkVol - priority volume: ${state.volume}"
+        } else {
+            state.volume = volSpeech
+			state.voiceSelected = voiceNorm
+            if(logEnable) log.debug "In checkVol - Priority NOt found - priority volume: ${state.volume}"
+        }
+        if(logEnable) log.debug "In checkVol - priority message: ${state.priority} - priority volume: ${state.volume}"
 	}
 }
 
 def priorityVoicesHandler() {
     if(state.lastSpoken == ".") state.lastSpoken = ""
-	if(logEnable) log.debug "In priorityVoicesHandler - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
+    if(logEnable) log.debug "In priorityVoicesHandler - Speaker: ${speaker} - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
 	def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 	def uriMessage = "${tts.get('uri')}"
 	if(state.priority.contains("1")) {
 		if(sound1) {
-			speaker.playTrack(sound1)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound1)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 1 not defined"
 	}
 	if(state.priority.contains("2")) {
 		if(sound2) {
-			speaker.playTrack(sound2)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound2)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 2 not defined"
 	}
 	if(state.priority.contains("3")) {
 		if(sound3) {
-			speaker.playTrack(sound3)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound3)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 3 not defined"
 	}
 	if(state.priority.contains("4")) {
 		if(sound4) {
-			speaker.playTrack(sound4)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound4)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 4 not defined"
 	}
 	if(state.priority.contains("5")) {
 		if(sound5) {
-			speaker.playTrack(sound5)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound5)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 5 not defined"
 	}
     if(state.priority.contains("6")) {
 		if(sound6) {
-			speaker.playTrack(sound6)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound6)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 6 not defined"
 	}
     if(state.priority.contains("7")) {
 		if(sound7) {
-			speaker.playTrack(sound7)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound7)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 7 not defined"
 	}
     if(state.priority.contains("8")) {
 		if(sound8) {
-			speaker.playTrack(sound8)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound8)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 8 not defined"
 	}
     if(state.priority.contains("9")) {
 		if(sound9) {
-			speaker.playTrack(sound9)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound9)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 9 not defined"
 	}
     if(state.priority.contains("10")) {
 		if(sound10) {
-			speaker.playTrack(sound10)
-			pauseExecution(1000)
+            if(speaker.hasCommand('playTrack')) {
+			    speaker.playTrack(sound10)
+			    pauseExecution(1000)
+            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
 		} else log.info "${app.label} - Sound 10 not defined"
 	}
     
@@ -646,6 +741,16 @@ def priorityVoicesHandler() {
 
 def sendPush() {
 	if(logEnable) log.debug "In sendPush - ${state.lastSpoken}"
+    if(state.priority.toLowerCase().contains("l")) {
+		state.lastSpoken = "[L]" + state.lastSpoken
+	}
+	if(state.priority.toLowerCase().contains("n")) {
+		state.lastSpoken = "[N]" + state.lastSpoken
+	}
+	if(state.priority.toLowerCase().contains("h")) {
+		state.lastSpoken = "[H]" + state.lastSpoken
+	}
+    
 	if(state.IH1 == "no") {
 		theMessage = "${state.lastSpoken}"
 		if(logEnable) log.debug "In sendPush - IH1 Sending message: ${theMessage}"
@@ -696,76 +801,106 @@ def appButtonHandler(buttonPressed) {
     if(logEnable) log.debug "In testButtonHandler - Button Pressed: ${state.whichButton}"
     if(state.whichButton == "testBtn1"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 1"
-        testSpeaker.playTrack(sound1)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound1)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn2"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 2"
-        testSpeaker.playTrack(sound2)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound2)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn3"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 3"
-        testSpeaker.playTrack(sound3)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound3)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn4"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 4"
-        testSpeaker.playTrack(sound4)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound4)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn5"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 5"
-        testSpeaker.playTrack(sound5)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound5)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn6"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 6"
-        testSpeaker.playTrack(sound6)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound6)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn7"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 7"
-        testSpeaker.playTrack(sound7)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound7)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn8"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 8"
-        testSpeaker.playTrack(sound8)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound8)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn9"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 9"
-        testSpeaker.playTrack(sound9)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound9)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testBtn10"){
         if(logEnable) log.debug "In testButtonHandler - Testing Sound 10"
-        testSpeaker.playTrack(sound10)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(sound10)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"
     }
     if(state.whichButton == "testVoiceFun"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice Fun"
         def tts = textToSpeech(testPhrase,voiceFun)
 	    def uriMessage = "${tts.get('uri')}"
-        testSpeaker.playTrack(uriMessage)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(uriMessage)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"    
     }
     if(state.whichButton == "testVoiceRandom"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice Random"
         randomHandler()
         def tts = textToSpeech(testPhrase,state.randVoice)
 	    def uriMessage = "${tts.get('uri')}"
-        testSpeaker.playTrack(uriMessage)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(uriMessage)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"    
     }
     if(state.whichButton == "testVoiceLow"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice Low"
         def tts = textToSpeech(testPhrase,voiceLow)
 	    def uriMessage = "${tts.get('uri')}"
-        testSpeaker.playTrack(uriMessage)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(uriMessage)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"    
     }
-    if(state.whichButton == "testVoiceMed"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Voice Med"
-        def tts = textToSpeech(testPhrase,voiceMed)
+    if(state.whichButton == "testVoiceNorm"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Voice Norm"
+        def tts = textToSpeech(testPhrase,voiceNorm)
 	    def uriMessage = "${tts.get('uri')}"
-        testSpeaker.playTrack(uriMessage)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(uriMessage)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"    
     }
     if(state.whichButton == "testVoiceHigh"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice High"
         def tts = textToSpeech(testPhrase,voiceHigh)
 	    def uriMessage = "${tts.get('uri')}"
-        testSpeaker.playTrack(uriMessage)
+        if(testSpeaker.hasCommand('playTrack')) {
+            testSpeaker.playTrack(uriMessage)
+        } else log.info "Follow Me - ${testSpeaker} doesn't support playTrack"    
     }
-}   
+}
 
 // ********** Normal Stuff **********
 
