@@ -38,7 +38,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "Zjk0NzNjNWEtYT000000Y2YzLThiNmQtNmUyMDg1ODVjYzlh"
+    state.newClientID = "Zjk0NzNjNWEtYTYxMy00Y2YzLThiNmQtNmUyMDg1ODVjYzlh"
     // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
@@ -209,7 +209,7 @@ def testLife360Connection() {
 }
 
 def listCircles() {
-    if(logEnable) log.debug "In listCircles..."
+     if(logEnable) log.debug "In listCircles..."
     dynamicPage(name: "listCirclesPage", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 with States</h2>", install: true, uninstall: true) {
         display()
 	    // get connected to life360 app
@@ -224,26 +224,14 @@ def listCircles() {
 
 		if(logEnable) log.debug "Circles: ${resultCircles.data}"
     	def circles = resultCircles.data.circles
-    
-        if(logEnable) log.debug "In listCircles - Num of Circles: ${circles.size}"
-    	if (circles.size > 1) {
-    	    return (
-                section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Circle")) {
-        			input "circle", "enum", multiple: false, required:true, title:"Life360 Circle", options: circles.collectEntries{[it.id, it.name]}, submitOnChange: true	
-        		}
-	        )
-    	} else {
-            log.debug "In listCircles - Num of Circles: ${circles.size} - Circle 0: ${circles[0].id}"
-       	    state.circle = circles[0].id
-            state.circleName = circles[0].name
-            if(logEnable) log.debug "In listCircles - Only have ${circles.size} circle, selecting ${state.circleName} (id:${state.circle}) and moving on"
-       	    section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Circle")) {
-        		paragraph "<b>selected:</b> ${state.circleName}"
-        	}
-    	}
-        if (!state.circle) state.circle = settings.circle
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Circle")) {
+        	input "circle", "enum", multiple: false, required:true, title:"Life360 Circle", options: circles.collectEntries{[it.id, it.name]}, submitOnChange: true	
+        }
 // *** User ***
-        if(state.circle) {
+        if(circle) {
+            state.circle = settings.circle
+            log.debug "In listUsers..."
             if(logEnable) log.debug "In listPlaces..."
 	        // call life360 and get the list of places in the circle
  	        def urlPlaces = "https://api.life360.com/v3/circles/${state.circle}/places.json"
@@ -263,9 +251,9 @@ def listCircles() {
             }
         }
 // *** User ***
-        if(place) {
+        if(circle && place) {
             if(logEnable) log.debug "In listUsers..."
-	        if (!state?.circle) state.circle = settings.circle
+	        //if (!state?.circle) state.circle = settings.circle
 
             // call life360 and get list of users (members)
             def urlMembers = "https://api.life360.com/v3/circles/${state.circle}/members.json"
@@ -294,7 +282,7 @@ def listCircles() {
 
 def installed() {
     if(logEnable) log.debug "In installed..."
-	if(!state?.circle) state.circle = settings.circle
+	//if(!state?.circle) state.circle = settings.circle
     
     settings.users.each {memberId->
     	// log.debug "Find by Member Id = ${memberId}"
@@ -373,8 +361,7 @@ def installed() {
 
 def updated() {
     if(logEnable) log.debug "In updated..."
-	if (!state?.circle)
-        state.circle = settings.circle
+	if (!state?.circle) state.circle = settings.circle
 
 	if(logEnable) log.debug "In updated() method."
  
