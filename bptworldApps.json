@@ -137,13 +137,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.2.1",
+  "FollowMeChildVersion": "v1.2.3",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.2.1 - 06/26/19 - Fixed problem with testing Random Voice",
+  "FollowMeUpdateNote": "V1.2.3 - 07/06/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
