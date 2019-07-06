@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.0.8 - 07/06/19 - Fixed an issue with multiple circles
  *  V1.0.7 - 07/03/19 - More work done on webhooks and Oauth (cwwilson08)
  *  V1.0.6 - 07/03/19 - More code cleanup
  *  V1.0.5 - 07/02/19 - Updated namespace/author so if something goes wrong people know who to contact.
@@ -37,13 +38,13 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "Zjk0NzNjN0000000000YzLThiNmQtNmUyMDg1ODVjYzlh"
+    state.newClientID = "Zjk0NzNjNWEtYT000000Y2YzLThiNmQtNmUyMDg1ODVjYzlh"
     // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
 
 def setVersion() {
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
 }
 
 definition(
@@ -240,7 +241,8 @@ def listCircles() {
         		paragraph "<b>selected:</b> ${state.circleName}"
         	}
     	}
-        if (!state?.circle) state.circle = settings.circle
+        if (!state.circle) state.circle = settings.circle
+// *** User ***
         if(state.circle) {
             if(logEnable) log.debug "In listPlaces..."
 	        // call life360 and get the list of places in the circle
@@ -260,6 +262,7 @@ def listCircles() {
                input "place", "enum", multiple: false, required:true, title:"Life360 Place", options: places.collectEntries{[it.id, it.name]}, submitOnChange: true
             }
         }
+// *** User ***
         if(place) {
             if(logEnable) log.debug "In listUsers..."
 	        if (!state?.circle) state.circle = settings.circle
