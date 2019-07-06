@@ -38,7 +38,7 @@
 
 //***********************************************************
 def newClientID() {
-    state.newClientID = "Zjk0NzNjNWEtYTYxMy00Y2YzLThiNmQtNmUyMDg1ODVjYzlh"
+    state.newClientID = "Zjk0Nz0000Y2YzLThiNmQtNmUyMDg1ODVjYzlh"
     // Be sure to save this code in each user device, once they are created, for safe keeping!
 }
 //***********************************************************
