@@ -2,7 +2,7 @@
  *  ****************  Life360 Tracker Parent ****************
  *
  *  Design Usage:
- *  Track your Life360 users. Works with the user LLife360 with States app.
+ *  Track your Life360 users. Works with the Life360 with States app.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -34,20 +34,20 @@
  *
  *  Changes:
  *
- *
+ *  V1.0.1 - 07/07/19 - Added Lif360 Track Free version
  *  V1.0.0 - 07/01/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
     name:"Life360 Tracker",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Track your Life360 users. Works with the user Life360 with States app.",
+    description: "Track your Life360 users. Works with the Life360 with States app.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -81,15 +81,16 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Track your Life360 users. Works with the user Life360 with States app.</div>"
+				paragraph "<div style='color:#1A77C9'>Track your Life360 users. Works with the Life360 with States app.</div>"
 				paragraph getFormat("line")
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Information</b>"
-				paragraph "Track your Life360 users. Works with the user Life360 with States app."
+				paragraph "Track your Life360 users. Works with the Life360 with States app."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Life360 Tracker Child", namespace: "BPTWorld", title: "<b>Add a new 'Life360 Tracker' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Life360 Tracker Free Child", namespace: "BPTWorld", title: "<b>Add a new 'Life360 Tracker Free' child</b>", multiple: true)
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
