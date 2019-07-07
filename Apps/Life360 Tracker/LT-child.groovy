@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 07/07/19 - First attempt at departure notifications and a few other goodies, please check your child apps
  *  V1.0.4 - 07/05/19 - Complete rewrite of how the app speaks
  *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, Trying to change up how volume is restored (thanks @doug)
  *  V1.0.2 - 07/04/19 - Added an optional Map link to each push, added Options to turn Speaking on/off, changed/added some descriptions
@@ -47,7 +48,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
 }
 
 definition(
@@ -97,12 +98,15 @@ def pageConfig() {
             }
             input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2
         }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Time to Track")) {
+        	input "timeToTrack", "enum", title: "How often to track Places", options: ["1 Minute","5 Minutes"], required: true, submitOnChange: true, defaultValue: "5 Minutes"
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
-            input(name: "speakHasArrived", type: "bool", defaultValue: "true", title: "Speak when someone 'Has arrived'", description: "Speak Has Arrived", submitOnChange: true)
+            input(name: "speakHasArrived", type: "bool", defaultValue: "false", title: "Speak when someone 'Has arrived'", description: "Speak Has Arrived", submitOnChange: true)
 			if(speakHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
-			if(speakHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if(speakHasArrived && atMsgList) {
 				def values = "${messageAT}".split(";")
 				listMapAT = ""
@@ -111,9 +115,22 @@ def pageConfig() {
 			}
             if(speakHasArrived) paragraph "<hr>"
             
-            input(name: "speakOnTheMove", type: "bool", defaultValue: "true", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
+            
+            input(name: "speakHasDepated", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
+			if(speakHasDepated) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
+			if(speakHasDepated) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakHasDepated && depMsgList) {
+				def values = "${messageDEP}".split(";")
+				listMapDEP = ""
+    			values.each { item -> listMapDEP += "${item}<br>"}
+                paragraph "${listMapDEP}"
+			}
+            if(speakHasDepated) paragraph "<hr>"
+            
+            
+            input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
             if(speakOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
-			if(speakOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if(speakOnTheMove && moveMsgList) {
 				def values = "${messageMOVE}".split(";")
 				listMapMove = ""
@@ -123,9 +140,9 @@ def pageConfig() {
             if(speakOnTheMove) paragraph "<hr>"
             
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
-            if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "true", title: "Send Map Link with Push", description: "Send Google Maps Link")
+            if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "false", title: "Send Map Link with Push", description: "Send Google Maps Link")
 		}
-        if(speakHasArrived || speakOnTheMove) {
+        if(speakHasArrived || speakHasDeparted || speakOnTheMove) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
                 paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
               	input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
@@ -136,15 +153,15 @@ def pageConfig() {
 		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers. Then check your logs to see how they did.", width:8
                 input "testSpeaker", "button", title: "Test Speaker", submitOnChange: true, width: 4
                 paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
-		        input "volRestore", "number", title: "Restore speaker volume to X after speech (if restore is unavailable)", description: "0-100", required: true
+                input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
+		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
                 input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
-			    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true
-    		    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true
+			    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
+    		    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
 		    }
 			section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-        		input "fromTime", "time", title: "From", required: false
-        		input "toTime", "time", title: "To", required: false
+        		input "fromTime", "time", title: "From", required: false, width: 6
+        		input "toTime", "time", title: "To", required: false, width: 6
 			}
     	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
@@ -180,12 +197,12 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
 	initialize()
-    runEvery5Minutes(userHandler)
 }
 
 def initialize() {
     setDefaults()
-	subscribe(presenceDevice, "address1", userHandler)
+	if(timeToTrack == "1 Minute") runEvery1Minute(userHandler)
+    if(timeToTrack == "5 Minutes") runEvery5Minutes(userHandler)
 }
 	
 def userHandler(evt) {
@@ -253,8 +270,13 @@ def userHandler(evt) {
             }
         }
     } else {
-        if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
         if(state.onTheMove == "no") {
+            if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.address1Value}"
+            state.msg = "${messageDeparted}"
+            if(isDataDevice) isDataDevice.off()
+            if(speakHasDeparted) messageHandler()
+        } else {
+            if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
             if(isDataDevice) isDataDevice.off()
             if(speakOnTheMove) messageHandler()
@@ -300,7 +322,6 @@ def letsTalk() {
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
                 if(logEnable) log.debug "Speaker in use: ${it}"
-
                 if(speakerProxy) {
                     if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
                     it.speak(state.theMsg)
@@ -396,15 +417,6 @@ def messageHandler() {
 	
     if(speakHasArrived || speakOnTheMove) letsTalk()
     if(sendPushMessage) pushHandler()
-}
-
-def isThereData(){
-	if(logEnable) log.debug "In isThereData..."
-	if(state.isData) {
-		isDataDevice.on()
-	} else {
-		isDataDevice.off()
-	}
 }
 
 def pushHandler() {
