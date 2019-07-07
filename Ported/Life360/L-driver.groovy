@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.0.4 - 07/07/19 - Removed clientID field, no longer needed
  *  V1.0.3 - 07/03/19 - Changed booleans to strings so it'll work with RM. Thanks @doug
  *  V1.0.2 - 07/02/19 - Added clientID, updated namespace/author so if something goes wrong people know who to contact.
  *  V1.0.1 - 06/30/19 - Added code to turn debug logging on and off (bptworld)
@@ -37,7 +38,6 @@
 preferences {
 	input title:"Distance", description:"This feature allows you change the display of distance to either Miles or KM. Please note, any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
-    input "clientID", "text", title: "Saved clientID from Life360 Install - Just here for safekeeping!",  required: false
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
 } 
  
