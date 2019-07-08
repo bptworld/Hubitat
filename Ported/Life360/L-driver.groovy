@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.0,5 - 07/08/19 - Added Avatar and code cleanup (cwwilson08)
  *  V1.0.4 - 07/07/19 - Removed clientID field, no longer needed
  *  V1.0.3 - 07/03/19 - Changed booleans to strings so it'll work with RM. Thanks @doug
  *  V1.0.2 - 07/02/19 - Added clientID, updated namespace/author so if something goes wrong people know who to contact.
@@ -69,6 +70,9 @@ metadata {
     attribute "speedMiles", "number"
     attribute "speedKm", "number"
    	attribute "wifiState", "String" //boolean
+    attribute "savedPlaces", "map"
+    attribute "avatar", "string"
+    attribute "avatarHtml", "string"
 
 	command "refresh"
 	command "asleep"
@@ -94,12 +98,12 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	def sleeping = (presence == 'not present') ? 'not sleeping' : device.currentValue('sleeping')
 	
 	if (sleeping != device.currentValue('sleeping')) {
-    	sendEvent( name: "sleeping", value: sleeping, isStateChange: true, displayed: true, descriptionText: sleeping == 'sleeping' ? 'Sleeping' : 'Awake' )
+    	sendEvent( name: "sleeping", value: sleeping, descriptionText: sleeping == 'sleeping' ? 'Sleeping' : 'Awake' )
     }
 	
     def display = presence + (presence == 'present' ? ', ' + sleeping : '')
 	if (display != device.currentValue('display')) {
-    	sendEvent( name: "display", value: display, isStateChange: true, displayed: false )
+    	sendEvent( name: "display", value: display,  )
     }
 	
 	def results = [
@@ -117,82 +121,85 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	def statusDistance = homeDistance / 1000
 	def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
     if(status != device.currentValue('status')){
-    sendEvent( name: "status", value: status, isStateChange: true, displayed: false )
+    sendEvent( name: "status", value: status )
     state.update = true}
     }else{
 	def statusDistance = (homeDistance / 1000) / 1.609344 
    	def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
     if(status != device.currentValue('status')){
-   	sendEvent( name: "status", value: status, isStateChange: true, displayed: false )
+   	sendEvent( name: "status", value: status )
     state.update = true}
 	}
 	
     def km = sprintf("%.2f", homeDistance / 1000)
     if(km.toDouble().round(2) != device.currentValue('distanceKm')){
-    sendEvent( name: "distanceKm", value: km.toDouble().round(2), isStateChange: true, displayed: false )
+    sendEvent( name: "distanceKm", value: km.toDouble().round(2) )
     state.update = true}
     
     def miles = sprintf("%.2f", (homeDistance / 1000) / 1.609344)
 	if(miles.toDouble().round(2) != device.currentValue('distanceMiles')){    
-    sendEvent( name: "distanceMiles", value: miles.toDouble().round(2), isStateChange: true, displayed: false )
+    sendEvent( name: "distanceMiles", value: miles.toDouble().round(2) )
 	state.update = true}
     
     if(homeDistance.toDouble().round(2) != device.currentValue('distanceMetric')){
-	sendEvent( name: "distanceMetric", value: homeDistance.toDouble().round(2), isStateChange: true, displayed: false )
+	sendEvent( name: "distanceMetric", value: homeDistance.toDouble().round(2) )
 	state.update = true}
     
     if(state.update == true){
-	sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}", displayed: false ) 
+	sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" ) 
 	state.update = false}
 }
 
-private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState){
+private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml){
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
 	if(address1 != device.currentValue('address1')){
-    sendEvent( name: "prevAddress1", value: device.currentValue('address1'), isStateChange: true, displayed: false )
+    sendEvent( name: "prevAddress1", value: device.currentValue('address1') )
     sendEvent( name: "address1", value: address1, isStateChange: true, displayed: false )
 	}
     if(address2 != device.currentValue('address2')){
-    sendEvent( name: "prevAddress2", value: device.currentValue('address2'), isStateChange: true, displayed: false )
-    sendEvent( name: "address2", value: address2, isStateChange: true, displayed: false )   
+    sendEvent( name: "prevAddress2", value: device.currentValue('address2') )
+    sendEvent( name: "address2", value: address2 )   
 	}
 	if(battery != device.currentValue('battery'))
-   	sendEvent( name: "battery", value: battery, isStateChange: true, displayed: false )
+   	sendEvent( name: "battery", value: battery )
     if(charge != device.currentValue('charge'))
-   	sendEvent( name: "charge", value: charge, isStateChange: true, displayed: false )
+   	sendEvent( name: "charge", value: charge )
     
     def curcheckin = device.currentValue('lastCheckin').toString()
     if(endTimestamp != curcheckin)
-   	sendEvent( name: "lastCheckin", value: endTimestamp, isStateChange: true, displayed: false )
+   	sendEvent( name: "lastCheckin", value: endTimestamp )
     if(inTransit != device.currentValue('inTransit'))
-   	sendEvent( name: "inTransit", value: inTransit, isStateChange: true, displayed: false )
+   	sendEvent( name: "inTransit", value: inTransit )
     
 	def curDriving = device.currentValue('isDriving')
     //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
     if(isDriving != device.currentValue('isDriving')){
 	//if(logEnable) log.debug "If was different, isDriving = $isDriving"
-   	sendEvent( name: "isDriving", value: isDriving, isStateChange: true, displayed: false )
+   	sendEvent( name: "isDriving", value: isDriving )
     }
     def curlat = device.currentValue('latitude').toString()
     def curlong = device.currentValue('longitude').toString()
     latitude = latitude.toString()
     longitude = longitude.toString()
     if(latitude != curlat)
-    sendEvent( name: "latitude", value: latitude, isStateChange: true, displayed: false )
+    sendEvent( name: "latitude", value: latitude )
     if(longitude != curlong)
-   	sendEvent( name: "longitude", value: longitude, isStateChange: true, displayed: false )
+   	sendEvent( name: "longitude", value: longitude )
     if(since != device.currentValue('since'))
-   	sendEvent( name: "since", value: since, isStateChange: true, displayed: false )
+   	sendEvent( name: "since", value: since )
     if(speedMetric != device.currentValue('speedMetric'))
-	sendEvent( name: "speedMetric", value: speedMetric, isStateChange: true, displayed: false )
+	sendEvent( name: "speedMetric", value: speedMetric )
     if(speedMiles != device.currentValue('speedMiles'))
-	sendEvent( name: "speedMiles", value: speedMiles, isStateChange: true, displayed: false )
+	sendEvent( name: "speedMiles", value: speedMiles )
     if(speedKm != device.currentValue('speedKm'))
-	sendEvent( name: "speedKm", value: speedKm, isStateChange: true, displayed: false )
+	sendEvent( name: "speedKm", value: speedKm )
     if(wifiState != device.currentValue('wifiState'))
-   	sendEvent( name: "wifiState", value: wifiState, isStateChange: true, displayed: false )
+   	sendEvent( name: "wifiState", value: wifiState )
    	setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+    sendEvent( name: "savedPlaces", value: xplaces )
+    sendEvent( name: "avatar", value: avatar )
+    sendEvent( name: "avatarHtml", value: avatarHtml )
 }
 
 def setMemberId (String memberId) {
@@ -232,12 +239,12 @@ private toggleSleeping(sleeping = null) {
 	
 	if (presence != 'not present') {
 		if (sleeping != device.currentValue('sleeping')) {
-			sendEvent( name: "sleeping", value: sleeping, isStateChange: true, displayed: true, descriptionText: sleeping == 'sleeping' ? 'Sleeping' : 'Awake' )
+			sendEvent( name: "sleeping", value: sleeping,  descriptionText: sleeping == 'sleeping' ? 'Sleeping' : 'Awake' )
 		}
 		
 		def display = presence + (presence == 'present' ? ', ' + sleeping : '')
 		if (display != device.currentValue('display')) {
-			sendEvent( name: "display", value: display, isStateChange: true, displayed: false )
+			sendEvent( name: "display", value: display )
 		}
 	}
 }
@@ -257,11 +264,11 @@ def refresh() {
 
 def setBattery(int percent, boolean charging, charge){
 	if(percent != device.currentValue("battery"))
-		sendEvent(name: "battery", value: percent, isStateChange: true, displayed: false);
+		sendEvent(name: "battery", value: percent);
         
     def ps = device.currentValue("powerSource") == "battery" ? "false" : "true"
     if(charge != ps)
-		sendEvent(name: "powerSource", value: (charging ? "dc":"battery"), isStateChange: true, displayed: false);
+		sendEvent(name: "powerSource", value: (charging ? "dc":"battery"));
 }
 
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {
