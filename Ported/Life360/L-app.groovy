@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.1.0 - 07/08/19 - Added Avatar and code cleanup (cwwilson08)
  *  V1.0.9 - 07/07/19 - No more crazy setup thanks to cwwilson08!
  *  V1.0.8 - 07/06/19 - Fixed an issue with multiple circles
  *  V1.0.7 - 07/03/19 - More work done on webhooks and Oauth (cwwilson08)
@@ -38,7 +39,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.9"
+	state.version = "v1.1.0"
 }
 
 definition(
@@ -259,6 +260,7 @@ def listCircles() {
 
             def places = result.data.places
             state.places = places
+            
        
             section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Place to Match Current Location")) {
                 paragraph "Please select the ONE Life360 Place that matches your Hubitat location: ${location.name}"
@@ -316,8 +318,10 @@ def installed() {
     	        	
             if (childDevice)
         	{
-        		// log.debug "Child Device Successfully Created"
+        		 log.debug "Child Device Successfully Created"
      			generateInitialEvent (member, childDevice)
+                
+               
        		}
     	}
     }
@@ -346,8 +350,8 @@ def createCircleSubscription() {
 
     log.debug "Create a new Life360 Webhooks for this Circle."
 
-   // createAccessToken() // create our own OAUTH access token to use in webhook url
-   log.debug "webook access tokein = ${state.accessToken}"
+    createAccessToken() // create our own OAUTH access token to use in webhook url
+   log.debug "webhook access tokein = ${state.accessToken}"
 
    // def hookUrl = "${serverUrl}/api/smartapps/installations/${app.id}/placecallback?access_token=${state.accessToken}"//.encodeAsURL()
    def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"//.encodeAsURL()
@@ -440,12 +444,13 @@ def updated() {
 }
 
 def generateInitialEvent (member, childDevice) {
+    
     if(logEnable) log.debug "In generateInitialEvent..."
     runEvery1Minute(updateMembers)
     // lets figure out if the member is currently "home" (At the place)
     
     try { // we are going to just ignore any errors
-    	if(logEnable) log.info "Life360 generateInitialEvent($member, $childDevice)"
+    	if(logEnable)log.info "Life360 generateInitialEvent($member, $childDevice)"
         
         def place = state.places.find{it.id==settings.place}
 
@@ -457,6 +462,7 @@ def generateInitialEvent (member, childDevice) {
             def placeLatitude = new Float (place.latitude)
             def placeLongitude = new Float (place.longitude)
             def placeRadius = new Float (place.radius)
+           
         
         	if(logEnable) log.debug "Member Location = ${memberLatitude}/${memberLongitude}"
             if(logEnable) log.debug "Place Location = ${placeLatitude}/${placeLongitude}"
@@ -476,7 +482,22 @@ def generateInitialEvent (member, childDevice) {
         def speedmeters
         def speedMPH
         def speedKPH 
+        def xplaces
+        def avatar
+        xplaces = state.places.name
+        if (member.avatar != null){
+        avatar = member.avatar
+        avatarHtml =  "<img src= \"${avatar}\">"
         
+    } else {
+           
+        avatar = "not set"
+        avatarHtml = "not set"
+        }
+        
+        
+      
+           
         if(member.location.address1 == null || member.location.address1 == "")
         address1 = "No Data"
         else
@@ -517,7 +538,7 @@ def generateInitialEvent (member, childDevice) {
         def longitude = member.location.longitude.toFloat()
         
 		//Sent data	
-        childDevice?.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedmeters,speedMPH,speedKPH,wifi)
+        childDevice?.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedmeters,speedMPH,speedKPH,wifi,xplaces,avatar,avatarHtml)
        
         childDevice?.generatePresenceEvent(isPresent, distanceAway)
         
@@ -617,6 +638,19 @@ def updateMembers(){
     def speedMetric
     def speedMiles
     def speedKm
+    def xplaces
+       
+    xplaces = state.places.name
+    if (member.avatar != null){
+        avatar = member.avatar
+        avatarHtml =  "<img src= \"${avatar}\">"
+        
+    } else {
+           
+        avatar = "not set"
+        avatarHtml = "not set"
+        }
+        
                 
     if(member.location.address1 == null || member.location.address1 == "")
         address1 = "No Data"
@@ -657,7 +691,7 @@ def updateMembers(){
     def latitude = member.location.latitude.toFloat()
     def longitude = member.location.longitude.toFloat()
     //if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charging | Last Checkin = $member.location.endTimestamp | Moving = $moving | Driving = $driving | Latitude = $latitude | Longitude = $longitude | Since = $member.location.since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifi"
-        deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi)
+        deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi,xplaces,avatar,avatarHtml)
              
     def place = state.places.find{it.id==settings.place}
 	if (place) {
