@@ -38,12 +38,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 07/08/19 - Fix typo speakHasDepated vs speakHasDeparted (thanks spalexander68!)
  *  V1.0.0 - 07/07/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -115,16 +116,16 @@ def pageConfig() {
             if(speakHasArrived) paragraph "<hr>"
             
             
-            input(name: "speakHasDepated", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
-			if(speakHasDepated) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
-			if(speakHasDepated) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(speakHasDepated && depMsgList) {
+            input(name: "speakHasDeparted", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
+			if(speakHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
+			if(speakHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakHasDeparted && depMsgList) {
 				def values = "${messageDEP}".split(";")
 				listMapDEP = ""
     			values.each { item -> listMapDEP += "${item}<br>"}
                 paragraph "${listMapDEP}"
 			}
-            if(speakHasDepated) paragraph "<hr>"
+            if(speakHasDeparted) paragraph "<hr>"
             
             
             input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
