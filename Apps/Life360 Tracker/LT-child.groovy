@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 07/08/19 - Fix typo speakHasDepated vs speakHasDeparted (thanks spalexander68!)
  *  V1.0.5 - 07/07/19 - First attempt at departure notifications and a few other goodies, please check your child apps
  *  V1.0.4 - 07/05/19 - Complete rewrite of how the app speaks
  *  V1.0.3 - 07/04/19 - Made pushover an option with or without speech, Trying to change up how volume is restored (thanks @doug)
@@ -48,7 +49,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
 }
 
 definition(
@@ -116,16 +117,16 @@ def pageConfig() {
             if(speakHasArrived) paragraph "<hr>"
             
             
-            input(name: "speakHasDepated", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
-			if(speakHasDepated) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
-			if(speakHasDepated) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(speakHasDepated && depMsgList) {
+            input(name: "speakHasDeparted", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
+			if(speakHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
+			if(speakHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if(speakHasDeparted && depMsgList) {
 				def values = "${messageDEP}".split(";")
 				listMapDEP = ""
     			values.each { item -> listMapDEP += "${item}<br>"}
                 paragraph "${listMapDEP}"
 			}
-            if(speakHasDepated) paragraph "<hr>"
+            if(speakHasDeparted) paragraph "<hr>"
             
             
             input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
