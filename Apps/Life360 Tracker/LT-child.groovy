@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 07/09/19 - Move minor changes to departed
  *  V1.0.7 - 07/08/19 - Fixed another typo with Departed. Selected places now gets the places from the Life360 driver.
  *  V1.0.6 - 07/08/19 - Fix typo speakHasDepated vs speakHasDeparted (thanks spalexander68!)
  *  V1.0.5 - 07/07/19 - First attempt at departure notifications and a few other goodies, please check your child apps
@@ -424,7 +425,7 @@ def messageHandler() {
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
 	
-    if(speakHasArrived || speakOnTheMove) letsTalk()
+    if(speakHasArrived || speakHasDeparted || speakOnTheMove) letsTalk()
     if(sendPushMessage) pushHandler()
 }
 
