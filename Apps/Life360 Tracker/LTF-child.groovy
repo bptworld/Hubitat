@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 07/09/19 - Still trying to get push only working correctly!
  *  V1.0.5 - 07/09/19 - Lots of changes to arrived/departed and on the move sections. Fixed push only.
  *  V1.0.4 - 07/09/19 - Select places now shows a list to choose from
  *  V1.0.3 - 07/09/19 - Another minor change to departed
@@ -48,7 +49,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
 }
 
 definition(
@@ -113,42 +114,48 @@ def pageConfig() {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
             input(name: "speakHasArrived", type: "bool", defaultValue: "false", title: "Speak when someone 'Has arrived'", description: "Speak Has Arrived", submitOnChange: true)
-			if(speakHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
-			if(speakHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(speakHasArrived && atMsgList) {
+            input(name: "pushHasArrived", type: "bool", defaultValue: "false", title: "Push when someone 'Has arrived'", description: "Push Has Arrived", submitOnChange: true)
+			if(speakHasArrived || pushHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
+			if(speakHasArrived || pushHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if((speakHasArrived || pushHasArrived) && atMsgList) {
 				def values = "${messageAT}".split(";")
 				listMapAT = ""
     			values.each { item -> listMapAT += "${item}<br>"}
 				paragraph "${listMapAT}"
 			}
-            if(speakHasArrived) paragraph "<hr>"
+            if(speakHasArrived || pushHasArrived) paragraph "<hr>"
             
             
             input(name: "speakHasDeparted", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
-			if(speakHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
-			if(speakHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(speakHasDeparted && depMsgList) {
+            input(name: "pushHasDeparted", type: "bool", defaultValue: "false", title: "Push when someone 'Has departed'", description: "Push Has departed", submitOnChange: true)
+			if(speakHasDeparted || pushHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
+			if(speakHasDeparted || pushHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if((speakHasDeparted || pushHasDeparted) && depMsgList) {
 				def values = "${messageDEP}".split(";")
 				listMapDEP = ""
     			values.each { item -> listMapDEP += "${item}<br>"}
                 paragraph "${listMapDEP}"
 			}
-            if(speakHasDeparted) paragraph "<hr>"
+            if(speakHasDeparted || pushHasDeparted) paragraph "<hr>"
             
             
             input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
-            if(speakOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
-			if(speakOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if(speakOnTheMove && moveMsgList) {
+            input(name: "pushOnTheMove", type: "bool", defaultValue: "false", title: "Push when someone 'is on the move'", description: "Push On the Move", submitOnChange: true)
+            if(speakOnTheMove || pushOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
+			if(speakOnTheMove || pushOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if((speakOnTheMove || pushOnTheMove) && moveMsgList) {
 				def values = "${messageMOVE}".split(";")
 				listMapMove = ""
     			values.each { item -> listMapMove += "${item}<br>"}
 				paragraph "${listMapMove}"
 			}
-            if(speakOnTheMove) paragraph "<hr>"
-            
-            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
-            if(sendPushMessage) input(name: "linkPush", type: "bool", defaultValue: "false", title: "Send Map Link with Push", description: "Send Google Maps Link")
+            if(speakOnTheMove || pushOnTheMove) paragraph "<hr>"
+        }
+        if(pushHasArrived || pushHasDeparted || pushOnTheMove) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Push Options")) { 
+                input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
+                if(sendPushMessage && (pushHasArrived || pushHasDeparted || pushOnTheMove)) input(name: "linkPush", type: "bool", defaultValue: "false", title: "Send Map Link with Push", description: "Send Google Maps Link")
+            }
 		}
         if(speakHasArrived || speakHasDeparted || speakOnTheMove) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
@@ -175,6 +182,12 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
+//        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Options")) {
+//			input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Tile data to:", submitOnChange: true, required: false, multiple: false)
+//		}
+//        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
+//            href "alertsConfig", title: "Alerts", description: "Click here to setup Alerts."
+//		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
@@ -405,8 +418,7 @@ def userHandler(evt) {
                     if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     if(isDataDevice) isDataDevice.on()
-                    if(speakHasArrived) messageHandler()
-                    if(sendPushMessage) pushHandler()
+                    if(speakHasArrived || sendPushMessage) messageHandler()
                 } else {
                     if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
@@ -425,8 +437,7 @@ def userHandler(evt) {
                         if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                         state.msg = "${messageAT}"
                         if(isDataDevice) isDataDevice.on()
-                        if(speakHasArrived) messageHandler()
-                        if(sendPushMessage) pushHandler()
+                        if(speakHasArrived || sendPushMessage) messageHandler()
                     } else {
                         if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                     }
@@ -450,13 +461,11 @@ def userHandler(evt) {
                     if(state.onTheMove == "no") {
                         if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.address1Value}"
                         state.msg = "${messageDEP}"
-                        if(speakHasDeparted) messageHandler()
-                        if(sendPushMessage) pushHandler()
+                        if(speakHasDeparted || sendPushMessage) messageHandler()
                     } else {
                         if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
                         state.msg = "${messageMOVE}"
-                        if(speakOnTheMove) messageHandler()
-                        if(sendPushMessage) pushHandler()
+                        if(speakOnTheMove || sendPushMessage) messageHandler()
                     }
                 }
             }
@@ -597,8 +606,8 @@ def messageHandler() {
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
 	
-   // if(speakHasArrived || speakHasDeparted || speakOnTheMove) letsTalk()
-    //if(sendPushMessage) pushHandler()
+    if(speakHasArrived || speakHasDeparted || speakOnTheMove) letsTalk()
+    if(sendPushMessage) pushHandler()
 }
 
 def pushHandler() {
