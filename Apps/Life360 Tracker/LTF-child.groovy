@@ -38,13 +38,14 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 07/08/19 - Fix typo speakHasDepated vs speakHasDeparted (thanks spalexander68!)
+ *  V1.0.2 - 07/08/19 - Fixed another typo with Departed.
+ *  V1.0.1 - 07/08/19 - Fix typo speakHasDeparted vs speakHasDeparted (thanks spalexander68!)
  *  V1.0.0 - 07/07/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -96,7 +97,8 @@ def pageConfig() {
             if(trackingOptions == "Track All") {
                 paragraph "Tracking all places"
             }
-            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2
+            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2, width: 6
+            input "timeConsideredGone", "number", title: "Time to have departed a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2, width: 6
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Time to Track")) {
         	input "timeToTrack", "enum", title: "How often to track Places", options: ["1 Minute","5 Minutes"], required: true, submitOnChange: true, defaultValue: "5 Minutes"
@@ -374,6 +376,7 @@ def userHandler(evt) {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    int timeGone = timeConsideredGone * 60
     if(state.tDiff > timeHere) {
         if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
     } else {
@@ -435,21 +438,23 @@ def userHandler(evt) {
             }
         }
     } else {
-        if(state.onTheMove == "no") {
-            if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.atPlace}"
-            state.msg = "${messageDeparted}"
+        if(state.tDiff > timeGone) {
+            if(state.onTheMove == "no") {
+                if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.atPlace}"
+                state.msg = "${messageDEP}"
+                if(isDataDevice) isDataDevice.off()
+                if(speakHasDeparted) messageHandler()
+            } else {
+                if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.atPlace}"
+                state.msg = "${messageMOVE}"
+                if(isDataDevice) isDataDevice.off()
+                if(speakOnTheMove) messageHandler()
+            }
+            state.prevPlace = state.atPlace
+            state.beenHere = "no"
+            state.onTheMove = "yes"
             if(isDataDevice) isDataDevice.off()
-            if(speakHasDeparted) messageHandler()
-        } else {
-            if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.atPlace}"
-            state.msg = "${messageMOVE}"
-            if(isDataDevice) isDataDevice.off()
-            if(speakOnTheMove) messageHandler()
         }
-        state.prevPlace = state.atPlace
-        state.beenHere = "no"
-        state.onTheMove = "yes"
-        if(isDataDevice) isDataDevice.off()
     }
 }
 
