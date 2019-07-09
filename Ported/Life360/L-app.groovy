@@ -24,7 +24,8 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
- *  V1.1.0 - 07/08/19 - Added Avatar and code cleanup (cwwilson08)
+ *  V1.1.1 - 07/09/19 - Minor change to how the places are sent over
+ *  V1.1.0 - 07/08/19 - Lists are now sent over to driver automatically, Added Avatar and code cleanup (cwwilson08)
  *  V1.0.9 - 07/07/19 - No more crazy setup thanks to cwwilson08!
  *  V1.0.8 - 07/06/19 - Fixed an issue with multiple circles
  *  V1.0.7 - 07/03/19 - More work done on webhooks and Oauth (cwwilson08)
@@ -39,7 +40,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.0"
+	state.version = "v1.1.1"
 }
 
 definition(
@@ -384,7 +385,6 @@ def createCircleSubscription() {
     	}
     }
 
-
 def updated() {
     if(logEnable) log.debug "In updated..."
 	if (!state?.circle)
@@ -640,7 +640,7 @@ def updateMembers(){
     def speedKm
     def xplaces
        
-    xplaces = state.places.name
+    xplaces = "${state.places.name}".replaceAll(", ",",")
     if (member.avatar != null){
         avatar = member.avatar
         avatarHtml =  "<img src= \"${avatar}\">"
