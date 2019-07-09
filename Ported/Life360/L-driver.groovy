@@ -43,7 +43,7 @@ preferences {
 } 
  
 metadata {
-	definition (name: "Life360 User", namespace: "BPTWorld", author: "Bryan Turcotte") {
+	definition (name: "Life360 User", namespace: "BPTWorld", author: "Bryan Turcotte", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy") {
 	capability "Presence Sensor"
 	capability "Sensor"
     capability "Refresh"
