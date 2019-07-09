@@ -38,14 +38,15 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 07/08/19 - Fixed another typo with Departed.
+ *  V1.0.3 - 07/09/19 - Move minor changes to departed
+ *  V1.0.2 - 07/08/19 - Fixed another typo with Departed.  Also added 'time to be considered gone'
  *  V1.0.1 - 07/08/19 - Fix typo speakHasDeparted vs speakHasDeparted (thanks spalexander68!)
  *  V1.0.0 - 07/07/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
@@ -585,7 +586,7 @@ def messageHandler() {
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
 	
-    if(speakHasArrived || speakOnTheMove) letsTalk()
+    if(speakHasArrived || speakHasDeparted || speakOnTheMove) letsTalk()
     if(sendPushMessage) pushHandler()
 }
 
