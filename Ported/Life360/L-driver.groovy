@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.0.6 - 07/10/19 - Added a Dashboard Tile
  *  V1.0,5 - 07/08/19 - Added Avatar and code cleanup (cwwilson08)
  *  V1.0.4 - 07/07/19 - Removed clientID field, no longer needed
  *  V1.0.3 - 07/03/19 - Changed booleans to strings so it'll work with RM. Thanks @doug
@@ -36,9 +37,13 @@
  *  V1.0.0 - 06/30/19 - Initial port of driver for Hubitat (bptworld)
  */
  
+import java.text.SimpleDateFormat
+
 preferences {
 	input title:"Distance", description:"This feature allows you change the display of distance to either Miles or KM. Please note, any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
+    input("fontSize", "text", title: "Data Font Size", required: true, defaultValue: "15")
+    input("avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75")
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
 } 
  
@@ -59,7 +64,7 @@ metadata {
 	attribute "address1", "String"
   	attribute "address2", "String"
   	attribute "battery", "number"
-   	attribute "charge", "String" //boolean
+   	attribute "charge", "boolean" //boolean
    	attribute "lastCheckin", "number"
    	attribute "inTransit", "String" //boolean
    	attribute "isDriving", "String" //boolean
@@ -69,23 +74,59 @@ metadata {
    	attribute "speedMetric", "number"
     attribute "speedMiles", "number"
     attribute "speedKm", "number"
-   	attribute "wifiState", "String" //boolean
+   	attribute "wifiState", "boolean" //boolean
     attribute "savedPlaces", "map"
     attribute "avatar", "string"
     attribute "avatarHtml", "string"
+    attribute "life360Tile1", "string"
 
 	command "refresh"
 	command "asleep"
     command "awake"
     command "toggleSleeping"
     command "setBattery",["number","boolean"]
-    
+        
 	}
 
 	simulator {
 		status "present": "presence: 1"
 		status "not present": "presence: 0"
 	}
+}
+
+def sendLife360Tile1() {
+    if(logEnable) log.debug "in Life360 User ... Making the Tile"
+    def avat = device.currentValue('avatar')
+    def add1 = device.currentValue('address1')
+    def unit = device.currentValue('units')
+    def bThere = device.currentValue('since')
+    def bLevel = device.currentValue('battery')
+    def bCharge = device.currentValue('powerSource')
+    def bWifi = device.currentValue('wifiState')
+    if(bWifi == "true") {
+        bWifiS = "Wifi"
+    } else {
+        bWifiS = "No Wifi"
+    }
+    
+    int sEpoch = device.currentValue('since')
+    theDate = use( groovy.time.TimeCategory ) {
+        new Date( 0 ) + sEpoch.seconds
+    }
+    SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E dd-MM @ hh:mm a")
+    String dateSince = DATE_FORMAT.format(theDate)
+    
+	tileMap = "<table width='100%' valign='top'>"
+    tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
+    tileMap += "<td width='75%'>At: ${add1}<br>Since: ${dateSince}<br>${state.status}<br>Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}</td>"
+    tileMap += "</tr></table>"
+	state.tileDevice1Count = tileMap.length()
+	if(state.tileDevice1Count <= 1000) {
+		if(logEnable) log.debug "tileMap - has ${state.tileDevice1Count} Characters<br>${tileMap}"
+	} else {
+		state.rtileDevice1 = "Too many characters to display on Dashboard (${state.tileDevice1Count})"
+	}
+	sendEvent(name: "life360Tile1", value: tileMap, displayed: true)
 }
 
 def generatePresenceEvent(boolean present, homeDistance) {
@@ -129,6 +170,7 @@ def generatePresenceEvent(boolean present, homeDistance) {
     if(status != device.currentValue('status')){
    	sendEvent( name: "status", value: status )
     state.update = true}
+        state.status = status
 	}
 	
     def km = sprintf("%.2f", homeDistance / 1000)
@@ -200,6 +242,8 @@ private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriv
     sendEvent( name: "savedPlaces", value: xplaces )
     sendEvent( name: "avatar", value: avatar )
     sendEvent( name: "avatarHtml", value: avatarHtml )
+    
+    sendLife360Tile1()
 }
 
 def setMemberId (String memberId) {
@@ -266,9 +310,9 @@ def setBattery(int percent, boolean charging, charge){
 	if(percent != device.currentValue("battery"))
 		sendEvent(name: "battery", value: percent);
         
-    def ps = device.currentValue("powerSource") == "battery" ? "false" : "true"
+    def ps = device.currentValue("powerSource") == "BTRY" ? "false" : "true"
     if(charge != ps)
-		sendEvent(name: "powerSource", value: (charging ? "dc":"battery"));
+		sendEvent(name: "powerSource", value: (charging ? "DC":"BTRY"));
 }
 
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {
