@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.1.2 - 07/10/19 - More changes from cwwilson08
  *  V1.1.1 - 07/09/19 - Minor change to how the places are sent over
  *  V1.1.0 - 07/08/19 - Lists are now sent over to driver automatically, Added Avatar and code cleanup (cwwilson08)
  *  V1.0.9 - 07/07/19 - No more crazy setup thanks to cwwilson08!
@@ -40,7 +41,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.1"
+	state.version = "v1.1.2"
 }
 
 definition(
@@ -81,63 +82,8 @@ mappings {
 	}
 }
 
-def receiveToken() {
-	state.life360AccessToken = params.access_token
-    log.debug "accesstoken from parameters = ${params.acess_toekn}"
-    def hub = location.hubs[0]
-    state.hubIP = "${hub.getDataValue("localIP")}"
-    def html = """
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=100%">
-<title>Life360 to Hubitat Connection</title>
-</head>
-<body>
-		<p align='center'><img src="https://s3.amazonaws.com/smartapp-icons/Partner/life360@2x.png" alt="Life360 icon" /></p>
-		<H1 align='center'><b>Your Life360 Account is connected to Hubitat!<b></H1>
-		<H3 align='center'><b>Now...<br>1. Go back to your hub<br>2. Click 'Add User App'<br>3. Select 'Life360 with States' again<br>4. Finish setting up Life360 with States</b></H3>
-        <H3 align='center'><a href="http://${state.hubIP}/installedapp/list">CLICK HERE TO GO BACK TO YOUR HUB</a></H3>
-</body>
-</html>
-"""
-	render contentType: 'text/html', data: html
-}
-
-def oauthInitUrl() {
-    //log.debug "In oauthInitUrl..."
-    def stcid = getSmartThingsClientId();
-
- 	state.oauthInitState = UUID.randomUUID().toString()
-    
- 	def oauthParams = [
-    	response_type: "token", 
-        client_id: stcid,  
-        redirect_uri: buildRedirectUrl() 
-    ]
-
-	return "https://api.life360.com/v3/oauth2/authorize?" + toQueryString(oauthParams)
-}
-
-String toQueryString(Map m) {
-	return m.collect { k, v -> "${k}=${URLEncoder.encode(v.toString())}" }.sort().join("&")
-}
-
-def getSmartThingsClientId() {
-   return "pREqugabRetre4EstetherufrePumamExucrEHuc"
-}
-
-def getServerUrl() { apiServerUrl("receiveToken") }
-
-def buildRedirectUrl() {
-    //log.debug "In buildRedirectUrl..."
-
-    log.debug "ACCESS TOKEN: ${state.accessToken}"
-    return "${getApiServerUrl()}/${hubUID}/apps/${app.id}/receiveToken"
-}
-
 def getCredentialsPage() {
-    log.debug "In getCredentialsPage..."
+    if(logEnable) log.debug "In getCredentialsPage..."
     if(state.life360AccessToken) {
         listCircles()
     } else {
@@ -151,7 +97,7 @@ def getCredentialsPage() {
 }
 
 def getCredentialsErrorPage(String message) {
-    log.debug "In getCredentialsErrorPage..."
+    if(logEnable) log.debug "In getCredentialsErrorPage..."
     dynamicPage(name: "Credentials", title: "Enter Life360 Credentials", nextPage: "listCirclesPage", uninstall: uninstallOption, install:false) {
     	section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Credentials")) {
     		input "username", "text", title: "Life360 Username?", multiple: false, required: true
@@ -174,7 +120,7 @@ def testLife360Connection() {
 }
 
  def initializeLife360Connection() {
-    log.debug "In initializeLife360Connection..."
+    if(logEnable) log.debug "In initializeLife360Connection..."
 
     initialize()
 
@@ -193,10 +139,10 @@ def testLife360Connection() {
        
      		httpPost(uri: url, body: postBody, headers: ["Authorization": "Basic cFJFcXVnYWJSZXRyZTRFc3RldGhlcnVmcmVQdW1hbUV4dWNyRUh1YzptM2ZydXBSZXRSZXN3ZXJFQ2hBUHJFOTZxYWtFZHI0Vg==" ]) {response -> 
      		    result = response
-                log.debug result
+                if(logEnable) log.debug result
     		}
         if (result.data.access_token) {
-            log.debug result
+            if(logEnable) log.debug result
        		state.life360AccessToken = result.data.access_token
             return true;
        	}
@@ -242,7 +188,7 @@ def listCircles() {
         }
 
         if(circle) {
-            log.debug "In listPlaces..."
+            if(logEnable) log.debug "In listPlaces..."
             if (app.installationState == "COMPLETE") uninstallOption = true
        
             if (!state?.circle) state.circle = settings.circle
@@ -257,12 +203,11 @@ def listCircles() {
      	        result = response
             }
 
-            log.debug "Places=${result.data}" 
+            if(logEnable) log.debug "Places=${result.data}" 
 
             def places = result.data.places
             state.places = places
             
-       
             section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Place to Match Current Location")) {
                 paragraph "Please select the ONE Life360 Place that matches your Hubitat location: ${location.name}"
                 input "place", "enum", multiple: false, required:true, title:"Life360 Places: ", options: places.collectEntries{[it.id, it.name]}, submitOnChange: true
@@ -270,7 +215,7 @@ def listCircles() {
         }
         
         if(place && circle) {
-            log.debug "In listUsers..."
+            if(logEnable) log.debug "In listUsers..."
             // understand whether to present the Uninstall option
             if (app.installationState == "COMPLETE") uninstallOption = true
 
@@ -286,7 +231,7 @@ def listCircles() {
      	        result = response
             }
 
-            log.debug "Members=${result.data}"
+            if(logEnable) log.debug "Members=${result.data}"
 
             // save members list for later
 
@@ -298,6 +243,9 @@ def listCircles() {
             section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Users to Import into Hubitat")) {
         	    input "users", "enum", multiple: true, required:false, title:"Life360 Users: ", options: members.collectEntries{[it.id, it.firstName+" "+it.lastName]}, submitOnChange: true
             }
+            section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
+			    input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+    	    }
             display2()
         }
     }
@@ -308,7 +256,7 @@ def installed() {
 	if(!state?.circle) state.circle = settings.circle
     
     settings.users.each {memberId->
-    	// log.debug "Find by Member Id = ${memberId}"
+    	// if(logEnable) log.debug "Find by Member Id = ${memberId}"
     	def member = state.members.find{it.id==memberId}
         // if(logEnable) log.debug "After Find Attempt.
        	// if(logEnable) log.debug "Member Id = ${member.id}, Name = ${member.firstName} ${member.lastName}, Email Address = ${member.loginEmail}"
@@ -319,10 +267,8 @@ def installed() {
     	        	
             if (childDevice)
         	{
-        		 log.debug "Child Device Successfully Created"
+        		 if(logEnable) log.debug "Child Device Successfully Created"
      			generateInitialEvent (member, childDevice)
-                
-               
        		}
     	}
     }
@@ -330,9 +276,9 @@ def installed() {
 }
 
 def createCircleSubscription() {
-    log.debug "In createCircleSubscription..."
+    if(logEnable) log.debug "In createCircleSubscription..."
 
-    log.debug "Remove any existing Life360 Webhooks for this Circle."
+    if(logEnable) log.debug "Remove any existing Life360 Webhooks for this Circle."
 
     def deleteUrl = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
 
@@ -349,15 +295,15 @@ def createCircleSubscription() {
 
     // subscribe to the life360 webhook to get push notifications on place events within this circle
 
-    log.debug "Create a new Life360 Webhooks for this Circle."
+    if(logEnable) log.debug "Create a new Life360 Webhooks for this Circle."
 
     createAccessToken() // create our own OAUTH access token to use in webhook url
-   log.debug "webhook access tokein = ${state.accessToken}"
+   
 
-   // def hookUrl = "${serverUrl}/api/smartapps/installations/${app.id}/placecallback?access_token=${state.accessToken}"//.encodeAsURL()
-   def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"//.encodeAsURL()
+   
+   def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"
          
-    //log.debug state.circle
+   
     def url = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
         
     def postBody =  "url=${hookUrl}"
@@ -377,10 +323,10 @@ def createCircleSubscription() {
     // {"circleId":"41094b6a-32fc-4ef5-a9cd-913f82268836","userId":"0d1db550-9163-471b-8829-80b375e0fa51","clientId":"11",
     //    "hookUrl":"https://testurl.com"}
 
-    log.debug "Response = ${result}"
+    if(logEnable) log.debug "Response = ${result}"
 
     if (result.data?.hookUrl) {
-    	    log.debug "Webhook creation successful. Response = ${result.data}"
+    	    if(logEnable) log.debug "Webhook creation successful. Response = ${result.data}"
 
     	}
     }
@@ -569,8 +515,8 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def placeEventHandler() {
-	if(logEnable) log.info "Life360 placeEventHandler: params=$params"
-    if(logEnable) log.info "Life360 placeEventHandler: settings.place=$settings.place"
+	log.info "Life360 placeEventHandler: params=$params"
+    log.info "Life360 placeEventHandler: settings.place=$settings.place"
     
     def circleId = params?.circleId
     def placeId = params?.placeId
