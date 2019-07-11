@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.1 - 07/11/19 - Added code for dashboard tiles, Info and Places tiles. Complete rewrite for arrived/moving/departed. Removed tracking all.
  *  V1.1.0 - 07/09/19 - Still trying to get push only working correctly!
  *  V1.0.9 - 07/09/19 - Lots of changes to arrived/departed and on the move sections. Fixed push only.
  *  V1.0.8 - 07/09/19 - Another minor change to departed
@@ -53,7 +54,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.0"
+	state.version = "v1.1.1"
 }
 
 definition(
@@ -85,29 +86,23 @@ def pageConfig() {
 			input "presenceDevice", "capability.presenceSensor", title: "Select Life360 User Device", required: true
             input "friendlyName", "text", title: "Friendly Name used in messages for this Device", required: true, submitOnChange: "true"
 		}
+    if(presenceDevice) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Place Tracking")) {
             paragraph "This will track the coming and going of places."
-			input "trackingOptions", "enum", title: "How to track Places" , options: ["Track All","Track Specific"], required: true, submitOnChange: "true", defaultValue: "Track All"
-            if(trackingOptions == "Track Specific") {
-                paragraph "This list will show all of your 'Starred' places from the Life360 app."
-                def thePlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
-                    //paragraph "For testing - before split: ${thePlaces}"
-                state.values = "${thePlaces}".split(",")
-                    //paragraph "For testing - after split: ${state.values}"
-                input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:true, submitOnChange: true
-                input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of Specific Places?", description: "List View", submitOnChange: "true")
-                if(oG1List) {
-                    def valuesG1 = "${trackSpecific}".split(",")
-			    	listMapG1 = ""
-    			    valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
-				    paragraph "${listMapG1}".replace("[","").replace("]","")
-			    }
+            paragraph "This list will show all of your 'Starred' places from the Life360 app."
+            def thePlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
+               //paragraph "For testing - before split: ${thePlaces}"
+            state.values = "${thePlaces}".split(",")
+               //paragraph "For testing - after split: ${state.values}"
+            input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:true, submitOnChange: true
+            input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of Specific Places?", description: "List View", submitOnChange: "true")
+            if(oG1List) {
+                def valuesG1 = "${trackSpecific}".split(",")
+			    listMapG1 = ""
+    			valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
+				paragraph "${listMapG1}".replace("[","").replace("]","")
             }
-            if(trackingOptions == "Track All") {
-                paragraph "Tracking all places"
-            }
-            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2, width: 6
-            input "timeConsideredGone", "number", title: "Time to have departed a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2, width: 6
+            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Time to Track")) {
         	input "timeToTrack", "enum", title: "How often to track Places", options: ["1 Minute","5 Minutes"], required: true, submitOnChange: true, defaultValue: "5 Minutes"
@@ -184,9 +179,6 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
-//        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Options")) {
-//			input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Tile data to:", submitOnChange: true, required: false, multiple: false)
-//		}
 //        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
 //            href "alertsConfig", title: "Alerts", description: "Click here to setup Alerts."
 //		}
@@ -194,6 +186,7 @@ def pageConfig() {
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
+    }
 		display2()
 	}
 }
@@ -216,11 +209,13 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
+    unsubscribe()
 	initialize()
 }
 
 def initialize() {
     setDefaults()
+    subscribe(presenceDevice, "address1", userHandler)
 	if(timeToTrack == "1 Minute") runEvery1Minute(userHandler)
     if(timeToTrack == "5 Minutes") runEvery5Minutes(userHandler)
 }
@@ -229,88 +224,64 @@ def userHandler(evt) {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
-    int timeGone = timeConsideredGone * 60
-    if(state.tDiff > timeHere) {
-        if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
-    } else {
-        if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
-    }
+    // reset speaking
+    state.speakAT = "no"
+    state.speakDEP = "no"
+    state.speakMOVE = "no"
+    state.msg = ""
+    
     if(state.address1Value == state.prevPlace) {
         if(logEnable) log.debug "In userHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
-    } else {
-        if(logEnable) log.debug "In userHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
-    }
-    
-    if(state.address1Value == state.prevPlace) {
-    
-        // ***** Track All *****
-        if(trackingOptions == "Track All") {
-            if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} is at ${state.address1Value}"
-
+        if(trackSpecific.contains(state.address1Value)) {
             if(state.tDiff > timeHere) {
+                if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
                 if(state.beenHere == "no") {
-                    if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has arrived at ${state.address1Value}"
+                    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
-                    if(isDataDevice) isDataDevice.on()
+                    state.speakAT = "yes"
                     if(speakHasArrived || sendPushMessage) messageHandler()
                 } else {
-                    if(logEnable) log.debug "In userHandler - Tracking All - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+                    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
+                if(isDataDevice) isDataDevice.on()
+                state.lastAtPlace = state.address1Value
                 state.prevPlace = state.address1Value
                 state.beenHere = "yes"
-                state.onTheMove = "no"
-            }
-        }
-  
-        // ***** Track Specific *****    
-        if(trackingOptions == "Track Specific") {
-            if(trackSpecific.contains(state.address1Value)) {
-                if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} is at ${state.address1Value}"
-                if(state.tDiff > timeHere) {
-                    if(state.beenHere == "no") {
-                        if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
-                        state.msg = "${messageAT}"
-                        if(isDataDevice) isDataDevice.on()
-                        if(speakHasArrived || sendPushMessage) messageHandler()
-                    } else {
-                        if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
-                    }
-                    state.prevPlace = state.address1Value
-                    if(isDataDevice) isDataDevice.on()
-                    state.beenHere = "yes"
-                    state.onTheMove = "no"
-                }
-            } else {
-		        if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
-                state.prevPlace = state.address1Value
+                state.onTheMove = "no"  
+            } else {  // *** ! state.tDiff > timeHere ***
+                if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
                 if(isDataDevice) isDataDevice.off()
+                state.prevPlace = state.address1Value
                 state.beenHere = "no"
-                state.onTheMove = "no"
+                state.onTheMove = "yes"
             }
+        } else {  // *** ! trackSpecific.contains(state.address1Value) ***
+		    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
+            state.prevPlace = state.address1Value
+            if(isDataDevice) isDataDevice.off()
+            state.beenHere = "no"
+            state.onTheMove = "yes"
         }
-    } else {
-        if(trackingOptions == "Track Specific") {
-            if(trackSpecific.contains(state.address1Value)) {
-                if(state.tDiff > timeGone) {
-                    if(state.onTheMove == "no") {
-                        if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.address1Value}"
-                        state.msg = "${messageDEP}"
-                        if(speakHasDeparted || sendPushMessage) messageHandler()
-                    } else {
-                        if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
-                        state.msg = "${messageMOVE}"
-                        if(speakOnTheMove || sendPushMessage) messageHandler()
-                    }
-                }
+    } else {  // *** ! state.address1Value == state.prevPlace ***
+        if(logEnable) log.debug "In userHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
+        if(trackSpecific.contains(state.address1Value)) {
+            if(state.beenHere == "yes") {
+                if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
+                state.msg = "${messageDEP}"
+                state.speakDEP = "yes"
+                if(speakHasDeparted || sendPushMessage) messageHandler()
+            } else {
+                if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                state.msg = "${messageMOVE}"
+                state.speakMOVE = "yes"
+                if(speakOnTheMove || sendPushMessage) messageHandler()
             }
-        } else {
-		    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} did not depart a place this app is tracking ${state.address1Value}"
         }
         state.prevPlace = state.address1Value
+        if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
         state.onTheMove = "yes"
-        if(isDataDevice) isDataDevice.off()
-    }
+    } 
 }
 
 def getTimeDiff() {
@@ -439,9 +410,14 @@ def messageHandler() {
     if(theMessage.contains("%status%")) {theMessage = theMessage.replace('%status%', state.presenceDevice.currentValue("status") )}
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
-	
-    if(speakHasArrived || speakHasDeparted || speakOnTheMove) letsTalk()
-    if(sendPushMessage) pushHandler()
+	presenceDevice.sendHistory(theMessage)
+    if((speakHasArrived) && (state.speakAT == "yes")) letsTalk()
+    if((speakHasDeparted)  && (state.speakDEP == "yes")) letsTalk()
+    if((speakOnTheMove) && (state.speakMOVE == "yes")) letsTalk()
+    if((pushHasArrived) && (state.speakAT == "yes")) pushHandler()
+    if((pushHasDeparted) && (state.speakDEP == "yes")) pushHandler()
+    if((pushOnTheMove) && (state.speakMOVE == "yes")) pushHandler()
+    log.info "HISTORY - ${theMessage}"
 }
 
 def pushHandler() {
@@ -475,18 +451,6 @@ def appButtonHandler(buttonPressed) {
         testResult += "</table>"
         log.info "${testResult}"
     }
-}
-
-def tileProcess() {
-    tileMap = "<table width='100%'>"
-    tileMap += "<tr><td><a href="${avatar}"></td></tr>"
-    
-    
-    
-    
-    
-    tileMap += "</table>"
-    tileDevice.sendLife360Tile1(state.tileMap)
 }
 
 // ********** Normal Stuff **********
