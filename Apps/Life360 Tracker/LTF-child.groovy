@@ -92,7 +92,7 @@ def pageConfig() {
             buildMyPlacesList()
             def thePlaces = "${state.myPlacesList}".replace("[","").replace("]","").replace("]","").replace(" ,", ",").replace(", ", ",")
             state.values = "${thePlaces}".split(",")
-            input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:true, submitOnChange: true
+            input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:false, submitOnChange: true
             input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of Specific Places?", description: "List View", submitOnChange: "true")
             if(oG1List) {
 			    def valuesG1 = "${trackSpecific}".split(";")
