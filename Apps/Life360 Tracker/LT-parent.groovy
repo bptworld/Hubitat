@@ -34,13 +34,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 07/12/19 - Added code so the main app (life360 tracker) can only be installed once.
  *  V1.0.1 - 07/07/19 - Added Lif360 Track Free version
  *  V1.0.0 - 07/01/19 - Initial release.
  *
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -51,7 +52,8 @@ definition(
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
-    iconX3Url: ""
+    iconX3Url: "",
+    singleInstance: true
 )
 
 preferences {
