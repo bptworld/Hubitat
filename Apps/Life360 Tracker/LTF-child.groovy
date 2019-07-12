@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 07/12/19 - Removed 'How often to track Places'. Lots of changes to arrived/moving/departed.
  *  V1.0.7 - 07/11/19 - Added code for dashboard tiles, Info and Places tiles. Complete rewrite for arrived/moving/departed. Removed tracking all.
  *  V1.0.6 - 07/09/19 - Still trying to get push only working correctly!
  *  V1.0.5 - 07/09/19 - Lots of changes to arrived/departed and on the move sections. Fixed push only.
@@ -50,7 +51,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
 }
 
 definition(
@@ -100,10 +101,7 @@ def pageConfig() {
     			valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
 				paragraph "${listMapG1}".replace("[","").replace("]","")
 			}
-            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes)", required: true, submitOnChange: true, defaultValue: 2
-        }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Time to Track")) {
-        	input "timeToTrack", "enum", title: "How often to track Places", options: ["1 Minute","5 Minutes"], required: true, submitOnChange: true, defaultValue: "5 Minutes"
+            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes, range 2 to 10)", required: true, submitOnChange: true, defaultValue: 2, range: '2..10'
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
@@ -267,9 +265,7 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    subscribe(presenceDevice, "address1", whereAmI)
-	if(timeToTrack == "1 Minute") runEvery1Minute(whereAmI)
-    if(timeToTrack == "5 Minutes") runEvery5Minutes(whereAmI)
+    subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
 }
 
 def whereAmI() {
@@ -387,6 +383,7 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def userHandler(evt) {
+    if(logEnable) log.debug "In userHandler..."
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
@@ -405,20 +402,23 @@ def userHandler(evt) {
                     if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     state.speakAT = "yes"
-                    if(speakHasArrived || sendPushMessage) messageHandler()
+                    state.lastAtPlace = state.address1Value
+                    if(speakHasArrived || pushHasArrived) messageHandler()
                 } else {
                     if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
                 if(isDataDevice) isDataDevice.on()
                 state.prevPlace = state.address1Value
                 state.beenHere = "yes"
-                state.onTheMove = "no"  
+                state.onTheMove = "no"
+                if(logEnable) log.debug "In userHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
             } else {  // *** ! state.tDiff > timeHere ***
                 if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
                 if(isDataDevice) isDataDevice.off()
                 state.prevPlace = state.address1Value
                 state.beenHere = "no"
                 state.onTheMove = "yes"
+                if(logEnable) log.debug "In userHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
             }
         } else {  // *** ! trackSpecific.contains(state.address1Value) ***
 		    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
@@ -426,26 +426,26 @@ def userHandler(evt) {
             if(isDataDevice) isDataDevice.off()
             state.beenHere = "no"
             state.onTheMove = "yes"
+            if(logEnable) log.debug "In userHandler - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
         }
     } else {  // *** ! state.address1Value == state.prevPlace ***
         if(logEnable) log.debug "In userHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
-        if(trackSpecific.contains(state.address1Value)) {
-            if(state.beenHere == "yes") {
-                if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
-                state.msg = "${messageDEP}"
-                state.speakDEP = "yes"
-                if(speakHasDeparted || sendPushMessage) messageHandler()
-            } else {
-                if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
-                state.msg = "${messageMOVE}"
-                state.speakMOVE = "yes"
-                if(speakOnTheMove || sendPushMessage) messageHandler()
-            }
+        if(state.beenHere == "yes") {
+            if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
+            state.msg = "${messageDEP}"
+            state.speakDEP = "yes"
+            if(speakHasDeparted || pushDeparted) messageHandler()
+        } else {
+            if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
+            state.msg = "${messageMOVE}"
+            state.speakMOVE = "yes"
+            if(speakOnTheMove || pushOnTheMove) messageHandler()
         }
         state.prevPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
         state.onTheMove = "yes"
+        if(logEnable) log.debug "In userHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
     } 
 }
 
