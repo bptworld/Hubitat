@@ -268,7 +268,7 @@ def initialize() {
     subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
 }
 
-def whereAmI() {
+def whereAmI(evt) {
     state.address1Value = presenceDevice.currentValue("address1")
     def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
     def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
