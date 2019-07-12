@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.0.8 - 07/12/19 - Minor changes, code cleanup
  *  V1.0.7 - 07/10/19 - Added code for dashboard tiles, Info and Places tiles
  *  V1.0.6 - 07/10/19 - Added a Dashboard Tile
  *  V1.0,5 - 07/08/19 - Added Avatar and code cleanup (cwwilson08)
@@ -322,7 +323,6 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	def linkText = getLinkText(device)
 	def descriptionText = formatDescriptionText(linkText, present)
 	def handlerName = getState(present)
-
 	def sleeping = (presence == 'not present') ? 'not sleeping' : device.currentValue('sleeping')
 	
 	if (sleeping != device.currentValue('sleeping')) {
@@ -346,17 +346,18 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	sendEvent (results)
 	
     if(units == "Kilometers" || units == null || units == ""){
-	def statusDistance = homeDistance / 1000
-	def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
-    if(status != device.currentValue('status')){
-    sendEvent( name: "status", value: status )
-    state.update = true}
+	    def statusDistance = homeDistance / 1000
+	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
+        if(status != device.currentValue('status')){
+        sendEvent( name: "status", value: status )
+        state.update = true}
     }else{
-	def statusDistance = (homeDistance / 1000) / 1.609344 
-   	def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
-    if(status != device.currentValue('status')){
-   	sendEvent( name: "status", value: status )
-    state.update = true}
+	    def statusDistance = (homeDistance / 1000) / 1.609344 
+   	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
+        if(status != device.currentValue('status')){
+   	        sendEvent( name: "status", value: status )
+            state.update = true
+        }
         state.status = status
 	}
 	
