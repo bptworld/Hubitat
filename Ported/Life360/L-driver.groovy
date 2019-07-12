@@ -136,7 +136,7 @@ def sendLife360Tile1() {
     theDate = use( groovy.time.TimeCategory ) {
         new Date( 0 ) + sEpoch.seconds
     }
-    SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E dd-MM @ hh:mm a")
+    SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E @ hh:mm a")
     String dateSince = DATE_FORMAT.format(theDate)
     
     if(life360Paid) {
