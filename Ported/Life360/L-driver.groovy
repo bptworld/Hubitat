@@ -284,8 +284,8 @@ def updated() {
 
 def getDateTime() {
 	def date = new Date()
-	if(historyHourType == false) state.newdate=date.format("MM-d HH:mm")
-	if(historyHourType == true) state.newdate=date.format("MM-d hh:mm")
+	if(historyHourType == false) state.newdate=date.format("E-HH:mm")
+	if(historyHourType == true) state.newdate=date.format("E-hh:mm a")
 }
 
 def historyClearData(){
