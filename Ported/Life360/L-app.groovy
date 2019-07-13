@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.1.3 - 07/12/19 - 1 min update http calls now use async thanks to cwwilson08
  *  V1.1.2 - 07/10/19 - More changes from cwwilson08
  *  V1.1.1 - 07/09/19 - Minor change to how the places are sent over
  *  V1.1.0 - 07/08/19 - Lists are now sent over to driver automatically, Added Avatar and code cleanup (cwwilson08)
@@ -41,7 +42,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.2"
+	state.version = "v1.1.3"
 }
 
 definition(
@@ -515,8 +516,8 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def placeEventHandler() {
-	log.info "Life360 placeEventHandler: params=$params"
-    log.info "Life360 placeEventHandler: settings.place=$settings.place"
+	if(logEnable) log.debug "Life360 placeEventHandler: params=$params"
+    if(logEnable) log.debug "Life360 placeEventHandler: settings.place=$settings.place"
     
     def circleId = params?.circleId
     def placeId = params?.placeId
@@ -554,13 +555,23 @@ def updateMembers(){
     
     	def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
     	def result = null
+    sendCmd(url, result)
+}
+
+def sendCmd(url, result){ 
+    def requestParams = [ uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}"]  ]
+    asynchttpGet("cmdHandler", requestParams)
+}
+
+def cmdHandler(resp, data) {
+	
+    if(resp.getStatus() == 200 || resp.getStatus() == 207) {
        
-	httpGet(uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
-     	result = response
-	}
+        result = resp.getJson()
+	
 
 	//if(logEnable) log.debug "Latest Members=${result.data}"
-    	def members = result.data.members
+    	def members = result.members
     	state.members = members
     
 	settings.users.each {memberId->
@@ -577,7 +588,7 @@ def updateMembers(){
 
 	// find the appropriate child device based on my app id and the device network id
 
-	def deviceWrapper = getChildDevice("${externalId}")   
+    def deviceWrapper = getChildDevice("${externalId}")   
     def address1
     def address2
     def speed
@@ -655,10 +666,10 @@ def updateMembers(){
 		if(logEnable) log.info "Life360 Update member ($member.firstName): ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
   			
         deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
-        }
-    }     
+            }
+        }     
+    }
 }
-
 // ********** Normal Stuff **********
 
 def getImage(type) {					// Modified from @Stephack
