@@ -38,8 +38,10 @@
  *
  *  Changes:
  *
+ *  V1.1.4 - 07/14/19 - Added Home features, Merged code so one app handles both Free and Paid versions. My places now in parent app.
+ *  V1.1.3 - 07/12/19 - Added a completly rewritten 'Track All' option back in.
  *  V1.1.2 - 07/12/19 - Removed 'How often to track Places'. Lots of changes to arrived/moving/departed.
- *  V1.1.1 - 07/11/19 - Added code for dashboard tiles, Info and Places tiles. Complete rewrite for arrived/moving/departed. Removed tracking all.
+ *  V1.1.1 - 07/11/19 - Added code for dashboard tiles, Info and Places tiles. Complete rewrite for arrived/moving/departed. Removed 'track all'.
  *  V1.1.0 - 07/09/19 - Still trying to get push only working correctly!
  *  V1.0.9 - 07/09/19 - Lots of changes to arrived/departed and on the move sections. Fixed push only.
  *  V1.0.8 - 07/09/19 - Another minor change to departed
@@ -55,7 +57,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.2"
+	state.version = "v1.1.4"
 }
 
 definition(
@@ -83,6 +85,9 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
     		paragraph "Track your Life360 users. Works with the user Life360 with States app."
 		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Type")) {
+			input "lifeVersion", "enum", title: "Life360 Version", options: ["Free","Paid"], required: true, submitOnChange: "true"
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Device")) {
 			input "presenceDevice", "capability.presenceSensor", title: "Select Life360 User Device", required: true
             input "friendlyName", "text", title: "Friendly Name used in messages for this Device", required: true, submitOnChange: "true"
@@ -90,21 +95,46 @@ def pageConfig() {
     if(presenceDevice) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Place Tracking")) {
             paragraph "This will track the coming and going of places."
-            paragraph "This list will show all of your 'Starred' places from the Life360 app."
-            def thePlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
-               //paragraph "For testing - before split: ${thePlaces}"
-            state.values = "${thePlaces}".split(",")
-               //paragraph "For testing - after split: ${state.values}"
-            input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:true, submitOnChange: true
-            input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of Specific Places?", description: "List View", submitOnChange: "true")
-            if(oG1List) {
-                def valuesG1 = "${trackSpecific}".split(",")
-			    listMapG1 = ""
-    			valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
-				paragraph "${listMapG1}".replace("[","").replace("]","")
+            input "trackingOptions", "enum", title: "How to track Places", options: ["Track All","Track Specific"], required: true, submitOnChange: "true"
+            if(trackingOptions == "Track Specific") {
+                if(lifeVersion == "Free") {
+                    paragraph "My Places are created in the Life360 Parent app."
+                    buildMyPlacesList()
+                    state.thePlaces = "${state.myPlacesList}".replace("[","").replace("]","").replace("]","").replace(" ,", ",").replace(", ", ",")
+                    if(logEnable) log.debug "In pageConfig - Free - thePlaces: ${state.thePlaces}"
+                } else {
+                    paragraph "This list will show all of your 'Starred' places from the Life360 app."
+                    state.thePlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
+                    if(logEnable) log.debug "In pageConfig - Paid - thePlaces: ${state.thePlaces}"
+                }  
+                state.values = "${state.thePlaces}".split(",")
+                if(logEnable) log.debug "In pageConfig - values: ${state.values}"
+                input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:true, submitOnChange: true
+                input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of Specific Places?", description: "List View", submitOnChange: "true")
+                if(oG1List) {
+                    def valuesG1 = "${trackSpecific}".split(",")
+			        listMapG1 = ""
+    			    valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
+				    paragraph "${listMapG1}".replace("[","").replace("]","")
+                }
+            }
+            if(trackingOptions == "Track All") {
+                paragraph "Tracking all places"
             }
             input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes, range 2 to 10)", required: true, submitOnChange: true, defaultValue: 2, range: '2..10'
         }
+        
+// *** Home ***            
+        section(getFormat("header-green", "${getImage("Blank")}"+" Home")) {    
+            paragraph "'Home' is a unique place in Life360 and with Automation. For most us we want things to happen as soon as possible.  With this app, one needs to be at a Place for at least 2 minutes before it will trigger things. This is to stop false alarms and to be sure we are not just passing by.  But with 'Home' sometimes things should work different..."
+            input(name: "homeDelay", type: "bool", defaultValue: "false", title: "Should Tracker announce when you arrive at 'Home', after the 2 minute wait? (off='No', on='Yes')", description: "Home Wait", submitOnChange: "true")
+            paragraph "<small>This is useful if you have another app announcing when you are home, like 'Welcome Home'</small>"
+            input(name: "homeNow", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange: "true")
+            paragraph "<small>This will give a nice heads up that someone is home. But can be a false alarm if they are just driving by.</small>"
+            paragraph "Note: Home options will only work if you have the Speak or Push when someone 'Has arrived' switch in Message Options turned on."
+        }
+// *** End Home ***
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
@@ -213,11 +243,77 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    subscribe(presenceDevice, "lastLocationUpdate", userHandler)
+    if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)
+    if(lifeVersion == "Free") subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
 }
 
 def userHandler(evt) {
     if(logEnable) log.debug "In userHandler..."
+    if(trackingOptions == "Track All") trackAllHandler()
+    if(trackingOptions == "Track Specific") trackSpecificHandler() 
+}
+
+def trackAllHandler() {
+    if(logEnable) log.debug "In trackAllHandler..."
+    state.address1Value = presenceDevice.currentValue("address1")
+    getTimeDiff()
+    int timeHere = timeConsideredHere * 60
+    // reset speaking
+    state.speakAT = "no"
+    state.speakDEP = "no"
+    state.speakMOVE = "no"
+    state.msg = ""
+    
+    if(logEnable) log.debug "In trackAllHandler - Tracking All - ${friendlyName} is near ${state.address1Value}"
+    if(state.address1Value == state.prevPlace) {
+        if(state.tDiff > timeHere) {
+            if(logEnable) log.debug "In trackAllHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
+            if(state.beenHere == "no") {
+                if(logEnable) log.debug "In trackAllHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
+                state.msg = "${messageAT}"
+                state.speakAT = "yes"
+                state.lastAtPlace = state.address1Value
+                if(speakHasArrived || pushHasArrived) messageHandler()
+            } else {
+                if(logEnable) log.debug "In trackAllHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+            }
+            if(isDataDevice) isDataDevice.on()
+            state.prevPlace = state.address1Value
+            state.lastAtPlace = state.address1Value
+            state.beenHere = "yes"
+            state.onTheMove = "no"
+            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+        } else {  // *** ! state.tDiff > timeHere ***
+            if(logEnable) log.debug "In trackAllHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
+            if(isDataDevice) isDataDevice.off()
+            state.prevPlace = state.address1Value
+            state.beenHere = "no"
+            state.onTheMove = "yes"
+            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+        }
+    } else {  // *** ! state.address1Value == state.prevPlace ***
+        if(logEnable) log.debug "In trackAllHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
+        if(state.beenHere == "yes") {
+            if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
+            state.msg = "${messageDEP}"
+            state.speakDEP = "yes"
+            if(speakHasDeparted || pushDeparted) messageHandler()
+        } else {
+            if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
+            state.msg = "${messageMOVE}"
+            state.speakMOVE = "yes"
+            if(speakOnTheMove || pushOnTheMove) messageHandler()
+        }
+        state.prevPlace = state.address1Value
+        if(isDataDevice) isDataDevice.off()
+        state.beenHere = "no"
+        state.onTheMove = "yes"
+        if(logEnable) log.debug "In trackAllHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+    } 
+}
+
+def trackSpecificHandler() {
+    if(logEnable) log.debug "In trackSpecificHandler..."
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
@@ -228,49 +324,73 @@ def userHandler(evt) {
     state.msg = ""
     
     if(state.address1Value == state.prevPlace) {
-        if(logEnable) log.debug "In userHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
+        if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
         if(trackSpecific.contains(state.address1Value)) {
             if(state.tDiff > timeHere) {
-                if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
+                if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
                 if(state.beenHere == "no") {
-                    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
-                    state.msg = "${messageAT}"
-                    state.speakAT = "yes"
-                    state.lastAtPlace = state.address1Value
-                    if(speakHasArrived || pushHasArrived) messageHandler()
+                    if((!homeDelay) && (state.address1Value == "Home")) {
+                        if(logEnable) log.debug "${friendlyName} is Home but no announcement needed."
+                    } else {
+                        if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
+                        state.msg = "${messageAT}"
+                        state.speakAT = "yes"
+                        state.lastAtPlace = state.address1Value
+                        if(speakHasArrived || pushHasArrived) messageHandler()
+                    }
                 } else {
-                    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
                 if(isDataDevice) isDataDevice.on()
                 state.prevPlace = state.address1Value
+                state.lastAtPlace = state.address1Value
                 state.beenHere = "yes"
                 state.onTheMove = "no"
-                if(logEnable) log.debug "In userHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
-            } else {  // *** ! state.tDiff > timeHere ***
-                if(logEnable) log.debug "In userHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
-                if(isDataDevice) isDataDevice.off()
-                state.prevPlace = state.address1Value
-                state.beenHere = "no"
-                state.onTheMove = "yes"
-                if(logEnable) log.debug "In userHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+                if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+            } else {  // *** state.tDiff is LESS than timeHere ***
+                if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
+                if((homeNow) && (state.address1Value == "Home")) {
+                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific (Home) - ${friendlyName} has arrived at ${state.address1Value}"
+                    state.msg = "${messageAT}"
+                    state.speakAT = "yes"
+                    state.lastAtPlace = state.address1Value
+                    if(isDataDevice) isDataDevice.on()
+                    state.prevPlace = state.address1Value
+                    state.beenHere = "yes"
+                    state.onTheMove = "no"
+                    if(speakHasArrived || pushHasArrived) messageHandler()
+                } else {
+                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific less than time but - address1Value: ${state.address1Value} - lastAtPlace: ${state.lastAtPlace}"
+                    if(state.address1Value == state.lastAtPlace) {
+                        
+                    } else {
+                        if(isDataDevice) isDataDevice.off()
+                        state.prevPlace = state.address1Value
+                        state.beenHere = "no"
+                        state.onTheMove = "yes"
+                        state.lastAtPlace = "moving"
+                        if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+                    }
+                }
             }
         } else {  // *** ! trackSpecific.contains(state.address1Value) ***
-		    if(logEnable) log.debug "In userHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
+		    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
             state.prevPlace = state.address1Value
             if(isDataDevice) isDataDevice.off()
             state.beenHere = "no"
             state.onTheMove = "yes"
-            if(logEnable) log.debug "In userHandler - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+            state.lastAtPlace = "moving"
+            if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
         }
-    } else {  // *** ! state.address1Value == state.prevPlace ***
-        if(logEnable) log.debug "In userHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
+    } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
+        if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
         if(state.beenHere == "yes") {
-            if(logEnable) log.debug "In userHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
+            if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
             state.msg = "${messageDEP}"
             state.speakDEP = "yes"
             if(speakHasDeparted || pushDeparted) messageHandler()
         } else {
-            if(logEnable) log.debug "In userHandler - ${friendlyName} is on the move near ${state.address1Value}"
+            if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
             state.speakMOVE = "yes"
             if(speakOnTheMove || pushOnTheMove) messageHandler()
@@ -279,7 +399,8 @@ def userHandler(evt) {
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
         state.onTheMove = "yes"
-        if(logEnable) log.debug "In userHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+        state.lastAtPlace = "moving"
+        if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
     } 
 }
 
@@ -416,6 +537,7 @@ def messageHandler() {
     if((pushHasArrived) && (state.speakAT == "yes")) pushHandler()
     if((pushHasDeparted) && (state.speakDEP == "yes")) pushHandler()
     if((pushOnTheMove) && (state.speakMOVE == "yes")) pushHandler()
+
     log.info "HISTORY - ${theMessage}"
 }
 
@@ -450,6 +572,137 @@ def appButtonHandler(buttonPressed) {
         testResult += "</table>"
         log.info "${testResult}"
     }
+}
+
+def whereAmI(evt) {
+    state.address1Value = presenceDevice.currentValue("address1")
+    def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
+    def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
+    
+    if(parent.myName01) {
+        def placeLatitude01 = new Float (parent.myLatitude01)
+        def placeLongitude01 = new Float (parent.myLongitude01)
+        def placeRadius01 = new Float (parent.myRadius01)
+        def distanceAway01 = haversine(memberLatitude, memberLongitude, placeLatitude01, placeLongitude01)*1000 // in meters
+      	boolean isPresent01 = (distanceAway01 <= placeRadius01)
+        if(isPresent01) state.address1Value = parent.myName01
+        if(logEnable) log.debug "Distance Away 01 (${parent.myName01}): ${distanceAway01}, isPresent01: ${isPresent01}"
+    }
+    if(parent.myName02) {
+        def placeLatitude02 = new Float (parent.myLatitude02)
+        def placeLongitude02 = new Float (parent.myLongitude02)
+        def placeRadius02 = new Float (parent.myRadius02)
+        def distanceAway02 = haversine(memberLatitude, memberLongitude, placeLatitude02, placeLongitude02)*1000 // in meters
+  	    boolean isPresent02 = (distanceAway02 <= placeRadius02)
+        if(isPresent02) state.address1Value = parent.myName02
+        if(logEnable) log.debug "Distance Away 02 (${parent.myName02}): ${distanceAway02}, isPresent02: ${isPresent02}"
+    }
+    if(parent.myName03) {
+        def placeLatitude03 = new Float (parent.myLatitude03)
+        def placeLongitude03 = new Float (parent.myLongitude03)
+        def placeRadius03 = new Float (parent.myRadius03)
+        def distanceAway03 = haversine(memberLatitude, memberLongitude, placeLatitude03, placeLongitude03)*1000 // in meters
+  	    boolean isPresent03 = (distanceAway03 <= placeRadius03)
+        if(isPresent03) state.address1Value = parent.myName03
+        if(logEnable) log.debug "Distance Away 03 (${parent.myName03}): ${distanceAway03}, isPresent03: ${isPresent03}"
+    }
+    if(parent.myName04) {
+        def placeLatitude04 = new Float (parent.myLatitude04)
+        def placeLongitude04 = new Float (parent.myLongitude04)
+        def placeRadius04 = new Float (parent.myRadius04)
+        def distanceAway04 = haversine(memberLatitude, memberLongitude, placeLatitude04, placeLongitude04)*1000 // in meters
+  	    boolean isPresent04 = (distanceAway04 <= placeRadius04)
+        if(isPresent04) state.address1Value = parent.myName04
+        if(logEnable) log.debug "Distance Away 04 (${parent.myName04}): ${distanceAway04}, isPresent04: ${isPresent04}"
+    }
+    if(parent.myName05) {
+        def placeLatitude05 = new Float (parent.myLatitude05)
+        def placeLongitude05 = new Float (parent.myLongitude05)
+        def placeRadius05 = new Float (parent.myRadius05)
+        def distanceAway05 = haversine(memberLatitude, memberLongitude, placeLatitude05, placeLongitude05)*1000 // in meters
+  	    boolean isPresent05 = (distanceAway05 <= placeRadius05)
+        if(isPresent05) state.address1Value = parent.myName05
+        if(logEnable) log.debug "Distance Away 05 (${parent.myName05}): ${distanceAway05}, isPresent05: ${isPresent05}"
+    }
+    if(parent.myName06) {
+        def placeLatitude06 = new Float (parent.myLatitude06)
+        def placeLongitude06 = new Float (parent.myLongitude06)
+        def placeRadius06 = new Float (parent.myRadius06)
+        def distanceAway06 = haversine(memberLatitude, memberLongitude, placeLatitude06, placeLongitude06)*1000 // in meters
+  	    boolean isPresent06 = (distanceAway06 <= placeRadius06)
+        if(isPresent06) state.address1Value = parent.myName06
+        if(logEnable) log.debug "Distance Away 06 (${parent.myName06}): ${distanceAway06}, isPresent06: ${isPresent06}"
+    }
+    if(parent.myName07) {
+        def placeLatitude07 = new Float (parent.myLatitude07)
+        def placeLongitude07 = new Float (parent.myLongitude07)
+        def placeRadius07 = new Float (parent.myRadius07)
+        def distanceAway07 = haversine(memberLatitude, memberLongitude, placeLatitude07, placeLongitude07)*1000 // in meters
+  	    boolean isPresent07 = (distanceAway07 <= placeRadius07)
+        if(isPresent07) state.address1Value = parent.myName07
+        if(logEnable) log.debug "Distance Away 07 (${parent.myName07}): ${distanceAway07}, isPresent07: ${isPresent07}"
+    }
+    if(parent.myName08) {
+        def placeLatitude08 = new Float (parent.myLatitude08)
+        def placeLongitude08 = new Float (parent.myLongitude08)
+        def placeRadius08 = new Float (parent.myRadius08)
+        def distanceAway08 = haversine(memberLatitude, memberLongitude, placeLatitude08, placeLongitude08)*1000 // in meters
+  	    boolean isPresent08 = (distanceAway08 <= placeRadius08)
+        if(isPresent08) state.address1Value = parent.myName08
+        if(logEnable) log.debug "Distance Away 08 (${parent.myName08}): ${distanceAway08}, isPresent08: ${isPresent08}"
+    }
+    if(parent.myName09) {
+        def placeLatitude09 = new Float (parent.myLatitude09)
+        def placeLongitude09 = new Float (parent.myLongitude09)
+        def placeRadius09 = new Float (parent.myRadius09)
+        def distanceAway09 = haversine(memberLatitude, memberLongitude, placeLatitude09, placeLongitude09)*1000 // in meters
+  	    boolean isPresent09 = (distanceAway09 <= placeRadius09)
+        if(isPresent09) state.address1Value = parent.myName09
+        if(logEnable) log.debug "Distance Away 09 (${parent.myName09}): ${distanceAway09}, isPresent09: ${isPresent09}"
+    }
+    if(parent.myName10) {
+        def placeLatitude10 = new Float (parent.myLatitude10)
+        def placeLongitude10 = new Float (parent.myLongitude10)
+        def placeRadius10 = new Float (parent.myRadius10)
+        def distanceAway10 = haversine(memberLatitude, memberLongitude, placeLatitude10, placeLongitude10)*1000 // in meters
+  	    boolean isPresent10 = (distanceAway10 <= placeRadius10)
+        if(isPresent10) state.address1Value = parent.myName10
+        if(logEnable) log.debug "Distance Away 10 (${parent.myName10}): ${distanceAway10}, isPresent10: ${isPresent10}"
+    }
+    
+    if((!isPresent01) && (!isPresent02) && (!isPresent03) && (!isPresent04) && (!isPresent05) && (!isPresent06) && (!isPresent07) && (!isPresent08) && (!isPresent09) && (!isPresent10)) state.address1Value = presenceDevice.currentValue("address1")
+    userHandler()
+}
+
+def haversine(lat1, lon1, lat2, lon2) {
+    def R = 6372.8
+    // In kilometers
+    def dLat = Math.toRadians(lat2 - lat1)
+    def dLon = Math.toRadians(lon2 - lon1)
+    lat1 = Math.toRadians(lat1)
+    lat2 = Math.toRadians(lat2)
+ 
+    def a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
+    def c = 2 * Math.asin(Math.sqrt(a))
+    def d = R * c
+    return(d)
+}
+
+def buildMyPlacesList() {
+    if(logEnable) log.debug "In buildMyPlacesList..."
+    state.myPlacesList = []
+    if(parent.myName01) state.myPlacesList = state.myPlacesList.plus([parent.myName01])
+    if(parent.myName02) state.myPlacesList = state.myPlacesList.plus([parent.myName02])
+    if(parent.myName03) state.myPlacesList = state.myPlacesList.plus([parent.myName03])
+    if(parent.myName04) state.myPlacesList = state.myPlacesList.plus([parent.myName04])
+    if(parent.myName05) state.myPlacesList = state.myPlacesList.plus([parent.myName05])
+    if(parent.myName06) state.myPlacesList = state.myPlacesList.plus([parent.myName06])
+    if(parent.myName07) state.myPlacesList = state.myPlacesList.plus([parent.myName07])
+    if(parent.myName08) state.myPlacesList = state.myPlacesList.plus([parent.myName08])
+    if(parent.myName09) state.myPlacesList = state.myPlacesList.plus([parent.myName09])
+    if(parent.myName10) state.myPlacesList = state.myPlacesList.plus([parent.myName10])
+    if(logEnable) log.debug "In buildMyPlacesList - myName01: ${parent.myName01}"
+    if(logEnable) log.debug "In buildMyPlacesList - myPlacesList: ${state.myPlacesList}"
 }
 
 // ********** Normal Stuff **********
