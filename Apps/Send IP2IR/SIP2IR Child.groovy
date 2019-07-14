@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V1.2.0 - 07/14/19 - Minor code changes
  *  V1.1.9 - 04/16/19 - Fixed a bug, thank you @NickP!
  *  V1.1.8 - 04/15/19 - Code cleanup
  *  V1.1.7 - 01/15/19 - Updated footer with update check and links
@@ -59,7 +60,7 @@
  */
  
 def setVersion() {
-	state.version = "v1.1.8"
+	state.version = "v1.2.0"
 }
 
 definition(
@@ -198,8 +199,6 @@ def initialize(){
 }
 
 def switchHandler1 (evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 			def switching = evt.value
     		if(switching == "on"){
         		if(logEnable) log.debug "Switch is turned on"
@@ -262,12 +261,9 @@ def switchHandler1 (evt) {
 					speaker.speak(msgToSendOff)
 				}
     		}
-		}
 }
 
 def buttonHandler1(evt){
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
     	if(logEnable) log.debug "You pressed button 1"
     	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
@@ -294,12 +290,9 @@ def buttonHandler1(evt){
 			pauseExecution(Delay)
 			speaker.speak(msgToSendPushed)
 		}
-		}
 }
 
 def buttonHandler2(evt){
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
     	if(logEnable) log.debug "You pressed button 2"
     	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
@@ -325,13 +318,10 @@ def buttonHandler2(evt){
 			speaker.speak(msgToSendPushed)
 			pauseExecution(Delay)
 			speaker.speak(msgToSendPushed)
-		}
-		}  
+		} 
 }
 
 def buttonHandler3(evt){
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
     	if(logEnable) log.debug "You pressed button 3"
     	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
@@ -357,13 +347,10 @@ def buttonHandler3(evt){
 			speaker.speak(msgToSendPushed)
 			pauseExecution(Delay)
 			speaker.speak(msgToSendPushed)
-		}
-		}  
+		} 
 }
 
 def buttonHandler4(evt){
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
     	if(logEnable) log.debug "You pressed button 4"
     	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
@@ -390,12 +377,9 @@ def buttonHandler4(evt){
 			pauseExecution(Delay)
 			speaker.speak(msgToSendPushed)
 		}
-		}  
 }
 
 def buttonHandler5(evt){
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
     	if(logEnable) log.debug "You pressed button 5"
     	if(logEnable) log.debug "Msg to send Pushed: ${msgToSendPushed}"
 		if(xTimes == "1") {
@@ -421,8 +405,7 @@ def buttonHandler5(evt){
 			speaker.speak(msgToSendPushed)
 			pauseExecution(Delay)
 			speaker.speak(msgToSendPushed)
-		}
-		}    
+		}   
 }
 
 def PresetToSend1(){
@@ -487,8 +470,6 @@ def PresetToSendS(){
 }
 
 def channelHandlerSwitch(evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 			def switching = evt.value
     		if(switching == "on"){
         		if(logEnable) log.debug "You pressed Channel Switch On"
@@ -533,12 +514,9 @@ def channelHandlerSwitch(evt) {
 					if(logEnable) log.debug "Did not send Channel Enter"
 				}
 			}
-		}
 }
 
 def channelHandler1(evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
         	if(logEnable) log.debug "You pressed Channel button 1"
     		PresetToSend1()
     		PresetToSend2()
@@ -580,12 +558,9 @@ def channelHandler1(evt) {
 			} else{
 				if(logEnable) log.debug "Did not send Channel Enter"
 			}
-		}
 }
 
 def channelHandler2(evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
         if(logEnable) log.debug "You pressed Channel button 2"
     	PresetToSend1()
     	PresetToSend2()
@@ -627,12 +602,9 @@ def channelHandler2(evt) {
 		} else{
 			if(logEnable) log.debug "Did not send Channel Enter"
 		}
-		}
 }
 
 def channelHandler3(evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
         if(logEnable) log.debug "You pressed Channel button 3"
     	PresetToSend1()
     	PresetToSend2()
@@ -674,12 +646,9 @@ def channelHandler3(evt) {
 		} else{
 			if(logEnable) log.debug "Did not send Channel Enter"
 		}
-		}
 }
 
 def channelHandler4(evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
         if(logEnable) log.debug "You pressed Channel button 4"
     	PresetToSend1()
     	PresetToSend2()
@@ -721,12 +690,9 @@ def channelHandler4(evt) {
 		} else{
 			if(logEnable) log.debug "Did not send Channel Enter"
 		}
-		}
 }
 
 def channelHandler5(evt) {
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
         if(logEnable) log.debug "You pressed Channel button 5"
     	PresetToSend1()
     	PresetToSend2()
@@ -768,13 +734,11 @@ def channelHandler5(evt) {
 		} else{
 			if(logEnable) log.debug "Did not send Channel Enter"
 		}
-		}
 }
 
 // ********** Normal Stuff **********
 
 def setDefaults(){
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 }
 
@@ -792,9 +756,6 @@ def getFormat(type, myText=""){							// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
