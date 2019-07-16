@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.5 - 07/15/19 - Minor code changes
  *  V1.1.4 - 06/09/19 - Code changes to better handle priority messages
  *  V1.1.3 - 04/16/19 - Code cleanup, added importUrl
  *  V1.1.2 - 04/12/19 - Fixed length of message typo
@@ -53,7 +54,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.1.4"}
+def version(){"v1.1.5"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -149,8 +150,8 @@ def populateMap() {
 	}
 	
 	if((state.priority.toLowerCase().contains("l")) || (state.priority.toLowerCase().contains("m")) || (state.priority.toLowerCase().contains("h"))) {
-		if(state.priority.toLowerCase().contains("l")) { state.lastSpoken = "<font color='white'>${state.speech}</font>" }
-		if(state.priority.toLowerCase().contains("m")) { state.lastSpoken = "<font color='yellow'>${state.speech}</font>" }
+		if(state.priority.toLowerCase().contains("l")) { state.lastSpoken = "<font color='yellow'>${state.speech}</font>" }
+		if(state.priority.toLowerCase().contains("n")) { state.lastSpoken = "<font color='white'>${state.speech}</font>" }
 		if(state.priority.toLowerCase().contains("h")) { state.lastSpoken = "<font color='red'>${state.speech}</font>" }
 	} else {
 		state.lastSpoken = state.speech
