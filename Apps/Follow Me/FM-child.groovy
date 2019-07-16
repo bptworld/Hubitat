@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  V1.2.3 - 07/05/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.
+ *  V1.2.3 - 07/15/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.
  *  V1.2.2 - 07/04/19 - Push messages now honor the speech priority settings, Please check your vol/speech settings.
  *  V1.2.1 - 06/26/19 - Fixed problem with testing Random Voice
  *  V1.2.0 - 06/26/19 - Added more sound options. Gave voice and sound options their own pages and added Test buttons to each.
