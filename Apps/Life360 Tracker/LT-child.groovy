@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.5 - 07/16/19 - Added 'Alerts' - Battery Alert: Alert when phone is less than X and not charging.
  *  V1.1.4 - 07/14/19 - Added Home features, Merged code so one app handles both Free and Paid versions. My places now in parent app.
  *  V1.1.3 - 07/12/19 - Added a completly rewritten 'Track All' option back in.
  *  V1.1.2 - 07/12/19 - Removed 'How often to track Places'. Lots of changes to arrived/moving/departed.
@@ -57,7 +58,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.4"
+	state.version = "v1.1.5"
 }
 
 definition(
@@ -75,7 +76,7 @@ definition(
 
 preferences {
     page(name: "pageConfig")
-    page(name: "alertsConfig")
+    page(name: "alertsConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -101,14 +102,14 @@ def pageConfig() {
                     paragraph "My Places are created in the Life360 Parent app."
                     buildMyPlacesList()
                     state.thePlaces = "${state.myPlacesList}".replace("[","").replace("]","").replace("]","").replace(" ,", ",").replace(", ", ",")
-                    if(logEnable) log.debug "In pageConfig - Free - thePlaces: ${state.thePlaces}"
+                    //if(logEnable) log.debug "In pageConfig - Free - thePlaces: ${state.thePlaces}"
                 } else {
                     paragraph "This list will show all of your 'Starred' places from the Life360 app."
                     state.thePlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
-                    if(logEnable) log.debug "In pageConfig - Paid - thePlaces: ${state.thePlaces}"
+                    //if(logEnable) log.debug "In pageConfig - Paid - thePlaces: ${state.thePlaces}"
                 }  
                 state.values = "${state.thePlaces}".split(",")
-                if(logEnable) log.debug "In pageConfig - values: ${state.values}"
+                //if(logEnable) log.debug "In pageConfig - values: ${state.values}"
                 input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple: true, required:true, submitOnChange: true
                 input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of Specific Places?", description: "List View", submitOnChange: "true")
                 if(oG1List) {
@@ -207,9 +208,9 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
-//        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
-//            href "alertsConfig", title: "Alerts", description: "Click here to setup Alerts."
-//		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
+            href "alertsConfig", title: "Alerts", description: "Click here to setup Alerts."
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
@@ -220,11 +221,18 @@ def pageConfig() {
 }
 
 def alertsConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 Tracker - Alerts</h2>", install: false, uninstall: false, refreshInterval:0) {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 Tracker - Alerts</h2>", install: false, uninstall:false) {
 		display() 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Alerts")) {
-            paragraph "<b>Battery Alert</b>"
-
+            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the place arrived or departed"
+            paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
+            paragraph "<hr>"
+            paragraph "<b>Battery Alert</b><br>If Battery is too low and not Charging, send Alert"
+            input "alertBatt", "number", title: "At what percentage of battery life to Alert (range 0 to 100)", description: "0-100", required: false, range: '0..100'
+            input(name: "speakAlertsBatt", type: "bool", defaultValue: "false", title: "Speak on Alert", description: "Speak On Alert", width:6)
+            input(name: "pushAlertsBatt", type: "bool", defaultValue: "false", title: "Push on Alert", description: "Push On Alert", width:6)
+            input "messageAlertBatt", "text", title: "Random Message to be spoken when <b>'Alert - Battery'</b> - Separate each message with <b>;</b> (semicolon)",  required: true, defaultValue: "%name%'s phone battery (%battery%) needs charging"
+            paragraph "<hr>"
 		}
 	}
 }
@@ -243,12 +251,13 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)
+    if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)   
     if(lifeVersion == "Free") subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
 }
 
 def userHandler(evt) {
     if(logEnable) log.debug "In userHandler..."
+    if(lifeVersion == "Paid") alertBattHandler()
     if(trackingOptions == "Track All") trackAllHandler()
     if(trackingOptions == "Track Specific") trackSpecificHandler() 
 }
@@ -404,6 +413,35 @@ def trackSpecificHandler() {
     } 
 }
 
+def alertBattHandler() {
+    if(logEnable) log.debug "In alertBattHandler..."
+    state.battery = presenceDevice.currentValue("battery")
+    state.charge = presenceDevice.currentValue("charge")
+    
+    if(logEnable) log.debug "In alertBattHandler - battery: ${state.battery} - prev battery: ${state.prevBatt} - charge: ${state.charge} - alertBattRepeat: ${state.alertBattRepeat}"
+    
+    if((state.battery <= alertBatt) && (state.charge == "false") && (state.alertBattRepeat != "yes")) {
+        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 1 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
+        state.msg = "${messageAlertBatt}"
+        state.prevBatt = state.battery - 10
+        state.alertBattRepeat = "yes"
+        state.alerts = "yes"
+        messageHandler()
+    } else if((state.battery <= state.prevBatt) && (state.charge == "false")) {
+        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 2 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
+        state.msg = "${messageAlertBatt}"
+        state.prevBatt = state.prevBatt - 10
+        state.alertBattRepeat = "yes"
+        state.alerts = "yes"
+        messageHandler()
+    } else if(state.charge == "true") {
+        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) is charging. - Step 3"
+        state.alertBattRepeat = "no"
+        state.prevBatt = 0
+    }  
+    state.alerts = "no"
+}
+
 def getTimeDiff() {
 	if(logEnable) log.debug "In getTimeDiff..."
 	long since = presenceDevice.currentValue("since")
@@ -510,16 +548,28 @@ def messageHandler() {
     if(theMessage.contains("%place%")) {theMessage = theMessage.replace('%place%', state.lastAtPlace )}
     if(theMessage.contains("%address1%")) {theMessage = theMessage.replace('%address1%', presenceDevice.currentValue("address1") )}
     if(theMessage.contains("%address2%")) {theMessage = theMessage.replace('%address2%', presenceDevice.currentValue("address2") )}
-    if(theMessage.contains("%battery%")) {theMessage = theMessage.replace('%battery%', presenceDevice.currentValue("battery") )}
+    if(theMessage.contains("%battery%")) {
+        String currBatt = presenceDevice.currentValue("battery")
+        theMessage = theMessage.replace('%battery%', currBatt)
+    }
     if(theMessage.contains("%charge%")) {theMessage = theMessage.replace('%charge%', presenceDevice.currentValue("charge") )}
     if(theMessage.contains("%distanceKm%")) {theMessage = theMessage.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
     if(theMessage.contains("%distanceMetric%")) {theMessage = theMessage.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
     if(theMessage.contains("%distanceMiles%")) {theMessage = theMessage.replace('%distanceMiles%', presenceDevice.currentValue("distanceMiles") )}
     if(theMessage.contains("%inTransit%")) {theMessage = theMessage.replace('%inTransit%', presenceDevice.currentValue("inTransit") )}
     if(theMessage.contains("%isDriving%")) {theMessage = theMessage.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
-    if(theMessage.contains("%lastCheckin%")) {theMessage = theMessage.replace('%lastCheckin%', state.presenceDevice.currentValue("lastCheckin") )}
-    if(theMessage.contains("%latitude%")) {theMessage = theMessage.replace('%latitude%', state.presenceDevice.currentValue("latitude") )}
-    if(theMessage.contains("%longitude%")) {theMessage = theMessage.replace('%longitude%', state.presenceDevice.currentValue("longitude") )}
+    if(theMessage.contains("%lastCheckin%")) {
+        String currLastCheckin = presenceDevice.currentValue("lastCheckin")
+        theMessage = theMessage.replace('%lastCheckin%', currLastCheckin)    
+    }
+    if(theMessage.contains("%latitude%")) {
+        String currLatitude = presenceDevice.currentValue("latitude")
+        theMessage = theMessage.replace('%latitude%', currLatitude)    
+    }
+    if(theMessage.contains("%longitude%")) {
+        String currLongitude = presenceDevice.currentValue("longitude")
+        theMessage = theMessage.replace('%longitude%', currLongitude)    
+    }
     if(theMessage.contains("%powerSource%")) {theMessage = theMessage.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
     if(theMessage.contains("%presence%")) {theMessage = theMessage.replace('%presence%', state.presenceDevice.currentValue("presence") )}
     if(theMessage.contains("%speedKm%")) {theMessage = theMessage.replace('%speedKm%', state.presenceDevice.currentValue("speedKm") )}
@@ -531,13 +581,21 @@ def messageHandler() {
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
 	presenceDevice.sendHistory(theMessage)
-    if((speakHasArrived) && (state.speakAT == "yes")) letsTalk()
-    if((speakHasDeparted)  && (state.speakDEP == "yes")) letsTalk()
-    if((speakOnTheMove) && (state.speakMOVE == "yes")) letsTalk()
-    if((pushHasArrived) && (state.speakAT == "yes")) pushHandler()
-    if((pushHasDeparted) && (state.speakDEP == "yes")) pushHandler()
-    if((pushOnTheMove) && (state.speakMOVE == "yes")) pushHandler()
-
+    if(state.alerts == "yes") {
+        if(speakAlertsBatt) letsTalk()
+        
+        if(pushAlertsBatt) pushHandler()
+        
+        state.alerts = "no"
+    } else {
+        if((speakHasArrived) && (state.speakAT == "yes")) letsTalk()
+        if((speakHasDeparted)  && (state.speakDEP == "yes")) letsTalk()
+        if((speakOnTheMove) && (state.speakMOVE == "yes")) letsTalk()
+    
+        if((pushHasArrived) && (state.speakAT == "yes")) pushHandler()
+        if((pushHasDeparted) && (state.speakDEP == "yes")) pushHandler()
+        if((pushOnTheMove) && (state.speakMOVE == "yes")) pushHandler()
+    }
     log.info "HISTORY - ${theMessage}"
 }
 
@@ -574,7 +632,8 @@ def appButtonHandler(buttonPressed) {
     }
 }
 
-def whereAmI(evt) {
+def whereAmI(evt) { 
+    if(logEnable) log.debug "In whereAmI..."
     state.address1Value = presenceDevice.currentValue("address1")
     def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
     def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
@@ -586,7 +645,7 @@ def whereAmI(evt) {
         def distanceAway01 = haversine(memberLatitude, memberLongitude, placeLatitude01, placeLongitude01)*1000 // in meters
       	boolean isPresent01 = (distanceAway01 <= placeRadius01)
         if(isPresent01) state.address1Value = parent.myName01
-        if(logEnable) log.debug "Distance Away 01 (${parent.myName01}): ${distanceAway01}, isPresent01: ${isPresent01}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 01 (${parent.myName01}): ${distanceAway01}, isPresent01: ${isPresent01}"
     }
     if(parent.myName02) {
         def placeLatitude02 = new Float (parent.myLatitude02)
@@ -595,7 +654,7 @@ def whereAmI(evt) {
         def distanceAway02 = haversine(memberLatitude, memberLongitude, placeLatitude02, placeLongitude02)*1000 // in meters
   	    boolean isPresent02 = (distanceAway02 <= placeRadius02)
         if(isPresent02) state.address1Value = parent.myName02
-        if(logEnable) log.debug "Distance Away 02 (${parent.myName02}): ${distanceAway02}, isPresent02: ${isPresent02}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 02 (${parent.myName02}): ${distanceAway02}, isPresent02: ${isPresent02}"
     }
     if(parent.myName03) {
         def placeLatitude03 = new Float (parent.myLatitude03)
@@ -604,7 +663,7 @@ def whereAmI(evt) {
         def distanceAway03 = haversine(memberLatitude, memberLongitude, placeLatitude03, placeLongitude03)*1000 // in meters
   	    boolean isPresent03 = (distanceAway03 <= placeRadius03)
         if(isPresent03) state.address1Value = parent.myName03
-        if(logEnable) log.debug "Distance Away 03 (${parent.myName03}): ${distanceAway03}, isPresent03: ${isPresent03}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 03 (${parent.myName03}): ${distanceAway03}, isPresent03: ${isPresent03}"
     }
     if(parent.myName04) {
         def placeLatitude04 = new Float (parent.myLatitude04)
@@ -613,7 +672,7 @@ def whereAmI(evt) {
         def distanceAway04 = haversine(memberLatitude, memberLongitude, placeLatitude04, placeLongitude04)*1000 // in meters
   	    boolean isPresent04 = (distanceAway04 <= placeRadius04)
         if(isPresent04) state.address1Value = parent.myName04
-        if(logEnable) log.debug "Distance Away 04 (${parent.myName04}): ${distanceAway04}, isPresent04: ${isPresent04}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 04 (${parent.myName04}): ${distanceAway04}, isPresent04: ${isPresent04}"
     }
     if(parent.myName05) {
         def placeLatitude05 = new Float (parent.myLatitude05)
@@ -622,7 +681,7 @@ def whereAmI(evt) {
         def distanceAway05 = haversine(memberLatitude, memberLongitude, placeLatitude05, placeLongitude05)*1000 // in meters
   	    boolean isPresent05 = (distanceAway05 <= placeRadius05)
         if(isPresent05) state.address1Value = parent.myName05
-        if(logEnable) log.debug "Distance Away 05 (${parent.myName05}): ${distanceAway05}, isPresent05: ${isPresent05}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 05 (${parent.myName05}): ${distanceAway05}, isPresent05: ${isPresent05}"
     }
     if(parent.myName06) {
         def placeLatitude06 = new Float (parent.myLatitude06)
@@ -631,7 +690,7 @@ def whereAmI(evt) {
         def distanceAway06 = haversine(memberLatitude, memberLongitude, placeLatitude06, placeLongitude06)*1000 // in meters
   	    boolean isPresent06 = (distanceAway06 <= placeRadius06)
         if(isPresent06) state.address1Value = parent.myName06
-        if(logEnable) log.debug "Distance Away 06 (${parent.myName06}): ${distanceAway06}, isPresent06: ${isPresent06}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 06 (${parent.myName06}): ${distanceAway06}, isPresent06: ${isPresent06}"
     }
     if(parent.myName07) {
         def placeLatitude07 = new Float (parent.myLatitude07)
@@ -640,7 +699,7 @@ def whereAmI(evt) {
         def distanceAway07 = haversine(memberLatitude, memberLongitude, placeLatitude07, placeLongitude07)*1000 // in meters
   	    boolean isPresent07 = (distanceAway07 <= placeRadius07)
         if(isPresent07) state.address1Value = parent.myName07
-        if(logEnable) log.debug "Distance Away 07 (${parent.myName07}): ${distanceAway07}, isPresent07: ${isPresent07}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 07 (${parent.myName07}): ${distanceAway07}, isPresent07: ${isPresent07}"
     }
     if(parent.myName08) {
         def placeLatitude08 = new Float (parent.myLatitude08)
@@ -649,7 +708,7 @@ def whereAmI(evt) {
         def distanceAway08 = haversine(memberLatitude, memberLongitude, placeLatitude08, placeLongitude08)*1000 // in meters
   	    boolean isPresent08 = (distanceAway08 <= placeRadius08)
         if(isPresent08) state.address1Value = parent.myName08
-        if(logEnable) log.debug "Distance Away 08 (${parent.myName08}): ${distanceAway08}, isPresent08: ${isPresent08}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 08 (${parent.myName08}): ${distanceAway08}, isPresent08: ${isPresent08}"
     }
     if(parent.myName09) {
         def placeLatitude09 = new Float (parent.myLatitude09)
@@ -658,7 +717,7 @@ def whereAmI(evt) {
         def distanceAway09 = haversine(memberLatitude, memberLongitude, placeLatitude09, placeLongitude09)*1000 // in meters
   	    boolean isPresent09 = (distanceAway09 <= placeRadius09)
         if(isPresent09) state.address1Value = parent.myName09
-        if(logEnable) log.debug "Distance Away 09 (${parent.myName09}): ${distanceAway09}, isPresent09: ${isPresent09}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 09 (${parent.myName09}): ${distanceAway09}, isPresent09: ${isPresent09}"
     }
     if(parent.myName10) {
         def placeLatitude10 = new Float (parent.myLatitude10)
@@ -667,7 +726,7 @@ def whereAmI(evt) {
         def distanceAway10 = haversine(memberLatitude, memberLongitude, placeLatitude10, placeLongitude10)*1000 // in meters
   	    boolean isPresent10 = (distanceAway10 <= placeRadius10)
         if(isPresent10) state.address1Value = parent.myName10
-        if(logEnable) log.debug "Distance Away 10 (${parent.myName10}): ${distanceAway10}, isPresent10: ${isPresent10}"
+        if(logEnable) log.debug "In whereAmI - Distance Away 10 (${parent.myName10}): ${distanceAway10}, isPresent10: ${isPresent10}"
     }
     
     if((!isPresent01) && (!isPresent02) && (!isPresent03) && (!isPresent04) && (!isPresent05) && (!isPresent06) && (!isPresent07) && (!isPresent08) && (!isPresent09) && (!isPresent10)) state.address1Value = presenceDevice.currentValue("address1")
