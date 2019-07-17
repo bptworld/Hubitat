@@ -38,7 +38,7 @@
  *
  *  Changes:
  *
- *  V1.1.7 - 07/17/19 - Trying to fix 'moving'. Added an option to not announce when a user departs from Home.
+ *  V1.1.7 - 07/17/19 - Trying to fix 'moving'. Added an option to not announce when a user departs from Home. Also added map to attributes.
  *  V1.1.6 - 07/16/19 - Fix typo with Departed Push notifications, thanks spalexander68
  *  V1.1.5 - 07/16/19 - Added 'Alerts' - Battery Alert: Alert when phone is less than X and not charging.
  *  V1.1.4 - 07/14/19 - Added Home features, Merged code so one app handles both Free and Paid versions. My places now in parent app.
@@ -323,6 +323,8 @@ def trackAllHandler() {
         state.onTheMove = "yes"
         if(logEnable) log.debug "In trackAllHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
     } 
+    theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
+    presenceDevice.sendTheMap(theMap)
 }
 
 def trackSpecificHandler() {
@@ -411,6 +413,8 @@ def trackSpecificHandler() {
         state.onTheMove = "yes"
         if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
     } 
+    theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
+    presenceDevice.sendTheMap(theMap)
 }
 
 def alertBattHandler() {
