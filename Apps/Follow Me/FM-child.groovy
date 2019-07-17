@@ -33,7 +33,8 @@
  *
  *  Changes:
  *
- *  V1.2.3 - 07/15/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.
+ *  V1.2.4 - 07/16/19 - Fixed problem with Speech Synth options.
+ *  V1.2.3 - 07/05/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.
  *  V1.2.2 - 07/04/19 - Push messages now honor the speech priority settings, Please check your vol/speech settings.
  *  V1.2.1 - 06/26/19 - Fixed problem with testing Random Voice
  *  V1.2.0 - 06/26/19 - Added more sound options. Gave voice and sound options their own pages and added Test buttons to each.
@@ -61,7 +62,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.3"
+	state.version = "v1.2.4"
 }
 
 definition(
@@ -151,8 +152,8 @@ def pageConfig() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
 				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
-				if((messagePriority) && (speechMode == "Speech Synth")) input(name: "priorityVoices", type: "bool", defaultValue: "false", title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange: true)
-				if((messagePriority) && (speechMode == "Speech Synth")) input(name: "messageSounds", type: "bool", defaultValue: "false", title: "Play a sound before message?", description: "Message Sounds", submitOnChange: true)
+				if((messagePriority) && (speakerSS)) input(name: "priorityVoices", type: "bool", defaultValue: "false", title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange: true)
+				if((messagePriority) && (speakerSS)) input(name: "messageSounds", type: "bool", defaultValue: "false", title: "Play a sound before message?", description: "Message Sounds", submitOnChange: true)
 			}
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
@@ -169,7 +170,7 @@ def pageConfig() {
 					input "volLow", "number", title: "Speaker volume for Low priority", description: "0-100", required: true, width: 6
 					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
 				}
-				if(speechMode == "Speech Synth") {
+				if(speakerSS) {
                     if(priorityVoices) {
                         section(getFormat("header-green", "${getImage("Blank")}"+" Voice Options")) {
                             href "voiceOptions", title:"Voice Options Setup", description:"Click here to setup the voices"
