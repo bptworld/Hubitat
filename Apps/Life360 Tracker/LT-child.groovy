@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.7 - 07/17/19 - Trying to fix 'moving'. Added an option to not announce when a user departs from Home.
  *  V1.1.6 - 07/16/19 - Fix typo with Departed Push notifications, thanks spalexander68
  *  V1.1.5 - 07/16/19 - Added 'Alerts' - Battery Alert: Alert when phone is less than X and not charging.
  *  V1.1.4 - 07/14/19 - Added Home features, Merged code so one app handles both Free and Paid versions. My places now in parent app.
@@ -59,7 +60,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.6"
+	state.version = "v1.1.7"
 }
 
 definition(
@@ -133,7 +134,9 @@ def pageConfig() {
             paragraph "<small>This is useful if you have another app announcing when you are home, like 'Welcome Home'</small>"
             input(name: "homeNow", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange: "true")
             paragraph "<small>This will give a nice heads up that someone is home. But can be a false alarm if they are just driving by.</small>"
-            paragraph "Note: Home options will only work if you have the Speak or Push when someone 'Has arrived' switch in Message Options turned on."
+            input(name: "homeDeparted", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User departs from 'Home'? (off='No', on='Yes')", description: "Home Depart", submitOnChange: "true")
+            paragraph "<small>This will give a nice heads up that someone has departed home.</small>"
+            paragraph "Note: Home options will only work if you have the Speak or Push when someone 'Has arrived'and/or 'Has departed' switch in Message Options turned on."
         }
 // *** End Home ***
         
@@ -345,15 +348,12 @@ def trackSpecificHandler() {
                         if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                         state.msg = "${messageAT}"
                         state.speakAT = "yes"
-                        state.lastAtPlace = state.address1Value
                         if(speakHasArrived || pushHasArrived) messageHandler()
                     }
                 } else {
                     if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
                 if(isDataDevice) isDataDevice.on()
-                state.prevPlace = state.address1Value
-                state.lastAtPlace = state.address1Value
                 state.beenHere = "yes"
                 state.onTheMove = "no"
                 if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
@@ -363,9 +363,7 @@ def trackSpecificHandler() {
                     if(logEnable) log.debug "In trackSpecificHandler - Track Specific (Home) - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     state.speakAT = "yes"
-                    state.lastAtPlace = state.address1Value
                     if(isDataDevice) isDataDevice.on()
-                    state.prevPlace = state.address1Value
                     state.beenHere = "yes"
                     state.onTheMove = "no"
                     if(speakHasArrived || pushHasArrived) messageHandler()
@@ -375,30 +373,31 @@ def trackSpecificHandler() {
                         
                     } else {
                         if(isDataDevice) isDataDevice.off()
-                        state.prevPlace = state.address1Value
                         state.beenHere = "no"
                         state.onTheMove = "yes"
-                        state.lastAtPlace = "moving"
+                        state.lastAtPlace = "${state.address1Value}"
                         if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
                     }
                 }
             }
         } else {  // *** ! trackSpecific.contains(state.address1Value) ***
 		    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
-            state.prevPlace = state.address1Value
             if(isDataDevice) isDataDevice.off()
             state.beenHere = "no"
             state.onTheMove = "yes"
-            state.lastAtPlace = "moving"
             if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
         }
     } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
         if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
         if(state.beenHere == "yes") {
             if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
-            state.msg = "${messageDEP}"
-            state.speakDEP = "yes"
-            if(speakHasDeparted || pushHasDeparted) messageHandler()
+            if((!homeDeparted) && (state.prevPlace == "Home")) {
+                   if(logEnable) log.debug "${friendlyName} has departed Home but no announcement needed."
+            } else {
+                state.msg = "${messageDEP}"
+                state.speakDEP = "yes"
+                if(speakHasDeparted || pushHasDeparted) messageHandler()
+            }
         } else {
             if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
@@ -406,10 +405,10 @@ def trackSpecificHandler() {
             if(speakOnTheMove || pushOnTheMove) messageHandler()
         }
         state.prevPlace = state.address1Value
+        state.lastAtPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
         state.onTheMove = "yes"
-        state.lastAtPlace = "moving"
         if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
     } 
 }
@@ -603,9 +602,11 @@ def messageHandler() {
 def pushHandler() {
 	if(logEnable) log.debug "In pushNow..."
     theMessage = "${state.theMessage}\n\n"
-    if(linkPush) {theMessage += "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"}
+    theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
+    if(linkPush) {theMessage += "${theMap}"}
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
+    presenceDevice.sendTheMap(theMap)
 	state.msg = ""
 }
 
