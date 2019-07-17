@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.6 - 07/16/19 - Fix typo with Departed Push notifications, thanks spalexander68
  *  V1.1.5 - 07/16/19 - Added 'Alerts' - Battery Alert: Alert when phone is less than X and not charging.
  *  V1.1.4 - 07/14/19 - Added Home features, Merged code so one app handles both Free and Paid versions. My places now in parent app.
  *  V1.1.3 - 07/12/19 - Added a completly rewritten 'Track All' option back in.
@@ -58,7 +59,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.5"
+	state.version = "v1.1.6"
 }
 
 definition(
@@ -306,7 +307,7 @@ def trackAllHandler() {
             if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
             state.msg = "${messageDEP}"
             state.speakDEP = "yes"
-            if(speakHasDeparted || pushDeparted) messageHandler()
+            if(speakHasDeparted || pushHasDeparted) messageHandler()
         } else {
             if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
@@ -397,7 +398,7 @@ def trackSpecificHandler() {
             if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
             state.msg = "${messageDEP}"
             state.speakDEP = "yes"
-            if(speakHasDeparted || pushDeparted) messageHandler()
+            if(speakHasDeparted || pushHasDeparted) messageHandler()
         } else {
             if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
