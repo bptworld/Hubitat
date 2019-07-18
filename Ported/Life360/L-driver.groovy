@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.1.0 - 07/17/19 - Added map link to attributes
  *  V1.0.9 - 07/13/19 - Code touchups by cwwilson08
  *  V1.0.8 - 07/12/19 - Minor changes, code cleanup
  *  V1.0.7 - 07/10/19 - Added code for dashboard tiles, Info and Places tiles
@@ -59,16 +60,16 @@ metadata {
 	definition (name: "Life360 User", namespace: "BPTWorld", author: "Bryan Turcotte", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy") {
 	capability "Presence Sensor"
 	capability "Sensor"
-capability "Refresh"
+    capability "Refresh"
 	capability "Sleep Sensor"
-capability "Battery"
-capability "Power Source"
+    capability "Battery"
+    capability "Power Source"
 
 	attribute "distanceMetric", "Number"
    	attribute "distanceKm", "Number"
 	attribute "distanceMiles", "Number"
-attribute "prevAddress1", "String"
-attribute "prevAddress2", "String"
+    attribute "prevAddress1", "String"
+    attribute "prevAddress2", "String"
 	attribute "address1", "String"
   	attribute "address2", "String"
   	attribute "battery", "number"
@@ -89,20 +90,27 @@ attribute "prevAddress2", "String"
     attribute "life360Tile1", "string"
     attribute "history", "string"
     attribute "status", "string"
+    attribute "lastMap", "string"
 
 	command "refresh"
 	command "asleep"
-command "awake"
-command "toggleSleeping"
-command "setBattery",["number","boolean"]
-command "sendHistory", ["string"]
-command "historyClearData"
+    command "awake"
+    command "toggleSleeping"
+    command "setBattery",["number","boolean"]
+    command "sendHistory", ["string"]
+    command "sendTheMap", ["string"]
+    command "historyClearData"
 	}
 
 	simulator {
 		status "present": "presence: 1"
 		status "not present": "presence: 0"
 	}
+}
+
+def sendTheMap(theMap) {
+    lastMap = "${theMap}" 
+    sendEvent(name: "lastMap", value: lastMap, displayed: true)
 }
 
 def sendLife360Tile1() {
