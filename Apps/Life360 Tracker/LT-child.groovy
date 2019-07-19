@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 07/19/19 - More tweaking of the 'on the move' code. Added 'Log History when' option, added clickable Map to History.
  *  V1.1.7 - 07/17/19 - Trying to fix 'moving'. Added an option to not announce when a user departs from Home. Also added map to attributes.
  *  V1.1.6 - 07/16/19 - Fix typo with Departed Push notifications, thanks spalexander68
  *  V1.1.5 - 07/16/19 - Added 'Alerts' - Battery Alert: Alert when phone is less than X and not charging.
@@ -60,7 +61,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.7"
+	state.version = "v1.1.8"
 }
 
 definition(
@@ -145,41 +146,47 @@ def pageConfig() {
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
             input(name: "speakHasArrived", type: "bool", defaultValue: "false", title: "Speak when someone 'Has arrived'", description: "Speak Has Arrived", submitOnChange: true)
             input(name: "pushHasArrived", type: "bool", defaultValue: "false", title: "Push when someone 'Has arrived'", description: "Push Has Arrived", submitOnChange: true)
-			if(speakHasArrived || pushHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
-			if(speakHasArrived || pushHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if((speakHasArrived || pushHasArrived) && atMsgList) {
+            input(name: "historyHasArrived", type: "bool", defaultValue: "false", title: "Log History when someone 'Has arrived'", description: "History Has arrived", submitOnChange: true)
+            if(historyHasArrived) input(name: "historyHasArrivedMap", type: "bool", defaultValue: "false", title: "Add Map Link to message?", description: "History Has Arrived Map", submitOnChange: true)
+			if(speakHasArrived || pushHasArrived || historyHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
+			if(speakHasArrived || pushHasArrived || historyHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if((speakHasArrived || pushHasArrived || historyHasArrived) && atMsgList) {
 				def values = "${messageAT}".split(";")
 				listMapAT = ""
     			values.each { item -> listMapAT += "${item}<br>"}
 				paragraph "${listMapAT}"
 			}
-            if(speakHasArrived || pushHasArrived) paragraph "<hr>"
+            if(speakHasArrived || pushHasArrived || historyHasArrived) paragraph "<hr>"
             
             
             input(name: "speakHasDeparted", type: "bool", defaultValue: "false", title: "Speak when someone 'Has departed'", description: "Speak Has departed", submitOnChange: true)
             input(name: "pushHasDeparted", type: "bool", defaultValue: "false", title: "Push when someone 'Has departed'", description: "Push Has departed", submitOnChange: true)
-			if(speakHasDeparted || pushHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
-			if(speakHasDeparted || pushHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if((speakHasDeparted || pushHasDeparted) && depMsgList) {
+            input(name: "historyHasDeparted", type: "bool", defaultValue: "false", title: "Log History when someone 'Has departed'", description: "History Has departed", submitOnChange: true)
+            if(historyHasDeparted) input(name: "historyHasDepartedMap", type: "bool", defaultValue: "false", title: "Add Map Link to message?", description: "History Has Departed Map", submitOnChange: true)
+			if(speakHasDeparted || pushHasDeparted || historyHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
+			if(speakHasDeparted || pushHasDeparted || historyHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if((speakHasDeparted || pushHasDeparted || historyHasDeparted) && depMsgList) {
 				def values = "${messageDEP}".split(";")
 				listMapDEP = ""
     			values.each { item -> listMapDEP += "${item}<br>"}
                 paragraph "${listMapDEP}"
 			}
-            if(speakHasDeparted || pushHasDeparted) paragraph "<hr>"
+            if(speakHasDeparted || pushHasDeparted || historyHasDeparted) paragraph "<hr>"
             
             
             input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when someone 'is on the move'", description: "Speak On the Move", submitOnChange: true)
             input(name: "pushOnTheMove", type: "bool", defaultValue: "false", title: "Push when someone 'is on the move'", description: "Push On the Move", submitOnChange: true)
-            if(speakOnTheMove || pushOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
-			if(speakOnTheMove || pushOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-			if((speakOnTheMove || pushOnTheMove) && moveMsgList) {
+            input(name: "historyOnTheMove", type: "bool", defaultValue: "false", title: "Log History when someone 'is on the move'", description: "History On the Move", submitOnChange: true)
+            if(historyOnTheMove) input(name: "historyOnTheMoveMap", type: "bool", defaultValue: "false", title: "Add Map Link to message?", description: "History On the Move Map", submitOnChange: true)
+            if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
+			if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+			if((speakOnTheMove || pushOnTheMove || historyOnTheMove) && moveMsgList) {
 				def values = "${messageMOVE}".split(";")
 				listMapMove = ""
     			values.each { item -> listMapMove += "${item}<br>"}
 				paragraph "${listMapMove}"
 			}
-            if(speakOnTheMove || pushOnTheMove) paragraph "<hr>"
+            if(speakOnTheMove || pushOnTheMove || historyOnTheMove) paragraph "<hr>"
         }
         if(pushHasArrived || pushHasDeparted || pushOnTheMove) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Push Options")) { 
@@ -286,7 +293,7 @@ def trackAllHandler() {
                 state.msg = "${messageAT}"
                 state.speakAT = "yes"
                 state.lastAtPlace = state.address1Value
-                if(speakHasArrived || pushHasArrived) messageHandler()
+                if(speakHasArrived || pushHasArrived || historyHasArrived) messageHandler()
             } else {
                 if(logEnable) log.debug "In trackAllHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
             }
@@ -294,15 +301,13 @@ def trackAllHandler() {
             state.prevPlace = state.address1Value
             state.lastAtPlace = state.address1Value
             state.beenHere = "yes"
-            state.onTheMove = "no"
-            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
         } else {  // *** ! state.tDiff > timeHere ***
             if(logEnable) log.debug "In trackAllHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
             if(isDataDevice) isDataDevice.off()
             state.prevPlace = state.address1Value
             state.beenHere = "no"
-            state.onTheMove = "yes"
-            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
         }
     } else {  // *** ! state.address1Value == state.prevPlace ***
         if(logEnable) log.debug "In trackAllHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
@@ -310,18 +315,17 @@ def trackAllHandler() {
             if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
             state.msg = "${messageDEP}"
             state.speakDEP = "yes"
-            if(speakHasDeparted || pushHasDeparted) messageHandler()
+            if(speakHasDeparted || pushHasDeparted || historyHasDeparted) messageHandler()
         } else {
             if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
             state.speakMOVE = "yes"
-            if(speakOnTheMove || pushOnTheMove) messageHandler()
+            if(speakOnTheMove || pushOnTheMove || historyOnTheMove) messageHandler()
         }
         state.prevPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
-        state.onTheMove = "yes"
-        if(logEnable) log.debug "In trackAllHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+        if(logEnable) log.debug "In trackAllHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere}"
     } 
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     presenceDevice.sendTheMap(theMap)
@@ -342,7 +346,7 @@ def trackSpecificHandler() {
         if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
         if(trackSpecific.contains(state.address1Value)) {
             if(state.tDiff > timeHere) {
-                if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}"
+                if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere}, beenHere: ${state.beenHere}"
                 if(state.beenHere == "no") {
                     if((!homeDelay) && (state.address1Value == "Home")) {
                         if(logEnable) log.debug "${friendlyName} is Home but no announcement needed."
@@ -350,44 +354,37 @@ def trackSpecificHandler() {
                         if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                         state.msg = "${messageAT}"
                         state.speakAT = "yes"
-                        if(speakHasArrived || pushHasArrived) messageHandler()
+                        if(speakHasArrived || pushHasArrived || historyHasArrived) messageHandler()
                     }
                 } else {
                     if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
                 if(isDataDevice) isDataDevice.on()
                 state.beenHere = "yes"
-                state.onTheMove = "no"
-                if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+                if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
             } else {  // *** state.tDiff is LESS than timeHere ***
                 if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere}"
+                if(logEnable) log.debug "In trackSpecificHandler - Checking if address1Value equals Home: ${state.address1Value} and homeNow: ${homeNow}"
                 if((homeNow) && (state.address1Value == "Home")) {
                     if(logEnable) log.debug "In trackSpecificHandler - Track Specific (Home) - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     state.speakAT = "yes"
                     if(isDataDevice) isDataDevice.on()
                     state.beenHere = "yes"
-                    state.onTheMove = "no"
-                    if(speakHasArrived || pushHasArrived) messageHandler()
+                    if(speakHasArrived || pushHasArrived || historyHasArrived) messageHandler()
                 } else {
-                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific less than time but - address1Value: ${state.address1Value} - lastAtPlace: ${state.lastAtPlace}"
-                    if(state.address1Value == state.lastAtPlace) {
-                        
-                    } else {
-                        if(isDataDevice) isDataDevice.off()
-                        state.beenHere = "no"
-                        state.onTheMove = "yes"
-                        state.lastAtPlace = "${state.address1Value}"
-                        if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
-                    }
+                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific less than time but - address1Value: ${state.address1Value} - lastAtPlace: ${state.lastAtPlace}, beenHere: ${state.beenHere}"
+                    if(isDataDevice) isDataDevice.off()
+                    state.beenHere = "no"
+                    state.lastAtPlace = "${state.address1Value}"
+                    if(logEnable) log.debug "In trackSpecificHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
                 }
             }
         } else {  // *** ! trackSpecific.contains(state.address1Value) ***
 		    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
             if(isDataDevice) isDataDevice.off()
             state.beenHere = "no"
-            state.onTheMove = "yes"
-            if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+            if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere}"
         }
     } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
         if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
@@ -398,20 +395,19 @@ def trackSpecificHandler() {
             } else {
                 state.msg = "${messageDEP}"
                 state.speakDEP = "yes"
-                if(speakHasDeparted || pushHasDeparted) messageHandler()
+                if(speakHasDeparted || pushHasDeparted || historyHasDeparted) messageHandler()
             }
         } else {
             if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
             state.msg = "${messageMOVE}"
             state.speakMOVE = "yes"
-            if(speakOnTheMove || pushOnTheMove) messageHandler()
+            if(speakOnTheMove || pushOnTheMove || historyOnTheMove) messageHandler()
         }
         state.prevPlace = state.address1Value
         state.lastAtPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
-        state.onTheMove = "yes"
-        if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere} - onTheMove: ${state.onTheMove}"
+        if(logEnable) log.debug "In trackSpecificHandler - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere}"
     } 
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     presenceDevice.sendTheMap(theMap)
@@ -584,7 +580,7 @@ def messageHandler() {
     if(theMessage.contains("%status%")) {theMessage = theMessage.replace('%status%', state.presenceDevice.currentValue("status") )}
     if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
 	state.theMessage = "${theMessage}"
-	presenceDevice.sendHistory(theMessage)
+	
     if(state.alerts == "yes") {
         if(speakAlertsBatt) letsTalk()
         
@@ -599,8 +595,37 @@ def messageHandler() {
         if((pushHasArrived) && (state.speakAT == "yes")) pushHandler()
         if((pushHasDeparted) && (state.speakDEP == "yes")) pushHandler()
         if((pushOnTheMove) && (state.speakMOVE == "yes")) pushHandler()
+        
+        if((historyHasArrived) && (state.speakAT == "yes")) {
+            if(historyHasArrivedMap) {
+                theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
+                theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
+                theMessage += " - ${theMapLink}"
+            }
+            presenceDevice.sendHistory(theMessage)
+            log.info "Life360 Tracker-HISTORY: ${theMessage}"
+        }
+        if((historyHasDeparted) && (state.speakDEP == "yes")) {
+            if(historyHasDepartedMap) {
+                theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
+                theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
+                theMessage += " - ${theMapLink}"
+            }
+            presenceDevice.sendHistory(theMessage)
+            log.info "Life360 Tracker-HISTORY: ${theMessage}"
+        }
+        if((historyOnTheMove) && (state.speakMOVE == "yes")) {
+            if(historyOnTheMoveMap) {
+                theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
+                theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
+                theMessage += " - ${theMapLink}"
+            }
+            presenceDevice.sendHistory(theMessage)
+            log.info "Life360 Tracker-HISTORY: ${theMessage}"
+        }
     }
-    log.info "HISTORY - ${theMessage}"
+    theMessage = ""
+    state.msg = ""
 }
 
 def pushHandler() {
@@ -611,6 +636,7 @@ def pushHandler() {
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
     presenceDevice.sendTheMap(theMap)
+    theMessage = ""
 	state.msg = ""
 }
 
