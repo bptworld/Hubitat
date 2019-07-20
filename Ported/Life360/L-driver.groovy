@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.1.1 - 07/19/19 - Place is now clickable on the status tile.
  *  V1.1.0 - 07/17/19 - Added map link to attributes
  *  V1.0.9 - 07/13/19 - Code touchups by cwwilson08
  *  V1.0.8 - 07/12/19 - Minor changes, code cleanup
@@ -150,10 +151,13 @@ theDate = use( groovy.time.TimeCategory ) {
 SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E hh:mm a")
 String dateSince = DATE_FORMAT.format(theDate)
 
+theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue('latitude')},${device.currentValue('longitude')}"
+//theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
+    
 if(life360Paid) {
 	tileMap = "<table width='100%' valign='top'>"
     tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
-    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: ${add1}<br>Since: ${dateSince}<br>${device.currentValue('status')}<br>${binTransita} - ${bUnitsa}<br>Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}</p></td>"
+    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: <a href='${theMap}' target='_blank'>${add1}</a><br>Since: ${dateSince}<br>${device.currentValue('status')}<br>${binTransita} - ${bUnitsa}<br>Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}</p></td>"
     tileMap += "</tr></table>"
 } else {  // Free
     tileMap = "<table width='100%' valign='top'>"
@@ -386,7 +390,7 @@ if(homeDistance.toDouble().round(2) != device.currentValue('distanceMetric')){
 	state.update = true}
 
 if(state.update == true){
-	sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" ) 
+	sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
 	state.update = false}
 }
 
