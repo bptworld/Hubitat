@@ -2,7 +2,7 @@
  *  **************** Chromecast Helper App  ****************
  *
  *  Design Usage:
- *  Simple way to help keep your Goolge/Nest devices alive.
+ *  Simple way to help keep your Google/Nest devices alive.
  *  Chromecast Integration (beta) is required for use of this app.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
@@ -51,7 +51,7 @@ definition(
     name: "Chromecast Helper",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Simple way to help keep your Goolge/Nest devices alive.",
+    description: "Simple way to help keep your Google/Nest devices alive.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -68,7 +68,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Simple way to help keep your Goolge/Nest devices alive."
+    		paragraph "Simple way to help keep your Google/Nest devices alive."
             paragraph "* Chromecast Integration (beta) is required for use of this app."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
