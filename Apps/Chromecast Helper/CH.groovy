@@ -56,7 +56,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/CH.groovy",
 )
 
 preferences {
