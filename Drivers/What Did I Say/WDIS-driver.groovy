@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.7 - 07/22/19 - Second try at fixing bug in priority handling.
  *  V1.1.6 - 07/22/19 - Found bug in priority handling. '%20'is replaced with ' ' in any speech received.
  *  V1.1.5 - 07/15/19 - Minor code changes
  *  V1.1.4 - 06/09/19 - Code changes to better handle priority messages
@@ -55,7 +56,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.1.6"}
+def version(){"v1.1.7"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -145,14 +146,15 @@ def populateMap() {
 	if(state.speechReceived.contains("]")) {
 		def (priority, msgA) = state.speechReceived.split(']')
 		state.priority = priority.drop(1)
-		state.speech = msgA.replace("%20", " ")
+		state.speech = msgA
 	} else{
 		state.speech = state.speechReceived
+        state.priority = ""
 	}
 	
 	if((state.priority.toLowerCase().contains("l")) || (state.priority.toLowerCase().contains("n")) || (state.priority.toLowerCase().contains("h"))) {
 		if(state.priority.toLowerCase().contains("l")) { state.lastSpoken = "<font color='yellow'>${state.speech}</font>" }
-		if(state.priority.toLowerCase().contains("n")) { state.lastSpoken = "<font color='white'>${state.speech}</font>" }
+		if(state.priority.toLowerCase().contains("n")) { state.lastSpoken = "${state.speech}" }
 		if(state.priority.toLowerCase().contains("h")) { state.lastSpoken = "<font color='red'>${state.speech}</font>" }
 	} else {
 		state.lastSpoken = "${state.speech}"
