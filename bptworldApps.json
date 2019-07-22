@@ -247,7 +247,7 @@
   "WelcomeHomeUpdateNote": "V2.1.0 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.",
   
   "WhatDidISayType": "Driver",
-  "WhatDidISayDriver1Version": "v1.1.6",
+  "WhatDidISayDriver1Version": "v1.1.7",
   "WhatDidISayDriver2Version": "NA",
   "WhatDidISayDriver3Version": "NA",
   "WhatDidISayDriver4Version": "NA",
@@ -266,5 +266,5 @@
   "WhatDidISayDriver5Name": "NA",
   "WhatDidISayDriver6Name": "NA",
   "WhatDidISayDiscussion": "https://community.hubitat.com/t/release-what-did-i-say/9375",
-  "WhatDidISayUpdateNote": "V1.1.6 - 07/22/19 - Found bug in priority handling. '%20'is replaced with ' ' in any speech received.",
+  "WhatDidISayUpdateNote": "V1.1.7 - 07/22/19 - Second try at fixing bug in priority handling.",
 }
