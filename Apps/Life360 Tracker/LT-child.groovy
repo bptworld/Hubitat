@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.2 - 07/24/19 - Added user selectable time to report 'On the Move'
  *  V1.2.1 - 07/23/19 - More and more and more tweaking to get arrived/departed/move to work correctly.
  *  V1.2.0 - 07/22/19 - More adjustments to 'Home'
  *  V1.1.9 - 07/19/19 - Found a big bug with Arrived.
@@ -65,7 +66,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.1"
+	state.version = "v1.2.2"
     state.appName = "Life360 Tracker Child"
     if(sendToAWSwitch && awDevice) {
 		awInfo = "${state.appName}:${state.version}"
@@ -185,6 +186,7 @@ def pageConfig() {
             input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when 'on the move'", description: "Speak On the Move", submitOnChange: true)
             input(name: "pushOnTheMove", type: "bool", defaultValue: "false", title: "Push when 'on the move'", description: "Push On the Move", submitOnChange: true)
             input(name: "historyOnTheMove", type: "bool", defaultValue: "false", title: "Log History when 'on the move'", description: "History On the Move", submitOnChange: true)
+            input "timeMove", "number", title: "How often to report 'On the Move' (in Minutes, range 1 to 30)", required: true, submitOnChange: true, defaultValue: 5, range: '1..30'
             if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
 			if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if((speakOnTheMove || pushOnTheMove || historyOnTheMove) && moveMsgList) {
@@ -198,6 +200,7 @@ def pageConfig() {
             paragraph "<small>This will put a clickable map link on the dashboard history tile for each place.</small>"
             if(speakOnTheMove || pushOnTheMove || historyOnTheMove) paragraph "<hr>"
         }
+        
         
         if(pushHasArrived || pushHasDeparted || pushOnTheMove) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Push Options")) { 
@@ -287,6 +290,7 @@ def initialize() {
 
 def userHandler(evt) {
     if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - App version: ${state.version} ----------"
+    state.address1Value = presenceDevice.currentValue("address1")
     if(logEnable) log.debug "In userHandler - address1Value: ${state.address1Value} - prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere} - version: ${state.version}"
     if(lifeVersion == "Paid") alertBattHandler()
     if(trackingOptions == "Track All") trackAllHandler()
@@ -299,6 +303,8 @@ def userHandler(evt) {
     }
     if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - App version: ${state.version} ----------"
 }
+
+// *** Track All ***
 
 def trackAllHandler() {
     if(logEnable) log.debug "In trackAllHandler..."
@@ -313,7 +319,7 @@ def trackAllHandler() {
     
     if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is at ${state.address1Value}"
     if(state.address1Value == state.prevPlace) {
-        if(state.tDiff > timeHere) {
+        if(state.tDiff >= timeHere) {
             if(logEnable) log.debug "In trackAllHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
             if(state.beenHere == "no") {
                 if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has arrived at ${state.address1Value}"
@@ -357,7 +363,7 @@ def trackAllHandler() {
 }
 
 
-// *** Track Home
+// *** Track Home ***
 
 def trackHomeHandler() {
     if(logEnable) log.debug "In trackHomeHandler..."
@@ -396,7 +402,6 @@ def trackHomeHandler() {
         } else {
             if(logEnable) log.debug "In trackHomeHandler - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
         }
-        
     }
     
     if(state.address1Value != "Home") {
@@ -413,11 +418,14 @@ def trackHomeHandler() {
     state.prevPlace = state.address1Value
 }
 
+// *** Track Specific ***
+
 def trackSpecificHandler() {
     if(logEnable) log.debug "In trackSpecificHandler..."
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
     state.speakDEP = "no"
@@ -427,7 +435,7 @@ def trackSpecificHandler() {
     if(state.address1Value == state.prevPlace) {
         if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
         if(trackSpecific.contains(state.address1Value)) {
-            if(state.tDiff > timeHere) {
+            if(state.tDiff >= timeHere) {
                 if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
                 if(state.beenHere == "no") {
                     if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
@@ -463,11 +471,26 @@ def trackSpecificHandler() {
                 messageHandler()
                 state.beenHere = "no"
         } else {
-            if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
-            state.msg = "${messageMOVE}"
-            state.speakMOVE = "yes"
-            messageHandler()
-            state.beenHere = "no"
+            if(state.sMove == null) {
+                def now = new Date()
+                long startMove = now.getTime()
+                state.sMove = startMove
+                if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+            }
+            getTimeMoving()
+            if(state.mDiff >= timeMoving) {
+                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                state.msg = "${messageMOVE}"
+                state.speakMOVE = "yes"
+                messageHandler()
+                state.beenHere = "no"
+                def now = new Date()
+                long startMove = now.getTime()
+                state.sMove = startMove
+                if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+            } else {
+                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value} ;)"   
+            }
         }
         
         state.prevPlace = state.address1Value
@@ -514,7 +537,7 @@ def getTimeDiff() {
     long unxNow = now.getTime()
     unxNow = unxNow/1000    
     long timeDiff = Math.abs(unxNow-since)
-    state.tDiff = timeDiff
+    state.moveDiff = timeDiff
     if(logEnable) log.debug "In getTimeDiff - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff}"
     
 	state.timeDay = (timeDiff / 86400).toInteger()
@@ -523,6 +546,25 @@ def getTimeDiff() {
 	state.timeSec = (((timeDiff % 86400 ) % 3600 ) % 60).toInteger()
     
     if(logEnable) log.debug "In getTimeDiff - Time Diff: ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+}
+
+def getTimeMoving() {
+	if(logEnable) log.debug "In getTimeMoving..."
+   	def now = new Date()
+    long unxNow = now.getTime()
+    long unxPrev = state.sMove
+    unxNow = unxNow/1000
+    unxPrev = unxPrev/1000
+    long timeDiff = Math.abs(unxNow-unxPrev)
+    state.mDiff = timeDiff
+    if(logEnable) log.debug "In getTimeMoving - prev: ${unxPrev}, Now: ${unxNow}, Diff: ${timeDiff}"
+    
+	state.mTimeDay = (timeDiff / 86400).toInteger()
+    state.mTimeHrs = ((timeDiff % 86400 ) / 3600).toInteger()
+	state.mTimeMin = (((timeDiff % 86400 ) % 3600 ) / 60).toInteger()
+	state.mTimeSec = (((timeDiff % 86400 ) % 3600 ) % 60).toInteger()
+    
+    if(logEnable) log.debug "In getTimeMoving - Time Diff: ${state.mTimeDay} days, ${state.mTimeHrs} hrs, ${state.mTimeMin} mins & ${state.mTimeSec} secs"
 }
 
 def letsTalk() {
