@@ -24,6 +24,7 @@
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  V1.1.4 - 07/23/19 - Places list now in alphabetical order.
  *  V1.1.3 - 07/12/19 - 1 min update http calls now use async thanks to cwwilson08
  *  V1.1.2 - 07/10/19 - More changes from cwwilson08
  *  V1.1.1 - 07/09/19 - Minor change to how the places are sent over
@@ -42,7 +43,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.3"
+	state.version = "v1.1.4"
 }
 
 definition(
@@ -207,6 +208,7 @@ def listCircles() {
             if(logEnable) log.debug "Places=${result.data}" 
 
             def places = result.data.places
+            
             state.places = places
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Place to Match Current Location")) {
@@ -264,7 +266,11 @@ def installed() {
         // if(logEnable) log.debug "External Id=${app.id}:${member.id}"
        	// create the device
         if(member) {
-       		def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
+            // old
+            def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
+       		
+            // new
+           // def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true, isComponent: false, componentName: "Life360 with States", componentLabel: member.firstName])
     	        	
             if (childDevice)
         	{
@@ -353,8 +359,12 @@ def updated() {
     		def member = state.members.find{it.id==memberId}
        
        		// create the device
+            // old
        		def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
-        
+ 
+            // new
+            //def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true, isComponent: false, componentName: "Life360 with States", componentLabel: member.firstName])
+            
         	if (childDevice)
         	{
         		// if(logEnable) log.debug "Child Device Successfully Created"
@@ -431,7 +441,10 @@ def generateInitialEvent (member, childDevice) {
         def speedKPH 
         def xplaces
         def avatar
-        xplaces = state.places.name
+            
+            
+        xplaces = state.places.name.replaceAll(", ",",")
+              
         if (member.avatar != null){
         avatar = member.avatar
         avatarHtml =  "<img src= \"${avatar}\">"
@@ -441,10 +454,7 @@ def generateInitialEvent (member, childDevice) {
         avatar = "not set"
         avatarHtml = "not set"
         }
-        
-        
-      
-           
+
         if(member.location.address1 == null || member.location.address1 == "")
         address1 = "No Data"
         else
@@ -550,11 +560,10 @@ def refresh() {
 
 def updateMembers(){
     if(logEnable) log.debug "In updateMembers..."
-	if (!state?.circle)
-    	state.circle = settings.circle
+	if (!state?.circle) state.circle = settings.circle
     
-    	def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
-    	def result = null
+    def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
+    def result = null
     sendCmd(url, result)
 }
 
@@ -564,12 +573,10 @@ def sendCmd(url, result){
 }
 
 def cmdHandler(resp, data) {
-	
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
        
         result = resp.getJson()
 	
-
 	//if(logEnable) log.debug "Latest Members=${result.data}"
     	def members = result.members
     	state.members = members
@@ -597,7 +604,12 @@ def cmdHandler(resp, data) {
     def speedKm
     def xplaces
        
-    xplaces = "${state.places.name}".replaceAll(", ",",")
+    thePlaces = state.places.sort { a, b -> a.name <=> b.name }
+        
+    xplaces = "${thePlaces.name}".replaceAll(", ",",")
+        
+    log.warn "xplaces: ${xplaces}"
+        
     if (member.avatar != null){
         avatar = member.avatar
         avatarHtml =  "<img src= \"${avatar}\">"
@@ -607,8 +619,7 @@ def cmdHandler(resp, data) {
         avatar = "not set"
         avatarHtml = "not set"
         }
-        
-                
+                  
     if(member.location.address1 == null || member.location.address1 == "")
         address1 = "No Data"
     else
