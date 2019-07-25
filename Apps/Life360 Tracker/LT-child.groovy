@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.4 - 07/25/19 - Fixed typo with 'On the Move' in 'Track All'
  *  V1.2.3 - 07/25/19 - Added user selectable time to report 'On the Move' to 'Track All'
  *  V1.2.2 - 07/24/19 - Added user selectable time to report 'On the Move' to 'Track Specific'
  *  V1.2.1 - 07/23/19 - More and more and more tweaking to get arrived/departed/move to work correctly.
@@ -67,7 +68,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.3"
+	state.version = "v1.2.4"
     state.appName = "Life360 Tracker Child"
     if(sendToAWSwitch && awDevice) {
 		awInfo = "${state.appName}:${state.version}"
@@ -351,9 +352,15 @@ def trackAllHandler() {
             state.speakDEP = "yes"
             messageHandler()
         } else {
+            if(state.sMove == null) {
+                def now = new Date()
+                long startMove = now.getTime()
+                state.sMove = startMove
+                if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+            }
             getTimeMoving()
             if(state.mDiff >= timeMoving) {
-                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
                 state.msg = "${messageMOVE}"
                 state.speakMOVE = "yes"
                 messageHandler()
@@ -361,9 +368,9 @@ def trackAllHandler() {
                 def now = new Date()
                 long startMove = now.getTime()
                 state.sMove = startMove
-                if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
             } else {
-                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value} ;)"   
+                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value} ;)"   
             }
         }
         state.prevPlace = state.address1Value
