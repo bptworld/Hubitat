@@ -38,7 +38,8 @@
  *
  *  Changes:
  *
- *  V1.2.2 - 07/24/19 - Added user selectable time to report 'On the Move'
+ *  V1.2.3 - 07/25/19 - Added user selectable time to report 'On the Move' to 'Track All'
+ *  V1.2.2 - 07/24/19 - Added user selectable time to report 'On the Move' to 'Track Specific'
  *  V1.2.1 - 07/23/19 - More and more and more tweaking to get arrived/departed/move to work correctly.
  *  V1.2.0 - 07/22/19 - More adjustments to 'Home'
  *  V1.1.9 - 07/19/19 - Found a big bug with Arrived.
@@ -66,7 +67,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.2"
+	state.version = "v1.2.3"
     state.appName = "Life360 Tracker Child"
     if(sendToAWSwitch && awDevice) {
 		awInfo = "${state.appName}:${state.version}"
@@ -289,7 +290,7 @@ def initialize() {
 }
 
 def userHandler(evt) {
-    if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - App version: ${state.version} ----------"
+    if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - App version: ${state.version} (${lifeVersion}) ----------"
     state.address1Value = presenceDevice.currentValue("address1")
     if(logEnable) log.debug "In userHandler - address1Value: ${state.address1Value} - prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere} - version: ${state.version}"
     if(lifeVersion == "Paid") alertBattHandler()
@@ -301,7 +302,7 @@ def userHandler(evt) {
             trackSpecificHandler()
         }
     }
-    if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - App version: ${state.version} ----------"
+    if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - App version: ${state.version} (${lifeVersion}) ----------"
 }
 
 // *** Track All ***
@@ -350,15 +351,25 @@ def trackAllHandler() {
             state.speakDEP = "yes"
             messageHandler()
         } else {
-            if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
-            state.msg = "${messageMOVE}"
-            state.speakMOVE = "yes"
-            messageHandler()
+            getTimeMoving()
+            if(state.mDiff >= timeMoving) {
+                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                state.msg = "${messageMOVE}"
+                state.speakMOVE = "yes"
+                messageHandler()
+                state.beenHere = "no"
+                def now = new Date()
+                long startMove = now.getTime()
+                state.sMove = startMove
+                if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+            } else {
+                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value} ;)"   
+            }
         }
         state.prevPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
-        if(logEnable) log.debug "In trackAllHandler - Departed/Move - beenHere: ${state.beenHere}"
+        if(logEnable) log.debug "In trackAllHandler - End of Departed/Move - beenHere: ${state.beenHere}"
     }
 }
 
