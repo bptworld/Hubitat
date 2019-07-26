@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.5 - 07/26/19 - Missed a line with 'On the Move' in 'Track All'
  *  V1.2.4 - 07/25/19 - Fixed typo with 'On the Move' in 'Track All'
  *  V1.2.3 - 07/25/19 - Added user selectable time to report 'On the Move' to 'Track All'
  *  V1.2.2 - 07/24/19 - Added user selectable time to report 'On the Move' to 'Track Specific'
@@ -68,7 +69,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.4"
+	state.version = "v1.2.5"
     state.appName = "Life360 Tracker Child"
     if(sendToAWSwitch && awDevice) {
 		awInfo = "${state.appName}:${state.version}"
@@ -313,6 +314,7 @@ def trackAllHandler() {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
     state.speakDEP = "no"
