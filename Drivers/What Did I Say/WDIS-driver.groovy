@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.8 - 07/27/19 - '%5B'is replaced with '[' and '%5D'is replaced with ']' in any speech received.
  *  V1.1.7 - 07/22/19 - Second try at fixing bug in priority handling.
  *  V1.1.6 - 07/22/19 - Found bug in priority handling. '%20'is replaced with ' ' in any speech received.
  *  V1.1.5 - 07/15/19 - Minor code changes
@@ -56,7 +57,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.1.7"}
+def version(){"v1.1.8"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -94,28 +95,28 @@ metadata {
 
 //Received new messages from apps
 def sendSpeechMap(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ")
-	state.speechReceived = speechMap.take(70).replace("%20"," ")
+	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	populateMap()
 }
 
 def playTextAndRestore(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ")
-	state.speechReceived = speechMap.take(70).replace("%20"," ")
+	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	sendEvent(name: "playTextAndRestore", value: text)
 	populateMap()
 }
 
 def setVolumeSpeakAndRestore(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ")
-	state.speechReceived = speechMap.take(70).replace("%20"," ")
+	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	sendEvent(name: "setVolumeSpeakAndRestore", value: text)
 	populateMap()
 }
 
 def speak(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ")
-	state.speechReceived = speechMap.take(70).replace("%20"," ")
+	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	sendEvent(name: "speak", value: text)
 	populateMap()
 }
