@@ -289,7 +289,7 @@ def testSpeaker() {
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
         if(logEnable) log.debug "In testButtonHandler - Testing Speaker"
         testResult = "<table align=center><tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
-        testResult += "<tr><td colspan=3 align=center><b>Speaker Test Results</b></td></tr>"
+            testResult += "<tr><td colspan=3 align=center><b>Speaker Test Results - ${state.version}</b></td></tr>"
         state.speakers.each {
             if(it.hasCommand('setVolumeSpeakAndRestore')) {
                 testResult += "<tr><td>${it}</td><td> - </td><td>uses setVolumeSpeakAndRestore</td></tr>"
