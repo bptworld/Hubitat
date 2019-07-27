@@ -32,7 +32,6 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *
  *  V1.2.6 - 07/27/19 - One small change to speaker test
  *  V1.2.5 - 07/27/19 - Found naming conflict with testSpeaker, added more logging
  *  V1.2.4 - 07/16/19 - Fixed problem with Speech Synth options.
@@ -297,7 +296,7 @@ def testSpeaker() {
             } else if(it.hasCommand('playTextAndRestore')) {
                 testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"
             } else if(it.hasCommand('playTrack')) {
-                testResult += "<tr><td>${it}</td><td> - </td><td>no restore, manual vol control</td></tr>"
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTrack</td></tr>"
             } else {
                 testResult += "<tr><td>${it}</td><td> - </td><td>Can not play sounds or change voices.</td></tr>"
             }
