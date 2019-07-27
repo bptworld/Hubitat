@@ -138,13 +138,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.2.3",
+  "FollowMeChildVersion": "v1.2.5",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.2.3 - 07/06/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.",
+  "FollowMeUpdateNote": "V1.2.5 - 07/27/19 - Found naming conflict with testSpeaker, added more logging",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
