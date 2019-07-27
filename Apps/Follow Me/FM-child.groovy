@@ -293,15 +293,21 @@ def testSpeaker() {
         state.speakers.each {
             if(it.hasCommand('setVolumeSpeakAndRestore')) {
                 testResult += "<tr><td>${it}</td><td> - </td><td>uses setVolumeSpeakAndRestore</td></tr>"
-            } else if(it.hasCommand('playTextAndRestore')) {
-                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"
-            } else if(it.hasCommand('playTrack')) {
-                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTrack</td></tr>"
             } else {
-                testResult += "<tr><td>${it}</td><td> - </td><td>Can not play sounds or change voices.</td></tr>"
+                testResult += "<tr><td>${it}</td><td> - </td><td>Does not support 'setVolumeSpeakAndRestore'</td></tr>"
+            }
+            if(it.hasCommand('playTextAndRestore')) {
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"  
+            } else {
+                testResult += "<tr><td>${it}</td><td> - </td><td>Does not support 'playTextAndRestore'</td></tr>"
+            }
+            if(it.hasCommand('playTrack')) {
+                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTrack - May play sounds and change voices</td></tr>"
+            } else {
+                testResult += "<tr><td>${it}</td><td> - </td><td>Does not support 'playTrack'. Can not play sounds or change voices.</td></tr>"
             }
         }
-        testResult += "<tr><td colspan=3><br>*Note: Speaker proxies can't be accurately tested.<br>If using a speaker proxy like 'What Did I Say', always fill in the failsafe fields.</td><tr>"
+        testResult += "<tr><td colspan=3><br>*Note: Not all speakers can play sounds or change voices.<br>*Note: Speaker proxies can't be accurately tested. If using a speaker proxy like 'What Did I Say', always fill in the failsafe fields.</td><tr>"
         testResult += "<tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
         testResult += "</table>"
         paragraph "${testResult}"
