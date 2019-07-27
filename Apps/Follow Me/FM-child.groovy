@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.2.6 - 07/27/19 - One small change to speaker test
  *  V1.2.5 - 07/27/19 - Found naming conflict with testSpeaker, added more logging
  *  V1.2.4 - 07/16/19 - Fixed problem with Speech Synth options.
  *  V1.2.3 - 07/05/19 - Complete rewrite of the speech handler. Should handle volume restore better on devices that support it.
@@ -63,7 +64,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.5"
+	state.version = "v1.2.6"
 }
 
 definition(
@@ -295,8 +296,10 @@ def testSpeaker() {
                 testResult += "<tr><td>${it}</td><td> - </td><td>uses setVolumeSpeakAndRestore</td></tr>"
             } else if(it.hasCommand('playTextAndRestore')) {
                 testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"
-            } else {
+            } else if(it.hasCommand('playTrack')) {
                 testResult += "<tr><td>${it}</td><td> - </td><td>no restore, manual vol control</td></tr>"
+            } else {
+                testResult += "<tr><td>${it}</td><td> - </td><td>Can not play sounds or change voices.</td></tr>"
             }
         }
         testResult += "<tr><td colspan=3><br>*Note: Speaker proxies can't be accurately tested.<br>If using a speaker proxy like 'What Did I Say', always fill in the failsafe fields.</td><tr>"
