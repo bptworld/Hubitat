@@ -28,7 +28,7 @@
  *
  *  v1.0.1 - 07/26/19 - Stripped down to the bare minimum so this version only works with Life360 with States
  *                    - Changed name/namespace/author to stop any confusion between this version and the original
- *                    - Added info box and Debug Logging switch
+ *                    - Added info box, Debug Logging switch and importURL
  *  v1.0.0 - 07/25/19 - Modified for use with Life360 with States
  *
  */
