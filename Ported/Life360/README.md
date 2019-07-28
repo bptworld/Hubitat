@@ -16,7 +16,5 @@ Go to ‘Apps’
 * Select ‘Life360 with States’ under ‘User Apps’
 <br>
 Once again thanks to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible without his work.<br>Also, Special thanks to @stephack for his amazing container code and for allowing others to use/modify and learn from it!<br><br>
-
-<br>
 Bryan<br>
 @BPTWorld
