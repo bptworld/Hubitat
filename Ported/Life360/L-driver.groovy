@@ -92,7 +92,7 @@ metadata {
     attribute "history", "string"
     attribute "status", "string"
     attribute "lastMap", "string"
-
+        
 	command "refresh"
 	command "asleep"
     command "awake"
@@ -145,6 +145,7 @@ if(bWifi == "true") {
 }
 
 int sEpoch = device.currentValue('since')
+if(sEpoch == null) sEpoch = new Date()
 theDate = use( groovy.time.TimeCategory ) {
     new Date( 0 ) + sEpoch.seconds
 }
@@ -152,7 +153,6 @@ SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E hh:mm a")
 String dateSince = DATE_FORMAT.format(theDate)
 
 theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue('latitude')},${device.currentValue('longitude')}"
-//theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
     
 if(life360Paid) {
 	tileMap = "<table width='100%' valign='top'>"
@@ -440,12 +440,14 @@ if(speedKm != device.currentValue('speedKm'))
 	sendEvent( name: "speedKm", value: speedKm )
 if(wifiState != device.currentValue('wifiState'))
    	sendEvent( name: "wifiState", value: wifiState )
-   	setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+
 sendEvent( name: "savedPlaces", value: xplaces )
+    
 sendEvent( name: "avatar", value: avatar )
 sendEvent( name: "avatarHtml", value: avatarHtml )
 
-sendLife360Tile1()
+    sendLife360Tile1()
 }
 
 def setMemberId (String memberId) {
