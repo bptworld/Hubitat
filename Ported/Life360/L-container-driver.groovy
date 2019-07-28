@@ -36,7 +36,7 @@
 def version() {"v1.0.1"}
 
 metadata {
-	definition (name: "Life360 Container", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Life360 Container", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-container-driver.groovy") {
         capability "Refresh"
         attribute "containerSize", "number"	//stores the total number of child switches created by the container
         command "createDevice", ["DEVICE LABEL", "DRIVER TYPE ", "NAMESPACE ."] //create any new Virtual Device
