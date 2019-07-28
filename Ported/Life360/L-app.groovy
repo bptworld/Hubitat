@@ -298,8 +298,8 @@ def installed() {
             if(!container) createContainer(member)
             
             container = getChildDevices().find{it.typeName == "Life360 Container"}
-            def vChildren = container.childList()
-            if(vChildren.find{it.data.vcId == "${member}"}){
+            def childDevice = container.childList()
+            if(childDevice.find{it.data.vcId == "${member}"}){
                 if(logEnable) log.debug "${member.firstName} already exists...skipping"
             } else {
                 if(logEnable) log.debug "Creating Life360 Device: " + member
@@ -346,11 +346,8 @@ def createCircleSubscription() {
 
     createAccessToken() // create our own OAUTH access token to use in webhook url
    
+    def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"
 
-   
-   def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"
-         
-   
     def url = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
         
     def postBody =  "url=${hookUrl}"
@@ -403,8 +400,8 @@ def updated() {
     		member = state.members.find{it.id==memberId}
             
           // Modified from @Stephack  
-            def vChildren = container.childList()
-            if(vChildren.find{it.data.vcId == "${member}"}){
+            def childDevice = container.childList()
+            if(childDevice.find{it.data.vcId == "${member}"}){
                 if(logEnable) log.debug "${member.firstName} already exists...skipping"
             } else {
                 if(logEnable) log.debug "Creating Life360 Device: " + member
