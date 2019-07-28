@@ -1,4 +1,6 @@
 /**
+ *  ---- Original Header ----
+ *
  *  Life360 with States - Hubitat Port
  *
  *	BTRIAL DISTANCE AND SLEEP PATCH 29-12-2017
@@ -21,9 +23,31 @@
  *
  * ---- End of original header ----
  *
+ * ---- New Header ----
+ *
+ *  ****************  L360 with States App  ****************
+ *
+ *  Design Usage:
+ *  Life360 with all States Included
+ *
+ *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  
+ *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
+ *  people know that it exists!  Thanks.
+ *
+ *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
+ *
+ *  Paypal at: https://paypal.me/bptworld
+ *
+ * ------------------------------------------------------------------------------------------------------------------------------
+ *
  *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
  *  without his work.
  *
+ *  Changes:
+ *
+ *  v1.1.5 - 07/28/19 - Members are now created within a virtual container 'Life360 Members'. Thanks to code by @stephack
  *  V1.1.4 - 07/23/19 - Places list now in alphabetical order.
  *  V1.1.3 - 07/12/19 - 1 min update http calls now use async thanks to cwwilson08
  *  V1.1.2 - 07/10/19 - More changes from cwwilson08
@@ -43,7 +67,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.1.4"
+	state.version = "v1.1.5"
 }
 
 definition(
@@ -148,7 +172,7 @@ def testLife360Connection() {
        		state.life360AccessToken = result.data.access_token
             return true;
        	}
-    	log.info "Life360 initializeLife360Connection, response=${result.data}"
+    	if(logEnable) log.debug "Life360 initializeLife360Connection, response=${result.data}"
         return ;   
     }
     catch (e) {
@@ -205,7 +229,7 @@ def listCircles() {
      	        result = response
             }
 
-            if(logEnable) log.debug "Places=${result.data}" 
+            //if(logEnable) log.debug "Places=${result.data}" 
 
             def places = result.data.places
             
@@ -213,7 +237,9 @@ def listCircles() {
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Place to Match Current Location")) {
                 paragraph "Please select the ONE Life360 Place that matches your Hubitat location: ${location.name}"
-                input "place", "enum", multiple: false, required:true, title:"Life360 Places: ", options: places.collectEntries{[it.id, it.name]}, submitOnChange: true
+                thePlaces = places.collectEntries{[it.id, it.name]}
+                sortedPlaces = thePlaces.sort { a, b -> a.value <=> b.value }
+                input "place", "enum", multiple: false, required:true, title:"Life360 Places: ", options: sortedPlaces, submitOnChange: true
             }
         }
         
@@ -234,7 +260,7 @@ def listCircles() {
      	        result = response
             }
 
-            if(logEnable) log.debug "Members=${result.data}"
+            //if(logEnable) log.debug "Members=${result.data}"
 
             // save members list for later
 
@@ -243,8 +269,10 @@ def listCircles() {
             state.members = members
 
             // build preferences page
-            section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Users to Import into Hubitat")) {
-        	    input "users", "enum", multiple: true, required:false, title:"Life360 Users: ", options: members.collectEntries{[it.id, it.firstName+" "+it.lastName]}, submitOnChange: true
+            section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Members to Import into Hubitat")) {
+                theMembers = members.collectEntries{[it.id, it.firstName+" "+it.lastName]}
+                sortedMembers = theMembers.sort { a, b -> a.value <=> b.value }
+        	    input "users", "enum", multiple: true, required:false, title:"Life360 Members: ", options: sortedMembers, submitOnChange: true
             }
             section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
 			    input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
@@ -261,20 +289,32 @@ def installed() {
     settings.users.each {memberId->
     	// if(logEnable) log.debug "Find by Member Id = ${memberId}"
     	def member = state.members.find{it.id==memberId}
-        // if(logEnable) log.debug "After Find Attempt.
-       	// if(logEnable) log.debug "Member Id = ${member.id}, Name = ${member.firstName} ${member.lastName}, Email Address = ${member.loginEmail}"
-        // if(logEnable) log.debug "External Id=${app.id}:${member.id}"
+
        	// create the device
         if(member) {
-            // old
-            def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
-       		
-            // new
-           // def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true, isComponent: false, componentName: "Life360 with States", componentLabel: member.firstName])
-    	        	
+
+          // Modified from @Stephack
+            def container = getChildDevices().find{it.typeName == "Life360 Container"}
+            if(!container) createContainer(member)
+            
+            container = getChildDevices().find{it.typeName == "Life360 Container"}
+            def vChildren = container.childList()
+            if(vChildren.find{it.data.vcId == "${member}"}){
+                if(logEnable) log.debug "${member.firstName} already exists...skipping"
+            } else {
+                if(logEnable) log.debug "Creating Life360 Device: " + member
+                try{
+                    container.appCreateDevice("${member.firstName}", "Life360 User", "BPTWorld", "${app.id}.${member.id}")
+                }
+                catch (e) {
+                    log.error "Child device creation failed with error = ${e}"
+                }
+            }
+          // end mod
+            
             if (childDevice)
         	{
-        		 if(logEnable) log.debug "Child Device Successfully Created"
+        		if(logEnable) log.debug "Child Device Successfully Created"
      			generateInitialEvent (member, childDevice)
        		}
     	}
@@ -348,22 +388,34 @@ def updated() {
     // loop through selected users and try to find child device for each
     settings.users.each {memberId->
     	def externalId = "${app.id}.${memberId}"
-
+        
+      // Modified from @Stephack  
+        def container = getChildDevices().find{it.typeName == "Life360 Container"}
+        if(!container) createContainer(member)
+      // end mod
+        
 		// find the appropriate child device based on my app id and the device network id
-		def deviceWrapper = getChildDevice("${externalId}")
+        container = getChildDevices().find{it.typeName == "Life360 Container"}
+		def deviceWrapper = container.getChildDevice("${externalId}")
         
         if (!deviceWrapper) { // device isn't there - so we need to create
     
-    		// if(logEnable) log.debug "Find by Member Id = ${memberId}"
-    
-    		def member = state.members.find{it.id==memberId}
-       
-       		// create the device
-            // old
-       		def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
- 
-            // new
-            //def childDevice = addChildDevice("BPTWorld", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true, isComponent: false, componentName: "Life360 with States", componentLabel: member.firstName])
+    		member = state.members.find{it.id==memberId}
+            
+          // Modified from @Stephack  
+            def vChildren = container.childList()
+            if(vChildren.find{it.data.vcId == "${member}"}){
+                if(logEnable) log.debug "${member.firstName} already exists...skipping"
+            } else {
+                if(logEnable) log.debug "Creating Life360 Device: " + member
+                try{
+                    container.appCreateDevice("${member.firstName}", "Life360 User", "BPTWorld", "${app.id}.${member.id}")
+                }
+                catch (e) {
+                    log.error "Child device creation failed with error = ${e}"
+                }
+            }
+          // end mod
             
         	if (childDevice)
         	{
@@ -379,24 +431,29 @@ def updated() {
     }
 
 	// Now remove any existing devices that represent users that are no longer selected
-    def childDevices = getAllChildDevices()
-    if(logEnable) log.debug "Child Devices = ${childDevices}"
+    def container = getChildDevices().find{it.typeName == "Life360 Container"}
+    def childDevices = container.childList()
+    
+    if(logEnable) log.debug "Child Devices: ${childDevices}"
     
     childDevices.each {childDevice->
-    	if(logEnable) log.debug "Child = ${childDevice}, DNI=${childDevice.deviceNetworkId}"
+        if(logEnable) log.debug "(l-439) Child = ${childDevice}, DNI=${childDevice.deviceNetworkId}"
         
-        // def childMemberId = childDevice.getMemberId()
-        def splitStrings = childDevice.deviceNetworkId.split("\\.")
-        if(logEnable) log.debug "Strings = ${splitStrings}"
-        def childMemberId = splitStrings[1]
+        def (childAppName, childMemberId) = childDevice.deviceNetworkId.split("\\.")
         if(logEnable) log.debug "Child Member Id = ${childMemberId}"
         if(logEnable) log.debug "Settings.users = ${settings.users}"
         if (!settings.users.find{it==childMemberId}) {
-            deleteChildDevice(childDevice.deviceNetworkId)
+            container.deleteChildDevice(childDevice.deviceNetworkId)
             def member = state.members.find {it.id==memberId}
-            if (member)
-            	state.members.remove(member)
+            if (member) state.members.remove(member)
         }
+    }
+    childDevices = container.childList()
+    memberSize = childDevices.size()
+    if(logEnable) log.debug "MemberSize: ${memberSize}"
+    if(memberSize == 0) {
+        if(logEnable) log.debug "Life360 Container has 0 devices - Removing Container"
+        deleteChildDevice(container.deviceNetworkId)
     }
 }
 
@@ -538,9 +595,11 @@ def placeEventHandler() {
     if (placeId == settings.place) {
 		def presenceState = (direction=="in")
 		def externalId = "${app.id}.${userId}"
-
+        
+        def container = getChildDevices().find{it.typeName == "Life360 Container"}
+        
 		// find the appropriate child device based on my app id and the device network id
-		def deviceWrapper = getChildDevice("${externalId}")
+		def deviceWrapper = container.getChildDevice("${externalId}")
 
 		// invoke the generatePresenceEvent method on the child device
 		if (deviceWrapper) {
@@ -573,6 +632,7 @@ def sendCmd(url, result){
 }
 
 def cmdHandler(resp, data) {
+    
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
        
         result = resp.getJson()
@@ -595,7 +655,9 @@ def cmdHandler(resp, data) {
 
 	// find the appropriate child device based on my app id and the device network id
 
-    def deviceWrapper = getChildDevice("${externalId}")   
+    def container = getChildDevices().find{it.typeName == "Life360 Container"}
+
+    def deviceWrapper = container.getChildDevice("${externalId}") 
     def address1
     def address2
     def speed
@@ -608,7 +670,7 @@ def cmdHandler(resp, data) {
         
     xplaces = "${thePlaces.name}".replaceAll(", ",",")
         
-    log.warn "xplaces: ${xplaces}"
+    //log.warn "xplaces: ${xplaces}"
         
     if (member.avatar != null){
         avatar = member.avatar
@@ -681,6 +743,21 @@ def cmdHandler(resp, data) {
         }     
     }
 }
+
+def createContainer(member){                // Modified from @Stephack
+    def container = getChildDevices().find{it.typeName == "Life360 Container"}
+    if(!container){
+        if(logEnable) log.debug "Creating Life360 Container"
+        try {
+            container = addChildDevice("BPTWorld", "Life360 Container", "Life360-${app.id}", null, [name: "Life360-Members", label: "Life360 Members", completedSetup: true]) 
+        } catch (e) {
+            log.error "Container device creation failed with error = ${e}"
+        }
+        //createVchild(container, member)
+    }
+    //else {createVchild(container, member)}
+}
+
 // ********** Normal Stuff **********
 
 def getImage(type) {					// Modified from @Stephack
