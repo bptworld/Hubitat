@@ -146,10 +146,15 @@ if(bWifi == "true") {
 }
 
 int sEpoch = device.currentValue('since')
-if(sEpoch == null) sEpoch = new Date()
-theDate = use( groovy.time.TimeCategory ) {
-    new Date( 0 ) + sEpoch.seconds
-}
+    if(sEpoch == null) {
+        theDate = use( groovy.time.TimeCategory ) {
+            new Date( 0 )
+        }
+    } else {
+        theDate = use( groovy.time.TimeCategory ) {
+            new Date( 0 ) + sEpoch.seconds
+        }
+    }
 SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E hh:mm a")
 String dateSince = DATE_FORMAT.format(theDate)
 
