@@ -32,6 +32,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
+ *
+ *  V1.2.7 - 07/28/19 - More changes to play Track
  *  V1.2.6 - 07/27/19 - One small change to speaker test
  *  V1.2.5 - 07/27/19 - Found naming conflict with testSpeaker, added more logging
  *  V1.2.4 - 07/16/19 - Fixed problem with Speech Synth options.
@@ -63,7 +65,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.6"
+	state.version = "v1.2.7"
 }
 
 definition(
@@ -336,7 +338,7 @@ def speakerStatus(){
             voiceSpeakers += "<tr><td>Echo Spot</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
             voiceSpeakers += "<tr><td colspan=5> </td></tr>"
             voiceSpeakers += "<tr><td><b>Sonos Speakers</b></td><td> - </td><td><b>Play<br>Sounds</b></td><td><b>Change<br>Voices</b></td><td><b>Auto Restore<br>Volume</b></td></tr>"
-            voiceSpeakers += "<tr><td>Sonos One</td><td> - </td><td>?</td><td>?</td><td>?</td></tr>"
+            voiceSpeakers += "<tr><td>Sonos One</td><td> - </td><td>yes</td><td>yes</td><td>yes</td></tr>"
             voiceSpeakers += "<tr><td colspan=5> </td></tr>"
             voiceSpeakers += "<tr><td><b>Other Speakers</b></td><td> - </td><td><b>Play<br>Sounds</b></td><td><b>Change<br>Voices</b></td><td><b>Auto Restore<br>Volume</b></td></tr>"
             voiceSpeakers += "</table>"
@@ -466,7 +468,7 @@ def contactSensorHandler(evt) {
 	}
 	if(contactOption == "Open") {
 		if(state.contactStatus == "open") {
-			if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
+			if(logEnable) log.debug "In contactSensorHandler (${state.version}) - setting sZone to true"
 			atomicState.sZone = true
 			speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
@@ -521,7 +523,7 @@ def lastSpokenHandler(speech) {
 		state.lastSpoken = state.cleanUp
 	}
 	if(state.lastSpoken == null) state.lastSpoken = ""
-	if(logEnable) log.debug "In lastSpoken - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}"
+	if(logEnable) log.debug "In lastSpoken (${state.version}) - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}"
 	letsTalk()
 	sendPush()
 }
@@ -563,30 +565,44 @@ def letsTalk() {
             atomicState.speechDuration2 = speechDuration * 1000
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
+                priorityVoicesHandler(it)
                 if(logEnable) log.debug "Speaker in use: ${it}"
                 if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - speakerProxy - ${it}"
                     it.speak(state.lastSpoken)
                 } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
+                    if(it.hasCommand('playTrack')) {
+                        if(state.sound) it.playTrack(state.sound)
+			            pauseExecution(1000)
+                        it.setVolumeSpeakAndRestore(state.volume, state.uriMessage, prevVolume)
+                    } else {
+                        it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
+                    }
                 } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(state.lastSpoken, prevVolume)
+                    if(it.hasCommand('playTrack')) {
+                        if(state.sound) it.playTrack(state.sound)
+			            pauseExecution(1000)
+                        it.playTextAndRestore(state.volume, state.uriMessage, prevVolume)
+                    } else {
+                        it.playTextAndRestore(state.lastSpoken, prevVolume)
+                    }
                 } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it} - Okay!"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - ${it} - Okay!"
                     if(gInitialize) initializeSpeaker()
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    if(priorityVoices) {
-                        speaker = it
-					    priorityVoicesHandler()
-				    } else {
-				        if(logEnable) log.debug "In letsTalk - Using Hubitat's default voice"
+                    if(it.hasCommand('playTrack')) {
+                        if(state.sound) it.playTrack(state.sound)
+			            pauseExecution(1000)
+                        it.playTrack(state.uriMessage)
+                    } else {
+				        if(logEnable) log.debug "In letsTalk (${state.version}) - Using Hubitat's default voice"
 					    it.speak(state.lastSpoken)
 				    }
                     pauseExecution(atomicState.speechDuration2)
@@ -596,13 +612,13 @@ def letsTalk() {
             }
             speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
-			log.info "${app.label} - ${state.lastSpoken}"
+			if(logEnable) log.debug "${app.label} - ${state.lastSpoken}"
 			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
         } else {
-		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+		if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
 	    }
 	} else {
-		if(logEnable) log.debug "In letsTalk - Zone is off"
+		if(logEnable) log.debug "In letsTalk (${state.version}) - Zone is off"
 	}
 }
 
@@ -618,7 +634,7 @@ def checkTime() {
   	} else {  
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+	if(logEnable) log.debug "In checkTime (${state.version}) - timeBetween: ${state.timeBetween}"
 }
 
 def checkVol() {
@@ -633,7 +649,7 @@ def checkVol() {
 	} else {
 		state.volume = volSpeech
 	}
-	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
+	if(logEnable) log.debug "In checkVol (${state.version}) - volume: ${state.volume}"
     
 	if(messagePriority) {
 		if(logEnable) log.debug "In checkVol (${state.version}) - priority: ${state.priority}"
@@ -653,100 +669,73 @@ def checkVol() {
         } else {
             state.volume = volSpeech
 			state.voiceSelected = voiceNorm
-            if(logEnable) log.debug "In checkVol - Priority NOt found - priority volume: ${state.volume}"
+            if(logEnable) log.debug "In checkVol (${state.version}) - Priority NOt found - priority volume: ${state.volume}"
         }
-        if(logEnable) log.debug "In checkVol - priority message: ${state.priority} - priority volume: ${state.volume}"
+        if(logEnable) log.debug "In checkVol (${state.version}) - priority message: ${state.priority} - priority volume: ${state.volume}"
 	}
 }
 
-def priorityVoicesHandler() {
+def priorityVoicesHandler(it) {
     if(state.lastSpoken == ".") state.lastSpoken = ""
-    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${speaker} - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
+    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
 	def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 	def uriMessage = "${tts.get('uri')}"
-	if(state.priority.contains("1")) {
-		if(sound1) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound1)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 1 not defined"
-	}
-	if(state.priority.contains("2")) {
-		if(sound2) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound2)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 2 not defined"
-	}
-	if(state.priority.contains("3")) {
-		if(sound3) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound3)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 3 not defined"
-	}
-	if(state.priority.contains("4")) {
-		if(sound4) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound4)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 4 not defined"
-	}
-	if(state.priority.contains("5")) {
-		if(sound5) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound5)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 5 not defined"
-	}
-    if(state.priority.contains("6")) {
-		if(sound6) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound6)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 6 not defined"
-	}
-    if(state.priority.contains("7")) {
-		if(sound7) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound7)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 7 not defined"
-	}
-    if(state.priority.contains("8")) {
-		if(sound8) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound8)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 8 not defined"
-	}
-    if(state.priority.contains("9")) {
-		if(sound9) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound9)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 9 not defined"
-	}
-    if(state.priority.contains("10")) {
-		if(sound10) {
-            if(speaker.hasCommand('playTrack')) {
-			    speaker.playTrack(sound10)
-			    pauseExecution(1000)
-            } else log.info "Follow Me - ${speaker} doesn't support playTrack"
-		} else log.info "${app.label} - Sound 10 not defined"
-	}
+    if(it.hasCommand('playTrack')) {
+        state.sound = ""
+	    if(state.priority.contains("1")) {
+            if(sound1) {
+                state.sound = sound1
+            } else { if(logEnable) log.debug "${app.label} - Sound 1 not defined" }
+        } else
+	    if(state.priority.contains("2")) {
+            if(sound2) {
+                state.sound = sound2
+            } else { if(logEnable) log.debug "${app.label} - Sound 2 not defined" }
+        } else
+	    if(state.priority.contains("3")) {
+            if(sound3) {
+                state.sound = sound3
+            } else { if(logEnable) log.debug "${app.label} - Sound 3 not defined" }
+        } else
+        if(state.priority.contains("4")) {
+            if(sound4) {
+                state.sound = sound4
+            } else { if(logEnable) log.debug "${app.label} - Sound 4 not defined" }
+        } else
+        if(state.priority.contains("5")) {
+            if(sound5) {
+                state.sound = sound5
+            } else { if(logEnable) log.debug "${app.label} - Sound 5 not defined" }
+        } else
+        if(state.priority.contains("6")) {
+            if(sound6) {
+                state.sound = sound6
+            } else { if(logEnable) log.debug "${app.label} - Sound 6 not defined" }
+        } else
+        if(state.priority.contains("7")) {
+            if(sound7) {
+                state.sound = sound7
+            } else { if(logEnable) log.debug "${app.label} - Sound 7 not defined" }
+        } else
+        if(state.priority.contains("8")) {
+            if(sound8) {
+                state.sound = sound8
+            } else { if(logEnable) log.debug "${app.label} - Sound 8 not defined" }
+        } else
+        if(state.priority.contains("9")) {
+            if(sound9) {
+                state.sound = sound9
+            } else { if(logEnable) log.debug "${app.label} - Sound 9 not defined" }
+        } else
+        if(state.priority.contains("10")) {
+            if(sound10) {
+                state.sound = sound10
+            } else { if(logEnable) log.debug "${app.label} - Sound 10 not defined" }
+        }
+	} else if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
     
-	if(logEnable) log.debug "In priorityVoicesHandler - ${uriMessage}"
-	speaker.playTrack(uriMessage)
+	if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - ${uriMessage}"
+    state.uriMessage = uriMessage
 }
 
 def sendPush() {
