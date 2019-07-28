@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  V1.1.2 - 07/28/19 - Squashed a bug
  *  V1.1.1 - 07/19/19 - Place is now clickable on the status tile.
  *  V1.1.0 - 07/17/19 - Added map link to attributes
  *  V1.0.9 - 07/13/19 - Code touchups by cwwilson08
