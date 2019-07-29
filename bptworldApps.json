@@ -138,13 +138,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.2.7",
+  "FollowMeChildVersion": "v1.2.8",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.2.7 - 07/28/19 - More changes to play Track",
+  "FollowMeUpdateNote": "V1.2.8 - 07/28/19 - Major changes for Sonos speakers",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
