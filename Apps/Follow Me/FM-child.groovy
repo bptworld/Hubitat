@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.2.9 - 07/29/19 - Added new field 'Sound Length (in seconds)', more attention to Sonos speakers
  *  V1.2.8 - 07/28/19 - Major changes for Sonos speakers
  *  V1.2.7 - 07/28/19 - More changes to play Track
  *  V1.2.6 - 07/27/19 - One small change to speaker test
@@ -66,7 +67,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.8"
+	state.version = "v1.2.9"
 }
 
 definition(
@@ -132,6 +133,28 @@ def pageConfig() {
                 paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
               	input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
          		input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
+   
+/**
+                allSpeakers = [speakerSS, speakerMP].flatten().findAll{it}
+                
+                allSpeakers.each { sp ->
+                    // Try to get what type of speaker it is
+                    sType = sp.getDataValue("model")
+                    if(sType == null) sType = sp.currentValue("deviceStyle")
+                    
+                    if(sType == null) sType = "Undefined"
+               
+                    if(sType.toLowerCase().contains("google")) {
+                        paragraph "<b>${sp}: ${sType}</b>"
+                    } else if(sType.toLowerCase().contains("alexa") || sType.toLowerCase().contains("echo")) {
+                        paragraph "<b>${sp}: ${sType}</b>"
+                    } else {
+                        paragraph "<b>${sp}: ${sType}</b>"
+                    }
+                }
+                
+*/               
+         
                 input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
                 input(name: "gSpeaker", type: "bool", defaultValue: "false", title: "Is this a Google/Nest device?", description: "Google device?", submitOnChange: true)
 					if(gSpeaker) paragraph "If using Google/Nest speaker devices sometimes an Initialize is necessary (not always)."
@@ -139,7 +162,7 @@ def pageConfig() {
 					if(gSpeaker) input "gInitRepeat", "number", title: "Initialize Google devices every X minutes? (recommended: 4)", required: false
                 input(name: "sSpeaker", type: "bool", defaultValue: "false", title: "Is this a Sonos device?", description: "Sonos device?", submitOnChange: true)
                     if(sSpeaker) paragraph "Sonos speakers have some unique abilities but some don't play well with others. With Sonos you can choose from the following options:<br><b> - use 'playTextAndRestore'</b> - This will allow the speaker to play the message and then restore what it was doing before but does not support sounds or voices<br><b> - use 'playTrack'</b> - This will allow the speaker to play a custom sound before the speech and then speak in a chosen voice but will NOT restore what it was doing<br><b> - use 'playMagic'</b> - If speaker is stopped, use playTrack (custom sounds and voices), If speaker is NOT stopped, use playTextAndRestore so music will resume after message (changing between the two like magic!)"
-                    if(sSpeaker) input "sonosOption", "enum", title: "Select Sonos Speech option", options: ["playTextAndRestore","playTrack","playMagic"], required: true   
+                    if(sSpeaker) input "sonosOption", "enum", title: "Select Sonos Speech option", options: ["playTextAndRestore","playTrack","playMagic","TESTplayTrackAndRestore"], required: true   
           	}
 		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers or click the 'Known Speaker Abilities' button to see a list of known speaker abilites."
@@ -264,26 +287,45 @@ def soundOptions(){
 			paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
             paragraph "<small>Remember you can always try the URL in a browser, to be sure it is valid.</small>"
             input "testTheSpeakers", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
-			input "sound1", "text", title: "Sound - 1", required: false, width: 9
-            if(sound1 && testTheSpeakers) input "testBtn1", "button", title: "Test Sound 1", width: 3
-			input "sound2", "text", title: "Sound - 2", required: false, width: 9
-            if(sound2 && testTheSpeakers) input "testBtn2", "button", title: "Test Sound 2", width: 3
-			input "sound3", "text", title: "Sound - 3", required: false, width: 9
-            if(sound3 && testTheSpeakers) input "testBtn3", "button", title: "Test Sound 3", width: 3
-			input "sound4", "text", title: "Sound - 4", required: false, width: 9
-            if(sound4 && testTheSpeakers) input "testBtn4", "button", title: "Test Sound 4", width: 3
-			input "sound5", "text", title: "Sound - 5", required: false, width: 9
-            if(sound5 && testTheSpeakers) input "testBtn5", "button", title: "Test Sound 5", width: 3
-            input "sound6", "text", title: "Sound - 6", required: false, width: 9
-            if(sound6 && testTheSpeakers) input "testBtn6", "button", title: "Test Sound 6", width: 3
-            input "sound7", "text", title: "Sound - 7", required: false, width: 9
-            if(sound7 && testTheSpeakers) input "testBtn7", "button", title: "Test Sound 7", width: 3
-            input "sound8", "text", title: "Sound - 8", required: false, width: 9
-            if(sound8 && testTheSpeakers) input "testBtn8", "button", title: "Test Sound 8", width: 3
-            input "sound9", "text", title: "Sound - 9", required: false, width: 9
-            if(sound9 && testTheSpeakers) input "testBtn9", "button", title: "Test Sound 9", width: 3
-            input "sound10", "text", title: "Sound - 10", required: false, width: 9
-            if(sound10 && testTheSpeakers) input "testBtn10", "button", title: "Test Sound 10", width: 3
+			input "sound1", "text", title: "Sound - 1", required: false, submitOnChange: true
+            if(sound1 && testTheSpeakers) input "s1Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound1 && testTheSpeakers && s1Length) input "testBtn1", "button", title: "Test Sound 1", width: 3
+            
+			input "sound2", "text", title: "Sound - 2", required: false, width: 9, submitOnChange: true
+            if(sound2 && testTheSpeakers) input "s2Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound2 && testTheSpeakers && s2Length) input "testBtn2", "button", title: "Test Sound 2", width: 3
+            
+			input "sound3", "text", title: "Sound - 3", required: false, width: 9, submitOnChange: true
+            if(sound3 && testTheSpeakers) input "s3Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound3 && testTheSpeakers && s3Length) input "testBtn3", "button", title: "Test Sound 3", width: 3
+            
+			input "sound4", "text", title: "Sound - 4", required: false, width: 9, submitOnChange: true
+            if(sound4 && testTheSpeakers) input "s4Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound4 && testTheSpeakers && s4Length) input "testBtn4", "button", title: "Test Sound 4", width: 3
+            
+			input "sound5", "text", title: "Sound - 5", required: false, width: 9, submitOnChange: true
+            if(sound5 && testTheSpeakers) input "s5Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound5 && testTheSpeakers && s5Length) input "testBtn5", "button", title: "Test Sound 5", width: 3
+            
+            input "sound6", "text", title: "Sound - 6", required: false, width: 9, submitOnChange: true
+            if(sound6 && testTheSpeakers) input "s6Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound6 && testTheSpeakers && s6Length) input "testBtn6", "button", title: "Test Sound 6", width: 3
+            
+            input "sound7", "text", title: "Sound - 7", required: false, width: 9, submitOnChange: true
+            if(sound7 && testTheSpeakers) input "s7Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound7 && testTheSpeakers && s7Length) input "testBtn7", "button", title: "Test Sound 7", width: 3
+            
+            input "sound8", "text", title: "Sound - 8", required: false, width: 9, submitOnChange: true
+            if(sound8 && testTheSpeakers) input "s8Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound8 && testTheSpeakers && s8Length) input "testBtn8", "button", title: "Test Sound 8", width: 3
+            
+            input "sound9", "text", title: "Sound - 9", required: false, width: 9, submitOnChange: true
+            if(sound9 && testTheSpeakers) input "s9Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound9 && testTheSpeakers && s9Length) input "testBtn9", "button", title: "Test Sound 9", width: 3
+            
+            input "sound10", "text", title: "Sound - 10", required: false, width: 9, submitOnChange: true
+            if(sound10 && testTheSpeakers) input "s10Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound10 && testTheSpeakers && s10Length) input "testBtn10", "button", title: "Test Sound 10", width: 3
 		}
 	}
 }		
@@ -578,6 +620,14 @@ def letsTalk() {
                     if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
                     it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
+                } else if(it.hasCommand('playTrackAndRestore')) {   
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackAndRestore - ${it}"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    def prevVolume = it.currentValue("volume")
+                    if(state.sound) it.playTrackAndRestore(state.sound, prevVolume)
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackAndRestore"
+                    it.playTrackAndRestore(state.uriMessage, prevVolume)    
                 } else if(it.hasCommand('playTextAndRestore')) {   
                     if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
@@ -590,7 +640,7 @@ def letsTalk() {
                     if(sSpeaker && sonosOption == "playTrack") {
                         if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTrack"
                         if(state.sound) it.playTrack(state.sound)
-			            pauseExecution(1000)
+			            pauseExecution(state.pauseLength)
                         it.playTrack(state.uriMessage)
                     } else
                     if(sSpeaker && sonosOption == "playMagic") {    
@@ -601,7 +651,7 @@ def letsTalk() {
                             if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                             if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                             if(state.sound) it.playTrack(state.sound)
-			                pauseExecution(1000)
+			                pauseExecution(state.pauseLength)
                             it.playTrack(state.uriMessage)
                             pauseExecution(atomicState.speechDuration2)
                             if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
@@ -620,7 +670,7 @@ def letsTalk() {
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     if(it.hasCommand('playTrack')) {
                         if(state.sound) it.playTrack(state.sound)
-			            pauseExecution(1000)
+			            pauseExecution(state.pauseLength)
                         it.playTrack(state.uriMessage)
                     } else {
 				        if(logEnable) log.debug "In letsTalk (${state.version}) - Using Hubitat's default voice - speak"
@@ -706,57 +756,72 @@ def priorityVoicesHandler(it) {
 	    if(state.priority.contains("1")) {
             if(sound1) {
                 state.sound = sound1
+                state.sLength = s1Length
             } else { if(logEnable) log.debug "${app.label} - Sound 1 not defined" }
         } else
 	    if(state.priority.contains("2")) {
             if(sound2) {
                 state.sound = sound2
+                state.sLength = s2Length
             } else { if(logEnable) log.debug "${app.label} - Sound 2 not defined" }
         } else
 	    if(state.priority.contains("3")) {
             if(sound3) {
                 state.sound = sound3
+                state.sLength = s3Length
             } else { if(logEnable) log.debug "${app.label} - Sound 3 not defined" }
         } else
         if(state.priority.contains("4")) {
             if(sound4) {
                 state.sound = sound4
+                state.sLength = s4Length
             } else { if(logEnable) log.debug "${app.label} - Sound 4 not defined" }
         } else
         if(state.priority.contains("5")) {
             if(sound5) {
                 state.sound = sound5
+                state.sLength = s5Length
             } else { if(logEnable) log.debug "${app.label} - Sound 5 not defined" }
         } else
         if(state.priority.contains("6")) {
             if(sound6) {
                 state.sound = sound6
+                state.sLength = s6Length
             } else { if(logEnable) log.debug "${app.label} - Sound 6 not defined" }
         } else
         if(state.priority.contains("7")) {
             if(sound7) {
                 state.sound = sound7
+                state.sLength = s7Length
             } else { if(logEnable) log.debug "${app.label} - Sound 7 not defined" }
         } else
         if(state.priority.contains("8")) {
             if(sound8) {
                 state.sound = sound8
+                state.sLength = s8Length
             } else { if(logEnable) log.debug "${app.label} - Sound 8 not defined" }
         } else
         if(state.priority.contains("9")) {
             if(sound9) {
                 state.sound = sound9
+                state.sLength = s9Length
             } else { if(logEnable) log.debug "${app.label} - Sound 9 not defined" }
         } else
         if(state.priority.contains("10")) {
             if(sound10) {
                 state.sound = sound10
+                state.sLength = s10Length
             } else { if(logEnable) log.debug "${app.label} - Sound 10 not defined" }
         }
 	} else if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
     
 	if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - ${uriMessage}"
     state.uriMessage = uriMessage
+    try{
+       state.pauseLength = state.sLength * 1000
+    } catch (e) {
+        state.pauseLength = 1000
+    }
 }
 
 def sendPush() {
