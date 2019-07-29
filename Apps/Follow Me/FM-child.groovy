@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.2.8 - 07/28/19 - Major changes for Sonos speakers
  *  V1.2.7 - 07/28/19 - More changes to play Track
  *  V1.2.6 - 07/27/19 - One small change to speaker test
  *  V1.2.5 - 07/27/19 - Found naming conflict with testSpeaker, added more logging
@@ -65,7 +66,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.7"
+	state.version = "v1.2.8"
 }
 
 definition(
@@ -136,6 +137,9 @@ def pageConfig() {
 					if(gSpeaker) paragraph "If using Google/Nest speaker devices sometimes an Initialize is necessary (not always)."
 					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech?", required: true, defaultValue: false
 					if(gSpeaker) input "gInitRepeat", "number", title: "Initialize Google devices every X minutes? (recommended: 4)", required: false
+                input(name: "sSpeaker", type: "bool", defaultValue: "false", title: "Is this a Sonos device?", description: "Sonos device?", submitOnChange: true)
+                    if(sSpeaker) paragraph "Sonos speakers have some unique abilities but some don't play well with others. With Sonos you can choose from the following options:<br><b> - use 'playTextAndRestore'</b> - This will allow the speaker to play the message and then restore what it was doing before but does not support sounds or voices<br><b> - use 'playTrack'</b> - This will allow the speaker to play a custom sound before the speech and then speak in a chosen voice but will NOT restore what it was doing<br><b> - use 'playMagic'</b> - If speaker is stopped, use playTrack (custom sounds and voices), If speaker is NOT stopped, use playTextAndRestore so music will resume after message (changing between the two like magic!)"
+                    if(sSpeaker) input "sonosOption", "enum", title: "Select Sonos Speech option", options: ["playTextAndRestore","playTrack","playMagic"], required: true   
           	}
 		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers or click the 'Known Speaker Abilities' button to see a list of known speaker abilites."
@@ -566,34 +570,51 @@ def letsTalk() {
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
                 priorityVoicesHandler(it)
-                if(logEnable) log.debug "Speaker in use: ${it}"
+                if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
                 if(speakerProxy) {
                     if(logEnable) log.debug "In letsTalk (${state.version}) - speakerProxy - ${it}"
                     it.speak(state.lastSpoken)
                 } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
                     if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
-                    if(it.hasCommand('playTrack')) {
-                        if(state.sound) it.playTrack(state.sound)
-			            pauseExecution(1000)
-                        it.setVolumeSpeakAndRestore(state.volume, state.uriMessage, prevVolume)
-                    } else {
-                        it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
-                    }
+                    it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
                 } else if(it.hasCommand('playTextAndRestore')) {   
                     if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
-                    if(it.hasCommand('playTrack')) {
+                    if(sSpeaker && sonosOption == "playTextAndRestore") {
+                        if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTextAndRestore"
+                        it.playTextAndRestore(state.lastSpoken, prevVolume)
+                    } else
+                    if(sSpeaker && sonosOption == "playTrack") {
+                        if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTrack"
                         if(state.sound) it.playTrack(state.sound)
 			            pauseExecution(1000)
-                        it.playTextAndRestore(state.volume, state.uriMessage, prevVolume)
+                        it.playTrack(state.uriMessage)
+                    } else
+                    if(sSpeaker && sonosOption == "playMagic") {    
+                        def sonosStatus = it.currentValue("status")
+                        if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playMagic - Status: ${sonosStatus}"
+                        if(sonosStatus == "stopped") {
+                            if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTrack - Magic"
+                            if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                            if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                            if(state.sound) it.playTrack(state.sound)
+			                pauseExecution(1000)
+                            it.playTrack(state.uriMessage)
+                            pauseExecution(atomicState.speechDuration2)
+                            if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                            if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+                        } else {
+                            if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTextAndRestore - Magic"
+                            it.playTextAndRestore(state.lastSpoken, prevVolume)
+                        }
                     } else {
                         it.playTextAndRestore(state.lastSpoken, prevVolume)
                     }
                 } else {		        
-                    if(logEnable) log.debug "In letsTalk (${state.version}) - ${it} - Okay!"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - ${it} - playTrack"
                     if(gInitialize) initializeSpeaker()
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
@@ -602,7 +623,7 @@ def letsTalk() {
 			            pauseExecution(1000)
                         it.playTrack(state.uriMessage)
                     } else {
-				        if(logEnable) log.debug "In letsTalk (${state.version}) - Using Hubitat's default voice"
+				        if(logEnable) log.debug "In letsTalk (${state.version}) - Using Hubitat's default voice - speak"
 					    it.speak(state.lastSpoken)
 				    }
                     pauseExecution(atomicState.speechDuration2)
