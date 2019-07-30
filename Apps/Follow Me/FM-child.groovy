@@ -160,9 +160,9 @@ def pageConfig() {
 					if(gSpeaker) paragraph "If using Google/Nest speaker devices sometimes an Initialize is necessary (not always)."
 					if(gSpeaker) input "gInitialize", "bool", title: "Initialize Google devices before sending speech?", required: true, defaultValue: false
 					if(gSpeaker) input "gInitRepeat", "number", title: "Initialize Google devices every X minutes? (recommended: 4)", required: false
-                input(name: "sSpeaker", type: "bool", defaultValue: "false", title: "Is this a Sonos device?", description: "Sonos device?", submitOnChange: true)
-                    if(sSpeaker) paragraph "Sonos speakers have some unique abilities but some don't play well with others. With Sonos you can choose from the following options:<br><b> - use 'playTextAndRestore'</b> - This will allow the speaker to play the message and then restore what it was doing before but does not support sounds or voices<br><b> - use 'playTrack'</b> - This will allow the speaker to play a custom sound before the speech and then speak in a chosen voice but will NOT restore what it was doing<br><b> - use 'playMagic'</b> - If speaker is stopped, use playTrack (custom sounds and voices), If speaker is NOT stopped, use playTextAndRestore so music will resume after message (changing between the two like magic!)"
-                    if(sSpeaker) input "sonosOption", "enum", title: "Select Sonos Speech option", options: ["playTextAndRestore","playTrack","playMagic","TESTplayTrackAndRestore"], required: true   
+                //input(name: "sSpeaker", type: "bool", defaultValue: "false", title: "Is this a Sonos device?", description: "Sonos device?", submitOnChange: true)
+                //    if(sSpeaker) paragraph "Sonos speakers have some unique abilities but some don't play well with others. With Sonos you can choose from the following options:<br><b> - use 'playTextAndRestore'</b> - This will allow the speaker to play the message and then restore what it was doing before but does not support sounds or voices<br><b> - use 'playTrack'</b> - This will allow the speaker to play a custom sound before the speech and then speak in a chosen voice but will NOT restore what it was doing<br><b> - use 'playMagic'</b> - If speaker is stopped, use playTrack (custom sounds and voices), If speaker is NOT stopped, use playTextAndRestore so music will resume after message (changing between the two like magic!)"
+                //    if(sSpeaker) input "sonosOption", "enum", title: "Select Sonos Speech option", options: ["playTextAndRestore","playTrack","playMagic"], required: true   
           	}
 		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 		    	paragraph "NOTE: Not all speakers can use volume controls. Please click the button to test your selected speakers or click the 'Known Speaker Abilities' button to see a list of known speaker abilites."
@@ -626,13 +626,13 @@ def letsTalk() {
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
                     if(state.sound) it.playTrackAndRestore(state.sound, prevVolume)
-                    if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackAndRestore"
                     it.playTrackAndRestore(state.uriMessage, prevVolume)    
                 } else if(it.hasCommand('playTextAndRestore')) {   
                     if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
+/** For Sonos
                     if(sSpeaker && sonosOption == "playTextAndRestore") {
                         if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTextAndRestore"
                         it.playTextAndRestore(state.lastSpoken, prevVolume)
@@ -661,8 +661,9 @@ def letsTalk() {
                             it.playTextAndRestore(state.lastSpoken, prevVolume)
                         }
                     } else {
+*/
                         it.playTextAndRestore(state.lastSpoken, prevVolume)
-                    }
+//                    }
                 } else {		        
                     if(logEnable) log.debug "In letsTalk (${state.version}) - ${it} - playTrack"
                     if(gInitialize) initializeSpeaker()
