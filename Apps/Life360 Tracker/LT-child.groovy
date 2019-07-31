@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.6 - 07/31/19 - Found typo in getTimeDiff
  *  V1.2.5 - 07/26/19 - Missed a line with 'On the Move' in 'Track All'
  *  V1.2.4 - 07/25/19 - Fixed typo with 'On the Move' in 'Track All'
  *  V1.2.3 - 07/25/19 - Added user selectable time to report 'On the Move' to 'Track All'
@@ -69,7 +70,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.5"
+	state.version = "v1.2.6"
     state.appName = "Life360 Tracker Child"
     if(sendToAWSwitch && awDevice) {
 		awInfo = "${state.appName}:${state.version}"
@@ -557,7 +558,7 @@ def getTimeDiff() {
     long unxNow = now.getTime()
     unxNow = unxNow/1000    
     long timeDiff = Math.abs(unxNow-since)
-    state.moveDiff = timeDiff
+    state.tDiff = timeDiff
     if(logEnable) log.debug "In getTimeDiff - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff}"
     
 	state.timeDay = (timeDiff / 86400).toInteger()
