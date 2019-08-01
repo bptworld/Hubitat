@@ -12,7 +12,7 @@
  *
  */
 metadata {
-    definition (name: "Gentle Wake Up Controller", namespace: "smartthings", author: "SmartThings"https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-driver.groovy") {
+    definition (name: "Gentle Wake Up Controller", namespace: "smartthings", author: "SmartThings", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-driver.groovy") {
         capability "Switch"
         capability "Timed Session"
 
