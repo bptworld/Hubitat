@@ -43,6 +43,7 @@
  *
  *  Changes:
  *
+ *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
  *  v1.0.0 - 07/31/19 - Initial port of ST app - Tons of fixes and adjustments to make it compatible with Hubitat...
  *        - Fix date format
  *        - Removed calls for contact info and phonebook
@@ -56,7 +57,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
 }
 
 definition(
@@ -67,6 +68,7 @@ definition(
 	category: "port",
 	iconUrl: "",
 	iconX2Url: "",
+    pausable: true,
     importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-app.groovy",
 )
 
@@ -692,7 +694,7 @@ private handleCompletionMessaging() {
     if (completionMessage) {
         messageHandler()
 		if (completionPush) {
-            sendPushMessage.deviceNotification(state.theMessage)
+            completionPush.deviceNotification(state.theMessage)
 		}
 		if (speakerMP || speakerSS) {
 			letsTalk()
