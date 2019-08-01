@@ -67,7 +67,7 @@ definition(
 	category: "port",
 	iconUrl: "",
 	iconX2Url: "",
-    importUrl: "",
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-app.groovy",
 )
 
 preferences {
