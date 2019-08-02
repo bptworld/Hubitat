@@ -138,13 +138,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.2.8",
+  "FollowMeChildVersion": "v1.3.0",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.2.8 - 07/28/19 - Major changes for Sonos speakers",
+  "FollowMeUpdateNote": "V1.3.0 - 08/01/19 - Added more logging, be sure to check your child apps and re-save them.",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
