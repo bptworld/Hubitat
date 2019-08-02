@@ -792,9 +792,11 @@ def messageRepeatHandler() {
 		    log.info "${app.label} - Max repeats has been reached."
             stop("maxRepeats")
             controller.off()
+	    state.numRepeats = 0
 		}
 	} else {
 		log.info "${app.label} - Set to repeat but Controller Switch is Off."
+	        state.numRepeats = 0
 	}
 }
 
