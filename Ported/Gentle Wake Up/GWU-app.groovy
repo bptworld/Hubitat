@@ -779,25 +779,24 @@ def letsTalk() {
 }
 
 def messageRepeatHandler() {
-    if(state.numRepeats == null) state.numRepeats = 0
+    if(state.numRepeats == null) state.numRepeats = 1
     def controller = getController()
     controllerSwitch = controller.currentValue("switch")
-    if(logEnable) log.debug "In messageRepeatHandler - controllerSwitch: ${controllerSwitch}"
+    if(logEnable) log.debug "In messageRepeatHandler - controllerSwitch: ${controllerSwitch} - numRepeats so far: ${state.numRepeats}"
     if(controllerSwitch == "on") {
-		if(logEnable) log.debug "In messageRepeatHandler - oRepeat - ${state.numRepeats}"
-		if(state.numRepeats < maxRepeats) {
+		if(state.numRepeats <= maxRepeats) {
 			state.numRepeats = state.numRepeats + 1
             messageHandler()
 			runIn(repeatSeconds,letsTalk)
 		} else {
-		    log.info "${app.label} - messageRepeatHandler - Max repeats has been reached."
+            log.info "${app.label} - Max repeats (${maxRepeats}) has been reached."
             stop("maxRepeats")
             controller.off()
-            state.numRepeats = 0
+            state.numRepeats = 1
 		}
 	} else {
 		log.info "${app.label} - Set to repeat but Controller Switch is Off."
-        state.numRepeats = 0
+        state.numRepeats = 1
 	}
 }
 
