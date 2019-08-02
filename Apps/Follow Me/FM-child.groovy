@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.3.0 - 08/01/19 - Added more logging, be sure to check your child apps and re-save them.
  *  V1.2.9 - 07/29/19 - Added new field 'Sound Length (in seconds)', more attention to Sonos speakers
  *  V1.2.8 - 07/28/19 - Major changes for Sonos speakers
  *  V1.2.7 - 07/28/19 - More changes to play Track
@@ -67,7 +68,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.2.9"
+	state.version = "v1.3.0"
 }
 
 definition(
@@ -152,7 +153,6 @@ def pageConfig() {
                         paragraph "<b>${sp}: ${sType}</b>"
                     }
                 }
-                
 */               
          
                 input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
@@ -632,38 +632,7 @@ def letsTalk() {
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
-/** For Sonos
-                    if(sSpeaker && sonosOption == "playTextAndRestore") {
-                        if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTextAndRestore"
-                        it.playTextAndRestore(state.lastSpoken, prevVolume)
-                    } else
-                    if(sSpeaker && sonosOption == "playTrack") {
-                        if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTrack"
-                        if(state.sound) it.playTrack(state.sound)
-			            pauseExecution(state.pauseLength)
-                        it.playTrack(state.uriMessage)
-                    } else
-                    if(sSpeaker && sonosOption == "playMagic") {    
-                        def sonosStatus = it.currentValue("status")
-                        if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playMagic - Status: ${sonosStatus}"
-                        if(sonosStatus == "stopped") {
-                            if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTrack - Magic"
-                            if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                            if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                            if(state.sound) it.playTrack(state.sound)
-			                pauseExecution(state.pauseLength)
-                            it.playTrack(state.uriMessage)
-                            pauseExecution(atomicState.speechDuration2)
-                            if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                            if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                        } else {
-                            if(logEnable) log.debug "In letsTalk (${state.version}) - Sonos: playTextAndRestore - Magic"
-                            it.playTextAndRestore(state.lastSpoken, prevVolume)
-                        }
-                    } else {
-*/
-                        it.playTextAndRestore(state.lastSpoken, prevVolume)
-//                    }
+                    it.playTextAndRestore(state.lastSpoken, prevVolume)
                 } else {		        
                     if(logEnable) log.debug "In letsTalk (${state.version}) - ${it} - playTrack"
                     if(gInitialize) initializeSpeaker()
@@ -749,7 +718,7 @@ def checkVol() {
 
 def priorityVoicesHandler(it) {
     if(state.lastSpoken == ".") state.lastSpoken = ""
-    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Changing voice to ${state.voiceSelected} - Message: ${state.lastSpoken}"
+    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
 	def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 	def uriMessage = "${tts.get('uri')}"
     if(it.hasCommand('playTrack')) {
