@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.3.1 - 08/02/19 - Fixed bug with Priority options
  *  V1.3.0 - 08/01/19 - Added more logging, be sure to check your child apps and re-save them.
  *  V1.2.9 - 07/29/19 - Added new field 'Sound Length (in seconds)', more attention to Sonos speakers
  *  V1.2.8 - 07/28/19 - Major changes for Sonos speakers
@@ -68,7 +69,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.3.0"
+	state.version = "v1.3.1"
 }
 
 definition(
@@ -567,6 +568,7 @@ def lastSpokenHandler(speech) {
 		state.lastSpoken = msgA
 	} else{
 		state.lastSpoken = state.cleanUp
+        state.priority = "X"
 	}
 	if(state.lastSpoken == null) state.lastSpoken = ""
 	if(logEnable) log.debug "In lastSpoken (${state.version}) - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}"
@@ -693,104 +695,115 @@ def checkVol() {
 	if(logEnable) log.debug "In checkVol (${state.version}) - volume: ${state.volume}"
     
 	if(messagePriority) {
-		if(logEnable) log.debug "In checkVol (${state.version}) - priority: ${state.priority}"
-		if(state.priority.toLowerCase().contains("f")) {
-			state.voiceSelected = voiceFun
-        } else if(state.priority.toLowerCase().contains("r")) {
-			randomHandler()
-			state.voiceSelected = state.randVoice
-        } else if(state.priority.toLowerCase().contains("l")) {
-			state.voiceSelected = voiceLow
-        } else if(state.priority.toLowerCase().contains("n")) {
-			state.volume = volSpeech
-			state.voiceSelected = voiceNorm
-        } else if(state.priority.toLowerCase().contains("h")) {
-			state.volume = volHigh
-			state.voiceSelected = voiceHigh
-        } else {
+        if(state.priority == "X") {
+            if(logEnable) log.debug "In checkVol (${state.version}) - priority: ${state.priority}, so skipping"
             state.volume = volSpeech
-			state.voiceSelected = voiceNorm
-            if(logEnable) log.debug "In checkVol (${state.version}) - Priority NOt found - priority volume: ${state.volume}"
+		    state.voiceSelected = voiceNorm
+        } else {
+		    if(logEnable) log.debug "In checkVol (${state.version}) - priority: ${state.priority}"
+		    if(state.priority.toLowerCase().contains("f")) {
+		    	state.voiceSelected = voiceFun
+            } else if(state.priority.toLowerCase().contains("r")) {
+		    	randomHandler()
+			    state.voiceSelected = state.randVoice
+            } else if(state.priority.toLowerCase().contains("l")) {
+		    	state.voiceSelected = voiceLow
+            } else if(state.priority.toLowerCase().contains("n")) {
+		    	state.volume = volSpeech
+		    	state.voiceSelected = voiceNorm
+            } else if(state.priority.toLowerCase().contains("h")) {
+		    	state.volume = volHigh
+		       	state.voiceSelected = voiceHigh
+            } else {
+                state.volume = volSpeech
+		    	state.voiceSelected = voiceNorm
+                if(logEnable) log.debug "In checkVol (${state.version}) - Priority Not found - priority volume: ${state.volume}"
+            }
+            if(logEnable) log.debug "In checkVol (${state.version}) - priority message: ${state.priority} - priority volume: ${state.volume}"    
         }
-        if(logEnable) log.debug "In checkVol (${state.version}) - priority message: ${state.priority} - priority volume: ${state.volume}"
 	}
 }
 
 def priorityVoicesHandler(it) {
     if(state.lastSpoken == ".") state.lastSpoken = ""
-    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
-	def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
-	def uriMessage = "${tts.get('uri')}"
-    if(it.hasCommand('playTrack')) {
+    if(state.priority == "X") {
+        if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priority: ${state.priority}, so skipping"
         state.sound = ""
-	    if(state.priority.contains("1")) {
-            if(sound1) {
-                state.sound = sound1
-                state.sLength = s1Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 1 not defined" }
-        } else
-	    if(state.priority.contains("2")) {
-            if(sound2) {
-                state.sound = sound2
-                state.sLength = s2Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 2 not defined" }
-        } else
-	    if(state.priority.contains("3")) {
-            if(sound3) {
-                state.sound = sound3
-                state.sLength = s3Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 3 not defined" }
-        } else
-        if(state.priority.contains("4")) {
-            if(sound4) {
-                state.sound = sound4
-                state.sLength = s4Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 4 not defined" }
-        } else
-        if(state.priority.contains("5")) {
-            if(sound5) {
-                state.sound = sound5
-                state.sLength = s5Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 5 not defined" }
-        } else
-        if(state.priority.contains("6")) {
-            if(sound6) {
-                state.sound = sound6
-                state.sLength = s6Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 6 not defined" }
-        } else
-        if(state.priority.contains("7")) {
-            if(sound7) {
-                state.sound = sound7
-                state.sLength = s7Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 7 not defined" }
-        } else
-        if(state.priority.contains("8")) {
-            if(sound8) {
-                state.sound = sound8
-                state.sLength = s8Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 8 not defined" }
-        } else
-        if(state.priority.contains("9")) {
-            if(sound9) {
-                state.sound = sound9
-                state.sLength = s9Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 9 not defined" }
-        } else
-        if(state.priority.contains("10")) {
-            if(sound10) {
-                state.sound = sound10
-                state.sLength = s10Length
-            } else { if(logEnable) log.debug "${app.label} - Sound 10 not defined" }
-        }
-	} else if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
+    } else {
+        if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
+	    def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
+	    def uriMessage = "${tts.get('uri')}"
+        if(it.hasCommand('playTrack')) {
+            state.sound = ""
+	        if(state.priority.contains("1")) {
+                if(sound1) {
+                    state.sound = sound1
+                    state.sLength = s1Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 1 not defined" }
+            } else
+	        if(state.priority.contains("2")) {
+                if(sound2) {
+                    state.sound = sound2
+                    state.sLength = s2Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 2 not defined" }
+            } else
+	        if(state.priority.contains("3")) {
+                if(sound3) {
+                    state.sound = sound3
+                    state.sLength = s3Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 3 not defined" }
+            } else
+            if(state.priority.contains("4")) {
+                if(sound4) {
+                    state.sound = sound4
+                    state.sLength = s4Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 4 not defined" }
+            } else
+            if(state.priority.contains("5")) {
+                if(sound5) {
+                    state.sound = sound5
+                    state.sLength = s5Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 5 not defined" }
+            } else
+            if(state.priority.contains("6")) {
+                if(sound6) {
+                    state.sound = sound6
+                    state.sLength = s6Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 6 not defined" }
+            } else
+            if(state.priority.contains("7")) {
+                if(sound7) {
+                    state.sound = sound7
+                    state.sLength = s7Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 7 not defined" }
+            } else
+            if(state.priority.contains("8")) {
+                if(sound8) {
+                    state.sound = sound8
+                    state.sLength = s8Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 8 not defined" }
+            } else
+            if(state.priority.contains("9")) {
+                if(sound9) {
+                    state.sound = sound9
+                    state.sLength = s9Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 9 not defined" }
+            } else
+            if(state.priority.contains("10")) {
+                if(sound10) {
+                    state.sound = sound10
+                    state.sLength = s10Length
+                } else { if(logEnable) log.debug "${app.label} - Sound 10 not defined" }
+            }
+	    } else if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
     
-	if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - ${uriMessage}"
-    state.uriMessage = uriMessage
-    try{
-       state.pauseLength = state.sLength * 1000
-    } catch (e) {
-        state.pauseLength = 1000
+	    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - ${uriMessage}"
+        state.uriMessage = uriMessage
+        try{
+           state.pauseLength = state.sLength * 1000
+        } catch (e) {
+            state.pauseLength = 1000
+        }
     }
 }
 
@@ -961,15 +974,16 @@ def appButtonHandler(buttonPressed) {
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
-	if(logEnable == null){logEnable = false}
-	if(messagePriority == null){messagePriority = false}
-	if(atomicState.sZone == null){atomicState.sZone = false}
-	if(state.IH1 == null){state.IH1 = "blank"}
-	if(state.IH2 == null){state.IH2 = "blank"}
-	if(state.IH3 == null){state.IH3 = "blank"}
-	if(state.IH4 == null){state.IH4 = "blank"}
-	if(state.IH5 == null){state.IH5 = "blank"}
-	if(state.lastSpoken == null){state.lastSpoken = ""}
+	if(logEnable == null) {logEnable = false}
+	if(messagePriority == null) {messagePriority = false}
+    if(state.priority == null) {state.priority = ""}
+    if(state.lastSpoken == null) {state.lastSpoken = ""}
+	if(atomicState.sZone == null) {atomicState.sZone = false}
+	if(state.IH1 == null) {state.IH1 = "blank"}
+	if(state.IH2 == null) {state.IH2 = "blank"}
+	if(state.IH3 == null) {state.IH3 = "blank"}
+	if(state.IH4 == null) {state.IH4 = "blank"}
+	if(state.IH5 == null) {state.IH5 = "blank"}
 }
 
 def getImage(type){						// Modified from @Stephack
