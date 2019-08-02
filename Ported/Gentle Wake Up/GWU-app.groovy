@@ -43,6 +43,7 @@
  *
  *  Changes:
  *
+ *  v1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
  *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
  *  v1.0.0 - 07/31/19 - Initial port of ST app - Tons of fixes and adjustments to make it compatible with Hubitat...
  *        - Fix date format
@@ -57,7 +58,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -83,10 +84,10 @@ preferences {
 
 def rootPage() {
 	dynamicPage(name: "rootPage", title: "", install: true, uninstall: true) {
-            section("Gentle Wake Up Has A Controller") {
-				href(title: "Learn how to control Gentle Wake Up", page: "controllerExplanationPage", description: null)
-			}
-		section("What to dim") {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Gentle Wake Up Has A Controller")) {                                       
+            href(title: "Learn how to control Gentle Wake Up", page: "controllerExplanationPage", description: null)
+		}
+		section(getFormat("header-green", "${getImage("Blank")}"+" What to dim")) {
 			input(name: "dimmers", type: "capability.switchLevel", title: "Dimmers", description: null, multiple: true, required: true, submitOnChange: true)
 			if (dimmers) {
 				if (dimmersContainUnsupportedDevices()) {
@@ -97,9 +98,11 @@ def rootPage() {
 		}
 
 		if (dimmers) {
-			section("Rules For Dimming") {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Rules For Dimming")) {
 				href(name: "toSchedulingPage", page: "schedulingPage", title: "Automation", description: schedulingHrefDescription() ?: "Set rules for when to start", state: schedulingHrefDescription() ? "complete" : "")
 				input(name: "manualOverride", type: "enum", options: ["cancel": "Cancel dimming", "jumpTo": "Jump to the end"], title: "When one of the dimmers is manually turned off…", description: "dimming will continue", required: false, multiple: false)
+            }
+            section(getFormat("header-green", "${getImage("Blank")}"+" Completion Actions")) {
 				href(name: "toCompletionPage", title: "Completion Actions", page: "completionPage", state: completionHrefDescription() ? "complete" : "", description: completionHrefDescription() ?: "Set rules for what to do when dimming completes")
 			}
 
@@ -237,15 +240,15 @@ def weekends() {
 def schedulingPage() {
 	dynamicPage(name: "schedulingPage", title: "Rules For Automatically Dimming Your Lights") {
 
-		section("Use Other Apps!") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Use Other Apps!")) {
 			href(title: "Learn how to control Gentle Wake Up", page: "controllerExplanationPage", description: null)
 		}
 
-		section("Allow Automatic Dimming") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Allow Automatic Dimming")) {
 			input(name: "days", type: "enum", title: "On These Days", description: "Every day", required: false, multiple: true, options: weekdays() + weekends())
 		}
 
-		section("Start Dimming...") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Start Dimming...")) {
 			input(name: "startTime", type: "time", title: "At This Time", description: null, required: false)
 			input(name: "modeStart", title: "When Entering This Mode", type: "mode", required: false, mutliple: false, submitOnChange: true, description: null)
 			if (modeStart) {
@@ -259,24 +262,24 @@ def schedulingPage() {
 def completionPage() {
 	dynamicPage(name: "completionPage", title: "Completion Rules") {
 
-		section("Switches") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Switches")) {
 			input(name: "completionSwitches", type: "capability.switch", title: "Set these switches", description: null, required: false, multiple: true, submitOnChange: true)
 			if (completionSwitches) {
 				input(name: "completionSwitchesState", type: "enum", title: "To", description: null, required: false, multiple: false, options: ["on", "off"], defaultValue: "on")
 				input(name: "completionSwitchesLevel", type: "number", title: "Optionally, Set Dimmer Levels To", description: null, required: false, multiple: false, range: "(0..99)")
 			}
 		}
-        section("Push Options") { 
+        section(getFormat("header-green", "${getImage("Blank")}"+" Push Options")) { 
             input "completionPush", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
         }
-		section("Speaker Options") { 
+		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
             paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
             input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
             input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
             input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
         }
         if(speakerMP || speakerSS) {
-            section("Volume Control Options") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
 		        paragraph "NOTE: Not all speakers can use volume controls."
                 paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
                 input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
@@ -287,7 +290,7 @@ def completionPage() {
             }
 		}
         if(completionPush || speakerMP || speakerSS) {
-            section("Message") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Message")) {
                 input "completionMessage", "text", title: "Random Message to be spoken or pushed - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
 	            input(name: "msgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			    if(msgList) {
@@ -296,13 +299,33 @@ def completionPage() {
     		    	values.each { item -> listMap += "${item}<br>"}
 			    	paragraph "${listMap}"
 			    }
+                input(name: "oRepeat", type: "bool", defaultValue: "false", title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: "true")
+				if(oRepeat) {
+					paragraph "Repeat message every X seconds until 'Controller Switch' is turned off OR max number of repeats is reached."
+					input "repeatSeconds", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					input "maxRepeats", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: "true"
+					if(repeatSeconds) {
+						paragraph "Message will repeat every ${repeatSeconds} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats})"
+						state.repeatTimeSeconds = (repeatSeconds * maxRepeats)
+						int inputNow = state.repeatTimeSeconds
+						int nDayNow = inputNow / 86400
+						int nHrsNow = (inputNow % 86400 ) / 3600
+						int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+						int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+						paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Seconds to reach the max number of repeats (if Controller Switch is not turned off)"
+					}
+				}
             }
+            section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+        		input "fromTime", "time", title: "From", required: false
+        		input "toTime", "time", title: "To", required: false
+			}
         }
-		section("Modes") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Modes")) {
 			input(name: "completionMode", type: "mode", title: "Change ${location.name} Mode To", description: null, required: false)
 		}
 
-		section("Delay") {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Delay")) {
 			input(name: "completionDelay", type: "number", title: "Delay This Many Minutes Before Executing These Actions", description: "0", required: false)
 		}
 	}
@@ -506,6 +529,9 @@ def sendStopEvent(source) {
 	} else if (source == "manualOverride") {
 		eventData.descriptionText += " because the dimmer was manually turned off"
 		eventData.value += "cancelled"
+    } else if (source == "maxRepeats") {
+		eventData.descriptionText += " because the max number of repeats was reached"
+		eventData.value += "cancelled"
 	}
 
 	// send 100% completion event
@@ -619,13 +645,9 @@ def updateDimmers(percentComplete) {
 		def nextLevel = dynamicLevel(dimmer, percentComplete)
 
 		if (nextLevel == 0) {
-
-			dimmer.off()
-
+            dimmer.off()
 		} else {
-
 			def shouldChangeColors = (colorize && colorize != "false")
-
 			if (shouldChangeColors && hasSetColorCommand(dimmer)) {
 				def hue = getHue(dimmer, nextLevel)
 				if(logEnable) log.debug "Setting ${deviceLabel(dimmer)} level to ${nextLevel} and hue to ${hue}"
@@ -718,10 +740,10 @@ def letsTalk() {
 	if(logEnable) log.debug "In letsTalk - continuing"
 	if(state.timeBetween == true) {
 		state.theMsg = "${state.theMessage}"
-    	if(logEnable) log.debug "In letsTalk - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
         speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
         atomicState.speechDuration2 = speechDuration * 1000
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+        if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
             state.speakers.each {
                 if(logEnable) log.debug "Speaker in use: ${it}"
                 if(speakerProxy) {
@@ -750,8 +772,29 @@ def letsTalk() {
         pauseExecution(atomicState.speechDuration2)
 	    if(logEnable) log.debug "In letsTalk - that's it!"  
 		log.info "${app.label} - ${state.theMsg}"
+        if(oRepeat) messageRepeatHandler()
 	} else {
 		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+	}
+}
+
+def messageRepeatHandler() {
+    if(state.numRepeats == null) state.numRepeats = 0
+    def controller = getController()
+    controllerSwitch = controller.currentValue("switch")
+    if(controllerSwitch == "on") {
+		if(logEnable) log.debug "In letsTalk - oRepeat - ${state.numRepeats}"
+		if(state.numRepeats <= maxRepeats) {
+			state.numRepeats = state.numRepeats + 1
+            messageHandler()
+			runIn(repeatSeconds,letsTalk)
+		} else {
+		    log.info "${app.label} - Max repeats has been reached."
+            stop("maxRepeats")
+            
+		}
+	} else {
+		log.info "${app.label} - Set to repeat but Controller Switch is Off."
 	}
 }
 
@@ -891,7 +934,6 @@ def jumpTo(percentComplete) {
 	sendTimeRemainingEvent(percentComplete)
 }
 
-
 int dynamicEndLevel() {
 	if (usesOldSettings()) {
 		if (direction && direction == "Down") {
@@ -1027,7 +1069,6 @@ public humanReadableStartDate() {
 }
 
 def fancyString(listOfStrings) {
-
 	def fancify = { list ->
 		return list.collect {
 			def label = it
@@ -1037,7 +1078,6 @@ def fancyString(listOfStrings) {
 			label
 		}.join(", ")
 	}
-
 	return fancify(listOfStrings)
 }
 
@@ -1209,4 +1249,31 @@ def hasStartLevel() {
 
 def hasEndLevel() {
 	return (endLevel != null && endLevel != "")
+}
+
+// ********** Normal Stuff **********
+
+def getImage(type) {							// Modified Code from @Stephack
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+}
+
+def getFormat(type, myText=""){					// Modified Code from @Stephack
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+}
+
+def display() {
+	section() {
+		paragraph getFormat("line")
+	}
+}
+
+def display2(){
+	setVersion()
+	section() {
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Gentle Wake Up Port - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
+	}       
 }
