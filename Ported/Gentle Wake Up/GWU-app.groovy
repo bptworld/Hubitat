@@ -43,6 +43,7 @@
  *
  *  Changes:
  *
+ *  v1.0.3 - 08/02/19 - Whoops, found a bug! 
  *  v1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
  *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
  *  v1.0.0 - 07/31/19 - Initial port of ST app - Tons of fixes and adjustments to make it compatible with Hubitat...
@@ -58,7 +59,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
 }
 
 definition(
