@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.1.9 - 08/03/19 - Added initialize section, added deviceNotification
  *  V1.1.8 - 07/27/19 - '%5B'is replaced with '[' and '%5D'is replaced with ']' in any speech received.
  *  V1.1.7 - 07/22/19 - Second try at fixing bug in priority handling.
  *  V1.1.6 - 07/22/19 - Found bug in priority handling. '%20'is replaced with ' ' in any speech received.
@@ -57,7 +58,7 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.1.8"}
+def version(){"v1.1.9"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -65,18 +66,22 @@ metadata {
 		capability "Actuator"
 		capability "Speech Synthesis"
 		capability "Music Player"
+        capability "Notification"
 		
-		command "sendSpeechMap", ["string"]
 		command "playTextAndRestore", ["string"]
+        command "playTrackAndRestore", ["string"]
+        command "sendSpeechMap", ["string"]
+        command "setLevel", ["string"]
+        command "setVolume", ["string"]
 		command "setVolumeSpeakAndRestore", ["string"]
-		command "setVolume", ["string"]
-		command "setLevel", ["string"]
 		command "speak", ["string"]
 		command "sendFollowMeSpeaker", ["string"]
+        command "deviceNotification", ["string"]
 		
     	attribute "whatDidISay", "string"
 		attribute "lastSpoken", "string"
 		attribute "lastSpokenUnique", "string"
+        attribute "speechType", "string"
 		attribute "speakerStatus1", "string"
 		attribute "speakerStatus2", "string"
 		attribute "speakerStatus3", "string"
@@ -94,23 +99,51 @@ metadata {
 }
 
 //Received new messages from apps
-def sendSpeechMap(speechMap) {
+
+def deviceNotification(speechMap) {
 	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	//sendEvent(name: "playTextAndRestore", value: text)
+    state.speechType = "deviceNotification"
 	populateMap()
 }
 
 def playTextAndRestore(speechMap) {
 	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	sendEvent(name: "playTextAndRestore", value: text)
+	//sendEvent(name: "playTextAndRestore", value: text)
+    state.speechType = "playTextAndRestore"
 	populateMap()
+}
+
+def playTrackAndRestore(speechMap) {
+	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	//sendEvent(name: "playTrackAndRestore", value: text)
+    state.speechType = "playTrackAndRestore"
+	populateMap()
+}
+
+def sendSpeechMap(speechMap) {
+	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    state.speechType = "sendSpeechMap"
+	populateMap()
+}
+
+def setLevel(level) {
+    //sendEvent(name: "setLevel", value: level)    
+}
+
+def setVolume(volume) {
+    //sendEvent(name: "setVolume", value: volume)    
 }
 
 def setVolumeSpeakAndRestore(speechMap) {
 	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	sendEvent(name: "setVolumeSpeakAndRestore", value: text)
+	//sendEvent(name: "setVolumeSpeakAndRestore", value: text)
+    state.speechType = "setVolumeSpeakAndRestore"
 	populateMap()
 }
 
@@ -118,15 +151,8 @@ def speak(speechMap) {
 	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
 	sendEvent(name: "speak", value: text)
+    state.speechType = "defaultSpeech"
 	populateMap()
-}
-
-def setLevel(level) {
-    sendEvent(name: "setLevel", value: level)    
-}
-
-def setVolume(volume) {
-    sendEvent(name: "setVolume", value: volume)    
 }
 
 def makeUnique() {
@@ -136,7 +162,7 @@ def makeUnique() {
 	} else {
 		state.unique = "a"
 	}
-	state.speechReceivedUnique = "${state.unique}" + "${state.speechReceivedFULL}"
+    state.speechReceivedUnique = "${state.unique}" + "${state.speechReceivedFULL}"
 	sendEvent(name: "lastSpokenUnique", value: state.speechReceivedUnique, displayed: true)
 }
 
@@ -274,6 +300,10 @@ def installed(){
 def updated() {
     log.info "What Did I Say has been Updated"
     if (clearData) runIn(2,clearSpeechData)
+}
+
+def initialize() {
+    log.info "In initialize..."
 }
 
 def getDateTime() {
