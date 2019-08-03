@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.3.5 - 08/03/19 - Put in an extra check if random voice is called but no random voices are selected. Other small changes.
  *  V1.3.4 - 08/03/19 - Trying to fix Google/Nest devices that are not using Priority settings. Fixed sound 10 from playing sound 1, If using sound 10 please re-enter the information (it's now called sound 0).
  *  V1.3.3 - 08/03/19 - Fixed several typos, reworked how the sound length gets calculated. Also, first attempt at adding playAnnouncement for Echo devices.
  *  V1.3.2 - 08/02/19 - Rewrite of letsTalk and speaker handlers
@@ -72,7 +73,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.3.4"
+	state.version = "v1.3.5"
 }
 
 definition(
@@ -273,7 +274,7 @@ def voiceOptions(){
             input "testPhrase", "text", title: "Test Phrase", required: true, defaultValue: "This is a test", submitOnChange: true              
 			input "voiceFun", "enum", title: "Select Voice for priority - Fun", options: state.list, required: false, submitOnChange: true, width: 7
             if(voiceFun && testTheSpeakers) input "testVoiceFun", "button", title: "Test Voice Fun", width: 5
-			input "voiceRandom", "enum", title: "Select Voice for priority - Random", options: state.list, required: false, multiple: true, submitOnChange: true, width: 7
+			input "voiceRandom", "enum", title: "Select Voice for priority - Random (Must select 2 or more)", options: state.list, required: false, multiple: true, submitOnChange: true, width: 7
             if(voiceRandom && testTheSpeakers) input "testVoiceRandom", "button", title: "Test Voice Random", width: 5
 			input "voiceLow", "enum", title: "Select Voice for priority - Low", options: state.list, required: false, submitOnChange: true, width: 7
             if(voiceLow && testTheSpeakers) input "testVoiceLow", "button", title: "Test Voice Low", width: 5
@@ -620,10 +621,10 @@ def letsTalk() {
                 priorityVoicesHandler(it)
                 if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
 
-                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions =="setVolumeSpeakAndRestoreOption") { 
+                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions == "setVolumeSpeakAndRestoreOption") { 
                     if(it.hasCommand('setVolumeSpeakAndRestore')) setVolumeSpeakAndRestoreHandler(it)
                 }
-                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions =="playAnnouncementOption") { 
+                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions == "playAnnouncementOption") { 
                     if(it.hasCommand('playAnnouncement')) playAnnouncementHandler(it)
                 }
                     
@@ -810,7 +811,6 @@ def priorityVoicesHandler(it) {
         if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priority: ${state.priority}, so skipping"
         state.sound = ""
     } else {
-        if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
 	    def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 	    def uriMessage = "${tts.get('uri')}"
         try {
@@ -905,7 +905,7 @@ def priorityVoicesHandler(it) {
             state.sLength = 1000
         }
     
-	    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - ${uriMessage}"
+	    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
         state.uriMessage = uriMessage
     }
 }
@@ -959,11 +959,15 @@ def getVoices(){						// Modified from @mike.maxwell
 }
 
 def randomHandler() {
-	if(logEnable) log.debug "In randomHandler (${state.version})"
-	vSize = voiceRandom.size()
-	count = vSize.toInteger()
-    def randomKey = new Random().nextInt(count)
-	state.randVoice = voiceRandom[randomKey]
+	if(logEnable) log.debug "In randomHandler (${state.version}) - voiceRandom: ${voiceRandom}"
+    if(voiceRandom) {
+	    vSize = voiceRandom.size()
+	    count = vSize.toInteger()
+        def randomKey = new Random().nextInt(count)
+	    state.randVoice = voiceRandom[randomKey]
+    } else {
+        log.warn "Follow Me (${state.version}) - No random voices selected."
+    }
 	if(logEnable) log.debug "In randomHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, randomVoice: ${state.randVoice}"
 }
 
