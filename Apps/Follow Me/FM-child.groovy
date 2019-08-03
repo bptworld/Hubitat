@@ -720,7 +720,7 @@ def playTrackHandler(it) {
             }
         }
     } else {
-        defaultSpeechHandler()
+        defaultSpeechHandler(it)
     }
 } 
 
