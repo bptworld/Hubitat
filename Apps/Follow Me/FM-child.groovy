@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.3.3 - 08/03/19 - Fixed several typos, reworked how the sound length gets calculated. Also, first attempt at adding playAnnouncement for Echo devices.
  *  V1.3.2 - 08/02/19 - Rewrite of letsTalk and speaker handlers
  *  V1.3.1 - 08/02/19 - Fixed bug with Priority options
  *  V1.3.0 - 08/01/19 - Added more logging, be sure to check your child apps and re-save them.
@@ -70,7 +71,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.3.2"
+	state.version = "v1.3.3"
 }
 
 definition(
@@ -146,15 +147,21 @@ def pageConfig() {
                 state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
                 
                 if(speakerType == "echoSpeaksSpeaker") {
-                    paragraph "Speaker type is an Echo Speaks Device."
+                    paragraph "Speaker type is an Echo Speaks Device. Echo devices can not play a custom sound or change voices."
+                    input "echoSpeaksOptions", "enum", title: "Select which command you would like to use", options: [
+                    ["setVolumeSpeakAndRestoreOption":"setVolumeSpeakAndRestore"],
+                    ["playAnnouncementOption":"playAnnouncement - Needs Testing"],
+                ], required: true, multiple: false, submitOnChange: true
+                    paragraph "<b>Options:</b><br><b>setVolumeSpeakandRestore</b> - Sends volume command first, then plays message, and restores original volume<br><b>playAnnouncement</b> - This will make an announcement with the message on the device executing the command, adjusting the volume before and after and showing the message on an Echo Show."
                 }
                 if(speakerType == "googleSpeaker") {
-                    paragraph "Speaker type is a Google/Nest Device. When using Google/Nest devices sometimes an Initialize is necessary (not always)."
+                    paragraph "Speaker type is a Google/Nest Device. Google/Nest devices can play custom sounds and change voices."
+                    paragraph "When using Google/Nest devices sometimes an Initialize is necessary (not always)."
                     input "gInitialize", "bool", title: "Initialize Google/Nest devices before sending speech?", required: true, defaultValue: false
                     input "gInitRepeat", "number", title: "Initialize Google/Nest devices every X minutes? (recommended: 4)", required: false
                 }
                 if(speakerType == "sonosSpeaker") {
-                    paragraph "Speaker type is a Sonos Device."
+                    paragraph "Speaker type is a Sonos Device. Sonos devices can play custom sounds and change voices."
                 }
                 if(speakerType == "otherSpeaker") {
                     paragraph "Speaker type is an Other Device."
@@ -178,8 +185,8 @@ def pageConfig() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
 				input(name: "messagePriority", type: "bool", defaultValue: "false", title: "Use Message Priority features?", description: "Message Priority", submitOnChange: true)
-				if((messagePriority) && (speakerSS)) input(name: "priorityVoices", type: "bool", defaultValue: "false", title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange: true)
-				if((messagePriority) && (speakerSS)) input(name: "messageSounds", type: "bool", defaultValue: "false", title: "Play a sound before message?", description: "Message Sounds", submitOnChange: true)
+				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input(name: "priorityVoices", type: "bool", defaultValue: "false", title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange: true)
+				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input(name: "messageSounds", type: "bool", defaultValue: "false", title: "Play a sound before message?", description: "Message Sounds", submitOnChange: true)
 			}
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
@@ -196,7 +203,7 @@ def pageConfig() {
 					input "volLow", "number", title: "Speaker volume for Low priority", description: "0-100", required: true, width: 6
 					input "volHigh", "number", title: "Speaker volume for High priority", description: "0-100", required: true, width: 6
 				}
-				if(speakerSS) {
+				if(speakerSS && (speakerType != "echoSpeaksSpeaker")) {
                     if(priorityVoices) {
                         section(getFormat("header-green", "${getImage("Blank")}"+" Voice Options")) {
                             href "voiceOptions", title:"Voice Options Setup", description:"Click here to setup the voices"
@@ -560,9 +567,9 @@ def lastSpokenHandler(speech) {
 	if(state.cleanUp.contains("]")) {
 		def (priority, msgA) = state.cleanUp.split(']')
 		state.priority = priority.drop(1)
-		state.lastSpokenFULL = msgA
+		state.lastSpoken = msgA
 	} else{
-		state.lastSpokenFULL = state.cleanUp
+		state.lastSpoken = state.cleanUp
         state.priority = "X"
 	}
  
@@ -612,16 +619,20 @@ def letsTalk() {
                 priorityVoicesHandler(it)
                 if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
 
+                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions =="setVolumeSpeakAndRestoreOption") { 
+                    if(it.hasCommand('setVolumeSpeakAndRestore')) setVolumeSpeakAndRestoreHandler(it)
+                }
+                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions =="playAnnouncementOption") { 
+                    if(it.hasCommand('playAnnouncement')) playAnnouncementHandler(it)
+                }
+                    
                 if(it.hasCommand('setVolumeSpeakAndRestore')) { setVolumeSpeakAndRestoreHandler(it)
                 } else if(it.hasCommand('playTrackAndRestore')) { playTrackAndRestoreHandler(it)
                 } else if(it.hasCommand('playTrack')) { playTrackHandler(it)
                 } else if(it.hasCommand('playTextAndRestore')) { playTextAndRestoreHandler(it)    
                 } else { defaultSpeechHandler(it)
                 }
-                
-                pauseExecution(atomicState.speechDuration2)
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+           
             }
             speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
@@ -637,15 +648,25 @@ def letsTalk() {
 
 def setVolumeSpeakAndRestoreHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestoreHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     def prevVolume = it.currentValue("volume")
     it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
+    pauseExecution(atomicState.speechDuration2)
+}
+
+def playAnnouncementHandler(it) {
+    if(logEnable) log.debug "In letsTalk (${state.version}) - playAnnouncementHandler - ${it}"
+    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    def prevVolume = it.currentValue("volume")
+    //it.playAnnouncement(state.lastSpoken, state.lastSpoken, state.volume, prevVolume)
+    //it.playAnnouncement(state.lastSpoken, state.volume, prevVolume)
+    it.playAnnouncement(state.lastSpoken)
     pauseExecution(atomicState.speechDuration2)
 }
     
 def playTrackAndRestoreHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackAndRestoreHandler - ${it}"  
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
     def prevVolume = it.currentValue("volume")
@@ -657,7 +678,7 @@ def playTrackAndRestoreHandler(it) {
     
 def playTextAndRestoreHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestoreHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
     def prevVolume = it.currentValue("volume")
@@ -667,7 +688,7 @@ def playTextAndRestoreHandler(it) {
     
 def playTrackHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     if(gInitialize) initializeSpeaker()
     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
@@ -681,7 +702,7 @@ def playTrackHandler(it) {
 
 def defaultSpeechHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - defaultSpeechHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength}- uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
     it.speak(state.lastSpoken)
@@ -758,77 +779,100 @@ def priorityVoicesHandler(it) {
         if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
 	    def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 	    def uriMessage = "${tts.get('uri')}"
+        try {
         if(it.hasCommand('playTrack')) {
             state.sound = ""
 	        if(state.priority.contains("1")) {
                 if(sound1) {
                     state.sound = sound1
-                    state.sLength = s1Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 1 not defined" }
+                    state.sLength = s1Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 1 not defined"
+                }
             } else
 	        if(state.priority.contains("2")) {
                 if(sound2) {
                     state.sound = sound2
-                    state.sLength = s2Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 2 not defined" }
+                    state.sLength = s2Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 2 not defined"
+                }
             } else
 	        if(state.priority.contains("3")) {
                 if(sound3) {
                     state.sound = sound3
-                    state.sLength = s3Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 3 not defined" }
+                    state.sLength = s3Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 3 not defined"
+                }
             } else
             if(state.priority.contains("4")) {
                 if(sound4) {
                     state.sound = sound4
-                    state.sLength = s4Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 4 not defined" }
+                    state.sLength = s4Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 4 not defined"
+                }
             } else
             if(state.priority.contains("5")) {
                 if(sound5) {
                     state.sound = sound5
-                    state.sLength = s5Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 5 not defined" }
+                    state.sLength = s5Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 5 not defined"
+                }
             } else
             if(state.priority.contains("6")) {
                 if(sound6) {
                     state.sound = sound6
-                    state.sLength = s6Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 6 not defined" }
+                    state.sLength = s6Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 6 not defined"
+                }
             } else
             if(state.priority.contains("7")) {
                 if(sound7) {
                     state.sound = sound7
-                    state.sLength = s7Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 7 not defined" }
+                    state.sLength = s7Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 7 not defined"
+                }
             } else
             if(state.priority.contains("8")) {
                 if(sound8) {
                     state.sound = sound8
-                    state.sLength = s8Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 8 not defined" }
+                    state.sLength = s8Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 8 not defined"
+                }
             } else
             if(state.priority.contains("9")) {
                 if(sound9) {
                     state.sound = sound9
-                    state.sLength = s9Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 9 not defined" }
+                    state.sLength = s9Length * 1000
+                } else {
+                    if(logEnable) log.debug "${app.label} - Sound 9 not defined"
+                }
             } else
             if(state.priority.contains("10")) {
                 if(sound10) {
                     state.sound = sound10
-                    state.sLength = s10Length
-                } else { if(logEnable) log.debug "${app.label} - Sound 10 not defined" }
+                    state.sLength = s10Length * 1000
+                } else { 
+                    if(logEnable) log.debug "${app.label} - Sound 10 not defined"
+                }
             }
-	    } else if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
+        } else { 
+            if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
+        }
+        } catch (e) {
+            log.warn "Follow Me - priorityVoicesHandler - Something went wrong!"
+            state.sound = ""
+            state.sLength = 1000
+        }
     
 	    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - ${uriMessage}"
         state.uriMessage = uriMessage
-        try{
-           state.pauseLength = state.sLength * 1000
-        } catch (e) {
-            state.pauseLength = 1000
-        }
     }
 }
 
