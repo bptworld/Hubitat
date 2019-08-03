@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  V1.3.6 - 08/03/19 - Fixed echo from speaking twice. Other small changes for better tracking.
+ *  V1.3.6 - 08/03/19 - Fixed echo from speaking twice. Other small changes.
  *  V1.3.5 - 08/03/19 - Put in an extra check if random voice is called but no random voices are selected. Other small changes.
  *  V1.3.4 - 08/03/19 - Trying to fix Google/Nest devices that are not using Priority settings. Fixed sound 10 from playing sound 1, If using sound 10 please re-enter the information (it's now called sound 0).
  *  V1.3.3 - 08/03/19 - Fixed several typos, reworked how the sound length gets calculated. Also, first attempt at adding playAnnouncement for Echo devices.
@@ -715,8 +715,10 @@ def playTrackHandler(it) {
                 it.setVolume(state.volume)
             }
         }
-        if(state.sound) it.playTrack(state.sound)
-	    pauseExecution(state.sLength)
+        if(state.sound) {
+            it.playTrack(state.sound)
+	        pauseExecution(state.sLength)
+        }
         it.playTrack(state.uriMessage)
         pauseExecution(atomicState.speechDuration2)
         if(volRestore && (it.hasCommand('setLevel'))) {
