@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.3.4 - 08/03/19 - Trying to fix Google/Nest devices that are not using Priority settings. Fixed sound 10 from playing sound 1, If using sound 10 please re-enter the information (it's now called sound 0).
  *  V1.3.3 - 08/03/19 - Fixed several typos, reworked how the sound length gets calculated. Also, first attempt at adding playAnnouncement for Echo devices.
  *  V1.3.2 - 08/02/19 - Rewrite of letsTalk and speaker handlers
  *  V1.3.1 - 08/02/19 - Fixed bug with Priority options
@@ -71,7 +72,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.3.3"
+	state.version = "v1.3.4"
 }
 
 definition(
@@ -326,9 +327,9 @@ def soundOptions(){
             if(sound9 && testTheSpeakers) input "s9Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
             if(sound9 && testTheSpeakers && s9Length) input "testBtn9", "button", title: "Test Sound 9", width: 3
             
-            input "sound10", "text", title: "Sound - 10", required: false, width: 9, submitOnChange: true
-            if(sound10 && testTheSpeakers) input "s10Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
-            if(sound10 && testTheSpeakers && s10Length) input "testBtn10", "button", title: "Test Sound 10", width: 3
+            input "sound0", "text", title: "Sound - 0", required: false, width: 9, submitOnChange: true
+            if(sound0 && testTheSpeakers) input "s0Length", "number", title: "Sound length (in seconds)", description: "0-30", required: true, width: 9, submitOnChange: true
+            if(sound0 && testTheSpeakers && s0Length) input "testBtn0", "button", title: "Test Sound 0", width: 3
 		}
 	}
 }		
@@ -632,7 +633,6 @@ def letsTalk() {
                 } else if(it.hasCommand('playTextAndRestore')) { playTextAndRestoreHandler(it)    
                 } else { defaultSpeechHandler(it)
                 }
-           
             }
             speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
@@ -667,9 +667,14 @@ def playAnnouncementHandler(it) {
 def playTrackAndRestoreHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackAndRestoreHandler - ${it}"  
     if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
-    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
     def prevVolume = it.currentValue("volume")
+    if(volSpeech && (it.hasCommand('setLevel'))) {
+        it.setLevel(state.volume)
+    } else {
+        if(volSpeech && (it.hasCommand('setVolume'))) {
+            it.setVolume(state.volume)
+        }
+    }
     if(state.sound) it.playTrackAndRestore(state.sound, prevVolume)
     if(state.sound) pauseExecution(state.sLength)
     it.playTrackAndRestore(state.uriMessage, prevVolume)
@@ -679,36 +684,65 @@ def playTrackAndRestoreHandler(it) {
 def playTextAndRestoreHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestoreHandler - ${it}"
     if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
-    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
     def prevVolume = it.currentValue("volume")
+    if(volSpeech && (it.hasCommand('setLevel'))) {
+        it.setLevel(state.volume)
+    } else {
+        if(volSpeech && (it.hasCommand('setVolume'))) {
+            it.setVolume(state.volume)
+        }
+    }
     it.playTextAndRestore(state.lastSpoken, prevVolume)
     pauseExecution(atomicState.speechDuration2)
 }
     
 def playTrackHandler(it) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
-    if(gInitialize) initializeSpeaker()
-    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-    if(state.sound) it.playTrack(state.sound)
-	pauseExecution(state.sLength)
-    it.playTrack(state.uriMessage)
-    pauseExecution(atomicState.speechDuration2)
-    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+    if(state.uriMessage) {
+        if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackHandler - ${it}"
+        if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+        if(gInitialize) initializeSpeaker()
+        if(volSpeech && (it.hasCommand('setLevel'))) {
+            it.setLevel(state.volume)
+        } else {
+            if(volSpeech && (it.hasCommand('setVolume'))) {
+                it.setVolume(state.volume)
+            }
+        }
+        if(state.sound) it.playTrack(state.sound)
+	    pauseExecution(state.sLength)
+        it.playTrack(state.uriMessage)
+        pauseExecution(atomicState.speechDuration2)
+        if(volRestore && (it.hasCommand('setLevel'))) {
+            it.setLevel(state.volRestore)
+        } else {
+            if(volRestore && (it.hasCommand('setVolume'))) {
+                it.setVolume(state.volRestore)
+            }
+        }
+    } else {
+        defaultSpeechHandler()
+    }
 } 
 
 def defaultSpeechHandler(it) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - defaultSpeechHandler - ${it}"
     if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength}- uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
-    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+    if(volSpeech && (it.hasCommand('setLevel'))) {
+        it.setLevel(state.volume)
+    } else {
+        if(volSpeech && (it.hasCommand('setVolume'))) {
+            it.setVolume(state.volume)
+        }
+    }
     it.speak(state.lastSpoken)
     pauseExecution(atomicState.speechDuration2)
-    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+    if(volRestore && (it.hasCommand('setLevel'))) {
+        it.setLevel(state.volRestore)
+    } else {
+        if(volRestore && (it.hasCommand('setVolume'))) {
+            it.setVolume(state.volRestore)
+        }
+    }
 } 
     
 def checkTime() {
@@ -854,12 +888,12 @@ def priorityVoicesHandler(it) {
                     if(logEnable) log.debug "${app.label} - Sound 9 not defined"
                 }
             } else
-            if(state.priority.contains("10")) {
-                if(sound10) {
-                    state.sound = sound10
-                    state.sLength = s10Length * 1000
+            if(state.priority.contains("0")) {
+                if(sound0) {
+                    state.sound = sound0
+                    state.sLength = s0Length * 1000
                 } else { 
-                    if(logEnable) log.debug "${app.label} - Sound 10 not defined"
+                    if(logEnable) log.debug "${app.label} - Sound 0 not defined"
                 }
             }
         } else { 
@@ -990,11 +1024,11 @@ def appButtonHandler(buttonPressed) {
             testTheSpeakers.playTrack(sound9)
         } catch(e9) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
-    if(state.whichButton == "testBtn10"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 10 on Speaker: ${testTheSpeakers}"
+    if(state.whichButton == "testBtn0"){
+        if(logEnable) log.debug "In testButtonHandler - Testing Sound 0 on Speaker: ${testTheSpeakers}"
         try {
-            testTheSpeakers.playTrack(sound10)
-        } catch(e10) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+            testTheSpeakers.playTrack(sound0)
+        } catch(e0) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
     }
     if(state.whichButton == "testVoiceFun"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice Fun on Speaker: ${testTheSpeakers}"
