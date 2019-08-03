@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.3.6 - 08/03/19 - Fixed echo from speaking twice. Other small changes for better tracking.
  *  V1.3.5 - 08/03/19 - Put in an extra check if random voice is called but no random voices are selected. Other small changes.
  *  V1.3.4 - 08/03/19 - Trying to fix Google/Nest devices that are not using Priority settings. Fixed sound 10 from playing sound 1, If using sound 10 please re-enter the information (it's now called sound 0).
  *  V1.3.3 - 08/03/19 - Fixed several typos, reworked how the sound length gets calculated. Also, first attempt at adding playAnnouncement for Echo devices.
@@ -73,7 +74,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.3.5"
+	state.version = "v1.3.6"
 }
 
 definition(
@@ -562,7 +563,7 @@ def switchHandler(evt) {
 }
 
 def lastSpokenHandler(speech) { 
-	if(logEnable) log.debug "In lastSpoken (${state.version})..."
+	if(logEnable) log.debug "In lastSpoken (${state.version})"
 	if(triggerMode == "Always_On") alwaysOnHandler()
 	state.unique = speech.value.toString()
 	state.cleanUp = state.unique.drop(1)
@@ -570,12 +571,12 @@ def lastSpokenHandler(speech) {
 		def (priority, msgA) = state.cleanUp.split(']')
 		state.priority = priority.drop(1)
 		state.lastSpoken = msgA
-	} else{
-		state.lastSpoken = state.cleanUp
+    } else {
         state.priority = "X"
+        state.lastSpoken = state.cleanUp
 	}
  
-	if(logEnable) log.debug "In lastSpoken (${state.version}) - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}"
+	if(logEnable) log.debug "In lastSpokenHandler (${state.version}) - Priority: ${state.priority} - lastSpoken: ${state.lastSpoken}"
     
     letsTalk()
 	sendPush()
@@ -619,26 +620,32 @@ def letsTalk() {
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
                 priorityVoicesHandler(it)
-                if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
 
                 if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions == "setVolumeSpeakAndRestoreOption") { 
                     if(it.hasCommand('setVolumeSpeakAndRestore')) setVolumeSpeakAndRestoreHandler(it)
-                }
+                } else
                 if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions == "playAnnouncementOption") { 
                     if(it.hasCommand('playAnnouncement')) playAnnouncementHandler(it)
                 }
-                    
-                if(it.hasCommand('setVolumeSpeakAndRestore')) { setVolumeSpeakAndRestoreHandler(it)
-                } else if(it.hasCommand('playTrackAndRestore')) { playTrackAndRestoreHandler(it)
-                } else if(it.hasCommand('playTrack')) { playTrackHandler(it)
-                } else if(it.hasCommand('playTextAndRestore')) { playTextAndRestoreHandler(it)    
-                } else { defaultSpeechHandler(it)
+                
+                if(speakerType != "echoSpeaksSpeaker") {
+                    if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                        setVolumeSpeakAndRestoreHandler(it)
+                    } else if(it.hasCommand('playTrackAndRestore')) {
+                        playTrackAndRestoreHandler(it)
+                    } else if(it.hasCommand('playTrack')) {
+                        playTrackHandler(it)
+                    } else if(it.hasCommand('playTextAndRestore')) {
+                        playTextAndRestoreHandler(it)    
+                    } else {
+                        defaultSpeechHandler(it)
+                    }
                 }
             }
+            
             speakerStatus = "${app.label}:${atomicState.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
-			if(logEnable) log.debug "${app.label} - ${state.lastSpoken}"
-			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
+			if(logEnable) log.debug "In letsTalk - Finished"
         } else {
 		if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
 	    }
@@ -648,26 +655,25 @@ def letsTalk() {
 }
 
 def setVolumeSpeakAndRestoreHandler(it) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestoreHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "In setVolumeSpeakAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     def prevVolume = it.currentValue("volume")
     it.setVolumeSpeakAndRestore(state.volume, state.lastSpoken, prevVolume)
     pauseExecution(atomicState.speechDuration2)
+    log.info "Follow Me - setVolumeSpeakAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
 }
 
 def playAnnouncementHandler(it) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - playAnnouncementHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "In playAnnouncementHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     def prevVolume = it.currentValue("volume")
     //it.playAnnouncement(state.lastSpoken, state.lastSpoken, state.volume, prevVolume)
     //it.playAnnouncement(state.lastSpoken, state.volume, prevVolume)
     it.playAnnouncement(state.lastSpoken)
     pauseExecution(atomicState.speechDuration2)
+    log.info "Follow Me - playAnnouncementHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
 }
     
 def playTrackAndRestoreHandler(it) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackAndRestoreHandler - ${it}"  
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "In playTrackAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     def prevVolume = it.currentValue("volume")
     if(volSpeech && (it.hasCommand('setLevel'))) {
         it.setLevel(state.volume)
@@ -680,11 +686,11 @@ def playTrackAndRestoreHandler(it) {
     if(state.sound) pauseExecution(state.sLength)
     it.playTrackAndRestore(state.uriMessage, prevVolume)
     pauseExecution(atomicState.speechDuration2)
+    log.info "Follow Me - playTrackAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
 }
     
 def playTextAndRestoreHandler(it) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestoreHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "In playTextAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     def prevVolume = it.currentValue("volume")
     if(volSpeech && (it.hasCommand('setLevel'))) {
         it.setLevel(state.volume)
@@ -695,12 +701,12 @@ def playTextAndRestoreHandler(it) {
     }
     it.playTextAndRestore(state.lastSpoken, prevVolume)
     pauseExecution(atomicState.speechDuration2)
+    log.info "Follow Me - playTextAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
 }
     
 def playTrackHandler(it) {
     if(state.uriMessage) {
-        if(logEnable) log.debug "In letsTalk (${state.version}) - playTrackHandler - ${it}"
-        if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+        if(logEnable) log.debug "In playTrackHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         if(gInitialize) initializeSpeaker()
         if(volSpeech && (it.hasCommand('setLevel'))) {
             it.setLevel(state.volume)
@@ -723,11 +729,11 @@ def playTrackHandler(it) {
     } else {
         defaultSpeechHandler(it)
     }
+    log.info "Follow Me - playTrackHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
 } 
 
 def defaultSpeechHandler(it) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - defaultSpeechHandler - ${it}"
-    if(logEnable) log.debug "Speaker in use: ${it} - sound: ${state.sound} - sLength: ${state.sLength}- uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+    if(logEnable) log.debug "In defaultSpeechHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
     if(volSpeech && (it.hasCommand('setLevel'))) {
         it.setLevel(state.volume)
     } else {
@@ -744,6 +750,7 @@ def defaultSpeechHandler(it) {
             it.setVolume(state.volRestore)
         }
     }
+    log.info "Follow Me - defaultSpeechHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
 } 
     
 def checkTime() {
@@ -781,7 +788,6 @@ def checkVol() {
             state.volume = volSpeech
 		    state.voiceSelected = voiceNorm
         } else {
-		    if(logEnable) log.debug "In checkVol (${state.version}) - priority: ${state.priority}"
 		    if(state.priority.toLowerCase().contains("f")) {
 		    	state.voiceSelected = voiceFun
             } else if(state.priority.toLowerCase().contains("r")) {
@@ -810,6 +816,7 @@ def priorityVoicesHandler(it) {
     if(state.priority == "X") {
         if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priority: ${state.priority}, so skipping"
         state.sound = ""
+        uriMessage = ""
     } else {
 	    def tts = textToSpeech(state.lastSpoken,state.voiceSelected)
 	    def uriMessage = "${tts.get('uri')}"
