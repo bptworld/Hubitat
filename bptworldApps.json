@@ -138,13 +138,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v1.0.0",
-  "FollowMeChildVersion": "v1.3.1",
+  "FollowMeChildVersion": "v1.3.2",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V1.3.1 - 08/02/19 - Fixed bug with Priority options",
+  "FollowMeUpdateNote": "V1.3.2 - 08/02/19 - Rewrite of letsTalk and speaker handlers",
   
   "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v1.2.0",
