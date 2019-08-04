@@ -754,7 +754,11 @@ def letsTalk() {
                                     }
                                 }
                             }
-                            it.playTrack(message.message)
+                            if(state.sound) {
+                                it.playTrack(state.sound)
+	                            pauseExecution(state.sLength)
+                            }
+                            it.playTrack(state.uriMessage)
                             pauseExecution(atomicState.speechDuration2)
                             if(afterVolume) {
                                 if(volRestore && (it.hasCommand('setLevel'))) {
@@ -777,7 +781,11 @@ def letsTalk() {
                                     }
                                 }
                             }
-                            it.playTrackAndRestore(message.message, message.returnLevel)
+                            if(state.sound) {
+                                it.playTrack(state.sound)
+	                            pauseExecution(state.sLength)
+                            }
+                            it.playTrackAndRestore(state.uriMessage, message.returnLevel)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
                             break;
