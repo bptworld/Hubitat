@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  V1.3.8 - 08/04/19 - Fixed old message being spoken. Fixed volume error on Goolge/Nest devices.
+ *  V1.3.8 - 08/04/19 - Fixed old message being spoken. Fixed volume error on Google/Nest devices.
  *  V1.3.7 - 08/04/19 - Added more try/catch to try and figure out what's going on
  *  V1.3.6 - 08/03/19 - Fixed echo from speaking twice. Other small changes.
  *  V1.3.5 - 08/03/19 - Put in an extra check if random voice is called but no random voices are selected. Other small changes.
