@@ -759,6 +759,7 @@ def playTrackHandler(it) {
 def defaultSpeechHandler(it) {
     try {
         if(logEnable) log.debug "In defaultSpeechHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
+        if(gInitialize) initializeSpeaker()
         if(volSpeech && (it.hasCommand('setLevel'))) {
             it.setLevel(state.volume)
         } else {
@@ -778,6 +779,7 @@ def defaultSpeechHandler(it) {
         log.info "Follow Me - defaultSpeechHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with defaultSpeechHandler"
+        log.error "${e}"
     }
 } 
     
