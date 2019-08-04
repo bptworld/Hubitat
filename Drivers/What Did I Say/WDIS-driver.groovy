@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 08/04/19 - Added more commands
  *  V2.0.0 - 08/04/19 - Changed up how speech is handled and sent to 'Follow Me'. Thanks to storageanarchy for teaching me some new tricks!
  *  V1.1.9 - 08/03/19 - Added initialize section, added deviceNotification
  *  V1.1.8 - 07/27/19 - '%5B'is replaced with '[' and '%5D'is replaced with ']' in any speech received.
@@ -61,7 +62,7 @@
 
 import groovy.json.*
     
-def version(){"v2.0.0"}
+def version(){"v2.0.1"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -74,7 +75,9 @@ metadata {
         command "playAnnouncement", ["string", "number", "number"]
         command "playAnnouncement", ["string", "string", "number", "number"]
         command "playAnnouncementAll", ["string", "string"]
+        command "playText", ["string"]
 		command "playTextAndRestore", ["string", "number"]
+        command "playTextAndResume", ["string", "number"]
         command "playTrack", ["string"]
         command "playTrackAndRestore", ["string"]
         command "setLevel", ["string"]
@@ -140,7 +143,21 @@ def playAnnouncementAll(message, title=null, arg2) {
     populateMap()
 }
 
-def playTextAndRestore(message) {
+def playText(message) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playText', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playTextAndRestore(message, arg2) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playTextAndResume(message, arg2) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
     sendEvent(name: "latestMessage", value: theMessage)
