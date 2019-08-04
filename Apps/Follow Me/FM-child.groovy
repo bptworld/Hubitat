@@ -808,11 +808,10 @@ def checkVol() {
 	} else {
 		state.volume = volSpeech
 	}
-	if(logEnable) log.debug "In checkVol (${state.version}) - volume: ${state.volume}"
     
 	if(messagePriority) {
         if(state.priority == "X") {
-            if(logEnable) log.debug "In checkVol (${state.version}) - priority: ${state.priority}, so skipping"
+            if(logEnable) log.debug "In checkVol (${state.version}) - Priority: ${state.priority}, so skipping"
             state.volume = volSpeech
 		    state.voiceSelected = voiceNorm
         } else {
@@ -837,7 +836,7 @@ def checkVol() {
 		    	state.voiceSelected = voiceNorm
                 if(logEnable) log.debug "In checkVol (${state.version}) - Priority Not found, moving on"
             }
-            if(logEnable) log.debug "In checkVol (${state.version}) - priority message: ${state.priority} - priority volume: ${state.volume}"    
+            if(logEnable) log.debug "In checkVol (${state.version}) - Priority: ${state.priority} - priority volume: ${state.volume}"    
         }
 	}
 }
@@ -845,7 +844,7 @@ def checkVol() {
 def priorityVoicesHandler(it) {
     if(state.lastSpoken == ".") state.lastSpoken = ""
     if(state.priority == "X") {
-        if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priority: ${state.priority}, so skipping"
+        if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Priority: ${state.priority}, so skipping"
         state.sound = ""
         uriMessage = ""
     } else {
@@ -943,7 +942,7 @@ def priorityVoicesHandler(it) {
             state.sLength = 1000
         }
     
-	    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Sound: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
+	    if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - Speaker: ${it} - Priority: ${state.priority} - Voice: ${state.voiceSelected} - Message: ${state.lastSpoken}"
         state.uriMessage = uriMessage
     }
 }
