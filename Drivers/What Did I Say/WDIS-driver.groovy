@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/04/19 - Changed up how speech is handled and sent to 'Follow Me'. Thanks to storageanarchy for teaching me some new tricks!
  *  V1.1.9 - 08/03/19 - Added initialize section, added deviceNotification
  *  V1.1.8 - 07/27/19 - '%5B'is replaced with '[' and '%5D'is replaced with ']' in any speech received.
  *  V1.1.7 - 07/22/19 - Second try at fixing bug in priority handling.
@@ -58,7 +59,9 @@
  *  V1.0.0 - 01/27/19 - Initial release
  */
 
-def version(){"v1.1.9"}
+import groovy.json.*
+    
+def version(){"v2.0.0"}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -68,24 +71,27 @@ metadata {
 		capability "Music Player"
         capability "Notification"
 		
-		command "playTextAndRestore", ["string"]
+        command "playAnnouncement", ["string", "number", "number"]
+        command "playAnnouncement", ["string", "string", "number", "number"]
+        command "playAnnouncementAll", ["string", "string"]
+		command "playTextAndRestore", ["string", "number"]
         command "playTrackAndRestore", ["string"]
-        command "sendSpeechMap", ["string"]
         command "setLevel", ["string"]
         command "setVolume", ["string"]
-		command "setVolumeSpeakAndRestore", ["string"]
+		command "setVolumeSpeakAndRestore", ["number", "string", "number"]
+        command "setVolumeAndSpeak", ["number", "string"]
 		command "speak", ["string"]
 		command "sendFollowMeSpeaker", ["string"]
         command "deviceNotification", ["string"]
 		
     	attribute "whatDidISay", "string"
 		attribute "lastSpoken", "string"
-		attribute "lastSpokenUnique", "string"
-        attribute "speechType", "string"
+		attribute "latestMessage", "string"
 		attribute "speakerStatus1", "string"
 		attribute "speakerStatus2", "string"
 		attribute "speakerStatus3", "string"
 		attribute "speakerStatus4", "string"
+        
 	}
 	preferences() {    	
         section(){
@@ -100,59 +106,86 @@ metadata {
 
 //Received new messages from apps
 
-def deviceNotification(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	//sendEvent(name: "playTextAndRestore", value: text)
-    state.speechType = "deviceNotification"
+// -- code by @storageanarchy - Thank you for showing me how to pass all the variables!
+String composeMessageMap(method, message, priority='n', speakLevel=null, returnLevel=null, title='') {
+    return JsonOutput.toJson([method: method as String, message: message as String, priority: priority as String, speakLevel: speakLevel, returnLevel: returnLevel, title: title as String])
+}
+
+def playAnnouncement(message, arg2, arg3) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, arg2, arg3)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playAnnouncement(String message, title=null, arg3, arg4) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, arg3, arg4, title)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playAnnouncementAll(message, title=null, arg2) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playAnnouncementAll', state.speechReceivedFULL, arg2)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def deviceNotification(message) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('deviceNotification', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playTextAndRestore(message) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playTrackAndRestore(message) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playTrackAndRestore', state.speechReceivedFULL, arg2)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def setLevel(message) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('setLevel', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()  
+}
+
+def setVolume(message) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('setVolume', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()     
+}
+
+def setVolumeSpeakAndRestore(message, arg2, arg3) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('setVolumeSpeakAndRestore', arg2, state.speechReceivedFULL, arg3)
+    sendEvent(name: "latestMessage", value: theMessage)
 	populateMap()
 }
 
-def playTextAndRestore(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	//sendEvent(name: "playTextAndRestore", value: text)
-    state.speechType = "playTextAndRestore"
+def setVolumeAndSpeak(message, arg2) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, arg2)
+    sendEvent(name: "latestMessage", value: theMessage)
 	populateMap()
 }
 
-def playTrackAndRestore(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	//sendEvent(name: "playTrackAndRestore", value: text)
-    state.speechType = "playTrackAndRestore"
-	populateMap()
-}
-
-def sendSpeechMap(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    state.speechType = "sendSpeechMap"
-	populateMap()
-}
-
-def setLevel(level) {
-    //sendEvent(name: "setLevel", value: level)    
-}
-
-def setVolume(volume) {
-    //sendEvent(name: "setVolume", value: volume)    
-}
-
-def setVolumeSpeakAndRestore(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	//sendEvent(name: "setVolumeSpeakAndRestore", value: text)
-    state.speechType = "setVolumeSpeakAndRestore"
-	populateMap()
-}
-
-def speak(speechMap) {
-	state.speechReceivedFULL = speechMap.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	state.speechReceived = speechMap.take(70).replace("%20"," ").replace("%5B","[").replace("%5D","]")
-	sendEvent(name: "speak", value: text)
-    state.speechType = "defaultSpeech"
-	populateMap()
+def speak(message) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('speak', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
 }
 
 def makeUnique() {
@@ -168,8 +201,10 @@ def makeUnique() {
 
 def populateMap() {
 	if(logEnable) log.debug "What Did I Say - Received new Speech! ${state.speechReceivedFULL}"
+    state.speechReceived = state.speechReceivedFULL.take(70)
 	makeUnique()
 	sendEvent(name: "lastSpoken", value: state.speechReceivedFULL, displayed: true)
+    
 	if(state.speechReceived.contains("]")) {
 		def (priority, msgA) = state.speechReceived.split(']')
 		state.priority = priority.drop(1)
