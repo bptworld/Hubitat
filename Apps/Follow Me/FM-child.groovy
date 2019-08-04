@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/04/19 - Handles speech much easier. New options available, check your child apps!
  *  V1.3.8 - 08/04/19 - Fixed old message being spoken. Fixed volume error on Google/Nest devices.
  *  V1.3.7 - 08/04/19 - Added more try/catch to try and figure out what's going on
  *  V1.3.6 - 08/03/19 - Fixed echo from speaking twice. Other small changes.
@@ -78,7 +79,7 @@
 import groovy.json.*
     
 def setVersion() {
-	state.version = "v1.3.8"
+	state.version = "v2.0.0"
 }
 
 definition(
@@ -155,23 +156,34 @@ def pageConfig() {
                 
                 if(speakerType == "echoSpeaksSpeaker") {
                     paragraph "Speaker type is an Echo Speaks Device. Echo devices can not play a custom sound or change voices."
-                    input "echoSpeaksOptions", "enum", title: "Select which command you would like to use", options: [
-                    ["setVolumeSpeakAndRestoreOption":"setVolumeSpeakAndRestore"],
-                    ["playAnnouncementOption":"playAnnouncement - Needs Testing"],
-                ], required: true, multiple: false, submitOnChange: true
-                    paragraph "<b>Options:</b><br><b>setVolumeSpeakandRestore</b> - Sends volume command first, then plays message, and restores original volume<br><b>playAnnouncement</b> - This will make an announcement with the message on the device executing the command, adjusting the volume before and after and showing the message on an Echo Show."
+                    paragraph "If the command sent doesn't have the ability to set the volume, should this app do it?"
+                    input "beforeVolume", "bool", title: "Adjust sound before sending speech (if not automatic)", required: true, defaultValue: false
+                    input "afterVolume", "bool", title: "Adjust sound after sending speech (if not automatic)", required: true, defaultValue: false
+                    paragraph "<small>* Values will be entered in 'Volume Control Options'</small>"
                 }
                 if(speakerType == "googleSpeaker") {
                     paragraph "Speaker type is a Google/Nest Device. Google/Nest devices can play custom sounds and change voices."
                     paragraph "When using Google/Nest devices sometimes an Initialize is necessary (not always)."
                     input "gInitialize", "bool", title: "Initialize Google/Nest devices before sending speech?", required: true, defaultValue: false
                     input "gInitRepeat", "number", title: "Initialize Google/Nest devices every X minutes? (recommended: 4)", required: false
+                    paragraph "If the command sent doesn't have the ability to set the volume, should this app do it?"
+                    input "beforeVolume", "bool", title: "Adjust sound before sending speech (if not automatic)", required: true, defaultValue: false
+                    input "afterVolume", "bool", title: "Adjust sound after sending speech (if not automatic)", required: true, defaultValue: false
+                    paragraph "<small>* Values will be entered in 'Volume Control Options'</small>"
                 }
                 if(speakerType == "sonosSpeaker") {
                     paragraph "Speaker type is a Sonos Device. Sonos devices can play custom sounds and change voices."
+                    paragraph "If the command sent doesn't have the ability to set the volume, should this app do it?"
+                    input "beforeVolume", "bool", title: "Adjust sound before sending speech (if not automatic)", required: true, defaultValue: false
+                    input "afterVolume", "bool", title: "Adjust sound after sending speech (if not automatic)", required: true, defaultValue: false
+                    paragraph "<small>* Values will be entered in 'Volume Control Options'</small>"
                 }
                 if(speakerType == "otherSpeaker") {
                     paragraph "Speaker type is an Other Device."
+                    paragraph "If the command sent doesn't have the ability to set the volume, should this app do it?"
+                    input "beforeVolume", "bool", title: "Adjust sound before sending speech (if not automatic)", required: true, defaultValue: false
+                    input "afterVolume", "bool", title: "Adjust sound after sending speech (if not automatic)", required: true, defaultValue: false
+                    paragraph "<small>* Values will be entered in 'Volume Control Options'</small>"
                 }
           	}
 		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
@@ -400,12 +412,13 @@ def speakerStatus(){
             voiceSpeakers += "</table>"
             paragraph "${voiceSpeakers}"
             paragraph "<hr>"
+// ** Abilites List **
             byApp = "<table align=center width=100%>"
             byApp += "<tr><td><b>App</b></td><td> - </td><td><b>Ability</b></td></tr>"
-            byApp += "<tr><td>alextts</td><td> - </td><td>no restore, manual vol control</td></tr>"
-            byApp += "<tr><td>Cast-Web</td><td> - </td><td>playTextAndRestore</td></tr>"
-            byApp += "<tr><td>Chromecast Integration</td><td> - </td><td>no restore, manual vol control</td></tr>"
-            byApp += "<tr><td>Echo Speaks</td><td> - </td><td>setVolumeSpeakAndRestore</td></tr>"
+            byApp += "<tr><td>alextts</td><td> - </td><td>speak</td></tr>"
+            byApp += "<tr><td>Cast-Web</td><td> - </td><td>playText, playTextAndRestore, playTextAndResume, speak</td></tr>"
+            byApp += "<tr><td>Chromecast Integration</td><td> - </td><td>playTrack, speak</td></tr>"
+            byApp += "<tr><td>Echo Speaks</td><td> - </td><td>playAnnouncement, playAnnouncementAll, setVolumeAndSpeak, setVolumeSpeakAndRestore, speak<br><small>* Please see Echo Speaks documentation for usuage.</small></td></tr>"
 
             byApp += "</table>"
             paragraph "${byApp}"
@@ -642,24 +655,175 @@ def letsTalk() {
             state.speakers.each {
                 priorityVoicesHandler(it)
 
-                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions == "setVolumeSpeakAndRestoreOption") { 
-                    if(it.hasCommand('setVolumeSpeakAndRestore')) setVolumeSpeakAndRestoreHandler(it)
-                } else
-                if(speakerType == "echoSpeaksSpeaker" && echoSpeaksOptions == "playAnnouncementOption") { 
-                    if(it.hasCommand('playAnnouncement')) playAnnouncementHandler(it)
-                }
-                
-                if(speakerType != "echoSpeaksSpeaker") {
-                    if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                        setVolumeSpeakAndRestoreHandler(it)
-                    } else if(it.hasCommand('playTrackAndRestore')) {
-                        playTrackAndRestoreHandler(it)
-                    } else if(it.hasCommand('playTrack')) {
-                        playTrackHandler(it)
-                    } else if(it.hasCommand('playTextAndRestore')) {
-                        playTextAndRestoreHandler(it)    
-                    } else {
-                        defaultSpeechHandler(it)
+                String theMessage = gvDevice.currentValue('latestMessage')            //code by @storageanarchy
+                if (theMessage) {
+                    def message =  new JsonSlurper().parseText(theMessage)
+                    // you can now reference the attributes as message.message, message.priority, message.title, etc)
+                    switch(message.method) {
+                        case 'deviceNotification':
+                            if(beforeVolume) {
+                                if(volSpeech && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(state.volume)
+                                } else {
+                                    if(volSpeech && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(state.volume)
+                                    }
+                                }
+                            }
+                            it.deviceNotification(message.message)
+                            pauseExecution(atomicState.speechDuration2)
+                            if(afterVolume) {
+                                if(volRestore && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(volRestore)
+                                } else {
+                                    if(volRestore && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(volRestore)
+                                    }
+                                }
+                            }
+                            log.info "Follow Me - deviceNotification Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playAnnouncement':
+                            it.playAnnouncement(message.message, message.title, message.speakLevel, message.returnLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - playAnnouncement Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playAnnouncementAll':
+                            it.playAnnouncementAll(message.speakLevel, message.message, message.returnLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playText':
+                            if(beforeVolume) {
+                                if(volSpeech && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(state.volume)
+                                } else {
+                                    if(volSpeech && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(state.volume)
+                                    }
+                                }
+                            }
+                            it.playText(message.message)
+                            pauseExecution(atomicState.speechDuration2)
+                            if(afterVolume) {
+                                if(volRestore && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(volRestore)
+                                } else {
+                                    if(volRestore && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(volRestore)
+                                    }
+                                }
+                            }
+                            log.info "Follow Me - playText Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTextAndRestore':
+                            if(beforeVolume) {
+                                if(volSpeech && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(state.volume)
+                                } else {
+                                    if(volSpeech && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(state.volume)
+                                    }
+                                }
+                            }
+                            it.playTextAndRestore(message.message, message.returnLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - playTextAndRestore Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTextAndResume':
+                            if(beforeVolume) {
+                                if(volSpeech && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(state.volume)
+                                } else {
+                                    if(volSpeech && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(state.volume)
+                                    }
+                                }
+                            }
+                            it.playTextAndResume(message.message, message.returnLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - playTextAndResume Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTrack':
+                            if(beforeVolume) {
+                                if(volSpeech && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(state.volume)
+                                } else {
+                                    if(volSpeech && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(state.volume)
+                                    }
+                                }
+                            }
+                            it.playTrack(message.message)
+                            pauseExecution(atomicState.speechDuration2)
+                            if(afterVolume) {
+                                if(volRestore && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(volRestore)
+                                } else {
+                                    if(volRestore && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(volRestore)
+                                    }
+                                }
+                            }
+                            log.info "Follow Me - playTrack Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTrackAndRestore':
+                            if(beforeVolume) {
+                                if(volSpeech && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(state.volume)
+                                } else {
+                                    if(volSpeech && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(state.volume)
+                                    }
+                                }
+                            }
+                            it.playTrackAndRestore(message.message, message.returnLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'setLevel':
+                            it.setLevel(message.speakLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - setLevel Received - speaker: ${it} - ${message.speakLevel}"    
+                            break;
+                        case 'setVolume':
+                            it.setVolume(message.speakLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - setVolume Received - speaker: ${it} - ${message.speakLevel}"
+                            break;
+                        case 'setVolumeSpeakAndRestore':
+                            it.setVolumeSpeakAndRestore(message.speakLevel, message.message, message.returnLevel)
+                            pauseExecution(atomicState.speechDuration2)
+                            log.info "Follow Me - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'setVolumeAndSpeak':
+                            it.setVolumeAndSpeak(message.speakLevel, message.message)
+                            pauseExecution(atomicState.speechDuration2)
+                            if(afterVolume) {
+                                if(volRestore && (it.hasCommand('setLevel'))) {
+                                    it.setLevel(volRestore)
+                                } else {
+                                    if(volRestore && (it.hasCommand('setVolume'))) {
+                                        it.setVolume(volRestore)
+                                    }
+                                }
+                            }
+                            log.info "Follow Me - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'speak':
+                            log.info "Follow Me - speak Received - speaker: ${it} - Using best case handler"
+                            if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                                setVolumeSpeakAndRestoreHandler(it)
+                            } else if(it.hasCommand('playTrackAndRestore')) {
+                                playTrackAndRestoreHandler(it)
+                            } else if(it.hasCommand('playTrack')) {
+                                playTrackHandler(it)
+                            } else if(it.hasCommand('playTextAndRestore')) {
+                                playTextAndRestoreHandler(it)    
+                            } else {
+                                defaultSpeechHandler(it)
+                            }
+                            break; 
                     }
                 }
             }
@@ -688,32 +852,18 @@ def setVolumeSpeakAndRestoreHandler(it) {
         defaultSpeechHandler(it)
     }
 }
-
-def playAnnouncementHandler(it) {
-    try {
-        if(logEnable) log.debug "In playAnnouncementHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
-        def prevVolume = it.currentValue("volume")
-        //it.playAnnouncement(state.lastSpoken, state.lastSpoken, state.volume, prevVolume)
-        //it.playAnnouncement(state.lastSpoken, state.volume, prevVolume)
-        it.playAnnouncement(state.lastSpoken)
-        pauseExecution(atomicState.speechDuration2)
-        log.info "Follow Me - playAnnouncementHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
-    } catch (e) {
-        log.warn "Follow Me - Something went wrong with playAnnouncementHandler - Trying the defaultSpeechHandler"
-        log.error "${e}"
-        defaultSpeechHandler(it)
-    }
-}
     
 def playTrackAndRestoreHandler(it) {
     try {
         if(logEnable) log.debug "In playTrackAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         def prevVolume = it.currentValue("volume")
-        if(volSpeech && (it.hasCommand('setLevel'))) {
-            it.setLevel(state.volume)
-        } else {
-            if(volSpeech && (it.hasCommand('setVolume'))) {
-                it.setVolume(state.volume)
+        if(beforeVolume) {
+            if(volSpeech && (it.hasCommand('setLevel'))) {
+                it.setLevel(state.volume)
+            } else {
+                if(volSpeech && (it.hasCommand('setVolume'))) {
+                    it.setVolume(state.volume)
+                }
             }
         }
         if(state.sound) it.playTrackAndRestore(state.sound, prevVolume)
@@ -732,11 +882,13 @@ def playTextAndRestoreHandler(it) {
     try {
         if(logEnable) log.debug "In playTextAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         def prevVolume = it.currentValue("volume")
-        if(volSpeech && (it.hasCommand('setLevel'))) {
-            it.setLevel(state.volume)
-        } else {
-            if(volSpeech && (it.hasCommand('setVolume'))) {
-                it.setVolume(state.volume)
+        if(beforeVolume) {
+            if(volSpeech && (it.hasCommand('setLevel'))) {
+                it.setLevel(state.volume)
+            } else {
+                if(volSpeech && (it.hasCommand('setVolume'))) {
+                    it.setVolume(state.volume)
+                }
             }
         }
         it.playTextAndRestore(state.lastSpoken, prevVolume)
@@ -753,11 +905,13 @@ def playTrackHandler(it) {
     try {
         if(logEnable) log.debug "In playTrackHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         if(gInitialize) initializeSpeaker()
-        if(volSpeech && (it.hasCommand('setLevel'))) {
-            it.setLevel(state.volume)
-        } else {
-            if(volSpeech && (it.hasCommand('setVolume'))) {
-                it.setVolume(state.volume)
+        if(beforeVolume) {
+            if(volSpeech && (it.hasCommand('setLevel'))) {
+                it.setLevel(state.volume)
+            } else {
+                if(volSpeech && (it.hasCommand('setVolume'))) {
+                    it.setVolume(state.volume)
+                }
             }
         }
         if(state.sound) {
@@ -766,11 +920,13 @@ def playTrackHandler(it) {
         }
         it.playTrack(state.uriMessage)
         pauseExecution(atomicState.speechDuration2)
-        if(volRestore && (it.hasCommand('setLevel'))) {
-            it.setLevel(volRestore)
-        } else {
-            if(volRestore && (it.hasCommand('setVolume'))) {
-                it.setVolume(volRestore)
+        if(afterVolume) {
+            if(volRestore && (it.hasCommand('setLevel'))) {
+                it.setLevel(volRestore)
+            } else {
+                if(volRestore && (it.hasCommand('setVolume'))) {
+                    it.setVolume(volRestore)
+                }
             }
         }
         log.info "Follow Me - playTrackHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
@@ -794,11 +950,13 @@ def defaultSpeechHandler(it) {
         }
         it.speak(state.lastSpoken)
         pauseExecution(atomicState.speechDuration2)
-        if(volRestore && (it.hasCommand('setLevel'))) {
-            it.setLevel(volRestore)
-        } else {
-            if(volRestore && (it.hasCommand('setVolume'))) {
-                it.setVolume(volRestore)
+        if(afterVolume) {
+            if(volRestore && (it.hasCommand('setLevel'))) {
+                it.setLevel(volRestore)
+            } else {
+                if(volRestore && (it.hasCommand('setVolume'))) {
+                    it.setVolume(volRestore)
+                }
             }
         }
         log.info "Follow Me - defaultSpeechHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
