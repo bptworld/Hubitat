@@ -664,6 +664,7 @@ def setVolumeSpeakAndRestoreHandler(it) {
         log.info "Follow Me - setVolumeSpeakAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with setVolumeSpeakAndRestoreHandler - Trying the defaultSpeechHandler"
+        log.error "${e}"
         defaultSpeechHandler(it)
     }
 }
@@ -679,6 +680,7 @@ def playAnnouncementHandler(it) {
         log.info "Follow Me - playAnnouncementHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with playAnnouncementHandler - Trying the defaultSpeechHandler"
+        log.error "${e}"
         defaultSpeechHandler(it)
     }
 }
@@ -701,6 +703,7 @@ def playTrackAndRestoreHandler(it) {
         log.info "Follow Me - playTrackAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with playTrackAndRestoreHandler - Trying the defaultSpeechHandler"
+        log.error "${e}"
         defaultSpeechHandler(it)
     }
 }
@@ -721,6 +724,7 @@ def playTextAndRestoreHandler(it) {
         log.info "Follow Me - playTextAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with playTextAndRestoreHandler - Trying the defaultSpeechHandler"
+        log.error "${e}"
         defaultSpeechHandler(it)
     }
 }
@@ -752,6 +756,7 @@ def playTrackHandler(it) {
         log.info "Follow Me - playTrackHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with playTrackHandler - Trying the defaultSpeechHandler"
+        log.error "${e}"
         defaultSpeechHandler(it)
     }
 } 
