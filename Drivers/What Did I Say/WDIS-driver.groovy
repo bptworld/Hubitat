@@ -75,6 +75,7 @@ metadata {
         command "playAnnouncement", ["string", "string", "number", "number"]
         command "playAnnouncementAll", ["string", "string"]
 		command "playTextAndRestore", ["string", "number"]
+        command "playTrack", ["string"]
         command "playTrackAndRestore", ["string"]
         command "setLevel", ["string"]
         command "setVolume", ["string"]
@@ -111,6 +112,13 @@ String composeMessageMap(method, message, priority='n', speakLevel=null, returnL
     return JsonOutput.toJson([method: method as String, message: message as String, priority: priority as String, speakLevel: speakLevel, returnLevel: returnLevel, title: title as String])
 }
 
+def deviceNotification(message) {
+	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('deviceNotification', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
 def playAnnouncement(message, arg2, arg3) {
     state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, arg2, arg3)
@@ -132,16 +140,16 @@ def playAnnouncementAll(message, title=null, arg2) {
     populateMap()
 }
 
-def deviceNotification(message) {
+def playTextAndRestore(message) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('deviceNotification', state.speechReceivedFULL)
+    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
 
-def playTextAndRestore(message) {
+def playTrack(message) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
+    theMessage = composeMessageMap('playTrack', state.speechReceivedFULL, arg2)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
