@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 08/06/19 - Just changed some wording
  *  V1.0.3 - 07/14/19 - Merged code so one app handles both Free and Paid versions. My places now in parent app.
  *  V1.0.2 - 07/12/19 - Added code so the main app (life360 tracker) can only be installed once.
  *  V1.0.1 - 07/07/19 - Added Lif360 Track Free version
@@ -42,7 +43,7 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
@@ -110,7 +111,8 @@ def mainPage() {
 def myPlacesPage() {
     dynamicPage(name: "myPlacesPage", title: "<h2 style='color:#1A77C9;font-weight: bold'>My Places</h2>", nextPage: "mainPage", install: false, uninstall: false) {
         section(getFormat("header-green", "${getImage("Blank")}"+" My Places - For use with the Free version of Life360 Only")) {
-            paragraph "Use any service you like to find the Lat and Long for the place you want to save.<br>ie. <a href='https://www.latlong.net' target='_blank'>www.latlong.net</a>"
+            paragraph "Use any service you like to find the Lat and Long for the place you want to save.<br>ie. <a href='https://www.latlong.net' target='_blank'>www.latlong.net</a> or you can use <a href='https://www.life360.com' target='_blank'>www.life360.com</a> to pick a place and a radius.  Then come back here and enter in the options."
+            paragraph "Note: Do not create a Place for Home or Work. L360 Tracker will get these directly from L360."
 
             input "myName01", "text", title: "<b>My Place Name 01</b>", required: false, submitOnChange: true
             if(myName01) {
