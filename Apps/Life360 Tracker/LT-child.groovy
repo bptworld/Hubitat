@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.7 - 08/06/19 - Changed trigger from lastLocationUpdate to address1. Changed the 'Free' version to use the two places from Life360 (Home, Work) and combine them with 'My Places'. If using the 'free' version be sure to remove any 'my places' that reference Home or Work.
  *  V1.2.6 - 07/31/19 - Found typo in getTimeDiff
  *  V1.2.5 - 07/26/19 - Missed a line with 'On the Move' in 'Track All'
  *  V1.2.4 - 07/25/19 - Fixed typo with 'On the Move' in 'Track All'
@@ -70,7 +71,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.6"
+	state.version = "v1.2.7"
     state.appName = "Life360 Tracker Child"
     if(sendToAWSwitch && awDevice) {
 		awInfo = "${state.appName}:${state.version}"
@@ -117,9 +118,11 @@ def pageConfig() {
             input "trackingOptions", "enum", title: "How to track Places", options: ["Track All","Track Specific"], required: true, submitOnChange: "true"
             if(trackingOptions == "Track Specific") {
                 if(lifeVersion == "Free") {
-                    paragraph "My Places are created in the Life360 Parent app."
+                    paragraph "This will combine your two Places from Life360 (Home,Work) and 'My Places' created in the Life360 Parent app."
+                    state.lPlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
                     buildMyPlacesList()
-                    state.thePlaces = "${state.myPlacesList}".replace("[","").replace("]","").replace("]","").replace(" ,", ",").replace(", ", ",")
+                    state.allPlaces = [state.lPlaces, state.myPlacesList].flatten().findAll{it} 
+                    state.thePlaces = "${state.allPlaces}".replace("[","").replace("]","").replace("]","").replace(" ,", ",").replace(", ", ",")
                     //if(logEnable) log.debug "In pageConfig - Free - thePlaces: ${state.thePlaces}"
                 } else {
                     paragraph "This list will show all of your 'Starred' places from the Life360 app."
@@ -288,8 +291,9 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)   
-    if(lifeVersion == "Free") subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
+    //if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)  
+    if(lifeVersion == "Paid") subscribe(presenceDevice, "address1", userHandler)
+    if(lifeVersion == "Free") subscribe(presenceDevice, "address1", whereAmI)
 }
 
 def userHandler(evt) {
@@ -353,6 +357,7 @@ def trackAllHandler() {
             if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
             state.msg = "${messageDEP}"
             state.speakDEP = "yes"
+            state.justDEP = "yes"
             messageHandler()
         } else {
             if(state.sMove == null) {
@@ -361,19 +366,25 @@ def trackAllHandler() {
                 state.sMove = startMove
                 if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
             }
-            getTimeMoving()
-            if(state.mDiff >= timeMoving) {
-                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
-                state.msg = "${messageMOVE}"
-                state.speakMOVE = "yes"
-                messageHandler()
-                state.beenHere = "no"
-                def now = new Date()
-                long startMove = now.getTime()
-                state.sMove = startMove
-                if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+            if(state.justDEP == "no") {
+                getTimeMoving()
+                if(state.mDiff >= timeMoving) {
+                    if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                    state.msg = "${messageMOVE}"
+                    state.speakMOVE = "yes"
+                    state.justDEP = "no"
+                    messageHandler()
+                    state.beenHere = "no"
+                    def now = new Date()
+                    long startMove = now.getTime()
+                    state.sMove = startMove
+                    if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                } else {
+                    if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
+                }
             } else {
-                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value} ;)"   
+                state.justDEP = "no"
+                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
             }
         }
         state.prevPlace = state.address1Value
@@ -429,6 +440,7 @@ def trackHomeHandler() {
         if((homeDeparted) && (state.prevPlace == "Home") && (state.beenHere == "yes")) {
             if(logEnable) log.debug "In trackHomeHandler - Home Departed - ${friendlyName} has departed from ${state.prevPlace}"
             state.msg = "${messageDEP}"
+            state.justDEP = "yes"
             state.speakDEP = "yes"
             messageHandler()
             state.beenHere = "no"
@@ -489,6 +501,7 @@ def trackSpecificHandler() {
             if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
                 state.msg = "${messageDEP}"
                 state.speakDEP = "yes"
+                state.justDEP = "yes"
                 messageHandler()
                 state.beenHere = "no"
         } else {
@@ -498,20 +511,26 @@ def trackSpecificHandler() {
                 state.sMove = startMove
                 if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
             }
-            getTimeMoving()
-            if(state.mDiff >= timeMoving) {
-                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
-                state.msg = "${messageMOVE}"
-                state.speakMOVE = "yes"
-                messageHandler()
-                state.beenHere = "no"
-                def now = new Date()
-                long startMove = now.getTime()
-                state.sMove = startMove
-                if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
-            } else {
-                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value} ;)"   
-            }
+            if(state.justDEP == "no") {
+                getTimeMoving()
+                if(state.mDiff >= timeMoving) {
+                    if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                    state.msg = "${messageMOVE}"
+                    state.speakMOVE = "yes"
+                    state.justDEP = "no"
+                    messageHandler()
+                    state.beenHere = "no"
+                    def now = new Date()
+                    long startMove = now.getTime()
+                    state.sMove = startMove
+                    if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                } else {
+                    if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
+                }
+             } else {
+                state.justDEP = "no"
+                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
+            }   
         }
         
         state.prevPlace = state.address1Value
