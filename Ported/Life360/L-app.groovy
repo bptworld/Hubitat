@@ -47,6 +47,7 @@
  *
  *  Changes:
  *
+ *  v1.1.6 - 08/06/19 - Added new attribute, lastUpdated
  *  v1.1.5 - 07/28/19 - Members are now created within a virtual container 'Life360 Members'. Thanks to code by @stephack
  *  V1.1.4 - 07/23/19 - Places list now in alphabetical order.
  *  V1.1.3 - 07/12/19 - 1 min update http calls now use async thanks to cwwilson08
@@ -66,8 +67,10 @@
  *  v1.0.0 - 06/30/19 - Initial port of ST app (cwwilson08) (bptworld)
  */
 
+import java.text.SimpleDateFormat
+
 def setVersion() {
-	state.version = "v1.1.5"
+	state.version = "v1.1.6"
 }
 
 definition(
@@ -355,10 +358,8 @@ def createCircleSubscription() {
     def result = null
 
     try {
-       
-     	    httpPost(uri: url, body: postBody, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
-     	    result = response}
-
+     	httpPost(uri: url, body: postBody, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
+     	result = response}
     } catch (e) {
         log.debug (e)
     }
@@ -458,6 +459,7 @@ def generateInitialEvent (member, childDevice) {
     
     if(logEnable) log.debug "In generateInitialEvent..."
     runEvery1Minute(updateMembers)
+    //schedule("30 * * * * ?", updateMembers)
     // lets figure out if the member is currently "home" (At the place)
     
     try { // we are going to just ignore any errors
@@ -495,10 +497,12 @@ def generateInitialEvent (member, childDevice) {
         def speedKPH 
         def xplaces
         def avatar
-            
-            
+        def lastUpdated
+             
         xplaces = state.places.name.replaceAll(", ",",")
-              
+        
+        lastUpdated = new Date()
+            
         if (member.avatar != null){
         avatar = member.avatar
         avatarHtml =  "<img src= \"${avatar}\">"
@@ -549,7 +553,7 @@ def generateInitialEvent (member, childDevice) {
         def longitude = member.location.longitude.toFloat()
         
 		//Sent data	
-        childDevice?.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedmeters,speedMPH,speedKPH,wifi,xplaces,avatar,avatarHtml)
+        childDevice?.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedmeters,speedMPH,speedKPH,wifi,xplaces,avatar,avatarHtml,lastUpdated)
        
         childDevice?.generatePresenceEvent(isPresent, distanceAway)
         
@@ -662,10 +666,13 @@ def cmdHandler(resp, data) {
     def speedMiles
     def speedKm
     def xplaces
+    def lastUpdated
        
     thePlaces = state.places.sort { a, b -> a.name <=> b.name }
         
     xplaces = "${thePlaces.name}".replaceAll(", ",",")
+    
+    lastUpdated = new Date()
         
     //log.warn "xplaces: ${xplaces}"
         
@@ -718,7 +725,7 @@ def cmdHandler(resp, data) {
     def latitude = member.location.latitude.toFloat()
     def longitude = member.location.longitude.toFloat()
     //if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charging | Last Checkin = $member.location.endTimestamp | Moving = $moving | Driving = $driving | Latitude = $latitude | Longitude = $longitude | Since = $member.location.since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifi"
-        deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi,xplaces,avatar,avatarHtml)
+        deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi,xplaces,avatar,avatarHtml,lastUpdated)
              
     def place = state.places.find{it.id==settings.place}
 	if (place) {
