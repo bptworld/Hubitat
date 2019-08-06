@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.1.3 - 08/06/19 - Added new attribute, lastUpdated
  *  V1.1.2 - 07/28/19 - Squashed a bug
  *  V1.1.1 - 07/19/19 - Place is now clickable on the status tile.
  *  V1.1.0 - 07/17/19 - Added map link to attributes
@@ -93,6 +94,7 @@ metadata {
     attribute "history", "string"
     attribute "status", "string"
     attribute "lastMap", "string"
+    attribute "lastUpdated", "string"
         
 	command "refresh"
 	command "asleep"
@@ -400,7 +402,7 @@ if(state.update == true){
 	state.update = false}
 }
 
-private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml){
+private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated){
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
 	if(address1 != device.currentValue('address1')){
@@ -453,6 +455,8 @@ sendEvent( name: "savedPlaces", value: xplaces )
 sendEvent( name: "avatar", value: avatar )
 sendEvent( name: "avatarHtml", value: avatarHtml )
 
+sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
+    
     sendLife360Tile1()
 }
 
