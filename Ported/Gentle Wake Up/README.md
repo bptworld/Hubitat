@@ -6,6 +6,7 @@ PORT of ST Gentle Wake Up<br><br>
 Install App
 * Copy the App code from GitHub into a ‘New App’ under the ‘Apps Code’ menu
 * Click ‘Save’
+* Do this for both Parent and Child apps
 
 Install Driver
 * Copy the Driver code from GitHub into a ‘New Driver’ under the 'Driver Code' menu then click ‘Done’
