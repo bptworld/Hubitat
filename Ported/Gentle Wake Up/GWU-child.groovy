@@ -24,7 +24,7 @@
  *
  * ---- NEW Header ----
  *
- *  ****************  Gentle Wake Up App  ****************
+ *  ****************  Gentle Wake Up Child App  ****************
  *
  *  Design Usage:
  *  Port of the ST Gentle Wake Up App
