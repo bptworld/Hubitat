@@ -65,7 +65,7 @@ def setVersion() {
 
 definition(
 	name: "Gentle Wake Up Child",
-	namespace: "bptWorld",
+	namespace: "BPTWorld",
 	author: "Bryan Turcotte",
 	description: "Dim your lights up slowly, allowing you to wake up more naturally. Dim by level, color or temperature!",
 	category: "port",
