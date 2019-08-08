@@ -43,7 +43,7 @@
  *
  *  Changes:
  *
- *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to partent/child.
+ *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to parent/child.
  *  v1.0.3 - 08/02/19 - Whoops, found a bug! 
  *  v1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
  *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
