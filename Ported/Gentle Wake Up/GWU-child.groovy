@@ -43,6 +43,7 @@
  *
  *  Changes:
  *
+ *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to partent/child.
  *  v1.0.3 - 08/02/19 - Whoops, found a bug! 
  *  v1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
  *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
@@ -59,15 +60,16 @@
  */
 
 def setVersion() {
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
 }
 
 definition(
-	name: "Gentle Wake Up",
+	name: "Gentle Wake Up Child",
 	namespace: "bptWorld",
 	author: "Bryan Turcotte",
-	description: "Dim your lights up slowly, allowing you to wake up more naturally.",
+	description: "Dim your lights up slowly, allowing you to wake up more naturally. Dim by level, color or temperature!",
 	category: "port",
+    parent: "BPTWorld:Gentle Wake Up",
 	iconUrl: "",
 	iconX2Url: "",
     pausable: true,
@@ -183,14 +185,23 @@ def numbersPage() {
 		}
 
 		section {
-			input(name: "startLevel", type: "number", range: "0..99", title: "From this level", defaultValue: defaultStart(), description: "Current Level", required: false, multiple: false)
-			input(name: "endLevel", type: "number", range: "0..99", title: "To this level", defaultValue: defaultEnd(), description: "Between 0 and 99", required: true, multiple: false)
+			input(name: "startTempLevel", type: "number", range: "0..99", title: "From this level", defaultValue: defaultStart(), description: "Current Level", required: false, multiple: false, width: 6)
+			input(name: "endTempLevel", type: "number", range: "0..99", title: "To this level", defaultValue: defaultEnd(), description: "Between 0 and 99", required: true, multiple: false, width: 6)
 		}
 
 		def colorDimmers = dimmersWithSetColorCommand()
 		if (colorDimmers) {
 			section {
-				input(name: "colorize", type: "bool", title: "Gradually change the color of ${fancyDeviceString(colorDimmers)}", description: null, required: false, defaultValue: "true")
+				input(name: "colorize", type: "bool", title: "Gradually change the color of ${fancyDeviceString(colorDimmers)}", description: null, required: false, defaultValue: "false")
+			}
+		}
+        
+        def colorTemperatureDimmers = dimmersWithSetColorTemperatureCommand()
+		if (colorTemperatureDimmers) {
+			section {
+				input(name: "colorTemperature", type: "bool", title: "Gradually change the temperature of ${fancyDeviceString(colorTemperatureDimmers)}", description: null, required: false, defaultValue: "false", submitOnChange: true)
+                if(colorTemperature) input(name: "startTemp", type: "number", range: "1000..5000", title: "From this temp", description: "Between 1000 and 5000", required: false, multiple: false, width: 6)
+			if(colorTemperature) input(name: "endTemp", type: "number", range: "1000..5000", title: "To this temp", description: "Between 1000 and 5000", required: true, multiple: false, width: 6)
 			}
 		}
 	}
@@ -640,24 +651,45 @@ private increment() {
 	}
 }
 
-def updateDimmers(percentComplete) {
-	dimmers.each { dimmer ->
+def setupTemps() {
+    if(state.runSetupTempsOnce == "no") {
+        state.runSetupTempsOnce = "yes"
+        state.currentTemp = startTemp
+        seconds = duration * 60
+        state.dimStep = endTemp / seconds
+        state.dimTemp = state.currentTemp
+        
+        if(startTemp < endTemp) state.tempUpDown = "Up"
+        if(startTemp > endTemp) state.tempUpDown = "Down"
+        if(logEnable) log.debug "In setupTemps - tempUpDown: ${state.tempUpDown}"
+    }
+}
 
+def updateDimmers(percentComplete) {
+    setupTemps()
+    
+	dimmers.each { dimmer ->
 		def nextLevel = dynamicLevel(dimmer, percentComplete)
 
 		if (nextLevel == 0) {
             dimmer.off()
 		} else {
 			def shouldChangeColors = (colorize && colorize != "false")
+            def shouldChangeColorTemperature = (colorTemperature && colorTemperature != "false")
 			if (shouldChangeColors && hasSetColorCommand(dimmer)) {
 				def hue = getHue(dimmer, nextLevel)
 				if(logEnable) log.debug "Setting ${deviceLabel(dimmer)} level to ${nextLevel} and hue to ${hue}"
 				dimmer.setColor([hue: hue, saturation: 100, level: nextLevel])
+            } else if (shouldChangeColorTemperature && hasSetColorTemperatureCommand(dimmer)) {                   
+                dimmer.setLevel(nextLevel)
+                if(state.tempUpDown== "Up") colorTempStepUp(dimmer)
+                if(state.tempUpDown== "Down") colorTempStepDown(dimmer)
+                if(logEnable) log.debug "Setting ${deviceLabel(dimmer)} level to ${nextLevel} and temperatue to ${state.currentTemp}"
 			} else if (hasSetLevelCommand(dimmer)) {
-				log.debug "Setting ${deviceLabel(dimmer)} level to ${nextLevel}"
+				if(logEnable) log.debug "Setting ${deviceLabel(dimmer)} level to ${nextLevel}"
 				dimmer.setLevel(nextLevel)
 			} else {
-				log.warn "${deviceLabel(dimmer)} does not have setColor or setLevel commands."
+				log.warn "${deviceLabel(dimmer)} does not have setColor, setColorTemperature or setLevel commands."
 			}
 		}
 	}
@@ -691,12 +723,10 @@ private completion() {
 	}
 
 	stop("schedule")
-
 	handleCompletionSwitches()
-
 	handleCompletionMessaging()
-
-	handleCompletionModesAndPhrases()
+	handleCompletionModesAndPhrases()   
+    state.runSetupTempsOnce = "no"
 }
 
 private handleCompletionSwitches() {
@@ -965,6 +995,38 @@ def getDownHue(level) {
 	getRedHue(level)
 }
 
+def colorTempStepUp(dimmer) {
+	if(logEnable) log.debug "In colorTempStepUp"			
+    if(state.currentTemp < endTemp) {
+        if(logEnable) log.debug "colorTempStepUp - dimTemp: ${state.dimTemp} - dimStep: ${state.dimStep}"
+        state.dimTemp = state.dimTemp + state.dimStep
+        if(logEnable) log.debug "colorTempStepUp - NEW dimTemp: ${state.dimTemp}"
+        if(state.dimTemp > endTemp) {state.dimTemp = endTemp}
+        state.currentTemp = state.dimTemp.toInteger()
+        if(logEnable) log.debug "colorTempStepUp - NEW currentTemp: ${state.currentTemp}"
+    	dimmer.setColorTemperature(state.currentTemp)
+        if(logEnable) log.debug "colorTempStepUp - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"
+    } else{
+        if(logEnable) log.debug "colorTempStepUp - FINISHED - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"    
+    }
+}
+
+def colorTempStepDown(dimmer) {
+	if(logEnable) log.debug "In colorTempStepDown"			
+    if(state.currentTemp > endTemp) {
+        if(logEnable) log.debug "colorTempStepDown - dimTemp: ${state.dimTemp} - dimStep: ${state.dimStep}"
+        state.dimTemp = state.dimTemp + state.dimStep
+        if(logEnable) log.debug "colorTempStepDown - NEW dimTemp: ${state.dimTemp}"
+        if(state.dimTemp > endTemp) {state.dimTemp = endTemp}
+        state.currentTemp = state.dimTemp.toInteger()
+        if(logEnable) log.debug "colorTempStepDown - NEW currentTemp: ${state.currentTemp}"
+    	dimmer.setColorTemperature(state.currentTemp)
+        if(logEnable) log.debug "colorTempStepDown - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"
+    } else{
+        if(logEnable) log.debug "colorTempStepDown - FINISHED - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"    
+    }
+}
+
 private getBlueHue(level) {
 	if (level < 5) return 72
 	if (level < 10) return 71
@@ -1021,6 +1083,10 @@ private hasSetColorCommand(device) {
 	return hasCommand(device, "setColor")
 }
 
+private hasSetColorTemperatureCommand(device) {
+	return hasCommand(device, "setColorTemperature")
+}
+
 private hasCommand(device, String command) {
 	return (device.supportedCommands.find { it.name == command } != null)
 }
@@ -1033,6 +1099,16 @@ private dimmersWithSetColorCommand() {
 		}
 	}
 	return colorDimmers
+}
+
+private dimmersWithSetColorTemperatureCommand() {
+	def temperatureDimmers = []
+	dimmers.each { dimmer ->
+		if (hasSetColorTemperatureCommand(dimmer)) {
+			temperatureDimmers << dimmer
+		}
+	}
+	return temperatureDimmers
 }
 
 private int sanitizeInt(i, int defaultValue = 0) {
@@ -1187,6 +1263,14 @@ def numbersPageHrefDescription() {
 			title += " and will gradually change color."
 		} else {
 			title += ".\n${fancyDeviceString(colorDimmers)} will gradually change color."
+		}
+	}
+    if (temperature) {
+		def colorTemperatureDimmers = dimmersWithSetColorTemperatureCommand()
+		if (colorTemperatureDimmers == dimmers) {
+			title += " and will gradually change temperature."
+		} else {
+			title += ".\n${fancyDeviceString(colorTemperatureDimmers)} will gradually change temperature."
 		}
 	}
 	return title
