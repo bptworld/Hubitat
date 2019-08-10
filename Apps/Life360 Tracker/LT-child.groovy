@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.8 - 08/10/19 - Changes to try and fix 'Track All' issues. Added 'Places Not Allowed' Alerts.
  *  V1.2.7 - 08/06/19 - Changed trigger from lastLocationUpdate to address1. Changed the 'Free' version to use the two places from Life360 (Home, Work) and combine them with 'My Places'. If using the 'free' version be sure to remove any 'my places' that reference Home or Work.
  *  V1.2.6 - 07/31/19 - Found typo in getTimeDiff
  *  V1.2.5 - 07/26/19 - Missed a line with 'On the Move' in 'Track All'
@@ -71,13 +72,13 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.7"
+	state.version = "v1.2.8"
     state.appName = "Life360 Tracker Child"
-    if(sendToAWSwitch && awDevice) {
-		awInfo = "${state.appName}:${state.version}"
-		awDevice.sendAWinfo(awInfo)
-        if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	}
+    //if(sendToAWSwitch && awDevice) {
+	//	awInfo = "${state.appName}:${state.version}"
+	//	awDevice.sendAWinfo(awInfo)
+    //    if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+	//}
 }
 
 definition(
@@ -96,6 +97,7 @@ definition(
 preferences {
     page(name: "pageConfig")
     page(name: "alertsConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "placesWarningConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -162,9 +164,10 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
 			paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a device<br>%place% - returns the current place<br>%lastplace% - returns the place departed"
             paragraph "* PLUS - all attribute names can be used as wildcards! Just make sure the name is exact, capitalization counts!  ie. %powerSource%, %distanceMiles% or %wifiState%"
-            input(name: "speakHasArrived", type: "bool", defaultValue: "false", title: "Speak when 'Has arrived'", description: "Speak Has Arrived", submitOnChange: true)
-            input(name: "pushHasArrived", type: "bool", defaultValue: "false", title: "Push when 'Has arrived'", description: "Push Has Arrived", submitOnChange: true)
-            input(name: "historyHasArrived", type: "bool", defaultValue: "false", title: "Log History when 'Has arrived'", description: "History Has arrived", submitOnChange: true)
+            paragraph "<b>'Has Arrived'</b>"
+            input(name: "speakHasArrived", type: "bool", defaultValue: "false", title: "Speak when", description: "Speak Has Arrived", width: 4, submitOnChange: true)
+            input(name: "pushHasArrived", type: "bool", defaultValue: "false", title: "Push when", description: "Push Has Arrived", width: 4, submitOnChange: true)
+            input(name: "historyHasArrived", type: "bool", defaultValue: "false", title: "Log History when", description: "History Has arrived", width: 4, submitOnChange: true)
 			if(speakHasArrived || pushHasArrived || historyHasArrived) input "messageAT", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has arrived at %place%"
 			if(speakHasArrived || pushHasArrived || historyHasArrived) input(name: "atMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if((speakHasArrived || pushHasArrived || historyHasArrived) && atMsgList) {
@@ -175,10 +178,10 @@ def pageConfig() {
 			}
             if(speakHasArrived || pushHasArrived || historyHasArrived) paragraph "<hr>"
             
-            
-            input(name: "speakHasDeparted", type: "bool", defaultValue: "false", title: "Speak when 'Has departed'", description: "Speak Has departed", submitOnChange: true)
-            input(name: "pushHasDeparted", type: "bool", defaultValue: "false", title: "Push when 'Has departed'", description: "Push Has departed", submitOnChange: true)
-            input(name: "historyHasDeparted", type: "bool", defaultValue: "false", title: "Log History when 'Has departed'", description: "History Has departed", submitOnChange: true)
+            paragraph "<b>'Has Departed'</b>"
+            input(name: "speakHasDeparted", type: "bool", defaultValue: "false", title: "Speak when", description: "Speak Has departed", width: 4, submitOnChange: true)
+            input(name: "pushHasDeparted", type: "bool", defaultValue: "false", title: "Push when", description: "Push Has departed", width: 4, submitOnChange: true)
+            input(name: "historyHasDeparted", type: "bool", defaultValue: "false", title: "Log History when", description: "History Has departed", width: 4, submitOnChange: true)
 			if(speakHasDeparted || pushHasDeparted || historyHasDeparted) input "messageDEP", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has departed from %place%"
 			if(speakHasDeparted || pushHasDeparted || historyHasDeparted) input(name: "depMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if((speakHasDeparted || pushHasDeparted || historyHasDeparted) && depMsgList) {
@@ -189,11 +192,11 @@ def pageConfig() {
 			}
             if(speakHasDeparted || pushHasDeparted || historyHasDeparted) paragraph "<hr>"
             
-            
-            input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when 'on the move'", description: "Speak On the Move", submitOnChange: true)
-            input(name: "pushOnTheMove", type: "bool", defaultValue: "false", title: "Push when 'on the move'", description: "Push On the Move", submitOnChange: true)
-            input(name: "historyOnTheMove", type: "bool", defaultValue: "false", title: "Log History when 'on the move'", description: "History On the Move", submitOnChange: true)
-            input "timeMove", "number", title: "How often to report 'On the Move' (in Minutes, range 1 to 30)", required: true, submitOnChange: true, defaultValue: 5, range: '1..30'
+            paragraph "<b>'On the Move'</b>"
+            input(name: "speakOnTheMove", type: "bool", defaultValue: "false", title: "Speak when", description: "Speak On the Move", width: 4, submitOnChange: true)
+            input(name: "pushOnTheMove", type: "bool", defaultValue: "false", title: "Push when", description: "Push On the Move", width: 4, submitOnChange: true)
+            input(name: "historyOnTheMove", type: "bool", defaultValue: "false", title: "Log History when", description: "History On the Move", width: 4, submitOnChange: true)
+            if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input "timeMove", "number", title: "How often to report 'On the Move' (in Minutes, range 1 to 30)", required: true, submitOnChange: true, defaultValue: 5, range: '1..30'
             if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input "messageMOVE", "text", title: "Random Message to be spoken when <b>'on the move'</b> near a place - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% is on the move near %place%"
 			if(speakOnTheMove || pushOnTheMove || historyOnTheMove) input(name: "moveMsgList", type: "bool", defaultValue: "false", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 			if((speakOnTheMove || pushOnTheMove || historyOnTheMove) && moveMsgList) {
@@ -241,7 +244,7 @@ def pageConfig() {
             input "isDataDevice", "capability.switch", title: "Turn this device on/off (On = at place, Off = moving)", required: false, multiple: false
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
-            href "alertsConfig", title: "Alerts", description: "Click here to setup Alerts."
+            href "alertsConfig", title: "Alerts", description: "Phone Battery - Places Not Allowed"
 		}
 /**
         section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog")) {
@@ -273,6 +276,18 @@ def alertsConfig() {
             input(name: "pushAlertsBatt", type: "bool", defaultValue: "false", title: "Push on Alert", description: "Push On Alert", width:6)
             input "messageAlertBatt", "text", title: "Random Message to be spoken when <b>'Alert - Battery'</b> - Separate each message with <b>;</b> (semicolon)",  required: true, defaultValue: "%name%'s phone battery (%battery%) needs charging"
             paragraph "<hr>"
+            paragraph "<b>Places Warning</b> - Sometimes there are Places one should not go."
+            input "trackSpecific2", "enum", title:"Warn when at these Places", options: state.values, multiple: true, required:false
+            input(name: "speakHasArrived2", type: "bool", defaultValue: "false", title: "Speak when 'Has arrived'", description: "Speak Has Arrived", width: 4)
+            input(name: "pushHasArrived2", type: "bool", defaultValue: "false", title: "Push when 'Has arrived'", description: "Push Has Arrived", width: 4)
+            input(name: "historyHasArrived2", type: "bool", defaultValue: "false", title: "Log History when 'Has arrived'", description: "History Has arrived", width: 4)
+			input "messageAT2", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)", required: true, defaultValue: "%name% has arrived at %place% but should NOT be there"
+            
+			input(name: "speakHasDeparted2", type: "bool", defaultValue: "false", title: "Speak when 'Has departed'", description: "Speak Has departed", width: 4)
+            input(name: "pushHasDeparted2", type: "bool", defaultValue: "false", title: "Push when 'Has departed'", description: "Push Has departed", width: 4)
+            input(name: "historyHasDeparted2", type: "bool", defaultValue: "false", title: "Log History when 'Has departed'", description: "History Has departed", width: 4)
+			input "messageDEP2", "text", title: "Random Message to be spoken when <b>'has departed'</b> at a place - Separate each message with <b>;</b> (semicolon)", required: true, defaultValue: "%name% has departed %place% but should NOT have been there"
+            paragraph "<hr>"
 		}
 	}
 }
@@ -291,7 +306,6 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    //if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)  
     if(lifeVersion == "Paid") subscribe(presenceDevice, "address1", userHandler)
     if(lifeVersion == "Free") subscribe(presenceDevice, "address1", whereAmI)
 }
@@ -301,10 +315,20 @@ def userHandler(evt) {
     state.address1Value = presenceDevice.currentValue("address1")
     if(logEnable) log.debug "In userHandler - address1Value: ${state.address1Value} - prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere} - version: ${state.version}"
     if(lifeVersion == "Paid") alertBattHandler()
-    if(trackingOptions == "Track All") trackAllHandler()
+    if(trackingOptions == "Track All") {
+        if(state.address1Value == "Home" || state.prevPlace == "Home") {
+            trackHomeHandler()
+        } else if(trackSpecific2.contains(state.address1Value)) {
+            placeNotAllowedHandler()
+        } else {
+            trackAllHandler()
+        }
+    }
     if(trackingOptions == "Track Specific") {
         if(state.address1Value == "Home" || state.prevPlace == "Home") {
             trackHomeHandler()
+        } else if(trackSpecific2.contains(state.address1Value)) {
+            placeNotAllowedHandler()
         } else {
             trackSpecificHandler()
         }
@@ -315,7 +339,7 @@ def userHandler(evt) {
 // *** Track All ***
 
 def trackAllHandler() {
-    if(logEnable) log.debug "In trackAllHandler..."
+    if(logEnable) log.debug "In trackAllHandler (${state.version})"
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
@@ -326,35 +350,35 @@ def trackAllHandler() {
     state.speakMOVE = "no"
     state.msg = ""
     
-    if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is at ${state.address1Value}"
+    if(logEnable) log.debug "In trackAllHandler  (${state.version}) - ${friendlyName} is at ${state.address1Value}"
     if(state.address1Value == state.prevPlace) {
         if(state.tDiff >= timeHere) {
-            if(logEnable) log.debug "In trackAllHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
+            if(logEnable) log.debug "In trackAllHandler (${state.version}) - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
             if(state.beenHere == "no") {
-                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has arrived at ${state.address1Value}"
+                if(logEnable) log.debug "In trackAllHandler (${state.version}) - ${friendlyName} has arrived at ${state.address1Value}"
                 state.msg = "${messageAT}"
                 state.speakAT = "yes"
                 state.lastAtPlace = state.address1Value
                 messageHandler()
             } else {
-                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs - beenHere: ${state.beenHere}"
+                if(logEnable) log.debug "In trackAllHandler (${state.version}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs - beenHere: ${state.beenHere}"
             }
             if(isDataDevice) isDataDevice.on()
             state.prevPlace = state.address1Value
             state.lastAtPlace = state.address1Value
             state.beenHere = "yes"
-            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
+            if(logEnable) log.debug "In trackAllHandler (${state.version}) - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
         } else {  // ***  state.tDiff is NOT GREATER THAN timeHere ***
             if(logEnable) log.debug "In trackAllHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere} - beenHere: ${state.beenHere}"
             if(isDataDevice) isDataDevice.off()
             state.prevPlace = state.address1Value
             state.beenHere = "no"
-            if(logEnable) log.debug "In trackAllHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
+            if(logEnable) log.debug "In trackAllHandler (${state.version}) - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
         }
     } else {  // *** ! state.address1Value == state.prevPlace ***
-        if(logEnable) log.debug "In trackAllHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere}"
+        if(logEnable) log.debug "In trackAllHandler (${state.version}) - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere}"
         if(state.beenHere == "yes") {
-            if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
+            if(logEnable) log.debug "In trackAllHandler (${state.version}) - ${friendlyName} has departed from ${state.lastAtPlace}"
             state.msg = "${messageDEP}"
             state.speakDEP = "yes"
             state.justDEP = "yes"
@@ -364,44 +388,43 @@ def trackAllHandler() {
                 def now = new Date()
                 long startMove = now.getTime()
                 state.sMove = startMove
-                if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                if(logEnable) log.debug "In trackAllHandler (${state.version}) - Time Moving: ${now} - sMove: ${state.sMove}"
             }
             if(state.justDEP == "no") {
                 getTimeMoving()
                 if(state.mDiff >= timeMoving) {
-                    if(logEnable) log.debug "In trackAllHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                    if(logEnable) log.debug "In trackAllHandler (${state.version}) - ${friendlyName} is on the move near ${state.address1Value}"
                     state.msg = "${messageMOVE}"
                     state.speakMOVE = "yes"
-                    state.justDEP = "no"
                     messageHandler()
                     state.beenHere = "no"
                     def now = new Date()
                     long startMove = now.getTime()
                     state.sMove = startMove
-                    if(logEnable) log.debug "In trackAllHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                    if(logEnable) log.debug "In trackAllHandler (${state.version}) - Time Moving: ${now} - sMove: ${state.sMove}"
                 } else {
-                    if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
+                    if(logEnable) log.debug "In trackAllHandler (${state.version}) - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
                 }
             } else {
                 state.justDEP = "no"
-                if(logEnable) log.debug "In trackAllHandler - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
+                if(logEnable) log.debug "In trackAllHandler (${state.version}) - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
             }
         }
         state.prevPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         state.beenHere = "no"
-        if(logEnable) log.debug "In trackAllHandler - End of Departed/Move - beenHere: ${state.beenHere}"
+        if(logEnable) log.debug "In trackAllHandler (${state.version}) - End of Departed/Move - beenHere: ${state.beenHere}"
     }
 }
-
 
 // *** Track Home ***
 
 def trackHomeHandler() {
-    if(logEnable) log.debug "In trackHomeHandler..."
+    if(logEnable) log.debug "In trackHomeHandler (${state.version})"
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
     state.speakDEP = "no"
@@ -410,7 +433,7 @@ def trackHomeHandler() {
     
     if(state.address1Value == "Home") {
         if((homeNow) && (state.beenHere == "no")) {
-            if(logEnable) log.debug "In trackHomeHandler - Home Now (beenHere: ${state.beenHere}) - ${friendlyName} has arrived at ${state.address1Value}"
+            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Now (beenHere: ${state.beenHere}) - ${friendlyName} has arrived at ${state.address1Value}"
             state.msg = "${messageAT}"
             state.speakAT = "yes"
             messageHandler()
@@ -419,11 +442,11 @@ def trackHomeHandler() {
             state.beenHere = "yes"
             state.lastAtPlace = state.address1Value
         } else {
-            if(logEnable) log.debug "In trackHomeHandler - Home Now (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Now (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
         }
         
         if((homeDelay) && (state.tDiff > timeHere) && (state.beenHere == "no")) {
-            if(logEnable) log.debug "In trackHomeHandler - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has arrived at ${state.address1Value}"
+            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has arrived at ${state.address1Value}"
             state.msg = "${messageAT}"
             state.speakAT = "yes"
             messageHandler()
@@ -432,29 +455,30 @@ def trackHomeHandler() {
             state.beenHere = "yes"
             state.lastAtPlace = state.address1Value
         } else {
-            if(logEnable) log.debug "In trackHomeHandler - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
         }
     }
     
     if(state.address1Value != "Home") {
         if((homeDeparted) && (state.prevPlace == "Home") && (state.beenHere == "yes")) {
-            if(logEnable) log.debug "In trackHomeHandler - Home Departed - ${friendlyName} has departed from ${state.prevPlace}"
+            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Departed - ${friendlyName} has departed from ${state.prevPlace}"
             state.msg = "${messageDEP}"
             state.justDEP = "yes"
             state.speakDEP = "yes"
             messageHandler()
             state.beenHere = "no"
         } else {
-           if(logEnable) log.debug "In trackHomeHandler - Home Departed (beenHere: ${state.beenHere}) - Previous Place: ${state.prevPlace} - Home Departed: ${homeDeparted} - No announcement needed"
+           if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Departed (beenHere: ${state.beenHere}) - Previous Place: ${state.prevPlace} - Home Departed: ${homeDeparted} - No announcement needed"
+           state.justDEP = "no"
         }
     }
     state.prevPlace = state.address1Value
 }
 
-// *** Track Specific ***
+// *** Track placeNotAllowed ***
 
-def trackSpecificHandler() {
-    if(logEnable) log.debug "In trackSpecificHandler..."
+def placeNotAllowedHandler() {
+    if(logEnable) log.debug "In placeNotAllowedHandler (${state.version})"
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
@@ -466,12 +490,74 @@ def trackSpecificHandler() {
     state.msg = ""
     
     if(state.address1Value == state.prevPlace) {
-        if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
+        if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
+        if(trackSpecific2.contains(state.address1Value)) {
+            if(state.tDiff >= timeHere) {
+                if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
+                if(state.beenHere == "no") {
+                    if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - ${friendlyName} has arrived at ${state.address1Value}"
+                    state.msg = "${messageAT2}"
+                    state.speakAT = "yes"
+                    messageHandler()
+                    
+                    if(isDataDevice) isDataDevice.on()
+                    state.beenHere = "yes"
+                } else {
+                    if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+                }
+                if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - END - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
+            } else {  // *** state.tDiff is NOT GREATER THAN timeHere ***
+                if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere} - address1Value: ${state.address1Value} - lastAtPlace: ${state.lastAtPlace} - beenHere: ${state.beenHere}"
+                if(isDataDevice) isDataDevice.off()
+                state.beenHere = "no"
+                state.lastAtPlace = "${state.address1Value}"
+                if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - END - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
+            }
+        } else {  // *** ! trackSpecific.contains(state.address1Value) ***
+		    if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
+            if(isDataDevice) isDataDevice.off()
+            state.beenHere = "no"
+            if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - END - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere}"
+        }
+    } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
+        if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
+        if(state.beenHere == "yes") {
+            if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - ${friendlyName} has departed from ${state.lastAtPlace}"
+            state.msg = "${messageDEP2}"
+            state.speakDEP = "yes"
+            state.justDEP = "yes"
+            messageHandler()
+            state.beenHere = "no"
+        }
+        
+        state.prevPlace = state.address1Value
+        state.lastAtPlace = state.address1Value
+        if(isDataDevice) isDataDevice.off()
+        if(logEnable) log.debug "In placeNotAllowedHandler (${state.version}) - END - trackSpecific2.contains(state.address1Value) - Departed - beenHere: ${state.beenHere}"
+    } 
+}
+
+// *** Track Specific ***
+
+def trackSpecificHandler() {
+    if(logEnable) log.debug "In trackSpecificHandler (${state.version})"
+    state.address1Value = presenceDevice.currentValue("address1")
+    getTimeDiff()
+    int timeHere = timeConsideredHere * 60
+    int timeMoving = timeMove * 60
+    // reset speaking
+    state.speakAT = "no"
+    state.speakDEP = "no"
+    state.speakMOVE = "no"
+    state.msg = ""
+    
+    if(state.address1Value == state.prevPlace) {
+        if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
         if(trackSpecific.contains(state.address1Value)) {
             if(state.tDiff >= timeHere) {
-                if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
+                if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
                 if(state.beenHere == "no") {
-                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
+                    if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Track Specific - ${friendlyName} has arrived at ${state.address1Value}"
                     state.msg = "${messageAT}"
                     state.speakAT = "yes"
                     messageHandler()
@@ -479,26 +565,26 @@ def trackSpecificHandler() {
                     if(isDataDevice) isDataDevice.on()
                     state.beenHere = "yes"
                 } else {
-                    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+                    if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Track Specific - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
                 }
-                if(logEnable) log.debug "In trackSpecificHandler - END - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
+                if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - END - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
             } else {  // *** state.tDiff is NOT GREATER THAN timeHere ***
-                if(logEnable) log.debug "In trackSpecificHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere} - address1Value: ${state.address1Value} - lastAtPlace: ${state.lastAtPlace} - beenHere: ${state.beenHere}"
+                if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere} - address1Value: ${state.address1Value} - lastAtPlace: ${state.lastAtPlace} - beenHere: ${state.beenHere}"
                 if(isDataDevice) isDataDevice.off()
                 state.beenHere = "no"
                 state.lastAtPlace = "${state.address1Value}"
-                if(logEnable) log.debug "In trackSpecificHandler - END - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
+                if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - END - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
             }
         } else {  // *** ! trackSpecific.contains(state.address1Value) ***
-		    if(logEnable) log.debug "In trackSpecificHandler - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
+		    if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Track Specific - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
             if(isDataDevice) isDataDevice.off()
             state.beenHere = "no"
-            if(logEnable) log.debug "In trackSpecificHandler - END - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere}"
+            if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - END - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere}"
         }
     } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
         if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
         if(state.beenHere == "yes") {
-            if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has departed from ${state.lastAtPlace}"
+            if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - ${friendlyName} has departed from ${state.lastAtPlace}"
                 state.msg = "${messageDEP}"
                 state.speakDEP = "yes"
                 state.justDEP = "yes"
@@ -509,46 +595,45 @@ def trackSpecificHandler() {
                 def now = new Date()
                 long startMove = now.getTime()
                 state.sMove = startMove
-                if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Time Moving: ${now} - sMove: ${state.sMove}"
             }
             if(state.justDEP == "no") {
                 getTimeMoving()
                 if(state.mDiff >= timeMoving) {
-                    if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} is on the move near ${state.address1Value}"
+                    if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - ${friendlyName} is on the move near ${state.address1Value}"
                     state.msg = "${messageMOVE}"
                     state.speakMOVE = "yes"
-                    state.justDEP = "no"
                     messageHandler()
                     state.beenHere = "no"
                     def now = new Date()
                     long startMove = now.getTime()
                     state.sMove = startMove
-                    if(logEnable) log.debug "In trackSpecificHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+                    if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - Time Moving: ${now} - sMove: ${state.sMove}"
                 } else {
-                    if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
+                    if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
                 }
              } else {
                 state.justDEP = "no"
-                if(logEnable) log.debug "In trackSpecificHandler - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
+                if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
             }   
         }
         
         state.prevPlace = state.address1Value
         state.lastAtPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
-        if(logEnable) log.debug "In trackSpecificHandler - END - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere}"
+        if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - END - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere}"
     } 
 }
 
 def alertBattHandler() {
-    if(logEnable) log.debug "In alertBattHandler..."
+    if(logEnable) log.debug "In alertBattHandler (${state.version})"
     state.battery = presenceDevice.currentValue("battery")
     state.charge = presenceDevice.currentValue("charge")
     
-    if(logEnable) log.debug "In alertBattHandler - battery: ${state.battery} - prev battery: ${state.prevBatt} - charge: ${state.charge} - alertBattRepeat: ${state.alertBattRepeat}"
+    if(logEnable) log.debug "In alertBattHandler (${state.version}) - battery: ${state.battery} - prev battery: ${state.prevBatt} - charge: ${state.charge} - alertBattRepeat: ${state.alertBattRepeat}"
     
     if((state.battery <= alertBatt) && (state.charge == "false") && (state.alertBattRepeat != "yes")) {
-        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 1 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
+        if(logEnable) log.debug "In alertBattHandler (${state.version}) - battery (${state.battery}) needs charging! - Step 1 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
         state.msg = "${messageAlertBatt}"
         state.speakAT = "yes"
         state.prevBatt = state.battery - 10
@@ -556,14 +641,14 @@ def alertBattHandler() {
         state.alertBattRepeat = "yes"
         messageHandler()
     } else if((state.battery <= state.prevBatt) && (state.charge == "false")) {
-        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 2 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
+        if(logEnable) log.debug "In alertBattHandler (${state.version}) - battery (${state.battery}) needs charging! - Step 2 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
         state.msg = "${messageAlertBatt}"
         state.prevBatt = state.prevBatt - 10
         state.alertBattRepeat = "yes"
         state.alerts = "yes"
         messageHandler()
     } else if(state.charge == "true") {
-        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) is charging. - Step 3"
+        if(logEnable) log.debug "In alertBattHandler (${state.version}) - battery (${state.battery}) is charging. - Step 3"
         state.alertBattRepeat = "no"
         state.prevBatt = 0
     }  
@@ -571,25 +656,25 @@ def alertBattHandler() {
 }
 
 def getTimeDiff() {
-	if(logEnable) log.debug "In getTimeDiff..."
+	if(logEnable) log.debug "In getTimeDiff (${state.version}) "
 	long since = presenceDevice.currentValue("since")
    	def now = new Date()
     long unxNow = now.getTime()
     unxNow = unxNow/1000    
     long timeDiff = Math.abs(unxNow-since)
     state.tDiff = timeDiff
-    if(logEnable) log.debug "In getTimeDiff - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff}"
+    if(logEnable) log.debug "In getTimeDiff (${state.version}) - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff}"
     
 	state.timeDay = (timeDiff / 86400).toInteger()
     state.timeHrs = ((timeDiff % 86400 ) / 3600).toInteger()
 	state.timeMin = (((timeDiff % 86400 ) % 3600 ) / 60).toInteger()
 	state.timeSec = (((timeDiff % 86400 ) % 3600 ) % 60).toInteger()
     
-    if(logEnable) log.debug "In getTimeDiff - Time Diff: ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+    if(logEnable) log.debug "In getTimeDiff (${state.version}) - Time Diff: ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
 }
 
 def getTimeMoving() {
-	if(logEnable) log.debug "In getTimeMoving..."
+	if(logEnable) log.debug "In getTimeMoving (${state.version})"
    	def now = new Date()
     long unxNow = now.getTime()
     long unxPrev = state.sMove
@@ -597,47 +682,47 @@ def getTimeMoving() {
     unxPrev = unxPrev/1000
     long timeDiff = Math.abs(unxNow-unxPrev)
     state.mDiff = timeDiff
-    if(logEnable) log.debug "In getTimeMoving - prev: ${unxPrev}, Now: ${unxNow}, Diff: ${timeDiff}"
+    if(logEnable) log.debug "In getTimeMoving (${state.version}) - prev: ${unxPrev}, Now: ${unxNow}, Diff: ${timeDiff}"
     
 	state.mTimeDay = (timeDiff / 86400).toInteger()
     state.mTimeHrs = ((timeDiff % 86400 ) / 3600).toInteger()
 	state.mTimeMin = (((timeDiff % 86400 ) % 3600 ) / 60).toInteger()
 	state.mTimeSec = (((timeDiff % 86400 ) % 3600 ) % 60).toInteger()
     
-    if(logEnable) log.debug "In getTimeMoving - Time Diff: ${state.mTimeDay} days, ${state.mTimeHrs} hrs, ${state.mTimeMin} mins & ${state.mTimeSec} secs"
+    if(logEnable) log.debug "In getTimeMoving (${state.version}) - Time Diff: ${state.mTimeDay} days, ${state.mTimeHrs} hrs, ${state.mTimeMin} mins & ${state.mTimeSec} secs"
 }
 
 def letsTalk() {
-	if(logEnable) log.debug "In letsTalk..."
+	if(logEnable) log.debug "In letsTalk (${state.version})"
 	checkTime()
 	checkVol()
 	atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
-	if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+	if(logEnable) log.debug "In letsTalk (${state.version}) - pause: ${atomicState.randomPause}"
 	pauseExecution(atomicState.randomPause)
-	if(logEnable) log.debug "In letsTalk - continuing"
+	if(logEnable) log.debug "In letsTalk (${state.version}) - continuing"
 	if(state.timeBetween == true) {
 		state.theMsg = "${state.theMessage}"
-    	if(logEnable) log.debug "In letsTalk - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
+    	if(logEnable) log.debug "In letsTalk (${state.version}) - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
         speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
         atomicState.speechDuration2 = speechDuration * 1000
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
                 if(logEnable) log.debug "Speaker in use: ${it}"
                 if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - speakerProxy - ${it}"
                     it.speak(state.theMsg)
                 } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
                     it.setVolumeSpeakAndRestore(state.volume, state.theMsg, prevVolume)
                 } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
                     it.playTextAndRestore(state.theMsg, prevVolume)
                 } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it}"
+                    if(logEnable) log.debug "In letsTalk (${state.version}) - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     it.speak(state.theMsg)
@@ -648,28 +733,28 @@ def letsTalk() {
             }
         pauseExecution(atomicState.speechDuration2)
         state.canSpeak = "no"
-	    if(logEnable) log.debug "In letsTalk - that's it!"  
+	    if(logEnable) log.debug "In letsTalk (${state.version}) - that's it!"  
 		log.info "${app.label} - ${state.theMsg}"
 	} else {
-		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+		if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
 	}
 }
 
 def checkVol(){
-	if(logEnable) log.debug "In checkVol..."
+	if(logEnable) log.debug "In checkVol (${state.version})"
 	if(QfromTime) {
 		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
+		if(logEnable) log.debug "In checkVol (${state.version}) - quietTime: ${state.quietTime}"
     	if(state.quietTime) state.volume = volQuiet
 		if(!state.quietTime) state.volume = volSpeech
 	} else {
 		state.volume = volSpeech
 	}
-	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
+	if(logEnable) log.debug "In checkVol (${state.version}) - volume: ${state.volume}"
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
+	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
 	if((fromTime != null) && (toTime != null)) {
 		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
 		if(state.betweenTime) state.timeBetween = true
@@ -677,11 +762,11 @@ def checkTime() {
   	} else {  
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+	if(logEnable) log.debug "In checkTime (${state.version}) - timeBetween: ${state.timeBetween}"
 }
 
 def messageHandler() {
-	if(logEnable) log.debug "In messageHandler..."
+	if(logEnable) log.debug "In messageHandler (${state.version})"
 	message = state.msg
     
 	def values = "${message}".split(";")
@@ -690,7 +775,7 @@ def messageHandler() {
     def randomKey = new Random().nextInt(count)
 	theMessage = values[randomKey]
     
-	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}" 
+	if(logEnable) log.debug "In messageHandler (${state.version}) - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}" 
 	if(theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', friendlyName )}
     if(theMessage.contains("%place%")) {theMessage = theMessage.replace('%place%', presenceDevice.currentValue("address1") )}
     if(theMessage.contains("%lastplace%")) {theMessage = theMessage.replace('%lastplace%', state.lastAtPlace )}
@@ -762,7 +847,7 @@ def messageHandler() {
         } else {
             state.theHistoryMessage = "${theMessage}"
             presenceDevice.sendHistory(state.theHistoryMessage)
-            log.info "Life360 Tracker-HISTORY: ${state.theHistoryMessage}"
+            log.info "Life360 Tracker (${state.version}) - HISTORY: ${state.theHistoryMessage}"
         } 
     }
     
@@ -773,18 +858,18 @@ def messageHandler() {
 }
 
 def pushHandler() {
-	if(logEnable) log.debug "In pushNow..."
+	if(logEnable) log.debug "In pushNow (${state.version})"
     theMessage = "${state.theMessage}\n\n"
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     if(linkPush) {theMessage += "${theMap}"}
-	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
+	if(logEnable) log.debug "In pushNow (${state.version}) - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
     presenceDevice.sendTheMap(theMap)
 }
 
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
-    if(logEnable) log.debug "In testButtonHandler - Button Pressed: ${state.whichButton}"
+    if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     if(state.whichButton == "testSpeaker"){
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
         if(logEnable) log.debug "In testButtonHandler - Testing Speaker"
@@ -807,7 +892,7 @@ def appButtonHandler(buttonPressed) {
 }
 
 def whereAmI(evt) { 
-    if(logEnable) log.debug "In whereAmI..."
+    if(logEnable) log.debug "In whereAmI (${state.version})"
     state.address1Value = presenceDevice.currentValue("address1")
     def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
     def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
@@ -819,7 +904,7 @@ def whereAmI(evt) {
         def distanceAway01 = haversine(memberLatitude, memberLongitude, placeLatitude01, placeLongitude01)*1000 // in meters
       	boolean isPresent01 = (distanceAway01 <= placeRadius01)
         if(isPresent01) state.address1Value = parent.myName01
-        if(logEnable) log.debug "In whereAmI - Distance Away 01 (${parent.myName01}): ${distanceAway01}, isPresent01: ${isPresent01}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 01 (${parent.myName01}): ${distanceAway01}, isPresent01: ${isPresent01}"
     }
     if(parent.myName02) {
         def placeLatitude02 = new Float (parent.myLatitude02)
@@ -828,7 +913,7 @@ def whereAmI(evt) {
         def distanceAway02 = haversine(memberLatitude, memberLongitude, placeLatitude02, placeLongitude02)*1000 // in meters
   	    boolean isPresent02 = (distanceAway02 <= placeRadius02)
         if(isPresent02) state.address1Value = parent.myName02
-        if(logEnable) log.debug "In whereAmI - Distance Away 02 (${parent.myName02}): ${distanceAway02}, isPresent02: ${isPresent02}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 02 (${parent.myName02}): ${distanceAway02}, isPresent02: ${isPresent02}"
     }
     if(parent.myName03) {
         def placeLatitude03 = new Float (parent.myLatitude03)
@@ -837,7 +922,7 @@ def whereAmI(evt) {
         def distanceAway03 = haversine(memberLatitude, memberLongitude, placeLatitude03, placeLongitude03)*1000 // in meters
   	    boolean isPresent03 = (distanceAway03 <= placeRadius03)
         if(isPresent03) state.address1Value = parent.myName03
-        if(logEnable) log.debug "In whereAmI - Distance Away 03 (${parent.myName03}): ${distanceAway03}, isPresent03: ${isPresent03}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 03 (${parent.myName03}): ${distanceAway03}, isPresent03: ${isPresent03}"
     }
     if(parent.myName04) {
         def placeLatitude04 = new Float (parent.myLatitude04)
@@ -846,7 +931,7 @@ def whereAmI(evt) {
         def distanceAway04 = haversine(memberLatitude, memberLongitude, placeLatitude04, placeLongitude04)*1000 // in meters
   	    boolean isPresent04 = (distanceAway04 <= placeRadius04)
         if(isPresent04) state.address1Value = parent.myName04
-        if(logEnable) log.debug "In whereAmI - Distance Away 04 (${parent.myName04}): ${distanceAway04}, isPresent04: ${isPresent04}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 04 (${parent.myName04}): ${distanceAway04}, isPresent04: ${isPresent04}"
     }
     if(parent.myName05) {
         def placeLatitude05 = new Float (parent.myLatitude05)
@@ -855,7 +940,7 @@ def whereAmI(evt) {
         def distanceAway05 = haversine(memberLatitude, memberLongitude, placeLatitude05, placeLongitude05)*1000 // in meters
   	    boolean isPresent05 = (distanceAway05 <= placeRadius05)
         if(isPresent05) state.address1Value = parent.myName05
-        if(logEnable) log.debug "In whereAmI - Distance Away 05 (${parent.myName05}): ${distanceAway05}, isPresent05: ${isPresent05}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 05 (${parent.myName05}): ${distanceAway05}, isPresent05: ${isPresent05}"
     }
     if(parent.myName06) {
         def placeLatitude06 = new Float (parent.myLatitude06)
@@ -864,7 +949,7 @@ def whereAmI(evt) {
         def distanceAway06 = haversine(memberLatitude, memberLongitude, placeLatitude06, placeLongitude06)*1000 // in meters
   	    boolean isPresent06 = (distanceAway06 <= placeRadius06)
         if(isPresent06) state.address1Value = parent.myName06
-        if(logEnable) log.debug "In whereAmI - Distance Away 06 (${parent.myName06}): ${distanceAway06}, isPresent06: ${isPresent06}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 06 (${parent.myName06}): ${distanceAway06}, isPresent06: ${isPresent06}"
     }
     if(parent.myName07) {
         def placeLatitude07 = new Float (parent.myLatitude07)
@@ -873,7 +958,7 @@ def whereAmI(evt) {
         def distanceAway07 = haversine(memberLatitude, memberLongitude, placeLatitude07, placeLongitude07)*1000 // in meters
   	    boolean isPresent07 = (distanceAway07 <= placeRadius07)
         if(isPresent07) state.address1Value = parent.myName07
-        if(logEnable) log.debug "In whereAmI - Distance Away 07 (${parent.myName07}): ${distanceAway07}, isPresent07: ${isPresent07}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 07 (${parent.myName07}): ${distanceAway07}, isPresent07: ${isPresent07}"
     }
     if(parent.myName08) {
         def placeLatitude08 = new Float (parent.myLatitude08)
@@ -882,7 +967,7 @@ def whereAmI(evt) {
         def distanceAway08 = haversine(memberLatitude, memberLongitude, placeLatitude08, placeLongitude08)*1000 // in meters
   	    boolean isPresent08 = (distanceAway08 <= placeRadius08)
         if(isPresent08) state.address1Value = parent.myName08
-        if(logEnable) log.debug "In whereAmI - Distance Away 08 (${parent.myName08}): ${distanceAway08}, isPresent08: ${isPresent08}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 08 (${parent.myName08}): ${distanceAway08}, isPresent08: ${isPresent08}"
     }
     if(parent.myName09) {
         def placeLatitude09 = new Float (parent.myLatitude09)
@@ -891,7 +976,7 @@ def whereAmI(evt) {
         def distanceAway09 = haversine(memberLatitude, memberLongitude, placeLatitude09, placeLongitude09)*1000 // in meters
   	    boolean isPresent09 = (distanceAway09 <= placeRadius09)
         if(isPresent09) state.address1Value = parent.myName09
-        if(logEnable) log.debug "In whereAmI - Distance Away 09 (${parent.myName09}): ${distanceAway09}, isPresent09: ${isPresent09}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 09 (${parent.myName09}): ${distanceAway09}, isPresent09: ${isPresent09}"
     }
     if(parent.myName10) {
         def placeLatitude10 = new Float (parent.myLatitude10)
@@ -900,7 +985,7 @@ def whereAmI(evt) {
         def distanceAway10 = haversine(memberLatitude, memberLongitude, placeLatitude10, placeLongitude10)*1000 // in meters
   	    boolean isPresent10 = (distanceAway10 <= placeRadius10)
         if(isPresent10) state.address1Value = parent.myName10
-        if(logEnable) log.debug "In whereAmI - Distance Away 10 (${parent.myName10}): ${distanceAway10}, isPresent10: ${isPresent10}"
+        if(logEnable) log.debug "In whereAmI (${state.version}) - Distance Away 10 (${parent.myName10}): ${distanceAway10}, isPresent10: ${isPresent10}"
     }
     
     if((!isPresent01) && (!isPresent02) && (!isPresent03) && (!isPresent04) && (!isPresent05) && (!isPresent06) && (!isPresent07) && (!isPresent08) && (!isPresent09) && (!isPresent10)) state.address1Value = presenceDevice.currentValue("address1")
@@ -922,7 +1007,7 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def buildMyPlacesList() {
-    if(logEnable) log.debug "In buildMyPlacesList..."
+    if(logEnable) log.debug "In buildMyPlacesList (${state.version}) "
     state.myPlacesList = []
     if(parent.myName01) state.myPlacesList = state.myPlacesList.plus([parent.myName01])
     if(parent.myName02) state.myPlacesList = state.myPlacesList.plus([parent.myName02])
@@ -934,8 +1019,8 @@ def buildMyPlacesList() {
     if(parent.myName08) state.myPlacesList = state.myPlacesList.plus([parent.myName08])
     if(parent.myName09) state.myPlacesList = state.myPlacesList.plus([parent.myName09])
     if(parent.myName10) state.myPlacesList = state.myPlacesList.plus([parent.myName10])
-    if(logEnable) log.debug "In buildMyPlacesList - myName01: ${parent.myName01}"
-    if(logEnable) log.debug "In buildMyPlacesList - myPlacesList: ${state.myPlacesList}"
+    if(logEnable) log.debug "In buildMyPlacesList (${state.version}) - myName01: ${parent.myName01}"
+    if(logEnable) log.debug "In buildMyPlacesList (${state.version}) - myPlacesList: ${state.myPlacesList}"
 }
 
 // ********** Normal Stuff **********
@@ -946,6 +1031,7 @@ def setDefaults(){
     if(state.beenHere == null){state.beenHere = "no"}
     if(state.address1Value == null){state.address1Value = presenceDevice.currentValue("address1")}
     if(state.prevPlace == null){state.prevPlace = state.address1Value}
+    if(trackSpecific2 == null){trackSpecific2 = ""}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
