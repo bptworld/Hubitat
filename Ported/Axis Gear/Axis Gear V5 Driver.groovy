@@ -1,5 +1,5 @@
 metadata {
-	definition (name: "AXIS Gear V5 Hubitat", namespace: "axis", author: "AXIS Labs") {  
+	definition (name: "AXIS Gear V5 Hubitat", namespace: "axis", author: "AXIS Labs", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Axis%20Gear/Axis%20Gear%20V5%20Driver.groovy") {  
 		capability "Window Shade"
 		capability "Switch Level"
 		capability "Battery"
