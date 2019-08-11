@@ -1,5 +1,5 @@
 metadata {
-    definition (name: "AXIS Gear-V3 Hubitat", namespace: "axis", author: "AXIS Labs", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Axis%20Gear/Axis%20Gear%20V3%20Driver.groovy") {  
+    definition (name: "AXIS Gear V3 Hubitat", namespace: "axis", author: "AXIS Labs", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Axis%20Gear/Axis%20Gear%20V3%20Driver.groovy") {  
         capability "Actuator"
         capability "Configuration"
         capability "Switch"
@@ -20,6 +20,11 @@ metadata {
         //Updated 2018-01-04 - Axis Inversion & Increased Battery Reporting interval to 1 hour (previously 5 mins)
         //Updated 2018-01-08 - Updated battery conversion from [0-100 : 00 - 64] to [0-100 : 00-C8] to reflect firmware update
         //Updated 2018-11-01 - added in configure reporting for refresh button, close when press on partial shade icon, update handler to parse between 0-254 as a percentage
+	}	
+	preferences() {    	
+        section(""){
+            input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
+        }
     }
 }
  
@@ -98,7 +103,7 @@ def close() {
 
 //Reporting of Battery & position levels
 def ping(){
-	log.debug "Ping() "
+	if(logEnable) log.debug "Ping() "
     return zigbee.readAttribute(CLUSTER_POWER, POWER_ATTR_BATTERY) +
     	   zigbee.readAttribute(CLUSTER_LEVEL, LEVEL_ATTR_LEVEL)
     
@@ -117,7 +122,7 @@ def setWindowShade(value){
 
 //Refresh command
 def refresh() {
-	log.debug "parse() refresh"
+	if(logEnable) log.debug "parse() refresh"
     return zigbee.configureReporting(CLUSTER_POWER, POWER_ATTR_BATTERY, 0x20, 1, 3600, 0x01) +
            zigbee.configureReporting(CLUSTER_LEVEL, LEVEL_ATTR_LEVEL, 0x20, 1, 3600, 0x01) + 
            zigbee.readAttribute(CLUSTER_POWER, POWER_ATTR_BATTERY) +
@@ -125,7 +130,7 @@ def refresh() {
 }
 //configure reporting
 def configure() {
-    log.debug "Configuring Reporting and Bindings."
+    if(logEnable) log.debug "Configuring Reporting and Bindings."
     sendEvent(name: "checkInterval", value: 60, displayed: true, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
     def cmds = 
     	zigbee.configureReporting(CLUSTER_POWER, POWER_ATTR_BATTERY, 0x20, 1, 3600, 0x01) +
@@ -146,7 +151,7 @@ def parse(String description) {
     }
 
     def result = map ? createEvent(map) : null
-    log.debug "parse() --- returned: $result"
+    if(logEnable) log.debug "parse() --- returned: $result"
     return result
 }
 
@@ -156,7 +161,7 @@ private Map parseReportAttributeMessage(String description) {
     if (descMap.clusterInt == CLUSTER_POWER && descMap.attrInt == POWER_ATTR_BATTERY) {
         resultMap.name = "battery"
         def batteryValue = Math.round((Integer.parseInt(descMap.value, 16))/2)
-        log.debug "parseDescriptionAsMap() --- Battery: $batteryValue"
+        if(logEnable) log.debug "parseDescriptionAsMap() --- Battery: $batteryValue"
         if ((batteryValue >= 0)&&(batteryValue <= 100)){
         	resultMap.value = batteryValue
         }
@@ -171,7 +176,7 @@ private Map parseReportAttributeMessage(String description) {
         resultMap.value = levelValuePercent
     }
     else {
-        log.debug "parseReportAttributeMessage() --- ignoring attribute"
+        if(logEnable) log.debug "parseReportAttributeMessage() --- ignoring attribute"
     }
     return resultMap
 }
