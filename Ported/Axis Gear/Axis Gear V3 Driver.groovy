@@ -1,5 +1,5 @@
 metadata {
-    definition (name: "AXIS Gear-V3 Hubitat", namespace: "axis", author: "AXIS Labs") {  
+    definition (name: "AXIS Gear-V3 Hubitat", namespace: "axis", author: "AXIS Labs", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Axis%20Gear/Axis%20Gear%20V3%20Driver.groovy") {  
         capability "Actuator"
         capability "Configuration"
         capability "Switch"
