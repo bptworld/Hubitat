@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.2.9 - 08/11/19 - Fix for 'Places Not Allowed'
  *  V1.2.8 - 08/10/19 - Changes to try and fix 'Track All' issues. Added 'Places Not Allowed' Alerts.
  *  V1.2.7 - 08/06/19 - Changed trigger from lastLocationUpdate to address1. Changed the 'Free' version to use the two places from Life360 (Home, Work) and combine them with 'My Places'. If using the 'free' version be sure to remove any 'my places' that reference Home or Work.
  *  V1.2.6 - 07/31/19 - Found typo in getTimeDiff
@@ -72,7 +73,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.8"
+	state.version = "v1.2.9"
     state.appName = "Life360 Tracker Child"
     //if(sendToAWSwitch && awDevice) {
 	//	awInfo = "${state.appName}:${state.version}"
@@ -312,6 +313,7 @@ def initialize() {
 
 def userHandler(evt) {
     if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - App version: ${state.version} (${lifeVersion}) ----------"
+    if(trackSpecific2 == null){trackSpecific2 = "None selected"}
     state.address1Value = presenceDevice.currentValue("address1")
     if(logEnable) log.debug "In userHandler - address1Value: ${state.address1Value} - prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere} - version: ${state.version}"
     if(lifeVersion == "Paid") alertBattHandler()
@@ -1031,7 +1033,7 @@ def setDefaults(){
     if(state.beenHere == null){state.beenHere = "no"}
     if(state.address1Value == null){state.address1Value = presenceDevice.currentValue("address1")}
     if(state.prevPlace == null){state.prevPlace = state.address1Value}
-    if(trackSpecific2 == null){trackSpecific2 = ""}
+    if(trackSpecific2 == null){trackSpecific2 = "None selected"}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
