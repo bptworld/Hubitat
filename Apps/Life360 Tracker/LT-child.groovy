@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.3.0 - 08/15/19 - Changed trigger back to lastLocationUpdate. Working on Departure delay.
  *  V1.2.9 - 08/11/19 - Fix for 'Places Not Allowed'
  *  V1.2.8 - 08/10/19 - Changes to try and fix 'Track All' issues. Added 'Places Not Allowed' Alerts.
  *  V1.2.7 - 08/06/19 - Changed trigger from lastLocationUpdate to address1. Changed the 'Free' version to use the two places from Life360 (Home, Work) and combine them with 'My Places'. If using the 'free' version be sure to remove any 'my places' that reference Home or Work.
@@ -73,7 +74,7 @@
 
 def setVersion(){
     if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.2.9"
+	state.version = "v1.3.0"
     state.appName = "Life360 Tracker Child"
     //if(sendToAWSwitch && awDevice) {
 	//	awInfo = "${state.appName}:${state.version}"
@@ -156,8 +157,10 @@ def pageConfig() {
             paragraph "<small>This is useful if you have another app announcing when you are home, like 'Welcome Home'</small>"
             input(name: "homeNow", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange: "true")
             paragraph "<small>This will give a nice heads up that someone is home. But can be a false alarm if they are just driving by.</small>"
-            input(name: "homeDeparted", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User departs from 'Home'? (off='No', on='Yes')", description: "Home Depart", submitOnChange: "true")
-            paragraph "<small>This will give a nice heads up that someone has departed home.</small>"
+            input(name: "homeDepartedDelayed", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User departs from 'Home', after a 2 minute delay? (off='No', on='Yes') ** Needs Testing **", description: "Delayed Home Depart", submitOnChange: "true")
+            paragraph "<small>This will give a heads up that someone has departed home. But help with false announcements.</small>"
+            input(name: "homeDeparted", type: "bool", defaultValue: "false", title: "Should Tracker announce right away, when the User departs from 'Home'? (off='No', on='Yes')", description: "Home Depart", submitOnChange: "true")
+            paragraph "<small>This will give a heads up that someone has departed home. As soon as it is detected.</small>"
             paragraph "Note: Home options will only work if you have the Speak or Push when 'Has arrived'and/or 'Has departed' switch in Message Options turned on."
         }
 // *** End Home ***
@@ -307,8 +310,8 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    if(lifeVersion == "Paid") subscribe(presenceDevice, "address1", userHandler)
-    if(lifeVersion == "Free") subscribe(presenceDevice, "address1", whereAmI)
+    if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)
+    if(lifeVersion == "Free") subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
 }
 
 def userHandler(evt) {
@@ -317,24 +320,19 @@ def userHandler(evt) {
     state.address1Value = presenceDevice.currentValue("address1")
     if(logEnable) log.debug "In userHandler - address1Value: ${state.address1Value} - prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere} - version: ${state.version}"
     if(lifeVersion == "Paid") alertBattHandler()
-    if(trackingOptions == "Track All") {
-        if(state.address1Value == "Home" || state.prevPlace == "Home") {
-            trackHomeHandler()
-        } else if(trackSpecific2.contains(state.address1Value)) {
-            placeNotAllowedHandler()
-        } else {
-            trackAllHandler()
-        }
+
+    if(state.address1Value == "Home" || state.prevPlace == "Home" || state.delayDepHome == "yes") {
+        if(logEnable) log.debug "In UserHandler (${state.version}) - Going to trackHomeHandler  *******" 
+        trackHomeHandler()
+    } else if(trackSpecific2.contains(state.address1Value)) {
+        if(logEnable) log.debug "In UserHandler (${state.version}) - Going to placeNotAllowedHandler  *******"
+        placeNotAllowedHandler()
+    } else {
+        if(logEnable) log.debug "In UserHandler (${state.version}) - Going to track All/Specific Handler  *******"
+        if(trackingOptions == "Track All") { trackAllHandler() }
+        if(trackingOptions == "Track Specific") { trackSpecificHandler() }
     }
-    if(trackingOptions == "Track Specific") {
-        if(state.address1Value == "Home" || state.prevPlace == "Home") {
-            trackHomeHandler()
-        } else if(trackSpecific2.contains(state.address1Value)) {
-            placeNotAllowedHandler()
-        } else {
-            trackSpecificHandler()
-        }
-    }
+
     if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - App version: ${state.version} (${lifeVersion}) ----------"
 }
 
@@ -463,15 +461,40 @@ def trackHomeHandler() {
     
     if(state.address1Value != "Home") {
         if((homeDeparted) && (state.prevPlace == "Home") && (state.beenHere == "yes")) {
-            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Departed - ${friendlyName} has departed from ${state.prevPlace}"
-            state.msg = "${messageDEP}"
-            state.justDEP = "yes"
-            state.speakDEP = "yes"
-            messageHandler()
-            state.beenHere = "no"
+            if(homeDeparted) {
+                if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Departed - ${friendlyName} has departed from ${state.prevPlace}"
+                state.msg = "${messageDEP}"
+                state.justDEP = "yes"
+                state.speakDEP = "yes"
+                messageHandler()
+                state.beenHere = "no"
+            }
+        } else if(homeDepartedDelay) {
+            // Announce AFTER 2 minutes has elapsed
+            if(state.sMove == null) {
+                def now = new Date()
+                long startMove = now.getTime()
+                state.sMove = startMove
+                if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Time Moving: ${now} - sMove: ${state.sMove}"
+            }
+             
+            getTimeMoving()
+            if(state.mDiff >= 2) {
+                if(logEnable) log.debug "In trackHomeHandler (${state.version}) - ${friendlyName} has departed Home over 2 minutes ago and is on the move near ${state.address1Value}"
+                state.msg = "${messageDEP}"
+                state.justDEP = "yes"
+                state.speakDEP = "yes"
+                messageHandler()
+                state.beenHere = "no"
+                state.delayDepHome = "no"
+            } else {
+                if(logEnable) log.debug "In trackHomeHandler (${state.version}) - ${friendlyName} departed Home less than 2 minutes ago but is near ${state.address1Value}"  
+                state.delayDepHome = "yes"
+            }
         } else {
            if(logEnable) log.debug "In trackHomeHandler (${state.version}) - Home Departed (beenHere: ${state.beenHere}) - Previous Place: ${state.prevPlace} - Home Departed: ${homeDeparted} - No announcement needed"
            state.justDEP = "no"
+           state.delayDepHome = "no"
         }
     }
     state.prevPlace = state.address1Value
@@ -584,6 +607,10 @@ def trackSpecificHandler() {
             if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - END - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere}"
         }
     } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
+        if(state.delayDepHome == "yes"){
+            trackHomeHandler()
+        } else {
+            
         if(logEnable) log.debug "In trackSpecificHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
         if(state.beenHere == "yes") {
             if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - ${friendlyName} has departed from ${state.lastAtPlace}"
@@ -624,6 +651,8 @@ def trackSpecificHandler() {
         state.lastAtPlace = state.address1Value
         if(isDataDevice) isDataDevice.off()
         if(logEnable) log.debug "In trackSpecificHandler (${state.version}) - END - trackSpecific.contains(state.address1Value) - Departed/Move - beenHere: ${state.beenHere}"
+            
+        }
     } 
 }
 
