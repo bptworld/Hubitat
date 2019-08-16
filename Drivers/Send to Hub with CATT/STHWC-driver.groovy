@@ -1,8 +1,8 @@
 /**
- *  **************** Send Dashboard to Hub using CATT Driver ****************
+ *  **************** Send to Hub with CATT Driver ****************
  *
  *  Design Usage:
- *  This driver is designed to send the HE dashboard to a Nest Hub using CATT.
+ *  This driver is designed to send the HE dashboard (and MORE) to a Nest Hub using CATT.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -38,17 +38,35 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 08/16/19 - Name changed to 'Send to Hub with CATT', added a ton more commands, added some suggestions from @Ryan780, Thank you!
  *  V1.0.0 - 08/15/19 - Initial release
  */
 
 metadata {
-	definition (name: "Send Dashboard to Hub using CATT Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20Dashboard%20to%20Hub%20using%20CATT/SDTHUC-driver.groovy") {
+	definition (name: "Send to Hub with CATT Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20Dashboard%20to%20Hub%20using%20CATT/SDTHUC-driver.groovy") {
 	    capability "Initialize"
         capability "Telnet"
         capability "Switch"
-        capability "Audio Volume"
+        capability "Speech Synthesis"
+
         attribute "telnet", "string"
-		command "castDashboard", ["URI"]
+        attribute "switch", "string"
+
+        command "add", ["URI"]
+        command "cast", ["URI"]
+        command "castDashboard", ["URI"]
+        command "clear"
+        command "ffwd", ["Number"]
+        command "pause"
+        command "play"
+        command "restore"
+        command "rewind", ["Number"]
+        command "save"
+        command "skip"
+        command "stop"
+        command "volume", ["Number"]
+        command "volumedown"
+        command "volumeup"
     }
     
     preferences() {
@@ -57,15 +75,21 @@ metadata {
             input "userName", "text", required: true, title: "Catt Server Username"
             input "userPass", "password", required: true, title: "Catt Server Password"
             input "gDevice", "text", required: true, title: "Exact name of the Nest Hub to use"
-            input "castWebsite", "text", required: true, title: "Enter the exact webite URL including http://"
+            input "castWebsite", "text", required: true, title: "Default Website - Enter the exact webite URL including http://"
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
         }
     }
 }
 
+def sendCommand(theCommand){
+    state.lastmsg = theCommand
+    if(logEnable) log.debug "Sending msg: ${theCommand}"
+    return new hubitat.device.HubAction("${theCommand}\n", hubitat.device.Protocol.TELNET)
+}
+
 def resend(){
     if(logEnable) log.debug "RESEND!"
-    speak(state.lastmsg)
+    sendCommand(state.lastmsg)
 }
 
 def initialize(){
@@ -107,50 +131,101 @@ def telnetStatus(String status) {
     }
 }
 
-def on() {
-    def msgAction = "catt -d '${gDevice}' cast_site '${castWebsite}'"
+def on(msg) {
+    if(msg){
+        theMsg = msg
+    } else {
+        theMsg = castWebsite
+    }
+    def msgAction = "catt -d '${gDevice}' cast_site '${theMsg}'"
     sendEvent(name: "switch", value: "on")
-    state.lastmsg = msgAction
-    if(logEnable) log.debug "Sending msg: ${msgAction}"
-    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
-}
-
-def off() {
-    def msgAction = "catt -d '${gDevice}' stop"
-	sendEvent(name: "switch", value: "off")
-    state.lastmsg = msgAction
-    if(logEnable) log.debug "Sending msg: ${msgAction}"
-    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
-}
-
-def setVolume() {
-    def msgAction = "catt -d '${gDevice}' volume '${msg}'"
-    
-    state.lastmsg = msgAction
-    if(logEnable) log.debug "Sending msg: ${msgAction}"
-    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
-}
-
-def volumeDown() {
-    def msgAction = "catt -d '${gDevice}' volumedown 10"
-    
-    state.lastmsg = msgAction
-    if(logEnable) log.debug "Sending msg: ${msgAction}"
-    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
-}
-
-def volumeUp() {
-    def msgAction = "catt -d '${gDevice}' volumeup 10"
-    state.lastmsg = msgAction
-    if(logEnable) log.debug "Sending msg: ${msgAction}"
-    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
+    sendCommand(msgAction)
 }
 
 def castDashboard(dashBoard){
     def msgAction = "catt -d '${gDevice}' cast_site '$dashBoard'"
     sendEvent(name: "switch", value: "on")
-    state.lastmsg = msgAction
-    if(logEnable) log.debug "Sending msg: ${msgAction}"
-    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
+    sendCommand(msgAction)
+}
 
+def off() {
+    def msgAction = "catt -d '${gDevice}' stop"
+    sendEvent(name: "switch", value: "off")
+    sendCommand(msgAction)
+}
+
+def add(msg) {
+    def msgAction = "catt -d '${gDevice}' add '${msg}'"
+    sendCommand(msgAction)
+}
+
+def cast(msg) {
+    def msgAction = "catt -d '${gDevice}' cast '${msg}'"
+    sendEvent(name: "switch", value: "on")
+    sendCommand(msgAction)
+}
+
+def ffwd(msg) {
+    def msgAction = "catt -d '${gDevice}' ffwd '${msg}'"
+    sendCommand(msgAction)
+}
+
+def pause() {
+    def msgAction = "catt -d '${gDevice}' pause"
+    sendCommand(msgAction)
+}
+
+def play() {
+    def msgAction = "catt -d '${gDevice}' play"
+    sendCommand(msgAction)
+}
+
+def clear() {
+    def msgAction = "catt -d '${gDevice}' clear"
+    sendCommand(msgAction)
+}
+
+def restore() {
+    def msgAction = "catt -d '${gDevice}' restore"
+    sendCommand(msgAction)
+}
+
+def rewind(msg) {
+    def msgAction = "catt -d '${gDevice}' rewind '${msg}'"
+    sendCommand(msgAction)
+}
+
+def save() {
+    def msgAction = "catt -d '${gDevice}' save"
+    sendCommand(msgAction)
+}
+
+def setVolume(msg) {
+    def msgAction = "catt -d '${gDevice}' volume '${msg}'"
+    sendCommand(msgAction)
+}
+
+def skip(msg) {
+    def msgAction = "catt -d '${gDevice}' skip"
+    sendCommand(msgAction)
+}
+
+def stop() {
+    def msgAction = "catt -d '${gDevice}' stop"
+    sendCommand(msgAction)
+}
+
+def volume(setVolume) {
+    def msgAction = "catt -d '${gDevice}' volume ${setVolume}"
+    sendCommand(msgAction)
+}
+
+def volumeDown() {
+    def msgAction = "catt -d '${gDevice}' volumedown 10"
+    sendCommand(msgAction)
+}
+
+def volumeUp() {
+    def msgAction = "catt -d '${gDevice}' volumeup 10"
+    sendCommand(msgAction)
 }
