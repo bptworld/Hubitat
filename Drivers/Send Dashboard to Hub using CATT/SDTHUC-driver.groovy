@@ -42,7 +42,7 @@
  */
 
 metadata {
-	definition (name: "Send Dashboard to Hub using CATT Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Send Dashboard to Hub using CATT Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20Dashboard%20to%20Hub%20using%20CATT/SDTHUC-driver.groovy") {
 	    capability "Initialize"
         capability "Telnet"
         capability "Switch"
