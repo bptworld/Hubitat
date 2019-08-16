@@ -47,8 +47,8 @@ metadata {
         capability "Telnet"
         capability "Switch"
         capability "Audio Volume"
-
-        attribute "Telnet", ""
+        attribute "telnet", "string"
+		command "castDashboard", ["URI"]
     }
     
     preferences() {
@@ -107,23 +107,23 @@ def telnetStatus(String status) {
     }
 }
 
-def on(msg) {
+def on() {
     def msgAction = "catt -d '${gDevice}' cast_site '${castWebsite}'"
-    
+    sendEvent(name: "switch", value: "on")
     state.lastmsg = msgAction
     if(logEnable) log.debug "Sending msg: ${msgAction}"
     return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
 }
 
-def off(msg) {
+def off() {
     def msgAction = "catt -d '${gDevice}' stop"
-    
+	sendEvent(name: "switch", value: "off")
     state.lastmsg = msgAction
     if(logEnable) log.debug "Sending msg: ${msgAction}"
     return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
 }
 
-def setVolume(msg) {
+def setVolume() {
     def msgAction = "catt -d '${gDevice}' volume '${msg}'"
     
     state.lastmsg = msgAction
@@ -131,7 +131,7 @@ def setVolume(msg) {
     return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
 }
 
-def volumeDown(msg) {
+def volumeDown() {
     def msgAction = "catt -d '${gDevice}' volumedown 10"
     
     state.lastmsg = msgAction
@@ -139,11 +139,18 @@ def volumeDown(msg) {
     return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
 }
 
-def volumeUp(msg) {
+def volumeUp() {
     def msgAction = "catt -d '${gDevice}' volumeup 10"
-    
     state.lastmsg = msgAction
     if(logEnable) log.debug "Sending msg: ${msgAction}"
     return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
 }
 
+def castDashboard(dashBoard){
+    def msgAction = "catt -d '${gDevice}' cast_site '$dashBoard'"
+    sendEvent(name: "switch", value: "on")
+    state.lastmsg = msgAction
+    if(logEnable) log.debug "Sending msg: ${msgAction}"
+    return new hubitat.device.HubAction("${msgAction}\n", hubitat.device.Protocol.TELNET)
+
+}
