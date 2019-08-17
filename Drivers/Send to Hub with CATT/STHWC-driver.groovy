@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 08/17/19 - Added more commands, fixed typo in volume
  *  V1.0.1 - 08/16/19 - Name changed to 'Send to Hub with CATT', added a ton more commands, added some suggestions from @Ryan780, Thank you!
  *  V1.0.0 - 08/15/19 - Initial release
  */
@@ -57,16 +58,20 @@ metadata {
         command "castDashboard", ["URI"]
         command "clear"
         command "ffwd", ["Number"]
+        command "info"
         command "pause"
         command "play"
+        command "remove", ["URI"]
         command "restore"
         command "rewind", ["Number"]
         command "save"
         command "skip"
+        command "status"
         command "stop"
         command "volume", ["Number"]
         command "volumedown"
         command "volumeup"
+        command "write_config", ["Text"]
     }
     
     preferences() {
@@ -170,6 +175,11 @@ def ffwd(msg) {
     sendCommand(msgAction)
 }
 
+def info() {
+    def msgAction = "catt -d '${gDevice}' info"
+    sendCommand(msgAction)
+}
+
 def pause() {
     def msgAction = "catt -d '${gDevice}' pause"
     sendCommand(msgAction)
@@ -182,6 +192,11 @@ def play() {
 
 def clear() {
     def msgAction = "catt -d '${gDevice}' clear"
+    sendCommand(msgAction)
+}
+
+def remove(msg) {
+    def msgAction = "catt -d '${gDevice}' remove '${msg}'"
     sendCommand(msgAction)
 }
 
@@ -200,13 +215,13 @@ def save() {
     sendCommand(msgAction)
 }
 
-def setVolume(msg) {
-    def msgAction = "catt -d '${gDevice}' volume '${msg}'"
+def skip(msg) {
+    def msgAction = "catt -d '${gDevice}' skip"
     sendCommand(msgAction)
 }
 
-def skip(msg) {
-    def msgAction = "catt -d '${gDevice}' skip"
+def status() {
+    def msgAction = "catt -d '${gDevice}' status"
     sendCommand(msgAction)
 }
 
@@ -215,8 +230,8 @@ def stop() {
     sendCommand(msgAction)
 }
 
-def volume(setVolume) {
-    def msgAction = "catt -d '${gDevice}' volume ${setVolume}"
+def volume(msgVolume) {
+    def msgAction = "catt -d '${gDevice}' volume ${msgVolume}"
     sendCommand(msgAction)
 }
 
@@ -227,5 +242,10 @@ def volumeDown() {
 
 def volumeUp() {
     def msgAction = "catt -d '${gDevice}' volumeup 10"
+    sendCommand(msgAction)
+}
+
+def write_config(setDevice) {
+    def msgAction = "catt write_config ${setDevice}"
     sendCommand(msgAction)
 }
