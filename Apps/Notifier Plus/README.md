@@ -1,9 +1,9 @@
 # Notifier Plus
 <b>Design Usage:</b><br>
-Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.<br><br>
-<br>
+Notifications based on date/day and time. A perfect way to get reminders or create a wakeup alarm.
+<br><br>
 <b>8/17/19 - Depreciated - Thanks for your support.</b>
-<br>
+<br><br>
 <b>New Install:</b><br>
 * Copy the Parent code from GitHub into a ‘New App’ under the ‘Apps Code’ menu then click ‘Done’
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
