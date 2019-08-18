@@ -42,7 +42,7 @@
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "AppWatchdogChildVersion"
+    state.appName = "AppWatchdog2ChildVersion"
 	state.version = "v2.0.0"
     
     try {
@@ -140,16 +140,6 @@ def pageConfig() {
 			input "isDataDevice", "capability.switch", title: "Turn this device on if there is data to report", required: false, multiple: false
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
-		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
-			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
-			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'App Watchdog Tile'<br> - Use our 'App Watchdog Tile' Driver<br> - Then select this new device below"
-			paragraph "Now all you have to do is add this device to one of your dashboards to see your data on a tile!<br>Add a new tile with the following selections"
-			paragraph "- Pick a device = App Watchdog Tile<br>- Pick a template = attribute<br>- 3rd box = appVersions"
-			}
-		section() {
-			input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the Data to:", submitOnChange: true, required: false, multiple: false)		
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
 		section() {
@@ -614,7 +604,7 @@ def appMapHandler(evt) {
 		}
 	if(maintSwitch2 != true) {
 		if(sendPushMessage) pushNow()
-		if(tileDevice) tileHandler()
+		if(parent.awDevice) tileHandler()
 	}
 }
 
@@ -854,15 +844,15 @@ def tileHandler(evt) {
 	} else {
 		appMap = "<table width='100%'><b>Apps/Drivers to update</b><br>${appMap}</table>"
 	}
-	if(logEnable) log.debug "In tileHandler...Sending new App Watchdog data to ${tileDevice} - ${appMap}"
-    tileDevice.sendDataMap(appMap)
+	if(logEnable) log.debug "In tileHandler...Sending new App Watchdog data to ${parent.awDevice} - ${appMap}"
+    parent.awDevice.sendDataMap(appMap)
 }
 
 def tileVersionHandler() {
 	childVersion = "${state.version}"
 	verMap = "${app.name}:${childVersion}"
 	log.info("In tileVersionHandler...appName: ${app.name}")
-    tileDevice.sendVersionMap(verMap)
+    parent.awDevice.sendVersionMap(verMap)
 }
 
 def clearMaps() {
