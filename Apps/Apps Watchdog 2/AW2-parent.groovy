@@ -42,7 +42,7 @@
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "AppWatchdogParentVersion"
+    state.appName = "AppWatchdog2ParentVersion"
 	state.version = "v2.0.0"
     
     try {
@@ -111,7 +111,7 @@ def mainPage() {					// Modified from @Cobra Code
 				app(name: "anyOpenApp", appName: "App Watchdog 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'App Watchdog 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
-            section("This app supports App Watchdog! Click here for more Information", hideable: true, hidden: true) {
+            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
 				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
                 paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
                 input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
