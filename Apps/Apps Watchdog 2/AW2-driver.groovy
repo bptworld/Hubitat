@@ -47,7 +47,7 @@ def setVersion(){
 }
 
 metadata {
-	definition (name: "App Watchdog 2 Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "App Watchdog 2 Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy") {
    		capability "Initialize"
         capability "Actuator"
 		
@@ -55,6 +55,7 @@ metadata {
         attribute "appTile", "string"
         
         command "sendAWinfoMap", ["Text"]
+        command "sendDataMap", ["Text"]
 	}
 	preferences() {    	
         section(){
@@ -108,8 +109,8 @@ def initialize() {
 
 def sendDataMap(dataMap) {
     if(logEnable) log.debug "In sendDataMap - Received new app data!"
-	state.appTile = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.appTile+= "<div style='line-height=50%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${dataMap}</div>"
-	state.appTile+= "</td></tr></table>"
-	sendEvent(name: "appTile", value: state.appTile, displayed: true)
+	theTile = "<table width='100%'><tr><td width='10'><td align='left'>"
+	theTile += "<div style='line-height=50%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${dataMap}</div>"
+	theTile += "</td></tr></table>"
+	sendEvent(name: "appTile", value: theTile, displayed: true)
 }
