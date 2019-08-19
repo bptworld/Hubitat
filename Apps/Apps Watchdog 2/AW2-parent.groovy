@@ -64,7 +64,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-    importUrl: ""
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-parent.groovy"
 )
 
 preferences {
@@ -142,10 +142,10 @@ def installCheck(){
 }
 
 def createVirtualDevice() {                        // Modified from @Stephack
-    def childDevice = getChildDevices()?.find {it.device.deviceNetworkId == "AW_${app.id}"}      
+    def childDevice = getChildDevices()?.find {it.device.deviceNetworkId == "AW2_${app.id}"}      
     if (!childDevice) {
         if(logEnable) log.debug "In createVirtualDevice - Creating Virtual Device"
-        childDevice = addChildDevice("BPTWorld", "App Watchdog Driver", "AW_${app.id}", null,[completedSetup: true, label: "App Watchdog Data"]) 
+        childDevice = addChildDevice("BPTWorld", "App Watchdog 2 Driver", "AW2_${app.id}", null,[completedSetup: true, label: "App Watchdog Data"]) 
     	
         if(logEnable) log.debug "In createVirtualDevice - Created Virtual Device [${childDevice}]"
 	}
