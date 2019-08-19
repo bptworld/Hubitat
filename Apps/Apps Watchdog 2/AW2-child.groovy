@@ -65,7 +65,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/App%20Watchdog/AW-child.groovy",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-child.groovy",
 )
 
 preferences {
@@ -554,7 +554,7 @@ def appMapHandler(evt) {
                                 
                                 def watchMap = ""
                                 
-                                watchMap = awDevice.currentValue("sendAWinfoMap").replace("{","").replace("}","")
+                                watchMap = parent.awDevice.currentValue("sendAWinfoMap").replace("{","").replace("}","")
                                 if(logEnable) log.debug "watchMap: ${watchMap}"
                                 
                                 
