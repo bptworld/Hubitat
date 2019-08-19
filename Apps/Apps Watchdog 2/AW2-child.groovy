@@ -138,7 +138,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 			input "timeToRun", "time", title: "Check Apps at this time daily", required: true
 			input "isDataDevice", "capability.switch", title: "Turn this device on if there is data to report", required: false, multiple: false
-			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
+			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) input(name: "pushAll", type: "bool", defaultValue: "false", submitOnChange: true, title: "Only send Push if there is something to actually report", description: "Push All")
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false}
