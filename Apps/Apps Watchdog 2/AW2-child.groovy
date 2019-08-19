@@ -557,7 +557,6 @@ def appMapHandler(evt) {
                                 watchMap = parent.awDevice.currentValue("sendAWinfoMap").replace("{","").replace("}","")
                                 if(logEnable) log.debug "watchMap: ${watchMap}"
                                 
-                                
                                 def theMap = watchMap.split(',').collectEntries { entry ->
                                     def pair = entry.split('=')
                                     [(pair.first()):pair.last()]
@@ -585,7 +584,7 @@ def appMapHandler(evt) {
 							        //	state.oldAppDriver6Version = state.oldDriver6Map.get(item) 
                                 }
                                 if(state.aType == "App") checkTheAppData()
-							    if(state.aType == "Driver") checkTheDriverData()
+							    //if(state.aType == "Driver") checkTheDriverData()
                                 state.oldAppParentVersion = ""
                                 state.oldAppChildVersion = ""
                                 state.oldAppDriverVersion = ""
@@ -674,7 +673,7 @@ def checkTheAppData() {
     
     getAppNameHandler()
 		
-	if(parentCheck == "yes" || childCheck == "yes" || driverCheck == "yes") {
+	if(parentCheck == "yes" || childCheck == "yes") {
 		if(state.dName != "Example") {
 			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
@@ -838,21 +837,13 @@ def checkTheDriverData() {
 }
 
 def tileHandler(evt) {
-	if(state.appMapDash) appMap = "${state.appMapDash}"
-	if(state.appMap == "") { 
-		appMap = "All Apps are up to date."
+	if(state.appMapDash == "") { 
+		appMap2 = "All Apps are up to date."
 	} else {
-		appMap = "<table width='100%'><b>Apps/Drivers to update</b><br>${appMap}</table>"
+		appMap2 = "<table width='100%'><b>Apps to update</b><br>${state.appMapDash}</table>"
 	}
-	if(logEnable) log.debug "In tileHandler...Sending new App Watchdog data to ${parent.awDevice} - ${appMap}"
-    parent.awDevice.sendDataMap(appMap)
-}
-
-def tileVersionHandler() {
-	childVersion = "${state.version}"
-	verMap = "${app.name}:${childVersion}"
-	log.info("In tileVersionHandler...appName: ${app.name}")
-    parent.awDevice.sendVersionMap(verMap)
+	if(logEnable) log.debug "In tileHandler...Sending new App Watchdog 2 data to ${parent.awDevice} - ${appMap2}"
+    parent.awDevice.sendDataMap(appMap2)
 }
 
 def clearMaps() {
