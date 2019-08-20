@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.9 - 05/08/19 - Fixed a typo
  *  V1.0.8 - 05/04/19 - Fixed 'pause'
  *  V1.0.7 - 04/15/19 - Code cleanup
@@ -52,8 +53,21 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.0.9"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "BIControlChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
