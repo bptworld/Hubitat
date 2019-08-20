@@ -33,14 +33,29 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  V1.0.3 - 06/08/19 - Added Time Delay to triggers
  *  V1.0.2 - 05/20/19 - Added Time to triggers
  *  V1.0.1 - 05/08/19 - Fixed an issue with loadStartURL, added a delay between commands
  *  V1.0.0 - 05/07/19 - Initial release.
  *
  */
 
-def setVersion() {
-	state.version = "v1.0.2"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "FullyKioskDirectorChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -77,6 +92,7 @@ def pageConfig() {
 			input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the event", required: false, multiple: true
 			input "mySwitch", "capability.switch", title: "Select the switch to activate the event", required: false, multiple: true
 			input "timeToRun", "time", title: "Select time to activate the event", required: false
+			input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: true, range: '1..60'
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" BEFORE Display Options")) {
 			input(name: "optBringFullyToFront1", type: "bool", defaultValue: "false", title: "Bring Fully to Front?", description: "bring to front", submitOnChange: "true", width: 6)
@@ -163,63 +179,59 @@ def initialize() {
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
 	if(timeToRun) schedule(timeToRun, timeHandler)
+	if(timeDelay) runIn(timeDelay,timeDelayHandler)
 }
 
 def contactSensorHandler(evt) {
 	if(logEnable) log.debug "In contactSensorHandler..."
-	if(pauseApp == true){log.warn "${app.label} - App paused"}
-    if(pauseApp == false){
-		state.contactStatus = evt.value
-		if(state.contactStatus == "open") {
-			if(logEnable) log.debug "In contactSensorHandler - open"
-			beginHandler()
-			if(triggerORTime) runIn(pTime,endHandler)
-		} else {
-			if(logEnable) log.debug "In contactSensorHandler - closed"
-			if(!triggerORTime) endHandler()
-		}
+	state.contactStatus = evt.value
+	if(state.contactStatus == "open") {
+		if(logEnable) log.debug "In contactSensorHandler - open"
+		beginHandler()
+		if(triggerORTime) runIn(pTime,endHandler)
+	} else {
+		if(logEnable) log.debug "In contactSensorHandler - closed"
+		if(!triggerORTime) endHandler()
 	}
 }
 
 def motionSensorHandler(evt) {
 	if(logEnable) log.debug "In motionSensorHandler..."
-	if(pauseApp == true){log.warn "${app.label} - App paused"}
-    if(pauseApp == false){
-		state.motionStatus = evt.value
-		if(state.motionStatus == "active") {
-			if(logEnable) log.debug "In motionSensorHandler - active"
-			beginHandler()
-			if(triggerORTime) runIn(pTime,endHandler)
-		} else {
-			if(logEnable) log.debug "In motionSensorHandler - Not active"
-			if(!triggerORTime) endHandler()
-		}
+	state.motionStatus = evt.value
+	if(state.motionStatus == "active") {
+		if(logEnable) log.debug "In motionSensorHandler - active"
+		beginHandler()
+		if(triggerORTime) runIn(pTime,endHandler)
+	} else {
+		if(logEnable) log.debug "In motionSensorHandler - Not active"
+		if(!triggerORTime) endHandler()
 	}
 }
 
 def switchHandler(evt) {
 	if(logEnable) log.debug "In switchHandler..."
-	if(pauseApp == true){log.warn "${app.label} - App paused"}
-    if(pauseApp == false){
-		state.switchStatus = evt.value
-		if(state.switchStatus == "on") {
-			if(logEnable) log.debug "In switchHandler - on"
-			beginHandler()
-			if(triggerORTime) runIn(pTime,endHandler)
-		} else {
-			if(logEnable) log.debug "In switchHandler - off"
-			if(!triggerORTime) endHandler()
-		}
+	state.switchStatus = evt.value
+	if(state.switchStatus == "on") {
+		if(logEnable) log.debug "In switchHandler - on"
+		beginHandler()
+		if(triggerORTime) runIn(pTime,endHandler)
+	} else {
+		if(logEnable) log.debug "In switchHandler - off"
+		if(!triggerORTime) endHandler()
 	}
 }
 						  
 def timeHandler() {
 	if(logEnable) log.debug "In timeHandler..."
-	if(pauseApp == true){log.warn "${app.label} - App paused"}
-    if(pauseApp == false){
-		beginHandler()
-		if(triggerORTime) runIn(pTime,endHandler)
-	}
+	beginHandler()
+	if(triggerORTime) runIn(pTime,endHandler)
+}
+
+def timeDelayHandler() {
+	if(logEnable) log.debug "In timeDelayHandler..."
+	def runDelay = timeDelay * 60
+	beginHandler()
+	runIn(runDelay,timeDelayHandler)
 }
 
 def beginHandler() {
@@ -227,8 +239,6 @@ def beginHandler() {
 	thePause = 1000
 	if(state.timeBetween == true) {
 		if(logEnable) log.debug "In beginHandler - pause between commands: ${thePause}"
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-		if(pauseApp == false){
 			if(optLoadStartURL1) {
 				fullyDevice.loadStartURL()
 				pauseExecution(thePause)
@@ -310,7 +320,6 @@ def beginHandler() {
 				fullyDevice.loadURL(optLoadURL)
 				pauseExecution(thePause)
 			}
-		}
 	} else {
 		if(logEnable) log.debug "In launchAppHandler - Not allowed at this time"
 	}	
@@ -321,8 +330,6 @@ def endHandler() {
 	thePause = 1000
 	if(state.timeBetween == true) {
 		if(logEnable) log.debug "In endHandler - pause between commands: ${thePause}"
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-		if(pauseApp == false){
 			if(optLoadStartURL2) {
 				fullyDevice.loadStartURL()
 				pauseExecution(thePause)
@@ -395,7 +402,6 @@ def endHandler() {
 				fullyDevice.triggerMotion()
 				pauseExecution(thePause)
 			}
-		}
 	} else {
 		if(logEnable) log.debug "In bringFullyToFrontHandler - Not allowed at this time"
 	}	
@@ -420,7 +426,6 @@ def checkTime() {
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 }
 
@@ -438,9 +443,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
