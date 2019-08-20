@@ -43,7 +43,8 @@
  *
  *  Changes:
  *
- *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to parent/child.
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to partent/child.
  *  v1.0.3 - 08/02/19 - Whoops, found a bug! 
  *  v1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
  *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
@@ -59,8 +60,21 @@
  *        - Fix controllerExplanationPage so it will load, still need to fix the wording
  */
 
-def setVersion() {
-	state.version = "v1.0.4"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "GentleWakeUpChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -898,7 +912,7 @@ def canStartAutomatically() {
 		return true
 	}
 
-	if(logEnable) log.debug "should not run"
+	if(logEnable) log.debug "Gentle Wake Up should not run"
 	return false
 }
 
