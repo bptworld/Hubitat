@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 08/20/19 - Fixed some missing code in dName.
  *  V2.0.0 - 08/18/19 - Now data is automaticaly sent from compatible apps and then compared to github, when app is opened and on a daily schedule.
  *
  */
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion or YourAppsNameDriverVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -916,7 +917,23 @@ def getAppNameHandler() {
         if(state.appsName == state.app22NoSpace) state.dName = state.app22
         if(state.appsName == state.app23NoSpace) state.dName = state.app23
         if(state.appsName == state.app24NoSpace) state.dName = state.app24
-        if(state.appsName == state.app25NoSpace) state.dName = state.app25
+        if(state.appsName == state.app25NoSpace) state.dName = state.app25  
+        if(state.appsName == state.app26NoSpace) state.dName = state.app26
+        if(state.appsName == state.app27NoSpace) state.dName = state.app27
+        if(state.appsName == state.app28NoSpace) state.dName = state.app28
+        if(state.appsName == state.app29NoSpace) state.dName = state.app29
+        if(state.appsName == state.app30NoSpace) state.dName = state.app30   
+        if(state.appsName == state.app31NoSpace) state.dName = state.app31
+        if(state.appsName == state.app32NoSpace) state.dName = state.app32
+        if(state.appsName == state.app33NoSpace) state.dName = state.app33
+        if(state.appsName == state.app34NoSpace) state.dName = state.app34
+        if(state.appsName == state.app35NoSpace) state.dName = state.app35
+        if(state.appsName == state.app36NoSpace) state.dName = state.app36
+        if(state.appsName == state.app37NoSpace) state.dName = state.app37
+        if(state.appsName == state.app38NoSpace) state.dName = state.app38
+        if(state.appsName == state.app39NoSpace) state.dName = state.app39
+        if(state.appsName == state.app40NoSpace) state.dName = state.app40
+    
     if(logEnable) log.debug "In getAppNameHandler - dName: ${state.dName}"
 }
 
