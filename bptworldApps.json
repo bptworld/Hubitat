@@ -187,7 +187,7 @@
   "GentleWakeUpParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-parent.groovy",
   "GentleWakeUpChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-child.groovy",
   "GentleWakeUpDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Gentle%20Wake%20Up/GWU-driver.groovy",
-  "GentleWakeUpDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
+  "GentleWakeUpDiscussion": "https://community.hubitat.com/t/port-gentle-wake-up/19971",
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "LightingEffectsType": "App",
