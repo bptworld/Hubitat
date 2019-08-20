@@ -1,4 +1,4 @@
-<b>App Watchdog V2 is NOW AVAILABLE!  Please go here to download the latest version.</b>
+<b>App Watchdog V2 is NOW AVAILABLE!  Please <a href="https://github.com/bptworld/Hubitat/tree/master/Apps/Apps%20Watchdog%202">go here to download the latest version</a>.</b>
 https://github.com/bptworld/Hubitat/tree/master/Apps/Apps%20Watchdog%202
 
 # App Watchdog
