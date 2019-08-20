@@ -33,6 +33,8 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 08/18/19 - Now App Watchdog compliant
+ *  V2.0.1 - 08/05/19 - Lots of little changes to the speech methods
  *  V2.0.0 - 08/04/19 - Handles speech much easier. New options available, check your child apps!
  *  V1.3.8 - 08/04/19 - Fixed old message being spoken. Fixed volume error on Google/Nest devices.
  *  V1.3.7 - 08/04/19 - Added more try/catch to try and figure out what's going on
@@ -78,8 +80,21 @@
 
 import groovy.json.*
     
-def setVersion() {
-	state.version = "v2.0.0"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "FollowMeChildVersion"
+	state.version = "v2.0.2"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -661,16 +676,8 @@ def letsTalk() {
                     // you can now reference the attributes as message.message, message.priority, message.title, etc)
                     switch(message.method) {
                         case 'deviceNotification':
-                            if(beforeVolume) {
-                                if(volSpeech && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(state.volume)
-                                } else {
-                                    if(volSpeech && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(state.volume)
-                                    }
-                                }
-                            }
-                            it.deviceNotification(message.message)
+                            speakHandler(it)
+                            it.speak(message.message)
                             pauseExecution(atomicState.speechDuration2)
                             if(afterVolume) {
                                 if(volRestore && (it.hasCommand('setLevel'))) {
@@ -684,12 +691,12 @@ def letsTalk() {
                             log.info "Follow Me - deviceNotification Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playAnnouncement':
-                            it.playAnnouncement(message.message, message.title, message.speakLevel, message.returnLevel)
+                            it.playAnnouncement(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - playAnnouncement Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playAnnouncementAll':
-                            it.playAnnouncementAll(message.speakLevel, message.message, message.returnLevel)
+                            it.playAnnouncementAll(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
                             break;
@@ -800,12 +807,12 @@ def letsTalk() {
                             log.info "Follow Me - setVolume Received - speaker: ${it} - ${message.speakLevel}"
                             break;
                         case 'setVolumeSpeakAndRestore':
-                            it.setVolumeSpeakAndRestore(message.speakLevel, message.message, message.returnLevel)
+                            it.setVolumeSpeakAndRestore(message.message, message.priority, message.speakLevel, message.returnLevel)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'setVolumeAndSpeak':
-                            it.setVolumeAndSpeak(message.speakLevel, message.message)
+                            it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
                             pauseExecution(atomicState.speechDuration2)
                             if(afterVolume) {
                                 if(volRestore && (it.hasCommand('setLevel'))) {
@@ -1201,7 +1208,7 @@ def randomHandler() {
     } else {
         log.warn "Follow Me (${state.version}) - No random voices selected."
     }
-	if(logEnable) log.debug "In randomHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, randomVoice: ${state.randVoice}"
+	if(logEnable) log.debug "In randomHandler - Random - vSize: ${vSize}, randomVoice: ${state.randVoice}"
 }
 
 def appButtonHandler(buttonPressed) {
