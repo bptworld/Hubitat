@@ -52,6 +52,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.5 - 04/15/19 - Code cleanup
  *  V1.0.4 - 02/13/19 - Bug fixes
  *  V1.0.3 - 01/15/19 - Updated footer with update check and links
@@ -61,8 +62,21 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.0.5"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "MotionControlledSceneLightingChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
