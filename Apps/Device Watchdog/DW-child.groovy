@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.3.4 - 05/24/19 - Fixed typo
  *  V1.3.3 - 04/26/19 - Fix Device turning on when there is nothing to report.
  *  V1.3.2 - 04/22/19 - Put a trap in to catch devices that have no previous activity.
@@ -78,8 +79,21 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.3.4"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "DeviceWatchdogChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
