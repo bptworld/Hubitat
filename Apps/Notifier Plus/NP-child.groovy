@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  V1.2.1 - 06/18/19 - Added Rule Machine Control option, Redesigned Trigger input
  *  V1.2.0 - 06/18/19 - Fixed a couple of typos, Attempt to fix the 'run every x days' option
  *  V1.1.9 - 06/12/19 - Added ability to select start date for 'Run every X days' option
  *  V1.1.8 - 06/12/19 - Removed the 'Every Other' option and added 'Run every X days'. Changes made to 'By Date' section, please
@@ -66,8 +68,23 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.2.0"
+import hubitat.helper.RMUtils
+
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "NotifierPlusChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -92,39 +109,35 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "Notifications based on date/day, time and more. A great way to get reminders or create a wakeup alarm."
+			paragraph "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm."
 			paragraph "Get nofified when it's a holiday, birthday, special occasion, etc. Great for telling Hubitat when it's school vacation."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
-			if((xDate && xDay) || (xDate && xContact) || (xDate && xMotion) || (xDate && xSwitch) || (xDate && xTemp) ||  (xDate && xPower) || (xDay && xContact) || (xDay && xMotion) || (xDay && xSwitch) || (xDay && xTemp) || (xDay && xPower)) {
-				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
-			} else {
-				paragraph "Please only choose <b>one</b> option. If multiple options are selected bad things will happen."
-			}
-			input(name: "xDate", type: "bool", defaultValue: "false", title: "<b>by Date?</b><br>This will notify you on the Month/Day(s)/Year selected only.", description: "Date", submitOnChange: "true", width: 6)
-			input(name: "xDay", type: "bool", defaultValue: "false", title: "<b>by Day of the Week?</b><br>This will notify you on each day selected, week after week, at the time specified.", description: "Day of the Week", submitOnChange: "true", width: 6)
-			input(name: "xContact", type: "bool", defaultValue: "false", title: "<b>by Contact Sensor?</b><br>Contact Sensor Notifications", description: "Contact Sensor Notifications", submitOnChange: "true", width: 6)
-			input(name: "xHumidity", type: "bool", defaultValue: "false", title: "<b>by Humidity Level?</b><br>Power Notifications", description: "Humidity Notifications", submitOnChange: "true", width: 6)
-			input(name: "xMode", type: "bool", defaultValue: "false", title: "<b>by Mode?</b><br>Power Notifications", description: "Mode Notifications", submitOnChange: "true", width: 6)
-			input(name: "xMotion", type: "bool", defaultValue: "false", title: "<b>by Motion Sensor?</b><br>Motion Sensor Notifications", description: "Motion Sensor Notifications", submitOnChange: "true", width: 6)
-			input(name: "xSwitch", type: "bool", defaultValue: "false", title: "<b>by Switch?</b><br>Switch Notifications", description: "Switch Notifications", submitOnChange: "true", width: 6)
-			input(name: "xTemp", type: "bool", defaultValue: "false", title: "<b>by Temperature?</b><br>Temperature Notifications", description: "Temperature Notifications", submitOnChange: "true", width: 6)
-			input(name: "xPower", type: "bool", defaultValue: "false", title: "<b>by Power Meter?</b><br>Power Notifications", description: "Power Notifications", submitOnChange: "true", width: 6)
+            input "triggerType1", "enum", title: "Tigger", required: true, multiple: false, submitOnChange: true, options: [
+                		["xDate":"by Date"],
+                		["xDay":"by Day"],
+                		["xContact":"by Contact Sensor"],
+                		["xHumidity":"by Humidity Level"],
+                        ["xMode":"by Mode"],
+                        ["xMotion":"by Motion Sensor"],
+                        ["xSwitch":"by Switch"],
+                        ["xTemp":"by Temperature"],
+                        ["xPower":"by Power Meter"]
+                    ]
 		}
 		section("<b>If you would like to change to a different trigger, be sure to remove all selections associated with that trigger before choosing a different trigger. It is strongly recommended to simply delete this child app and create a new one, if a different trigger is needed.</b>") {
 			paragraph "<hr>"
-			if(xDate) {
-				app.clearSetting("xDay")
+			if(triggerType1 == "xDate") {
 				input "month", "enum", title: "Select Month", required: true, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
 				if(month == "1" || month == "3" || month == "5" || month == "7" || month == "8" || month == "10" || month == "12") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
 				if(month == "4" || month == "6" || month == "9" || month == "11") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
 				if(month == "2") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-				
-				input "year", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: ["2019", "2020", "2021", "2022"], defaultValue: "2019"
+				if(month) input "year", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: ["2019", "2020", "2021", "2022", "2023"], defaultValue: "2019"
+                paragraph " "
 				input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
 				input "min", "enum", title: "Select Minute", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
 			}
-			if(xDay) {
+			if(triggerType1 == "xDay") {
                 input "daysAfter", "number", title: "Run every X days (1 to 365)", required: false, multiple: false, range: '1..365', submitOnChange: "true"
                 if(daysAfter) {
                     paragraph "Starting on"
@@ -132,8 +145,7 @@ def pageConfig() {
 			    	if(monthDA == "1" || monthDA == "3" || monthDA == "5" || monthDA == "7" || monthDA == "8" || monthDA == "10" || monthDA == "12") input "dayDA", "enum", title: "Select Day(s)", required: true, multiple: false, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
 				    if(monthDA == "4" || monthDA == "6" || monthDA == "9" || monthDA == "11") input "dayDA", "enum", title: "Select Day(s)", required: true, multiple: false, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
 				    if(monthDA == "2") input "dayDA", "enum", title: "Select Day(s)", required: true, multiple: false, width: 4, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
-				
-				    input "yearDA", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: ["2019", "2020", "2021", "2022"], defaultValue: "2019"
+				    if(monthDA) input "yearDA", "enum", title: "Select Year", required: true, multiple: false, width: 4, options: ["2019", "2020", "2021", "2022", "2023"], defaultValue: "2019"
                     paragraph "<small>* If selecting to start today, time MUST be after current time.</small>"
 				}
 				if(!daysAfter) input(name: "days", type: "enum", title: "Notify on these days", description: "Days to notify", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
@@ -145,7 +157,7 @@ def pageConfig() {
 				if(everyOther || daysAfter) input "min", "enum", title: "Select Minute", required: true, width: 6, options: [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
                 }
 			}
-			if(xContact) {
+			if(triggerType1 == "xContact") {
 				paragraph "<b>by Contact Sensor</b>"
 				input(name: "contactEvent", type: "capability.contactSensor", title: "Trigger Notifications based on a Contact Sensor", required: true, multiple: true, submitOnChange: true)
 				if(contactEvent) {
@@ -159,14 +171,14 @@ def pageConfig() {
 					}
 				}
 			}
-			if(xHumidity) {
+			if(triggerType1 == "xHumidity") {
 				paragraph "<b>by Humidity Level</b>"
 				input(name: "humidityEvent", type: "capability.relativeHumidityMeasurement", title: "Trigger Notifications based on Humidity Setpoints", required: true, multiple: true, submitOnChange: true)
 				input(name: "oSetPointHigh", type: "bool", defaultValue: "false", title: "<b>Trigger when Humidity is too High?</b>", description: "Humidity High", submitOnChange: true)
 				if(oSetPointHigh) input "setPointHigh", "number", title: "Humidity High Setpoint", required: true, defaultValue: 75, submitOnChange: true
 				input(name: "oSetPointLow", type: "bool", defaultValue: "false", title: "<b>Trigger when Humidity is too Low?</b>", description: "Humidity Low", submitOnChange: true)
 				if(oSetPointLow) input "setPointLow", "number", title: "Humidity Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
-				if(powerEvent) {
+				if(humidityEvent) {
 					if(oSetPointHigh) paragraph "You will recieve notifications if Humidity reading is above ${setPointHigh}"
 					if(oSetPointLow) paragraph "You will recieve notifications if Humidity reading is below ${setPointLow}"
 					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
@@ -176,7 +188,7 @@ def pageConfig() {
 					}
 				}
 			}
-			if(xMode) {
+			if(triggerType1 == "xMode") {
 				paragraph "<b>by Mode Changes</b>"
 				input(name: "modeEvent", type: "mode", title: "Trigger Notifications based on a Mode", multiple: true, submitOnChange: true)
 				if(modeEvent) {
@@ -190,7 +202,7 @@ def pageConfig() {
 					}
 				}
 			}
-			if(xMotion) {
+			if(triggerType1 == "xMotion") {
 				paragraph "<b>by Motion Sensor</b>"
 				input(name: "motionEvent", type: "capability.motionSensor", title: "Trigger Notifications based on a Motion Sensor", required: true, multiple: true, submitOnChange: true)
 				if(motionEvent) {
@@ -204,7 +216,7 @@ def pageConfig() {
 					}
 				}
 			}
-			if(xPower) {
+			if(triggerType1 == "xPower") {
 				paragraph "<b>by Power Meter</b>"
 				input(name: "powerEvent", type: "capability.powerMeter", title: "Trigger Notifications based on Power Setpoints", required: true, multiple: true, submitOnChange: true)
 				input(name: "oSetPointHigh", type: "bool", defaultValue: "false", title: "<b>Trigger when Power is too High?</b>", description: "Power High", submitOnChange: true)
@@ -221,7 +233,7 @@ def pageConfig() {
 					}
 				}
 			}
-			if(xSwitch) {
+			if(triggerType1 == "xSwitch") {
 				paragraph "<b>by Switch</b>"
 				input(name: "switchEvent", type: "capability.switch", title: "Trigger Notifications based on a Switch", required: true, multiple: true, submitOnChange: true)
 				if(switchEvent) {
@@ -235,14 +247,14 @@ def pageConfig() {
 					}
 				}
 			}
-			if(xTemp) {
+			if(triggerType1 == "xTemp") {
 				paragraph "<b>by Temperature</b>"
 				input(name: "tempEvent", type: "capability.temperatureMeasurement", title: "Trigger Notifications based on Temperature Setpoints", required: true, multiple: true, submitOnChange: true)
 				input(name: "oSetPointHigh", type: "bool", defaultValue: "false", title: "<b>Trigger when Temperature is too High?</b>", description: "Temp High", submitOnChange: true)
 				if(oSetPointHigh) input "setPointHigh", "number", title: "Temperature High Setpoint", required: true, defaultValue: 75, submitOnChange: true
 				input(name: "oSetPointLow", type: "bool", defaultValue: "false", title: "<b>Trigger when Temperature is too Low?</b>", description: "Temp Low", submitOnChange: true)
 				if(oSetPointLow) input "setPointLow", "number", title: "Temperature Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
-				if(powerEvent) {
+				if(tempEvent) {
 					if(oSetPointHigh) paragraph "You will recieve notifications if Temperature reading is above ${setPointHigh}"
 					if(oSetPointLow) paragraph "You will recieve notifications if Temperature reading is below ${setPointLow}"
 					input(name: "oSwitchTime", type: "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange: true)
@@ -253,25 +265,21 @@ def pageConfig() {
 				}
 			}
 		}
-		section() {
-			if((xDate && xDay) || (xDate && xContact) || (xDate && xMotion) || (xDate && xSwitch) || (xDate && xTemp) ||  (xDate && xPower) || (xDay && xContact) || (xDay && xMotion) || (xDay && xSwitch) || (xDay && xTemp) || (xDay && xPower)) {
-				paragraph "Please only choose <b>one</b> option. <b>BAD THINGS WILL HAPPEN IF MULTIPLE OPTIONS ARE USED!</b>"
-			}
-		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Choose Your Notify Options")) {
 			paragraph "Select as many options as you like. Control switch required for Lighting, Message Options and/or Time options."
 			input(name: "oControl", type: "bool", defaultValue: "false", title: "<b>Control Switch Options</b>", description: "Control Options", submitOnChange: "true", width: 6)
 			input(name: "oLighting", type: "bool", defaultValue: "false", title: "<b>Lighting Options</b>", description: "Light Options", submitOnChange: "true", width: 6)
 			input(name: "oDevice", type: "bool", defaultValue: "false", title: "<b>Device Options</b>", description: "Device Options", submitOnChange: "true", width: 6)
 			input(name: "oMessage", type: "bool", defaultValue: "false", title: "<b>Message Options</b>", description: "Message Options", submitOnChange: "true", width: 6)
+            input(name: "oRule", type: "bool", defaultValue: "false", title: "<b>RM Rule Options</b>", description: "Rule Options", submitOnChange: "true", width: 6)
 		}
 		if(oControl) {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
 				paragraph "This is your child app on/off switch. <b>Required if using Lighting, Message Options and/or Time options.</b>"
-				paragraph "If choosing to use either Contact, Motion or Switch for Control...Be sure to remove any device from the control switch option below."
-				if(xContact) input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
-				if(xMotion) input(name: "oControlMotion", type: "bool", defaultValue: "false", title: "<b>Use Trigger Motion Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
-				if(xSwitch) input(name: "oControlSwitch", type: "bool", defaultValue: "false", title: "<b>Use Trigger Switch as Control Switch?</b>", description: "Control Options", submitOnChange: true)
+				paragraph "If choosing to use either Contact, Motion or Switch for Control - Be sure to remove any device from the control switch option below."
+				if(triggerType1 == "xContact") input(name: "oControlContact", type: "bool", defaultValue: "false", title: "<b>Use Trigger Contact Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
+				if(triggerType1 == "xMotion") input(name: "oControlMotion", type: "bool", defaultValue: "false", title: "<b>Use Trigger Motion Sensor as Control Switch?</b>", description: "Control Options", submitOnChange: true)
+				if(triggerType1 == "xSwitch") input(name: "oControlSwitch", type: "bool", defaultValue: "false", title: "<b>Use Trigger Switch as Control Switch?</b>", description: "Control Options", submitOnChange: true)
 				if((oControlContact) || (oControlSwitch) || (oControlMotion)) {
 					paragraph ""
 					state.controlSW = "no"
@@ -329,7 +337,23 @@ def pageConfig() {
 				paragraph "Great for turning on/off alarms, lighting, fans, coffee makers, etc..."
 				input(name: "switchesOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "switchesOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
-				if(xDate || xDay) input(name: "newMode", type: "mode", title: "Change Mode", required: false, multiple: false)
+				if(triggerType1 == "xDate" || xtriggerType1 == "Day") input(name: "newMode", type: "mode", title: "Change Mode", required: false, multiple: false)
+			}
+		}
+        if(oRule) {
+			section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
+                def rules = RMUtils.getRuleList()
+				paragraph "Perform an action on a Rule Machine Rule."
+				input "rmRule", "enum", title: "Select which rules", required: true, multiple: true, options: rules
+				input "rmAction", "enum", title: "Action", required: true, multiple: false, options: [
+                		["runRuleAct":"Run"],
+                		["stopRuleAct":"Stop"],
+                		["pauseRule":"Pause"],
+                		["resumeRule":"Resume"],
+                        ["runRule":"Evaluate"],
+                        ["setRuleBooleanTrue":"Set Boolean True"],
+                        ["setRuleBooleanFalse":"Set Boolean False"]
+                    ]
 			}
 		}
 		if(oMessage) {
@@ -337,7 +361,7 @@ def pageConfig() {
 				input(name: "oRandom", type: "bool", defaultValue: "false", title: "<b>Random Message?</b>", description: "Random", submitOnChange: "true")
 				paragraph "%device% - will speak the Device Name<br>%time% - will speak the current time in 24 h<br>%time1% - will speak the current time in 12 h"
 				if(!oRandom) {
-					if(xPower || xTemp || xHumidity) {
+					if(triggerType1 == "xPower" || triggerType1 == "xTemp" || triggerType1 == "xHumidity") {
 						if(oSetPointHigh) input "messageH", "text", title: "Message to speak when reading is too high", required: true, submitOnChange: true, defaultValue: "Temp is too high"
 						if(oSetPointLow) input "messageL", "text", title: "Message to speak when reading is too low", required: true, submitOnChange: true, defaultValue: "Temp is too low"
 						if(oSetPointLow) input "messageB", "text", title: "Message to speak when reading is both too high and too low", required: true, submitOnChange: true, defaultValue: "Temp is out of range"
@@ -373,7 +397,7 @@ def pageConfig() {
 					}
 				}
 				input(name: "oSpeech", type: "bool", defaultValue: "false", title: "<b>Speech Options</b>", description: "Speech Options", submitOnChange: "true", width: 6)
-				input(name: "oPush", type: "bool", defaultValue: "false", title: "<b>Pushover Options</b>", description: "Pushover Options", submitOnChange: "true", width: 6)
+				input(name: "oPush", type: "bool", defaultValue: "false", title: "<b>Push Options</b>", description: "Push Options", submitOnChange: "true", width: 6)
 			}
 		}
 		if(oSpeech) {
@@ -432,11 +456,10 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	if(xDate) dateHandler()
-    if(xDay && startTime) schedule(startTime, dayOfTheWeekHandler)
-    if(xDay && startTimeHourly) hourlyHandler()
-    if(xDay && daysAfter) daysAfterHandler()
-   
+	if(triggerType1 == "xDate") dateHandler()
+    if(triggerType1 == "xDay" && startTime) schedule(startTime, dayOfTheWeekHandler)
+    if(triggerType1 == "xDay" && startTimeHourly) hourlyHandler()
+    if(triggerType1 == "xDay" && daysAfter) daysAfterHandler()
     subcribeHandler()
 }
 
@@ -481,17 +504,17 @@ def daysAfterHandler() {
 
 def subcribeHandler() { 
 	if(controlSwitch) subscribe(controlSwitch, "switch", controlSwitchHandler)
-	if(xContact) subscribe(contactEvent, "contact", contactSensorHandler)
-	if(xSwitch) subscribe(switchEvent, "switch", switchHandler)
-	if(xMotion) subscribe(motionEvent, "motion", motionHandler)		
-	if(xTemp) subscribe(tempEvent, "temperature", setPointHandler)
-	if(xPower) subscribe(powerEvent, "power", setPointHandler)
-	if(xHumidity) subscribe(humidityEvent, "humidity", setPointHandler)
-	if(xMode) subscribe(location, "mode", modeHandler)
+	if(triggerType1 == "xContact") subscribe(contactEvent, "contact", contactSensorHandler)
+	if(triggerType1 == "xSwitch") subscribe(switchEvent, "switch", switchHandler)
+	if(triggerType1 == "xMotion") subscribe(motionEvent, "motion", motionHandler)		
+	if(triggerType1 == "xTemp") subscribe(tempEvent, "temperature", setPointHandler)
+	if(triggerType1 == "xPower") subscribe(powerEvent, "power", setPointHandler)
+	if(triggerType1 == "xHumidity") subscribe(humidityEvent, "humidity", setPointHandler)
+	if(triggerType1 == "xMode") subscribe(location, "mode", modeHandler)
 }
 
 def controlSwitchHandler(evt){
-	if(logEnable) log.debug "In controlSwitchHandler...Checking what type of trigger to use"
+	if(logEnable) log.debug "In controlSwitchHandler - Checking what type of trigger to use"
 	if(state.controlSW == "yes") {
 		state.controlSwitch2 = controlSwitch.currentValue("switch")
 		if(logEnable) log.debug "In controlSwitchHandler - Control Switch: ${state.controlSwitch2}"
@@ -665,6 +688,11 @@ def motionHandler(evt) {
 	}
 }
 
+def ruleMachineHandler() {
+    if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
+    RMUtils.sendAction(rmRule, rmAction, app.label)
+}
+
 def setPointHandler(evt) {
 	state.setPointDevice = evt.displayName
 	setPointValue = evt.value
@@ -752,10 +780,10 @@ def setPointHandler(evt) {
 
 def magicHappensHandler() {
 	controlSwitchHandler()
-	if(logEnable) log.debug "In magicHappensHandler...CS: ${state.controlSwitch2}"
+	if(logEnable) log.debug "In magicHappensHandler - CS: ${state.controlSwitch2}"
 	if(state.controlSwitch2 == "on") {
 		if(oDelay) {
-			if(logEnable) log.debug "In magicHappensHandler...Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}"
+			if(logEnable) log.debug "In magicHappensHandler - Waiting ${minutesUp} minutes before notifications - CS: ${state.controlSwitch2}"
 			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(notifyDelay) state.notifyDel = notifyDelay * 60
 			if(maxRepeats) state.numRepeats = 1
@@ -768,8 +796,9 @@ def magicHappensHandler() {
 			if(oDevice) runIn(state.realSeconds,switchesOnHandler)
 			if(oDevice) runIn(state.realSeconds,switchesOffHandler)
 			if(newMode) runIn(state.realSeconds, modeHandler)
+            if(oRule) runIn(state.realSeconds,ruleMachineHandler)
 		} else if(notifyDelay) {
-			if(logEnable) log.debug "In magicHappensHandler...Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}"
+			if(logEnable) log.debug "In magicHappensHandler - Waiting ${notifyDelay} minutes before notifications - CS: ${state.controlSwitch2}"
 			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(notifyDelay) state.notifyDel = notifyDelay * 60
 			if(maxRepeats) state.numRepeats = 1
@@ -782,6 +811,7 @@ def magicHappensHandler() {
 			if(oDevice) runIn(state.notifyDel,switchesOnHandler)
 			if(oDevice) runIn(state.notifyDel,switchesOffHandler)
 			if(newMode) runIn(state.notifyDel, modeHandler)
+            if(oRule) runIn(state.notifyDel,ruleMachineHandler)
 		} else {
 			if(minutesUp) state.realSeconds = minutesUp * 60
 			if(notifyDelay) state.notifyDel = notifyDelay * 60
@@ -794,14 +824,15 @@ def magicHappensHandler() {
 			if(oDevice) switchesOnHandler()
 			if(oDevice) switchesOffHandler()
 			if(newMode) modeHandler()
+            if(oRule) ruleMachineHandler()
 		}
-        if(xDay && daysAfter) {
+        if(triggerType1 == "xDay" && daysAfter) {
             state.runBefore = "yes"
             daysAfterHandler()
         }
 	} else {
 		log.info "${app.label} - Control Switch is OFF - No need to run."
-        if(xDay && daysAfter) {
+        if(triggerType1 == "xDay" && daysAfter) {
             state.runBefore = "yes"
             daysAfterHandler()
         }
@@ -810,7 +841,7 @@ def magicHappensHandler() {
 
 def reverseTheMagicHandler() {
 	controlSwitchHandler()
-	if(logEnable) log.debug "In reverseTheMagicHandler...CS: ${state.controlSwitch2}"
+	if(logEnable) log.debug "In reverseTheMagicHandler - CS: ${state.controlSwitch2}"
 	if(minutesUp) state.realSeconds = minutesUp * 60
 	if(notifyDelay) state.notifyDel = notifyDelay * 60
 	if(oDimUp && oControl) slowDimmerUp.off()
@@ -906,8 +937,8 @@ def letsTalk() {
 	controlSwitchHandler()
 	if(state.controlSwitch2 == "on") {
 		if(logEnable) log.debug "In letsTalk..."
-		if(speaker) if(logEnable) log.debug "In letsTalk...Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}"
-		if(gSpeaker) if(logEnable) log.debug "In letsTalk...gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}"
+		if(speaker) if(logEnable) log.debug "In letsTalk - Speaker(s) in use: ${speaker} and controlSwitch2: ${state.controlSwitch2}"
+		if(gSpeaker) if(logEnable) log.debug "In letsTalk - gSpeaker(s) in use: ${gSpeaker} and controlSwitch2: ${state.controlSwitch2}"
 		checkTime()
 		checkVol()
 		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
@@ -959,11 +990,11 @@ def letsTalk() {
 			}
 		} else {
 			log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
-			if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
+			if(logEnable) log.debug "In letsTalk - Okay, I'm done!"
 		}
 	} else {
 		log.info "${app.label} - Control Switch is ${state.controlSwitch2}"
-		if(logEnable) log.debug "In letsTalk...Okay, I'm done!"
+		if(logEnable) log.debug "In letsTalk - Okay, I'm done!"
 	}
 }
 
@@ -1004,7 +1035,7 @@ def messageHandler() {
 		theMessage = values[randomKey]
 		if(logEnable) log.debug "In messageHandler - vSize: ${vSize}, randomKey: ${randomKey}, msgRandom: ${theMessage}"
 	} else {
-		if(xHumidity || xPower || xTemp) {
+		if(triggerType1 == "xHumidity" || triggerType1 == "xPower" || triggerType1 == "xTemp") {
 			if(logEnable) log.debug "In messageHandler (Humidity) - oSetPointHigh: ${oSetPointHigh}, oSetPointLow: ${oSetPointLow}, state.setPointHighOK: ${state.setPointHighOK}, state.setPointLowOK: ${state.setPointLowOK}"
 			if(oSetPointHigh && state.setPointHighOK == "no") theMessage = "${messageH}"
 			if(oSetPointLow && state.setPointLowOK == "no") theMessage = "${messageL}"
@@ -1062,7 +1093,7 @@ def modeHandler() {
 def dayOfTheWeekHandler() {
 	if(logEnable) log.debug "In dayOfTheWeek..."
 	dayMatches = "no"
-	if(xDay) {
+	if(triggerType1 == "xDay") {
 		Calendar date = Calendar.getInstance()
 		int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
 		if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
@@ -1072,8 +1103,8 @@ def dayOfTheWeekHandler() {
 		if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
 		if(dayOfTheWeek == 6) state.dotWeek = "Friday"
 		if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
-		if(logEnable) log.debug "In dayOfTheWeek...dayOfTheWeek: ${dayOfTheWeek} dotWeek: ${state.dotWeek}"
-		if(logEnable) log.debug "In dayOfTheWeek...days: ${days}"
+		if(logEnable) log.debug "In dayOfTheWeek - dayOfTheWeek: ${dayOfTheWeek} dotWeek: ${state.dotWeek}"
+		if(logEnable) log.debug "In dayOfTheWeek - days: ${days}"
 		def values = "${days}".split(",")
 		values.each { it ->
 			it2 = it.replace("[","")
@@ -1096,7 +1127,7 @@ def pushHandler(){
 		if(logEnable) log.debug "In pushHandler..."
 		state.theMsg = "${state.theMessage}"
 		theMessage = "${app.label} - ${state.theMsg}"
-		if(logEnable) log.debug "In pushHandler...Sending message: ${theMessage}"
+		if(logEnable) log.debug "In pushHandler - Sending message: ${theMessage}"
     	sendPushMessage.deviceNotification(theMessage)
 		count = count + 1
 	}
