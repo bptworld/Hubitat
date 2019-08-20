@@ -165,13 +165,13 @@
   
   "FollowMeType": "App",
   "FollowMeParentVersion": "v2.0.0",
-  "FollowMeChildVersion": "v2.0.0",
+  "FollowMeChildVersion": "v2.0.2",
   "FollowMeDriverVersion": "NA",
   "FollowMeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
   "FollowMeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
   "FollowMeDriverRawCode": "NA",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "FollowMeUpdateNote": "V2.0.2 - 08/18/19 - App Watchdog 2 compatible",
   
   "FullyKioskDirectorType": "App",
   "FullyKioskDirectorParentVersion": "v2.0.0",
