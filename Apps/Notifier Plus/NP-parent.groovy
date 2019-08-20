@@ -34,13 +34,27 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 02/27/19 - Name change to Notifier Plus. Added in triggers for Contact Sensors and Switches. (more to come!)
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  V1.0.1 - 02/27/19 - Name change to Notifier Plus.
  *  V1.0.0 - 02/22/19 - Initial release.
  *
  */
 
-def setVersion() {
-	state.version = "v1.0.1"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "NotifierPlusParentVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(sendToAWSwitch && awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -72,7 +86,7 @@ def updated() {
 def initialize() {
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
-    log.info "Child app: ${child.label}"
+        log.info "Child app: ${child.label}"
     }
     
 }
@@ -87,11 +101,24 @@ def mainPage() {
 			}
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Notes:</b>"
-				paragraph "Notifications based on date/day, time and moree. A perfect way to get reminders or create a wakeup alarm."
+				paragraph "Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Notifier Plus Child", namespace: "BPTWorld", title: "<b>Add a new 'Notifier Plus' child</b>", multiple: true)
 			}
+            // ** App Watchdog Code **
+            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
+				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
+                paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
+                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
+			}
+            if(sendToAWSwitch) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
+                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
+			        if(sendToAWSwitch && awDevice) setVersion()
+                }
+            }
+            // ** End App Watchdog Code **
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
