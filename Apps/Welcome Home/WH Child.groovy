@@ -36,6 +36,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.1.1 - 08/18/19 - Now App Watchdog compliant
  *  V2.1.0 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.
  *  V2.0.9 - 06/04/19 - More code cleanup
  *  V2.0.8 - 04/18/19 - Fixed quiet time
@@ -70,8 +71,21 @@ import groovy.time.TimeCategory
  *
  */
 
-def setVersion() {
-	state.version = "v2.0.9"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "WelcomeHomeChildVersion"
+	state.version = "v2.1.1"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -148,7 +162,7 @@ def pageConfig() {
           	}
       	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-			paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Speech Synth."
+			paragraph "NOTE: Not all speakers can use volume controls. If you would like to use volume controls with Echo devices please use the app 'Echo Speaks' and then choose the 'Music Player' option instead of Spech Synth."
 			input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true
 			input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true
             input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required: false, submitOnChange: true
@@ -635,49 +649,49 @@ def getTimeDiff5() {
 
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
-		checkTime()
-		checkVol()
-		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
-		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
-		pauseExecution(atomicState.randomPause)
-		if(logEnable) log.debug "In letsTalk - continuing"
-		if(state.timeBetween == true) {
-			messageHandler()
-			if(logEnable) log.debug "Speaker in use: ${speaker}"
-			state.theMsg = "${state.theMessage}"
-			if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
-			def delay1ms = delay1 * 1000
-			pauseExecution(delay1ms)
-  			if (speechMode == "Music Player"){ 
-    			if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-				if(echoSpeaks) {
-					speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
-					state.canSpeak = "no"
-					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-				}
-				if(!echoSpeaks) {
-    				if(volSpeech) speaker.setLevel(state.volume)
-    				speaker.playTextAndRestore(state.theMsg, volRestore)
-					state.canSpeak = "no"
-					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-				}
-  			}   
-			if(speechMode == "Speech Synth"){ 
-				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
-				atomicState.speechDuration2 = speechDuration * 1000
-				if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-				if(volSpeech) speaker.setVolume(state.volume)
-				speaker.speak(state.theMsg)
-				pauseExecution(atomicState.speechDuration2)
-				if(volRestore) speaker.setVolume(volRestore)
+	checkTime()
+	checkVol()
+	atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+	if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+	pauseExecution(atomicState.randomPause)
+	if(logEnable) log.debug "In letsTalk - continuing"
+	if(state.timeBetween == true) {
+		messageHandler()
+		if(logEnable) log.debug "Speaker in use: ${speaker}"
+		state.theMsg = "${state.theMessage}"
+		if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
+		def delay1ms = delay1 * 1000
+		pauseExecution(delay1ms)
+  		if (speechMode == "Music Player"){ 
+    		if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+			if(echoSpeaks) {
+				speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
 				state.canSpeak = "no"
 				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 			}
-			log.info "${app.label} - ${state.theMsg}"
-		} else {
+			if(!echoSpeaks) {
+    			if(volSpeech) speaker.setLevel(state.volume)
+    			speaker.playTextAndRestore(state.theMsg, volRestore)
+				state.canSpeak = "no"
+				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+			}
+  		}   
+		if(speechMode == "Speech Synth"){ 
+			speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+			atomicState.speechDuration2 = speechDuration * 1000
+			if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+			if(volSpeech) speaker.setVolume(state.volume)
+			speaker.speak(state.theMsg)
+			pauseExecution(atomicState.speechDuration2)
+			if(volRestore) speaker.setVolume(volRestore)
 			state.canSpeak = "no"
-			if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+			if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 		}
+		log.info "${app.label} - ${state.theMsg}"
+	} else {
+		state.canSpeak = "no"
+		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+	}
 }
 
 def checkVol(){
@@ -719,11 +733,11 @@ def messageHandler() {
 		theMessage = "${message}"
 		if(logEnable) log.debug "In messageHandler - Static - theMessage: ${theMessage}"
 	}
-   	theMessage = theMessage.toLowerCase()
-	if (theMessage.toLowerCase().contains("%greeting%")) {theMessage = theMessage.toLowerCase().replace('%greeting%', getGreeting() )}
-	if (theMessage.toLowerCase().contains("%name%")) {theMessage = theMessage.toLowerCase().replace('%name%', getName() )}
-	if (theMessage.toLowerCase().contains("%is_are%")) {theMessage = theMessage.toLowerCase().replace('%is_are%', "${is_are}" )}
-	if (theMessage.toLowerCase().contains("%has_have%")) {theMessage = theMessage.toLowerCase().replace('%has_have%', "${has_have}" )}
+   	
+	if (theMessage.contains("%greeting%")) {theMessage = theMessage.replace('%greeting%', getGreeting() )}
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
+	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
+	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
 	state.theMessage = "${theMessage}"
 	return state.theMessage
 }
