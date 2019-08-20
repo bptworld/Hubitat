@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.3.0 - 08/15/19 - Changed trigger back to lastLocationUpdate. Working on Departure delay.
  *  V1.2.9 - 08/11/19 - Fix for 'Places Not Allowed'
  *  V1.2.8 - 08/10/19 - Changes to try and fix 'Track All' issues. Added 'Places Not Allowed' Alerts.
@@ -73,14 +74,20 @@
  */
 
 def setVersion(){
-    if(logEnable) log.debug "In setVersion..." 
-	state.version = "v1.3.0"
-    state.appName = "Life360 Tracker Child"
-    //if(sendToAWSwitch && awDevice) {
-	//	awInfo = "${state.appName}:${state.version}"
-	//	awDevice.sendAWinfo(awInfo)
-    //    if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	//}
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "Life360TrackerChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
