@@ -1,4 +1,3 @@
-import groovy.time.TimeCategory
 /**
  *  ****************  Departures Child App  ****************
  *
@@ -36,6 +35,8 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  V1.0.5 - 06/29/19 - Code cleanup
  *  V1.0.4 - 04/20/19 - Updated speaker/speech options
  *  V1.0.3 - 04/19/19 - Found another typo!
  *  V1.0.2 - 04/19/19 - Fixed a typo
@@ -44,8 +45,23 @@ import groovy.time.TimeCategory
  *
  */
 
-def setVersion() {
-	state.version = "v1.0.4"
+import groovy.time.TimeCategory
+
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "DeparturesChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -54,7 +70,7 @@ definition(
     author: "Bryan Turcotte",
     description: "Let the rest of the house know when one or more people have left the area.",
     category: "",
-	parent: "BPTWorld:Departures",
+	parent: "BPTWorld:Departures and Arrivals",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -393,50 +409,47 @@ def presenceSensorHandler5() {
 
 def letsTalk() {
 	if(logEnable) log.debug "In letsTalk..."
-	if(pauseApp == true){log.warn "${app.label} - App paused"}
-    if(pauseApp == false){
-		checkTime()
-		checkVol()
-		atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
-		if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
-		pauseExecution(atomicState.randomPause)
-		if(logEnable) log.debug "In letsTalk - continuing"
-		if(state.timeBetween == true) {
-			messageHandler()
-			if(logEnable) log.debug "Speaker in use: ${speaker}"
-			state.theMsg = "${state.theMessage}"
-			if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
-			def delay1ms = delay1 * 1000
-			pauseExecution(delay1ms)
-  			if (speechMode == "Music Player"){ 
-    			if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-				if(echoSpeaks) {
-					speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
-					state.canSpeak = "no"
-					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-				}
-				if(!echoSpeaks) {
-    				if(volSpeech) speaker.setLevel(state.volume)
-    				speaker.playTextAndRestore(state.theMsg, volRestore)
-					state.canSpeak = "no"
-					if(logEnable) log.debug "In letsTalk - Wow, that's it!"
-				}
-  			}   
-			if(speechMode == "Speech Synth"){ 
-				speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
-				atomicState.speechDuration2 = speechDuration * 1000
-				if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
-				if(volSpeech) speaker.setVolume(state.volume)
-				speaker.speak(state.theMsg)
-				pauseExecution(atomicState.speechDuration2)
-				if(volRestore) speaker.setVolume(volRestore)
+	checkTime()
+	checkVol()
+	atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
+	if(logEnable) log.debug "In letsTalk - pause: ${atomicState.randomPause}"
+	pauseExecution(atomicState.randomPause)
+	if(logEnable) log.debug "In letsTalk - continuing"
+	if(state.timeBetween == true) {
+		messageHandler()
+		if(logEnable) log.debug "Speaker in use: ${speaker}"
+		state.theMsg = "${state.theMessage}"
+		if(logEnable) log.debug "In letsTalk - Waiting ${delay1} seconds to Speak"
+		def delay1ms = delay1 * 1000
+		pauseExecution(delay1ms)
+  		if (speechMode == "Music Player"){ 
+    		if(logEnable) log.debug "In letsTalk - Music Player - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+			if(echoSpeaks) {
+				speaker.setVolumeSpeakAndRestore(state.volume, state.theMsg, volRestore)
 				state.canSpeak = "no"
 				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 			}
-			log.info "${app.label} - ${state.theMsg}"
-		} else {
-			if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+			if(!echoSpeaks) {
+    			if(volSpeech) speaker.setLevel(state.volume)
+    			speaker.playTextAndRestore(state.theMsg, volRestore)
+				state.canSpeak = "no"
+				if(logEnable) log.debug "In letsTalk - Wow, that's it!"
+			}
+  		}   
+		if(speechMode == "Speech Synth"){ 
+			speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
+			atomicState.speechDuration2 = speechDuration * 1000
+			if(logEnable) log.debug "In letsTalk - Speech Synth - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}"
+			if(volSpeech) speaker.setVolume(state.volume)
+			speaker.speak(state.theMsg)
+			pauseExecution(atomicState.speechDuration2)
+			if(volRestore) speaker.setVolume(volRestore)
+			state.canSpeak = "no"
+			if(logEnable) log.debug "In letsTalk - Wow, that's it!"
 		}
+		log.info "${app.label} - ${state.theMsg}"
+	} else {
+		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	}
 }
 
@@ -592,7 +605,6 @@ private getGreeting(){						// Heavily Modified from @Cobra Code
 
 def setDefaults(){
 	setupNewStuff()
-    if(state.pauseApp == null){state.pauseApp = false}
 	state.nameCount = 0
 	state.canSpeak = "no"
 }
@@ -611,9 +623,6 @@ def getFormat(type, myText=""){			// Modified from @Stephack
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
