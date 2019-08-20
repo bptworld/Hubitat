@@ -35,6 +35,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.5 - 03/22/19 - Maintenance release to prepare for V2.0.0. You will need this version to save all of your stats!
  *  V1.0.4 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
  *  V1.0.3 - 01/15/19 - Updated footer with update check and links
@@ -45,8 +46,21 @@ import groovy.time.TimeCategory
  *
  */
 
-def setVersion() {
-	state.version = "v1.0.5"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "AbacusTimeTravelerChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
