@@ -40,6 +40,8 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  V1.2.2 - 06/25/19 - Code cleanup
  *  V1.2.1 - 04/15/19 - Code cleanup
  *  V1.2.0 - 01/15/19 - Updated footer with update check and links
  *  V1.1.9 - 12/30/18 - Updated to my new color theme. Removed duplicate Level field from Fast and Slow Color Changing.
@@ -65,8 +67,21 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.2.1"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "LightingEffectsChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -95,10 +110,10 @@ def pageConfig() {
     		paragraph "To create a random effect, put each device in a separate Child App, using the same switch to turn them on."
         	paragraph "<b>Fast Color Changing:</b>"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 sec and 5 minutes."
-        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+        	paragraph "Be sure to turn OFF 'Enable Hue in degrees (0-360)' for each device used with this app."
 			paragraph "<b>Slow Color Changing:</b>"
         	paragraph "Designed for color changing bulbs (any bulb that has 'colorControl' capability. This section can control lights individually, or all together within the same child app. Used to change colors between 5 minutes and 3 hours."
-        	paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
+        	paragraph "Be sure to turn OFF 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
 			paragraph "<b>Slow Off, On and Loop:</b>"
         	paragraph "Designed to slowly raise or lower any dimmable device. Great for morning or night routines. Also has the ability to setup a loop to continually raise and lower a dimmable device. Note: The dimming is not smooth but rather done in steps."
             paragraph "<b>Important:</b>"
@@ -117,7 +132,7 @@ def pageConfig() {
         	}
        		if(triggerMode == "Fast_Color_Changing"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
-					paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
+					paragraph "Be sure to turn OFF 'Enable Hue in degrees (0-360)' for each device used with this app. (Not necessary for Hue bulbs)"
         			input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
             		input "sleepytime2", "number", title: "Enter the delay between actions in seconds (range 5 to 300)" , required: true, defaultValue: 300, range: '5..300'
 					input "sleepPattern", "enum", title: "Delay constant or random", defaultValue: "constant", options: ["constant","random"], required: true, multiple: false
@@ -144,7 +159,7 @@ def pageConfig() {
 			}
 			if(triggerMode == "Slow_Color_Changing"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Used to change colors between 5 minutes and 3 hours")) {
-					paragraph "Be sure to turn on 'Enable Hue in degrees (0-360)' for each device used with this app."
+					paragraph "Be sure to turn OFF 'Enable Hue in degrees (0-360)' for each device used with this app."
         			input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
             		input "sleepytime2", "number", title: "Enter the delay between actions in minutes (range 5 to 180)" , required: true, defaultValue: 60, range: '5..180'
         			input "seperate", "enum", title: "Cycle each light individually or all together", defaultValue: "individual", options: ["individual","combined"], required: true, multiple: false
@@ -233,9 +248,7 @@ def initialize() {
 }
 
 def eventHandler(evt) {
-	if(logEnable) log.debug "In eventHandler..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"					
+	if(logEnable) log.debug "In eventHandler..."				
 	if(switches.currentValue("switch") == "on") {
         if(triggerMode == "Dimmer"){
             for (dimmer in dimmers) {
@@ -260,13 +273,10 @@ def eventHandler(evt) {
 		dimmers.off()
 		unschedule()
 	}							
-	}
 }
     
 def changeHandler(evt) {
-	if(logEnable) log.debug "In changeHandler..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"					
+	if(logEnable) log.debug "In changeHandler..."				
     if(switches.currentValue("switch") == "on") {
 		if(logEnable) log.debug "In changeHandler..."
 		if(logEnable) log.debug "Color Selection = ${colorSelection}"
@@ -331,13 +341,10 @@ def changeHandler(evt) {
 		lights.off()
 		unschedule()
 	}
-	}
 }
 
 def slowChangeHandler(evt) {
-	if(logEnable) log.debug "In slowChangeHandler..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"					
+	if(logEnable) log.debug "In slowChangeHandler..."				
     if(switches.currentValue("switch") == "on") {
 		if(logEnable) log.debug "In slowChangeHandler..."
 		if(logEnable) log.debug "Color Selection = ${colorSelection}"
@@ -394,14 +401,10 @@ def slowChangeHandler(evt) {
 		lights.off()
 		unschedule()
 	}
-	}
 }
 
-def slowonHandler(evt) {
-	if(logEnable) log.debug "In slowonHandler..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
-								
+def slowonHandler(evt) {                // Modified from @Bravenel Code
+	if(logEnable) log.debug "In slowonHandler..."							
     if(dimmers[0].currentSwitch == "off") {
         dimmers.setLevel(0)
         state.currentLevel = 0
@@ -414,13 +417,10 @@ def slowonHandler(evt) {
     state.dimLevel = state.currentLevel
     if(logEnable) log.debug "slowonHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
     dimStepUp()			
-	}
 }
 
-def dimStepUp() {
-	if(logEnable) log.debug "In dimStepUp..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"					
+def dimStepUp() {                        // Modified from @Bravenel Code
+	if(logEnable) log.debug "In dimStepUp..."			
     if(switches.currentValue("switch") == "on") {
     	if(state.currentLevel < targetLevelHigh) {
         	state.dimLevel = state.dimLevel + state.dimStep
@@ -439,15 +439,12 @@ def dimStepUp() {
             }
     	}
     } else{
-        if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"
-    }					
+        if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"					
 	}
 }
 
-def slowoffHandler(evt) {
-	if(logEnable) log.debug "In slowoffHandler..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"				
+def slowoffHandler(evt) {                        // Modified from @Bravenel Code
+	if(logEnable) log.debug "In slowoffHandler..."			
     if(dimmers[0].currentSwitch == "off") {
         dimmers.setLevel(99)
         state.currentLevel = 99
@@ -459,14 +456,11 @@ def slowoffHandler(evt) {
     state.dimStep1 = (targetLevelLow / seconds) * 100
     state.dimLevel = state.currentLevel
     if(logEnable) log.debug "slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
-    dimStepDown()					
-	}
+    dimStepDown()
 }
 
-def dimStepDown() {
-	if(logEnable) log.debug "In dimStepDown..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"					
+def dimStepDown() {                            // Modified from @Bravenel Code
+	if(logEnable) log.debug "In dimStepDown..."		
     if(switches.currentValue("switch") == "on") {
     	if(state.currentLevel > targetLevelLow) {
             state.dimStep = state.dimStep1
@@ -488,45 +482,39 @@ def dimStepDown() {
     } else{
         if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"
     }						
-	}
 }
 
 def sendcolor(lights,color) {
 	if(logEnable) log.debug "In sendcolor..."
-	if(pauseApp == true){log.warn "Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"					
-    
     def colorPallet = [
-		"color01": [hue: parent.msgColor01Hue, saturation: parent.msgColor01Sat, level: parent.msgColor01Lev],
-    	"color02": [hue: parent.msgColor02Hue, saturation: parent.msgColor02Sat, level: parent.msgColor02Lev],
-    	"color03": [hue: parent.msgColor03Hue, saturation: parent.msgColor03Sat, level: parent.msgColor03Lev],
-    	"color04": [hue: parent.msgColor04Hue, saturation: parent.msgColor04Sat, level: parent.msgColor04Lev],
-    	"color05": [hue: parent.msgColor05Hue, saturation: parent.msgColor05Sat, level: parent.msgColor05Lev],
-    	"color06": [hue: parent.msgColor06Hue, saturation: parent.msgColor06Sat, level: parent.msgColor06Lev],
-    	"color07": [hue: parent.msgColor07Hue, saturation: parent.msgColor07Sat, level: parent.msgColor07Lev],
-    	"color08": [hue: parent.msgColor08Hue, saturation: parent.msgColor08Sat, level: parent.msgColor08Lev],
-    	"color09": [hue: parent.msgColor09Hue, saturation: parent.msgColor09Sat, level: parent.msgColor09Lev],
-    	"color10": [hue: parent.msgColor10Hue, saturation: parent.msgColor10Sat, level: parent.msgColor10Lev],
-		"color11": [hue: parent.msgColor11Hue, saturation: parent.msgColor11Sat, level: parent.msgColor11Lev],
-		"color12": [hue: parent.msgColor12Hue, saturation: parent.msgColor12Sat, level: parent.msgColor12Lev],
-		"color13": [hue: parent.msgColor13Hue, saturation: parent.msgColor13Sat, level: parent.msgColor13Lev],
-		"color14": [hue: parent.msgColor14Hue, saturation: parent.msgColor14Sat, level: parent.msgColor14Lev],
-		"color15": [hue: parent.msgColor15Hue, saturation: parent.msgColor15Sat, level: parent.msgColor15Lev],
+		"color01": [hue: parent.msgColor01Hue, saturation: parent.msgColor01Sat],
+    	"color02": [hue: parent.msgColor02Hue, saturation: parent.msgColor02Sat],
+    	"color03": [hue: parent.msgColor03Hue, saturation: parent.msgColor03Sat],
+    	"color04": [hue: parent.msgColor04Hue, saturation: parent.msgColor04Sat],
+    	"color05": [hue: parent.msgColor05Hue, saturation: parent.msgColor05Sat],
+    	"color06": [hue: parent.msgColor06Hue, saturation: parent.msgColor06Sat],
+    	"color07": [hue: parent.msgColor07Hue, saturation: parent.msgColor07Sat],
+    	"color08": [hue: parent.msgColor08Hue, saturation: parent.msgColor08Sat],
+    	"color09": [hue: parent.msgColor09Hue, saturation: parent.msgColor09Sat],
+    	"color10": [hue: parent.msgColor10Hue, saturation: parent.msgColor10Sat],
+		"color11": [hue: parent.msgColor11Hue, saturation: parent.msgColor11Sat],
+		"color12": [hue: parent.msgColor12Hue, saturation: parent.msgColor12Sat],
+		"color13": [hue: parent.msgColor13Hue, saturation: parent.msgColor13Sat],
+		"color14": [hue: parent.msgColor14Hue, saturation: parent.msgColor14Sat],
+		"color15": [hue: parent.msgColor15Hue, saturation: parent.msgColor15Sat],
     ]
-	if((level > 100) || (level < 1)) level=100
+	//if((level > 100) || (level < 1)) level=100
 	def newcolor = colorPallet."${color}"
     if(logEnable) log.debug "${color} = ${newcolor}"
-	newcolor.level = level					
+	//newcolor.level = level					
 	lights*.setColor(newcolor)
     if(logEnable) log.debug "Setting Color = ${color} on: ${lights}"		
-	}
 }
 
 // ********** Normal Stuff **********
 
 def setDefaults(){									
-  if(logEnable) log.debug "Initialising defaults..."
-    if(pauseApp == null){pauseApp = false}
+    if(logEnable) log.debug "Initialising defaults..."
 	if(logEnable == null){logEnable = false}
 }
 
@@ -544,9 +532,6 @@ def getFormat(type, myText=""){							// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
