@@ -43,7 +43,7 @@ def setVersion(){
     // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "AppWatchdog2ParentVersion"
+    state.appName = "DeparturesParentVersion"
 	state.version = "v2.0.0"
     
     try {
