@@ -1,3 +1,6 @@
+<b>App Watchdog V2 is NOW AVAILABLE!  Please go here to download the latest version.</b>
+https://github.com/bptworld/Hubitat/tree/master/Apps/Apps%20Watchdog%202
+
 # App Watchdog
 <b>Design Usage:</b><br>
 See if any compatible app needs an update, all in one place.<br><br>
