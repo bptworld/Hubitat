@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog 2 compliant
  *  V1.0.0 - 01/19/19 - Officially out of beta! (hopefully)
  *  V0.0.4 - 01/16/19 - Changed the delay between groups to be a random time within a user selected range.
  *  V0.0.2 - 01/14/19 - Added update information to custom footer. Used code from @Stephack as example, thank you.
@@ -43,7 +44,22 @@
  *
  */
 
-def version(){"v1.0.0"}
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog 2 compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "AbacusTimeTravelerParentVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(sendToAWSwitch && awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
+}
 
 definition(
 	name: "At Home Simulator",
@@ -98,6 +114,19 @@ def mainPage() {
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "At Home Simulator Child", namespace: "BPTWorld", title: "<b>Add a new 'At Home Simulator' child</b>", multiple: true)
 			}
+            // ** App Watchdog Code **
+            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
+				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
+                paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
+                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
+			}
+            if(sendToAWSwitch) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
+                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
+			        if(sendToAWSwitch && awDevice) setVersion()
+                }
+            }
+            // ** End App Watchdog Code **
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
@@ -150,9 +179,9 @@ def checkForUpdate(){
 }
 
 def display(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>At Home Simulator - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>At Home Simulator - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
