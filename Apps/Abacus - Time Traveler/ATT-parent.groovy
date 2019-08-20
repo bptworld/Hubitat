@@ -111,17 +111,8 @@ def mainPage() {
 				paragraph "Also, times are not added into totals until the device turns off (off/inactive/closed/idle)"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Abacus - Time Traveler Motion Child", namespace: "BPTWorld", title: "<b>Add a new 'Abacus - Time Traveler Motion' child</b>", multiple: true)
-				app(name: "anyOpenApp", appName: "Abacus - Time Traveler Contact Child", namespace: "BPTWorld", title: "<b>Add a new 'Abacus - Time Traveler Contact' child</b>", multiple: true)
-				app(name: "anyOpenApp", appName: "Abacus - Time Traveler Switch Child", namespace: "BPTWorld", title: "<b>Add a new 'Abacus - Time Traveler Switch' child</b>", multiple: true)
-				app(name: "anyOpenApp", appName: "Abacus - Time Traveler Thermostat Child", namespace: "BPTWorld", title: "<b>Add a new 'Abacus - Time Traveler Thermostat' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Abacus - Time Traveler Child", namespace: "BPTWorld", title: "<b>Add a new 'Abacus - Time Traveler' child</b>", multiple: true)
 			}
-            section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog")) {
-			    paragraph "This app supports Device Watchdog."
-                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Send this apps version data to App Watchdog?", description: "Update App Watchdog", submitOnChange: "true")
-                if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Vitual Device created to send the AW Data to:", submitOnChange: true, required: true, multiple: false)
-			    if(sendToAWSwitch && awDevice) setVersion()
-            }
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
 				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
