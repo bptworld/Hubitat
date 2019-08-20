@@ -9,7 +9,7 @@
  *   - Setup a loop to continually raise and lower dimmable devices. 
  *   - Create a spooky, sparkly or party effect.
  *
- *  Copyright 2018 @BPTWorld - Bryan Turcotte
+ *  Copyright 2018-2019 @BPTWorld - Bryan Turcotte
  *
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.2.0 - 01/15/19 - Updated footer with update check and links
  *  V1.1.9 - 12/30/18 - Updated to my new color theme.
  *  V1.1.8 - 12/20/18 - Fixed a nasty bug in Fast_Color_Changing.
@@ -63,7 +64,22 @@
  *
  */
 
-def version(){"v1.2.0"}
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "LightingEffectsParentVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(sendToAWSwitch && awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
+}
 
 definition(
     name:"Lighting Effects",
@@ -74,7 +90,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: ""
-    )
+)
 
 preferences {
      page name: "mainPage", title: "", install: true, uninstall: true
@@ -125,7 +141,21 @@ def mainPage() {
         	}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Lighting Effects Child", namespace: "BPTWorld", title: "<b>Add a new 'Lighting Effects' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Lighting Effects 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Lighting Effects 2' child</b>", multiple: true)
 			}
+            // ** App Watchdog Code **
+            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
+				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
+                paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
+                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
+			}
+            if(sendToAWSwitch) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
+                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
+			        if(sendToAWSwitch && awDevice) setVersion()
+                }
+            }
+            // ** End App Watchdog Code **
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
@@ -300,33 +330,10 @@ def getFormat(type, myText=""){
 	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def checkForUpdate(){
-	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/version.json",
-				   	contentType: "application/json"]
-       	try {
-			httpGet(params) { response ->
-				def results = response.data
-				def appStatus
-				if(version() == results.currVersion){
-					appStatus = "${version()} - No Update Available - ${results.discussion}"
-				}
-				else {
-					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
-					log.warn "${app.label} has an update available - Please consider updating."
-				}
-				return appStatus
-			}
-		} 
-        catch (e) {
-        	log.error "Error:  $e"
-    	}
-}
-
 def display(){
+	setVersion()
 	section() {
-		def verUpdate = "${checkForUpdate()}"
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Lighting Effects - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Lighting Effects - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }  
-
