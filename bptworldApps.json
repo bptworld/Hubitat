@@ -223,14 +223,14 @@
   "LightingEffectsUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "MagicCubeType": "App",
-  "MagicCubeParentVersion": "V1.0.0",
-  "MagicCubeChildVersion": "V1.0.2",
+  "MagicCubeParentVersion": "v2.0.0",
+  "MagicCubeChildVersion": "v2.0.0",
   "MagicCubeDriverVersion": "NA",
   "MagicCubeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-parent.groovy",
   "MagicCubeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-child.groovy",
   "MagicCubeDriverRawCode": "NA",
   "MagicCubeDiscussion": "https://community.hubitat.com/t/release-magic-cube/11987",
-  "MagicCubeUpdateNote": "V1.0.2 - 04/15/19 - Code cleanup",
+  "MagicCubeUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "MotionControlledSceneLightingType": "App",
   "MotionControlledSceneLightingParentVersion": "v1.0.3",
