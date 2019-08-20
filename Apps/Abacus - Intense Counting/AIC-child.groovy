@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *	V1.1.0 - 04/15/19 - Code cleanup
  *	V1.0.9 - 03/20/19 - Major rewrite to comply with Hubitat's new dashboard requirements.
  *  V1.0.8 - 02/16/19 - Big maintenance release. Reworked a lot of code as I continue to learn new things.
@@ -53,8 +54,21 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.1.0"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "AbacusIntenseCountingChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
