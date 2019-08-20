@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.1.5 - 06/11/19 - Code cleanup
  *  V1.1.4 - 04/30/19 - Added Water Sensor tracking
  *  V1.1.3 - 04/19/19 - Fixed a bug with Presence Sensors
@@ -54,8 +55,21 @@
  *
  */
 
-def setVersion() {
-	state.version = "v1.1.5"
+def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    state.appName = "SnapshotChildVersion"
+	state.version = "v2.0.0"
+    
+    try {
+        if(parent.sendToAWSwitch && parent.awDevice) {
+            awInfo = "${state.appName}:${state.version}"
+		    parent.awDevice.sendAWinfoMap(awInfo)
+            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
+            schedule("0 0 3 ? * * *", setVersion)
+	    }
+    } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
@@ -831,7 +845,7 @@ def priorityHandler(evt){
 				def switchName = sOff.displayName
 				def switchStatus = sOff.currentValue('switch')
 				if(logEnable) log.debug "In priorityHandler - Switch Off - ${switchName} - ${switchStatus}"
-				if(switchStatus == "on") state.wrongSwitchMap.put(switchName, switchStatus)
+                if(switchStatus == "on") state.wrongSwitchMap.put(switchName, switchStatus)
 			}
 		}
 		state.wrongSwitchMapS = state.wrongSwitchMap.sort { a, b -> a.key <=> b.key }
@@ -839,12 +853,23 @@ def priorityHandler(evt){
 		state.pSwitchMap2S = "<table width='100%'>"
 		state.count = 0
 		state.wrongSwitchMapS.each { wSwitch -> 
+            if(wSwitch == switchesOn) def switchID = theSwitch.deviceNetworkId
 			state.count = state.count + 1
 			state.isPriorityData = "true"
 			state.prioritySwitch = "true"
 			state.wrongStateSwitchMap += "${wSwitch.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Switch with ${wSwitch.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+		//	if((state.count >= 1) && (state.count <= 5)) state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></a></td><td><a href='${wSwitch}.on()'><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+            
+            //command = "input 'toggleBtn', 'button', title: 'Tog'"
+            if((state.count >= 1) && (state.count <= 5)) {
+                state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></a></td><td>"
+                state.pSwitchMap1S += input 'toggleBtn', 'button', title: 'Tog'
+                state.pSwitchMap1S += "</td></tr>"
+            }
+            
+            
+            
 			if((state.count >= 6) && (state.count <= 10)) state.pSwitchMap2S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
 			state.wrongSwitchPushMap += "${wSwitch.key} \n"
 		}
@@ -1278,6 +1303,7 @@ def appButtonHandler(btn){  // *****************************
 	// section(){input "resetBtn", "button", title: "Click here to reset maps"}
     if(reportMode == "Regular") runIn(1, maintHandler)
 	if(reportMode == "Priority") runIn(1, priorityHandler)
+    if(toggelBtn == "Toggle") log.info "It worked"
 }  
 
 def pushNow(){
