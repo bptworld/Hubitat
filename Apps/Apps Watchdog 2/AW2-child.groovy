@@ -40,8 +40,9 @@
  */
 
 def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion or YourAppsNameDriverVersion
     state.appName = "AppWatchdog2ChildVersion"
 	state.version = "v2.0.0"
     
@@ -84,7 +85,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
 			href "pageAppstoUpdate", title: "App Watchdog Report", description: "Click here to view the App Watchdog Report."
-			href "pageCurrent", title: "App Current Report", description: "Click here to view the App Current Report."
+			href "pageCurrent", title: "App Installed Report", description: "Click here to view the App Installed Report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Setup")) {
 			input "gitHubURL", "text", title: "URL for the GitHub to follow", required: true, submitOnChange: true
@@ -173,7 +174,7 @@ def pageAppstoUpdate(params) {
 }
 
 def pageCurrent(params) {
-	dynamicPage(name: "pageCurrent", title: "Apps Watchdog - Current App Versions", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
+	dynamicPage(name: "pageCurrent", title: "Apps Watchdog - App Versions", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
 		appMapHandler()
 		
 		section() {
@@ -513,7 +514,7 @@ def appMapHandler(evt) {
 							results = response.data
 					
 							state.aType = results."${item}Type"
-							// Get Current Data from json
+							// Get Github Data from json
 							if(logEnable) log.debug "Getting NEW Versions from json - AppName: ${item} - Type: ${state.aType}"
 							if(state.aType == "App") {
 								state.appParentVersion = results."${item}ParentVersion"
@@ -677,7 +678,7 @@ def checkTheAppData() {
 		if(state.dName != "Example") {
 			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Current</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
+			state.appMap += "<tr><td width='36%'><i>Github</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
 			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
 			if(state.appUpdateNote != "NA") { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
 			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
@@ -808,7 +809,7 @@ def checkTheDriverData() {
 			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Driver:</i> ${state.appDriver1Name}</td><td width='32%'>${state.appDriver2Name}</td><td width='32%'>${state.appDriver3Name}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Installed</i>: Driver 1: ${state.oldAppDriver1Version}</td><td width='32%'>Driver 2: ${state.oldAppDriver2Version}</td><td width='32%'>Driver 3: ${state.oldAppDriver3Version}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Current</i>:  Driver 1: ${state.appDriver1Version}</td><td width='32%'>Driver 2: ${state.appDriver2Version}</td><td width='32%'>Driver 3: ${state.appDriver3Version}</td></tr>"
+			state.appMap += "<tr><td width='36%'><i>Github</i>:  Driver 1: ${state.appDriver1Version}</td><td width='32%'>Driver 2: ${state.appDriver2Version}</td><td width='32%'>Driver 3: ${state.appDriver3Version}</td></tr>"
 			state.appMap += "<tr><td width='36%'>${d1new}${appDriver1RawCode2}</td><td width='32%'>${d2new}${appDriver2RawCode2}</td><td width='32%'>${d3new}${appDriver3RawCode2}</td></tr>"
 			if(state.appUpdateNote != "NA") { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
 			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
@@ -816,7 +817,7 @@ def checkTheDriverData() {
 			if(state.oldAppDriver4Version != "NA") {
 				state.appMap += "<tr><td width='36%'><i>Driver:</i> ${state.appDriver4Name}</td><td width='32%'>${state.appDriver5Name}</td><td width='32%'>${state.appDriver6Name}</td></tr>"
 				state.appMap += "<tr><td width='36%'><i>Installed</i>: Driver 4: ${state.oldAppDriver4Version}</td><td width='32%'>Driver 5: ${state.oldAppDriver5Version}</td><td width='32%'>Driver 6: ${state.oldAppDriver6Version}</td></tr>"
-				state.appMap += "<tr><td width='36%'><i>Current</i>:  Driver 4: ${state.appDriver4Version}</td><td width='32%'>Driver 5: ${state.appDriver5Version}</td><td width='32%'>Driver 6: ${state.appDriver6Version}</td></tr>"
+				state.appMap += "<tr><td width='36%'><i>Github</i>:  Driver 4: ${state.appDriver4Version}</td><td width='32%'>Driver 5: ${state.appDriver5Version}</td><td width='32%'>Driver 6: ${state.appDriver6Version}</td></tr>"
 				state.appMap += "<tr><td width='36%'>${d4new}${appDriver4RawCode2}</td><td width='32%'>${d5new}${appDriver5RawCode2}</td><td width='32%'>${d6new}${appDriver6RawCode2}</td></tr>"
 				state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 			}
