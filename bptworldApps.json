@@ -23,11 +23,12 @@
   "App19": "Notifier Plus",
   "App20": "One at a Time",
   "App21": "Send IP2IR",
-  "App22": "Simple Irrigation",
-  "App23": "Snapshot",
-  "App24": "Web Pinger",
-  "App25": "Welcome Home",
-  "App26": "What Did I Say",
+  "App22": "Simple Device Timer",
+  "App23": "Simple Irrigation",
+  "App24": "Snapshot",
+  "App25": "Web Pinger",
+  "App26": "Welcome Home",
+  "App27": "What Did I Say",
   
   
   "ExampleType": "App",
@@ -272,6 +273,16 @@
   "SendIP2IRDiscussion": "https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667",
   "SendIP2IRUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
+  "SimpleDeviceTimerType": "App",
+  "SimpleDeviceTimerParentVersion": "v2.0.0",
+  "SimpleDeviceTimerChildVersion": "v2.0.0",
+  "SimpleDeviceTimerDriverVersion": "NA",
+  "SimpleDeviceTimerParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/SDT-parent.groovy",
+  "SimpleDeviceTimerChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/SDT-child.groovy",
+  "SimpleDeviceTimerDriverRawCode": "NA",
+  "SimpleDeviceTimerDiscussion": "https://community.hubitat.com/t/release-simple-device-timer/16917",
+  "SimpleDeviceTimerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  
   "SimpleIrrigationType": "App",
   "SimpleIrrigationParentVersion": "v1.0.0",
   "SimpleIrrigationChildVersion": "v1.0.6",
@@ -280,7 +291,7 @@
   "SimpleIrrigationChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-child.groovy",
   "SimpleIrrigationDriverRawCode": "NA",
   "SimpleIrrigationDiscussion": "-",
-  "SimpleIrrigationUpdateNote": " V1.0.6 - 06/09/19 - Fixed issue with multiple schedules",
+  "SimpleIrrigationUpdateNote": "V1.0.6 - 06/09/19 - Fixed issue with multiple schedules",
   
   "SnapshotType": "App",
   "SnapshotParentVersion": "v1.0.1",
