@@ -44,6 +44,7 @@
  *  V1.0.0 - 03/14/19 - Initial Release
  *
  */
+import hubitat.helper.RMUtils
 
 def setVersion(){
     // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -117,6 +118,7 @@ def pageConfig() {
 }
 
 def face0Options(){
+    def rules = RMUtils.getRuleList()
     dynamicPage(name: "face0Options", title: "Cube Face 0 Options", install: false, uninstall:false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Face 0 Options")) {
 			paragraph "<b>Face 0 is facing up...</b>"
@@ -149,6 +151,7 @@ def face0Options(){
                 input(name: "f0FlipTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f0FlipTonewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f0FlipTonewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+                input "f0FlipToRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF0Slide) {
@@ -172,6 +175,7 @@ def face0Options(){
                 input(name: "f0SlidenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f0SlidenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f0SlidenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+                input "f0SlideRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF0Knock) {
@@ -195,6 +199,7 @@ def face0Options(){
                 input(name: "f0KnockTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f0KnocknewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f0KnocknewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+                input "f0KnockRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF0rLeft) {
@@ -218,6 +223,7 @@ def face0Options(){
                 input(name: "f0LeftnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f0rLeftnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f0rLeftnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false) 
+                input "f0LeftRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 				
 			}
 		}
@@ -242,6 +248,7 @@ def face0Options(){
                 input(name: "f0RightnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f0rRightnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f0rRightnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)               
+                input "f0RightRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF0Shake) {
@@ -265,6 +272,7 @@ def face0Options(){
                 input(name: "f0ShakenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f0ShakenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f0ShakenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+                input "f0ShakeRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 	}
@@ -272,6 +280,7 @@ def face0Options(){
 }
 
 def face1Options(){
+    def rules = RMUtils.getRuleList()
     dynamicPage(name: "face1Options", title: "Cube Face 1 Options", install: false, uninstall:false){
 	section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 Options")) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Face 1 Options")) {
@@ -304,6 +313,7 @@ def face1Options(){
                 input(name: "f1FlipTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f1FlipTonewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f1FlipTonewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f1FlipToRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF1Slide) {
@@ -327,6 +337,7 @@ def face1Options(){
                 input(name: "f1SlidenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f1SlidenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f1SlidenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f1SlideRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF1Knock) {
@@ -350,6 +361,7 @@ def face1Options(){
                 input(name: "f1KnockTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f1KnocknewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f1KnocknewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f1KnockRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF1rLeft) {
@@ -373,6 +385,7 @@ def face1Options(){
                 input(name: "f1LeftnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f1rLeftnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f1rLeftnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f1LeftRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF1rRight) {
@@ -396,6 +409,7 @@ def face1Options(){
                 input(name: "f1rRightnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f1rRightnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f1rRightnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                  
+				input "f1RightRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF1Shake) {
@@ -419,6 +433,7 @@ def face1Options(){
                 input(name: "f1ShakenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f1ShakenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f1ShakenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f1ShakeRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 	}
@@ -426,6 +441,7 @@ def face1Options(){
 }
 
 def face2Options(){
+    def rules = RMUtils.getRuleList()
     dynamicPage(name: "face2Options", title: "Cube Face 2 Options", install: false, uninstall:false){
 	section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 Options")) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Face 2 Options")) {
@@ -458,6 +474,7 @@ def face2Options(){
                 input(name: "f2FlipTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f2FlipTonewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f2FlipTonewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                  
+				input "f2FlipToRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF2Slide) {
@@ -481,6 +498,7 @@ def face2Options(){
                 input(name: "f2SlidenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f2SlidenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f2SlidenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f2SlideRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF2Knock) {
@@ -504,6 +522,7 @@ def face2Options(){
                 input(name: "f2KnockTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f2KnocknewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f2KnocknewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f2KnockRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF2rLeft) {
@@ -527,6 +546,7 @@ def face2Options(){
                 input(name: "f2rLeftnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f2rLeftnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f2rLeftnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f2LeftRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF2rRight) {
@@ -550,6 +570,7 @@ def face2Options(){
                 input(name: "f2rRightnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f2rRightnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f2rRightnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                  
+				input "f2RightRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF2Shake) {
@@ -573,6 +594,7 @@ def face2Options(){
                 input(name: "f2ShakenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f2ShakenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f2ShakenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f2ShakeRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 	}
@@ -580,6 +602,7 @@ def face2Options(){
 }
 
 def face3Options(){
+    def rules = RMUtils.getRuleList()
     dynamicPage(name: "face3Options", title: "Cube Face 3 Options", install: false, uninstall:false){
 	section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 Options")) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Face 3 Options")) {
@@ -612,6 +635,7 @@ def face3Options(){
                 input(name: "f3FlipTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f3FlipTonewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f3FlipTonewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f3FlipToRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF3Slide) {
@@ -635,6 +659,7 @@ def face3Options(){
                 input(name: "f3SlidenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f3SlidenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f3SlidenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f3SlideRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF3Knock) {
@@ -658,6 +683,7 @@ def face3Options(){
                 input(name: "f3KnockTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f3KnocknewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f3KnocknewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f3KnockRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF3rLeft) {
@@ -681,6 +707,7 @@ def face3Options(){
                 input(name: "f3rLeftnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f3rLeftnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f3rLeftnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f3LeftRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF3rRight) {
@@ -704,6 +731,7 @@ def face3Options(){
                 input(name: "f3rRightnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f3rRightnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f3rRightnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                  
+				input "f3RightRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF3Shake) {
@@ -727,6 +755,7 @@ def face3Options(){
                 input(name: "f3ShakenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f3ShakenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f3ShakenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                     
+				input "f3ShakeRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 	}
@@ -734,6 +763,7 @@ def face3Options(){
 }
 
 def face4Options(){
+    def rules = RMUtils.getRuleList()
     dynamicPage(name: "face4Options", title: "Cube Face 4 Options", install: false, uninstall:false){
 	section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 Options")) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Face 4 Options")) {
@@ -766,6 +796,7 @@ def face4Options(){
                 input(name: "f4FlipTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f4FlipTonewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f4FlipTonewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f4FlipToRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF4Slide) {
@@ -789,6 +820,7 @@ def face4Options(){
                 input(name: "f4SlidenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f4SlidenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f4SlidenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f4SlideRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF4Knock) {
@@ -812,6 +844,7 @@ def face4Options(){
                 input(name: "f4KnockTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f4KnocknewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f4KnocknewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f4KnockRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF4rLeft) {
@@ -835,6 +868,7 @@ def face4Options(){
                 input(name: "f4rLeftnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f4rLeftnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f4rLeftnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f4LeftRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF4rRight) {
@@ -858,6 +892,7 @@ def face4Options(){
                 input(name: "f4rRightnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f4rRightnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f4rRightnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                  
+				input "f4RightRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF4Shake) {
@@ -882,6 +917,7 @@ def face4Options(){
                 input(name: "f4ShakenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f4ShakenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f4ShakenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f4ShakeRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 	}
@@ -889,6 +925,7 @@ def face4Options(){
 }
 
 def face5Options(){
+    def rules = RMUtils.getRuleList()
     dynamicPage(name: "face5Options", title: "Cube Face 5 Options", install: false, uninstall:false){
 	section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 Options")) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Face 5 Options")) {
@@ -921,6 +958,7 @@ def face5Options(){
                 input(name: "f5FlipTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f5FlipTonewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f5FlipTonewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                  
+				input "f5FlipToRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF5Slide) {
@@ -944,6 +982,7 @@ def face5Options(){
                 input(name: "f5SlidenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f5SlidenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f5SlidenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f5SlideRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF5Knock) {
@@ -967,6 +1006,7 @@ def face5Options(){
                 input(name: "f5KnockTonewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)                
                 input(name: "f5KnocknewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f5KnocknewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                
+				input "f5KnockRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF5rLeft) {
@@ -990,6 +1030,7 @@ def face5Options(){
                 input(name: "f5rLeftnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f5rLeftnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f5rLeftnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f5LeftRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 		if(oF5rRight) {
@@ -1013,6 +1054,7 @@ def face5Options(){
                 input(name: "f5rRightnewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f5rRightnewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f5rRightnewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                 
+				input "f5RightRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true   
 			}
 		}
 		if(oF5Shake) {
@@ -1036,6 +1078,7 @@ def face5Options(){
                 input(name: "f5ShakenewMute", type: "capability.audioVolume", title: "Control Harmony Logitech Mute Volume", mulitple: false, required: false)   
                 input(name: "f5ShakenewChannelUp", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Up", mulitple: false, required: false)
                 input(name: "f5ShakenewChannelDown", type: "capability.audioVolume", title: "Control Harmony Logitech Channel Down", mulitple: false, required: false)                    
+				input "f5ShakeRules", "enum", title: "Select which rule actions to run", options: rules, multiple: true
 			}
 		}
 	}
@@ -1117,6 +1160,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "1") && (f0FlipTonewMute)) {setVolmute = f0FlipTonewMute}            
             if((state.pushedValue == "1") && (f0FliptonewChannelUp)) {setChannelup = f0FlipTonewChannelUp}
             if((state.pushedValue == "1") && (f0FliptonewChannelDown)) {setChanneldown = f0FlipTonewChannelDown}
+			if((state.pushedValue == "1") && (f0FlipToRules)) { rulesToRun = f0FlipToRules }
 			
 			if((state.pushedValue == "2") && (f1FlipToOn)) { switchesOn = f1FlipToOn }
 			if((state.pushedValue == "2") && (f1FlipToOff)) { switchesOff = f1FlipToOff }
@@ -1128,6 +1172,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "2") && (f1FlipTonewMute)) {setVolmute = f1FlipTonewMute}
             if((state.pushedValue == "2") && (f1FliptonewChannelUp)) {setChannelup = f1FlipTonewChannelUp}
             if((state.pushedValue == "2") && (f1FliptonewChannelDown)) {setChanneldown = f1FlipTonewChannelDown}            
+			if((state.pushedValue == "2") && (f1FlipToRules)) { rulesToRun = f1FlipToRules }
 			
 			if((state.pushedValue == "3") && (f2FlipToOn)) { switchesOn = f2FlipToOn }
 			if((state.pushedValue == "3") && (f2FlipToOff)) { switchesOff = f2FlipToOff }
@@ -1139,6 +1184,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "3") && (f2FlipTonewMute)) {setVolmute = f2FlipTonewMute}
             if((state.pushedValue == "3") && (f2FliptonewChannelUp)) {setChannelup = f2FlipTonewChannelUp}
             if((state.pushedValue == "3") && (f2FliptonewChannelDown)) {setChanneldown = f2FlipTonewChannelDown}            
+			if((state.pushedValue == "3") && (f2FlipToRules)) { rulesToRun = f2FlipToRules }
 			
 			if((state.pushedValue == "4") && (f3FlipToOn)) { switchesOn = f3FlipToOn }
 			if((state.pushedValue == "4") && (f3FlipToOff)) { switchesOff = f3FlipToOff }	
@@ -1150,6 +1196,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "4") && (f3FlipTonewMute)) {setVolmute = f3FlipTonewMute}
             if((state.pushedValue == "4") && (f3FliptonewChannelUp)) {setChannelup = f3FlipTonewChannelUp}
             if((state.pushedValue == "4") && (f3FliptonewChannelDown)) {setChanneldown = f3FlipTonewChannelDown}            
+			if((state.pushedValue == "4") && (f3FlipToRules)) { rulesToRun = f3FlipToRules }
 			
 			if((state.pushedValue == "5") && (f4FlipToOn)) { switchesOn = f4FlipToOn }
 			if((state.pushedValue == "5") && (f4FlipToOff)) { switchesOff = f4FlipToOff }		
@@ -1161,6 +1208,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "5") && (f4FlipTonewMute)) {setVolmute = f4FlipTonewMute}
             if((state.pushedValue == "5") && (f4FliptonewChannelUp)) {setChannelup = f4FlipTonewChannelUp}
             if((state.pushedValue == "5") && (f4FliptonewChannelDown)) {setChanneldown = f4FlipTonewChannelDown}            
+			if((state.pushedValue == "5") && (f4FlipToRules)) { rulesToRun = f4FlipToRules }
 			
 			if((state.pushedValue == "6") && (f5FlipToOn)) { switchesOn = f5FlipToOn }
 			if((state.pushedValue == "6") && (f5FlipToOff)) { switchesOff = f5FlipToOff }	
@@ -1172,6 +1220,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "6") && (f5FlipTonewMute)) {setVolmute = f5FlipTonewMute}
             if((state.pushedValue == "6") && (f5FliptonewChannelUp)) {setChannelup = f5FlipTonewChannelUp}
             if((state.pushedValue == "6") && (f5FliptonewChannelDown)) {setChanneldown = f5FlipTonewChannelDown}            
+			if((state.pushedValue == "6") && (f5FlipToRules)) { rulesToRun = f5FlipToRules }
 											
 			if((state.pushedValue == "7") && (f0SlideOn)) { switchesOn = f0SlideOn }
 			if((state.pushedValue == "7") && (f0SlideOff)) { switchesOff = f0SlideOff }
@@ -1183,6 +1232,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "7") && (f0SlidenewMute)) {setVolmute = f0SlidenewMute}
             if((state.pushedValue == "7") && (f0SlidenewChannelUp)) {setChannelup = f0SlidenewChannelUp}
             if((state.pushedValue == "7") && (f0SlidenewChannelDown)) {setChanneldown = f0SlidenewChannelDown}             
+			if((state.pushedValue == "7") && (f0SlideRules)) { rulesToRun = f0SlideRules }
 			
 			if((state.pushedValue == "8") && (f1SlideOn)) { switchesOn = f1SlideOn }
 			if((state.pushedValue == "8") && (f1SlideOff)) { switchesOff = f1SlideOff }
@@ -1194,7 +1244,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "8") && (f1SlidenewMute)) {setVolmute = f1SlidenewMute}
             if((state.pushedValue == "8") && (f1SlidenewChannelUp)) {setChannelup = f1SlidenewChannelUp}
             if((state.pushedValue == "8") && (f1SlidenewChannelDown)) {setChanneldown = f1SlidenewChannelDown}            
-			
+			if((state.pushedValue == "8") && (f1SlideRules)) { rulesToRun = f1SlideRules }
 			if((state.pushedValue == "9") && (f2SlideOn)) { switchesOn = f2SlideOn }
 			if((state.pushedValue == "9") && (f2SlideOff)) { switchesOff = f2SlideOff }
 			if((state.pushedValue == "9") && (f2SlideToggle)) { switchesToggle = f2SlideToggle }
@@ -1205,6 +1255,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "9") && (f2SlidenewMute)) {setVolmute = f2SlidenewMute}
             if((state.pushedValue == "9") && (f2SlidenewChannelUp)) {setChannelup = f2SlidenewChannelUp}
             if((state.pushedValue == "9") && (f2SlidenewChannelDown)) {setChanneldown = f2SlidenewChannelDown}            
+			if((state.pushedValue == "9") && (f2SlideRules)) { rulesToRun = f2SlideRules }
 			
 			if((state.pushedValue == "10") && (f3SlideOn)) { switchesOn = f3SlideOn }
 			if((state.pushedValue == "10") && (f3SlideOff)) { switchesOff = f3SlideOff }
@@ -1216,6 +1267,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "10") && (f3SlidenewMute)) {setVolmute = f3SlidenewMute}
             if((state.pushedValue == "10") && (f3SlidenewChannelUp)) {setChannelup = f3SlidenewChannelUp}
             if((state.pushedValue == "10") && (f3SlidenewChannelDown)) {setChanneldown = f3SlidenewChannelDown}            
+			if((state.pushedValue == "10") && (f3SlideRules)) { rulesToRun = f3SlideRules }
 			
 			if((state.pushedValue == "11") && (f4SlideOn)) { switchesOn = f4SlideOn }
 			if((state.pushedValue == "11") && (f4SlideOff)) { switchesOff = f4SlideOff }
@@ -1227,6 +1279,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "11") && (f4SlidenewMute)) {setVolmute = f4SlidenewMute}
             if((state.pushedValue == "11") && (f4SlidenewChannelUp)) {setChannelup = f4SlidenewChannelUp}
             if((state.pushedValue == "11") && (f4SlidenewChannelDown)) {setChanneldown = f4SlidenewChannelDown}            
+			if((state.pushedValue == "11") && (f4SlideRules)) { rulesToRun = f4SlideRules }
 			
 			if((state.pushedValue == "12") && (f5SlideOn)) { switchesOn = f5SlideOn }
 			if((state.pushedValue == "12") && (f5SlideOff)) { switchesOff = f5SlideOff }	
@@ -1238,6 +1291,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "12") && (f5SlidenewMute)) {setVolmute = f5SlidenewMute}
             if((state.pushedValue == "12") && (f5SlidenewChannelUp)) {setChannelup = f5SlidenewChannelUp}
             if((state.pushedValue == "12") && (f5SlidenewChannelDown)) {setChanneldown = f5SlidenewChannelDown}            
+			if((state.pushedValue == "12") && (f5SlideRules)) { rulesToRun = f5SlideRules }
 			
 			if((state.pushedValue == "13") && (f0KnockOn)) { switchesOn = f0KnockOn }
 			if((state.pushedValue == "13") && (f0KnockOff)) { switchesOff = f0KnockOff }
@@ -1250,6 +1304,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "13") && (f0KnocknewChannelUp)) {setChannelup = f0KnocknewChannelUp}
             if((state.pushedValue == "13") && (f0KnocknewChannelDown)) {setChanneldown = f0KnocknewChannelDown}            
             
+			if((state.pushedValue == "13") && (f0KnockRules)) { rulesToRun = f0KnockRules }
 			
 			if((state.pushedValue == "14") && (f1KnockOn)) { switchesOn = f1KnockOn }
 			if((state.pushedValue == "14") && (f1KnockOff)) { switchesOff = f1KnockOff }
@@ -1261,6 +1316,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "14") && (f1KnocknewMute)) {setVolmute = f1KnocknewMute}
             if((state.pushedValue == "14") && (f1KnocknewChannelUp)) {setChannelup = f1KnocknewChannelUp}
             if((state.pushedValue == "14") && (f1KnocknewChannelDown)) {setChanneldown = f1KnocknewChannelDown}             
+			if((state.pushedValue == "14") && (f1KnockRules)) { rulesToRun = f1KnockRules }
 			
 			if((state.pushedValue == "15") && (f2KnockOn)) { switchesOn = f2KnockOn }
 			if((state.pushedValue == "15") && (f2KnockOff)) { switchesOff = f2KnockOff }
@@ -1272,6 +1328,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "15") && (f2KnocknewMute)) {setVolmute = f2KnocknewMute}
             if((state.pushedValue == "15") && (f2KnocknewChannelUp)) {setChannelup = f2KnocknewChannelUp}
             if((state.pushedValue == "15") && (f2KnocknewChannelDown)) {setChanneldown = f2KnocknewChannelDown}             
+			if((state.pushedValue == "15") && (f2KnockRules)) { rulesToRun = f2KnockRules }
 			
 			if((state.pushedValue == "16") && (f3KnockOn)) { switchesOn = f3KnockOn }
 			if((state.pushedValue == "16") && (f3KnockOff)) { switchesOff = f3KnockOff }	
@@ -1283,6 +1340,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "16") && (f3KnocknewMute)) {setVolmute = f3KnocknewMute}
             if((state.pushedValue == "16") && (f3KnocknewChannelUp)) {setChannelup = f3KnocknewChannelUp}
             if((state.pushedValue == "16") && (f3KnocknewChannelDown)) {setChanneldown = f3KnocknewChannelDown}             
+			if((state.pushedValue == "16") && (f3KnockRules)) { rulesToRun = f3KnockRules }
 			
 			if((state.pushedValue == "17") && (f4KnockOn)) { switchesOn = f4KnockOn }
 			if((state.pushedValue == "17") && (f4KnockOff)) { switchesOff = f4KnockOff }	
@@ -1294,6 +1352,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "17") && (f4KnocknewMute)) {setVolmute = f4KnocknewMute}
             if((state.pushedValue == "17") && (f4KnocknewChannelUp)) {setChannelup = f4KnocknewChannelUp}
             if((state.pushedValue == "17") && (f4KnocknewChannelDown)) {setChanneldown = f4KnocknewChannelDown}             
+			if((state.pushedValue == "17") && (f4KnockRules)) { rulesToRun = f4KnockRules }
 			
 			if((state.pushedValue == "18") && (f5KnockOn)) { switchesOn = f5KnockOn }
 			if((state.pushedValue == "18") && (f5KnockOff)) { switchesOff = f5KnockOff }	
@@ -1305,6 +1364,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "18") && (f5KnocknewMute)) {setVolmute = f5KnocknewMute}
             if((state.pushedValue == "18") && (f5KnocknewChannelUp)) {setChannelup = f5KnocknewChannelUp}
             if((state.pushedValue == "18") && (f5KnocknewChannelDown)) {setChanneldown = f5KnocknewChannelDown}             
+			if((state.pushedValue == "18") && (f5KnockRules)) { rulesToRun = f5KnockRules }
 							
 			if((state.pushedValue == "19") && (f0rRightOn)) { switchesOn = f0rRightOn }
 			if((state.pushedValue == "19") && (f0rRightOff)) { switchesOff = f0rRightOff }
@@ -1316,6 +1376,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "19") && (f0rRightnewMute)) {setVolmute = f0rRightnewMute}
             if((state.pushedValue == "19") && (f0rRightnewChannelUp)) {setChannelup = f0rRightnewChannelUp}
             if((state.pushedValue == "19") && (f0rRightnewChannelDown)) {setChanneldown = f0rRightnewChannelDown}             
+			if((state.pushedValue == "19") && (f0RightRules)) { rulesToRun = f0RightRules }
 			
 			if((state.pushedValue == "20") && (f1rRightOn)) { switchesOn = f1rRightOn }
 			if((state.pushedValue == "20") && (f1rRightOff)) { switchesOff = f1rRightOff }
@@ -1327,6 +1388,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "20") && (f1rRightnewMute)) {setVolmute = f1rRightnewMute}
             if((state.pushedValue == "20") && (f1rRightnewChannelUp)) {setChannelup = f1rRightnewChannelUp}
             if((state.pushedValue == "20") && (f1rRightnewChannelDown)) {setChanneldown = f1rRightnewChannelDown}              
+			if((state.pushedValue == "20") && (f1RightRules)) { rulesToRun = f1RightRules }
 			
 			if((state.pushedValue == "21") && (f2rRightOn)) { switchesOn = f2rRightOn }
 			if((state.pushedValue == "21") && (f2rRightOff)) { switchesOff = f2rRightOff }	
@@ -1338,6 +1400,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "21") && (f2rRightnewMute)) {setVolmute = f2rRightnewMute}
             if((state.pushedValue == "21") && (f2rRightnewChannelUp)) {setChannelup = f2rRightnewChannelUp}
             if((state.pushedValue == "21") && (f2rRightnewChannelDown)) {setChanneldown = f2rRightnewChannelDown}               
+			if((state.pushedValue == "21") && (f2RightRules)) { rulesToRun = f2RightRules }
 			
 			if((state.pushedValue == "22") && (f3rRightOn)) { switchesOn = f3rRightOn }
 			if((state.pushedValue == "22") && (f3rRightOff)) { switchesOff = f3rRightOff }	
@@ -1349,6 +1412,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "22") && (f3rRightnewMute)) {setVolmute = f3rRightnewMute}
             if((state.pushedValue == "22") && (f3rRightnewChannelUp)) {setChannelup = f3rRightnewChannelUp}
             if((state.pushedValue == "22") && (f3rRightnewChannelDown)) {setChanneldown = f3rRightnewChannelDown}              
+			if((state.pushedValue == "22") && (f3RightRules)) { rulesToRun = f3RightRules }
 			
 			if((state.pushedValue == "23") && (f4rRightOn)) { switchesOn = f4rRightOn }
 			if((state.pushedValue == "23") && (f4rRightOff)) { switchesOff = f4rRightOff }	
@@ -1360,6 +1424,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "23") && (f4rRightnewMute)) {setVolmute = f4rRightnewMute}
             if((state.pushedValue == "23") && (f4rRightnewChannelUp)) {setChannelup = f4rRightnewChannelUp}
             if((state.pushedValue == "23") && (f4rRightnewChannelDown)) {setChanneldown = f4rRightnewChannelDown}             
+			if((state.pushedValue == "23") && (f4RightRules)) { rulesToRun = f4RightRules }
 			
 			if((state.pushedValue == "24") && (f5rRightOn)) { switchesOn = f5rRightOn }
 			if((state.pushedValue == "24") && (f5rRightOff)) { switchesOff = f5rRightOff }	
@@ -1371,6 +1436,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "24") && (f5rRightnewMute)) {setVolmute = f5rRightnewMute}
             if((state.pushedValue == "24") && (f5rRightnewChannelUp)) {setChannelup = f5rRightnewChannelUp}
             if((state.pushedValue == "24") && (f5rRightnewChannelDown)) {setChanneldown = f5rRightnewChannelDown}             
+			if((state.pushedValue == "24") && (f5RightRules)) { rulesToRun = f5RightRules }
 											
 			if((state.pushedValue == "25") && (f0rLeftOn)) { switchesOn = f0rLeftOn }
 			if((state.pushedValue == "25") && (f0rLeftOff)) { switchesOff = f0rLeftOff }
@@ -1382,6 +1448,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "25") && (f0rLeftnewMute)) {setVolmute = f0rLeftnewMute}
             if((state.pushedValue == "25") && (f0rLeftnewChannelUp)) {setChannelup = f0rLeftnewChannelUp}
             if((state.pushedValue == "25") && (f0rLeftnewChannelDown)) {setChanneldown = f0rLeftnewChannelDown}             
+			if((state.pushedValue == "25") && (f0LeftRules)) { rulesToRun = f0LeftRules }
 			
 			if((state.pushedValue == "26") && (f1rLeftOn)) { switchesOn = f1rLeftOn }
 			if((state.pushedValue == "26") && (f1rLeftOff)) { switchesOff = f1rLeftOff }
@@ -1393,6 +1460,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "26") && (f1rLeftnewMute)) {setVolmute = f1rLeftnewMute}
             if((state.pushedValue == "26") && (f1rLeftnewChannelUp)) {setChannelup = f1rLeftnewChannelUp}
             if((state.pushedValue == "26") && (f1rLeftnewChannelDown)) {setChanneldown = f1rLeftnewChannelDown}            
+			if((state.pushedValue == "26") && (f1LeftRules)) { rulesToRun = f1LeftRules }
 			
 			if((state.pushedValue == "27") && (f2rLeftOn)) { switchesOn = f2rLeftOn }
 			if((state.pushedValue == "27") && (f2rLeftOff)) { switchesOff = f2rLeftOff }	
@@ -1404,6 +1472,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "27") && (f2rLeftnewMute)) {setVolmute = f2rLeftnewMute}
             if((state.pushedValue == "27") && (f2rLeftnewChannelUp)) {setChannelup = f2rLeftnewChannelUp}
             if((state.pushedValue == "27") && (f2rLeftnewChannelDown)) {setChanneldown = f2rLeftnewChannelDown}            
+			if((state.pushedValue == "27") && (f2LeftRules)) { rulesToRun = f2LeftRules }
 			
 			if((state.pushedValue == "28") && (f3rLeftOn)) { switchesOn = f3rLeftOn }
 			if((state.pushedValue == "28") && (f3rLeftOff)) { switchesOff = f3rLeftOff }	
@@ -1415,6 +1484,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "28") && (f3rLeftnewMute)) {setVolmute = f3rLeftnewMute}
             if((state.pushedValue == "28") && (f3rLeftnewChannelUp)) {setChannelup = f3rLeftnewChannelUp}
             if((state.pushedValue == "28") && (f3rLeftnewChannelDown)) {setChanneldown = f3rLeftnewChannelDown}            
+			if((state.pushedValue == "28") && (f3LeftRules)) { rulesToRun = f3LeftRules }
 			
 			if((state.pushedValue == "29") && (f4rLeftOn)) { switchesOn = f4rLeftOn }
 			if((state.pushedValue == "29") && (f4rLeftOff)) { switchesOff = f4rLeftoff }
@@ -1426,6 +1496,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "29") && (f4rLeftnewMute)) {setVolmute = f4rLeftnewMute}
             if((state.pushedValue == "29") && (f4rLeftnewChannelUp)) {setChannelup = f4rLeftnewChannelUp}
             if((state.pushedValue == "29") && (f4rLeftnewChannelDown)) {setChanneldown = f4rLeftnewChannelDown}            
+			if((state.pushedValue == "29") && (f4LeftRules)) { rulesToRun = f4LeftRules }
 			
 			if((state.pushedValue == "30") && (f5rLeftOn)) { switchesOn = f5rLeftOn }
 			if((state.pushedValue == "30") && (f5rLeftOff)) { switchesOff = f5rLeftOff }
@@ -1437,6 +1508,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "30") && (f5rLeftnewMute)) {setVolmute = f5rLeftnewMute}
             if((state.pushedValue == "30") && (f5rLeftnewChannelUp)) {setChannelup = f5rLeftnewChannelUp}
             if((state.pushedValue == "30") && (f5rLeftnewChannelDown)) {setChanneldown = f5rLeftnewChannelDown}            
+			if((state.pushedValue == "30") && (f5LeftRules)) { rulesToRun = f5LeftRules }
 							
 			if((state.pushedValue == "31") && (f0ShakeOn)) { switchesOn = f0ShakeOn }
 			if((state.pushedValue == "31") && (f0ShakeOff)) { switchesOff = f0ShakeOff }
@@ -1448,6 +1520,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "31") && (f0ShakenewMute)) {setVolmute = f0ShakenewMute}
             if((state.pushedValue == "31") && (f0ShakenewChannelUp)) {setChannelup = f0ShakenewChannelUp}
             if((state.pushedValue == "31") && (f0ShakenewChannelDown)) {setChanneldown = f0ShakenewChannelDown}               
+			if((state.pushedValue == "31") && (f0ShakeRules)) { rulesToRun = f0ShakeRules }
 			
 			if((state.pushedValue == "32") && (f1ShakeOn)) { switchesOn = f1ShakeOn }
 			if((state.pushedValue == "32") && (f1ShakeOff)) { switchesOff = f1ShakeOff }
@@ -1459,6 +1532,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "32") && (f1ShakenewMute)) {setVolmute = f1ShakenewMute}
             if((state.pushedValue == "32") && (f1ShakenewChannelUp)) {setChannelup = f1ShakenewChannelUp}
             if((state.pushedValue == "32") && (f1ShakenewChannelDown)) {setChanneldown = f1ShakenewChannelDown}             
+			if((state.pushedValue == "32") && (f1ShakeRules)) { rulesToRun = f1ShakeRules }
 			
 			if((state.pushedValue == "33") && (f2ShakeOn)) { switchesOn = f2ShakeOn }
 			if((state.pushedValue == "33") && (f2ShakeOff)) { switchesOff = f2ShakeOff }
@@ -1470,6 +1544,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "33") && (f2ShakenewMute)) {setVolmute = f2ShakenewMute}
             if((state.pushedValue == "33") && (f2ShakenewChannelUp)) {setChannelup = f2ShakenewChannelUp}
             if((state.pushedValue == "33") && (f2ShakenewChannelDown)) {setChanneldown = f2ShakenewChannelDown}             
+			if((state.pushedValue == "33") && (f2ShakeRules)) { rulesToRun = f2ShakeRules }
 			
 			if((state.pushedValue == "34") && (f3ShakeOn)) { switchesOn = f3ShakeOn }
 			if((state.pushedValue == "34") && (f3ShakeOff)) { switchesOff = f3ShakeOff }
@@ -1481,6 +1556,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "34") && (f3ShakenewMute)) {setVolmute = f3ShakenewMute}
             if((state.pushedValue == "34") && (f3ShakenewChannelUp)) {setChannelup = f3ShakenewChannelUp}
             if((state.pushedValue == "34") && (f3ShakenewChannelDown)) {setChanneldown = f3ShakenewChannelDown}             
+			if((state.pushedValue == "34") && (f3ShakeRules)) { rulesToRun = f3ShakeRules }
 			
 			if((state.pushedValue == "35") && (f4ShakeOn)) { witchesOn = f4ShakeOn }
 			if((state.pushedValue == "35") && (f4ShakeOff)) { switchesOff = f4ShakeOff }
@@ -1492,6 +1568,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "35") && (f4ShakenewMute)) {setVolmute = f4ShakenewMute}
             if((state.pushedValue == "35") && (f4ShakenewChannelUp)) {setChannelup = f4ShakenewChannelUp}
             if((state.pushedValue == "35") && (f4ShakenewChannelDown)) {setChanneldown = f4ShakenewChannelDown}             
+			if((state.pushedValue == "35") && (f4ShakeRules)) { rulesToRun = f4ShakeRules }
 			
 			if((state.pushedValue == "36") && (f5ShakeOn)) { switchesOn = f5ShakeOn }
 			if((state.pushedValue == "36") && (f5ShakeOff)) { switchesOff = f5ShakeOff }
@@ -1503,6 +1580,7 @@ def magicHappensHandler() {
             if((state.pushedValue == "36") && (f5ShakenewMute)) {setVolmute = f5ShakenewMute}
             if((state.pushedValue == "36") && (f5ShakenewChannelUp)) {setChannelup = f5ShakenewChannelUp}
             if((state.pushedValue == "36") && (f5ShakenewChannelDown)) {setChanneldown = f5ShakenewChannelDown}             
+			if((state.pushedValue == "36") && (f5ShakeRules)) { rulesToRun = f5ShakeRules }
 							
 			if(switchesOn) switchesOnHandler()
 			if(switchesOff) switchesOffHandler()
@@ -1514,9 +1592,15 @@ def magicHappensHandler() {
             if(setChannelup) harmonyHandler("ChannelUp")
             if(setChanneldown) harmonyHandler("ChannelDown")
             if(setVolmute) harmonyHandler("Mute")
+            if(rulesToRun) rulesHandler(rulesToRun)
 		} else {
 			log.info "${app.label} - Unable to continue - App paused"
 		}
+}
+
+def rulesHandler(rules) {
+    if(logEnable) log.debug "In rulesHandler - Running ${rules}"
+    RMUtils.sendAction(rules, "runRule", app.label)
 }
 
 def switchesOnHandler() {
