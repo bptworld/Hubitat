@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 08/21/19 - (dan.t) added ability to execute rule actions
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.3 - 08/12/19 - (aaronward) Added support for Harmony Logitech control
  *  V1.0.2 - 04/15/19 - Code cleanup
@@ -51,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "MagicCubeChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
