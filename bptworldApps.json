@@ -225,13 +225,13 @@
   
   "MagicCubeType": "App",
   "MagicCubeParentVersion": "v2.0.0",
-  "MagicCubeChildVersion": "v2.0.0",
+  "MagicCubeChildVersion": "v2.0.1",
   "MagicCubeDriverVersion": "NA",
   "MagicCubeParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-parent.groovy",
   "MagicCubeChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-child.groovy",
   "MagicCubeDriverRawCode": "NA",
   "MagicCubeDiscussion": "https://community.hubitat.com/t/release-magic-cube/11987",
-  "MagicCubeUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "MagicCubeUpdateNote": "V2.0.1 - 08/21/19 - (dan.t) added ability to execute rule actions",
   
   "MotionControlledSceneLightingType": "App",
   "MotionControlledSceneLightingParentVersion": "v2.0.0",
