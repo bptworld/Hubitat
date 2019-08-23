@@ -140,9 +140,11 @@
   "DeparturesChildVersion": "v2.0.0",
   "DeparturesChildName": "Arrivals Child"
   "DeparturesChild2Version": "v2.0.0",
-  "DeparturesChild2Name": "Departures Child"
+  "DeparturesChild2Name": "Departures Child",
   "DeparturesChild3Version": "NA",
+  "DeparturesChild3Name": "NA",
   "DeparturesChild4Version": "NA",
+  "DeparturesChild4Name": "NA",
   "DeparturesDriverVersion": "NA",
   "DeparturesParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-parent.groovy",
   "DeparturesChildRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy",
