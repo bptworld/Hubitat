@@ -138,7 +138,9 @@
   "DeparturesType": "App",
   "DeparturesParentVersion": "v2.0.0",
   "DeparturesChildVersion": "v2.0.0",
-  "DeparturesChild2Version": "NA",
+  "DeparturesChildName": "Arrivals Child"
+  "DeparturesChild2Version": "v2.0.0",
+  "DeparturesChild2Name": "Departures Child"
   "DeparturesChild3Version": "NA",
   "DeparturesChild4Version": "NA",
   "DeparturesDriverVersion": "NA",
