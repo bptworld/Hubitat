@@ -34,23 +34,23 @@
  *
  *  Changes:
  *
- *
+ *  V2.0.1 - 08/24/19 - Squashing bugs
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *
  */
 
 def setVersion(){
+    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "AppWatchdog2ParentVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -92,6 +92,7 @@ def initialize() {
     childApps.each {child ->
     	log.info "Child app: ${child.label}"
     }
+    if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def mainPage() {					// Modified from @Cobra Code
@@ -117,7 +118,7 @@ def mainPage() {					// Modified from @Cobra Code
                 input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
 			}
             if(sendToAWSwitch) {
-                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog")) {    
+                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
                     if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
 			        if(sendToAWSwitch && awDevice) setVersion()
                 }
