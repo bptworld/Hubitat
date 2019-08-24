@@ -38,12 +38,13 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 08/24/19 - Bug fixes
  *  V2.0.0 - 08/18/19 - Initial release
  */
 
 def setVersion(){
     state.appName = "AppWatchdog2DriverVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"   
 }
 
 metadata {
@@ -71,15 +72,9 @@ def sendAWinfoMap(appWatchdogData) {
     
 	def newData = "${appWatchdogData}"
     if(logEnable) log.debug "In sendAWinfo - Incoming Data - ${newData}"
-
-    if(state.theDataMap == null || state.theDataMap == "") {
-        if(logEnable) log.debug "In sendAWinfoMap - Resesting theDataMap"
-        state.theDataMap = [:]
-    }
     
     def (dataKey, dataValue) = newData.split(':')
     if(logEnable) log.debug "In sendAWinfoMap - dataKey: ${dataKey} - dataValue: ${dataValue}"
-    //theDataMap << [dataKey:dataValue]
     state.theDataMap.put(dataKey, dataValue)
     
     def allMap = state.theDataMap.collectEntries{ [(it.key):(it.value)] }
@@ -97,14 +92,12 @@ def installed(){
 
 def updated() {
     log.info "Apps Watchdog Device has been Updated"
-    setVersion()
 }
 
 def initialize() {
     log.info "In initialize - Clearing maps"
     state.theDataMap = [:]
     sendEvent(name: "sendAWinfoMap", value: state.theDataMap, displayed: true)
-    setVersion()
 }
 
 def sendDataMap(dataMap) {
