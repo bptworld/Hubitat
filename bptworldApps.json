@@ -72,7 +72,7 @@
 
   "AppWatchdog2Type": "App",
   "AppWatchdog2ParentVersion": "v2.0.1",
-  "AppWatchdog2ChildVersion": "v2.0.2",
+  "AppWatchdog2ChildVersion": "v2.0.3",
   "AppWatchdog2ChildName": "Child",
   "AppWatchdog2Child2Version": "",
   "AppWatchdog2Child2Name": "",
@@ -88,7 +88,7 @@
   "AppWatchdog2Child4RawCode": "",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
   "AppWatchdog2Discussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdog2UpdateNote": "V2.0.2 - 08/24/19 - Each Parent can now have up to 4 child apps. Working on a ton of bugs. There are still some to squash, sorry.",
+  "AppWatchdog2UpdateNote": "V2.0.3 - 08/25/19 - Code cleanup, squashing bugs! Working on changes suggested by @aaron, so things will look funny right now.",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v2.0.0",
