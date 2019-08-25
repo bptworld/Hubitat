@@ -68,7 +68,7 @@
 
   "AppWatchdog2Type": "App",
   "AppWatchdog2ParentVersion": "v2.0.1",
-  "AppWatchdog2Child1Version": "v2.0.3",
+  "AppWatchdog2Child1Version": "v2.0.4",
   "AppWatchdog2Child1Name": "",
   "AppWatchdog2Child2Version": "",
   "AppWatchdog2Child2Name": "",
@@ -82,7 +82,7 @@
   "AppWatchdog2Child3RawCode": "",
   "AppWatchdog2Child4RawCode": "",
   "AppWatchdog2Discussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdog2UpdateNote": "V2.0.3 - 08/25/19 - Code cleanup, squashing bugs! Working on changes suggested by @aaron, so things will look funny right now.",
+  "AppWatchdog2UpdateNote": "V2.0.4 - 08/25/19 - Removed any code pertaining to 'drivers'. Squashed, smashed and swatted bugs.",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v2.0.0",
