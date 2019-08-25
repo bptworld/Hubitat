@@ -38,13 +38,14 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 08/25/19 - Code cleanup by @stephack, thank you! Also sorted the data.
  *  V2.0.1 - 08/24/19 - Bug fixes
  *  V2.0.0 - 08/18/19 - Initial release
  */
 
 def setVersion(){
     state.appName = "AppWatchdog2DriverVersion"
-	state.version = "v2.0.1"   
+	state.version = "v2.0.2"   
 }
 
 metadata {
@@ -70,19 +71,25 @@ metadata {
 def sendAWinfoMap(appWatchdogData) {
     if(logEnable) log.debug "In sendAWinfo (${state.version})"
     
-	def newData = "${appWatchdogData}"
+	def newData = stringToMap(appWatchdogData) // this converts the string to a map
     if(logEnable) log.debug "In sendAWinfo - Incoming Data - ${newData}"
+
+    if(state.theDataMap == null || state.theDataMap == "") {
+        if(logEnable) log.debug "In sendAWinfoMap - Resesting theDataMap"
+        state.theDataMap = [:]
+    }
     
-    def (dataKey, dataValue) = newData.split(':')
-    if(logEnable) log.debug "In sendAWinfoMap - dataKey: ${dataKey} - dataValue: ${dataValue}"
-    state.theDataMap.put(dataKey, dataValue)
+    state.theDataMap << newData
+    if(logEnable) log.debug "In sendAWinfoMap - newData: ${newData}"
     
     def allMap = state.theDataMap.collectEntries{ [(it.key):(it.value)] }
     
-    allMapSize = allMap.size()
-    if(logEnable) log.debug "In sendAWinfoMap - mapSize: ${allMapSize} - allMap: ${allMap}"
+    allMapS = allMap.sort{it.key}
     
-    sendEvent(name: "sendAWinfoMap", value: allMap, displayed: true)
+    allMapSize = allMapS.size()
+    if(logEnable) log.debug "In sendAWinfoMap - mapSize: ${allMapSize} - allMap: ${allMapS}"
+    
+    sendEvent(name: "sendAWinfoMap", value: allMapS, displayed: true)
 }
 
 def installed(){
