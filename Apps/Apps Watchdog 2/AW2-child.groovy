@@ -29,12 +29,13 @@
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *
- *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
+ *  App updates can be found at https://github.com/bptworld/Hubitat
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
  *
+ *  V2.0.4 - 08/25/19 - Removed any code pertaining to 'drivers'. Squashed, smashed and swatted bugs.
  *  V2.0.3 - 08/25/19 - Code cleanup, squashing bugs! Working on changes suggested by @aaron, so things will look funny right now.
  *  V2.0.2 - 08/24/19 - Each Parent can now have up to 4 child apps. Working on a ton of bugs. There are still some to squash, sorry.
  *  V2.0.1 - 08/20/19 - Fixed some missing code in dName.
@@ -45,9 +46,9 @@
 def setVersion(){
     // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion or YourAppsNameDriverVersion
+    // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.3"
+	state.version = "v2.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -83,7 +84,7 @@ def pageConfig() {
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "See if any compatible app needs an update, all in one place."
-            paragraph "Note: This will only track apps, not drivers. Hopefully at some point it will also track drivers. Thanks"
+            paragraph "Note: This will only track apps, not drivers. Thanks"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
 			href "pageAppstoUpdate", title: "App Watchdog Report", description: "Click here to view the App Watchdog Report."
@@ -522,60 +523,56 @@ def appMapHandler(evt) {
 							if(logEnable) log.debug "Getting NEW Versions from json - AppName: ${item} - Type: ${state.aType}"
 							if(state.aType == "App") {
 								state.appParentVersion = results."${item}ParentVersion"
+                                if(!state.appParentVersion) state.appParentVersion = "-"
                                 
-								state.appChildVersion = results."${item}ChildVersion"
-                                if(!state.appChildVersion) state.appChildVersion = ""
+								state.appChild1Version = results."${item}Child1Version"
+                                if(!state.appChild1Version) state.appChild1Version = "-"
                                 
-                                state.appChildName = results."${item}ChildName"
-                                if(!state.appChildName) state.appChildName = ""
+                                state.appChild1Name = results."${item}Child1Name"
+                                if(!state.appChild1Name) state.appChild1Name = "Child 1"
                                 
                                 state.appChild2Version = results."${item}Child2Version"
-                                if(!state.appChild2Version) state.appChild2Version = ""
+                                if(!state.appChild2Version) state.appChild2Version = "-"
                                 
                                 state.appChild2Name = results."${item}Child2Name"
-                                if(!state.appChild2Name) state.appChild2Name = ""
+                                if(!state.appChild2Name) state.appChild2Name = "Child 2"
                                 
                                 state.appChild3Version = results."${item}Child3Version"
+                                if(!state.appChild3Version) state.appChild3Version = "-"
+                                
                                 state.appChild3Name = results."${item}Child3Name"
+                                if(!state.appChild3Name) state.appChild3Name = "Child 3"
                                 
                                 state.appChild4Version = results."${item}Child4Version"
+                                if(!state.appChild4Version) state.appChild4Version = "-"
+                                
                                 state.appChild4Name = results."${item}Child4Name"
+                                if(!state.appChild4Name) state.appChild4Name = "Child 4"
                                 
-								state.appDriverVersion = results."${item}DriverVersion"
 								state.appParentRawCode = results."${item}ParentRawCode"
-								state.appChildRawCode = results."${item}ChildRawCode"
-                                state.appChildRaw2Code = results."${item}ChildRaw2Code"
-                                state.appChildRaw3Code = results."${item}ChildRaw3Code"
-                                state.appChildRaw4Code = results."${item}ChildRaw4Code"
-								state.appDriverRawCode = results."${item}DriverRawCode"
-								state.appDiscussion = results."${item}Discussion"
-								state.appUpdateNote = results."${item}UpdateNote"
+                                if(!state.appParentRawCode) state.appParentRawCode = "-"
                                 
-                                log.warn "This is what I got FROM JSON- appsName: ${state.appsName} - appParentVersion: ${state.appParentVersion} - appChildName: ${state.appChildName} - appChildVersion: ${state.appChildVersion}"
-							}
-							if(state.aType == "Driver") {
-								state.appDriver1Version = results."${item}Driver1Version"
-								state.appDriver2Version = results."${item}Driver2Version"
-								state.appDriver3Version = results."${item}Driver3Version"
-								state.appDriver4Version = results."${item}Driver4Version"
-								state.appDriver5Version = results."${item}Driver5Version"
-								state.appDriver6Version = results."${item}Driver6Version"
-								state.appDriver1RawCode = results."${item}Driver1RawCode"
-								state.appDriver2RawCode = results."${item}Driver2RawCode"
-								state.appDriver3RawCode = results."${item}Driver3RawCode"
-								state.appDriver4RawCode = results."${item}Driver4RawCode"
-								state.appDriver5RawCode = results."${item}Driver5RawCode"
-								state.appDriver6RawCode = results."${item}Driver6RawCode"
-								state.appDriver1Name = results."${item}Driver1Name"
-								state.appDriver2Name = results."${item}Driver2Name"
-								state.appDriver3Name = results."${item}Driver3Name"
-								state.appDriver4Name = results."${item}Driver4Name"
-								state.appDriver5Name = results."${item}Driver5Name"
-								state.appDriver6Name = results."${item}Driver6Name"
+								state.appChild1RawCode = results."${item}Child1RawCode"
+                                if(!state.appChild1RawCode) state.appChild1RawCode = "-"
+                                
+                                state.appChild2RawCode = results."${item}Child2RawCode"
+                                if(!state.appChild2RawCode) state.appChild2RawCode = "-"
+                                
+                                state.appChild3RawCode = results."${item}Child3Raw3ode"
+                                if(!state.appChild3RawCode) state.appChild3RawCode = "-"
+                                
+                                state.appChild4RawCode = results."${item}Child4RawCode"
+                                if(!state.appChild4RawCode) state.appChild4RawCode = "-"
+                                
 								state.appDiscussion = results."${item}Discussion"
+                                if(!state.appDiscussion) state.appDiscussion = "-"
+                                
 								state.appUpdateNote = results."${item}UpdateNote"
+                                if(!state.appUpdateNote) state.appUpdateNote = "-"
+                                
+                                log.warn "This is what I got FROM JSON- appsName: ${state.appsName} - appParentVersion: ${state.appParentVersion} - appChild1Name: ${state.appChild1Name} - appChild1Version: ${state.appChild1Version}"
 							}
-                            
+
 							// Get Old Data from map
 							try {
                                 getAppNameHandler()
@@ -598,36 +595,35 @@ def appMapHandler(evt) {
                                     appName = it.key
                                     appVer = it.value
                                     if(logEnable) log.debug "Working on watchMap - dName: ${state.dName} - appName: ${appName} - appVer: ${appVer}"
-                                    if(traceEnable) log.trace "Working on: appName: ${appName} - does it contain - appChildName: ${state.appChildName}"
-                                    if(traceEnable) log.trace "This is what I got FROM MAP - appName: ${appName} - appVer: ${appVer}"
+                                   // if(traceEnable) log.trace "Working on: appName: ${appName} - does it contain - appChild1Name: ${state.appChild1Name}"
+                                   // if(traceEnable) log.trace "This is what I got FROM MAP - appName: ${appName} - appVer: ${appVer}"
                                     
                                     dName = state.dName.replace(" ", "")
                                     if(appName.contains("Parent") && appName.contains("${dName}")) state.oldAppParentVersion = appVer
                                     
-                    if(appName.contains("Child") && appName.contains("${state.appChildName}".replace(" ", ""))) state.oldAppChildVersion = appVer
-                    if(appName.contains("Child") && appName.contains("${state.appChild2Name}".replace(" ", ""))) state.oldAppChild2Version = appVer
-                    if(appName.contains("Child") && appName.contains("${state.appChild3Name}".replace(" ", ""))) state.oldAppChild3Version = appVer
-                    if(appName.contains("Child") && appName.contains("${state.appChild4Name}".replace(" ", ""))) state.oldAppChild4Version = appVer
+                    if(appName.contains("Child") && !appName.contains("Child2") && !appName.contains("Child3") && !appName.contains("Child4") 
+                       && appName.contains("${dName}")) state.oldAppChild1Version = appVer
+                                              
+                    if(appName.contains("Child2") && appName.contains("${dName}")) state.oldAppChild2Version = appVer
+                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild3Version = appVer
+                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild4Version = appVer
                                     
-                                    if(appName.contains("Driver") && appName.contains("${dName}")) state.oldAppDriverVersion = appVer
-								
-							        //	state.oldAppDriver1Version = state.oldDriver1Map.get(item)
-							        //	state.oldAppDriver2Version = state.oldDriver2Map.get(item)
-							        //	state.oldAppDriver3Version = state.oldDriver3Map.get(item)
-							        //	state.oldAppDriver4Version = state.oldDriver4Map.get(item)
-							        //	state.oldAppDriver5Version = state.oldDriver5Map.get(item)
-							        //	state.oldAppDriver6Version = state.oldDriver6Map.get(item) 
+                                    if(!state.oldAppChild1Version) state.oldAppChild1Version = "-"
+                                    if(!state.oldAppChild2Version) state.oldAppChild2Version = "-"
+                                    if(!state.oldAppChild3Version) state.oldAppChild3Version = "-"
+                                    if(!state.oldAppChild4Version) state.oldAppChild4Version = "-"
+                                    
+                    if(traceEnable) log.trace "appName: ${appName} - appChild1Name: ${state.appChild1Name} - Does it contain?: ${appName.contains("${state.appChild1Name}".replace(" ", ""))}"
+                                    
                                 }
-                                if(traceEnable) log.trace "*** Sending to checkTheAppData - dName: ${dName} - appChildName: ${state.appChildName} - oldAppChildVersion: ${state.oldAppChildVersion}"
+                                if(traceEnable) log.trace "*** Sending to checkTheAppData - dName: ${dName} - appChild1Name: ${state.appChild1Name} - oldAppChild1Version: ${state.oldAppChild1Version}"
                                 if(state.aType == "App") checkTheAppData()
-							    //if(state.aType == "Driver") checkTheDriverData()
-                                
+							   
                                 state.oldAppParentVersion = ""
-                                state.oldAppChildVersion = ""
+                                state.oldAppChild1Version = ""
                                 state.oldAppChild2Version = ""
                                 state.oldAppChild3Version = ""
                                 state.oldAppChild4Version = ""
-                                state.oldAppDriverVersion = ""
 							}
 							catch (e) {
 								//if(logEnable) log.debug "***** In appMapHandler - Something went wrong!  *****"
@@ -655,13 +651,11 @@ def checkTheAppData() {
     
     if(state.oldAppParentVersion == "" || state.oldAppParentVersion == null) state.oldAppParentVersion = ""
     
-    if(state.oldAppChildVersion == null) state.oldAppChildVersion = ""
-    if(state.oldAppChild2Version == null) state.oldAppChild2Version = ""
-    if(state.oldAppChild3Version == null) state.oldAppChild3Version = ""
-    if(state.oldAppChild4Version == null) state.oldAppChild4Version = ""
-    
-    if(state.oldAppDriverVersion == "" || state.oldAppDriverVersion == null) state.oldAppDriverVersion = ""
-    
+    if(state.oldAppChild1Version == null) state.oldAppChild1Version = "-"
+    if(state.oldAppChild2Version == null) state.oldAppChild2Version = "-"
+    if(state.oldAppChild3Version == null) state.oldAppChild3Version = "-"
+    if(state.oldAppChild4Version == null) state.oldAppChild4Version = "-"
+
 	// Parent Check
 	if(logEnable) log.debug "Check Parent - old: ${state.oldAppParentVersion} vs. new: ${state.appParentVersion} +++++++++++++++++++++++"
 	if(state.oldAppParentVersion == state.appParentVersion){
@@ -676,19 +670,19 @@ def checkTheAppData() {
 	}
 							
 	// Child Check
-	if(state.oldAppChildVersion == state.appChildVersion){
+	if(state.oldAppChild1Version == state.appChild1Version){
 		childCheck = "no"
 		cnew = ""
-        if(state.appChildName) childShortName = state.appChildName.take(10)
-        else childShortName = "Child"
-		if(logEnable) log.warn "In checkTheData...Old Child Version: ${state.oldAppChildVersion} - No Update Available - New: ${state.appChildVersion}"
+        if(state.appChild1Name) childShortName = state.appChild1Name.take(10)
+        else childShortName = "Child 1"
+		if(logEnable) log.warn "In checkTheData...Old Child 1 Version: ${state.oldAppChild1Version} - No Update Available - New: ${state.appChild1Version}"
 	}
 	else {
 		childCheck = "yes"
 		cnew = "<span style='color:red'>NEW </span>"
-        if(state.appChildName) childShortName = state.appChildName.take(10)
-        else childShortName = "Child"
-		if(logEnable) log.warn "In checkTheData...Old Child Version: ${state.oldAppChildVersion} - Update Available! - New: ${state.appChildVersion}"
+        if(state.appChild1Name) childShortName = state.appChild1Name.take(10)
+        else childShortName = "Child 1"
+		if(logEnable) log.warn "In checkTheData...Old Child 1 Version: ${state.oldAppChild1Version} - Update Available! - New: ${state.appChild1Version}"
 	}
     if(state.oldAppChild2Version == state.appChild2Version){
 		childCheck2 = "no"
@@ -732,38 +726,34 @@ def checkTheAppData() {
         else child4ShortName = "Child 4"
 		if(logEnable) log.warn "In checkTheData...Old Child 4 Version: ${state.oldAppChild4Version} - Update Available! - New: ${state.appChild4Version}"
 	}
-    
-	// Driver Check
-	if(state.oldAppDriverVersion == state.appDriverVersion){
-		driverCheck = "no"
-		dnew = ""
-		if(logEnable) log.warn "In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - No Update Available - New: ${state.appDriverVersion}"
-	}
-	else {
-		driverCheck = "yes"
-		//dnew = "<span style='color:red'>NEW </span>"
-        dnew = ""
-		if(logEnable) log.warn "In checkTheData...Old Driver Version: ${state.oldAppDriverVersion} - Update Available!- New: ${state.appDriverVersion}"
-	}
-
+ 
 	if(state.appDiscussion) appDiscussion2 = "<a href='${state.appDiscussion}' target='_blank'>[App Discussion]</a>"
-	if(state.appParentRawCode) appParentRawCode2 = "<a href='${state.appParentRawCode}' target='_blank'>[Parent Raw Code]</a>"
-	if(state.appChildRawCode) appChildRawCode2 = "<a href='${state.appChildRawCode}' target='_blank'>[Child Raw Code]</a>"
-    if(state.appChild2RawCode) appChild2RawCode2 = "<a href='${state.appChild2RawCode}' target='_blank'>[Child Raw Code]</a>"
-    if(state.appChild3RawCode) appChild3RawCode2 = "<a href='${state.appChild3RawCode}' target='_blank'>[Child Raw Code]</a>"
-    if(state.appChild4RawCode) appChild4RawCode2 = "<a href='${state.appChild4RawCode}' target='_blank'>[Child Raw Code]</a>"
-    if(state.appDriverRawCode) appDriverRawCode2 = "<a href='${state.appDriverRawCode}' target='_blank'>[Driver Raw Code]</a>"
-    
+    if(state.appParentRawCode != "-") {
+        appParentRawCode2 = "<a href='${state.appParentRawCode}' target='_blank'>[Parent Raw Code]</a>"
+    } else appParentRawCode2 = "-"
+    if(state.appChild1RawCode != "-") {
+        appChild1RawCode2 = "<a href='${state.appChild1RawCode}' target='_blank'>[Child Raw Code]</a>"
+    } else appChild1RawCode2 = "-"
+    if(state.appChild2RawCode != "-") {
+        appChild2RawCode2 = "<a href='${state.appChild2RawCode}' target='_blank'>[Child Raw Code]</a>"
+    } else appChild2RawCode2 = "-"
+    if(state.appChild3RawCode != "-") {
+        appChild3RawCode2 = "<a href='${state.appChild3RawCode}' target='_blank'>[Child Raw Code]</a>"
+    } else appChild3RawCode2 = "-"
+    if(state.appChild4RawCode != "-") {
+        appChild4RawCode2 = "<a href='${state.appChild4RawCode}' target='_blank'>[Child Raw Code]</a>"
+    } else appChild4RawCode2 = "-"
+
     getAppNameHandler()
 		
 	if(parentCheck == "yes" || childCheck == "yes"|| childCheck2 == "yes" || childCheck3 == "yes"|| childCheck4 == "yes"){
 		if(state.dName != "Example") {
 			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>${childShortName}: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Github</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child: ${state.appChildVersion}</td><td width='32%'>Driver: ${state.appDriverVersion}</td></tr>"
-			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChildRawCode2}</td><td width='32%'>${dnew}${appDriverRawCode2}</td></tr>"
+			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>${childShortName}: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
+			state.appMap += "<tr><td width='36%'><i>Github</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child 1: ${state.appChild1Version}</td><td width='32%'> </td></tr>"
+			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChild1RawCode2}</td><td width='32%'> </td></tr>"
             
-            if(state.appChild2Version || state.appChild3Version || state.appChild4Version || state.oldAppChild2Version || state.oldAppChild3Version || state.oldAppChild4Version) {
+            if(state.appChild2Version != "-" || state.appChild3Version != "-" || state.appChild4Version != "-" || state.oldAppChild2Version != "-" || state.oldAppChild3Version != "-" || state.oldAppChild4Version != "-") {
                 state.appMap += "<tr><td colspan='3'> </td></tr>"
                 state.appMap += "<tr><td width='36%'>${child2ShortName}: ${state.oldAppChild2Version}</td><td width='32%'>${child3ShortName}: ${state.oldAppChild3Version}</td><td width='32%'>${child4ShortName}: ${state.oldAppChild4Version}</td></tr>"
 			    state.appMap += "<tr><td width='36%'>Child 2: ${state.appChild2Version}</td><td width='32%'>Child 3: ${state.appChild3Version}</td><td width='32%'>Child 4: ${state.appChild4Version}</td></tr>"
@@ -777,123 +767,7 @@ def checkTheAppData() {
 	}
 	if(state.dName != "Example") {
 		state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
-		state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChildVersion}</td><td width='32%'>Driver: ${state.oldAppDriverVersion}</td></tr>"
-		state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
-	}
-}
-
-def checkTheDriverData() {
-	// Driver1 Check
-	if(logEnable) log.debug "Check Driver 1 - old: ${state.oldAppDriver1Version} vs. new: ${state.appDriver1Version} +++++++++++++++++++++++"
-	if(state.oldAppDriver1Version == state.appDriver1Version){
-		driver1Check = "no"
-		d1new = ""
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver1 Version: ${state.oldAppDriver1Version} - No Update Available - New: ${state.appDriver1Version}"
-	}
-	else {
-		driver1Check = "yes"
-		d1new = "<span style='color:red'>NEW </span>"
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver1 Version: ${state.oldAppDriver1Version} - Update Available! - New: ${state.appDriver1Version}"
-	}
-	// Driver2 Check
-	if(logEnable) log.debug "Check Driver 2 - old: ${state.oldAppDriver2Version} vs. new: ${state.appDriver2Version} +++++++++++++++++++++++"
-	if(state.oldAppDriver2Version == state.appDriver2Version){
-		driver2Check = "no"
-		d2new = ""
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver2 Version: ${state.oldAppDriver2Version} - No Update Available - New: ${state.appDriver2Version}"
-	}
-	else {
-		driver2Check = "yes"
-		d2new = "<span style='color:red'>NEW </span>"
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver2 Version: ${state.oldAppDriver2Version} - Update Available! - New: ${state.appDriver2Version}"
-	}
-	// Driver3 Check
-	if(logEnable) log.debug "Check Driver 3 - old: ${state.oldAppDriver3Version} vs. new: ${state.appDriver3Version} +++++++++++++++++++++++"
-	if(state.oldAppDriver3Version == state.appDriver3Version){
-		driver3Check = "no"
-		d3new = ""
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver3 Version: ${state.oldAppDriver3Version} - No Update Available - New: ${state.appDriver3Version}"
-	}
-	else {
-		driver3Check = "yes"
-		d3new = "<span style='color:red'>NEW </span>"
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver3 Version: ${state.oldAppDriver3Version} - Update Available! - New: ${state.appDriver3Version}"
-	}
-	// Driver4 Check
-	if(logEnable) log.debug "Check Driver 4 - old: ${state.oldAppDriver4Version} vs. new: ${state.appDriver4Version} +++++++++++++++++++++++"
-	if(state.oldAppDriver4Version == state.appDriver4Version){
-		driver4Check = "no"
-		d4new = ""
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver4 Version: ${state.oldAppDriver4Version} - No Update Available - New: ${state.appDriver4Version}"
-	}
-	else {
-		driver4Check = "yes"
-		d4new = "<span style='color:red'>NEW </span>"
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver4 Version: ${state.oldAppDriver4Version} - Update Available! - New: ${state.appDriver4Version}"
-	}
-	// Driver5 Check
-	if(logEnable) log.debug "Check Driver 5 - old: ${state.oldAppDriver5Version} vs. new: ${state.appDriver5Version} +++++++++++++++++++++++"
-	if(state.oldAppDriver5Version == state.appDriver5Version){
-		driver5Check = "no"
-		d5new = ""
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver5 Version: ${state.oldAppDriver5Version} - No Update Available - New: ${state.appDriver5Version}"
-	}
-	else {
-		driver5Check = "yes"
-		d5new = "<span style='color:red'>NEW </span>"
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver5 Version: ${state.oldAppDriver5Version} - Update Available! - New: ${state.appDriver5Version}"
-	}
-	// Driver6 Check
-	if(logEnable) log.debug "Check Driver 6 - old: ${state.oldAppDriver6Version} vs. new: ${state.appDriver6Version} +++++++++++++++++++++++"
-	if(state.oldAppDriver6Version == state.appDriver6Version){
-		driver6Check = "no"
-		d6new = ""
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - No Update Available - New: ${state.appDriver6Version}"
-	}
-	else {
-		driver6Check = "yes"
-		d6new = "<span style='color:red'>NEW </span>"
-		if(logEnable) log.debug "In checkTheDriverData...Old Driver6 Version: ${state.oldAppDriver6Version} - Update Available! - New: ${state.appDriver6Version}"
-	}
-		if(state.appDiscussion) appDiscussion2 = "<a href='${state.appDiscussion}' target='_blank'>[Driver Discussion]</a>"
-		if(state.appDriver1RawCode) appDriver1RawCode2 = "<a href='${state.appDriver1RawCode}' target='_blank'>[Driver 1 Raw Code]</a>"
-		if(state.appDriver2RawCode) appDriver2RawCode2 = "<a href='${state.appDriver2RawCode}' target='_blank'>[Driver 2 Raw Code]</a>"	
-		if(state.appDriver3RawCode) appDriver3RawCode2 = "<a href='${state.appDriver3RawCode}' target='_blank'>[Driver 3 Raw Code]</a>"	
-		if(state.appDriver4RawCode) appDriver4RawCode2 = "<a href='${state.appDriver4RawCode}' target='_blank'>[Driver 4 Raw Code]</a>"
-		if(state.appDriver5RawCode) appDriver5RawCode2 = "<a href='${state.appDriver5RawCode}' target='_blank'>[Driver 5 Raw Code]</a>"
-		if(state.appDriver6RawCode) appDriver6RawCode2 = "<a href='${state.appDriver6RawCode}' target='_blank'>[Driver 6 Raw Code]</a>"
-		
-		getAppNameHandler()
-    
-	if(driver1Check == "yes" || driver2Check == "yes" || driver3Check == "yes" || driver4Check == "yes" || driver5Check == "yes" || driver6Check == "yes") {	
-		if(state.dName != "Example") {
-			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Driver:</i> ${state.appDriver1Name}</td><td width='32%'>${state.appDriver2Name}</td><td width='32%'>${state.appDriver3Name}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Installed</i>: Driver 1: ${state.oldAppDriver1Version}</td><td width='32%'>Driver 2: ${state.oldAppDriver2Version}</td><td width='32%'>Driver 3: ${state.oldAppDriver3Version}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Github</i>:  Driver 1: ${state.appDriver1Version}</td><td width='32%'>Driver 2: ${state.appDriver2Version}</td><td width='32%'>Driver 3: ${state.appDriver3Version}</td></tr>"
-			state.appMap += "<tr><td width='36%'>${d1new}${appDriver1RawCode2}</td><td width='32%'>${d2new}${appDriver2RawCode2}</td><td width='32%'>${d3new}${appDriver3RawCode2}</td></tr>"
-			if(state.appUpdateNote) { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
-			state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
-			
-			if(state.oldAppDriver4Version) {
-				state.appMap += "<tr><td width='36%'><i>Driver:</i> ${state.appDriver4Name}</td><td width='32%'>${state.appDriver5Name}</td><td width='32%'>${state.appDriver6Name}</td></tr>"
-				state.appMap += "<tr><td width='36%'><i>Installed</i>: Driver 4: ${state.oldAppDriver4Version}</td><td width='32%'>Driver 5: ${state.oldAppDriver5Version}</td><td width='32%'>Driver 6: ${state.oldAppDriver6Version}</td></tr>"
-				state.appMap += "<tr><td width='36%'><i>Github</i>:  Driver 4: ${state.appDriver4Version}</td><td width='32%'>Driver 5: ${state.appDriver5Version}</td><td width='32%'>Driver 6: ${state.appDriver6Version}</td></tr>"
-				state.appMap += "<tr><td width='36%'>${d4new}${appDriver4RawCode2}</td><td width='32%'>${d5new}${appDriver5RawCode2}</td><td width='32%'>${d6new}${appDriver6RawCode2}</td></tr>"
-				state.appMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
-			}
-			state.appMapDash += "<tr><td>${state.dName}</td></tr>"
-			state.appMapPhone += "${state.dName} has an update available \n"
-		}
-	}
-	if(state.dName != "Example") {
-		state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
-		state.appAllMap += "<tr><td width='36%'><i>Driver:</i> ${state.appDriver1Name}</td><td width='32%'>${state.appDriver2Name}</td><td width='32%'>${state.appDriver3Name}</td></tr>"
-		state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Driver 1: ${state.oldAppDriver1Version}</td><td width='32%'>Driver 2: ${state.oldAppDriver2Version}</td><td width='32%'>Driver 3: ${state.oldAppDriver3Version}</td></tr>"
-		if(state.oldAppDriver4Version) {
-			state.appAllMap += "<tr><td width='36%'><i>Driver:</i> ${state.appDriver4Name}</td><td width='32%'>${state.appDriver5Name}</td><td width='32%'>${state.appDriver6Name}</td></tr>"
-			state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Driver 4: ${state.oldAppDriver4Version}</td><td width='32%'>Driver 5: ${state.oldAppDriver5Version}</td><td width='32%'>Driver 6: ${state.oldAppDriver6Version}</td></tr>"
-		}
+		state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
 		state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 	}
 }
@@ -910,6 +784,29 @@ def tileHandler(evt) {
 
 def clearMaps() {
 	if(logEnable) log.debug "In clearMaps..."
+    //states
+    state.appParentVersion = "-"
+    state.appChild1Version = "-"
+    state.appChild2Version = "-"
+    state.appChild3Version = "-"
+    state.appChild4Version = "-"
+    
+    state.appChild1Name = "-"
+    state.appChild2Name = "-"
+    state.appChild3Name = "-"
+    state.appChild4Name = "-"
+  
+    state.appParentRawCode = "-"
+    
+    state.appChild1RawCode = "-"
+    state.appChild2RawCode = "-"
+    state.appChild3RawCode = "-"
+    state.appChild4RawCode = "-"
+    
+    state.appDiscussion = "-"
+    state.appUpdateNote = "-"
+
+    //Maps
 	state.appMap = [:]
 	state.appMap = ""
 	state.appAllMap = [:]
