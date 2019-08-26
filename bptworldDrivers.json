@@ -1,0 +1,8 @@
+{
+  "GitHubAuthor": "BPTWorld",
+  "GitHubMainURL": "https://github.com/bptworld/Hubitat",
+  "Drivers": "Driver Watchdog Driver",
+  
+  "DriverWatchdogDriverVersion": "v2.0.0",
+  
+}
