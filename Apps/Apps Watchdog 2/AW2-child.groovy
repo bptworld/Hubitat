@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.5 - 08/25/19 - Now you can select mutiple developers in one child app to truly get all your update notices together!
  *  V2.0.4 - 08/25/19 - Removed any code pertaining to 'drivers'. Squashed, smashed and swatted bugs.
  *  V2.0.3 - 08/25/19 - Code cleanup, squashing bugs! Working on changes suggested by @aaron, so things will look funny right now.
  *  V2.0.2 - 08/24/19 - Each Parent can now have up to 4 child apps. Working on a ton of bugs. There are still some to squash, sorry.
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.4"
+	state.version = "v2.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -76,6 +77,7 @@ preferences {
     page(name: "pageConfig")
 	page(name: "pageAppstoUpdate")
 	page(name: "pageCurrent")
+    page name: "developerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -91,54 +93,8 @@ def pageConfig() {
 			href "pageCurrent", title: "App Installed Report", description: "Click here to view the App Installed Report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Setup")) {
-			input "gitHubURL", "text", title: "URL for the GitHub to follow", required: true, submitOnChange: true
-			if(gitHubURL) {
-				gitHubCheck()
-				paragraph "${state.gitHubAuthor}"
-			}
-    		input "installedApps", "enum", title: "Select which apps you have installed", options: [
-				["${state.app01NoSpace}":"${state.app01}"],
-				["${state.app02NoSpace}":"${state.app02}"],
-				["${state.app03NoSpace}":"${state.app03}"],
-				["${state.app04NoSpace}":"${state.app04}"],
-				["${state.app05NoSpace}":"${state.app05}"],
-				["${state.app06NoSpace}":"${state.app06}"],
-				["${state.app07NoSpace}":"${state.app07}"],
-				["${state.app08NoSpace}":"${state.app08}"],
-				["${state.app09NoSpace}":"${state.app09}"],
-				["${state.app10NoSpace}":"${state.app10}"],
-				["${state.app11NoSpace}":"${state.app11}"],
-				["${state.app12NoSpace}":"${state.app12}"],
-				["${state.app13NoSpace}":"${state.app13}"],
-				["${state.app14NoSpace}":"${state.app14}"],
-				["${state.app15NoSpace}":"${state.app15}"],
-				["${state.app16NoSpace}":"${state.app16}"],
-				["${state.app17NoSpace}":"${state.app17}"],
-				["${state.app18NoSpace}":"${state.app18}"],
-				["${state.app19NoSpace}":"${state.app19}"],
-				["${state.app20NoSpace}":"${state.app20}"],
-                ["${state.app21NoSpace}":"${state.app21}"],
-                ["${state.app22NoSpace}":"${state.app22}"],
-                ["${state.app23NoSpace}":"${state.app23}"],
-                ["${state.app24NoSpace}":"${state.app24}"],
-                ["${state.app25NoSpace}":"${state.app25}"],
-                ["${state.app26NoSpace}":"${state.app26}"],
-                ["${state.app27NoSpace}":"${state.app27}"],
-                ["${state.app28NoSpace}":"${state.app28}"],
-                ["${state.app29NoSpace}":"${state.app29}"],
-                ["${state.app30NoSpace}":"${state.app30}"],
-                ["${state.app31NoSpace}":"${state.app31}"],
-                ["${state.app32NoSpace}":"${state.app32}"],
-                ["${state.app33NoSpace}":"${state.app33}"],
-                ["${state.app34NoSpace}":"${state.app34}"],
-                ["${state.app35NoSpace}":"${state.app35}"],
-                ["${state.app36NoSpace}":"${state.app36}"],
-                ["${state.app37NoSpace}":"${state.app37}"],
-                ["${state.app38NoSpace}":"${state.app38}"],
-                ["${state.app39NoSpace}":"${state.app39}"],
-                ["${state.app40NoSpace}":"${state.app40}"],
-			], required: true, multiple: true, submitOnChange: true
-		}
+            href "developerOptions", title:"Select Developers to follow here", description:"Click here to setup Developer Options"
+        }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 			input "timeToRun", "time", title: "Check Apps at this time daily", required: true
 			input "isDataDevice", "capability.switch", title: "Turn this device on if there is data to report", required: false, multiple: false
@@ -154,6 +110,58 @@ def pageConfig() {
 	}
 }
 
+def developerOptions(){
+    dynamicPage(name: "developerOptions", title: "Developer Options", install: false, uninstall:false){
+		section(getFormat("header-green", "${getImage("Blank")}"+" Developer 1 Options")) {
+			input "gitHubURL1", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+			if(gitHubURL1) {
+				gitHubCheck1()
+				paragraph "${state.gitHubAuthor1}"
+                state.values1 = "${state.gitHubApps1}".split(",")
+    		    input "installedApps1", "enum", title: "Select which apps you have installed", options: state.values1, required: true, multiple: true, submitOnChange: true
+            }
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Developer 2 Options")) {
+            input "gitHubURL2", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            if(gitHubURL2) {
+				gitHubCheck2()
+				paragraph "${state.gitHubAuthor2}"
+                state.values2 = "${state.gitHubApps2}".split(",")
+    		    input "installedApps2", "enum", title: "Select which apps you have installed", options: state.values2, required: true, multiple: true, submitOnChange: true
+            }
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Developer 3 Options")) {
+            input "gitHubURL3", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            if(gitHubURL3) {
+				gitHubCheck3()
+				paragraph "${state.gitHubAuthor3}"
+                state.values3 = "${state.gitHubApps3}".split(",")
+    		    input "installedApps3", "enum", title: "Select which apps you have installed", options: state.values3, required: true, multiple: true, submitOnChange: true
+            }
+        }   
+        section(getFormat("header-green", "${getImage("Blank")}"+" Developer 4 Options")) {
+            input "gitHubURL4", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            if(gitHubURL4) {
+				gitHubCheck4()
+				paragraph "${state.gitHubAuthor4}"
+                state.values4 = "${state.gitHubApps4}".split(",")
+    		    input "installedApps4", "enum", title: "Select which apps you have installed", options: state.values4, required: true, multiple: true, submitOnChange: true
+            }
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Developer 5 Options")) {
+            input "gitHubURL5", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            if(gitHubURL5) {
+				gitHubCheck5()
+				paragraph "${state.gitHubAuthor5}"
+                state.values5 = "${state.gitHubApps5}".split(",")
+    		    input "installedApps5", "enum", title: "Select which apps you have installed", options: state.values5, required: true, multiple: true, submitOnChange: true
+            }
+        }
+        
+        state.allApps = [installedApps1,installedApps2,installedApps3,installedApps4].flatten().findAll{it} 
+    }
+}
+            
 def pageAppstoUpdate(params) {
 	dynamicPage(name: "pageAppstoUpdate", title: "Apps Watchdog - Apps to Update", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
 		appMapHandler()
@@ -165,12 +173,12 @@ def pageAppstoUpdate(params) {
 		if(state.appMap) {
 			section() {
 				updateMap = "<table width='100%'>${state.appMap}</table>"
-				paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps with an update</h2><a href='${state.gitHubMainURL}' target='_blank'>${state.gitHubAuthor}</a>"
+				paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps with an update</h2>"
 				paragraph "${updateMap}"
         	}
 		} else {
 			section() { 
-				paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps with an update</h2><br><a href='${state.gitHubMainURL}' target='_blank'>${state.gitHubAuthor}</a>"
+				paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps with an update</h2>"
 				paragraph "All apps are up to date"
 			}
 		}
@@ -180,10 +188,9 @@ def pageAppstoUpdate(params) {
 def pageCurrent(params) {
 	dynamicPage(name: "pageCurrent", title: "Apps Watchdog - App Versions", nextPage: null, install: false, uninstall: false, refreshInterval:0) {
 		appMapHandler()
-		
 		section() {
 			updateAllMap = "<table width='100%'>${state.appAllMap}</table>"
-			paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps - All</h2><a href='${state.gitHubMainURL}' target='_blank'>${state.gitHubAuthor}</a>"
+			paragraph "<h2 style='color:#1A77C9;font-weight: bold'>Apps - All</h2>"
 			paragraph "${updateAllMap}"
         }
 	}
@@ -207,315 +214,148 @@ def initialize() {
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
-def gitHubCheck() {
-	def params = [uri: "${gitHubURL}", contentType: "application/json"]
-	if(logEnable) log.debug "In gitHubCheck... About to 'try' - ${gitHubURL}"
+def gitHubCheck1() {
+	def params = [uri: "${gitHubURL1}", contentType: "application/json"]
+	if(logEnable) log.debug "In gitHubCheck1... About to 'try' - ${gitHubURL1}"
     try {
 		httpGet(params) { response ->
 			results = response.data
-			state.gitHubAuthor = "GitHub: ${results.GitHubAuthor}"
-			state.gitHubMainURL = results.GitHubMainURL
-			state.app01 = results.App01
-			state.app02 = results.App02
-			state.app03 = results.App03
-			state.app04 = results.App04
-			state.app05 = results.App05
-			state.app06 = results.App06
-			state.app07 = results.App07
-			state.app08 = results.App08
-			state.app09 = results.App09
-			state.app10 = results.App10
-			state.app11 = results.App11
-			state.app12 = results.App12
-			state.app13 = results.App13
-			state.app14 = results.App14
-			state.app15 = results.App15
-			state.app16 = results.App16
-			state.app17 = results.App17
-			state.app18 = results.App18
-			state.app19 = results.App19
-			state.app20 = results.App20
-            state.app21 = results.App21
-            state.app22 = results.App22
-            state.app23 = results.App23
-            state.app24 = results.App24
-            state.app25 = results.App25
-            state.app26 = results.App26
-            state.app27 = results.App27
-            state.app28 = results.App28
-            state.app29 = results.App29
-            state.app30 = results.App30
-            state.app31 = results.App31
-            state.app32 = results.App32
-            state.app33 = results.App33
-            state.app34 = results.App34
-            state.app35 = results.App35
-            state.app36 = results.App36
-            state.app37 = results.App37
-            state.app38 = results.App38
-            state.app39 = results.App39
-            state.app40 = results.App40
-			
-			if(state.app01) {
-				state.app01NoSpace = state.app01.replace(" ", "")
-			} else { 
-				state.app01NoSpace = "NoApp"
-				state.app01 = "No App"
-			}
-			if(state.app02) {
-				state.app02NoSpace = state.app02.replace(" ", "")
-			} else { 
-				state.app02NoSpace = "NoApp"
-				state.app02 = "No App"
-			}
-			if(state.app03) { 
-				state.app03NoSpace = state.app03.replace(" ", "")
-			} else { 
-				state.app03NoSpace = "NoApp"
-				state.app03 = "No App"
-			}
-			if(state.app04) {
-				state.app04NoSpace = state.app04.replace(" ", "")
-			} else { 
-				state.app04NoSpace = "NoApp"
-				state.app04 = "No App"
-			}
-			if(state.app05) {
-				state.app05NoSpace = state.app05.replace(" ", "")
-			} else { 
-				state.app05NoSpace = "NoApp"
-				state.app05 = "No App"
-			}
-			if(state.app06) {
-				state.app06NoSpace = state.app06.replace(" ", "")
-			} else { 
-				state.app06NoSpace = "NoApp"
-				state.app06 = "No App"
-			}
-			if(state.app07) {
-				state.app07NoSpace = state.app07.replace(" ", "")
-			} else { 
-				state.app07NoSpace = "NoApp"
-				state.app07 = "No App"
-			}
-			if(state.app08) {
-				state.app08NoSpace = state.app08.replace(" ", "")
-			} else { 
-				state.app08NoSpace = "NoApp"
-				state.app08 = "No App"
-			}
-			if(state.app09) {
-				state.app09NoSpace = state.app09.replace(" ", "")
-			} else { 
-				state.app09NoSpace = "NoApp"
-				state.app09 = "No App"
-			}
-			if(state.app10) {
-				state.app10NoSpace = state.app10.replace(" ", "")
-			} else { 
-				state.app10NoSpace = "NoApp"
-				state.app10 = "No App"
-			}
-			if(state.app11) {
-				state.app11NoSpace = state.app11.replace(" ", "")
-			} else { 
-				state.app11NoSpace = "NoApp"
-				state.app11 = "No App"
-			}
-			if(state.app12) {
-				state.app12NoSpace = state.app12.replace(" ", "")
-			} else { 
-				state.app12NoSpace = "NoApp"
-				state.app12 = "No App"
-			}
-			if(state.app13) {
-				state.app13NoSpace = state.app13.replace(" ", "")
-			} else { 
-				state.app13NoSpace = "NoApp"
-				state.app13 = "No App"
-			}
-			if(state.app14) {
-				state.app14NoSpace = state.app14.replace(" ", "")
-			} else { 
-				state.app14NoSpace = "NoApp"
-				state.app14 = "No App"
-			}
-			if(state.app15) {
-				state.app15NoSpace = state.app15.replace(" ", "")
-			} else { 
-				state.app15NoSpace = "NoApp"
-				state.app15 = "No App"
-			}
-			if(state.app16) {
-				state.app16NoSpace = state.app16.replace(" ", "")
-			} else { 
-				state.app16NoSpace = "NoApp"
-				state.app16 = "No App"
-			}
-			if(state.app17) {
-				state.app17NoSpace = state.app17.replace(" ", "")
-			} else { 
-				state.app17NoSpace = "NoApp"
-				state.app17 = "No App"
-			}
-			if(state.app18) {
-				state.app18NoSpace = state.app18.replace(" ", "")
-			} else { 
-				state.app18NoSpace = "NoApp"
-				state.app18 = "No App"
-			}
-			if(state.app19) {
-				state.app19NoSpace = state.app19.replace(" ", "")
-			} else { 
-				state.app19NoSpace = "NoApp"
-				state.app19 = "No App"
-			}
-			if(state.app20) {
-				state.app20NoSpace = state.app20.replace(" ", "")
-			} else { 
-				state.app20NoSpace = "NoApp"
-				state.app20 = "No App"
-			}
-            if(state.app21) {
-				state.app21NoSpace = state.app21.replace(" ", "")
-			} else { 
-				state.app21NoSpace = "NoApp"
-				state.app21 = "No App"
-			}
-            if(state.app22) {
-				state.app22NoSpace = state.app22.replace(" ", "")
-			} else { 
-				state.app22NoSpace = "NoApp"
-				state.app22 = "No App"
-			}
-            if(state.app23) {
-				state.app23NoSpace = state.app23.replace(" ", "")
-			} else { 
-				state.app23NoSpace = "NoApp"
-				state.app23 = "No App"
-			}
-            if(state.app24) {
-				state.app24NoSpace = state.app24.replace(" ", "")
-			} else { 
-				state.app24NoSpace = "NoApp"
-				state.app24 = "No App"
-			}
-            if(state.app25) {
-				state.app25NoSpace = state.app25.replace(" ", "")
-			} else { 
-				state.app25NoSpace = "NoApp"
-				state.app25 = "No App"
-			}
-            if(state.app26) {
-				state.app26NoSpace = state.app26.replace(" ", "")
-			} else { 
-				state.app26NoSpace = "NoApp"
-				state.app26 = "No App"
-			}
-            if(state.app27) {
-				state.app27NoSpace = state.app27.replace(" ", "")
-			} else { 
-				state.app27NoSpace = "NoApp"
-				state.app27 = "No App"
-			}
-            if(state.app28) {
-				state.app28NoSpace = state.app28.replace(" ", "")
-			} else { 
-				state.app28NoSpace = "NoApp"
-				state.app28 = "No App"
-			}
-            if(state.app29) {
-				state.app29NoSpace = state.app29.replace(" ", "")
-			} else { 
-				state.app29NoSpace = "NoApp"
-				state.app29 = "No App"
-			}
-            if(state.app30) {
-				state.app30NoSpace = state.app30.replace(" ", "")
-			} else { 
-				state.app30NoSpace = "NoApp"
-				state.app30= "No App"
-			}
-            if(state.app31) {
-				state.app31NoSpace = state.app31.replace(" ", "")
-			} else { 
-				state.app31NoSpace = "NoApp"
-				state.app31= "No App"
-			}
-            if(state.app32) {
-				state.app32NoSpace = state.app32.replace(" ", "")
-			} else { 
-				state.app32NoSpace = "NoApp"
-				state.app32= "No App"
-			}
-            if(state.app33) {
-				state.app33NoSpace = state.app33.replace(" ", "")
-			} else { 
-				state.app33NoSpace = "NoApp"
-				state.app33= "No App"
-			}
-            if(state.app34) {
-				state.app34NoSpace = state.app34.replace(" ", "")
-			} else { 
-				state.app34NoSpace = "NoApp"
-				state.app34= "No App"
-			}
-            if(state.app35) {
-				state.app35NoSpace = state.app35.replace(" ", "")
-			} else { 
-				state.app35NoSpace = "NoApp"
-				state.app35= "No App"
-			}
-            if(state.app36) {
-				state.app36NoSpace = state.app36.replace(" ", "")
-			} else { 
-				state.app36NoSpace = "NoApp"
-				state.app36= "No App"
-			}
-            if(state.app37) {
-				state.app37NoSpace = state.app37.replace(" ", "")
-			} else { 
-				state.app37NoSpace = "NoApp"
-				state.app37= "No App"
-			}
-            if(state.app38) {
-				state.app38NoSpace = state.app38.replace(" ", "")
-			} else { 
-				state.app38NoSpace = "NoApp"
-				state.app38= "No App"
-			}
-            if(state.app39) {
-				state.app39NoSpace = state.app39.replace(" ", "")
-			} else { 
-				state.app39NoSpace = "NoApp"
-				state.app39= "No App"
-			}
-            if(state.app40) {
-				state.app40NoSpace = state.app40.replace(" ", "")
-			} else { 
-				state.app40NoSpace = "NoApp"
-				state.app40= "No App"
-			}
-		}
+			state.gitHubAuthor1 = "${results.GitHubAuthor}"
+			state.gitHubMainURL1 = results.GitHubMainURL
+            state.gitHubApps1 = results.Apps
+        }
 	} 
     catch (e) {
-        log.info "Warning:  GitHub URL not found"
-		state.gitHubAuthor = "GitHub: Not found"
+        log.info "Warning:  GitHub URL 1 not found"
+		state.gitHubAuthor1 = "GitHub: Not found"
+    }
+}
+
+def gitHubCheck2() {
+	def params = [uri: "${gitHubURL2}", contentType: "application/json"]
+	if(logEnable) log.debug "In gitHubCheck2... About to 'try' - ${gitHubURL2}"
+    try {
+		httpGet(params) { response ->
+			results = response.data
+			state.gitHubAuthor2 = "${results.GitHubAuthor}"
+			state.gitHubMainURL2 = results.GitHubMainURL
+            state.gitHubApps2 = results.Apps
+        }
+	} 
+    catch (e) {
+        log.info "Warning:  GitHub URL 2 not found"
+		state.gitHubAuthor2 = "GitHub: Not found"
+    }
+}
+
+def gitHubCheck3() {
+	def params = [uri: "${gitHubURL3}", contentType: "application/json"]
+	if(logEnable) log.debug "In gitHubCheck3... About to 'try' - ${gitHubURL3}"
+    try {
+		httpGet(params) { response ->
+			results = response.data
+			state.gitHubAuthor3 = "${results.GitHubAuthor}"
+			state.gitHubMainURL3 = results.GitHubMainURL
+            state.gitHubApps3 = results.Apps
+        }
+	} 
+    catch (e) {
+        log.info "Warning:  GitHub URL 3 not found"
+		state.gitHubAuthor3 = "GitHub: Not found"
+    }
+}
+
+def gitHubCheck4() {
+	def params = [uri: "${gitHubURL4}", contentType: "application/json"]
+	if(logEnable) log.debug "In gitHubCheck4... About to 'try' - ${gitHubURL4}"
+    try {
+		httpGet(params) { response ->
+			results = response.data
+			state.gitHubAuthor4 = "${results.GitHubAuthor}"
+			state.gitHubMainURL4 = results.GitHubMainURL
+            state.gitHubApps4 = results.Apps
+        }
+	} 
+    catch (e) {
+        log.info "Warning:  GitHub URL 4 not found"
+		state.gitHubAuthor4 = "GitHub: Not found"
+    }
+}
+
+def gitHubCheck5() {
+	def params = [uri: "${gitHubURL5}", contentType: "application/json"]
+	if(logEnable) log.debug "In gitHubCheck5... About to 'try' - ${gitHubURL5}"
+    try {
+		httpGet(params) { response ->
+			results = response.data
+			state.gitHubAuthor5 = "${results.GitHubAuthor}"
+			state.gitHubMainURL5 = results.GitHubMainURL
+            state.gitHubApps5 = results.Apps
+        }
+	} 
+    catch (e) {
+        log.info "Warning:  GitHub URL 5 not found"
+		state.gitHubAuthor5 = "GitHub: Not found"
     }
 }
 
 def appMapHandler(evt) {
 	if(logEnable) log.debug "In appMapHandler..."
 			clearMaps()
-			if(installedApps) {
-				installedApps.each { item ->
+			if(state.allApps) {
+				state.allApps.each { item ->
 					state.appsName = item
-					if(logEnable) log.debug "----------- Starting App: ${item} -----------"
-					
-					def params = [uri: "${gitHubURL}", contentType: "application/json"]
-					if(logEnable) log.debug "In appMapHandler... About to 'try' - ${item}"
+					if(traceEnable) log.trace "----------- Starting App: ${item} -----------"
+                    
+                    if(installedApps1) {                       
+                        def gitHub1 = installedApps1.toListString()
+                        if(gitHub1.contains("${item}")) {
+                            state.params = [uri: "${gitHubURL1}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor1
+                            state.authorMainURL = state.gitHubMainURL1
+                            if(traceEnable) log.trace "1 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
+                        } else log.trace "1 - No Match"
+                    } else
+                    if(installedApps2) {
+                        def gitHub2 = installedApps2.toListString()
+                        if(gitHub2.contains("${state.appsName}")) {
+                            state.params = [uri: "${gitHubURL2}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor2
+                            state.authorMainURL = state.gitHubMainURL2
+                            if(traceEnable) log.trace "2 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
+                        } else log.trace "2 - No Match"
+                    } else
+                    if(installedApps3) {
+                        state.gitHub3 = installedApps1.toListString()
+                        if(gitHub3.contains("${state.appsName}")) {
+                            def params = [uri: "${gitHubURL3}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor3
+                            state.authorMainURL = state.gitHubMainURL3
+                            if(traceEnable) log.trace "3 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
+                        } else log.trace "3 - No Match"
+                    } else
+                    if(installedApps4) {
+                        def gitHub4 = installedApps1.toListString()
+                        if(gitHub4.contains("${state.appsName}")) {
+                            state.params = [uri: "${gitHubURL4}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor4
+                            state.authorMainURL = state.gitHubMainURL4
+                            if(traceEnable) log.trace "4 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
+                        } else log.trace "4 - No Match"
+                    } else
+                    if(installedApps5) {
+                        def gitHub5 = installedApps1.toListString()
+                        if(gitHub5.contains("${state.appsName}")) {
+                            state.params = [uri: "${gitHubURL5}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor5
+                            state.authorMainURL = state.gitHubMainURL5
+                            if(traceEnable) log.trace "5 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
+                        } else log.trace "5 - No Match"
+                    }
+              
+					if(traceEnable) log.trace "In appMapHandler... About to 'try' - ${item}"
        				try {
-						httpGet(params) { response ->
+						httpGet(state.params) { response ->
 							results = response.data
 					
 							state.aType = results."${item}Type"
@@ -569,8 +409,6 @@ def appMapHandler(evt) {
                                 
 								state.appUpdateNote = results."${item}UpdateNote"
                                 if(!state.appUpdateNote) state.appUpdateNote = "-"
-                                
-                                log.warn "This is what I got FROM JSON- appsName: ${state.appsName} - appParentVersion: ${state.appParentVersion} - appChild1Name: ${state.appChild1Name} - appChild1Version: ${state.appChild1Version}"
 							}
 
 							// Get Old Data from map
@@ -595,28 +433,20 @@ def appMapHandler(evt) {
                                     appName = it.key
                                     appVer = it.value
                                     if(logEnable) log.debug "Working on watchMap - dName: ${state.dName} - appName: ${appName} - appVer: ${appVer}"
-                                   // if(traceEnable) log.trace "Working on: appName: ${appName} - does it contain - appChild1Name: ${state.appChild1Name}"
-                                   // if(traceEnable) log.trace "This is what I got FROM MAP - appName: ${appName} - appVer: ${appVer}"
-                                    
                                     dName = state.dName.replace(" ", "")
                                     if(appName.contains("Parent") && appName.contains("${dName}")) state.oldAppParentVersion = appVer
                                     
-                    if(appName.contains("Child") && !appName.contains("Child2") && !appName.contains("Child3") && !appName.contains("Child4") 
-                       && appName.contains("${dName}")) state.oldAppChild1Version = appVer
-                                              
-                    if(appName.contains("Child2") && appName.contains("${dName}")) state.oldAppChild2Version = appVer
-                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild3Version = appVer
-                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild4Version = appVer
+                                    if(appName.contains("Child") && !appName.contains("Child2") && !appName.contains("Child3") && !appName.contains("Child4") && appName.contains("${dName}")) state.oldAppChild1Version = appVer                       
+                                    if(appName.contains("Child2") && appName.contains("${dName}")) state.oldAppChild2Version = appVer
+                                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild3Version = appVer
+                                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild4Version = appVer
                                     
                                     if(!state.oldAppChild1Version) state.oldAppChild1Version = "-"
                                     if(!state.oldAppChild2Version) state.oldAppChild2Version = "-"
                                     if(!state.oldAppChild3Version) state.oldAppChild3Version = "-"
                                     if(!state.oldAppChild4Version) state.oldAppChild4Version = "-"
-                                    
-                    if(traceEnable) log.trace "appName: ${appName} - appChild1Name: ${state.appChild1Name} - Does it contain?: ${appName.contains("${state.appChild1Name}".replace(" ", ""))}"
-                                    
                                 }
-                                if(traceEnable) log.trace "*** Sending to checkTheAppData - dName: ${dName} - appChild1Name: ${state.appChild1Name} - oldAppChild1Version: ${state.oldAppChild1Version}"
+
                                 if(state.aType == "App") checkTheAppData()
 							   
                                 state.oldAppParentVersion = ""
@@ -624,9 +454,10 @@ def appMapHandler(evt) {
                                 state.oldAppChild2Version = ""
                                 state.oldAppChild3Version = ""
                                 state.oldAppChild4Version = ""
+                                state.params = ""
 							}
 							catch (e) {
-								//if(logEnable) log.debug "***** In appMapHandler - Something went wrong!  *****"
+								//if(logEnable) log.trace "***** In appMapHandler - Something went wrong!  *****"
                                 if(logEnable) log.error "${e}"
 							}
 						}
@@ -634,7 +465,7 @@ def appMapHandler(evt) {
        			 	catch (e) {
         				log.error "Error:  $e"
     				}
-					if(logEnable) log.debug "----------- End App: ${item} -----------"		 
+					if(traceEnable) log.debug "----------- End App: ${item} -----------"		 
 				}		
 		}
 	if(maintSwitch2 != true) {
@@ -748,7 +579,7 @@ def checkTheAppData() {
 		
 	if(parentCheck == "yes" || childCheck == "yes"|| childCheck2 == "yes" || childCheck3 == "yes"|| childCheck4 == "yes"){
 		if(state.dName != "Example") {
-			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
+			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>${childShortName}: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
 			state.appMap += "<tr><td width='36%'><i>Github</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child 1: ${state.appChild1Version}</td><td width='32%'> </td></tr>"
 			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChild1RawCode2}</td><td width='32%'> </td></tr>"
@@ -766,7 +597,7 @@ def checkTheAppData() {
 		}
 	}
 	if(state.dName != "Example") {
-		state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b></td><td width='25%'>${appDiscussion2}</td></tr>"
+		state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
 		state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
 		state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 	}
