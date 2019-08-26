@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.6 - 08/26/19 - Developers can now be selected from a dropdown box.
  *  V2.0.5 - 08/25/19 - Now you can select mutiple developers in one child app to truly get all your update notices together!
  *  V2.0.4 - 08/25/19 - Removed any code pertaining to 'drivers'. Squashed, smashed and swatted bugs.
  *  V2.0.3 - 08/25/19 - Code cleanup, squashing bugs! Working on changes suggested by @aaron, so things will look funny right now.
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.5"
+	state.version = "v2.0.6"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -74,9 +75,9 @@ definition(
 )
 
 preferences {
-    page(name: "pageConfig")
-	page(name: "pageAppstoUpdate")
-	page(name: "pageCurrent")
+    page name: "pageConfig"
+	page name: "pageAppstoUpdate", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+	page name: "pageCurrent", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "developerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
@@ -113,7 +114,10 @@ def pageConfig() {
 def developerOptions(){
     dynamicPage(name: "developerOptions", title: "Developer Options", install: false, uninstall:false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Developer 1 Options")) {
-			input "gitHubURL1", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            input "gitHubURL1", "enum", title: "Select a Developer to follow", required: false, multiple: false, submitOnChange: true, options: [
+                ["https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json":"BPTWorld"],
+                ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
+            ]
 			if(gitHubURL1) {
 				gitHubCheck1()
 				paragraph "${state.gitHubAuthor1}"
@@ -122,7 +126,10 @@ def developerOptions(){
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 2 Options")) {
-            input "gitHubURL2", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            input "gitHubURL2", "enum", title: "Select a Developer to follow", required: false, multiple: false, submitOnChange: true, options: [
+                ["https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json":"BPTWorld"],
+                ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
+            ]
             if(gitHubURL2) {
 				gitHubCheck2()
 				paragraph "${state.gitHubAuthor2}"
@@ -130,8 +137,12 @@ def developerOptions(){
     		    input "installedApps2", "enum", title: "Select which apps you have installed", options: state.values2, required: true, multiple: true, submitOnChange: true
             }
         }
+/*  As needed...
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 3 Options")) {
-            input "gitHubURL3", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            input "gitHubURL3", "enum", title: "Select a Developer to follow", required: false, multiple: false, submitOnChange: true, options: [
+                ["https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json":"BPTWorld"],
+                ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
+            ]
             if(gitHubURL3) {
 				gitHubCheck3()
 				paragraph "${state.gitHubAuthor3}"
@@ -140,7 +151,10 @@ def developerOptions(){
             }
         }   
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 4 Options")) {
-            input "gitHubURL4", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            input "gitHubURL4", "enum", title: "Select a Developer to follow", required: false, multiple: false, submitOnChange: true, options: [
+                ["https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json":"BPTWorld"],
+                ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
+            ]
             if(gitHubURL4) {
 				gitHubCheck4()
 				paragraph "${state.gitHubAuthor4}"
@@ -149,7 +163,10 @@ def developerOptions(){
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 5 Options")) {
-            input "gitHubURL5", "text", title: "URL for the GitHub to follow", required: false, submitOnChange: true
+            input "gitHubURL5", "enum", title: "Select a Developer to follow", required: false, multiple: false, submitOnChange: true, options: [
+                ["https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json":"BPTWorld"],
+                ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
+            ]
             if(gitHubURL5) {
 				gitHubCheck5()
 				paragraph "${state.gitHubAuthor5}"
@@ -157,7 +174,7 @@ def developerOptions(){
     		    input "installedApps5", "enum", title: "Select which apps you have installed", options: state.values5, required: true, multiple: true, submitOnChange: true
             }
         }
-        
+*/
         state.allApps = [installedApps1,installedApps2,installedApps3,installedApps4].flatten().findAll{it} 
     }
 }
@@ -432,8 +449,8 @@ def appMapHandler(evt) {
                                 theMapS.each { it ->
                                     appName = it.key
                                     appVer = it.value
-                                    if(logEnable) log.debug "Working on watchMap - dName: ${state.dName} - appName: ${appName} - appVer: ${appVer}"
                                     dName = state.dName.replace(" ", "")
+                                    if(traceEnable) log.trace "Working on watchMap - Does appName: ${appName} contain dName: ${dName} - appVer: ${appVer}"
                                     if(appName.contains("Parent") && appName.contains("${dName}")) state.oldAppParentVersion = appVer
                                     
                                     if(appName.contains("Child") && !appName.contains("Child2") && !appName.contains("Child3") && !appName.contains("Child4") && appName.contains("${dName}")) state.oldAppChild1Version = appVer                       
@@ -465,7 +482,7 @@ def appMapHandler(evt) {
        			 	catch (e) {
         				log.error "Error:  $e"
     				}
-					if(traceEnable) log.debug "----------- End App: ${item} -----------"		 
+					if(traceEnable) log.trace "----------- End App: ${item} -----------"		 
 				}		
 		}
 	if(maintSwitch2 != true) {
