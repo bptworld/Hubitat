@@ -41,7 +41,7 @@
 
   "AppWatchdog2Type": "App",
   "AppWatchdog2ParentVersion": "v2.0.1",
-  "AppWatchdog2Child1Version": "v2.0.6",
+  "AppWatchdog2Child1Version": "v2.0.7",
   "AppWatchdog2Child1Name": "",
   "AppWatchdog2Child2Version": "",
   "AppWatchdog2Child2Name": "",
@@ -55,7 +55,7 @@
   "AppWatchdog2Child3RawCode": "",
   "AppWatchdog2Child4RawCode": "",
   "AppWatchdog2Discussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdog2UpdateNote": "V2.0.6 - 08/26/19 - Developers can now be selected from a dropdown box.",
+  "AppWatchdog2UpdateNote": "V2.0.7 - 08/26/19 - Bug fixes",
 
   "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v2.0.0",
