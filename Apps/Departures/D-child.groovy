@@ -1,5 +1,5 @@
 /**
- *  ****************  Departures Child App  ****************
+ *  ****************  Departures - Departures Child App  ****************
  *
  *  Design Usage:
  *  Let the rest of the house know when one or more people have left the area.
@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 08/26/19 - Now messages have an 'opening' and a 'closing' segment. Code additions from @Matthew, Thank you.
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.5 - 06/29/19 - Code cleanup
  *  V1.0.4 - 04/20/19 - Updated speaker/speech options
@@ -51,21 +52,20 @@ def setVersion(){
     // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "DeparturesChildVersion"
-	state.version = "v2.0.0"
+    state.appName = "DeparturesChild1Version"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
 
 definition(
-    name: "Departures Child",
+    name: "Departures - Departures Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Let the rest of the house know when one or more people have left the area.",
@@ -82,7 +82,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Departures</h2>", install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Departures - Departures</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
@@ -131,11 +131,11 @@ def pageConfig() {
 			}
     	}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
-			input(name: "oRandomG1", type: "bool", defaultValue: "false", title: "Random Pre-announcement 1?", description: "Random", submitOnChange: "true")
-			if(!oRandomG1) input "greeting1", "text", required: true, title: "Pre-announcement - 1 (am) - Single message", defaultValue: "Good Morning"
+			input(name: "oRandomG1", type: "bool", defaultValue: "false", title: "Random Time of day greeting 1?", description: "Random", submitOnChange: "true")
+			if(!oRandomG1) input "greeting1", "text", required: true, title: "Time of day greeting - 1 (am) - Single message", defaultValue: "Good Morning"
 			if(oRandomG1) {
-				input "greeting1", "text", title: "Random Pre-announcement - 1 (am) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
-				input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of random messages 1?", description: "List View", submitOnChange: "true")
+				input "greeting1", "text", title: "Random Time of day greeting - 1 (am) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of random Time of day greetings 1?", description: "List View", submitOnChange: "true")
 				if(oG1List) {
 					def valuesG1 = "${greeting1}".split(";")
 					listMapG1 = ""
@@ -144,11 +144,11 @@ def pageConfig() {
 				}
 			}
 			paragraph "<hr>"
-			input(name: "oRandomG2", type: "bool", defaultValue: "false", title: "Random Pre-announcement 2?", description: "Random", submitOnChange: "true")
-			if(!oRandomG2) input "greeting2", "text", required: true, title: "Pre-announcement - 2 (pm before 6) - Single message", defaultValue: "Good Afternoon"
+			input(name: "oRandomG2", type: "bool", defaultValue: "false", title: "Random Time of day greeting 2?", description: "Random", submitOnChange: "true")
+			if(!oRandomG2) input "greeting2", "text", required: true, title: "Time of day greeting - 2 (pm before 6) - Single message", defaultValue: "Good Afternoon"
 			if(oRandomG2) {
-				input "greeting2", "text", title: "Random Pre-announcement - 2 (pm before 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
-				input(name: "oG2List", type: "bool", defaultValue: "false", title: "Show a list view of the random messages 2?", description: "List View", submitOnChange: "true")
+				input "greeting2", "text", title: "Random Time of day greeting - 2 (pm before 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG2List", type: "bool", defaultValue: "false", title: "Show a list view of the random Time of day greetings 2?", description: "List View", submitOnChange: "true")
 				if(oG2List) {
 					def valuesG2 = "${greeting2}".split(";")
 					listMapG2 = ""
@@ -157,11 +157,11 @@ def pageConfig() {
 				}
 			}
 			paragraph "<hr>"
-			input(name: "oRandomG3", type: "bool", defaultValue: "false", title: "Random Pre-announcement 3?", description: "Random", submitOnChange: "true")
-			if(!oRandomG3) input "greeting3", "text", required: true, title: "Pre-announcement - 3 (pm after 6) - Single message", defaultValue: "Good Evening"
+			input(name: "oRandomG3", type: "bool", defaultValue: "false", title: "Random Time of day greeting 3?", description: "Random", submitOnChange: "true")
+			if(!oRandomG3) input "greeting3", "text", required: true, title: "Time of day greeting - 3 (pm after 6) - Single message", defaultValue: "Good Evening"
 			if(oRandomG3) {
-				input "greeting3", "text", title: "Random Pre-announcement - 3 (pm after 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
-				input(name: "oG3List", type: "bool", defaultValue: "false", title: "Show a list view of the random messages 3?", description: "List View", submitOnChange: "true")
+				input "greeting3", "text", title: "Random Time of day greeting - 3 (pm after 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG3List", type: "bool", defaultValue: "false", title: "Show a list view of the Time of day greetings 3?", description: "List View", submitOnChange: "true")
 				if(oG3List) {
 					def valuesG3 = "${greeting3}".split(";")
 					listMapG3 = ""
@@ -170,19 +170,28 @@ def pageConfig() {
 				}
 			}
 			paragraph "<hr>"
-			input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Message?", description: "Random", submitOnChange: "true")
-			paragraph "<u>Optional wildcards:</u><br>%greeting% - returns a pre-announcement based on time of day.<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
-			if(!oRandom) input "message", "text", title: "Message to be spoken - Single message",  required: true
+			input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
+			paragraph "<u>Optional wildcards:</u><br>%greeting% - returns a greeting based on time of day.<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors<br>Message constructed as 'Opening message' + %name% + '%has_have%' + 'Closing message'"
+			if(!oRandom) input "omessage", "text", title: "Opening message to be spoken - Single message",  required: true
+            if(!oRandom) input "cmessage", "text", title: "Closing message to be spoken - Single message",  required: true
 			if(oRandom) {
-				input "message", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-				input(name: "oMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
+				input "omessage", "text", title: "Opening message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				input(name: "oMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
 				if(oMsgList) {
-					def values = "${message}".split(";")
-					listMap = ""
-    				values.each { item -> listMap += "${item}<br>"}
-					paragraph "${listMap}"
+					def ovalues = "${omessage}".split(";")
+					olistMap = ""
+    				ovalues.each { item -> olistMap += "${item}<br>"}
+					paragraph "${olistMap}"
 				}
-			}
+                input "cmessage", "text", title: "Closing message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				input(name: "cMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the closing messages?", description: "List View", submitOnChange: "true")
+				if(cMsgList) {
+					def cvalues = "${cmessage}".split(";")
+					clistMap = ""
+    				cvalues.each { item -> clistMap += "${item}<br>"}
+					paragraph "${clistMap}"
+				}
+			}            
 		}
 		section() {
 			paragraph "This next option is so the app can pickup if any other sensors become 'not present' around the same time."
@@ -217,6 +226,8 @@ def initialize() {
 	subscribe(presenceSensor3, "presence", checkAllHandler)
 	subscribe(presenceSensor4, "presence", checkAllHandler)
 	subscribe(presenceSensor5, "presence", checkAllHandler)
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def checkAllHandler(evt) {
@@ -482,14 +493,20 @@ def checkTime() {
 def messageHandler() {
 	if(logEnable) log.debug "In messageHandler..."
 	if(oRandom) {
-		def values = "${message}".split(";")
-		vSize = values.size()
-		count = vSize.toInteger()
-    	def randomKey = new Random().nextInt(count)
-		theMessage = values[randomKey]
-		if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}"
+		def ovalues = "${omessage}".split(";")
+		ovSize = ovalues.size()
+		ocount = ovSize.toInteger()
+    	def orandomKey = new Random().nextInt(ocount)
+
+        def cvalues = "${cmessage}".split(";")
+		cvSize = cvalues.size()
+		ccount = cvSize.toInteger()
+    	def crandomKey = new Random().nextInt(ccount)
+
+		theMessage = ovalues[orandomKey] + ' %name%. %name% %has_have% ' + cvalues[crandomKey]
+		if(logEnable) log.debug "In messageHandler - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}; Random - cvSize: ${cvSize}, crandomKey: ${crandomKey}, theMessage: ${theMessage}"
 	} else {
-		theMessage = "${message}"
+		theMessage = "${omessage} %name%. %name% %has_have% ${cmessage}"
 		if(logEnable) log.debug "In messageHandler - Static - theMessage: ${theMessage}"
 	}
    	theMessage = theMessage.toLowerCase()
@@ -630,6 +647,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Departures - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Departures - Departures - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
