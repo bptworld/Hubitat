@@ -51,7 +51,6 @@ def setVersion(){
             awInfo = "${state.appName}:${state.version}"
 		    awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -87,6 +86,7 @@ def initialize() {
     childApps.each {child ->
     log.info "Child app: ${child.label}"
     }
+    if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def mainPage() {
@@ -104,8 +104,8 @@ def mainPage() {
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				paragraph "<b>Be sure to complete the 'Advanced Config' section before creating Child Apps.</b>"
-                app(name: "anyOpenApp", appName: "Arrivals Child", namespace: "BPTWorld", title: "<b>Add a new 'Arrivals' child</b>", multiple: true)
-				app(name: "anyOpenApp", appName: "Departures Child", namespace: "BPTWorld", title: "<b>Add a new 'Departures' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Departures Child", namespace: "BPTWorld", title: "<b>Add a new 'Arrivals' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Departures Child2", namespace: "BPTWorld", title: "<b>Add a new 'Departures' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
