@@ -131,9 +131,9 @@
   
   "DeparturesType": "App",
   "DeparturesParentVersion": "v2.0.0",
-  "DeparturesChild1Version": "v2.0.0",
+  "DeparturesChild1Version": "v2.0.1",
   "DeparturesChild1Name": "Departures",
-  "DeparturesChild2Version": "v2.0.0",
+  "DeparturesChild2Version": "v2.0.2",
   "DeparturesChild2Name": "Arrivals",
   "DeparturesChild3Version": "",
   "DeparturesChild3Name": "",
@@ -145,7 +145,7 @@
   "DeparturesChild3RawCode": "",
   "DeparturesChild4RawCode": "",
   "DeparturesDiscussion": "https://community.hubitat.com/t/release-departures/12039",
-  "DeparturesUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "DeparturesUpdateNote": "V2.0.2 - 08/26/19 - Now messages have an 'opening' and a 'closing' segment. Code additions from @Matthew, Thank you.",
   
   "DeviceSequencerType": "App",
   "DeviceSequencerParentVersion": "v2.0.0",
