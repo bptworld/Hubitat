@@ -73,11 +73,6 @@ def sendAWinfoMap(appWatchdogData) {
     
 	def newData = stringToMap(appWatchdogData) // this converts the string to a map
     if(logEnable) log.debug "In sendAWinfo - Incoming Data - ${newData}"
-
-    if(state.theDataMap == null || state.theDataMap == "") {
-        if(logEnable) log.debug "In sendAWinfoMap - Resesting theDataMap"
-        state.theDataMap = [:]
-    }
     
     state.theDataMap << newData
     if(logEnable) log.debug "In sendAWinfoMap - newData: ${newData}"
