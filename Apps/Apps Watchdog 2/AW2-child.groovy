@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.7 - 08/26/19 - Bug fixes
  *  V2.0.6 - 08/26/19 - Developers can now be selected from a dropdown box.
  *  V2.0.5 - 08/25/19 - Now you can select mutiple developers in one child app to truly get all your update notices together!
  *  V2.0.4 - 08/25/19 - Removed any code pertaining to 'drivers'. Squashed, smashed and swatted bugs.
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.6"
+	state.version = "v2.0.7"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -321,169 +322,144 @@ def appMapHandler(evt) {
 			clearMaps()
 			if(state.allApps) {
 				state.allApps.each { item ->
-					state.appsName = item
+					state.appsName = item.replace(" ","")
 					if(traceEnable) log.trace "----------- Starting App: ${item} -----------"
                     
-                    if(installedApps1) {                       
+                    if(installedApps1) {  
+                        if(traceEnable) log.trace "Looking at InstalledApps 1"
                         def gitHub1 = installedApps1.toListString()
                         if(gitHub1.contains("${item}")) {
                             state.params = [uri: "${gitHubURL1}", contentType: "application/json"]
                             state.authorName = state.gitHubAuthor1
                             state.authorMainURL = state.gitHubMainURL1
-                            if(traceEnable) log.trace "1 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
-                        } else log.trace "1 - No Match"
-                    } else
+                            if(traceEnable) log.trace "1 - appsName: ${item} - author: ${state.authorName} - ${state.params}"
+                        } else {
+                            log.trace "1 - No Match"
+                        }
+                    }
                     if(installedApps2) {
+                        if(traceEnable) log.trace "Looking at InstalledApps 2"
                         def gitHub2 = installedApps2.toListString()
-                        if(gitHub2.contains("${state.appsName}")) {
+                        if(gitHub2.contains("${item}")) {
                             state.params = [uri: "${gitHubURL2}", contentType: "application/json"]
                             state.authorName = state.gitHubAuthor2
                             state.authorMainURL = state.gitHubMainURL2
-                            if(traceEnable) log.trace "2 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
-                        } else log.trace "2 - No Match"
-                    } else
-                    if(installedApps3) {
-                        state.gitHub3 = installedApps1.toListString()
-                        if(gitHub3.contains("${state.appsName}")) {
-                            def params = [uri: "${gitHubURL3}", contentType: "application/json"]
-                            state.authorName = state.gitHubAuthor3
-                            state.authorMainURL = state.gitHubMainURL3
-                            if(traceEnable) log.trace "3 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
-                        } else log.trace "3 - No Match"
-                    } else
-                    if(installedApps4) {
-                        def gitHub4 = installedApps1.toListString()
-                        if(gitHub4.contains("${state.appsName}")) {
-                            state.params = [uri: "${gitHubURL4}", contentType: "application/json"]
-                            state.authorName = state.gitHubAuthor4
-                            state.authorMainURL = state.gitHubMainURL4
-                            if(traceEnable) log.trace "4 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
-                        } else log.trace "4 - No Match"
-                    } else
-                    if(installedApps5) {
-                        def gitHub5 = installedApps1.toListString()
-                        if(gitHub5.contains("${state.appsName}")) {
-                            state.params = [uri: "${gitHubURL5}", contentType: "application/json"]
-                            state.authorName = state.gitHubAuthor5
-                            state.authorMainURL = state.gitHubMainURL5
-                            if(traceEnable) log.trace "5 - appsName: ${state.appsName} - author: ${state.authorName} - params: ${state.params}"
-                        } else log.trace "5 - No Match"
+                            if(traceEnable) log.trace "2 - appsName: ${item} - author: ${state.authorName}"
+                        } else {
+                            log.trace "2 - No Match"
+                        }
                     }
-              
-					if(traceEnable) log.trace "In appMapHandler... About to 'try' - ${item}"
+                    
        				try {
 						httpGet(state.params) { response ->
 							results = response.data
-					
-							state.aType = results."${item}Type"
+                            
 							// Get Github Data from json
-							if(logEnable) log.debug "Getting NEW Versions from json - AppName: ${item} - Type: ${state.aType}"
-							if(state.aType == "App") {
-								state.appParentVersion = results."${item}ParentVersion"
-                                if(!state.appParentVersion) state.appParentVersion = "-"
-                                
-								state.appChild1Version = results."${item}Child1Version"
-                                if(!state.appChild1Version) state.appChild1Version = "-"
-                                
-                                state.appChild1Name = results."${item}Child1Name"
-                                if(!state.appChild1Name) state.appChild1Name = "Child 1"
-                                
-                                state.appChild2Version = results."${item}Child2Version"
-                                if(!state.appChild2Version) state.appChild2Version = "-"
-                                
-                                state.appChild2Name = results."${item}Child2Name"
-                                if(!state.appChild2Name) state.appChild2Name = "Child 2"
-                                
-                                state.appChild3Version = results."${item}Child3Version"
-                                if(!state.appChild3Version) state.appChild3Version = "-"
-                                
-                                state.appChild3Name = results."${item}Child3Name"
-                                if(!state.appChild3Name) state.appChild3Name = "Child 3"
-                                
-                                state.appChild4Version = results."${item}Child4Version"
-                                if(!state.appChild4Version) state.appChild4Version = "-"
-                                
-                                state.appChild4Name = results."${item}Child4Name"
-                                if(!state.appChild4Name) state.appChild4Name = "Child 4"
-                                
-								state.appParentRawCode = results."${item}ParentRawCode"
-                                if(!state.appParentRawCode) state.appParentRawCode = "-"
-                                
-								state.appChild1RawCode = results."${item}Child1RawCode"
-                                if(!state.appChild1RawCode) state.appChild1RawCode = "-"
-                                
-                                state.appChild2RawCode = results."${item}Child2RawCode"
-                                if(!state.appChild2RawCode) state.appChild2RawCode = "-"
-                                
-                                state.appChild3RawCode = results."${item}Child3Raw3ode"
-                                if(!state.appChild3RawCode) state.appChild3RawCode = "-"
-                                
-                                state.appChild4RawCode = results."${item}Child4RawCode"
-                                if(!state.appChild4RawCode) state.appChild4RawCode = "-"
-                                
-								state.appDiscussion = results."${item}Discussion"
-                                if(!state.appDiscussion) state.appDiscussion = "-"
-                                
-								state.appUpdateNote = results."${item}UpdateNote"
-                                if(!state.appUpdateNote) state.appUpdateNote = "-"
-							}
+							if(traceEnable) log.trace "Getting Versions from json - AppName: ${state.appsName}"
 
-							// Get Old Data from map
-							try {
-                                getAppNameHandler()
+							state.appParentVersion = results."${state.appsName}ParentVersion"
+                            if(!state.appParentVersion) state.appParentVersion = "-"
                                 
-                                def watchMap = ""
+						    state.appChild1Version = results."${state.appsName}Child1Version"
+                            if(!state.appChild1Version) state.appChild1Version = "-"
                                 
-                                watchMap = parent.awDevice.currentValue("sendAWinfoMap").replace("{","").replace("}","")
-                                if(logEnable) log.debug "watchMap: ${watchMap}"
+                            state.appChild1Name = results."${state.appsName}Child1Name"
+                            if(!state.appChild1Name) state.appChild1Name = "Child 1"
                                 
-                                def theMap = watchMap.split(',').collectEntries { entry ->
-                                    def pair = entry.split('=')
-                                    [(pair.first()):pair.last()]
-                                }
+                            state.appChild2Version = results."${state.appsName}Child2Version"
+                            if(!state.appChild2Version) state.appChild2Version = "-"
                                 
-                                theMapS = theMap.sort { a, b -> a.key <=> b.key }
+                            state.appChild2Name = results."${state.appsName}Child2Name"
+                            if(!state.appChild2Name) state.appChild2Name = "Child 2"
                                 
-                                if(logEnable) log.debug "Made it - theMap: ${theMapS}"
+                            state.appChild3Version = results."${state.appsName}Child3Version"
+                            if(!state.appChild3Version) state.appChild3Version = "-"
                                 
-                                theMapS.each { it ->
-                                    appName = it.key
-                                    appVer = it.value
-                                    dName = state.dName.replace(" ", "")
-                                    if(traceEnable) log.trace "Working on watchMap - Does appName: ${appName} contain dName: ${dName} - appVer: ${appVer}"
-                                    if(appName.contains("Parent") && appName.contains("${dName}")) state.oldAppParentVersion = appVer
-                                    
-                                    if(appName.contains("Child") && !appName.contains("Child2") && !appName.contains("Child3") && !appName.contains("Child4") && appName.contains("${dName}")) state.oldAppChild1Version = appVer                       
-                                    if(appName.contains("Child2") && appName.contains("${dName}")) state.oldAppChild2Version = appVer
-                                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild3Version = appVer
-                                    if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild4Version = appVer
-                                    
-                                    if(!state.oldAppChild1Version) state.oldAppChild1Version = "-"
-                                    if(!state.oldAppChild2Version) state.oldAppChild2Version = "-"
-                                    if(!state.oldAppChild3Version) state.oldAppChild3Version = "-"
-                                    if(!state.oldAppChild4Version) state.oldAppChild4Version = "-"
-                                }
+                            state.appChild3Name = results."${state.appsName}Child3Name"
+                            if(!state.appChild3Name) state.appChild3Name = "Child 3"
+                                
+                            state.appChild4Version = results."${state.appsName}Child4Version"
+                            if(!state.appChild4Version) state.appChild4Version = "-"
+                                
+                            state.appChild4Name = results."${state.appsName}Child4Name"
+                            if(!state.appChild4Name) state.appChild4Name = "Child 4"
+                                
+					        state.appParentRawCode = results."${state.appsName}ParentRawCode"
+                            if(!state.appParentRawCode) state.appParentRawCode = "-"
+                                
+							state.appChild1RawCode = results."${state.appsName}Child1RawCode"
+                            if(!state.appChild1RawCode) state.appChild1RawCode = "-"
+                                
+                            state.appChild2RawCode = results."${state.appsName}Child2RawCode"
+                            if(!state.appChild2RawCode) state.appChild2RawCode = "-"
+                                
+                            state.appChild3RawCode = results."${state.appsName}Child3Raw3ode"
+                            if(!state.appChild3RawCode) state.appChild3RawCode = "-"
+                                
+                            state.appChild4RawCode = results."${state.appsName}Child4RawCode"
+                            if(!state.appChild4RawCode) state.appChild4RawCode = "-"
+                                
+						    state.appDiscussion = results."${state.appsName}Discussion"
+                            if(!state.appDiscussion) state.appDiscussion = "-"
+                                
+							state.appUpdateNote = results."${state.appsName}UpdateNote"
+                            if(!state.appUpdateNote) state.appUpdateNote = "-"
+                            
+                            if(traceEnable) log.trace "JSON results - ${item} - ${state.appParentVersion} - Child 1: ${state.appChild1Version} - Child 2: ${state.appChild2Version}"
+                        }
 
-                                if(state.aType == "App") checkTheAppData()
+						// Get Old Data from map
+
+                        state.dName = item
+                                
+                        def watchMap = ""
+                                
+                        watchMap = parent.awDevice.currentValue("sendAWinfoMap").replace("{","").replace("}","")
+                        if(logEnable) log.debug "watchMap: ${watchMap}"
+                                
+                        def theMap = watchMap.split(',').collectEntries { entry ->
+                            def pair = entry.split('=')
+                            [(pair.first()):pair.last()]
+                        }
+                                
+                        theMapS = theMap.sort { a, b -> a.key <=> b.key }
+                                
+                        if(logEnable) log.debug "Sorted theMap: ${theMapS}"
+                                
+                        theMapS.each { it ->
+                            appName = it.key
+                            appVer = it.value
+                            dName = state.dName.replace(" ", "")
+                            //if(traceEnable) log.trace "Working on watchMap - Does appName: ${appName} contain dName: ${dName}"
+                            if(appName.contains("Parent") && appName.contains("${dName}")) state.oldAppParentVersion = appVer
+                                    
+                            if(appName.contains("Child") && !appName.contains("Child2") && !appName.contains("Child3") && !appName.contains("Child4") && appName.contains("${dName}")) state.oldAppChild1Version = appVer                       
+                            if(appName.contains("Child2") && appName.contains("${dName}")) state.oldAppChild2Version = appVer
+                            if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild3Version = appVer
+                            if(appName.contains("Child3") && appName.contains("${dName}")) state.oldAppChild4Version = appVer
+                                    
+                            if(!state.oldAppChild1Version) state.oldAppChild1Version = "-"
+                            if(!state.oldAppChild2Version) state.oldAppChild2Version = "-"
+                            if(!state.oldAppChild3Version) state.oldAppChild3Version = "-"
+                            if(!state.oldAppChild4Version) state.oldAppChild4Version = "-"
+                        }
+                        if(traceEnable) log.trace "INSTALLED results - ${item} - ${state.oldAppParentVersion} - Child 1: ${state.oldAppChild1Version} - Child 2: ${state.oldAppChild2Version}"
+
+                        checkTheAppData()
 							   
-                                state.oldAppParentVersion = ""
-                                state.oldAppChild1Version = ""
-                                state.oldAppChild2Version = ""
-                                state.oldAppChild3Version = ""
-                                state.oldAppChild4Version = ""
-                                state.params = ""
-							}
-							catch (e) {
-								//if(logEnable) log.trace "***** In appMapHandler - Something went wrong!  *****"
-                                if(logEnable) log.error "${e}"
-							}
-						}
-					} 
-       			 	catch (e) {
-        				log.error "Error:  $e"
-    				}
-					if(traceEnable) log.trace "----------- End App: ${item} -----------"		 
-				}		
+                        state.oldAppParentVersion = ""
+                        state.oldAppChild1Version = ""
+                        state.oldAppChild2Version = ""
+                        state.oldAppChild3Version = ""
+                        state.oldAppChild4Version = ""
+                        state.params = ""
+				    }
+                    catch(e) {
+                        log.error "${e}"
+                        log.warn "Somehting Went Wrong"
+                    }
+			    if(traceEnable) log.trace "----------- End App: ${item} -----------"	
+            }
 		}
 	if(maintSwitch2 != true) {
 		if(sendPushMessage) pushNow()
@@ -590,34 +566,33 @@ def checkTheAppData() {
     } else appChild3RawCode2 = "-"
     if(state.appChild4RawCode != "-") {
         appChild4RawCode2 = "<a href='${state.appChild4RawCode}' target='_blank'>[Child Raw Code]</a>"
-    } else appChild4RawCode2 = "-"
-
-    getAppNameHandler()
+    } else {
+        appChild4RawCode2 = "-"
+    }
 		
 	if(parentCheck == "yes" || childCheck == "yes"|| childCheck2 == "yes" || childCheck3 == "yes"|| childCheck4 == "yes"){
-		if(state.dName != "Example") {
-			state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>${childShortName}: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
-			state.appMap += "<tr><td width='36%'><i>Github</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child 1: ${state.appChild1Version}</td><td width='32%'> </td></tr>"
-			state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChild1RawCode2}</td><td width='32%'> </td></tr>"
+		state.appMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
+		state.appMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>${childShortName}: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
+		state.appMap += "<tr><td width='36%'><i>Github</i>:  Parent: ${state.appParentVersion}</td><td width='32%'>Child 1: ${state.appChild1Version}</td><td width='32%'> </td></tr>"
+		state.appMap += "<tr><td width='36%'>${pnew}${appParentRawCode2}</td><td width='32%'>${cnew}${appChild1RawCode2}</td><td width='32%'> </td></tr>"
             
-            if(state.appChild2Version != "-" || state.appChild3Version != "-" || state.appChild4Version != "-" || state.oldAppChild2Version != "-" || state.oldAppChild3Version != "-" || state.oldAppChild4Version != "-") {
-                state.appMap += "<tr><td colspan='3'> </td></tr>"
-                state.appMap += "<tr><td width='36%'>${child2ShortName}: ${state.oldAppChild2Version}</td><td width='32%'>${child3ShortName}: ${state.oldAppChild3Version}</td><td width='32%'>${child4ShortName}: ${state.oldAppChild4Version}</td></tr>"
-			    state.appMap += "<tr><td width='36%'>Child 2: ${state.appChild2Version}</td><td width='32%'>Child 3: ${state.appChild3Version}</td><td width='32%'>Child 4: ${state.appChild4Version}</td></tr>"
-                state.appMap += "<tr><td width='36%'>${c2new}${appChild2RawCode2}</td><td width='32%'>${c3new}${appChild3RawCode2}</td><td width='32%'>${c4new}${appChild4RawCode2}</td></tr>"
-            }
-			if(state.appUpdateNote) { state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
-			state.appMap += "<tr><td width='100%' colspan='3' align='center'>________________________________________________________________</td></tr>"
+        if(state.appChild2Version != "-" || state.appChild3Version != "-" || state.appChild4Version != "-" || state.oldAppChild2Version != "-" || state.oldAppChild3Version != "-" || state.oldAppChild4Version != "-") {
+            state.appMap += "<tr><td colspan='3'> </td></tr>"
+            state.appMap += "<tr><td width='36%'>${child2ShortName}: ${state.oldAppChild2Version}</td><td width='32%'>${child3ShortName}: ${state.oldAppChild3Version}</td><td width='32%'>${child4ShortName}: ${state.oldAppChild4Version}</td></tr>"
+			state.appMap += "<tr><td width='36%'>Child 2: ${state.appChild2Version}</td><td width='32%'>Child 3: ${state.appChild3Version}</td><td width='32%'>Child 4: ${state.appChild4Version}</td></tr>"
+            state.appMap += "<tr><td width='36%'>${c2new}${appChild2RawCode2}</td><td width='32%'>${c3new}${appChild3RawCode2}</td><td width='32%'>${c4new}${appChild4RawCode2}</td></tr>"
+        }
+
+	    if(state.appUpdateNote) {
+            state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
+		    state.appMap += "<tr><td width='100%' colspan='3' align='center'>________________________________________________________________</td></tr>"
 			state.appMapDash += "<tr><td>${state.dName}</td></tr>"
 			state.appMapPhone += "${state.dName} has an update available \n"
 		}
-	}
-	if(state.dName != "Example") {
-		state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
-		state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
-		state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
-	}
+
+	state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
+	state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
+	state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
 }
 
 def tileHandler(evt) {
@@ -696,9 +671,9 @@ def pushNow() {
 	}	
 }
 
-def getAppNameHandler() {
-    if(logEnable) log.debug "In getAppNameHandler - appsName: ${state.appsName}"
-		if(state.appsName == state.app01NoSpace) state.dName = state.app01
+def getAppNameHandler(item) {
+    if(logEnable) log.debug "In getAppNameHandler - appsName: ${item}"
+		state.dName = item
 		if(state.appsName == state.app02NoSpace) state.dName = state.app02
 		if(state.appsName == state.app03NoSpace) state.dName = state.app03
 		if(state.appsName == state.app04NoSpace) state.dName = state.app04
