@@ -70,7 +70,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/A-child.groovy",
 )
 
 preferences {
