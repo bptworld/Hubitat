@@ -3,7 +3,6 @@
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "Apps": "Abacus Intense Counting, Abacus Time Traveler, App Watchdog 2, At Home Simulator, BI Control, CATT Director, Chromecast Helper, Departures, Device Sequencer, Device Watchdog, Follow Me, Fully Kiosk Director, Gentle Wake Up, Life360 Tracker, Life360 with States, Lighting Effects, Magic Cube, Motion Controlled Scene Lighting, Notifier Plus, One at a Time, Send IP2IR, Simple Device Timer, Simple Irrigation, Snapshot, Web Pinger, Welcome Home",
   
-  "AbacusIntenseCountingType": "App",
   "AbacusIntenseCountingParentVersion": "v2.0.0",
   "AbacusIntenseCountingChild1Version": "v2.0.0",
   "AbacusIntenseCountingChild1Name": "",
@@ -21,7 +20,6 @@
   "AbacusIntenseCountingDiscussion": "https://community.hubitat.com/t/release-abacus-intense-counting/7883",
   "AbacusIntenseCountingUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "AbacusTimeTravelerType": "App",
   "AbacusTimeTravelerParentVersion": "v2.0.0",
   "AbacusTimeTravelerChild1Version": "v2.0.0",
   "AbacusTimeTravelerChild1Name": "",
@@ -39,7 +37,6 @@
   "AbacusTimeTravelerDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
   "AbacusTimeTravelerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
 
-  "AppWatchdog2Type": "App",
   "AppWatchdog2ParentVersion": "v2.0.1",
   "AppWatchdog2Child1Version": "v2.0.7",
   "AppWatchdog2Child1Name": "",
@@ -57,7 +54,6 @@
   "AppWatchdog2Discussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
   "AppWatchdog2UpdateNote": "V2.0.7 - 08/26/19 - Bug fixes",
 
-  "AtHomeSimulatorType": "App",
   "AtHomeSimulatorParentVersion": "v2.0.0",
   "AtHomeSimulatorChild1Version": "v2.0.0",
   "AtHomeSimulatorChild1Name": "",
@@ -75,7 +71,6 @@
   "AtHomeSimulatorDiscussion": "https://community.hubitat.com/t/beta-at-home-simulator/8697",
   "AtHomeSimulatorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "BIControlType": "App",
   "BIControlParentVersion": "v2.0.0",
   "BIControlChild1Version": "v2.0.0",
   "BIControlChild1Name": "",
@@ -93,7 +88,6 @@
   "BIControlDiscussion": "https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454",
   "BIControlUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "CATTDirectorType": "App",
   "CATTDirectorParentVersion": "v2.0.0",
   "CATTDirectorChild1Version": "v2.0.0",
   "CATTDirectorChild1Name": "",
@@ -111,7 +105,6 @@
   "CATTDirectorDiscussion": "https://community.hubitat.com/t/release-catt-director-app-and-driver/20894",
   "CATTDirectorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "ChromecastHelperType": "App",
   "ChromecastHelperParentVersion": "v2.0.0",
   "ChromecastHelperChild1Version": "",
   "ChromecastHelperChild1Name": "",
@@ -129,7 +122,6 @@
   "ChromecastHelperDiscussion": "https://community.hubitat.com/t/release-chromecast-helper-simple-way-to-help-keep-your-google-nest-devices-alive/19237",
   "ChromecastHelperUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "DeparturesType": "App",
   "DeparturesParentVersion": "v2.0.0",
   "DeparturesChild1Version": "v2.0.1",
   "DeparturesChild1Name": "Departures",
@@ -147,7 +139,6 @@
   "DeparturesDiscussion": "https://community.hubitat.com/t/release-departures/12039",
   "DeparturesUpdateNote": "V2.0.2 - 08/26/19 - Now messages have an 'opening' and a 'closing' segment. Code additions from @Matthew, Thank you.",
   
-  "DeviceSequencerType": "App",
   "DeviceSequencerParentVersion": "v2.0.0",
   "DeviceSequencerChild1Version": "v2.0.0",
   "DeviceSequencerChild1Name": "",
@@ -165,7 +156,6 @@
   "DeviceSequencerDiscussion": "https://community.hubitat.com/t/release-device-sequencer/8596",
   "DeviceSequencerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "DeviceWatchdogType": "App",
   "DeviceWatchdogParentVersion": "v2.0.0",
   "DeviceWatchdogChild1Version": "v2.0.0",
   "DeviceWatchdogChild1Name": "",
@@ -183,7 +173,6 @@
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
   "DeviceWatchdogUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "FollowMeType": "App",
   "FollowMeParentVersion": "v2.0.0",
   "FollowMeChild1Version": "v2.0.2",
   "FollowMeChild1Name": "",
@@ -201,7 +190,6 @@
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
   "FollowMeUpdateNote": "V2.0.2 - 08/18/19 - App Watchdog 2 compatible",
   
-  "FullyKioskDirectorType": "App",
   "FullyKioskDirectorParentVersion": "v2.0.0",
   "FullyKioskDirectorChild1Version": "v2.0.0",
   "FullyKioskDirectorChild1Name": "",
@@ -219,7 +207,6 @@
   "FullyKioskDirectorDiscussion": "https://community.hubitat.com/t/release-fully-kiosk-director/15310",
   "FullyKioskDirectorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "GentleWakeUpType": "App",
   "GentleWakeUpParentVersion": "v2.0.0",
   "GentleWakeUpChild1Version": "v2.0.0",
   "GentleWakeUpChild1Name": "",
@@ -237,7 +224,6 @@
   "GentleWakeUpDiscussion": "https://community.hubitat.com/t/port-gentle-wake-up/19971",
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "Life360TrackerType": "App",
   "Life360TrackerParentVersion": "v2.0.0",
   "Life360TrackerChild1Version": "v2.0.0",
   "Life360TrackerChild1Name": "",
@@ -255,7 +241,6 @@
   "Life360TrackerDiscussion": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276",
   "Life360TrackerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "Life360withStatesType": "App",
   "Life360withStatesParentVersion": "v2.0.0",
   "Life360withStatesChild1Version": "",
   "Life360withStatesChild1Name": "",
@@ -273,7 +258,6 @@
   "Life360withStatesDiscussion": "https://community.hubitat.com/t/release-life360-with-states-track-all-attributes-with-app-and-driver-also-supports-rm4-and-dashboards/18274",
   "Life360withStatesUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "LightingEffectsType": "App",
   "LightingEffectsParentVersion": "v2.0.0",
   "LightingEffectsChild1Version": "v2.0.0",
   "LightingEffectsChild1Name": "",
@@ -291,7 +275,6 @@
   "LightingEffectsDiscussion": "https://community.hubitat.com/t/release-lighting-effects/4330",
   "LightingEffectsUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "MagicCubeType": "App",
   "MagicCubeParentVersion": "v2.0.0",
   "MagicCubeChild1Version": "v2.0.1",
   "MagicCubeChild1Name": "",
@@ -309,7 +292,6 @@
   "MagicCubeDiscussion": "https://community.hubitat.com/t/release-magic-cube/11987",
   "MagicCubeUpdateNote": "V2.0.1 - 08/21/19 - (dan.t) added ability to execute rule actions",
   
-  "MotionControlledSceneLightingType": "App",
   "MotionControlledSceneLightingParentVersion": "v2.0.0",
   "MotionControlledSceneLightingChild1Version": "v2.0.0",
   "MotionControlledSceneLightingChild1Name": "",
@@ -327,7 +309,6 @@
   "MotionControlledSceneLightingDiscussion": "https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419",
   "MotionControlledSceneLightingUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "NotifierPlusType": "App",
   "NotifierPlusParentVersion": "v2.0.0",
   "NotifierPlusChild1Version": "v2.0.0",
   "NotifierPlusChild1Name": "",
@@ -345,7 +326,6 @@
   "NotifierPlusDiscussion": "https://community.hubitat.com/t/release-notifier/10859",
   "NotifierPlusUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "OneataTimeType": "App",
   "OneataTimeParentVersion": "v2.0.0",
   "OneataTimeChild1Version": "v2.0.0",
   "OneataTimeChild1Name": "",
@@ -363,7 +343,6 @@
   "OneataTimeDiscussion": "https://community.hubitat.com/t/release-one-at-a-time/7063",
   "OneataTimeUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "SendIP2IRType": "App",
   "SendIP2IRParentVersion": "v2.0.0",
   "SendIP2IRChild1Version": "v2.0.0",
   "SendIP2IRChild1Name": "",
@@ -381,7 +360,6 @@
   "SendIP2IRDiscussion": "https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667",
   "SendIP2IRUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "SimpleDeviceTimerType": "App",
   "SimpleDeviceTimerParentVersion": "v2.0.0",
   "SimpleDeviceTimerChild1Version": "v2.0.0",
   "SimpleDeviceTimerChild1Name": "",
@@ -399,7 +377,6 @@
   "SimpleDeviceTimerDiscussion": "https://community.hubitat.com/t/release-simple-device-timer/16917",
   "SimpleDeviceTimerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "SimpleIrrigationType": "App",
   "SimpleIrrigationParentVersion": "v2.0.0",
   "SimpleIrrigationChild1Version": "v2.0.0",
   "SimpleIrrigationChild1Name": "",
@@ -417,7 +394,6 @@
   "SimpleIrrigationDiscussion": "",
   "SimpleIrrigationUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "SnapshotType": "App",
   "SnapshotParentVersion": "v2.0.0",
   "SnapshotChild1Version": "v2.0.0",
   "SnapshotChild1Name": "",
@@ -435,7 +411,6 @@
   "SnapshotDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
   "SnapshotUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "WebPingerType": "App",
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.0",
   "WebPingerChild1Name": "",
@@ -453,7 +428,6 @@
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
   "WebPingerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "WelcomeHomeType": "App",
   "WelcomeHomeParentVersion": "v2.0.3",
   "WelcomeHomeChild1Version": "v2.1.1",
   "WelcomeHomeChild1Name": "",
