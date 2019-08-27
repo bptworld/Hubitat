@@ -5,10 +5,10 @@ Official Forum: https://community.hubitat.com/<br>
 UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br>
 <hr>
-<b>Donations to support development efforts are accepted via Paypal: https://paypal.me/bptworld</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated.<br>I 'Thank You' for your support.
+<b>Donations to support development efforts are accepted via Paypal: https://paypal.me/bptworld</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated.<br><b>I 'Thank You' for your support.</b>
 <hr>
 <br>
-**Abacus - Intense Counting** - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
+<b>Abacus - Intense Counting</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
 **Abacus - Time Traveler** - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
