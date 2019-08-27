@@ -39,7 +39,7 @@
   "AbacusTimeTravelerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
 
   "AppWatchdog2ParentVersion": "v2.0.1",
-  "AppWatchdog2Child1Version": "v2.0.8",
+  "AppWatchdog2Child1Version": "v2.0.9",
   "AppWatchdog2Child1Name": "",
   "AppWatchdog2Child2Version": "",
   "AppWatchdog2Child2Name": "",
@@ -53,7 +53,7 @@
   "AppWatchdog2Child3RawCode": "",
   "AppWatchdog2Child4RawCode": "",
   "AppWatchdog2Discussion": "https://community.hubitat.com/t/release-app-watchdog/9952",
-  "AppWatchdog2UpdateNote": "V2.0.8 - 08/27/19 - Found a typo, added optional Paypal link to Developers page.",
+  "AppWatchdog2UpdateNote": "V2.0.9 - 08/27/19 - Fixed another typo",
 
   "AtHomeSimulatorParentVersion": "v2.0.0",
   "AtHomeSimulatorChild1Version": "v2.0.0",
