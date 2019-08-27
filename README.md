@@ -5,7 +5,7 @@ Official Forum: https://community.hubitat.com/<br>
 UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br><br>
 <hr>
-<center><b>Donations to support development efforts are accepted via Paypal:</b><br>https://paypal.me/bptworld<br><b>I 'Thank You' for your support.
+<center><b>Donations to support development efforts are accepted via Paypal:</b><br>https://paypal.me/bptworld<br><b>I 'Thank You' for your support.</b></center>
 <hr>
 <br><br>
 **Abacus - Intense Counting** - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
