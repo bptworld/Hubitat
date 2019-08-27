@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.8 - 08/27/19 - Found a typo, added optional Paypal link to Developers page.
  *  V2.0.7 - 08/26/19 - Bug fixes
  *  V2.0.6 - 08/26/19 - Developers can now be selected from a dropdown box.
  *  V2.0.5 - 08/25/19 - Now you can select mutiple developers in one child app to truly get all your update notices together!
@@ -120,8 +121,10 @@ def developerOptions(){
                 ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
             ]
 			if(gitHubURL1) {
-				gitHubCheck1()
-				paragraph "${state.gitHubAuthor1}"
+				paragraph "Developer: ${state.gitHubAuthor1}"
+                if(state.paypalLink1) {
+                    paragraph "If you find ${state.gitHubAuthor1}'s apps useful. Please consider a donation via <a href='${state.paypalLink1}' target='_blank'>Paypal</a>"
+                }
                 state.values1 = "${state.gitHubApps1}".split(",")
     		    input "installedApps1", "enum", title: "Select which apps you have installed", options: state.values1, required: true, multiple: true, submitOnChange: true
             }
@@ -133,12 +136,14 @@ def developerOptions(){
             ]
             if(gitHubURL2) {
 				gitHubCheck2()
-				paragraph "${state.gitHubAuthor2}"
+				paragraph "Developer: ${state.gitHubAuthor2}"
+                if(state.paypalLink2) {
+                    paragraph "If you find ${state.gitHubAuthor2}'s apps useful. Please consider a donation via <a href='${state.paypalLink2}' target='_blank'>Paypal</a>"
+                }
                 state.values2 = "${state.gitHubApps2}".split(",")
     		    input "installedApps2", "enum", title: "Select which apps you have installed", options: state.values2, required: true, multiple: true, submitOnChange: true
             }
         }
-/*  As needed...
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 3 Options")) {
             input "gitHubURL3", "enum", title: "Select a Developer to follow", required: false, multiple: false, submitOnChange: true, options: [
                 ["https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json":"BPTWorld"],
@@ -146,7 +151,10 @@ def developerOptions(){
             ]
             if(gitHubURL3) {
 				gitHubCheck3()
-				paragraph "${state.gitHubAuthor3}"
+				paragraph "Developer: ${state.gitHubAuthor3}"
+                if(state.paypalLink3) {
+                    paragraph "If you find ${state.gitHubAuthor3}'s apps useful. Please consider a donation via <a href='${state.paypalLink3}' target='_blank'>Paypal</a>"
+                }
                 state.values3 = "${state.gitHubApps3}".split(",")
     		    input "installedApps3", "enum", title: "Select which apps you have installed", options: state.values3, required: true, multiple: true, submitOnChange: true
             }
@@ -158,7 +166,10 @@ def developerOptions(){
             ]
             if(gitHubURL4) {
 				gitHubCheck4()
-				paragraph "${state.gitHubAuthor4}"
+				paragraph "Developer: ${state.gitHubAuthor4}"
+                if(state.paypalLink4) {
+                    paragraph "If you find ${state.gitHubAuthor4}'s apps useful. Please consider a donation via <a href='${state.paypalLink4}' target='_blank'>Paypal</a>"
+                }
                 state.values4 = "${state.gitHubApps4}".split(",")
     		    input "installedApps4", "enum", title: "Select which apps you have installed", options: state.values4, required: true, multiple: true, submitOnChange: true
             }
@@ -170,13 +181,16 @@ def developerOptions(){
             ]
             if(gitHubURL5) {
 				gitHubCheck5()
-				paragraph "${state.gitHubAuthor5}"
+				paragraph "Developer: ${state.gitHubAuthor5}"
+                if(state.paypalLink5) {
+                    paragraph "If you find ${state.gitHubAuthor5}'s apps useful. Please consider a donation via <a href='${state.paypalLink5}' target='_blank'>Paypal</a>"
+                }
                 state.values5 = "${state.gitHubApps5}".split(",")
     		    input "installedApps5", "enum", title: "Select which apps you have installed", options: state.values5, required: true, multiple: true, submitOnChange: true
             }
         }
-*/
-        state.allApps = [installedApps1,installedApps2,installedApps3,installedApps4].flatten().findAll{it} 
+
+        state.allApps = [installedApps1,installedApps2,installedApps3,installedApps4,installedApps5].flatten().findAll{it} 
     }
 }
             
@@ -241,6 +255,7 @@ def gitHubCheck1() {
 			state.gitHubAuthor1 = "${results.GitHubAuthor}"
 			state.gitHubMainURL1 = results.GitHubMainURL
             state.gitHubApps1 = results.Apps
+            state.paypalLink1 = results.PaypalLink
         }
 	} 
     catch (e) {
@@ -258,6 +273,7 @@ def gitHubCheck2() {
 			state.gitHubAuthor2 = "${results.GitHubAuthor}"
 			state.gitHubMainURL2 = results.GitHubMainURL
             state.gitHubApps2 = results.Apps
+            state.paypalLink2 = results.PaypalLink
         }
 	} 
     catch (e) {
@@ -275,6 +291,7 @@ def gitHubCheck3() {
 			state.gitHubAuthor3 = "${results.GitHubAuthor}"
 			state.gitHubMainURL3 = results.GitHubMainURL
             state.gitHubApps3 = results.Apps
+            state.paypalLink3 = results.PaypalLink
         }
 	} 
     catch (e) {
@@ -292,6 +309,7 @@ def gitHubCheck4() {
 			state.gitHubAuthor4 = "${results.GitHubAuthor}"
 			state.gitHubMainURL4 = results.GitHubMainURL
             state.gitHubApps4 = results.Apps
+            state.paypalLink4 = results.PaypalLink
         }
 	} 
     catch (e) {
@@ -309,6 +327,7 @@ def gitHubCheck5() {
 			state.gitHubAuthor5 = "${results.GitHubAuthor}"
 			state.gitHubMainURL5 = results.GitHubMainURL
             state.gitHubApps5 = results.Apps
+            state.paypalLink5 = results.PaypalLink
         }
 	} 
     catch (e) {
@@ -332,9 +351,9 @@ def appMapHandler(evt) {
                             state.params = [uri: "${gitHubURL1}", contentType: "application/json"]
                             state.authorName = state.gitHubAuthor1
                             state.authorMainURL = state.gitHubMainURL1
-                            if(traceEnable) log.trace "1 - appsName: ${item} - author: ${state.authorName} - ${state.params}"
+                            if(traceEnable) log.trace "installedApps1 - appsName: ${item} - author: ${state.authorName} - ${state.params}"
                         } else {
-                            log.trace "1 - No Match"
+                            log.trace "installedApps1 - No Match"
                         }
                     }
                     if(installedApps2) {
@@ -344,9 +363,45 @@ def appMapHandler(evt) {
                             state.params = [uri: "${gitHubURL2}", contentType: "application/json"]
                             state.authorName = state.gitHubAuthor2
                             state.authorMainURL = state.gitHubMainURL2
-                            if(traceEnable) log.trace "2 - appsName: ${item} - author: ${state.authorName}"
+                            if(traceEnable) log.trace "installedApps2 - appsName: ${item} - author: ${state.authorName}"
                         } else {
-                            log.trace "2 - No Match"
+                            log.trace "installedApps2 - No Match"
+                        }
+                    }
+                    if(installedApps3) {
+                        if(traceEnable) log.trace "Looking at InstalledApps 3"
+                        def gitHub3 = installedApps3.toListString()
+                        if(gitHub3.contains("${item}")) {
+                            state.params = [uri: "${gitHubURL3}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor3
+                            state.authorMainURL = state.gitHubMainURL3
+                            if(traceEnable) log.trace "installedApps3 - appsName: ${item} - author: ${state.authorName}"
+                        } else {
+                            log.trace "installedApps3 - No Match"
+                        }
+                    }
+                    if(installedApps4) {
+                        if(traceEnable) log.trace "Looking at InstalledApps 4"
+                        def gitHub4 = installedApps4.toListString()
+                        if(gitHub4.contains("${item}")) {
+                            state.params = [uri: "${gitHubURL4}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor4
+                            state.authorMainURL = state.gitHubMainURL4
+                            if(traceEnable) log.trace "installedApps4 - appsName: ${item} - author: ${state.authorName}"
+                        } else {
+                            log.trace "installedApps4 - No Match"
+                        }
+                    }
+                    if(installedApps5) {
+                        if(traceEnable) log.trace "Looking at InstalledApps 5"
+                        def gitHub5 = installedApps5.toListString()
+                        if(gitHub5.contains("${item}")) {
+                            state.params = [uri: "${gitHubURL5}", contentType: "application/json"]
+                            state.authorName = state.gitHubAuthor5
+                            state.authorMainURL = state.gitHubMainURL5
+                            if(traceEnable) log.trace "installedApps5 - appsName: ${item} - author: ${state.authorName}"
+                        } else {
+                            log.trace "installedApps5 - No Match"
                         }
                     }
                     
@@ -582,17 +637,18 @@ def checkTheAppData() {
 			state.appMap += "<tr><td width='36%'>Child 2: ${state.appChild2Version}</td><td width='32%'>Child 3: ${state.appChild3Version}</td><td width='32%'>Child 4: ${state.appChild4Version}</td></tr>"
             state.appMap += "<tr><td width='36%'>${c2new}${appChild2RawCode2}</td><td width='32%'>${c3new}${appChild3RawCode2}</td><td width='32%'>${c4new}${appChild4RawCode2}</td></tr>"
         }
+    }
 
-	    if(state.appUpdateNote) {
-            state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>" }
-		    state.appMap += "<tr><td width='100%' colspan='3' align='center'>________________________________________________________________</td></tr>"
-			state.appMapDash += "<tr><td>${state.dName}</td></tr>"
-			state.appMapPhone += "${state.dName} has an update available \n"
-		}
+	if(state.appUpdateNote) {
+        state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>"
+		state.appMap += "<tr><td width='100%' colspan='3' align='center'>________________________________________________________________</td></tr>"
+		state.appMapDash += "<tr><td>${state.dName}</td></tr>"
+		state.appMapPhone += "${state.dName} has an update available \n"
+	}
 
 	state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
 	state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
-	state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>-</td></tr>"
+	state.appAllMap += "<tr><td width='100%' colspan='3' align='center'>________________________________________________________________</td></tr>"
 }
 
 def tileHandler(evt) {
@@ -669,52 +725,6 @@ def pushNow() {
 			}
 		}
 	}	
-}
-
-def getAppNameHandler(item) {
-    if(logEnable) log.debug "In getAppNameHandler - appsName: ${item}"
-		state.dName = item
-		if(state.appsName == state.app02NoSpace) state.dName = state.app02
-		if(state.appsName == state.app03NoSpace) state.dName = state.app03
-		if(state.appsName == state.app04NoSpace) state.dName = state.app04
-		if(state.appsName == state.app05NoSpace) state.dName = state.app05
-		if(state.appsName == state.app06NoSpace) state.dName = state.app06
-		if(state.appsName == state.app07NoSpace) state.dName = state.app07
-		if(state.appsName == state.app08NoSpace) state.dName = state.app08
-		if(state.appsName == state.app09NoSpace) state.dName = state.app09
-		if(state.appsName == state.app10NoSpace) state.dName = state.app10
-		if(state.appsName == state.app11NoSpace) state.dName = state.app11
-		if(state.appsName == state.app12NoSpace) state.dName = state.app12
-		if(state.appsName == state.app13NoSpace) state.dName = state.app13
-		if(state.appsName == state.app14NoSpace) state.dName = state.app14
-		if(state.appsName == state.app15NoSpace) state.dName = state.app15
-		if(state.appsName == state.app16NoSpace) state.dName = state.app16
-		if(state.appsName == state.app17NoSpace) state.dName = state.app17
-		if(state.appsName == state.app18NoSpace) state.dName = state.app18
-		if(state.appsName == state.app19NoSpace) state.dName = state.app19
-		if(state.appsName == state.app20NoSpace) state.dName = state.app20
-        if(state.appsName == state.app21NoSpace) state.dName = state.app21
-        if(state.appsName == state.app22NoSpace) state.dName = state.app22
-        if(state.appsName == state.app23NoSpace) state.dName = state.app23
-        if(state.appsName == state.app24NoSpace) state.dName = state.app24
-        if(state.appsName == state.app25NoSpace) state.dName = state.app25  
-        if(state.appsName == state.app26NoSpace) state.dName = state.app26
-        if(state.appsName == state.app27NoSpace) state.dName = state.app27
-        if(state.appsName == state.app28NoSpace) state.dName = state.app28
-        if(state.appsName == state.app29NoSpace) state.dName = state.app29
-        if(state.appsName == state.app30NoSpace) state.dName = state.app30   
-        if(state.appsName == state.app31NoSpace) state.dName = state.app31
-        if(state.appsName == state.app32NoSpace) state.dName = state.app32
-        if(state.appsName == state.app33NoSpace) state.dName = state.app33
-        if(state.appsName == state.app34NoSpace) state.dName = state.app34
-        if(state.appsName == state.app35NoSpace) state.dName = state.app35
-        if(state.appsName == state.app36NoSpace) state.dName = state.app36
-        if(state.appsName == state.app37NoSpace) state.dName = state.app37
-        if(state.appsName == state.app38NoSpace) state.dName = state.app38
-        if(state.appsName == state.app39NoSpace) state.dName = state.app39
-        if(state.appsName == state.app40NoSpace) state.dName = state.app40
-    
-    if(logEnable) log.debug "In getAppNameHandler - dName: ${state.dName}"
 }
 
 // ********** Normal Stuff **********
