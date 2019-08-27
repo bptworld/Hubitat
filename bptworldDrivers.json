@@ -3,9 +3,10 @@
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "Drivers": "Driver Watchdog Driver",
   
+  "DriverWatchdogDriverName": "Driver Watchdog Data",
   "DriverWatchdogDriverVersion": "v2.0.0",
   "DriverWatchdogDriverPrefix": "DW",
-  "DriverWatchdogDriverDiscussion": "-",
-  "DriverWatchdogDriverUpdateNote": "-",
+  "DriverWatchdogDriverDiscussion": "",
+  "DriverWatchdogDriverUpdateNote": "",
   
 }
