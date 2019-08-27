@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.9 - 08/27/19 - Fixed another typo
  *  V2.0.8 - 08/27/19 - Found a typo, added optional Paypal link to Developers page.
  *  V2.0.7 - 08/26/19 - Bug fixes
  *  V2.0.6 - 08/26/19 - Developers can now be selected from a dropdown box.
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.8"
+	state.version = "v2.0.9"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -637,14 +638,12 @@ def checkTheAppData() {
 			state.appMap += "<tr><td width='36%'>Child 2: ${state.appChild2Version}</td><td width='32%'>Child 3: ${state.appChild3Version}</td><td width='32%'>Child 4: ${state.appChild4Version}</td></tr>"
             state.appMap += "<tr><td width='36%'>${c2new}${appChild2RawCode2}</td><td width='32%'>${c3new}${appChild3RawCode2}</td><td width='32%'>${c4new}${appChild4RawCode2}</td></tr>"
         }
-    }
 
-	if(state.appUpdateNote) {
-        state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>"
+	    if(state.appUpdateNote) state.appMap += "<tr><td width='100%' colspan='3' align='left'>Notes: ${state.appUpdateNote}</td></tr>"
 		state.appMap += "<tr><td width='100%' colspan='3' align='center'>________________________________________________________________</td></tr>"
 		state.appMapDash += "<tr><td>${state.dName}</td></tr>"
 		state.appMapPhone += "${state.dName} has an update available \n"
-	}
+    }
 
 	state.appAllMap += "<tr><td width='75%' colspan='2'><b>${state.dName}</b> <a href='${state.authorMainURL}' target='_blank'>(${state.authorName})</a></td><td width='25%'>${appDiscussion2}</td></tr>"
 	state.appAllMap += "<tr><td width='36%'><i>Installed</i>: Parent: ${state.oldAppParentVersion}</td><td width='32%'>Child: ${state.oldAppChild1Version}</td><td width='32%'> </td></tr>"
