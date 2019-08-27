@@ -38,30 +38,34 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 08/27/19 - add a 'Clear Data' option, Minor code changes
  *  V2.0.2 - 08/25/19 - Code cleanup by @stephack, thank you! Also sorted the data.
  *  V2.0.1 - 08/24/19 - Bug fixes
  *  V2.0.0 - 08/18/19 - Initial release
  */
 
 def setVersion(){
-    state.appName = "AppWatchdog2DriverVersion"
-	state.version = "v2.0.2"   
+    appName = "AppWatchdog2DriverVersion"
+	version = "v2.0.3" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "driverInfo", value: dwInfo, displayed: true)
 }
 
 metadata {
 	definition (name: "App Watchdog 2 Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy") {
-   		capability "Initialize"
         capability "Actuator"
 		
         attribute "sendAWinfoMap", "string"
         attribute "appTile", "string"
+        attribute "driverInfo", "string"
         
         command "sendAWinfoMap", ["Text"]
         command "sendDataMap", ["Text"]
+        command "clearData"
 	}
 	preferences() {    	
         section(){
-            input name: "about", type: "paragraph", element: "paragraph", title: "App Watchdog", description: "ONLY click 'initialize' to clear the version data. Once pressed, all apps/drivers will have to resend their info, usually done the next morning."
+            input name: "about", type: "paragraph", element: "paragraph", title: "App Watchdog", description: "ONLY click 'Clear Data' to clear the version data. Once pressed, all apps will have to resend their info, usually done the next morning."
             input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
             input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
         }
@@ -94,12 +98,12 @@ def installed(){
 
 def updated() {
     log.info "Apps Watchdog Device has been Updated"
+    setVersion()
 }
 
 def initialize() {
-    log.info "In initialize - Clearing maps"
-    state.theDataMap = [:]
-    sendEvent(name: "sendAWinfoMap", value: state.theDataMap, displayed: true)
+    log.info "In initialize"
+    setVersion()
 }
 
 def sendDataMap(dataMap) {
@@ -109,3 +113,10 @@ def sendDataMap(dataMap) {
 	theTile += "</td></tr></table>"
 	sendEvent(name: "appTile", value: theTile, displayed: true)
 }
+
+def clearData() {
+    log.info "In initialize - Clearing maps"
+    state.theDataMap = [:]
+    sendEvent(name: "sendAWinfoMap", value: state.theDataMap, displayed: true)
+}
+
