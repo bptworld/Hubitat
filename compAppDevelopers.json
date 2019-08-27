@@ -1,5 +1,4 @@
 {
-  "GitHubAppDevelopers": 
-      "https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json:BPTWorld",
+  "GitHubAppDevelopers": "https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json:BPTWorld",
       "https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json:Aaron Ward"
 }
