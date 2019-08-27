@@ -1,6 +1,7 @@
 {
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
+  "PayPalDonationLink": "https://paypal.me/bptworld",
   "Apps": "Abacus Intense Counting, Abacus Time Traveler, App Watchdog 2, At Home Simulator, BI Control, CATT Director, Chromecast Helper, Departures, Device Sequencer, Device Watchdog, Follow Me, Fully Kiosk Director, Gentle Wake Up, Life360 Tracker, Life360 with States, Lighting Effects, Magic Cube, Motion Controlled Scene Lighting, Notifier Plus, One at a Time, Send IP2IR, Simple Device Timer, Simple Irrigation, Snapshot, Web Pinger, Welcome Home",
   
   "AbacusIntenseCountingParentVersion": "v2.0.0",
