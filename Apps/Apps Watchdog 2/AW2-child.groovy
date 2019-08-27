@@ -52,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.7"
+	state.version = "v2.0.8"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
