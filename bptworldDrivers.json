@@ -2,12 +2,12 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Drivers": "Driver Watchdog Data",
+  "Drivers": "App Watchdog 2 Driver",
   
-  "DriverWatchdogDataName": "Driver Watchdog Data",
-  "DriverWatchdogDataVersion": "v2.0.0",
-  "DriverWatchdogDataRawCode": "",
-  "DriverWatchdogDataDiscussion": "",
-  "DriverWatchdogDataUpdateNote": "",
+  "AppWatchdog2DriverName": "App Watchdog 2 Driver",
+  "AppWatchdog2DriverVersion": "v2.0.0",
+  "AppWatchdog2DriverRawCode": "",
+  "AppWatchdog2DriverDiscussion": "",
+  "AppWatchdog2DriverUpdateNote": "",
   
 }
