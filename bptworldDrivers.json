@@ -4,10 +4,10 @@
   "PaypalLink": "https://paypal.me/bptworld",
   "Drivers": "Driver Watchdog Data",
   
-  "DriverWatchdogDriverName": "Driver Watchdog Data",
-  "DriverWatchdogDriverVersion": "v2.0.0",
-  "DriverWatchdogDriverRawCode": "",
-  "DriverWatchdogDriverDiscussion": "",
-  "DriverWatchdogDriverUpdateNote": "",
+  "DriverWatchdogDataName": "Driver Watchdog Data",
+  "DriverWatchdogDataVersion": "v2.0.0",
+  "DriverWatchdogDataRawCode": "",
+  "DriverWatchdogDataDiscussion": "",
+  "DriverWatchdogDataUpdateNote": "",
   
 }
