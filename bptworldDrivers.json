@@ -4,19 +4,16 @@
   "PaypalLink": "https://paypal.me/bptworld",
   "Drivers": "App Watchdog 2 Driver, Simple Dates Driver, Snapshot Driver",
   
-  "AppWatchdog2DriverName": "App Watchdog 2 Driver",
   "AppWatchdog2DriverVersion": "v2.0.4",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
   "AppWatchdog2DriverDiscussion": "https://community.hubitat.com/t/release-app-watchdog-2/9952",
   "AppWatchdog2DriverUpdateNote": "V2.0.4 - 08/28/19 - More code changes",
   
-  "SimpleDatesDriverName": "Simple Dates Driver",
   "SimpleDatesDriverVersion": "v2.0.0",
   "SimpleDatesDriverRawCode": "",
   "SimpleDatesDriverDiscussion": "",
   "SimpleDatesDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
   
-  "SnapshotDriverName": "Snapshot Driver",
   "SnapshotDriverVersion": "v2.0.0",
   "SnapshotDriverRawCode": "",
   "SnapshotDriverDiscussion": "",
