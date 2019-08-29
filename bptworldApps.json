@@ -40,9 +40,9 @@
 
   "AppWatchdog2ParentVersion": "v2.0.1",
   "AppWatchdog2Child1Version": "v2.1.0",
-  "AppWatchdog2Child1Name": "",
-  "AppWatchdog2Child2Version": "",
-  "AppWatchdog2Child2Name": "",
+  "AppWatchdog2Child1Name": "Apps",
+  "AppWatchdog2Child2Version": "v2.0.0",
+  "AppWatchdog2Child2Name": "Drivers",
   "AppWatchdog2Child3Version": "",
   "AppWatchdog2Child3Name": "",
   "AppWatchdog2Child4Version": "",
