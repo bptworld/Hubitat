@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.1.0 - 08/28/19 - Found a big bug in Developer 1 selection
  *  V2.0.9 - 08/27/19 - Fixed another typo
  *  V2.0.8 - 08/27/19 - Found a typo, added optional Paypal link to Developers page.
  *  V2.0.7 - 08/26/19 - Bug fixes
@@ -53,7 +54,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
     state.appName = "AppWatchdog2ChildVersion"
-	state.version = "v2.0.9"
+	state.version = "v2.1.0"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -122,6 +123,7 @@ def developerOptions(){
                 ["https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AaronWardAppUpdate.json":"Aaron Ward"]
             ]
 			if(gitHubURL1) {
+                gitHubCheck1()
 				paragraph "Developer: ${state.gitHubAuthor1}"
                 if(state.paypalLink1) {
                     paragraph "If you find ${state.gitHubAuthor1}'s apps useful. Please consider a donation via <a href='${state.paypalLink1}' target='_blank'>Paypal</a>"
