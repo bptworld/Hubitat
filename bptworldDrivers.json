@@ -2,7 +2,7 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Drivers": "App Watchdog 2 Driver, Simple Dates Driver",
+  "Drivers": "App Watchdog 2 Driver, Simple Dates Driver, Snapshot Driver",
   
   "AppWatchdog2DriverName": "App Watchdog 2 Driver",
   "AppWatchdog2DriverVersion": "v2.0.4",
@@ -15,4 +15,10 @@
   "SimpleDatesDriverRawCode": "",
   "SimpleDatesDriverDiscussion": "",
   "SimpleDatesDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
+  
+  "SnapshotDriverName": "Snapshot Driver",
+  "SnapshotDriverVersion": "v2.0.0",
+  "SnapshotDriverRawCode": "",
+  "SnapshotDriverDiscussion": "",
+  "SnapshotDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
 }
