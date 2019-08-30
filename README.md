@@ -67,7 +67,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-polle
 <b>Send IP2IR</b> - Designed to send commands to an iTach IP2IR device.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667" target="_blank">Go Here</a>
 <br><br>
-<b>Simple Dates</b> - Create a simple coutdown to your most important dates.<br>
+<b>Simple Dates</b> - Create a simple coutdown to your most important dates. Display on your dashboard.<br>
 Hubitat Forum Discussion: <a href="" target="_blank">Not Yet</a>
 <br><br>
 <b>Simple Device Timer</b> - Simple Device Timer with safety checks, multiple timers, notifications and restrictions.<br>
