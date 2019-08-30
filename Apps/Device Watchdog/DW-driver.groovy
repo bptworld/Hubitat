@@ -38,12 +38,25 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 08/29/19 - App Watchdog compatible
  *  V1.0.4 - 04/16/19 - Cleanup Code, added importURL
  *  V1.0.3 - 03/31/19 - Added support for Status tiles
  *  V1.0.2 - 03/18/19 - Added support for mutiple tiles
  *  V1.0.1 - 02/25/19 - Added Device Status attribute
  *  V1.0.0 - 01/28/19 - Initial release
  */
+
+def setVersion(){
+    appName = "DeviceWatchdogTile"
+	version = "v1.0.5" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
 	definition (name: "Device Watchdog Tile", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy") {
@@ -84,6 +97,9 @@ metadata {
 		attribute "watchdogStatus3", "string"
 		attribute "watchdogStatus4", "string"
 		attribute "watchdogStatus5", "string"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 	preferences() {    	
         section(""){
