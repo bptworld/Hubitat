@@ -71,7 +71,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-
 Hubitat Forum Discussion: <a href="" target="_blank">Not Yet</a>
 <br><br>
 <b>Simple Device Timer</b> - Simple Device Timer with safety checks, multiple timers, notifications and restrictions.<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-device-timer/16917" target="_blank">Go Here</a>
 <br><br>
 <b>Simple Irrigation</b> - For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers, notifications and restrictions.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-irrigation/14420" target="_blank">Go Here</a>
