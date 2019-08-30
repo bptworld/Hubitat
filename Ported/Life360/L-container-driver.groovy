@@ -26,20 +26,34 @@
  *
  * Changes:
  *
+ *  v1.0.2 - 08/29/19 - App Watchdog compatible
  *  v1.0.1 - 07/26/19 - Stripped down to the bare minimum so this version only works with Life360 with States
  *                    - Changed name/namespace/author to stop any confusion between this version and the original
- *                    - Added info box, Debug Logging switch and importURL
+ *                    - Added info box, Debug Logging switch and importURL 
  *  v1.0.0 - 07/25/19 - Modified for use with Life360 with States
  *
  */
 
-def version() {"v1.0.1"}
+def setVersion(){
+    appName = "Life360Container"
+	version = "v1.0.2" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
 	definition (name: "Life360 Container", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-container-driver.groovy") {
         capability "Refresh"
         attribute "containerSize", "number"	//stores the total number of child switches created by the container
         command "createDevice", ["DEVICE LABEL", "DRIVER TYPE ", "NAMESPACE ."] //create any new Virtual Device
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
     }
 }
 
