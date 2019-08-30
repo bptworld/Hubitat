@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ * v2.0.3 - 08/29/2019 - App Watchdog compatible
  * v2.0.2 - 05/12/2019 - Added Yesterday data by request
  * v2.0.1 - 04/16/2019 - Code cleanup, added importUrl
  * v2.0.0 - 04/10/2019 - Code cleanup. Added 'Tomorrow forecast', Updated display for Hubitat dashboard tile (@bptworld)
@@ -45,8 +46,20 @@
  *
  */
 
+def setVersion(){
+    appName = "AsthmaForecasterDriver"
+	version = "v2.0.5" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
+
 metadata {
-	definition (name: "Asthma Forecaster", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Asthma%20Forecaster/AF-driver.groovy") {
+	definition (name: "Asthma Forecaster Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Asthma%20Forecaster/AF-driver.groovy") {
 		capability "Sensor"
 		capability "Polling"
 
@@ -61,6 +74,9 @@ metadata {
 		attribute "yesterdayTile", "string"
 		attribute "todayTile", "string"
 		attribute "tomorrowTile", "string"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 
 	preferences {
