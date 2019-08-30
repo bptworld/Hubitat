@@ -68,7 +68,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-polle
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667" target="_blank">Go Here</a>
 <br><br>
 <b>Simple Dates</b> - Create a simple countdown to your most important dates. Display on your dashboard.<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Not Yet</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-dates-create-countdowns-of-your-special-dates/21859" target="_blank">Go Here</a>
 <br><br>
 <b>Simple Device Timer</b> - Simple Device Timer with safety checks, multiple timers, notifications and restrictions.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-device-timer/16917" target="_blank">Go Here</a>
