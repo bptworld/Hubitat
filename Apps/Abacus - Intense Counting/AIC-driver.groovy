@@ -38,10 +38,23 @@
  *
  *  Changes:
  *
+ *	V1.0.3 - 08/29/19 - App Watchdog compatible
  *	V1.0.2 - 04/15/19 - Code cleanup, added importUrl
  *	V1.0.1 - 03/20/19 - Major upgrades for Hubitat's new dashboard requirements
  *  V1.0.0 - 01/25/19 - Initial release
  */
+
+def setVersion(){
+    appName = "AbacusCountingTile"
+	version = "v1.0.3" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
 	definition (name: "Abacus - Counting Tile", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy") {
@@ -86,6 +99,9 @@ metadata {
 		attribute "abacusSwitch5", "string"
 		
 		attribute "abacusThermostat1", "string"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 	preferences() {    	
         section(""){
