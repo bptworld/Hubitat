@@ -4,10 +4,25 @@
   "PaypalLink": "https://paypal.me/bptworld",
   "Drivers": "App Watchdog 2 Driver, Simple Dates Driver, Snapshot Driver",
   
-  "AppWatchdog2DriverVersion": "v2.0.4",
+  "AppWatchdog2DriverVersion": "v2.0.5",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
   "AppWatchdog2DriverDiscussion": "https://community.hubitat.com/t/release-app-watchdog-2/9952",
-  "AppWatchdog2DriverUpdateNote": "V2.0.4 - 08/28/19 - More code changes",
+  "AppWatchdog2DriverUpdateNote": "V2.0.5 - 08/29/19 - Changes to work with Drivers too",
+  
+  "AbacusCoutingTileVersion": "v1.0.3",
+  "AbacusCoutingTileRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy",
+  "AbacusCoutingTileDiscussion": "",
+  "AbacusCoutingTileUpdateNote": "V1.0.3 - 08/29/19 - App Watchdog compatible",
+  
+  "AsthmaForecasterDriverVersion": "v2.0.3",
+  "AsthmaForecasterDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Asthma%20Forecaster/AF-driver.groovy.groovy",
+  "AsthmaForecasterDriverDiscussion": "",
+  "AsthmaForecasterDriverUpdateNote": "v2.0.3 - 08/29/2019 - App Watchdog compatible",
+  
+  "DeviceWatchdogTileVersion": "v1.0.5",
+  "DeviceWatchdogTileRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
+  "DeviceWatchdogTileDiscussion": "",
+  "DeviceWatchdogTileUpdateNote": "V1.0.5 - 08/29/19 - App Watchdog compatible",
   
   "SimpleDatesDriverVersion": "v2.0.0",
   "SimpleDatesDriverRawCode": "",
