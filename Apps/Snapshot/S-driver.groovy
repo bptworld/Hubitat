@@ -1,5 +1,5 @@
 /**
- *  ****************  Snapshot Tile Driver  ****************
+ *  ****************  Snapshot Driver  ****************
  *
  *  Design Usage:
  *  This driver formats the Snapshot data to be used with Hubitat's Dashboards.
@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.1.0 - 08/28/19 - Driver Watchdog compatible
  *  V1.0.9 - 04/30/19 - Adjust driver for Water support
  *  V1.0.8 - 04/16/19 - Code cleanup, added importUrl
  *  V1.0.7 - 04/12/19 - Adjust driver for Presence support
@@ -50,8 +51,20 @@
  *  V1.0.0 - 03/06/19 - Initial release
  */
 
+def setVersion(){
+    appName = "SnapshotDriver"
+	version = "v1.1.0" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
+
 metadata {
-	definition (name: "Snapshot Tile", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy") {
+	definition (name: "Snapshot Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy") {
    		capability "Actuator"
 
 		command "sendSnapshotSwitchMap1", ["string"]
@@ -152,6 +165,9 @@ metadata {
 		attribute "snapshotPriorityLock2", "string"
 		attribute "snapshotPriorityTemp1", "string"
 		attribute "snapshotPriorityTemp2", "string"
+
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 	preferences() {    	
         section(){
@@ -661,9 +677,11 @@ def sendSnapshotPriorityTempMap2(pTempMap2S) {
 }
 
 def installed(){
-    log.info "Snapshot Tile has been Installed"
+    log.info "Snapshot Driver has been Installed"
+    setVersion()
 }
 
 def updated() {
-    log.info "Snap Tile has been Updated"
+    log.info "Snap Driver has been Updated"
+    setVersion()
 }
