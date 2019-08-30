@@ -1,10 +1,8 @@
 /**
- *  ****************  Global Variables Driver  ****************
+ *  ****************  Welcome Home Driver  ****************
  *
  *  Design Usage:
- *  This driver stores Global Variables to be used with BPTWorld apps.
- *  Apps that use this driver:
- *  	- Welcome Home
+ *  This driver stores Global Variables to be used with Welcome Home.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *  
@@ -40,15 +38,26 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 08/29/19 - App Watchdog compatible
  *  V1.0.2 - 04/16/19 - Code cleanup, added importUrl
  *  V1.0.1 - 04/06/19 - deleted
  *  V1.0.0 - 02/09/19 - Initial release
  */
 
-def version(){"v1.0.2"}
+def setVersion(){
+    appName = "WelcomeHomeDriver"
+	version = "v1.0.3" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
-	definition (name: "Global Variables Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy") {
+	definition (name: "Welcome Home Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy") {
    		capability "Actuator"
 		
 		// Welcome Home
@@ -69,7 +78,9 @@ metadata {
 		attribute "globalIH3", "string"
 		attribute "globalIH4", "string"
 		attribute "globalIH5", "string"
-		
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"	
 	}
 	preferences() {    	
         section(){
