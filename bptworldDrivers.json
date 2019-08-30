@@ -54,10 +54,10 @@
   "SimpleDatesDriverDiscussion": "",
   "SimpleDatesDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
   
-  "SnapshotDriverVersion": "v2.0.0",
+  "SnapshotDriverVersion": "v1.1.0",
   "SnapshotDriverRawCode": "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy",
   "SnapshotDriverDiscussion": "",
-  "SnapshotDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
+  "SnapshotDriverUpdateNote": "V1.1.0 - 08/28/19 - Device Watchdog compatible",
   
   "WelcomeHomeDriverVersion": "v1.0.3",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
