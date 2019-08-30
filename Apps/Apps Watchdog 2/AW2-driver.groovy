@@ -38,6 +38,8 @@
  *
  *  Changes:
  *
+ *  V2.0.5 - 08/29/19 - Changes to work with Drivers too
+ *  V2.0.4 - 08/28/19 - More code changes
  *  V2.0.3 - 08/27/19 - add a 'Clear Data' option, Minor code changes
  *  V2.0.2 - 08/25/19 - Code cleanup by @stephack, thank you! Also sorted the data.
  *  V2.0.1 - 08/24/19 - Bug fixes
@@ -45,10 +47,15 @@
  */
 
 def setVersion(){
-    appName = "AppWatchdog2DriverVersion"
-	version = "v2.0.3" 
+    appName = "AppWatchdog2Driver"
+	version = "v2.0.5" 
     dwInfo = "${appName}:${version}"
-    sendEvent(name: "driverInfo", value: dwInfo, displayed: true)
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
 }
 
 metadata {
@@ -56,12 +63,17 @@ metadata {
         capability "Actuator"
 		
         attribute "sendAWinfoMap", "string"
+        attribute "sendDWinfoMap", "string"
         attribute "appTile", "string"
-        attribute "driverInfo", "string"
+        attribute "driverTile", "string"
         
         command "sendAWinfoMap", ["Text"]
         command "sendDataMap", ["Text"]
+        command "sendDriverMap", ["Text"]
         command "clearData"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 	preferences() {    	
         section(){
@@ -78,10 +90,13 @@ def sendAWinfoMap(appWatchdogData) {
 	def newData = stringToMap(appWatchdogData) // this converts the string to a map
     if(logEnable) log.debug "In sendAWinfo - Incoming Data - ${newData}"
     
+    if(state.theDataMap == null) state.theDataMap = [:]
+    
     state.theDataMap << newData
-    if(logEnable) log.debug "In sendAWinfoMap - newData: ${newData}"
+    if(logEnable) log.debug "In sendAWinfoMap - newData: ${newData} - theDataMap: ${state.theDataMap}"
     
     def allMap = state.theDataMap.collectEntries{ [(it.key):(it.value)] }
+    if(logEnable) log.debug "In sendAWinfo - allMap - ${allMap}"
     
     allMapS = allMap.sort{it.key}
     
@@ -98,12 +113,10 @@ def installed(){
 
 def updated() {
     log.info "Apps Watchdog Device has been Updated"
-    setVersion()
 }
 
 def initialize() {
     log.info "In initialize"
-    setVersion()
 }
 
 def sendDataMap(dataMap) {
@@ -114,9 +127,18 @@ def sendDataMap(dataMap) {
 	sendEvent(name: "appTile", value: theTile, displayed: true)
 }
 
+def sendDriverMap(dataMap) {
+    if(logEnable) log.debug "In sendDataMap - Received new app data!"
+	theTile = "<table width='100%'><tr><td width='10'><td align='left'>"
+	theTile += "<div style='line-height=50%;margin-top:0em;margin-bottom:0em;font-size:.${fontSize}em;'>${dataMap}</div>"
+	theTile += "</td></tr></table>"
+	sendEvent(name: "driverTile", value: theTile, displayed: true)
+}
+
 def clearData() {
     log.info "In initialize - Clearing maps"
     state.theDataMap = [:]
+    state.theDriverMap = [:]
     sendEvent(name: "sendAWinfoMap", value: state.theDataMap, displayed: true)
+    sendEvent(name: "sendDWinfoMap", value: state.theDriverMap, displayed: true)
 }
-
