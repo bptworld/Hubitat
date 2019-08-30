@@ -38,7 +38,7 @@
   "AbacusTimeTravelerDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
   "AbacusTimeTravelerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
 
-  "AppWatchdog2ParentVersion": "v2.0.1",
+  "AppWatchdog2ParentVersion": "v2.0.2",
   "AppWatchdog2Child1Version": "v2.1.0",
   "AppWatchdog2Child1Name": "Apps",
   "AppWatchdog2Child2Version": "v2.0.0",
