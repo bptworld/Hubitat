@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ * v2.0.5 - 08/29/2019 - App Watchdog compatible
  * v2.0.4 - 05/12/2019 - Added Yesterday data by request
  * V1.0.3 - 04/16/2019 - Code cleanup, added importUrl
  * v2.0.0 - 04/10/2019 - Code cleanup. Added 'Tomorrow forecast', Updated display for Hubitat dashboard tile (@bptworld)
@@ -45,6 +46,18 @@
  *			ST version: https://github.com/jschlackman/PollenThing
  *
  */
+
+def setVersion(){
+    appName = "PollenForecaster"
+	version = "v2.0.5" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
 	definition (name: "Pollen Forecaster", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy") {
@@ -65,6 +78,9 @@ metadata {
 		attribute "yesterdayTile", "string"
 		attribute "todayTile", "string"
 		attribute "tomorrowTile", "string"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 
 	preferences {
