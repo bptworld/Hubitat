@@ -2,7 +2,7 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Drivers": "App Watchdog 2 Driver, Simple Dates Driver, Snapshot Driver",
+  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Watchdog Tile, IP2IR Telnet, Life360 Container, Life360 User, Pollen Forecaster, Send t oHub with CATT Driver, Simple Dates Driver, Snapshot Driver, Welcome Home Driver, What Did I Say",
   
   "AppWatchdog2DriverVersion": "v2.0.5",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
