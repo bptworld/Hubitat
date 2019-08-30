@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 08/30/19 - Code cleanup
  *  V2.0.2 - 08/18/19 - Now App Watchdog compliant
  *  V2.0.1 - 08/05/19 - Lots of little changes to the speech methods
  *  V2.0.0 - 08/04/19 - Handles speech much easier. New options available, check your child apps!
@@ -81,18 +82,16 @@
 import groovy.json.*
     
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "FollowMeChildVersion"
-	state.version = "v2.0.2"
+	state.version = "v2.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -466,6 +465,8 @@ def initialize() {
 	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
 	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
 	if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def presenceSensorHandler1(evt){
@@ -594,23 +595,6 @@ def switchHandler(evt) {
 	}
 }
 
-def messageHandler() {            //code by @storageanarchy
-    String theMessage = gvDevice.currentValue('latestMessage')
-    if (theMessage) {
-        def message =  new JsonSlurper().parseText(theMessage)
-        // you can now reference the attributes as message.message, message.priority, message.title, etc)
-        switch(message.method) {
-            case 'playAnnouncement':
-                targetSpeakDevice.playAnnouncement(message.message, message.title, message.speakLevel, message.returnLevel)
-                break;
-            case 'setVolumeSpeakAndRestore':
-                targetSpeakDevice.setVolumeSpeakAndRestore(message.speakLevel,message.message, message.returnLevel)
-                break;
-            // etc. etc. etc.
-        }
-    }
-}
-
 def lastSpokenHandler(speech) { 
 	if(logEnable) log.debug "In lastSpokenHandler (${state.version})"
 	if(triggerMode == "Always_On") alwaysOnHandler()
@@ -676,18 +660,10 @@ def letsTalk() {
                     // you can now reference the attributes as message.message, message.priority, message.title, etc)
                     switch(message.method) {
                         case 'deviceNotification':
-                            speakHandler(it)
+                            beforeVolume(it)
                             it.speak(message.message)
                             pauseExecution(atomicState.speechDuration2)
-                            if(afterVolume) {
-                                if(volRestore && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(volRestore)
-                                } else {
-                                    if(volRestore && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(volRestore)
-                                    }
-                                }
-                            }
+                            afterVolume(it)
                             log.info "Follow Me - deviceNotification Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playAnnouncement':
@@ -701,97 +677,35 @@ def letsTalk() {
                             log.info "Follow Me - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playText':
-                            if(beforeVolume) {
-                                if(volSpeech && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(state.volume)
-                                } else {
-                                    if(volSpeech && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(state.volume)
-                                    }
-                                }
-                            }
+                            beforeVolume(it)
                             it.playText(message.message)
                             pauseExecution(atomicState.speechDuration2)
-                            if(afterVolume) {
-                                if(volRestore && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(volRestore)
-                                } else {
-                                    if(volRestore && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(volRestore)
-                                    }
-                                }
-                            }
+                            afterVolume(it)
                             log.info "Follow Me - playText Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playTextAndRestore':
-                            if(beforeVolume) {
-                                if(volSpeech && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(state.volume)
-                                } else {
-                                    if(volSpeech && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(state.volume)
-                                    }
-                                }
-                            }
+                            beforeVolume(it)
                             it.playTextAndRestore(message.message, message.returnLevel)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - playTextAndRestore Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playTextAndResume':
-                            if(beforeVolume) {
-                                if(volSpeech && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(state.volume)
-                                } else {
-                                    if(volSpeech && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(state.volume)
-                                    }
-                                }
-                            }
+                            beforeVolume(it)
                             it.playTextAndResume(message.message, message.returnLevel)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - playTextAndResume Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playTrack':
-                            if(beforeVolume) {
-                                if(volSpeech && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(state.volume)
-                                } else {
-                                    if(volSpeech && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(state.volume)
-                                    }
-                                }
-                            }
-                            if(state.sound) {
-                                it.playTrack(state.sound)
-	                            pauseExecution(state.sLength)
-                            }
+                            beforeVolume(it)
+                            playSound(it)
                             it.playTrack(state.uriMessage)
                             pauseExecution(atomicState.speechDuration2)
-                            if(afterVolume) {
-                                if(volRestore && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(volRestore)
-                                } else {
-                                    if(volRestore && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(volRestore)
-                                    }
-                                }
-                            }
+                            afterVolume(it)
                             log.info "Follow Me - playTrack Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'playTrackAndRestore':
-                            if(beforeVolume) {
-                                if(volSpeech && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(state.volume)
-                                } else {
-                                    if(volSpeech && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(state.volume)
-                                    }
-                                }
-                            }
-                            if(state.sound) {
-                                it.playTrack(state.sound)
-	                            pauseExecution(state.sLength)
-                            }
+                            beforeVolume(it)
+                            playSound(it)
                             it.playTrackAndRestore(state.uriMessage, message.returnLevel)
                             pauseExecution(atomicState.speechDuration2)
                             log.info "Follow Me - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
@@ -814,15 +728,7 @@ def letsTalk() {
                         case 'setVolumeAndSpeak':
                             it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
                             pauseExecution(atomicState.speechDuration2)
-                            if(afterVolume) {
-                                if(volRestore && (it.hasCommand('setLevel'))) {
-                                    it.setLevel(volRestore)
-                                } else {
-                                    if(volRestore && (it.hasCommand('setVolume'))) {
-                                        it.setVolume(volRestore)
-                                    }
-                                }
-                            }
+                            afterVolume(it)
                             log.info "Follow Me - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
                             break;
                         case 'speak':
@@ -872,15 +778,7 @@ def playTrackAndRestoreHandler(it) {
     try {
         if(logEnable) log.debug "In playTrackAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         def prevVolume = it.currentValue("volume")
-        if(beforeVolume) {
-            if(volSpeech && (it.hasCommand('setLevel'))) {
-                it.setLevel(state.volume)
-            } else {
-                if(volSpeech && (it.hasCommand('setVolume'))) {
-                    it.setVolume(state.volume)
-                }
-            }
-        }
+        beforeVolume(it)
         if(state.sound) it.playTrackAndRestore(state.sound, prevVolume)
         if(state.sound) pauseExecution(state.sLength)
         it.playTrackAndRestore(state.uriMessage, prevVolume)
@@ -897,15 +795,7 @@ def playTextAndRestoreHandler(it) {
     try {
         if(logEnable) log.debug "In playTextAndRestoreHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         def prevVolume = it.currentValue("volume")
-        if(beforeVolume) {
-            if(volSpeech && (it.hasCommand('setLevel'))) {
-                it.setLevel(state.volume)
-            } else {
-                if(volSpeech && (it.hasCommand('setVolume'))) {
-                    it.setVolume(state.volume)
-                }
-            }
-        }
+        beforeVolume(it)
         it.playTextAndRestore(state.lastSpoken, prevVolume)
         pauseExecution(atomicState.speechDuration2)
         log.info "Follow Me - playTextAndRestoreHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
@@ -920,30 +810,11 @@ def playTrackHandler(it) {
     try {
         if(logEnable) log.debug "In playTrackHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         if(gInitialize) initializeSpeaker()
-        if(beforeVolume) {
-            if(volSpeech && (it.hasCommand('setLevel'))) {
-                it.setLevel(state.volume)
-            } else {
-                if(volSpeech && (it.hasCommand('setVolume'))) {
-                    it.setVolume(state.volume)
-                }
-            }
-        }
-        if(state.sound) {
-            it.playTrack(state.sound)
-	        pauseExecution(state.sLength)
-        }
+        beforeVolume(it)
+        playSound(it)
         it.playTrack(state.uriMessage)
         pauseExecution(atomicState.speechDuration2)
-        if(afterVolume) {
-            if(volRestore && (it.hasCommand('setLevel'))) {
-                it.setLevel(volRestore)
-            } else {
-                if(volRestore && (it.hasCommand('setVolume'))) {
-                    it.setVolume(volRestore)
-                }
-            }
-        }
+        afterVolume(it)
         log.info "Follow Me - playTrackHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
     } catch (e) {
         log.warn "Follow Me - Something went wrong with playTrackHandler - Trying the defaultSpeechHandler"
@@ -956,6 +827,26 @@ def defaultSpeechHandler(it) {
     try {
         if(logEnable) log.debug "In defaultSpeechHandler (${state.version}) - Speaker: ${it} - sound: ${state.sound} - sLength: ${state.sLength} - uriMessage: ${state.uriMessage} - lastSpoken: ${state.lastSpoken}"
         if(gInitialize) initializeSpeaker()
+        beforeVolume(it)
+        it.speak(state.lastSpoken)
+        pauseExecution(atomicState.speechDuration2)
+        afterVolume(it)
+        log.info "Follow Me - defaultSpeechHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
+    } catch (e) {
+        log.warn "Follow Me - Something went wrong with defaultSpeechHandler"
+        log.error "${e}"
+    }
+} 
+
+def playSound(it) {
+    if(state.sound) {
+        it.playTrack(state.sound)
+	    pauseExecution(state.sLength)
+    }
+}
+
+def beforeVolume(it) {
+    if(beforeVolume) {
         if(volSpeech && (it.hasCommand('setLevel'))) {
             it.setLevel(state.volume)
         } else {
@@ -963,24 +854,21 @@ def defaultSpeechHandler(it) {
                 it.setVolume(state.volume)
             }
         }
-        it.speak(state.lastSpoken)
-        pauseExecution(atomicState.speechDuration2)
-        if(afterVolume) {
-            if(volRestore && (it.hasCommand('setLevel'))) {
-                it.setLevel(volRestore)
-            } else {
-                if(volRestore && (it.hasCommand('setVolume'))) {
-                    it.setVolume(volRestore)
-                }
+    }
+}
+    
+def afterVolume(it) {
+    if(afterVolume) {
+        if(volRestore && (it.hasCommand('setLevel'))) {
+            it.setLevel(volRestore)
+        } else {
+            if(volRestore && (it.hasCommand('setVolume'))) {
+                it.setVolume(volRestore)
             }
         }
-        log.info "Follow Me - defaultSpeechHandler has spoken on speaker: ${it} - ${state.lastSpoken}"
-    } catch (e) {
-        log.warn "Follow Me - Something went wrong with defaultSpeechHandler"
-        log.error "${e}"
     }
-} 
-    
+}
+
 def checkTime() {
 	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
 	if(fromTime) {
