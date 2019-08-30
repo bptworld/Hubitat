@@ -24,13 +24,48 @@
   "DeviceWatchdogTileDiscussion": "",
   "DeviceWatchdogTileUpdateNote": "V1.0.5 - 08/29/19 - App Watchdog compatible",
   
+  "IP2IRTelnetVersion": "v1.0.4",
+  "IP2IRTelnetRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy",
+  "IP2IRTelnetDiscussion": "",
+  "IP2IRTelnetUpdateNote": "V1.0.4 - 08/29/19 - App Watchdog Compatible",
+  
+  "Life360ContainerVersion": "v2.0.2",
+  "Life360ContainerRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-container-driver.groovy",
+  "Life360ContainerDiscussion": "",
+  "Life360ContainerUpdateNote": "v1.0.2 - 08/29/19 - App Watchdog compatible",
+  
+  "Life360UserVersion": "v1.1.4",
+  "Life360UserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
+  "Life360UserDiscussion": "",
+  "Life360UserUpdateNote": "v1.1.4 - 08/29/19 - App Watchdog Compatible",
+  
+  "PollenForecasterVersion": "v2.0.5",
+  "PollenForecasterRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy",
+  "PollenForecasterDiscussion": "",
+  "PollenForecasterUpdateNote": "v2.0.5 - 08/29/2019 - App Watchdog compatible",
+  
+  "SendtoHubwithCATTDriverVersion": "v1.0.3",
+  "SendtoHubwithCATTDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20to%20Hub%20with%20CATT/STHWC-driver.groovy",
+  "SendtoHubwithCATTDriverDiscussion": "",
+  "SendtoHubwithCATTDriverUpdateNote": "V1.0.3 - 08/29/19 - App Watchdog compatible",
+  
   "SimpleDatesDriverVersion": "v2.0.0",
   "SimpleDatesDriverRawCode": "",
   "SimpleDatesDriverDiscussion": "",
   "SimpleDatesDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
   
   "SnapshotDriverVersion": "v2.0.0",
-  "SnapshotDriverRawCode": "",
+  "SnapshotDriverRawCode": "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy",
   "SnapshotDriverDiscussion": "",
   "SnapshotDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
+  
+  "WelcomeHomeDriverVersion": "v1.0.3",
+  "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
+  "WelcomeHomeDriverDiscussion": "",
+  "WelcomeHomeDriverUpdateNote": "V1.0.3 - 08/29/19 - App Watchdog compatible",
+  
+  "WhatDidISayVersion": "v2.0.3,
+  "WhatDidISayRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy",
+  "WhatDidISayDiscussion": "",
+  "WhatDidISayUpdateNote": "V2.0.3 - 08/29/19 - App Watchdog Compatible",
 }
