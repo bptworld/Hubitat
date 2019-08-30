@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 08/29/19 - Now two types of child devices, apps and drivers
  *  V2.0.1 - 08/24/19 - Squashing bugs
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "AppWatchdog2ParentVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -76,10 +77,6 @@ def installed() {
     initialize()
 }
 
-def uninstalled() {                  // Modified from @Stephack
-    childDevices.each { deleteChildDevice(it.deviceNetworkId) }
-}
-
 def updated() {
     log.debug "Updated with settings: ${settings}"
     unsubscribe()
@@ -87,8 +84,8 @@ def updated() {
 }
 
 def initialize() {
+    setVersion()
     log.info "There are ${childApps.size()} child apps"
-    createVirtualDevice()
     childApps.each {child ->
     	log.info "Child app: ${child.label}"
     }
@@ -109,7 +106,8 @@ def mainPage() {					// Modified from @Cobra Code
                 paragraph "Note: This will only track apps, not drivers. Hopefully at some point it will also track drivers. Thanks"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "App Watchdog 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'App Watchdog 2' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "App Watchdog 2 Apps Child", namespace: "BPTWorld", title: "<b>Add a new 'App Watchdog 2 - Apps' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "App Watchdog 2 Drivers Child", namespace: "BPTWorld", title: "<b>Add a new 'App Watchdog 2 - Drivers' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
@@ -119,7 +117,7 @@ def mainPage() {					// Modified from @Cobra Code
 			}
             if(sendToAWSwitch) {
                 section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
-                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
+                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog 2 Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
 			        if(sendToAWSwitch && awDevice) setVersion()
                 }
             }
@@ -140,19 +138,6 @@ def installCheck(){
   	else{
     	log.info "Parent Installed OK"
   	}
-}
-
-def createVirtualDevice() {                        // Modified from @Stephack
-    def childDevice = getChildDevices()?.find {it.device.deviceNetworkId == "AW2_${app.id}"}      
-    if (!childDevice) {
-        if(logEnable) log.debug "In createVirtualDevice - Creating Virtual Device"
-        childDevice = addChildDevice("BPTWorld", "App Watchdog 2 Driver", "AW2_${app.id}", null,[completedSetup: true, label: "App Watchdog Data"]) 
-    	
-        if(logEnable) log.debug "In createVirtualDevice - Created Virtual Device [${childDevice}]"
-	}
-    else {
-        if(logEnable) log.debug "In createVirtualDevice - Virtual Device already created - Skipping"
-	}
 }
 
 def getImage(type) {				// Modified from @Stephack Code
