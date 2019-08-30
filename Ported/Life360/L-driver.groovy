@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.1.4 - 08/29/19 - App Watchdog Compatible
  *  v1.1.3 - 08/06/19 - Added new attribute, lastUpdated
  *  V1.1.2 - 07/28/19 - Squashed a bug
  *  V1.1.1 - 07/19/19 - Place is now clickable on the status tile.
@@ -45,6 +46,18 @@
  */
  
 import java.text.SimpleDateFormat
+
+def setVersion(){
+    appName = "Life360User"
+	version = "v1.1.4" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 preferences {
 	input title:"Distance", description:"This feature allows you change the display of distance to either Miles or KM. Please note, any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
@@ -104,6 +117,9 @@ metadata {
     command "sendHistory", ["string"]
     command "sendTheMap", ["string"]
     command "historyClearData"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 
 	simulator {
