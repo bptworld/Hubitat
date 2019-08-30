@@ -38,10 +38,23 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 08/29/19 - App Watchdog compatible
  *  V1.0.2 - 08/17/19 - Added more commands, fixed typo in volume
  *  V1.0.1 - 08/16/19 - Name changed to 'Send to Hub with CATT', added a ton more commands, added some suggestions from @Ryan780, Thank you!
  *  V1.0.0 - 08/15/19 - Initial release
  */
+
+def setVersion(){
+    appName = "SendtoHubwithCATTDriver"
+	version = "v1.0.3" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
 	definition (name: "Send to Hub with CATT Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20to%20Hub%20with%20CATT/STHWC-driver.groovy") {
@@ -72,6 +85,9 @@ metadata {
         command "volumedown"
         command "volumeup"
         command "write_config", ["Text"]
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
     }
     
     preferences() {
