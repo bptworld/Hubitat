@@ -1,5 +1,5 @@
 /**
- *  ****************  App Watchdog 2 Child ****************
+ *  ****************  App Watchdog 2 Apps Child ****************
  *
  *  Design Usage:
  *  See if any compatible app needs an update, all in one place.
@@ -53,7 +53,7 @@ def setVersion(){
     // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. YourAppsNameParentVersion, YourAppsNameChildVersion
-    state.appName = "AppWatchdog2ChildVersion"
+    state.appName = "AppWatchdog2AppsChildVersion"
 	state.version = "v2.1.0"
     
     try {
@@ -66,7 +66,7 @@ def setVersion(){
 }
 
 definition(
-    name: "App Watchdog 2 Child",
+    name: "App Watchdog 2 Apps Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "See if any compatible app needs an update, all in one place.",
@@ -86,7 +86,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>App Watchdog 2</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {	
+    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>App Watchdog 2 - Apps</h2>", nextPage: null, install: true, uninstall: true, refreshInterval:0) {	
     display()
 		section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
@@ -94,6 +94,7 @@ def pageConfig() {
             paragraph "Note: This will only track apps, not drivers. Thanks"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
+            paragraph "Be sure to setup at least one developer before running a report."
 			href "pageAppstoUpdate", title: "App Watchdog Report", description: "Click here to view the App Watchdog Report."
 			href "pageCurrent", title: "App Installed Report", description: "Click here to view the App Installed Report."
 		}
@@ -125,11 +126,9 @@ def developerOptions(){
 			if(gitHubURL1) {
                 gitHubCheck1()
 				paragraph "Developer: ${state.gitHubAuthor1}"
-                if(state.paypalLink1) {
-                    paragraph "If you find ${state.gitHubAuthor1}'s apps useful. Please consider a donation via <a href='${state.paypalLink1}' target='_blank'>Paypal</a>"
-                }
                 state.values1 = "${state.gitHubApps1}".split(",")
     		    input "installedApps1", "enum", title: "Select which apps you have installed", options: state.values1, required: true, multiple: true, submitOnChange: true
+                if(state.paypalLink1) paragraph "<b>If you find ${state.gitHubAuthor1}'s apps useful. Please consider a donation via <a href='${state.paypalLink1}' target='_blank'>Paypal</a></b>"
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 2 Options")) {
@@ -140,11 +139,9 @@ def developerOptions(){
             if(gitHubURL2) {
 				gitHubCheck2()
 				paragraph "Developer: ${state.gitHubAuthor2}"
-                if(state.paypalLink2) {
-                    paragraph "If you find ${state.gitHubAuthor2}'s apps useful. Please consider a donation via <a href='${state.paypalLink2}' target='_blank'>Paypal</a>"
-                }
                 state.values2 = "${state.gitHubApps2}".split(",")
     		    input "installedApps2", "enum", title: "Select which apps you have installed", options: state.values2, required: true, multiple: true, submitOnChange: true
+                if(state.paypalLink2) paragraph "<b>If you find ${state.gitHubAuthor2}'s apps useful. Please consider a donation via <a href='${state.paypalLink2}' target='_blank'>Paypal</a></b>"
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 3 Options")) {
@@ -155,11 +152,9 @@ def developerOptions(){
             if(gitHubURL3) {
 				gitHubCheck3()
 				paragraph "Developer: ${state.gitHubAuthor3}"
-                if(state.paypalLink3) {
-                    paragraph "If you find ${state.gitHubAuthor3}'s apps useful. Please consider a donation via <a href='${state.paypalLink3}' target='_blank'>Paypal</a>"
-                }
                 state.values3 = "${state.gitHubApps3}".split(",")
     		    input "installedApps3", "enum", title: "Select which apps you have installed", options: state.values3, required: true, multiple: true, submitOnChange: true
+                if(state.paypalLink3) paragraph "<b>If you find ${state.gitHubAuthor3}'s apps useful. Please consider a donation via <a href='${state.paypalLink3}' target='_blank'>Paypal</a></b>"
             }
         }   
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 4 Options")) {
@@ -170,11 +165,9 @@ def developerOptions(){
             if(gitHubURL4) {
 				gitHubCheck4()
 				paragraph "Developer: ${state.gitHubAuthor4}"
-                if(state.paypalLink4) {
-                    paragraph "If you find ${state.gitHubAuthor4}'s apps useful. Please consider a donation via <a href='${state.paypalLink4}' target='_blank'>Paypal</a>"
-                }
                 state.values4 = "${state.gitHubApps4}".split(",")
     		    input "installedApps4", "enum", title: "Select which apps you have installed", options: state.values4, required: true, multiple: true, submitOnChange: true
+                if(state.paypalLink4) paragraph "<b>If you find ${state.gitHubAuthor4}'s apps useful. Please consider a donation via <a href='${state.paypalLink4}' target='_blank'>Paypal</a></b>"
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Developer 5 Options")) {
@@ -185,11 +178,9 @@ def developerOptions(){
             if(gitHubURL5) {
 				gitHubCheck5()
 				paragraph "Developer: ${state.gitHubAuthor5}"
-                if(state.paypalLink5) {
-                    paragraph "If you find ${state.gitHubAuthor5}'s apps useful. Please consider a donation via <a href='${state.paypalLink5}' target='_blank'>Paypal</a>"
-                }
                 state.values5 = "${state.gitHubApps5}".split(",")
     		    input "installedApps5", "enum", title: "Select which apps you have installed", options: state.values5, required: true, multiple: true, submitOnChange: true
+                if(state.paypalLink5) paragraph "<b>If you find ${state.gitHubAuthor5}'s apps useful. Please consider a donation via <a href='${state.paypalLink5}' target='_blank'>Paypal</a></b>"
             }
         }
 
@@ -758,6 +749,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>App Watchdog 2 - Apps - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 } 
