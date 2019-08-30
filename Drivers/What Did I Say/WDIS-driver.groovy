@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 08/29/19 - App Watchdog Compatible
+ *  V2.0.2 - 08/05/19 - Lots of little changes to the command definitions/methods by storageanarchy
  *  V2.0.1 - 08/04/19 - Added more commands
  *  V2.0.0 - 08/04/19 - Changed up how speech is handled and sent to 'Follow Me'. Thanks to storageanarchy for teaching me some new tricks!
  *  V1.1.9 - 08/03/19 - Added initialize section, added deviceNotification
@@ -62,7 +64,17 @@
 
 import groovy.json.*
     
-def version(){"v2.0.1"}
+def setVersion(){
+    appName = "WhatDidISay"
+	version = "v2.0.3" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
+}
+
+def updateVersion() {
+    log.info "In updateVersion"
+    setVersion()
+}
 
 metadata {
 	definition (name: "What Did I Say", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy") {
@@ -72,21 +84,27 @@ metadata {
 		capability "Music Player"
         capability "Notification"
 		
-        command "playAnnouncement", ["string", "number", "number"]
-        command "playAnnouncement", ["string", "string", "number", "number"]
-        command "playAnnouncementAll", ["string", "string"]
-        command "playText", ["string"]
-		command "playTextAndRestore", ["string", "number"]
-        command "playTextAndResume", ["string", "number"]
-        command "playTrack", ["string"]
-        command "playTrackAndRestore", ["string"]
-        command "setLevel", ["string"]
-        command "setVolume", ["string"]
-		command "setVolumeSpeakAndRestore", ["number", "string", "number"]
-        command "setVolumeAndSpeak", ["number", "string"]
-		command "speak", ["string"]
-		command "sendFollowMeSpeaker", ["string"]
-        command "deviceNotification", ["string"]
+        command "playAnnouncement", 	[[name:"Text*", type:"STRING", description:"Text to play"], 
+										 [name:"Volume Level", type:"NUMBER", description: "Volume level (0-100)"], 
+										 [name:"Restore Volume Level",type:"NUMBER", description: "Restore volume (0-100)"]]
+        command "playAnnouncement", 	[[name:"Text*", type: "STRING", description:"Text to play"], 
+										 [name:"Title*", type:"STRING", description: "Title to display on Echo Show devices"], 
+										 [name:"Volume Level", type:"NUMBER", description: "Volume level (0-100)"], 
+										 [name:"Restore Volume Level",type:"NUMBER", description: "Restore volume (0-100)"]]
+        command "playAnnouncementAll",	[[name:"Text*", type:"STRING", description:"Text to play"], 
+										 [name:"Title*", type:"STRING", description: "Title to display on Echo Show devices"]]
+		command "playTextAndRestore", 	[[name:"Text*", type:"STRING", description:"Text to play"]]
+        command "playTrackAndRestore", 	[[name:"Track URI*", type:"STRING", description:"URI/URL of track to play"]]
+        //command "setLevel", [[name:"Volume Level*", type:["NUMBER"]]
+        command "setVolume", 			[[name:"Volume Level*", type:"NUMBER", description: "Volume level (0-100)"]]
+		command "setVolumeSpeakAndRestore", 
+										[[name:"Volume Level*", type:"NUMBER", description:"Volume level (0-100)"],
+										 [name:"Text*", type:"STRING", description:"Text to speak"],
+										 [name:"Restore Volume Level",type:"NUMBER", description: "Restore volume (0-100)"]]										 
+        command "setVolumeAndSpeak", 	[[name:"Volume Level*", type:"NUMBER", description:"Volume level (0-100)"], 
+										 [name:"Text*", type:"STRING", description:"Text to speak"]]
+		command "sendFollowMeSpeaker", 	[[name:"Follow Me Request*", type:"JSON_OBJECT", description:"JSON-encoded command string (see source)"]]
+
 		
     	attribute "whatDidISay", "string"
 		attribute "lastSpoken", "string"
@@ -96,6 +114,8 @@ metadata {
 		attribute "speakerStatus3", "string"
 		attribute "speakerStatus4", "string"
         
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
 	}
 	preferences() {    	
         section(){
@@ -115,93 +135,91 @@ String composeMessageMap(method, message, priority='n', speakLevel=null, returnL
     return JsonOutput.toJson([method: method as String, message: message as String, priority: priority as String, speakLevel: speakLevel, returnLevel: returnLevel, title: title as String])
 }
 
+def playAnnouncement(String message, volume=null, restoreVolume=null) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, 'n', volume, restoreVolume)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+def playAnnouncement(String message, String title, volume=null, restoreVolume=null) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, 'n', volume, restoreVolume, title)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+
+def playAnnouncementAll(String message, title=null) {
+    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playAnnouncementAll', state.speechReceivedFULL, 'n', null, null, title)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
 def deviceNotification(message) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('deviceNotification', state.speechReceivedFULL)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
-
-def playAnnouncement(message, arg2, arg3) {
-    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, arg2, arg3)
-    sendEvent(name: "latestMessage", value: theMessage)
-    populateMap()
-}
-
-def playAnnouncement(String message, title=null, arg3, arg4) {
-    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, arg3, arg4, title)
-    sendEvent(name: "latestMessage", value: theMessage)
-    populateMap()
-}
-
-def playAnnouncementAll(message, title=null, arg2) {
-    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playAnnouncementAll', state.speechReceivedFULL, arg2)
-    sendEvent(name: "latestMessage", value: theMessage)
-    populateMap()
-}
-
 def playText(message) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playText', state.speechReceivedFULL)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
-
-def playTextAndRestore(message, arg2) {
-	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
+def playTextAndRestore(message) {
+	//state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
+    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
-
-def playTextAndResume(message, arg2) {
-	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, arg2)
-    sendEvent(name: "latestMessage", value: theMessage)
-    populateMap()
-}
-
 def playTrack(message) {
-	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playTrack', state.speechReceivedFULL, arg2)
+    theMessage = composeMessageMap('playTrack', state.speechReceivedFULL)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
-
 def playTrackAndRestore(message) {
+	//NB - Maybe shouldn't strip the URL encoding, as this is supposed to be a URL
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('playTrackAndRestore', state.speechReceivedFULL, arg2)
+    theMessage = composeMessageMap('playTrackAndRestore', state.speechReceivedFULL)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()
 }
-
-def setLevel(message) {
-    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('setLevel', state.speechReceivedFULL)
+def restoreTrack(message) {
+    theMessage = composeMessageMap('restoreTrack', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+def resumeTrack(message) {
+    theMessage = composeMessageMap('resumeTrack', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+def setLevel(volume) {
+    theMessage = composeMessageMap('setLevel', '', 'n', volume)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()  
 }
-
-def setVolume(message) {
-    state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('setVolume', state.speechReceivedFULL)
+def setTrack(message) {
+    theMessage = composeMessageMap('setTrack', state.speechReceivedFULL)
+    sendEvent(name: "latestMessage", value: theMessage)
+    populateMap()
+}
+def setVolume(volume) {
+    theMessage = composeMessageMap('setVolume', '', 'n', volume)
     sendEvent(name: "latestMessage", value: theMessage)
     populateMap()     
 }
 
-def setVolumeSpeakAndRestore(message, arg2, arg3) {
+def setVolumeSpeakAndRestore(volume, message, restoreVolume) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('setVolumeSpeakAndRestore', arg2, state.speechReceivedFULL, arg3)
+    theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, 'n', volume, restoreVolume)
     sendEvent(name: "latestMessage", value: theMessage)
 	populateMap()
 }
 
-def setVolumeAndSpeak(message, arg2) {
+def setVolumeAndSpeak(volume, message) {
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, arg2)
+    theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, 'n', volume)
     sendEvent(name: "latestMessage", value: theMessage)
 	populateMap()
 }
