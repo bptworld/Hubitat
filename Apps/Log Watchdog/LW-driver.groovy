@@ -130,7 +130,7 @@ def webSocketStatus(String socketStatus) {
 }
 
 def keywordInfo(keys) {
-    if(logEnable) log.info "In keywordInfo - ${keys}"
+    if(logEnable) log.info "In keywordInfo"
     def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keys.split(";")
     if(keyword1 != "-") {
         state.keyword1 = keyword1
@@ -172,7 +172,7 @@ def parse(String description) {
 
     if( msgCheck.contains("${state.keyword1}") && (msgCheck.contains("${state.sKeyword1}") || msgCheck.contains("${state.sKeyword2}") || msgCheck.contains("${state.sKeyword3}") || msgCheck.contains("${state.sKeyword4}")) ) {
         sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
-        if(logEnable) log.debug "Log Watchdog Driver - Found: ${state.keyword1}"
+        if(logEnable) log.debug "Log Watchdog Driver - Keywords Found"
         populateMap(msgValue)
     }
 }
@@ -226,8 +226,6 @@ def populateMap(msgValue) {
         //log.error "Error:  $e"
     }
 	
-	if(logEnable) log.debug "Log Watchdog Driver - OLD -<br>sOne: ${sOne}<br>sTwo: ${sTwo}<br>sThree: ${sThree}<br>sFour: ${sFour}<br>sFive: ${sFive}"
-	
 	if(sOne == null) sOne = "${state.nMessage}"
 	if(sTwo == null) sTwo = "${state.nMessage}"
 	if(sThree == null) sThree = "${state.nMessage}"
@@ -252,9 +250,7 @@ def populateMap(msgValue) {
 	
 	getDateTime()
 	mOne = newdate + " - " + state.msgValue
-	
-	if(logEnable) log.debug "Log Watchdog Driver - NEW -<br>mOne: ${mOne}<br>mTwo: ${mTwo}<br>mThree: ${mThree}<br>mFour: ${mFour}<br>mFive: ${mFive}"
-	
+
 	// Fill the maps back in
 	try {
 		state.logMap1.put("s",mOne)
@@ -307,7 +303,7 @@ def populateMap(msgValue) {
 	
 	logCharCount = state.logTop.length()
 	if(logTopCount <= 1000) {
-		if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount} Characters<br>${state.logTop}"
+		if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount} Characters"
 	} else {
 		state.logTop = "Too many characters to display on Dashboard"
 	}
