@@ -36,7 +36,7 @@
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  Special thanks to @dan.t for his sample code that this driver is based on.
+ *  Special thanks to @dan.t for his sample code for making the websocket connection.
  *
  *  Changes:
  *
