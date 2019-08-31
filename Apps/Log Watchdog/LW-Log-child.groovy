@@ -213,10 +213,10 @@ def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     if(state.whichButton == "openConnection"){
-        lwcDevice.connect()
+        lwdDevice.connect()
     }
     if(state.whichButton == "closeConnection"){
-        lwcDevice.close()
+        lwdDevice.close()
     }
 }
 
