@@ -1,24 +1,24 @@
 /**
- *  ****************  Log Watchdog Child App  ****************
+ *  ****************  Log Watchdog Driver  ****************
  *
  *  Design Usage:
- *  Keep an eye on what's important in the log.
+ *  This driver opens a webSocket to capture Log info.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
- * 
+ *  
  *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
+ *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
  *  Paypal at: https://paypal.me/bptworld
- * 
- *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
- *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
- *  the community grow. Have FUN with it!
- * 
- *-------------------------------------------------------------------------------------------------------------------
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ * ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
  *
@@ -32,222 +32,293 @@
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *
- *  App and Driver updates can be found at https://github.com/bptworld/Hubitat/
+ *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
+ *  Special thanks to @dan.t for his sample code for making the websocket connection.
+ *
  *  Changes:
  *
- *  V2.0.0 - 08/31/19 - Initial release.
- *
+ *  V1.0.0 - 08/31/19 - Initial release
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "LogWatchdogChildVersion"
-	state.version = "v2.0.0"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+    appName = "LogWatchdogDriver"
+	version = "v1.0.0" 
+    dwInfo = "${appName}:${version}"
+    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
 
-definition(
-    name: "Log Watchdog Child",
-    namespace: "BPTWorld",
-    author: "Bryan Turcotte",
-    description: "Keep an eye on what's important in the log.",
-    category: "Convenience",
-	parent: "BPTWorld:Log Watchdog",
-    iconUrl: "",
-    iconX2Url: "",
-    iconX3Url: "",
-	importUrl: "",
-)
-
-preferences {
-    page(name: "pageConfig")
+def updateVersion() {
+    if(logEnable) log.info "In updateVersion"
+    setVersion()
 }
 
-def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Log Watchdog</h2>", install: true, uninstall: true, refreshInterval:0) {
-		display() 
-        section("Instructions:", hideable: true, hidden: true) {
-			paragraph "<b>Notes:</b>"
-    		paragraph "Keep an eye on what's important in the log."
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-			paragraph "<b>Main Check</b> - Select 1 keywords or phrase"
-            input "keyword1", "text", title: "Main Keyword 1",  required: true, submitOnChange: "true"
-            paragraph "<b>AND</b>"   
-            paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword1", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword2", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword3", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword4", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
-            paragraph "<hr>"
-            
-            if(!keyword1) mKeyOptions = ""
-            if(!oBetween) oBetween = ""
-            
-            if(!sKeyword1) {
-                sKeyword1 = ""
-                and1 = ""
-                finish1 = ""
-            } else {
-                and1 = " and ("
-                finish1 = ")"
-            }
-            
-            if(!sKeyword2) {
-                sKeyword2 = ""
-                or2 = ""
-            } else {
-                or2 = " or "
-            }
-            
-            if(!sKeyword3) {
-                sKeyword3 = ""
-                or3 = ""
-            } else {
-                or3 = " or "
-            }
-            
-            if(!sKeyword4) {
-                sKeyword4 = ""
-                or4 = ""
-            } else {
-                or4 = " or "
-            }
-            
-            paragraph "<b>Complete Check</b>"
-            paragraph "<b>if (${keyword1})${and1}${sKeyword1}${or2}${sKeyword2}${or3}${sKeyword3}${or4}${sKeyword4}${finish1}</b>"
-            
-            if(!sKeyword1) sKeyword1 = "-";if(!sKeyword2) sKeyword2 = "-"; if(!sKeyword3) sKeyword3 = "-";if(!sKeyword4) sKeyword4 = "-";
-            state.theData = "${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4}"
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-            paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
-			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false
-            
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Watchdog Device")) {
-			input "lwdDevice", "capability.actuator", title: "Select Log Watchdog Device", required: true
-            paragraph "<small>* Virtual Device must use the Log Watchdog Driver</small>"
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
-            try {
-                if(lwdDevice) status = lwdDevice.currentValue("status")
-            }
-            catch(e) {
-                theStatus = "Unknown"
-            }
-            if(status == "Open") {
-                theStatus = "Connected"
-            } else {
-                theStatus = "Disconnected"
-            }
-            paragraph "This will control whether the app is actively 'watching' the log or not."
-            paragraph "Current Log Watchdog status: <b>${theStatus}</b>", width: 6
-            input "openConnection", "button", title: "Connect", width: 3
-            input "closeConnection", "button", title: "Disconnect", width: 3
+metadata {
+	definition (name: "Log Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+   		capability "Actuator"
+       
+        attribute "status", "string"
+        attribute "lastLogMessage", "string"
+        attribute "logData", "string"
+        attribute "numOfCharacters", "number"
+        attribute "keywordInfo", "string"
+        
+        command "connect"
+        command "close"
+        command "clearData"
+        command "keywordInfo"
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
+    }
+    preferences() {    	
+        section(){
+            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Log Watchdog Driver</b>", description: "ONLY click 'Clear Data' to clear the message data."
+            input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
+            input("numOfLines", "number", title: "How many lines to display (from 1 to 10 only)", required:true, defaultValue: 5)
+			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
+            input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
         }
-		display2()
-	}
+    }
 }
 
-def installed() {
-    log.debug "Installed with settings: ${settings}"
-	initialize()
+def installed(){
+    log.info "Log Watchdog Driver has been Installed"
+    clearData()
+    initialize()
 }
 
-def updated() {	
-    if(logEnable) log.debug "Updated with settings: ${settings}"
-    sendToDevice()
-	unschedule()
-	initialize()
+def updated() {
+    log.info "Log Watchdog Driver has been Updated"
+    initialize()
 }
 
 def initialize() {
-    setDefaults()
-    subscribe(lwdDevice, "lastLogMessage", theNotifyStuff)
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
-}
-	
-def countWords(stuff) {
-    if(logEnable) log.info "In countWords"
-    def values = stuff.split(";")
-    wordCount = values.size()
-    return wordCount
+    setVersion()
+    log.info "In initialize"
 }
 
-def sendToDevice() {
-    if(logEnable) log.info "In sendToDriver"
-    lwdDevice.keywordInfo(state.theData) 
+def connect() {
+	interfaces.webSocket.connect("ws://localhost:8080/logsocket")
 }
 
-def theNotifyStuff(evt) {
-    if(logEnable) log.debug "In theNotifyStuff"
-    //log.info "theNotifyStuff - could push or talk if selected"
-    if(sendPushMessage) pushHandler()
+def close() {
+    interfaces.webSocket.close()
 }
 
-def pushHandler(){
-	if(logEnable) log.debug "In pushNow"
-	theMessage = "${app.label} - ${state.msg}"
-	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
-   	sendPushMessage.deviceNotification(theMessage)
-	state.msg = ""
-}
-
-def appButtonHandler(buttonPressed) {
-    state.whichButton = buttonPressed
-    if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(state.whichButton == "openConnection"){
-        lwdDevice.connect()
-    }
-    if(state.whichButton == "closeConnection"){
-        lwdDevice.close()
-    }
-}
-
-// ********** Normal Stuff **********
-
-def setDefaults(){
-	if(logEnable == null){logEnable = false}
-	if(state.msg == null){state.msg = ""}
-}
-
-def getImage(type) {					// Modified from @Stephack Code
-    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
-    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-}
-
-def getFormat(type, myText=""){			// Modified from @Stephack Code
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
-}
-
-def display() {
-	section() {
-		paragraph getFormat("line")
+def webSocketStatus(String socketStatus) {
+	if(socketStatus.startsWith("status: open")) {
+		log.warn "Log Watchdog Driver - Connected"
+        sendEvent(name: "status", value: "Open", displayed: true)
+		return
+	} 
+	else if(socketStatus.startsWith("status: closing")) {
+		log.warn "Log Watchdog Driver - Closing connection"
+        sendEvent(name: "status", value: "Closing", displayed: true)
+		return
+	} 
+	else if(socketStatus.startsWith("failure:")) {
+		log.warn "Log Watchdog Driver - Connection has failed with error [${socketStatus}]."
+        sendEvent(name: "status", value: "Failed", displayed: true)
+	} 
+	else {
+		log.warn "Log Watchdog Driver - Connection has been lost due to an unknown error"
+        sendEvent(name: "status", value: "Lost", displayed: true)
 	}
 }
 
-def display2(){
-	setVersion()
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Log Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
-	}       
+def keywordInfo(keys) {
+    if(logEnable) log.info "In keywordInfo"
+    def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keys.split(";")
+    if(keyword1 != "-") {
+        state.keyword1 = keyword1
+    } else {
+        state.keyword1 = ""
+    }
+    if(sKeyword1 != "-") {
+        state.sKeyword1 = sKeyword1
+    } else {
+        state.sKeyword1 = ""
+    }
+    if(sKeyword2 != "-") {
+        state.sKeyword2 = sKeyword2
+    } else {
+        state.sKeyword2 = ""
+    }
+    if(sKeyword3 != "-") {
+        state.sKeyword3 = sKeyword3
+    } else {
+        state.sKeyword3 = ""
+    }
+    if(sKeyword4 != "-") {
+        state.sKeyword4 = sKeyword4
+    } else {
+        state.sKeyword4 = ""
+    }
+}
+
+def parse(String description) {
+    theData = "${description}"
+    
+    // This is what the incoming data looks like
+    //{"name":"aWeb socket","msg":"{"name":"Test","msg":"In motionSensorHandler (v2.0.0) - sZone: true - Status: active","id":7371,"time":"2019-08-31 08:19:02.942","type":"app","level":"debug"}","id":5758,"time":"2019-08-31 08:19:03.770","type":"dev","level":"debug"}
+    
+    def (name, msg) = theData.split(",")
+    def (msgKey, msgValue) = msg.split(":")
+    msgValue = msgValue.replace("\"","")
+    msgCheck = msgValue.toLowerCase()
+    keyword1 = state.keyword1.toLowerCase()
+    sKeyword1 = state.sKeyword1.toLowerCase()
+    sKeyword2 = state.sKeyword2.toLowerCase()
+    sKeyword3 = state.sKeyword3.toLowerCase()
+    sKeyword4 = state.sKeyword4.toLowerCase()
+
+    if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
+        sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
+        if(logEnable) log.debug "Log Watchdog Driver - Keywords Found"
+        populateMap(msgValue)
+    }
+}
+
+def clearData(){
+	if(logEnable) log.debug "Log Watchdog Driver - Clearing the data"
+	nMessage = "No Data"
+	state.logMap1 = [:]
+	state.logMap1.put("s",nMessage)
+	state.logMap2 = [:]
+	state.logMap2.put("s",nMessage)
+	state.logMap3 = [:]
+	state.logMap3.put("s",nMessage)
+	state.logMap4 = [:]
+	state.logMap4.put("s",nMessage)
+	state.logMap5 = [:]
+	state.logMap5.put("s",nMessage)
+	state.logMap6 = [:]
+	state.logMap6.put("s",nMessage)
+	state.logMap7 = [:]
+	state.logMap7.put("s",nMessage)
+	state.logMap8 = [:]
+	state.logMap8.put("s",nMessage)
+	state.logMap9 = [:]
+	state.logMap9.put("s",nMessage)
+	state.logMap10 = [:]
+	state.logMap10.put("s",nMessage)
+	
+	state.logTop = "Waiting for Data..."
+	sendEvent(name: "logData", value: state.logTop, displayed: true)
+}
+
+def populateMap(msgValue) {
+	//if(logEnable) log.debug "Log Watchdog Driver - Received new Data! ${msgValue}"
+    state.msgValue = msgValue.take(70)
+	
+	// Read in the maps
+	try {
+		sOne = state.logMap1.get("s",nMessage)
+		sTwo = state.logMap2.get("s",nMessage)
+		sThree = state.logMap3.get("s",nMessage)
+		sFour = state.logMap4.get("s",nMessage)
+		sFive = state.logMap5.get("s",nMessage)
+		sSix = state.logMap6.get("s",nMessage)
+		sSeven = state.logMap7.get("s",nMessage)
+		sEight = state.logMap8.get("s",nMessage)
+		sNine = state.logMap9.get("s",nMessage)
+		sTen = state.logMap10.get("s",nMessage)
+	}
+	catch (e) {
+        //log.error "Error:  $e"
+    }
+	
+	if(sOne == null) sOne = "${state.nMessage}"
+	if(sTwo == null) sTwo = "${state.nMessage}"
+	if(sThree == null) sThree = "${state.nMessage}"
+	if(sFour == null) sFour = "${state.nMessage}"
+	if(sFive == null) sFive = "${state.nMessage}"
+	if(sSix == null) sSix = "${state.nMessage}"
+	if(sSeven == null) sSeven = "${state.nMessage}"
+	if(sEight == null) sEight = "${state.nMessage}"
+	if(sNine == null) sNine = "${state.nMessage}"
+	if(sTen == null) sTen = "${state.nMessage}"
+	
+	// Move all messages down 1 slot
+	mTen = sNine
+	mNine = sEight
+	mEight = sSeven
+	mSeven = sSix
+	mSix = sFive
+	mFive = sFour
+	mFour = sThree
+	mThree = sTwo
+	mTwo = sOne
+	
+	getDateTime()
+	mOne = newdate + " - " + state.msgValue
+
+	// Fill the maps back in
+	try {
+		state.logMap1.put("s",mOne)
+		state.logMap2.put("s",mTwo)
+		state.logMap3.put("s",mThree)
+		state.logMap4.put("s",mFour)
+		state.logMap5.put("s",mFive)
+		state.logMap6.put("s",mSix)
+		state.logMap7.put("s",mSeven)
+		state.logMap8.put("s",mEight)
+		state.logMap9.put("s",mNine)
+		state.logMap10.put("s",mTen)
+	}
+	catch (e) {
+        //log.error "Error:  $e"
+    }
+	
+	state.logTop = "<table width='100%'><tr><td align='left'>"
+	if(numOfLines == 1) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}</div>"
+	}
+	if(numOfLines == 2) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}</div>"
+	}
+	if(numOfLines == 3) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}</div>"
+	}
+	if(numOfLines == 4) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}</div>"
+	}
+	if(numOfLines == 5) {
+		state.logTop+= "<div style=';font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}</div>"
+	} 
+	if(numOfLines == 6) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}</div>"
+	}
+	if(numOfLines == 7) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}</div>"
+	}
+	if(numOfLines == 8) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}</div>"
+	}
+	if(numOfLines == 9) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}</div>"
+	}
+	if(numOfLines == 10) {
+		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div>"
+	}
+	state.logTop+= "</td></tr></table>"
+	
+	logCharCount = state.logTop.length()
+	if(logTopCount <= 1000) {
+		if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount} Characters"
+	} else {
+		state.logTop = "Too many characters to display on Dashboard"
+	}
+	sendEvent(name: "logData", value: state.logTop, displayed: true)
+    sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
+}
+
+def getDateTime() {
+	def date = new Date()
+	if(hourType == false) newdate=date.format("MM-d HH:mm")
+	if(hourType == true) newdate=date.format("MM-d hh:mm")
+    return newdate
 }
