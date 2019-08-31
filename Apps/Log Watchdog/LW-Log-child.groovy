@@ -137,14 +137,20 @@ def pageConfig() {
             
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Watchdog Device")) {
-			input "lwdDevice", "capability.actuator", title: "Select Log Watchdog Device", required: true	
+			input "lwdDevice", "capability.actuator", title: "Select Log Watchdog Device", required: true
+            paragraph "<small>* Virtual Device must use the Log Watchdog Driver</small>"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
-            status = lwdDevice.currentValue("status")
+            try {
+                if(lwdDevice) status = lwdDevice.currentValue("status")
+            }
+            catch(e) {
+                theStatus = "Unknown"
+            }
             if(status == "Open") {
                 theStatus = "Connected"
             } else {
