@@ -61,7 +61,7 @@ definition(
     name: "Log Watchdog Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Simple Device Timer with safety checks, multiple timers, notifications and restrictions.",
+    description: "Keep an eye on what's important in the log.",
     category: "Convenience",
 	parent: "BPTWorld:Log Watchdog",
     iconUrl: "",
