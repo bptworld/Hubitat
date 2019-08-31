@@ -143,6 +143,18 @@ def pageConfig() {
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
+            status = lwdDevice.currentValue("status")
+            if(status == "Open") {
+                theStatus = "Connected"
+            } else {
+                theStatus = "Disconnected"
+            }
+            paragraph "This will control whether the app is actively 'watching' the log or not."
+            paragraph "Current Log Watchdog status: <b>${theStatus}</b>", width: 6
+            input "openConnection", "button", title: "Connect", width: 3
+            input "closeConnection", "button", title: "Disconnect", width: 3
+        }
 		display2()
 	}
 }
@@ -189,6 +201,17 @@ def pushHandler(){
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
 	state.msg = ""
+}
+
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
+    if(state.whichButton == "openConnection"){
+        lwcDevice.connect()
+    }
+    if(state.whichButton == "closeConnection"){
+        lwcDevice.close()
+    }
 }
 
 // ********** Normal Stuff **********
