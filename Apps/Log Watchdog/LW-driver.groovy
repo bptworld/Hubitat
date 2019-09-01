@@ -40,12 +40,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 09/01/19 - Major changes to the driver
  *  V1.0.0 - 08/31/19 - Initial release
  */
 
 def setVersion(){
     appName = "LogWatchdogDriver"
-	version = "v1.0.0" 
+	version = "v1.0.1" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -77,7 +78,6 @@ metadata {
         section(){
             input name: "about", type: "paragraph", element: "paragraph", title: "<b>Log Watchdog Driver</b>", description: "ONLY click 'Clear Data' to clear the message data."
             input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
-            input("numOfLines", "number", title: "How many lines to display (from 1 to 10 only)", required:true, defaultValue: 5)
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
             input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
         }
@@ -178,142 +178,47 @@ def parse(String description) {
     if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
         sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
         if(logEnable) log.debug "Log Watchdog Driver - Keywords Found"
-        populateMap(msgValue)
+        makeList(msgValue)
     }
 }
 
-def clearData(){
-	if(logEnable) log.debug "Log Watchdog Driver - Clearing the data"
-	nMessage = "No Data"
-	state.logMap1 = [:]
-	state.logMap1.put("s",nMessage)
-	state.logMap2 = [:]
-	state.logMap2.put("s",nMessage)
-	state.logMap3 = [:]
-	state.logMap3.put("s",nMessage)
-	state.logMap4 = [:]
-	state.logMap4.put("s",nMessage)
-	state.logMap5 = [:]
-	state.logMap5.put("s",nMessage)
-	state.logMap6 = [:]
-	state.logMap6.put("s",nMessage)
-	state.logMap7 = [:]
-	state.logMap7.put("s",nMessage)
-	state.logMap8 = [:]
-	state.logMap8.put("s",nMessage)
-	state.logMap9 = [:]
-	state.logMap9.put("s",nMessage)
-	state.logMap10 = [:]
-	state.logMap10.put("s",nMessage)
-	
-	state.logTop = "Waiting for Data..."
-	sendEvent(name: "logData", value: state.logTop, displayed: true)
-}
-
-def populateMap(msgValue) {
-	//if(logEnable) log.debug "Log Watchdog Driver - Received new Data! ${msgValue}"
+def makeList(msgValue) {
     state.msgValue = msgValue.take(70)
-	
-	// Read in the maps
-	try {
-		sOne = state.logMap1.get("s",nMessage)
-		sTwo = state.logMap2.get("s",nMessage)
-		sThree = state.logMap3.get("s",nMessage)
-		sFour = state.logMap4.get("s",nMessage)
-		sFive = state.logMap5.get("s",nMessage)
-		sSix = state.logMap6.get("s",nMessage)
-		sSeven = state.logMap7.get("s",nMessage)
-		sEight = state.logMap8.get("s",nMessage)
-		sNine = state.logMap9.get("s",nMessage)
-		sTen = state.logMap10.get("s",nMessage)
-	}
-	catch (e) {
-        //log.error "Error:  $e"
-    }
-	
-	if(sOne == null) sOne = "${state.nMessage}"
-	if(sTwo == null) sTwo = "${state.nMessage}"
-	if(sThree == null) sThree = "${state.nMessage}"
-	if(sFour == null) sFour = "${state.nMessage}"
-	if(sFive == null) sFive = "${state.nMessage}"
-	if(sSix == null) sSix = "${state.nMessage}"
-	if(sSeven == null) sSeven = "${state.nMessage}"
-	if(sEight == null) sEight = "${state.nMessage}"
-	if(sNine == null) sNine = "${state.nMessage}"
-	if(sTen == null) sTen = "${state.nMessage}"
-	
-	// Move all messages down 1 slot
-	mTen = sNine
-	mNine = sEight
-	mEight = sSeven
-	mSeven = sSix
-	mSix = sFive
-	mFive = sFour
-	mFour = sThree
-	mThree = sTwo
-	mTwo = sOne
-	
-	getDateTime()
-	mOne = newdate + " - " + state.msgValue
+    getDateTime()
+	nMessage = newdate + " - " + state.msgValue
+    
+    if(state.list10 == null) state.list10 = ["-","-","-","-","-","-","-","-","-","-"]
+    
+    state.list10.add(0,nMessage)  
 
-	// Fill the maps back in
-	try {
-		state.logMap1.put("s",mOne)
-		state.logMap2.put("s",mTwo)
-		state.logMap3.put("s",mThree)
-		state.logMap4.put("s",mFour)
-		state.logMap5.put("s",mFive)
-		state.logMap6.put("s",mSix)
-		state.logMap7.put("s",mSeven)
-		state.logMap8.put("s",mEight)
-		state.logMap9.put("s",mNine)
-		state.logMap10.put("s",mTen)
-	}
-	catch (e) {
-        //log.error "Error:  $e"
+    list10Size = state.list10.size()
+    log.warn "list10Size: ${list10Size}"
+    
+    if(list10Size > 10) {
+        log.warn "list10Size: ${list10Size} IS GREATER THAN 10, Removing 11"
+        state.list10.removeAt(10)
     }
-	
-	state.logTop = "<table width='100%'><tr><td align='left'>"
-	if(numOfLines == 1) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}</div>"
-	}
-	if(numOfLines == 2) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}</div>"
-	}
-	if(numOfLines == 3) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}</div>"
-	}
-	if(numOfLines == 4) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}</div>"
-	}
-	if(numOfLines == 5) {
-		state.logTop+= "<div style=';font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}</div>"
-	} 
-	if(numOfLines == 6) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}</div>"
-	}
-	if(numOfLines == 7) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}</div>"
-	}
-	if(numOfLines == 8) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}</div>"
-	}
-	if(numOfLines == 9) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}</div>"
-	}
-	if(numOfLines == 10) {
-		state.logTop+= "<div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div>"
-	}
-	state.logTop+= "</td></tr></table>"
-	
-	logCharCount = state.logTop.length()
+    
+    String result = state.list10.join(";")
+    //log.warn "${result}"
+    logCharCount = result.length()
 	if(logTopCount <= 1000) {
 		if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount} Characters"
 	} else {
 		state.logTop = "Too many characters to display on Dashboard"
 	}
-	sendEvent(name: "logData", value: state.logTop, displayed: true)
+    
+    def (mOne,mTwo,mThree,mFour,mFive,mSix,mSeven,mEight,mNine,mTen) = result.split(";")
+    logTop10 = "<table><tr><td><div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div></td></tr></table>"
+    
+	sendEvent(name: "logData", value: logTop10, displayed: true)
     sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
+}
+
+def clearData(){
+	if(logEnable) log.debug "Log Watchdog Driver - Clearing the data"
+	state.list10 = ["-","-","-","-","-","-","-","-","-","-"]
+	sendEvent(name: "logData", value: state.list10, displayed: true)
 }
 
 def getDateTime() {
