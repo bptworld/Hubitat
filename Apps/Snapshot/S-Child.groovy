@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 09/01/19 - Added custom color options
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.1.5 - 06/11/19 - Code cleanup
  *  V1.1.4 - 04/30/19 - Added Water Sensor tracking
@@ -60,14 +61,13 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "SnapshotChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -126,8 +126,14 @@ def pageConfig() {
 				input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple: true, required: false, submitOnChange: true
 				input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple: true, required: false, submitOnChange: true
 				input "temps", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: false, submitOnChange: true
-				if(temps) input "tempHigh", "number", title: "Temp to consider High if over X", required: true, submitOnChange: true
-				if(temps) input "tempLow", "number", title: "Temp to consider Low if under X", required: true, submitOnChange: true
+                if(temps) {
+                    input "tempHigh", "number", title: "Temp to consider High if over X", required: true, submitOnChange: true, width: 6
+                    input "tempHighColor", "enum", required: true, title: "Color when temp is high", submitOnChange: true,  options: ["Black", "Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                }
+                if(temps) {
+                    input "tempLow", "number", title: "Temp to consider Low if under X", required: true, submitOnChange: true, width: 6
+                    input "tempLowColor", "enum", required: true, title: "Color when temp is high", submitOnChange: true,  options: ["Black", "Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                }
 			}
 			if(reportMode == "Regular") {
 				paragraph "Note: Choose a max of 30 devices in each category."
@@ -137,9 +143,36 @@ def pageConfig() {
 				input "locks", "capability.lock", title: "Door Locks", multiple: true, required: false, submitOnChange: true
 				input "presence", "capability.presenceSensor", title: "Presence Sensors", multiple: true, required: false, submitOnChange: true
 				input "temps", "capability.temperatureMeasurement", title: "Temperature Devices", multiple: true, required: false, submitOnChange: true
-				if(temps) input "tempHigh", "number", title: "Temp to consider High if over X", required: true, submitOnChange: true
-				if(temps) input "tempLow", "number", title: "Temp to consider Low if under X", required: true, submitOnChange: true
+                if(temps) input "tempHigh", "number", title: "Temp to consider High if over X", required: true, submitOnChange: true, width: 6
+                if(temps) input "tempLow", "number", title: "Temp to consider Low if under X", required: true, submitOnChange: true, width: 6
 			}
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Color Options")) {
+            if(switches) {
+                input "switchesOnColor", "enum", required: true, title: "Color when switch is on", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "switchesOffColor", "enum", required: true, title: "Color when switch is off", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            if(contacts) {
+                input "contactsOpenColor", "enum", required: true, title: "Color when contact is open", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "contactsClosedColor", "enum", required: true, title: "Color when contact is closed", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            if(water) {
+                input "wateWetColor", "enum", required: true, title: "Color when water is wet", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "waterDryColor", "enum", required: true, title: "Color when water is dry", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            if(locks) {
+                input "locksUnlockedColor", "enum", required: true, title: "Color when lock is unlocked", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "locksLockedColor", "enum", required: true, title: "Color when lock is locked", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            if(presence) {
+                input "presenceNotPresentColor", "enum", required: true, title: "Color when presence is Not Present", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "presencePresentColor", "enum", required: true, title: "Color when presence is Present", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            if(temps) {
+                input "tempHighColor", "enum", required: true, title: "Color when temp is high", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+                input "tempLowColor", "enum", required: true, title: "Color when temp is high", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"], width: 6
+            }
+            input "textNoColor", "enum", required: true, title: "Text color when there is no devices to display", submitOnChange: true,  options: ["Black","Blue","Brown","Green","Grey","Navy","Orange","Purple","Red","White","Yellow"]
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
 			if(reportMode == "Priority") {
@@ -276,6 +309,8 @@ def initialize() {
 		subscribe(realTimeSwitch, "switch", realTimeSwitchHandler)
 		subscribe(priorityCheckSwitch, "switch.on", priorityCheckHandler)
 	}
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def realTimeSwitchHandler(evt) {
@@ -375,12 +410,12 @@ def switchMapHandler() {
 			state.count = state.count + 1
 			state.countOn = state.countOn + 1
 			if(logEnable) log.debug "In switchMapHandler - Building Table ON with ${stuffOn.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-			if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-			if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-			if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
-			if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOn.key}</td><td><div style='color: red;'>on</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOn.key}</td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOn.key}</td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOn.key}</td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOn.key}</td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
+			if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOn.key}</td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
+			if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOn.key}</td><td><div style='color: ${switchesOnColor};'>on</div></td></tr>"
 		}
 	}
 	
@@ -398,12 +433,12 @@ def switchMapHandler() {
 			state.count = state.count + 1
 			state.countOff = state.countOff + 1
 			if(logEnable) log.debug "In switchMapHandler - Building Table OFF with ${stuffOff.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
-			if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"
-			if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
-			if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
-			if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOff.key}</td><td><div style='color: green;'>off</div></td></tr>"	
+			if((state.count >= 1) && (state.count <= 5)) state.fSwitchMap1S += "<tr><td>${stuffOff.key}</td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fSwitchMap2S += "<tr><td>${stuffOff.key}</td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fSwitchMap3S += "<tr><td>${stuffOff.key}</td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fSwitchMap4S += "<tr><td>${stuffOff.key}</td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"	
+			if((state.count >= 21) && (state.count <= 25)) state.fSwitchMap5S += "<tr><td>${stuffOff.key}</td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"	
+			if((state.count >= 26) && (state.count <= 30)) state.fSwitchMap6S += "<tr><td>${stuffOff.key}</td><td><div style='color: ${switchesOffColor};'>off</div></td></tr>"	
 		}
 	}
 	
@@ -415,12 +450,12 @@ def switchMapHandler() {
 	state.fSwitchMap6S += "</table>"
 	
 	if(state.count == 0) {
-		state.fSwitchMap1S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
-		state.fSwitchMap2S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
-		state.fSwitchMap3S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
-		state.fSwitchMap4S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
-		state.fSwitchMap5S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
-		state.fSwitchMap6S = "<table width='100%'><tr><td><div style='color: green;'>No switch devices to report</div></td></tr></table>"
+        state.fSwitchMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap3S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap4S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap5S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
+		state.fSwitchMap6S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No switch devices to report</div></td></tr></table>"
 	}
 	
 	if(logEnable) log.debug "In switchMapHandler - <br>fSwitchMap1S<br>${state.fSwitchMap1S}"
@@ -456,12 +491,12 @@ def contactMapHandler() {
 			state.count = state.count + 1
 			state.countOpen = state.countOpen + 1
 			if(logEnable) log.debug "In contactMapHandler - Building Table OPEN with ${stuffOpen.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-			if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-			if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-			if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
-			if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffOpen.key}</td><td><div style='color: red;'>open</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffOpen.key}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffOpen.key}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffOpen.key}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffOpen.key}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
+			if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffOpen.key}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
+			if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffOpen.key}</td><td><div style='color: ${contactsOpenColor};'>open</div></td></tr>"
 		}
 	}
 	
@@ -479,12 +514,12 @@ def contactMapHandler() {
 			state.count = state.count + 1
 			state.countClosed = state.countClosed + 1
 			if(logEnable) log.debug "In contactMapHandler - Building Table CLOSED with ${stuffClosed.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-			if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-			if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-			if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
-			if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffClosed.key}</td><td><div style='color: green;'>closed</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fContactMap1S += "<tr><td>${stuffClosed.key}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fContactMap2S += "<tr><td>${stuffClosed.key}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
+			if((state.count >= 11) && (state.count <= 15)) state.fContactMap3S += "<tr><td>${stuffClosed.key}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
+			if((state.count >= 16) && (state.count <= 20)) state.fContactMap4S += "<tr><td>${stuffClosed.key}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
+			if((state.count >= 21) && (state.count <= 25)) state.fContactMap5S += "<tr><td>${stuffClosed.key}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
+			if((state.count >= 26) && (state.count <= 30)) state.fContactMap6S += "<tr><td>${stuffClosed.key}</td><td><div style='color: ${contactsClosedColor};'>closed</div></td></tr>"
 		}
 	}
 	
@@ -496,12 +531,12 @@ def contactMapHandler() {
 	state.fContactMap6S += "</table>"
 	
 	if(state.count == 0) {
-		state.fContactMap1S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
-		state.fContactMap2S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
-		state.fContactMap3S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
-		state.fContactMap4S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
-		state.fContactMap5S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
-		state.fContactMap6S = "<table width='100%'><tr><td><div style='color: green;'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap3S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap4S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap5S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
+		state.fContactMap6S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contact devices to report</div></td></tr></table>"
 	}
 
 	if(logEnable) log.debug "In contactMapHandler - <br>fContactMap1S<br>${state.fContactMap1S}"
@@ -533,8 +568,8 @@ def waterMapHandler() {
 			state.count = state.count + 1
 			state.countWet = state.countWet + 1
 			if(logEnable) log.debug "In waterMapHandler - Building Table WET with ${stuffWet.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${stuffWet.key}</td><td><div style='color: red;'>wet</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${stuffWet.key}</td><td><div style='color: red;'>wet</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${stuffWet.key}</td><td><div style='color: ${wateWetColor};'>wet</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${stuffWet.key}</td><td><div style='color: ${wateWetColor};'>wet</div></td></tr>"
 		}
 	}
 	
@@ -548,8 +583,8 @@ def waterMapHandler() {
 			state.count = state.count + 1
 			state.countDry = state.countDry + 1
 			if(logEnable) log.debug "In waterMapHandler - Building Table DRY with ${stuffDry.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${stuffDry.key}</td><td><div style='color: green;'>dry</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${stuffDry.key}</td><td><div style='color: green;'>dry</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fWaterMap1S += "<tr><td>${stuffDry.key}</td><td><div style='color: ${wateDryColor};'>dry</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fWaterMap2S += "<tr><td>${stuffDry.key}</td><td><div style='color: ${wateDryColor};'>dry</div></td></tr>"
 		}
 	}
 	
@@ -557,8 +592,8 @@ def waterMapHandler() {
 	state.fWaterMap2S += "</table>"
 	
 	if(state.count == 0) {
-		state.fWaterMap1S = "<table width='100%'><tr><td><div style='color: green;'>No water devices to report</div></td></tr></table>"
-		state.fWaterMap2S = "<table width='100%'><tr><td><div style='color: green;'>No water devices to report</div></td></tr></table>"
+		state.fWaterMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No water devices to report</div></td></tr></table>"
+		state.fWaterMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No water devices to report</div></td></tr></table>"
 	}
 
 	if(logEnable) log.debug "In waterMapHandler - <br>fWaterMap1S<br>${state.fWaterMap1S}"
@@ -585,8 +620,8 @@ def lockMapHandler() {
 			state.count = state.count + 1
 			state.countUnlocked = state.countUnlocked + 1
 			if(logEnable) log.debug "In lockMapHandler - Building Table UNLOCKED with ${stuffUnlocked.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${stuffUnlocked.key}</td><td><div style='color: red;'>unlocked</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${stuffUnlocked.key}</td><td><div style='color: red;'>unlocked</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${stuffUnlocked.key}</td><td><div style='color: ${locksUnlockedColor};'>unlocked</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${stuffUnlocked.key}</td><td><div style='color: ${locksUnlockedColor};'>unlocked</div></td></tr>"
 		}
 	}
 	
@@ -600,8 +635,8 @@ def lockMapHandler() {
 			state.count = state.count + 1
 			state.countLocked = state.countLocked + 1
 			if(logEnable) log.debug "In lockMapHandler - Building Table LOCKED with ${stuffLocked.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${stuffLocked.key}</td><td><div style='color: green;'>locked</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${stuffLocked.key}</td><td><div style='color: green;'>locked</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fLockMap1S += "<tr><td>${stuffLocked.key}</td><td><div style='color: ${locksLockedColor};'>locked</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fLockMap2S += "<tr><td>${stuffLocked.key}</td><td><div style='color: ${locksLockedColor};'>locked</div></td></tr>"
 		}
 	}
 	
@@ -609,8 +644,8 @@ def lockMapHandler() {
 	state.fLockMap2S += "</table>"
 	
 	if(state.count == 0) {
-		state.fLockMap1S = "<table width='100%'><tr><td><div style='color: green;'>No lock devices to report</div></td></tr></table>"
-		state.fLockMap2S = "<table width='100%'><tr><td><div style='color: green;'>No lock devices to report</div></td></tr></table>"
+		state.fLockMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No lock devices to report</div></td></tr></table>"
+		state.fLockMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No lock devices to report</div></td></tr></table>"
 	}
 
 	if(logEnable) log.debug "In lockMapHandler - <br>fLockMap1S<br>${state.fLockMap1S}"
@@ -637,8 +672,8 @@ def presenceMapHandler() {
 			state.count = state.count + 1
 			state.countNotPresent = state.countNotPresent + 1
 			if(logEnable) log.debug "In presenceMapHandler - Building Table Not Present with ${stuffNotPresent.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: red;'>not present</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: red;'>not present</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: ${presenceNotPresentColor};'>not present</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffNotPresent.key}</td><td><div style='color: ${presenceNotPresentColor};'>not present</div></td></tr>"
 		}
 	}
 	
@@ -647,8 +682,8 @@ def presenceMapHandler() {
 			state.count = state.count + 1
 			state.countPresent = state.countPresent + 1
 			if(logEnable) log.debug "In presenceMapHandler - Building Table Present with ${stuffPresent.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffPresent.key}</td><td><div style='color: green;'>present</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffPresent.key}</td><td><div style='color: green;'>present</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fPresenceMap1S += "<tr><td>${stuffPresent.key}</td><td><div style='color: ${presencePresentColor};'>present</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fPresenceMap2S += "<tr><td>${stuffPresent.key}</td><td><div style='color: ${presencePresentColor};'>present</div></td></tr>"
 		}
 	}
 	
@@ -656,8 +691,8 @@ def presenceMapHandler() {
 	state.fPresenceMap2S += "</table>"
 	
 	if(state.count == 0) {
-		state.fPresenceMap1S = "<table width='100%'><tr><td><div style='color: green;'>No presence devices to report</div></td></tr></table>"
-		state.fPresenceMap2S = "<table width='100%'><tr><td><div style='color: green;'>No presence devices to report</div></td></tr></table>"
+		state.fPresenceMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No presence devices to report</div></td></tr></table>"
+		state.fPresenceMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No presence devices to report</div></td></tr></table>"
 	}
 
 	if(logEnable) log.debug "In presenceMapHandler - <br>fPresenceMap1S<br>${state.fPresenceMap1S}"
@@ -685,8 +720,8 @@ def tempMapHandler() {
 			state.count = state.count + 1
 			state.countHigh = state.countHigh + 1
 			if(logEnable) log.debug "In tempMapHandler - Building Table High with ${stuffHigh.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${stuffHigh.key}</td><td><div style='color: red;'>${stuffHigh.value}</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${stuffHigh.key}</td><td><div style='color: red;'>${stuffHigh.value}</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${stuffHigh.key}</td><td><div style='color: ${tempHighColor};'>${stuffHigh.value}</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${stuffHigh.key}</td><td><div style='color: ${tempHighColor};'>${stuffHigh.value}</div></td></tr>"
 		}
 	}
 	
@@ -704,8 +739,8 @@ def tempMapHandler() {
 			state.count = state.count + 1
 			state.countLow = state.countLow + 1
 			if(logEnable) log.debug "In tempMapHandler - Building Table Low with ${stuffLow.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${stuffLow.key}</td><td><div style='color: blue;'>${stuffLow.value}</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${stuffLow.key}</td><td><div style='color: blue;'>${stuffLow.value}</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.fTempMap1S += "<tr><td>${stuffLow.key}</td><td><div style='color: ${tempLowColor};'>${stuffLow.value}</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.fTempMap2S += "<tr><td>${stuffLow.key}</td><td><div style='color: ${tempLowColor};'>${stuffLow.value}</div></td></tr>"
 		}
 	}
 	
@@ -713,8 +748,8 @@ def tempMapHandler() {
 	state.fTempMap2S += "</table>"
 	
 	if(state.count == 0) {
-		state.fTempMap1S = "<table width='100%'><tr><td><div style='color: green;'>No temp devices to report</div></td></tr></table>"
-		state.fTempMap2S = "<table width='100%'><tr><td><div style='color: green;'>No temp devices to report</div></td></tr></table>"
+		state.fTempMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No temp devices to report</div></td></tr></table>"
+		state.fTempMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No temp devices to report</div></td></tr></table>"
 	}
 
 	if(logEnable) log.debug "In tempMapHandler - <br>${state.fTempMap1S}"
@@ -859,26 +894,26 @@ def priorityHandler(evt){
 			state.prioritySwitch = "true"
 			state.wrongStateSwitchMap += "${wSwitch.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Switch with ${wSwitch.key} count: ${state.count}"
-		//	if((state.count >= 1) && (state.count <= 5)) state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></a></td><td><a href='${wSwitch}.on()'><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+		//	if((state.count >= 1) && (state.count <= 5)) state.pSwitchMap1S += "<tr><td><div style='color: ${switchesOnColor};'>${wSwitch.key}</div></a></td><td><a href='${wSwitch}.on()'><div style='color: ${switchesOnColor};'>${wSwitch.value}</div></td></tr>"
             
             //command = "input 'toggleBtn', 'button', title: 'Tog'"
             if((state.count >= 1) && (state.count <= 5)) {
-                state.pSwitchMap1S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></a></td><td>"
+                state.pSwitchMap1S += "<tr><td><div style='color: ${switchesOnColor};'>${wSwitch.key}</div></a></td><td>"
                 state.pSwitchMap1S += input 'toggleBtn', 'button', title: 'Tog'
                 state.pSwitchMap1S += "</td></tr>"
             }
             
             
             
-			if((state.count >= 6) && (state.count <= 10)) state.pSwitchMap2S += "<tr><td><div style='color: red;'>${wSwitch.key}</div></td><td><div style='color: red;'>${wSwitch.value}</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.pSwitchMap2S += "<tr><td><div style='color: ${switchesOnColor};'>${wSwitch.key}</div></td><td><div style='color: ${switchesOnColor};'>${wSwitch.value}</div></td></tr>"
 			state.wrongSwitchPushMap += "${wSwitch.key} \n"
 		}
 		state.pSwitchMap1S += "</table>"
 		state.pSwitchMap2S += "</table>"
 	
 		if(state.count == 0) {
-			state.pSwitchMap1S = "<table width='100%'><tr><td><div style='color: green;'>No devices to report</div></td></tr></table>"
-			state.pSwitchMap2S = "<table width='100%'><tr><td><div style='color: green;'>No devices to report</div></td></tr></table>"
+			state.pSwitchMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
+			state.pSwitchMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No devices to report</div></td></tr></table>"
 			state.wrongSwitchPushMap = ""
 			state.isPriorityData = "false"
 			state.prioritySwitch = "false"
@@ -918,16 +953,16 @@ def priorityHandler(evt){
 			state.priorityContact = "true"
 			state.wrongStateContactMap += "${wContact.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Contact with ${wContact.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.pContactMap1S += "<tr><td><div style='color: red;'>${wContact.key}</div></td><td><div style='color: red;'>${wContact.value}</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.pContactMap2S += "<tr><td><div style='color: red;'>${wContact.key}</div></td><td><div style='color: red;'>${wContact.value}</div></td></tr>"
+			if((state.count >= 1) && (state.count <= 5)) state.pContactMap1S += "<tr><td><div style='color: ${contactsOpenColor};'>${wContact.key}</div></td><td><div style='color: ${contactsOpenColor};'>${wContact.value}</div></td></tr>"
+			if((state.count >= 6) && (state.count <= 10)) state.pContactMap2S += "<tr><td><div style='color: ${contactsOpenColor};'>${wContact.key}</div></td><td><div style='color: ${contactsOpenColor};'>${wContact.value}</div></td></tr>"
 			state.wrongContactPushMap += "${wContact.key} \n"
 		}
 		state.pContactMap1S += "</table>"
 		state.pContactMap2S += "</table>"
 	
 		if(state.count == 0) {
-			state.pContactMap1S = "<table width='100%'><tr><td><div style='color: green;'>No contacts to report</div></td></tr></table>"
-			state.pContactMap2S = "<table width='100%'><tr><td><div style='color: green;'>No contacts to report</div></td></tr></table>"
+			state.pContactMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contacts to report</div></td></tr></table>"
+			state.pContactMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No contacts to report</div></td></tr></table>"
 			state.wrongContactPushMap = ""
 			state.isPriorityData = "false"
 			state.priorityContact = "false"
@@ -967,16 +1002,16 @@ def priorityHandler(evt){
 			state.priorityLock = "true"
 			state.wrongStateLockMap += "${wLock.key}, "
 			if(logEnable) log.debug "In priorityHandler - Building Table Wrong Lock with ${wLock.key} count: ${state.count}"
-			if((state.count >= 1) && (state.count <= 5)) state.pLockMap1S += "<tr><td><div style='color: red;'>${wLock.key}</div></td><td><div style='color: red;'>${wLock.value}</div></td></tr>"
-			if((state.count >= 6) && (state.count <= 10)) state.pLockMap2S += "<tr><td><div style='color: red;'>${wLock.key}</div></td><td><div style='color: red;'>${wLock.value}</div></td></tr>"
+            if((state.count >= 1) && (state.count <= 5)) state.pLockMap1S += "<tr><td><div style='color: ${locksUnlockedColor};'>${wLock.key}</div></td><td><div style='color: ${locksUnlockedColor};'>${wLock.value}</div></td></tr>"
+            if((state.count >= 6) && (state.count <= 10)) state.pLockMap2S += "<tr><td><div style='color: ${locksUnlockedColor};'>${wLock.key}</div></td><td><div style='color: ${locksUnlockedColor};'>${wLock.value}</div></td></tr>"
 			state.wrongLockPushMap += "${wLock.key} \n"
 		}
 		state.pLockMap1S += "</table>"
 		state.pLockMap2S += "</table>"
 	
 		if(state.count == 0) {
-			state.pLockMap1S = "<table width='100%'><tr><td><div style='color: green;'>No locks to report</div></td></tr></table>"
-			state.pLockMap2S = "<table width='100%'><tr><td><div style='color: green;'>No locks to report</div></td></tr></table>"
+			state.pLockMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No locks to report</div></td></tr></table>"
+			state.pLockMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No locks to report</div></td></tr></table>"
 			state.wrongLockPushMap = ""
 			state.isPriorityData = "false"
 			state.priorityLock = "false"
@@ -1015,8 +1050,8 @@ def priorityHandler(evt){
 				state.count = state.count + 1
 				state.isPriorityData = "true"
 				if(logEnable) log.debug "In priorityHandler - Building Table High with ${stuffHigh.key} count: ${state.count}"
-				if((state.count >= 1) && (state.count <= 5)) state.pTempMap1S += "<tr><td>${stuffHigh.key}</td><td><div style='color: red;'>${stuffHigh.value}</div></td></tr>"
-				if((state.count >= 6) && (state.count <= 10)) state.pTempMap2S += "<tr><td>${stuffHigh.key}</td><td><div style='color: red;'>${stuffHigh.value}</div></td></tr>"
+				if((state.count >= 1) && (state.count <= 5)) state.pTempMap1S += "<tr><td>${stuffHigh.key}</td><td><div style='color: ${tempHighColor};'>${stuffHigh.value}</div></td></tr>"
+				if((state.count >= 6) && (state.count <= 10)) state.pTempMap2S += "<tr><td>${stuffHigh.key}</td><td><div style='color: ${tempHighColor};'>${stuffHigh.value}</div></td></tr>"
 			}
 		}
 	
@@ -1035,8 +1070,8 @@ def priorityHandler(evt){
 				state.count = state.count + 1
 				state.isPriorityData = "true"
 				if(logEnable) log.debug "In priorityHandler - Building Table Low with ${stuffLow.key} count: ${state.count}"
-				if((state.count >= 1) && (state.count <= 5)) state.pTempMap1S += "<tr><td>${stuffLow.key}</td><td><div style='color: blue;'>${stuffLow.value}</div></td></tr>"
-				if((state.count >= 6) && (state.count <= 10)) state.pTempMap2S += "<tr><td>${stuffLow.key}</td><td><div style='color: blue;'>${stuffLow.value}</div></td></tr>"
+				if((state.count >= 1) && (state.count <= 5)) state.pTempMap1S += "<tr><td>${stuffLow.key}</td><td><div style='color: ${tempLowColor};'>${stuffLow.value}</div></td></tr>"
+				if((state.count >= 6) && (state.count <= 10)) state.pTempMap2S += "<tr><td>${stuffLow.key}</td><td><div style='color: ${tempLowColor};'>${stuffLow.value}</div></td></tr>"
 			}
 		}
 	
@@ -1044,8 +1079,8 @@ def priorityHandler(evt){
 		state.pTempMap2S += "</table>"
 	
 		if(state.count == 0) {
-			state.pTempMap1S = "<table width='100%'><tr><td><div style='color: green;'>No temp devices to report</div></td></tr></table>"
-			state.pTempMap2S = "<table width='100%'><tr><td><div style='color: green;'>No temp devices to report</div></td></tr></table>"
+			state.pTempMap1S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No temp devices to report</div></td></tr></table>"
+			state.pTempMap2S = "<table width='100%'><tr><td><div style='color: ${textNoColor};'>No temp devices to report</div></td></tr></table>"
 			state.isPriorityData = "false"
 		}
 		snapshotTileDevice.sendSnapshotPriorityTempMap1(state.pTempMap1S)
