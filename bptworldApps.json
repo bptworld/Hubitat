@@ -413,7 +413,7 @@
   "SimpleIrrigationUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "SnapshotParentVersion": "v2.0.0",
-  "SnapshotChild1Version": "v2.0.0",
+  "SnapshotChild1Version": "v2.0.1",
   "SnapshotChild1Name": "",
   "SnapshotChild2Version": "",
   "SnapshotChild2Name": "",
@@ -427,7 +427,7 @@
   "SnapshotChild3RawCode": "",
   "SnapshotChild4RawCode": "",
   "SnapshotDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
-  "SnapshotUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.0",
