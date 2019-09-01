@@ -170,10 +170,10 @@ def parse(String description) {
     msgValue = msgValue.replace("\"","")
     msgCheck = msgValue.toLowerCase()
     keyword1 = state.keyword1.toLowerCase()
-    sKeyword1 = state.sKeyword1.toLowerCase()
-    sKeyword2 = state.sKeyword2.toLowerCase()
-    sKeyword3 = state.sKeyword3.toLowerCase()
-    sKeyword4 = state.sKeyword4.toLowerCase()
+    if(state.sKeyword1 != "") sKeyword1 = state.sKeyword1.toLowerCase()
+    if(state.sKeyword2 != "") sKeyword2 = state.sKeyword2.toLowerCase()
+    if(state.sKeyword3 != "") sKeyword3 = state.sKeyword3.toLowerCase()
+    if(state.sKeyword4 != "") sKeyword4 = state.sKeyword4.toLowerCase()
 
     if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
         sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
