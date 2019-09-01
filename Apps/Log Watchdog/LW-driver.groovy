@@ -169,8 +169,13 @@ def parse(String description) {
     def (msgKey, msgValue) = msg.split(":")
     msgValue = msgValue.replace("\"","")
     msgCheck = msgValue.toLowerCase()
+    keyword1 = state.keyword1.toLowerCase()
+    sKeyword1 = state.sKeyword1.toLowerCase()
+    sKeyword2 = state.sKeyword2.toLowerCase()
+    sKeyword3 = state.sKeyword3.toLowerCase()
+    sKeyword4 = state.sKeyword4.toLowerCase()
 
-    if( msgCheck.contains("${state.keyword1}") && (msgCheck.contains("${state.sKeyword1}") || msgCheck.contains("${state.sKeyword2}") || msgCheck.contains("${state.sKeyword3}") || msgCheck.contains("${state.sKeyword4}")) ) {
+    if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
         sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
         if(logEnable) log.debug "Log Watchdog Driver - Keywords Found"
         populateMap(msgValue)
