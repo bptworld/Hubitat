@@ -239,13 +239,13 @@ def makeList(msgValue,listNum) {
     getDateTime()
 	nMessage = newdate + " - " + msgValue
     
-    if(list$listNum == null) list$listNum = ["-","-","-","-","-","-","-","-","-","-"]
-    list$listNum.add(0,nMessage)  
+    if(state.list$listNum == null) state.list$listNum = ["-","-","-","-","-","-","-","-","-","-"]
+    state.list$listNum.add(0,nMessage)  
 
-    listSize = list$listNum.size()
-    if(listSize > 10) list$listNum.removeAt(10)
+    listSize = state.list$listNum.size()
+    if(listSize > 10) state.list$listNum.removeAt(10)
     
-    String result = list$listNum.join(";")
+    String result = state.list$listNum.join(";")
     logCharCount = result.length()
 	if(logTopCount <= 1000) {
 		if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount} Characters"
