@@ -40,13 +40,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 09/02/19 - Evolving fast!
  *  V1.0.1 - 09/01/19 - Major changes to the driver
  *  V1.0.0 - 08/31/19 - Initial release
  */
 
 def setVersion(){
     appName = "LogWatchdogDriver"
-	version = "v1.0.1" 
+	version = "v1.0.2" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -61,9 +62,21 @@ metadata {
    		capability "Actuator"
        
         attribute "status", "string"
-        attribute "lastLogMessage", "string"
-        attribute "logData", "string"
-        attribute "numOfCharacters", "number"
+        attribute "lastLogMessage1", "string"
+        attribute "lastLogMessage2", "string"
+        attribute "lastLogMessage3", "string"
+        attribute "lastLogMessage4", "string"
+        attribute "lastLogMessage5", "string"
+        attribute "logData1", "string"
+        attribute "logData2", "string"
+        attribute "logData3", "string"
+        attribute "logData4", "string"
+        attribute "logData5", "string"
+        attribute "numOfCharacters1", "number"
+        attribute "numOfCharacters2", "number"
+        attribute "numOfCharacters3", "number"
+        attribute "numOfCharacters4", "number"
+        attribute "numOfCharacters5", "number"
         attribute "keywordInfo", "string"
         
         command "connect"
@@ -131,32 +144,46 @@ def webSocketStatus(String socketStatus) {
 
 def keywordInfo(keys) {
     if(logEnable) log.info "In keywordInfo"
-    def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keys.split(";")
-    if(keyword1 != "-") {
-        state.keyword1 = keyword1
-    } else {
-        state.keyword1 = ""
+    if(state.keysMap == null) state.keysMap = [:]
+    def (keySet,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keys.split(";")
+    def keyValue = "${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4}"
+    
+    if(keySet == "keySet01") {
+        state.keys1 = keys
+        newMap = "${keySet}:${keyValue}"
+        def newData = stringToMap(newMap)
+        state.keysMap << newData
+        log.info "Recieved ${keySet}"
     }
-    if(sKeyword1 != "-") {
-        state.sKeyword1 = sKeyword1
-    } else {
-        state.sKeyword1 = ""
+    if(keySet == "keySet02") {
+        state.keys2 = keys
+        newMap = "${keySet}:${keyValue}"
+        def newData = stringToMap(newMap)
+        state.keysMap << newData
+        log.info "Recieved ${keySet}"
     }
-    if(sKeyword2 != "-") {
-        state.sKeyword2 = sKeyword2
-    } else {
-        state.sKeyword2 = ""
+    if(keySet == "keySet03") {
+        state.keys3 = keys
+        newMap = "${keySet}:${keyValue}"
+        def newData = stringToMap(newMap)
+        state.keysMap << newData
+        log.info "Recieved ${keySet}"
     }
-    if(sKeyword3 != "-") {
-        state.sKeyword3 = sKeyword3
-    } else {
-        state.sKeyword3 = ""
+    if(keySet == "keySet04") {
+        state.keys4 = keys
+        newMap = "${keySet}:${keyValue}"
+        def newData = stringToMap(newMap)
+        state.keysMap << newData
+        log.info "Recieved ${keySet}"
     }
-    if(sKeyword4 != "-") {
-        state.sKeyword4 = sKeyword4
-    } else {
-        state.sKeyword4 = ""
+    if(keySet == "keySet05") {
+        state.keys5 = keys
+        newMap = "${keySet}:${keyValue}"
+        def newData = stringToMap(newMap)
+        state.keysMap << newData
+        log.info "Recieved ${keySet}"
     }
+    log.info "${state.keysMap}"
 }
 
 def parse(String description) {
@@ -165,60 +192,99 @@ def parse(String description) {
     // This is what the incoming data looks like
     //{"name":"aWeb socket","msg":"{"name":"Test","msg":"In motionSensorHandler (v2.0.0) - sZone: true - Status: active","id":7371,"time":"2019-08-31 08:19:02.942","type":"app","level":"debug"}","id":5758,"time":"2019-08-31 08:19:03.770","type":"dev","level":"debug"}
     
-    def (name, msg) = theData.split(",")
-    def (msgKey, msgValue) = msg.split(":")
+    def (name, msg, id, time, type, level) = theData.split(",")
+    def (name2, msgValue) = msg.split(":")
     msgValue = msgValue.replace("\"","")
     msgCheck = msgValue.toLowerCase()
-    keyword1 = state.keyword1.toLowerCase()
-    if(state.sKeyword1 != "") sKeyword1 = state.sKeyword1.toLowerCase()
-    if(state.sKeyword2 != "") sKeyword2 = state.sKeyword2.toLowerCase()
-    if(state.sKeyword3 != "") sKeyword3 = state.sKeyword3.toLowerCase()
-    if(state.sKeyword4 != "") sKeyword4 = state.sKeyword4.toLowerCase()
-
-    if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
-        sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
-        if(logEnable) log.debug "Log Watchdog Driver - Keywords Found"
-        makeList(msgValue)
+    
+    def (theKey, lvlValue) = level.split(":")
+    lvlValue = lvlValue.replace("\"","").replace("}","")
+    lvlCheck = lvlValue.toLowerCase()
+ 
+// *****************************
+    def allMap = state.keysMap.collectEntries{ [(it.key):(it.value)] }
+    allMap.each { it ->
+        def match = "no"
+        def keyName = it.key
+        def keyValue = it.value.toLowerCase()
+        def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keyValue.split(";")
+        if(keyword1 == "-") keyword1 = ""
+        if(sKeyword1 == "-") sKeyword1 = ""
+        if(sKeyword2 == "-") sKeyword2 = ""
+        if(sKeyword3 == "-") sKeyword3 = ""
+        if(sKeyword4 == "-") sKeyword4 = ""
+        if( lvlCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}")) ) {
+            log.debug "Log Watchdog Driver - Match Found - Logging Level - ${keyName}"
+            match = "yes"
+        } else if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
+            log.debug "Log Watchdog Driver - Match Found - Keywords - ${keyName}"
+            match = "yes"
+        }
+        if(match == "yes") {
+            if(keyName.contains("1")) listNum = "1"
+            if(keyName.contains("2")) listNum = "2"
+            if(keyName.contains("3")) listNum = "3"
+            if(keyName.contains("4")) listNum = "4"
+            if(keyName.contains("5")) listNum = "5"
+            makeList(msgValue,listNum)
+        }
     }
 }
-
-def makeList(msgValue) {
-    state.msgValue = msgValue.take(70)
+// *****************************
+ 
+def makeList(msgValue,listNum) {
+    log.info "In makeList"
+    
+    msgValue = msgValue.take(70)
     getDateTime()
-	nMessage = newdate + " - " + state.msgValue
+	nMessage = newdate + " - " + msgValue
     
-    if(state.list10 == null) state.list10 = ["-","-","-","-","-","-","-","-","-","-"]
-    
-    state.list10.add(0,nMessage)  
+    if(list$listNum == null) list$listNum = ["-","-","-","-","-","-","-","-","-","-"]
+    list$listNum.add(0,nMessage)  
 
-    list10Size = state.list10.size()
-    log.warn "list10Size: ${list10Size}"
+    listSize = list$listNum.size()
+    if(listSize > 10) list$listNum.removeAt(10)
     
-    if(list10Size > 10) {
-        log.warn "list10Size: ${list10Size} IS GREATER THAN 10, Removing 11"
-        state.list10.removeAt(10)
-    }
-    
-    String result = state.list10.join(";")
-    //log.warn "${result}"
+    String result = list$listNum.join(";")
     logCharCount = result.length()
 	if(logTopCount <= 1000) {
 		if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount} Characters"
 	} else {
-		state.logTop = "Too many characters to display on Dashboard"
+		logTop$listNum = "Too many characters to display on Dashboard"
 	}
     
     def (mOne,mTwo,mThree,mFour,mFive,mSix,mSeven,mEight,mNine,mTen) = result.split(";")
     logTop10 = "<table><tr><td><div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div></td></tr></table>"
     
-	sendEvent(name: "logData", value: logTop10, displayed: true)
-    sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
+	sendEvent(name: "logData$listNum", value: logTop10, displayed: true)
+    sendEvent(name: "numOfCharacters$listNum", value: logCharCount, displayed: true)
+    sendEvent(name: "lastLogMessage$listNum", value: msgValue, displayed: true)
 }
 
 def clearData(){
 	if(logEnable) log.debug "Log Watchdog Driver - Clearing the data"
-	state.list10 = ["-","-","-","-","-","-","-","-","-","-"]
-	sendEvent(name: "logData", value: state.list10, displayed: true)
+    msgValue = ""
+    logCharCount = ""
+	state.list1 = ["-","-","-","-","-","-","-","-","-","-"]
+    state.list2 = ["-","-","-","-","-","-","-","-","-","-"]
+    state.list3 = ["-","-","-","-","-","-","-","-","-","-"]
+    state.list4 = ["-","-","-","-","-","-","-","-","-","-"]
+    state.list5 = ["-","-","-","-","-","-","-","-","-","-"]
+	sendEvent(name: "logData1", value: state.list1, displayed: true)
+    sendEvent(name: "logData2", value: state.list2, displayed: true)
+    sendEvent(name: "logData3", value: state.list3, displayed: true)
+    sendEvent(name: "logData4", value: state.list4, displayed: true)
+    sendEvent(name: "logData5", value: state.list5, displayed: true)
+    sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
+    sendEvent(name: "lastLogMessage2", value: msgValue, displayed: true)
+    sendEvent(name: "lastLogMessage3", value: msgValue, displayed: true)
+    sendEvent(name: "lastLogMessage4", value: msgValue, displayed: true)
+    sendEvent(name: "lastLogMessage5", value: msgValue, displayed: true)
+    sendEvent(name: "numOfCharacters1", value: logCharCount, displayed: true)
+    sendEvent(name: "numOfCharacters2", value: logCharCount, displayed: true)
+    sendEvent(name: "numOfCharacters3", value: logCharCount, displayed: true)
+    sendEvent(name: "numOfCharacters4", value: logCharCount, displayed: true)
+    sendEvent(name: "numOfCharacters5", value: logCharCount, displayed: true)
 }
 
 def getDateTime() {
