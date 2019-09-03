@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 09/03/19 - Added 'does not contain' keywords
  *  V2.0.1 - 09/02/19 - Evolving fast, lots of changes
  *  V2.0.0 - 08/31/19 - Initial release.
  *
@@ -47,7 +48,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "LogWatchdogChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -68,7 +69,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-Log-child.groovy",
 )
 
 preferences {
@@ -151,19 +152,23 @@ def pageKeySet01(){
             input "sKeyword12", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
             input "sKeyword13", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
             input "sKeyword14", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+            paragraph "<b>Third Check</b> - Select up to 2 keywords"
+            input "nKeyword11", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword12", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
             paragraph "<hr>"
-            if(!keyword11) { keyword11 = "" }
-            if(!sKeyword11) { sKeyword11 = "";or11 = "";finish11 = "" } else { or11 = " or ";finish11 = ")" }
-            if(!sKeyword12) { sKeyword12 = "";or12 = "";finish12 = "" } else { or12 = " or ";finish12 = ")" }
-            if(!sKeyword13) { sKeyword13 = "";or13 = "";finish13 = "" } else { or13 = " or ";finish13 = ")" }
-            if(!sKeyword14) { sKeyword14 = "";or14 = "";finish14 = "" } else { or14 = " or ";finish14 = ")" }
-            if(sKeyword11 || sKeyword12 || sKeyword13 || sKeyword14) {and11 = " and ("} else {and11 = ""}
+            if(!keyword11) keyword11 = "-"
+            if(!sKeyword11) sKeyword11 = "-"
+            if(!sKeyword12) sKeyword12 = "-"
+            if(!sKeyword13) sKeyword13 = "-"
+            if(!sKeyword14) sKeyword14 = "-"
+            if(!nKeyword11) nKeyword11 = "-"
+            if(!nKeyword12) nKeyword12 = "-"
             
-            state.if01 = "<b>if (${keyword11})${and11}${sKeyword11}${or12}${sKeyword12}${or13}${sKeyword13}${or14}${sKeyword14}${finish11}</b>"
+            state.if01 = "<b>if (${keyword11}) and (${sKeyword11} or ${sKeyword12} or ${sKeyword13} or ${sKeyword14}) but not (${nKeyword11} or ${nKeyword12})</b>"
             paragraph "<b>Complete Check</b><br>${state.if01}"
 
-            if(!sKeyword11) sKeyword11 = "-";if(!sKeyword12) sKeyword12 = "-"; if(!sKeyword13) sKeyword13 = "-";if(!sKeyword14) sKeyword14 = "-";
-            state.theData01 = "keySet01;${keyword11};${sKeyword11};${sKeyword12};${sKeyword13};${sKeyword14}"
+            state.theData01 = "keySet01;${keyword11};${sKeyword11};${sKeyword12};${sKeyword13};${sKeyword14};${nKeyword11};${nKeyword12}"
         }
     }
 }
@@ -186,19 +191,23 @@ def pageKeySet02(){
             input "sKeyword22", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
             input "sKeyword23", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
             input "sKeyword24", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+            paragraph "<b>Third Check</b> - Select up to 2 keywords"
+            input "nKeyword21", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword22", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
             paragraph "<hr>"
-            if(!keyword21) { keyword21 = "" }
-            if(!sKeyword21) { sKeyword21 = "";or21 = "";finish21 = "" } else { or21 = " or ";finish21 = ")" }
-            if(!sKeyword22) { sKeyword22 = "";or22 = "";finish22 = "" } else { or22 = " or ";finish22 = ")" }
-            if(!sKeyword23) { sKeyword23 = "";or23 = "";finish23 = "" } else { or23 = " or ";finish23 = ")" }
-            if(!sKeyword24) { sKeyword24 = "";or24 = "";finish24 = "" } else { or24 = " or ";finish24 = ")" }
-            if(sKeyword21 || sKeyword22 || sKeyword23 || sKeyword24) {and21 = " and ("} else {and21 = ""}
+            if(!keyword21) keyword21 = "-"
+            if(!sKeyword21) sKeyword21 = "-"
+            if(!sKeyword22) sKeyword22 = "-"
+            if(!sKeyword23) sKeyword23 = "-"
+            if(!sKeyword24) sKeyword24 = "-"
+            if(!nKeyword21) nKeyword21 = "-"
+            if(!nKeyword22) nKeyword22 = "-"
             
-            state.if02 = "<b>if (${keyword21})${and21}${sKeyword21}${or22}${sKeyword22}${or23}${sKeyword23}${or24}${sKeyword24}${finish21}</b>"
+            state.if02 = "<b>if (${keyword21}) and (${sKeyword21} or ${sKeyword22} or ${sKeyword23} or ${sKeyword24}) but not (${nKeyword21} or ${nKeyword22})</b>"
             paragraph "<b>Complete Check</b><br>${state.if02}"
             
-            if(!sKeyword21) sKeyword21 = "-";if(!sKeyword22) sKeyword22 = "-"; if(!sKeyword23) sKeyword23 = "-";if(!sKeyword24) sKeyword24 = "-";
-            state.theData02 = "keySet02;${keyword21};${sKeyword21};${sKeyword22};${sKeyword23};${sKeyword24}"
+            state.theData02 = "keySet02;${keyword21};${sKeyword21};${sKeyword22};${sKeyword23};${sKeyword24};${nKeyword21};${nKeyword22}"
         }
     }
 }
@@ -221,19 +230,23 @@ def pageKeySet03(){
             input "sKeyword32", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
             input "sKeyword33", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
             input "sKeyword34", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+            paragraph "<b>Third Check</b> - Select up to 2 keywords"
+            input "nKeyword31", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword32", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
             paragraph "<hr>"
-            if(!keyword31) { keyword31 = "" }
-            if(!sKeyword31) { sKeyword31 = "";or31 = "";finish31 = "" } else { or31 = " or ";finish31 = ")" }
-            if(!sKeyword32) { sKeyword32 = "";or32 = "";finish32 = "" } else { or32 = " or ";finish32 = ")" }
-            if(!sKeyword33) { sKeyword33 = "";or33 = "";finish33 = "" } else { or33 = " or ";finish33 = ")" }
-            if(!sKeyword34) { sKeyword34 = "";or34 = "";finish34 = "" } else { or34 = " or ";finish34 = ")" }
-            if(sKeyword31 || sKeyword32 || sKeyword33 || sKeyword34) {and31 = " and ("} else {and31 = ""}
+            if(!keyword31) keyword31 = "-"
+            if(!sKeyword31) sKeyword31 = "-"
+            if(!sKeyword32) sKeyword32 = "-"
+            if(!sKeyword33) sKeyword33 = "-"
+            if(!sKeyword34) sKeyword34 = "-"
+            if(!nKeyword31) nKeyword31 = "-"
+            if(!nKeyword32) nKeyword32 = "-"
             
-            state.if03 = "<b>if (${keyword31})${and31}${sKeyword31}${or32}${sKeyword32}${or33}${sKeyword33}${or34}${sKeyword34}${finish31}</b>"
+            state.if03 = "<b>if (${keyword31}) and (${sKeyword31} or ${sKeyword32} or ${sKeyword33} or ${sKeyword34}) but not (${nKeyword31} or ${nKeyword32})</b>"
             paragraph "<b>Complete Check</b><br>${state.if03}"
        
-            if(!sKeyword31) sKeyword31 = "-";if(!sKeyword32) sKeyword32 = "-"; if(!sKeyword33) sKeyword33 = "-";if(!sKeyword34) sKeyword34 = "-";
-            state.theData03 = "keySet03;${keyword31};${sKeyword31};${sKeyword32};${sKeyword33};${sKeyword34}"
+            state.theData03 = "keySet03;${keyword31};${sKeyword31};${sKeyword32};${sKeyword33};${sKeyword34};${nKeyword31};${nKeyword32}"
         }
     }
 }
@@ -256,19 +269,23 @@ def pageKeySet04(){
             input "sKeyword42", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
             input "sKeyword43", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
             input "sKeyword44", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+            paragraph "<b>Third Check</b> - Select up to 2 keywords"
+            input "nKeyword41", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword42", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
             paragraph "<hr>"
-            if(!keyword41) { keyword41 = "" }
-            if(!sKeyword41) { sKeyword41 = "";or41 = "";finish41 = "" } else { or41 = " or ";finish41 = ")" }
-            if(!sKeyword42) { sKeyword42 = "";or42 = "";finish42 = "" } else { or42 = " or ";finish42 = ")" }
-            if(!sKeyword43) { sKeyword43 = "";or43 = "";finish43 = "" } else { or43 = " or ";finish43 = ")" }
-            if(!sKeyword44) { sKeyword44 = "";or44 = "";finish44 = "" } else { or44 = " or ";finish44 = ")" }
-            if(sKeyword41 || sKeyword42 || sKeyword43 || sKeyword44) {and41 = " and ("} else {and41 = ""}
+            if(!keyword41) keyword41 = "-"
+            if(!sKeyword41) sKeyword41 = "-"
+            if(!sKeyword42) sKeyword42 = "-"
+            if(!sKeyword43) sKeyword43 = "-"
+            if(!sKeyword44) sKeyword44 = "-"
+            if(!nKeyword41) nKeyword41 = "-"
+            if(!nKeyword42) nKeyword42 = "-"
             
-            state.if04 = "<b>if (${keyword41})${and41}${sKeyword41}${or42}${sKeyword42}${or43}${sKeyword43}${or44}${sKeyword44}${finish41}</b>"
+            state.if04 = "<b>if (${keyword41}) and (${sKeyword41} or ${sKeyword42} or ${sKeyword43} or ${sKeyword44}) but not (${nKeyword41} or ${nKeyword42})</b>"
             paragraph "<b>Complete Check</b><br>${state.if04}"
 
-            if(!sKeyword41) sKeyword41 = "-";if(!sKeyword42) sKeyword42 = "-"; if(!sKeyword43) sKeyword43 = "-";if(!sKeyword44) sKeyword44 = "-";
-            state.theData04 = "keySet04;${keyword41};${sKeyword41};${sKeyword42};${sKeyword43};${sKeyword44}"
+            state.theData04 = "keySet04;${keyword41};${sKeyword41};${sKeyword42};${sKeyword43};${sKeyword44};${nKeyword41};${nKeyword42}"
         }
     }
 }
@@ -291,19 +308,23 @@ def pageKeySet05(){
             input "sKeyword52", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
             input "sKeyword53", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
             input "sKeyword54", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+            paragraph "<b>Third Check</b> - Select up to 2 keywords"
+            input "nKeyword51", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword52", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
             paragraph "<hr>"
-            if(!keyword51) { keyword51 = "" }
-            if(!sKeyword51) { sKeyword51 = "";or51 = "";finish51 = "" } else { or51 = " or ";finish51 = ")" }
-            if(!sKeyword52) { sKeyword52 = "";or52 = "";finish52 = "" } else { or52 = " or ";finish52 = ")" }
-            if(!sKeyword53) { sKeyword53 = "";or53 = "";finish53 = "" } else { or53 = " or ";finish53 = ")" }
-            if(!sKeyword54) { sKeyword54 = "";or54 = "";finish54 = "" } else { or54 = " or ";finish54 = ")" }
-            if(sKeyword51 || sKeyword52 || sKeyword53 || sKeyword54) {and51 = " and ("} else {and51 = ""}
-            
-            state.if05 = "<b>if (${keyword51})${and51}${sKeyword51}${or52}${sKeyword52}${or53}${sKeyword53}${or54}${sKeyword54}${finish51}</b>"
+            if(!keyword51) keyword51 = "-"
+            if(!sKeyword51) sKeyword51 = "-"
+            if(!sKeyword52) sKeyword52 = "-"
+            if(!sKeyword53) sKeyword53 = "-"
+            if(!sKeyword54) sKeyword54 = "-"
+            if(!nKeyword51) nKeyword51 = "-"
+            if(!nKeyword52) nKeyword52 = "-"
+           
+            state.if05 = "<b>if (${keyword51}) and (${sKeyword51} or ${sKeyword52} or ${sKeyword53} or ${sKeyword54}) but not (${nKeyword51} or ${nKeyword52})</b>"
             paragraph "<b>Complete Check</b><br>${state.if05}"
 
-            if(!sKeyword51) sKeyword51 = "-";if(!sKeyword52) sKeyword52 = "-"; if(!sKeyword53) sKeyword53 = "-";if(!sKeyword54) sKeyword54 = "-";
-            state.theData05 = "keySet05;${keyword51};${sKeyword51};${sKeyword52};${sKeyword53};${sKeyword54}"
+            state.theData05 = "keySet05;${keyword51};${sKeyword51};${sKeyword52};${sKeyword53};${sKeyword54};${nKeyword51};${nKeyword52}"
         }
     }
 }
