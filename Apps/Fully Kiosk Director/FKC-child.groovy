@@ -53,7 +53,6 @@ def setVersion(){
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -92,7 +91,7 @@ def pageConfig() {
 			input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the event", required: false, multiple: true
 			input "mySwitch", "capability.switch", title: "Select the switch to activate the event", required: false, multiple: true
 			input "timeToRun", "time", title: "Select time to activate the event", required: false
-			input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: true, range: '1..60'
+			input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: false, range: '1..60'
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" BEFORE Display Options")) {
 			input(name: "optBringFullyToFront1", type: "bool", defaultValue: "false", title: "Bring Fully to Front?", description: "bring to front", submitOnChange: "true", width: 6)
@@ -180,6 +179,8 @@ def initialize() {
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
 	if(timeToRun) schedule(timeToRun, timeHandler)
 	if(timeDelay) runIn(timeDelay,timeDelayHandler)
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def contactSensorHandler(evt) {
