@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 09/03/19 - Added 'does not contain' keywords
  *  V1.0.2 - 09/02/19 - Evolving fast!
  *  V1.0.1 - 09/01/19 - Major changes to the driver
  *  V1.0.0 - 08/31/19 - Initial release
@@ -47,7 +48,7 @@
 
 def setVersion(){
     appName = "LogWatchdogDriver"
-	version = "v1.0.2" 
+	version = "v1.0.3" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -145,39 +146,34 @@ def webSocketStatus(String socketStatus) {
 def keywordInfo(keys) {
     if(logEnable) log.info "In keywordInfo"
     if(state.keysMap == null) state.keysMap = [:]
-    def (keySet,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keys.split(";")
-    def keyValue = "${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4}"
+    def (keySet,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";")
+    def keyValue = "${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
     
     if(keySet == "keySet01") {
-        state.keys1 = keys
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
         log.info "Recieved ${keySet}"
     }
     if(keySet == "keySet02") {
-        state.keys2 = keys
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
         log.info "Recieved ${keySet}"
     }
     if(keySet == "keySet03") {
-        state.keys3 = keys
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
         log.info "Recieved ${keySet}"
     }
     if(keySet == "keySet04") {
-        state.keys4 = keys
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
         log.info "Recieved ${keySet}"
     }
     if(keySet == "keySet05") {
-        state.keys5 = keys
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
@@ -207,19 +203,31 @@ def parse(String description) {
         def match = "no"
         def keyName = it.key
         def keyValue = it.value.toLowerCase()
-        def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4) = keyValue.split(";")
-        if(keyword1 == "-") keyword1 = ""
-        if(sKeyword1 == "-") sKeyword1 = ""
-        if(sKeyword2 == "-") sKeyword2 = ""
-        if(sKeyword3 == "-") sKeyword3 = ""
-        if(sKeyword4 == "-") sKeyword4 = ""
-        if( lvlCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}")) ) {
-            log.debug "Log Watchdog Driver - Match Found - Logging Level - ${keyName}"
-            match = "yes"
-        } else if( msgCheck.contains("${keyword1}") && (msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) ) {
-            log.debug "Log Watchdog Driver - Match Found - Keywords - ${keyName}"
-            match = "yes"
+        def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+        if(keyword1 == "-") keyword1 = "Th3s3Ar3"
+        if(sKeyword1 == "-") sKeyword1 = "N0tTh3"
+        if(sKeyword2 == "-") sKeyword2 = "Dr01dsY0u"
+        if(sKeyword3 == "-") sKeyword3 = "Ar3L00k1ng"
+        if(sKeyword4 == "-") sKeyword4 = "F0rM0v3A10ng"
+        if(nKeyword1 == "-") nKeyword1 = "Hav3Fun"
+        if(nKeyword2 == "-") nKeyword2 = "Ch01ce1sG00d"
+        
+        if(lvlCheck.contains("${keyword1}")) {
+            if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
+                if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
+                    log.debug "Log Watchdog Driver - Match Found - Logging Level - ${keyName}"
+                    match = "yes"
+                }
+            }
+        } else if(msgCheck.contains("${keyword1}")) {
+            if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
+                if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
+                    log.debug "Log Watchdog Driver - Match Found - Keywords - ${keyName}"
+                    match = "yes"
+                }
+            }
         }
+        
         if(match == "yes") {
             if(keyName.contains("1")) listNum = "1"
             if(keyName.contains("2")) listNum = "2"
