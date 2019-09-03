@@ -40,10 +40,10 @@
   "Life360UserUpdateNote": "v1.1.4 - 08/29/19 - App Watchdog Compatible",
   
   
-  "LogWatchdogVersion": "v1.0.2",
+  "LogWatchdogVersion": "v1.0.3",
   "LogWatchdogRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",
   "LogWatchdogDiscussion": "",
-  "LogWatchdogUpdateNote": "V1.0.2 - 09/02/19 - Evolving fast!",
+  "LogWatchdogUpdateNote": "V1.0.3 - 09/03/19 - Added 'does not contain' keywords",
   
   "PollenForecasterVersion": "v2.0.5",
   "PollenForecasterRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy",
