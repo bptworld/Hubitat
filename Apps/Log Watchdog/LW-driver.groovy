@@ -215,52 +215,81 @@ def parse(String description) {
         if(sKeyword4 == "-") sKeyword4 = ""
         if(nKeyword1 == "-") nKeyword1 = ""
         if(nKeyword2 == "-") nKeyword2 = ""
+        lCheck1 = "no"
+        lCheck2 = "no"
+        lCheck3 = "no"
+        kCheck1 = "no"
+        kCheck2 = "no"
+        kCheck3 = "no"
         
-        if(keySetType == "l" && lvlCheck.contains("${keyword1}")) {
+    // -- check 1 start    
+        if((keySetType == "l") && (lvlCheck.contains("${keyword1}"))) {
             if(traceEnable) {
                 keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                log.trace "In level - Found lvlCheck: ${keyword1a} - Moving on to keywords"
+                log.trace "In level - Found lvlCheck: ${keyword1a}"
             }
-            if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
-                if(traceEnable) log.trace "In level: ${keyword1a} - Keyword Match Found - Moving on to Does NOT Contain"
-                if(nKeyword1 || nKeyword2) {
-                    if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
-                        if(traceEnable) log.trace "In level: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
-                        match = "yes"
-                    }
-                } else {
-                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
+            lCheck1 = "yes"
+    // -- check 1 done 
+    // -- check 2 start
+            if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
+                if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
+                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed keywords"
+                    lCheck2 = "yes"
                 }
+            } else {
+                if(traceEnable) log.trace "In level: ${keyword1a} - Passed keywords"
+                lCheck2 = "yes"
             }
+    // -- check 2 done 
+    // -- check 3 start            
+            if(nKeyword1 || nKeyword2) {
+                 if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
+                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
+                    lCheck3 = "yes"
+                 }
+            } else {
+                 if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
+                 lCheck3 = "yes"
+            }
+    // -- check 3 done
+            if(lCheck1 == "yes" && lCheck2 == "yes" && lCheck3 == "yes") match = "yes"
         }
         
-        if(keySetType == "k" && msgCheck.contains("${keyword1}")) {
+    // -- check 1 start            
+        if((keySetType == "k") && (msgCheck.contains("${keyword1}"))) {
             if(traceEnable) {
-                keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+               keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                 sKeyword1a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                 sKeyword2a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                 sKeyword3a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                 sKeyword4a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                log.trace "In keyword - Found msgCheck: ${keyword1a} - Moving on to keywords (${sKeyword1a}, ${sKeyword2a}, ${sKeyword3a}, ${sKeyword4a})"
-            }
-            if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
-                if(traceEnable) log.trace "In keyword: ${keyword1a} - Keyword Match Found - Moving on to Does NOT Contain"
-                if(traceEnable) {
-                    if(traceEnable) {
-                        nKeyword1a = nKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                        nKeyword2a = nKeyword2.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                        log.trace "In keyword: ${keyword1a} - Checking Not Contain: ${nKeyword1a}, ${nKeyword2a}"
-                    }
+                log.trace "In keyword - Found msgCheck: ${keyword1a}"
+           }
+           kCheck = "yes"
+   // -- check 1 done 
+   // -- check 2 start
+            if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
+                if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
+                    if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed keywords"
+                    kCheck2 = "yes"
                 }
-                if(nKeyword1 || nKeyword2) {
-                    if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
-                        if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
-                        match = "yes"
-                    }
-                } else {
-                    if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
-                }
+            } else {
+                if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed keywords"
+                kCheck2 = "yes"
             }
+    // -- check 2 done 
+    // -- check 3 start            
+            if(nKeyword1 || nKeyword2) {                
+                if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
+                    if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed NOT contain"
+                    kcheck3 = "yes"
+                }
+            } else {
+                if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed NOT contain"
+                kCheck3 = "yes"
+            }
+    // -- check 3 done
+            if(kCheck1 == "yes" && kCheck2 == "yes" && kCheck3 == "yes") match = "yes"
         }
         
         if(match == "yes") {
@@ -269,6 +298,7 @@ def parse(String description) {
             if(keyName.contains("3")) listNum = "3"
             if(keyName.contains("4")) listNum = "4"
             if(keyName.contains("5")) listNum = "5"
+            if(traceEnable) log.trace "In keyword: ${keyword1a} - ${listNum} - WE HAD A MATCH"
             makeList(msgValue,listNum)
         }
     }
