@@ -38,6 +38,8 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 09/05/19 - More code changes... this is a beta app ;)
+ *  V2.0.3 - 09/04/19 - Fixed some typos
  *  V2.0.2 - 09/03/19 - Added 'does not contain' keywords
  *  V2.0.1 - 09/02/19 - Evolving fast, lots of changes
  *  V2.0.0 - 08/31/19 - Initial release.
@@ -48,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "LogWatchdogChildVersion"
-	state.version = "v2.0.2"
+	state.version = "v2.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -139,10 +141,12 @@ def pageKeySet01(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
             input "option1", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
             
-            if(option1 == "Keywords") {    
+            if(option1 == "Keywords") {
+                keySetType1 = "K"
 			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
                 input "keyword11", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
             } else if(option1 == "Logging Level") {
+                keySetType1 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
                 input "keyword11", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
             }
@@ -165,10 +169,10 @@ def pageKeySet01(){
             if(!nKeyword11) nKeyword11 = "-"
             if(!nKeyword12) nKeyword12 = "-"
             
-            state.if01 = "<b>if (${keyword11}) and (${sKeyword11} or ${sKeyword12} or ${sKeyword13} or ${sKeyword14}) but not (${nKeyword11} or ${nKeyword12})</b>"
+            state.if01 = "<b>(${keySetType1}) if (${keyword11}) and (${sKeyword11} or ${sKeyword12} or ${sKeyword13} or ${sKeyword14}) but not (${nKeyword11} or ${nKeyword12})</b>"
             paragraph "<b>Complete Check</b><br>${state.if01}"
 
-            state.theData01 = "keySet01;${keyword11};${sKeyword11};${sKeyword12};${sKeyword13};${sKeyword14};${nKeyword11};${nKeyword12}"
+            state.theData01 = "keySet01;${keySetType1};${keyword11};${sKeyword11};${sKeyword12};${sKeyword13};${sKeyword14};${nKeyword11};${nKeyword12}"
         }
     }
 }
@@ -176,12 +180,14 @@ def pageKeySet01(){
 def pageKeySet02(){
     dynamicPage(name: "pageKeySet02", title: "Keyset 02 Options", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-			input "option2", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
+            input "option2", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
             
-            if(option2 == "Keywords") {    
+            if(option2 == "Keywords") {  
+                keySetType2 = "K"
 			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
                 input "keyword21", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option1 == "Logging Level") {
+            } else if(option2 == "Logging Level") {
+                keySetType2 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
                 input "keyword21", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
             }
@@ -204,10 +210,10 @@ def pageKeySet02(){
             if(!nKeyword21) nKeyword21 = "-"
             if(!nKeyword22) nKeyword22 = "-"
             
-            state.if02 = "<b>if (${keyword21}) and (${sKeyword21} or ${sKeyword22} or ${sKeyword23} or ${sKeyword24}) but not (${nKeyword21} or ${nKeyword22})</b>"
+            state.if02 = "<b>(${keySetType2}) if (${keyword21}) and (${sKeyword21} or ${sKeyword22} or ${sKeyword23} or ${sKeyword24}) but not (${nKeyword21} or ${nKeyword22})</b>"
             paragraph "<b>Complete Check</b><br>${state.if02}"
             
-            state.theData02 = "keySet02;${keyword21};${sKeyword21};${sKeyword22};${sKeyword23};${sKeyword24};${nKeyword21};${nKeyword22}"
+            state.theData02 = "keySet02;${keySetType2};${keyword21};${sKeyword21};${sKeyword22};${sKeyword23};${sKeyword24};${nKeyword21};${nKeyword22}"
         }
     }
 }
@@ -217,10 +223,12 @@ def pageKeySet03(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
 			input "option3", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
             
-            if(option3 == "Keywords") {    
+            if(option3 == "Keywords") {  
+                keySetType3 = "K"
 			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
                 input "keyword31", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option1 == "Logging Level") {
+            } else if(option3 == "Logging Level") {
+                keySetType3 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
                 input "keyword31", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
             }
@@ -243,10 +251,10 @@ def pageKeySet03(){
             if(!nKeyword31) nKeyword31 = "-"
             if(!nKeyword32) nKeyword32 = "-"
             
-            state.if03 = "<b>if (${keyword31}) and (${sKeyword31} or ${sKeyword32} or ${sKeyword33} or ${sKeyword34}) but not (${nKeyword31} or ${nKeyword32})</b>"
+            state.if03 = "<b>(${keySetType3}) if (${keyword31}) and (${sKeyword31} or ${sKeyword32} or ${sKeyword33} or ${sKeyword34}) but not (${nKeyword31} or ${nKeyword32})</b>"
             paragraph "<b>Complete Check</b><br>${state.if03}"
        
-            state.theData03 = "keySet03;${keyword31};${sKeyword31};${sKeyword32};${sKeyword33};${sKeyword34};${nKeyword31};${nKeyword32}"
+            state.theData03 = "keySet03;${keySetType3};${keyword31};${sKeyword31};${sKeyword32};${sKeyword33};${sKeyword34};${nKeyword31};${nKeyword32}"
         }
     }
 }
@@ -256,10 +264,12 @@ def pageKeySet04(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
 			input "option4", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
             
-            if(option4 == "Keywords") {    
+            if(option4 == "Keywords") { 
+                keySetType4 = "K"
 			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
                 input "keyword41", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option1 == "Logging Level") {
+            } else if(option4 == "Logging Level") {
+                keySetType4 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
                 input "keyword41", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
             }
@@ -282,10 +292,10 @@ def pageKeySet04(){
             if(!nKeyword41) nKeyword41 = "-"
             if(!nKeyword42) nKeyword42 = "-"
             
-            state.if04 = "<b>if (${keyword41}) and (${sKeyword41} or ${sKeyword42} or ${sKeyword43} or ${sKeyword44}) but not (${nKeyword41} or ${nKeyword42})</b>"
+            state.if04 = "<b>(${keySetType4}) if (${keyword41}) and (${sKeyword41} or ${sKeyword42} or ${sKeyword43} or ${sKeyword44}) but not (${nKeyword41} or ${nKeyword42})</b>"
             paragraph "<b>Complete Check</b><br>${state.if04}"
 
-            state.theData04 = "keySet04;${keyword41};${sKeyword41};${sKeyword42};${sKeyword43};${sKeyword44};${nKeyword41};${nKeyword42}"
+            state.theData04 = "keySet04;${keySetType4};${keyword41};${sKeyword41};${sKeyword42};${sKeyword43};${sKeyword44};${nKeyword41};${nKeyword42}"
         }
     }
 }
@@ -295,10 +305,12 @@ def pageKeySet05(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
 			input "option5", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
             
-            if(option5 == "Keywords") {    
+            if(option5 == "Keywords") {  
+                keySetType5 = "K"
 			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
                 input "keyword51", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option1 == "Logging Level") {
+            } else if(option5 == "Logging Level") {
+                keySetType5 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
                 input "keyword51", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
             }
@@ -321,10 +333,10 @@ def pageKeySet05(){
             if(!nKeyword51) nKeyword51 = "-"
             if(!nKeyword52) nKeyword52 = "-"
            
-            state.if05 = "<b>if (${keyword51}) and (${sKeyword51} or ${sKeyword52} or ${sKeyword53} or ${sKeyword54}) but not (${nKeyword51} or ${nKeyword52})</b>"
+            state.if05 = "<b>(${keySetType5}) if (${keyword51}) and (${sKeyword51} or ${sKeyword52} or ${sKeyword53} or ${sKeyword54}) but not (${nKeyword51} or ${nKeyword52})</b>"
             paragraph "<b>Complete Check</b><br>${state.if05}"
 
-            state.theData05 = "keySet05;${keyword51};${sKeyword51};${sKeyword52};${sKeyword53};${sKeyword54};${nKeyword51};${nKeyword52}"
+            state.theData05 = "keySet05;${keySetType5};${keyword51};${sKeyword51};${sKeyword52};${sKeyword53};${sKeyword54};${nKeyword51};${nKeyword52}"
         }
     }
 }
