@@ -252,6 +252,7 @@ def parse(String description) {
                  lCheck3 = "yes"
             }
     // -- check 3 done
+            if(traceEnable) log.trace "In keyword: ${keyword1a} - lCheck1: ${lCheck1}, lCheck2: ${lCheck2}, lCheck3: ${lCheck3}"
             if(lCheck1 == "yes" && lCheck2 == "yes" && lCheck3 == "yes") match = "yes"
         }
         
@@ -265,7 +266,7 @@ def parse(String description) {
                 sKeyword4a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                 log.trace "In keyword - Found msgCheck: ${keyword1a}"
            }
-           kCheck = "yes"
+           kCheck1 = "yes"
    // -- check 1 done 
    // -- check 2 start
             if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
@@ -289,6 +290,7 @@ def parse(String description) {
                 kCheck3 = "yes"
             }
     // -- check 3 done
+            if(traceEnable) log.trace "In keyword: ${keyword1a} - kCheck1: ${kCheck1}, kCheck2: ${kCheck2}, kCheck3: ${kCheck3}"
             if(kCheck1 == "yes" && kCheck2 == "yes" && kCheck3 == "yes") match = "yes"
         }
         
