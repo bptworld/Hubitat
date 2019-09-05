@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 09/05/19 - Trying some new things
  *  V1.0.3 - 09/03/19 - Added 'does not contain' keywords
  *  V1.0.2 - 09/02/19 - Evolving fast!
  *  V1.0.1 - 09/01/19 - Major changes to the driver
@@ -48,7 +49,7 @@
 
 def setVersion(){
     appName = "LogWatchdogDriver"
-	version = "v1.0.3" 
+	version = "v1.0.4" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -94,6 +95,7 @@ metadata {
             input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
             input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
+            input("traceEnable", "bool", title: "Enable Trace", required: true, defaultValue: false)
         }
     }
 }
@@ -144,42 +146,44 @@ def webSocketStatus(String socketStatus) {
 }
 
 def keywordInfo(keys) {
-    if(logEnable) log.info "In keywordInfo"
+    if(traceEnable) log.trace "In keywordInfo"
     if(state.keysMap == null) state.keysMap = [:]
-    def (keySet,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";")
-    def keyValue = "${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
     
+    def (keySet,keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";")
+    
+    def keyValue = "${keySetType};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
+
     if(keySet == "keySet01") {
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
-        log.info "Recieved ${keySet}"
+        if(traceEnable) log.trace "Recieved ${keySet}"
     }
     if(keySet == "keySet02") {
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
-        log.info "Recieved ${keySet}"
+        if(traceEnable) log.trace "Recieved ${keySet}"
     }
     if(keySet == "keySet03") {
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
-        log.info "Recieved ${keySet}"
+        if(traceEnable) log.trace "Recieved ${keySet}"
     }
     if(keySet == "keySet04") {
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
-        log.info "Recieved ${keySet}"
+        if(traceEnable) log.trace "Recieved ${keySet}"
     }
     if(keySet == "keySet05") {
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
-        log.info "Recieved ${keySet}"
+        if(traceEnable) log.trace "Recieved ${keySet}"
     }
-    log.info "${state.keysMap}"
+    if(traceEnable) log.trace "${state.keysMap}"
 }
 
 def parse(String description) {
@@ -203,27 +207,58 @@ def parse(String description) {
         def match = "no"
         def keyName = it.key
         def keyValue = it.value.toLowerCase()
-        def (keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
-        if(keyword1 == "-") keyword1 = "Th3s3Ar3"
-        if(sKeyword1 == "-") sKeyword1 = "N0tTh3"
-        if(sKeyword2 == "-") sKeyword2 = "Dr01dsY0u"
-        if(sKeyword3 == "-") sKeyword3 = "Ar3L00k1ng"
-        if(sKeyword4 == "-") sKeyword4 = "F0rM0v3A10ng"
-        if(nKeyword1 == "-") nKeyword1 = "Hav3Fun"
-        if(nKeyword2 == "-") nKeyword2 = "Ch01ce1sG00d"
+        def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+        if(keyword1 == "-") keyword1 = ""
+        if(sKeyword1 == "-") sKeyword1 = ""
+        if(sKeyword2 == "-") sKeyword2 = ""
+        if(sKeyword3 == "-") sKeyword3 = ""
+        if(sKeyword4 == "-") sKeyword4 = ""
+        if(nKeyword1 == "-") nKeyword1 = ""
+        if(nKeyword2 == "-") nKeyword2 = ""
         
-        if(lvlCheck.contains("${keyword1}")) {
+        if(keySetType == "l" && lvlCheck.contains("${keyword1}")) {
+            if(traceEnable) {
+                keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                log.trace "In level - Found lvlCheck: ${keyword1a} - Moving on to keywords"
+            }
             if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
-                if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
-                    log.debug "Log Watchdog Driver - Match Found - Logging Level - ${keyName}"
-                    match = "yes"
+                if(traceEnable) log.trace "In level: ${keyword1a} - Keyword Match Found - Moving on to Does NOT Contain"
+                if(nKeyword1 || nKeyword2) {
+                    if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
+                        if(traceEnable) log.trace "In level: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
+                        match = "yes"
+                    }
+                } else {
+                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
                 }
             }
-        } else if(msgCheck.contains("${keyword1}")) {
+        }
+        
+        if(keySetType == "k" && msgCheck.contains("${keyword1}")) {
+            if(traceEnable) {
+                keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                sKeyword1a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                sKeyword2a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                sKeyword3a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                sKeyword4a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                log.trace "In keyword - Found msgCheck: ${keyword1a} - Moving on to keywords (${sKeyword1a}, ${sKeyword2a}, ${sKeyword3a}, ${sKeyword4a})"
+            }
             if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
-                if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
-                    log.debug "Log Watchdog Driver - Match Found - Keywords - ${keyName}"
-                    match = "yes"
+                if(traceEnable) log.trace "In keyword: ${keyword1a} - Keyword Match Found - Moving on to Does NOT Contain"
+                if(traceEnable) {
+                    if(traceEnable) {
+                        nKeyword1a = nKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        nKeyword2a = nKeyword2.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        log.trace "In keyword: ${keyword1a} - Checking Not Contain: ${nKeyword1a}, ${nKeyword2a}"
+                    }
+                }
+                if(nKeyword1 || nKeyword2) {
+                    if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
+                        if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
+                        match = "yes"
+                    }
+                } else {
+                    if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed Does Not Contain - We have a MATCH!"
                 }
             }
         }
@@ -241,13 +276,13 @@ def parse(String description) {
 // *****************************
  
 def makeList(msgValue,listNum) {
-    log.info "In makeList"
+    if(traceEnable) log.trace "In makeList"
     
     msgValue = msgValue.take(70)
     getDateTime()
 	nMessage = newdate + " - " + msgValue
     
-    if(state.list$listNum == null) state.list$listNum = ["-","-","-","-","-","-","-","-","-","-"]
+    if(state.list$listNum == null) state.list$listNum = []
     state.list$listNum.add(0,nMessage)  
 
     listSize = state.list$listNum.size()
@@ -271,13 +306,13 @@ def makeList(msgValue,listNum) {
 
 def clearData(){
 	if(logEnable) log.debug "Log Watchdog Driver - Clearing the data"
-    msgValue = ""
-    logCharCount = ""
-	state.list1 = ["-","-","-","-","-","-","-","-","-","-"]
-    state.list2 = ["-","-","-","-","-","-","-","-","-","-"]
-    state.list3 = ["-","-","-","-","-","-","-","-","-","-"]
-    state.list4 = ["-","-","-","-","-","-","-","-","-","-"]
-    state.list5 = ["-","-","-","-","-","-","-","-","-","-"]
+    msgValue = " "
+    logCharCount = "0"
+	state.list1 = []
+    state.list2 = []
+    state.list3 = []
+    state.list4 = []
+    state.list5 = []
 	sendEvent(name: "logData1", value: state.list1, displayed: true)
     sendEvent(name: "logData2", value: state.list2, displayed: true)
     sendEvent(name: "logData3", value: state.list3, displayed: true)
