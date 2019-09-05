@@ -83,7 +83,7 @@ metadata {
         
         command "connect"
         command "close"
-        command "clearData"
+        //command "clearData"
         command "keywordInfo"
         
         attribute "dwDriverInfo", "string"
@@ -259,14 +259,10 @@ def parse(String description) {
     // -- check 1 start            
         if((keySetType == "k") && (msgCheck.contains("${keyword1}"))) {
             if(traceEnable) {
-               keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                sKeyword1a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                sKeyword2a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                sKeyword3a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                sKeyword4a = sKeyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                 log.trace "In keyword - Found msgCheck: ${keyword1a}"
-           }
-           kCheck1 = "yes"
+            }
+            kCheck1 = "yes"
    // -- check 1 done 
    // -- check 2 start
             if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
@@ -308,18 +304,20 @@ def parse(String description) {
 // *****************************
  
 def makeList(msgValue,listNum) {
-    if(traceEnable) log.trace "In makeList"
+    if(traceEnable) log.trace "In makeList - working on ${listNum}"
     
     msgValue = msgValue.take(70)
     getDateTime()
 	nMessage = newdate + " - " + msgValue
     
     if(state.list$listNum == null) state.list$listNum = []
+    listSize = state.list$listNum.size()
     state.list$listNum.add(0,nMessage)  
 
+    
     listSize = state.list$listNum.size()
     if(listSize > 10) state.list$listNum.removeAt(10)
-    
+
     String result = state.list$listNum.join(";")
     logCharCount = result.length()
 	if(logTopCount <= 1000) {
@@ -327,9 +325,22 @@ def makeList(msgValue,listNum) {
 	} else {
 		logTop$listNum = "Too many characters to display on Dashboard"
 	}
-    
-    def (mOne,mTwo,mThree,mFour,mFive,mSix,mSeven,mEight,mNine,mTen) = result.split(";")
-    logTop10 = "<table><tr><td><div style='font-size:.${fontSize}em;'>${mOne}<br>${mTwo}<br>${mThree}<br>${mFour}<br>${mFive}<br>${mSix}<br>${mSeven}<br>${mEight}<br>${mNine}<br>${mTen}</div></td></tr></table>"
+
+    def lines = result.split(";")
+    linesSize = lines.size()
+    if(traceEnable) log.trace "In makeList - lines: ${linesSize}"
+    logTop10 = "<table><tr><td><div style='font-size:.${fontSize}em;'>"
+    if(linesSize >= 1) logTop10 += "${lines[0]}<br>"
+    if(linesSize >= 2) logTop10 += "${lines[1]}<br>"
+    if(linesSize >= 3) logTop10 += "${lines[2]}<br>"
+    if(linesSize >= 4) logTop10 += "${lines[3]}<br>"
+    if(linesSize >= 5) logTop10 += "${lines[4]}<br>"
+    if(linesSize >= 6) logTop10 += "${lines[5]}<br>"
+    if(linesSize >= 7) logTop10 += "${lines[6]}<br>"
+    if(linesSize >= 8) logTop10 += "${lines[7]}<br>"
+    if(linesSize >= 9) logTop10 += "${lines[8]}<br>"
+    if(linesSize >= 10) logTop10 += "${lines[9]}"
+    logTop10 += "</div></td></tr></table>"
     
 	sendEvent(name: "logData$listNum", value: logTop10, displayed: true)
     sendEvent(name: "numOfCharacters$listNum", value: logCharCount, displayed: true)
@@ -338,18 +349,24 @@ def makeList(msgValue,listNum) {
 
 def clearData(){
 	if(logEnable) log.debug "Log Watchdog Driver - Clearing the data"
-    msgValue = " "
+    msgValue = "-"
     logCharCount = "0"
-	state.list1 = []
-    state.list2 = []
-    state.list3 = []
-    state.list4 = []
-    state.list5 = []
-	sendEvent(name: "logData1", value: state.list1, displayed: true)
-    sendEvent(name: "logData2", value: state.list2, displayed: true)
-    sendEvent(name: "logData3", value: state.list3, displayed: true)
-    sendEvent(name: "logData4", value: state.list4, displayed: true)
-    sendEvent(name: "logData5", value: state.list5, displayed: true)
+    listNum = 1
+    state.list$listNum = []
+    sendEvent(name: "logData$listNum", value: state.list$listNum, displayed: true)
+    listNum = 2
+    state.list$listNum = []
+    sendEvent(name: "logData$listNum", value: state.list$listNum, displayed: true)
+    listNum = 3
+    state.list$listNum = []
+    sendEvent(name: "logData$listNum", value: state.list$listNum, displayed: true)
+    listNum = 4
+    state.list$listNum = []
+    sendEvent(name: "logData$listNum", value: state.list$listNum, displayed: true)
+    listNum = 5
+    state.list$listNum = []
+    sendEvent(name: "logData$listNum", value: state.list$listNum, displayed: true)
+	
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
     sendEvent(name: "lastLogMessage2", value: msgValue, displayed: true)
     sendEvent(name: "lastLogMessage3", value: msgValue, displayed: true)
