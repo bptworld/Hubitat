@@ -38,7 +38,7 @@
  *
  *  Changes:
  *
- *  V2.0.1 - 08/18/19 - Fixed bug with timeMove
+ *  V2.0.1 - 09/06/19 - Fixed bug with timeMove
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.3.0 - 08/15/19 - Changed trigger back to lastLocationUpdate. Working on Departure delay.
  *  V1.2.9 - 08/11/19 - Fix for 'Places Not Allowed'
