@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 08/18/19 - Fixed bug with timeMove
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.3.0 - 08/15/19 - Changed trigger back to lastLocationUpdate. Working on Departure delay.
  *  V1.2.9 - 08/11/19 - Fix for 'Places Not Allowed'
@@ -74,18 +75,16 @@
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "Life360TrackerChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -319,6 +318,8 @@ def initialize() {
     setDefaults()
     if(lifeVersion == "Paid") subscribe(presenceDevice, "lastLocationUpdate", userHandler)
     if(lifeVersion == "Free") subscribe(presenceDevice, "lastLocationUpdate", whereAmI)
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def userHandler(evt) {
@@ -350,6 +351,7 @@ def trackAllHandler() {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    if(!timeMove) timeMove = 5
     int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
@@ -431,6 +433,7 @@ def trackHomeHandler() {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    if(!timeMove) timeMove = 5
     int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
@@ -514,6 +517,7 @@ def placeNotAllowedHandler() {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    if(!timeMove) timeMove = 5
     int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
@@ -576,6 +580,7 @@ def trackSpecificHandler() {
     state.address1Value = presenceDevice.currentValue("address1")
     getTimeDiff()
     int timeHere = timeConsideredHere * 60
+    if(!timeMove) timeMove = 5
     int timeMoving = timeMove * 60
     // reset speaking
     state.speakAT = "no"
