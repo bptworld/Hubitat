@@ -240,7 +240,7 @@
   "Life360TrackerChild3RawCode": "",
   "Life360TrackerChild4RawCode": "",
   "Life360TrackerDiscussion": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276",
-  "Life360TrackerUpdateNote": "V2.0.1 - 08/18/19 - Fixed bug with timeMove",
+  "Life360TrackerUpdateNote": "V2.0.1 - 09/06/19 - Fixed bug with timeMove",
   
   "Life360withStatesParentVersion": "v2.0.0",
   "Life360withStatesChild1Version": "",
