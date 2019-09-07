@@ -430,7 +430,7 @@
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "WebPingerParentVersion": "v2.0.0",
-  "WebPingerChild1Version": "v2.0.0",
+  "WebPingerChild1Version": "v2.0.1",
   "WebPingerChild1Name": "",
   "WebPingerChild2Version": "",
   "WebPingerChild2Name": "",
@@ -444,7 +444,7 @@
   "WebPingerChild3RawCode": "",
   "WebPingerChild4RawCode": "",
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
-  "WebPingerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "WebPingerUpdateNote": "V2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'",
   
   "WelcomeHomeParentVersion": "v2.0.3",
   "WelcomeHomeChild1Version": "v2.1.1",
