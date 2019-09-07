@@ -37,30 +37,28 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.4 - 04/15/19 - Code cleanup
- *  V1.0.3 - 03/12/19 - Fixed pause
+ *  V1.0.3 - 03/12/19 - Fixed stuff
  *  V1.0.2 - 01/15/19 - Updated footer with update check and links
  *  V1.0.1 - 01/10/19 - Tons of cosmetic changes. Added in Push option, time between polls. Changed it up to turn the switch off
- *						if website/internet becomes active again. Added in all the normal stuff - pause, enable/disable and debug
- *						logging.
+ *						if website/internet becomes active again. Added in all the normal stuff - like debug logging
  *  V1.0.0 - 01/09/19 - Hubitat Port of ST app 'SmartPing' - 2016 Jason Botello
  *
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "WebPingerChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -98,8 +96,15 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) ON if URL is not available, OFF if everything is good.")) {
             input "switches", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
         }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) OFF if URL is not available, ON if everything is good.")) {
+            input "switches2", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
+        }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification?", multiple: true, required: false, submitOnChange: true
+            input(name: "resetSwitches", type: "bool", defaultValue: "false", title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: "true")
+            if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds)", type: "number", required: true, defaultValue:60)
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
+			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) {
 				paragraph "Enter in a custom message you would like sent when website is not available.<br>ie. Web Pinger: Web Request failed to Google"
 				input "message", "text", required: true, title: "Message to Push"
@@ -107,7 +112,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
 	}
@@ -131,10 +136,10 @@ def initialize() {
 		state.pollVerify = "false"
 		runIn(5, poll)
     }
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def validateURL() {
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 		try {
 			state.website = website.toLowerCase()
    	 		state.website = state.website.trim()
@@ -158,11 +163,9 @@ def validateURL() {
 			state.validURL = "false"
 			return false
 		}
-	}
 }
 
 def poll() {
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 		def reqParams = [
             uri: "http://${state.website}"
     	]
@@ -172,10 +175,12 @@ def poll() {
 					if(logEnable) log.debug "In Poll - Response was ${resp.status}"
             		if (resp.status == 200) {
                 		if (state.downHost == "true") {
-            				turnOffHandler()
+            				if(switches) turnOffHandler()
+                            if(switches2) turnOnHandler()
                     		if(logEnable) log.debug "Successful response from ${state.website}"
                 		} else {
-							turnOffHandler()
+							if(switches) turnOffHandler()
+                            if(switches2) turnOnHandler()
                     		if(logEnable) log.debug "Successful response from ${state.website}"
                 		}
             		} else {
@@ -207,12 +212,10 @@ def poll() {
 		if(timeToPing == "15") schedule("0 0/15 * * * ?", poll)
 		if(timeToPing == "30") schedule("0 0/30 * * * ?", poll)
 		if(timeToPing == "59") schedule("0 0/59 * * * ?", poll)
-	}
 	
 }
 
 def pollVerify() {
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 	def reqParams = [
 		uri: "http://${state.website}"
 	]
@@ -222,36 +225,73 @@ def pollVerify() {
             	if (resp.status == 200) {
                 	state.downHost = "false"
                 	state.pollVerify = "false"
-                	turnOffHandler()
+                	if(switches) turnOffHandler()
+                    if(switches2) turnOnHandler()
                 	if(logEnable) log.debug "Successful response from ${state.website}, false alarm avoided"
             	} else {
             		state.downHost = "true"
                 	state.pollVerify = "false"
-            		turnOnHandler()
-                	if(logEnable) log.debug "Request failed to ${state.website}, turning on Switch(es)"
+            		if(switches) turnOnHandler()
+                    if(switches2) turnOffHandler()
+                	if(logEnable) log.debug "Request failed to ${state.website}"
             	}
         	}
     	} catch (e) {
         	state.downHost = "true"
         	state.pollVerify = "false"
-        	turnOnHandler()
-        	if(logEnable) log.debug "Request failed to ${state.website}, turning on Switch(es)"
+        	if(switches) turnOnHandler()
+            if(switches2) turnOffHandler()
+        	if(logEnable) log.debug "Request failed to ${state.website}"
     	}
-	}
 }
 
 def turnOnHandler() {
 	if (switches) {
     	switches.on()
-    	if(logEnable) log.debug "Website NOT found, turning on switch(es)"
+    	if(logEnable) log.debug "Turning on switch(es)"
 		if(sendPushMessage) pushNow()
+        
+        if(resetSwitches) {
+            rTime = resetTime * 1000
+            pauseExecution(rTime)
+            switches.off
+        }
+   	}
+    
+    if (switches2) {
+    	switches2.on()
+    	if(logEnable) log.debug "Turning on switch(es)"
+		
+        if(resetSwitches) {
+            rTime = resetTime * 1000
+            pauseExecution(rTime)
+            switches2.off
+        }
    	}
 }
 
 def turnOffHandler() {
     if (switches) {
     	switches.off()
-    	if(logEnable) log.debug "Website found, turning off switch(es)"
+    	if(logEnable) log.debug "Turning off switch(es)"
+        
+        if(resetSwitches) {
+            rTime = resetTime * 1000
+            pauseExecution(rTime)
+            switches.on
+        }
+    }
+    
+    if (switches2) {
+    	switches2.off()
+        if(sendPushMessage) pushNow()
+    	if(logEnable) log.debug "Turning off switch(es)"
+        
+        if(resetSwitches) {
+            rTime = resetTime * 1000
+            pauseExecution(rTime)
+            switches2.on
+        }
     }
 }
 
@@ -266,7 +306,6 @@ def pushNow(){
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 }
 
@@ -284,9 +323,6 @@ def getFormat(type, myText=""){					// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
