@@ -90,7 +90,7 @@
   "BIControlUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "CATTDirectorParentVersion": "v2.0.0",
-  "CATTDirectorChild1Version": "v2.0.0",
+  "CATTDirectorChild1Version": "v2.0.1",
   "CATTDirectorChild1Name": "",
   "CATTDirectorChild2Version": "",
   "CATTDirectorChild2Name": "",
@@ -104,7 +104,7 @@
   "CATTDirectorChild3RawCode": "",
   "CATTDirectorChild4RawCode": "",
   "CATTDirectorDiscussion": "https://community.hubitat.com/t/release-catt-director-app-and-driver/20894",
-  "CATTDirectorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "CATTDirectorUpdateNote": "V2.0.1 - 09/09/19 - Fixed typo",
   
   "ChromecastHelperParentVersion": "v2.0.0",
   "ChromecastHelperChild1Version": "",
