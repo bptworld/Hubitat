@@ -33,24 +33,23 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 09/09/19 - Fixed typo
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.0 - 08/17/19 - Initial release.
  *
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "CATTDirectorChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -446,6 +445,8 @@ def initialize() {
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
 	if(timeToRun) schedule(timeToRun, startTimeHandler)
     if(timeToStop) schedule(timeToStop, stopTimeHandler)
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def contactSensorHandler(evt) {
@@ -480,7 +481,7 @@ def switchHandler(evt) {
 	if(state.switchStatus == "on") {
 		if(logEnable) log.debug "In switchHandler - on"
 		firstHandler()
-        if(triggerAutoEnd != "0") runIn(triggerAutoEnd, stopTimeHandler)
+        if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
 	} else {
 		if(logEnable) log.debug "In switchHandler - off"
 		runIn(triggerDelayEnd, stopTimeHandler)
