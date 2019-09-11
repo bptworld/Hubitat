@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 09/11/19 - Now handles up to 20 friendly names
  *  V2.0.3 - 08/18/19 - Now App Watchdog compliant
  *  V2.0.2 - 04/06/19 - Added importUrl
  *  V2.0.1 - 02/26/19 - Reworked how the messages are stored. Added option to have random greetings. Removed Greeting and Messages
@@ -59,18 +60,16 @@
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "WelcomeHomeParentVersion"
-	state.version = "v2.0.3"
+	state.version = "v2.0.4"
     
     try {
         if(sendToAWSwitch && awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -107,6 +106,7 @@ def initialize() {
     childApps.each {child ->
     log.info "Child app: ${child.label}"
     }
+    if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def mainPage() {
@@ -156,6 +156,21 @@ def mainPage() {
 				input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, defaultValue: "Not set"
 				input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, defaultValue: "Not set"
 				input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName6", "text", title: "Friendly name for presence sensor 6", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName7", "text", title: "Friendly name for presence sensor 7", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName8", "text", title: "Friendly name for presence sensor 8", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName9", "text", title: "Friendly name for presence sensor 9", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName10", "text", title: "Friendly name for presence sensor 10", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName11", "text", title: "Friendly name for presence sensor 11", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName12", "text", title: "Friendly name for presence sensor 12", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName13", "text", title: "Friendly name for presence sensor 13", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName14", "text", title: "Friendly name for presence sensor 14", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName15", "text", title: "Friendly name for presence sensor 15", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName16", "text", title: "Friendly name for presence sensor 16", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName17", "text", title: "Friendly name for presence sensor 17", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName18", "text", title: "Friendly name for presence sensor 18", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName19", "text", title: "Friendly name for presence sensor 19", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName20", "text", title: "Friendly name for presence sensor 20", required: false, multiple: false, defaultValue: "Not set"
 			}
 		}
 		display()
