@@ -36,6 +36,7 @@ import groovy.time.TimeCategory
  *
  *  Changes:
  *
+ *  V2.1.3 - 09/11/19 - Found a section I forgot to update!
  *  V2.1.2 - 09/11/19 - Lot's of code changes, now handles up to 20 presence sensors/friendly names
  *  V2.1.1 - 08/18/19 - Now App Watchdog compliant
  *  V2.1.0 - 06/06/19 - Added more wording to Volume Control Options. Code cleanup.
@@ -76,7 +77,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "WelcomeHomeChildVersion"
-	state.version = "v2.1.2"
+	state.version = "v2.1.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -685,7 +686,7 @@ def getTimeDiff(numb) {
 			if(globalBH == "no") {
 				log.info "${app.label} - ${fName} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-				state.presenceMap = ["${fName}"]
+                state.presenceMap = ["${fName}"]
 				state.canSpeak = "yes"
 				globalBH = "yes"
                 dataMap = "${globalBH}:yes"
@@ -810,14 +811,14 @@ private getName(){
 	if(state.nameCount == 1) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=1: myCount = ${myCount}"
-			name = "${it.value}"
+			name = "${it}"
 		}
 	}
 	if(state.nameCount == 2) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=2: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it.value} "
+			name = "${name}" + "${it} "
 			if(myCount == 1) name = "${name}" + "and "
 		}
 		name = "${name}" + "!"
@@ -826,7 +827,7 @@ private getName(){
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=3: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it.value}, "
+			name = "${name}" + "${it}, "
 			if(myCount == 2) name = "${name}" + "and "
 		}
 	}
@@ -834,7 +835,7 @@ private getName(){
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=4: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it.value}, "
+			name = "${name}" + "${it}, "
 			if(myCount == 3) name = "${name}" + "and "
 		}
 	}
@@ -842,10 +843,131 @@ private getName(){
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=5: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it.value}, "
+			name = "${name}" + "${it}, "
 			if(myCount == 4) name = "${name}" + "and "
 		}
 	}
+    if(state.nameCount == 6) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=6: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 5) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 7) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=7: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 6) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 8) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=8: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 7) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 9) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=9: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 8) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 10) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=10: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 9) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 11) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=11: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 10) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 12) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=12: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 11) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 13) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=13: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 12) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 14) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=14: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 13) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 15) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=15: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 14) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 16) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=16: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 15) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 17) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=17: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 16) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 18) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=18: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 17) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 19) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=19: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 18) name = "${name}" + "and "
+		}
+	}
+    if(state.nameCount == 20) {
+		state.presenceMap.each { it -> 
+			if(logEnable) log.debug "*********** In nameCount=20: myCount: ${myCount}"
+			myCount = myCount + 1
+			name = "${name}" + "${it}, "
+			if(myCount == 19) name = "${name}" + "and "
+		}
+	}
+    
 	is_are = (name.contains(' and ') ? 'are' : 'is')
 	has_have = (name.contains(' and ') ? 'have' : 'has')
 	if(name == null) names = "Whoever you are"
