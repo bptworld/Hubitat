@@ -65,10 +65,10 @@
   "SnapshotDriverDiscussion": "",
   "SnapshotDriverUpdateNote": "V1.1.0 - 08/28/19 - Device Watchdog compatible",
   
-  "WelcomeHomeDriverVersion": "v1.0.3",
+  "WelcomeHomeDriverVersion": "v1.0.4",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDriverDiscussion": "",
-  "WelcomeHomeDriverUpdateNote": "V1.0.3 - 08/29/19 - App Watchdog compatible",
+  "WelcomeHomeDriverUpdateNote": "V1.0.4 - 09/11/19 - Now handles up to 20 people",
   
   "WhatDidISayVersion": "v2.0.3",
   "WhatDidISayRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy",
