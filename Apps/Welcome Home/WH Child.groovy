@@ -686,7 +686,8 @@ def getTimeDiff(numb) {
 			if(globalBH == "no") {
 				log.info "${app.label} - ${fName} just got here! Time Diff = ${timeDiff}"
 				state.nameCount = state.nameCount + 1
-                state.presenceMap = ["${fName}"]
+                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+				if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
 				state.canSpeak = "yes"
 				globalBH = "yes"
                 dataMap = "${globalBH}:yes"
