@@ -1094,23 +1094,18 @@ def letsTalkQueue(text) {
 def letsTalk() {
     // Start modified from @djgutheinz
     state.playingTTS = true
-	queueSize = state.TTSQueue.size()
+	def queueSize = state.TTSQueue.size()
 	if(queueSize == 0) {
 		state.playingTTS = false
         if(logEnable) log.debug "In letsTalk - queueSize: ${queueSize} - Finished Speaking"
 		return
 	}
-    if(logEnable) log.debug "In letsTalk - queueSize: ${queueSize} - Lets Talk!"
     def nextTTS = state.TTSQueue[0]
     // End modified from @djgutheinz
     
-	    if(logEnable) log.debug "In letsTalk (${state.version})"
+	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
 	    checkTime()
 	    checkVol()
-	    atomicState.randomPause = Math.abs(new Random().nextInt() % 1500) + 400
-	    if(logEnable) log.debug "In letsTalk (${state.version}) - pause: ${atomicState.randomPause}"
-	    pauseExecution(atomicState.randomPause)
-	    if(logEnable) log.debug "In letsTalk (${state.version}) - continuing"
         if(state.timeBetween == true) {
 		    theMsg = nextTTS[0]
     	    if(logEnable) log.debug "In letsTalk (${state.version}) - speaker: ${speaker}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
