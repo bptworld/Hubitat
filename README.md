@@ -28,9 +28,6 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-
 <b>BI Control</b> - Designed to work locally with Blue Iris security software.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
-<b>Departures</b> - Let the rest of the house know when one or more people have left the area.<br>
-Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-departures/12039" target="_blank">Go Here</a>
-<br><br>
 <b>Device Sequencer</b> - Turn on/off several devices in a row, with a user defined pause in between each.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-sequencer/8596" target="_blank">Go Here</a>
 <br><br>
@@ -42,6 +39,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-follo
 <br><br>
 <b>Fully Kiosk Director</b> - Take control of a Fully Kiosk device!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-fully-kiosk-director/15310/2" target="_blank">Go Here!</a>
+<br><br>
+<b>Home Tracker</b> - Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message <i>after</i> entering the home!<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
 <br><br>
 <b>Lighting Effects</b> - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
@@ -84,9 +84,6 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snaps
 <br><br>
 <b>Web Pinger</b> - Monitor a website and trigger automations if not found or if your internet goes down.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-pinger/8347" target="_blank">Go Here</a>
-<br><br>
-<b>Welcome Home</b> - Designed to give a personal welcome announcement after you have entered the home.<br>
-Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-welcome-home/6445" target="_blank">Go Here</a>
 <br><br>
 <b>What Did I Say</b> (Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
