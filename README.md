@@ -41,7 +41,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-follo
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-fully-kiosk-director/15310/2" target="_blank">Go Here!</a>
 <br><br>
 <b>Home Tracker</b> - Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message <i>after</i> entering the home!<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709" target="_blank">Go Here!</a>
 <br><br>
 <b>Lighting Effects</b> - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
