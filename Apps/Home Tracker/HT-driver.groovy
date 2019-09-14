@@ -54,7 +54,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Home Tracker Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Home Tracker Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy") {
    		capability "Actuator"
 		
 		command "sendDataMap1", ["string"]
