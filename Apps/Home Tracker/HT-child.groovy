@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 09/13/19 - Adjusted message sections
  *  V2.0.0 - 09/10/19 - Combined Welcome Home, Departures and Arrivals. Major rewrite of all models.
  *
  */
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -225,17 +226,27 @@ def messageOptions(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Home NOW Message Options")) {
             paragraph "This will give a heads up that someone is home. But can be a false alarm if they are just driving by."
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor"
+            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!"
             if(homeNow) {
-                input(name: "nRandom", type: "bool", defaultValue: "false", title: "Random 'Now' Message?", description: "Random", submitOnChange: "true")
-                if(!nRandom) input "nMessage", "text", title: "Message to be spoken - Single message",  required: true
-                if(nRandom) {
-				    input "nMessage", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-				    input(name: "nMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-				    if(nMsgList) {
-					    def nvalues = "${nMessage}".split(";")
-					    nlistMap = ""
-    				    nvalues.each { item -> nlistMap += "${item}<br>"}
-					    paragraph "${nlistMap}"
+                input(name: "oRandomHN", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
+			    if(!oRandomHN) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
+                if(!oRandomHN) input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
+			    if(oRandomHN) {
+				    input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input(name: "oMsgListHN", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
+				    if(oMsgListHN) {
+				    	def ovaluesHN = "${omessageHN}".split(";")
+				    	olistMapHN = ""
+    				    ovaluesHN.each { item -> olistMapHN += "${item}<br>"}
+					    paragraph "${olistMapHN}"
+				    }
+                    input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input(name: "cMsgListHN", type: "bool", defaultValue: "true", title: "Show a list view of the closing messages?", description: "List View", submitOnChange: "true")
+				    if(cMsgListHN) {
+				    	def cvaluesHN = "${cmessageHN}".split(";")
+					    clistMapHN = ""
+    				    cvaluesHN.each { item -> clistMapHN += "${item}<br>"}
+					    paragraph "${clistMapHN}"
 				    }
                 }
             } else {
@@ -247,10 +258,10 @@ def messageOptions(){
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
             paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!"
 			input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
-			if(!oRandom) input "omessage", "text", title: "Opening message to be spoken - Single message",  required: true
-            if(!oRandom) input "cmessage", "text", title: "Closing message to be spoken - Single message",  required: true
+			if(!oRandom) input "omessage", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
+            if(!oRandom) input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
 			if(oRandom) {
-				input "omessage", "text", title: "Opening message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				input "omessage", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
 				input(name: "oMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
 				if(oMsgList) {
 					def ovalues = "${omessage}".split(";")
@@ -258,7 +269,7 @@ def messageOptions(){
     				ovalues.each { item -> olistMap += "${item}<br>"}
 					paragraph "${olistMap}"
 				}
-                input "cmessage", "text", title: "Closing message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+                input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
 				input(name: "cMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the closing messages?", description: "List View", submitOnChange: "true")
 				if(cMsgList) {
 					def cvalues = "${cmessage}".split(";")
@@ -274,17 +285,27 @@ def messageOptions(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Departed Message Options")) {
             paragraph "This will give a heads up that someone has departed."
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor"
+            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!"
             if(departedNow || departedDelayed) {
-                input(name: "nRandomD", type: "bool", defaultValue: "false", title: "Random 'Now' Message?", description: "Random", submitOnChange: "true")
-                if(!nRandomD) input "nMessageD", "text", title: "Message to be spoken - Single message",  required: true
-                if(nRandomD) {
-				    input "nMessageD", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-				    input(name: "nMsgListD", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-				    if(nMsgListD) {
-					    def nvaluesD = "${nMessageD}".split(";")
-					    nlistMapD = ""
-    				    nvaluesD.each { item -> nlistMapD += "${item}<br>"}
-					    paragraph "${nlistMapD}"
+			    input(name: "oRandomD", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
+			    if(!oRandomD) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
+                if(!oRandomD) input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
+			    if(oRandomD) {
+				    input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input(name: "oMsgListD", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
+				    if(oMsgListD) {
+				    	def ovaluesD = "${omessageD}".split(";")
+				    	olistMapD = ""
+    				    ovaluesD.each { item -> olistMapD += "${item}<br>"}
+					    paragraph "${olistMapD}"
+				    }
+                    input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input(name: "cMsgListD", type: "bool", defaultValue: "true", title: "Show a list view of the closing messages?", description: "List View", submitOnChange: "true")
+				    if(cMsgListD) {
+				    	def cvaluesD = "${cmessageD}".split(";")
+					    clistMapD = ""
+    				    cvaluesD.each { item -> clistMapD += "${item}<br>"}
+					    paragraph "${clistMapD}"
 				    }
                 }
             } else {
@@ -1203,38 +1224,54 @@ def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and 
 
 def messageHomeNow() {
 	if(logEnable) log.debug "In messageHomeNow (${state.version})"
-	if(nRandom) {
-		def nvalues = "${nMessage}".split(";")
-		nvSize = nvalues.size()
-		ncount = nvSize.toInteger()
-    	def nrandomKey = new Random().nextInt(ncount)
+	if(oRandomHN) {
+		def ovaluesHN = "${omessageHN}".split(";")
+		ovSizeHN = ovaluesHN.size()
+		ocountHN = ovSizeHN.toInteger()
+    	def orandomKeyHN = new Random().nextInt(ocountHN)
 
-		theMessage = nvalues[nrandomKey]
-		if(logEnable) log.debug "In messageHomeNow - Random - nvSize: ${nvSize}, nrandomKey: ${nrandomKey}, theMessage: ${theMessage}"
+        def cvaluesHN = "${cmessageHN}".split(";")
+		cvSizeHN = cvaluesHN.size()
+		ccountHN = cvSizeHN.toInteger()
+    	def crandomKeyHN = new Random().nextInt(ccountHN)
+
+		theMessage = ovaluesHN[orandomKeyHN] + ". " + cvaluesHN[crandomKeyHN]
+		if(logEnable) log.debug "In messageDeparted - Random - ovSizeHN: ${ovSizeHN}, orandomKeyHN: ${orandomKeyHN}; Random - cvSizeHN: ${cvSizeHN}, crandomKeyHN: ${crandomKeyHN}, theMessage: ${theMessage}"
 	} else {
-		theMessage = "${nMessage}"
-		if(logEnable) log.debug "In messageHomeNow - Static - theMessage: ${theMessage}"
+		theMessage = "${omessageHN}. ${cmessageHN}"
+		if(logEnable) log.debug "In messageDeparted - Static - theMessage: ${theMessage}"
 	}
-    if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
-    letsTalkQueue(theMessage)
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
+	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
+	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
+    if(logEnable) log.debug "In messageDeparted - Waiting ${delay1} seconds to Speak"
+	letsTalkQueue(theMessage)
 }
 
 def messageDeparted() {
     if(logEnable) log.debug "In messageDeparted (${state.version})"
-    if(nRandomD) {
-        def nvaluesD = "${nMessageD}".split(";")
-		nvSizeD = nvaluesD.size()
-		ncountD = nvSizeD.toInteger()
-    	def nrandomKeyD = new Random().nextInt(ncountD)
+    if(oRandomD) {
+		def ovaluesD = "${omessageD}".split(";")
+		ovSizeD = ovaluesD.size()
+		ocountD = ovSizeD.toInteger()
+    	def orandomKeyD = new Random().nextInt(ocountD)
 
-		theMessage = nvaluesD[nrandomKeyD]
-	    if(logEnable) log.debug "In messageDeparted - Random - nvSize: ${nvSizeD}, nrandomKey: ${nrandomKeyD}, theMessage: ${theMessage}"
+        def cvaluesD = "${cmessageD}".split(";")
+		cvSizeD = cvaluesD.size()
+		ccountD = cvSizeD.toInteger()
+    	def crandomKeyD = new Random().nextInt(ccountD)
+
+		theMessage = ovaluesD[orandomKeyD] + ". " + cvaluesD[crandomKeyD]
+		if(logEnable) log.debug "In messageDeparted - Random - ovSizeD: ${ovSizeD}, orandomKeyD: ${orandomKeyD}; Random - cvSizeD: ${cvSizeD}, crandomKeyD: ${crandomKeyD}, theMessage: ${theMessage}"
 	} else {
-		theMessage = "${nMessageD}"
+		theMessage = "${omessageD}. ${cmessageD}"
 		if(logEnable) log.debug "In messageDeparted - Static - theMessage: ${theMessage}"
 	}
-    if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
-    letsTalkQueue(theMessage)
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
+	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
+	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
+    if(logEnable) log.debug "In messageDeparted - Waiting ${delay1} seconds to Speak"
+	letsTalkQueue(theMessage)
 }
 
 def messageDoorUnlocked() {
