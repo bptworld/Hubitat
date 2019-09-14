@@ -35,6 +35,8 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 09/14/19 - Tried to make the opening and closing sections more clear. Added green check marks to sections that are
+ *    filled out. Found a couple of typos.
  *  V2.0.1 - 09/13/19 - Adjusted message sections
  *  V2.0.0 - 09/10/19 - Combined Welcome Home, Departures and Arrivals. Major rewrite of all models.
  *
@@ -95,19 +97,40 @@ def pageConfig() {
 			paragraph "Be sure to enter in the Preset Values in Advanced Config before creating Child Apps."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options, Options, Options")) {
-            href "presenceOptions", title:"Presence Options", description:"Click here to setup the Presence Options"
-            href "messageOptions", title:"Message Options", description:"Click here to setup the Message Options"
-            href "speechOptions", title:"Notification Options", description:"Click here to setup the Notification Options"
+            if(ps1a || ps2a || ps3a || ps4a || ps5a || ps6a || ps7a || ps8a || ps9a || ps10a || ps11a || ps12a || ps13a || ps14a || ps15a || ps16a || ps17a || ps18a || ps19a || ps20a) {
+                href "presenceOptions", title:"${getImage("checkMarkGreen")} Presence Options", description:"Click here to setup the Presence Options"
+            } else {
+                href "presenceOptions", title:"Presence Options", description:"Click here to setup the Presence Options"
+            }   
+            if(omessage || omessageD || omessageHN) {
+                href "messageOptions", title:"${getImage("checkMarkGreen")} Message Options", description:"Click here to setup the Message Options"
+            } else {
+                href "messageOptions", title:"Message Options", description:"Click here to setup the Message Options"
+            }
+            if(speakerMP || speakerSS) {
+                href "speechOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here to setup the Notification Options"
+            } else {
+                href "speechOptions", title:"Notification Options", description:"Click here to setup the Notification Options"
+            }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Special Features")) {
-    	    href "welcomeHomeOptions", title:"Welcome Home Options", description:"Click here to setup the Welcome Home Options"
-            href "doorLockOptions", title:"Door Lock Options", description:"Click here to setup the Door Lock Options"
+            if(triggerMode) {
+                href "welcomeHomeOptions", title:"${getImage("checkMarkGreen")} Welcome Home Options", description:"Click here to setup the Welcome Home Options"
+            } else {
+                href "welcomeHomeOptions", title:"Welcome Home Options", description:"Click here to setup the Welcome Home Options"
+            }
+    	    if(theLocks) {
+                href "doorLockOptions", title:"${getImage("checkMarkGreen")} Door Lock Options", description:"Click here to setup the Door Lock Options"
+            } else {
+                href "doorLockOptions", title:"Door Lock Options", description:"Click here to setup the Door Lock Options"
+            }
+            
             href "ruleMachineOptions", title:"Rule Machine Options", description:"Click here to setup the Rule Machine Options"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Global Variables")) {
 			paragraph "This app requires a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
 			paragraph "* Vitual Device must use our custom 'Welcome Home Driver'"
-			input "gvDevice", "capability.actuator", title: "Virtual Device created for Welcome Home", required: true, multiple: false
+			input "gvDevice", "capability.actuator", title: "Virtual Device created for Welcome Home", required: false, multiple: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
@@ -226,11 +249,12 @@ def messageOptions(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Home NOW Message Options")) {
             paragraph "This will give a heads up that someone is home. But can be a false alarm if they are just driving by."
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor"
-            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!"
+            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
+            paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
             if(homeNow) {
                 input(name: "oRandomHN", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
-			    if(!oRandomHN) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
-                if(!oRandomHN) input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
+			    if(!oRandomHN) input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
+                if(!oRandomHN) input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
 			    if(oRandomHN) {
 				    input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
 				    input(name: "oMsgListHN", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
@@ -256,7 +280,8 @@ def messageOptions(){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Welcome Home Message Options")) {
             paragraph "This will speak a nice 'Welcome Home' message AFTER you have entered the house."
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
-            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!"
+            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
+            paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
 			input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
 			if(!oRandom) input "omessage", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
             if(!oRandom) input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
@@ -285,7 +310,8 @@ def messageOptions(){
         section(getFormat("header-green", "${getImage("Blank")}"+" Departed Message Options")) {
             paragraph "This will give a heads up that someone has departed."
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor"
-            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!"
+            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. '%name%' + 'is no longer here'"
+            paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
             if(departedNow || departedDelayed) {
 			    input(name: "oRandomD", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
 			    if(!oRandomD) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
@@ -316,7 +342,7 @@ def messageOptions(){
 }
 
 def welcomeHomeOptions(){
-    dynamicPage(name: "welcomeHomeOptions", title: "Presence Options", install: false, uninstall:false){
+    dynamicPage(name: "welcomeHomeOptions", title: "Welcome Home Options", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Welcome Home Options")) { 
             paragraph "Welcome Home is a special feature that waits for you to enter the house <i>before</i> making the announcement!  Welcoming you home with a personalized message."
             input "triggerMode", "enum", title: "Select activation Type", submitOnChange: true,  options: ["Contact_Sensor","Door_Lock","Motion_Sensor"], required: true, Multiple: false
@@ -373,7 +399,7 @@ def ruleMachineOptions(){
             paragraph "<b>Run a rule when certain conditions are met.</b>"
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
-            paragraph "********** <b>Coming Soon!</b> **********"
+            paragraph "<br>********** <b>Coming Soon!</b> **********<br>"
             paragraph "<b>If everyone leaves...</b>"
         //    input "rmEveryoneLeaaves", "enum", title: "Select which rule actions to run", options: rules, multiple: true
             paragraph "<hr>"
@@ -1044,23 +1070,24 @@ def getTimeDiff(numb) {
 				if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
 				state.canSpeak = "yes"
 				globalBH = "yes"
-                dataMap = "${globalBH}:yes"
+                //dataMap = "${globalBH}:yes"
 				gvDevice."${sendDataM}"(globalBH)
+                if(logEnable) log.trace "${app.label} - ${fName} - Sent 1 (yes) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
 			} else {
                 log.info "${app.label} - ${fName} - Global 'Been Here' is ${globalBH}. No announcement needed."
 			}
 		} else {
 			globalBH = "no"
-            dataMap = "${globalBH}:no"
 			gvDevice."${sendDataM}"(globalBH)
+            if(logEnable) log.trace "${app.label} - ${fName} - Sent 2 (no) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
             log.info "${app.label} - ${fName} - No announcement needed. Time Diff = ${timeDiff}"
 		}
 	} else {
         if(logEnable) log.debug "${fName} - Global Been Here: ${globalBH}"
         if(logEnable) log.debug "${fName} - Presence Sensor: ${sensorStatus} - No announcement needed."
 		globalBH = "no"
-        dataMap = "${globalBH}:no"
         gvDevice."${sendDataM}"(globalBH)
+        if(logEnable) log.trace "${app.label} - ${fName} - Sent 3 (no) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
 	}
 }
 
@@ -1122,6 +1149,7 @@ def letsTalk() {
 		return
 	}
     def nextTTS = state.TTSQueue[0]
+    state.TTSQueue.remove(0)
     // End modified from @djgutheinz
     
 	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
@@ -1159,12 +1187,10 @@ def letsTalk() {
 	        if(logEnable) log.debug "In letsTalk (${state.version}) - Finished speaking, checking queue in ${nextTTS[1]} seconds"  
 		    log.info "${app.label} - ${theMsg}"
             if(sendPushMessage) pushNow(theMsg)
-            state.TTSQueue.remove(0)       // Modified from @djgutheinz
             runIn(nextTTS[1], letsTalk)    // Modified from @djgutheinz
 	    } else {
             state.canSpeak = "no"
 		    if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
-            state.TTSQueue.remove(0)       // Modified from @djgutheinz
             runIn(nextTTS[1], letsTalk)    // Modified from @djgutheinz
 	    }
 }
@@ -1219,6 +1245,7 @@ def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and 
     if(logEnable) log.debug "In messageWelcomeHome - Waiting ${delay1} seconds to Speak"
 	def delay1ms = delay1 * 1000
 	pauseExecution(delay1ms)
+    if(logEnable) log.debug "In messageWelcomeHome - going to letsTalkQueue with theMessage"
 	letsTalkQueue(theMessage)
 }
 
@@ -1236,15 +1263,15 @@ def messageHomeNow() {
     	def crandomKeyHN = new Random().nextInt(ccountHN)
 
 		theMessage = ovaluesHN[orandomKeyHN] + ". " + cvaluesHN[crandomKeyHN]
-		if(logEnable) log.debug "In messageDeparted - Random - ovSizeHN: ${ovSizeHN}, orandomKeyHN: ${orandomKeyHN}; Random - cvSizeHN: ${cvSizeHN}, crandomKeyHN: ${crandomKeyHN}, theMessage: ${theMessage}"
+		if(logEnable) log.debug "In messageHomeNow - Random - ovSizeHN: ${ovSizeHN}, orandomKeyHN: ${orandomKeyHN}; Random - cvSizeHN: ${cvSizeHN}, crandomKeyHN: ${crandomKeyHN}, theMessage: ${theMessage}"
 	} else {
 		theMessage = "${omessageHN}. ${cmessageHN}"
-		if(logEnable) log.debug "In messageDeparted - Static - theMessage: ${theMessage}"
+		if(logEnable) log.debug "In messageHomeNow - Static - theMessage: ${theMessage}"
 	}
-	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
 	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
 	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
-    if(logEnable) log.debug "In messageDeparted - Waiting ${delay1} seconds to Speak"
+    if(logEnable) log.debug "In messageHomeNow - going to letsTalkQueue with theMessage"
 	letsTalkQueue(theMessage)
 }
 
@@ -1267,10 +1294,10 @@ def messageDeparted() {
 		theMessage = "${omessageD}. ${cmessageD}"
 		if(logEnable) log.debug "In messageDeparted - Static - theMessage: ${theMessage}"
 	}
-	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
 	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
 	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
-    if(logEnable) log.debug "In messageDeparted - Waiting ${delay1} seconds to Speak"
+    if(logEnable) log.debug "In messageDeparted - going to letsTalkQueue with theMessage"
 	letsTalkQueue(theMessage)
 }
 
@@ -1290,6 +1317,7 @@ def messageDoorUnlocked() {
 	}
     if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
     if (theMessage.contains("%door%")) {theMessage = theMessage.replace('%door%', "${state.lockName}" )}
+    if(logEnable) log.debug "In messageDoorUnlocked - going to letsTalkQueue with theMessage"
     letsTalkQueue(theMessage)
 }
 
@@ -1494,6 +1522,7 @@ def setDefaults(){
 def getImage(type) {					// Modified from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=15 width=15>"
 }
 
 def getFormat(type, myText=""){			// Modified from @Stephack
