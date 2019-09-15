@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 09/14/19 - More tweaking...
  *  V2.0.2 - 09/14/19 - Tried to make the opening and closing sections more clear. Added green check marks to sections that are
  *    filled out. Found a couple of typos.
  *  V2.0.1 - 09/13/19 - Adjusted message sections
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -302,9 +303,9 @@ def messageOptions(){
     				cvalues.each { item -> clistMap += "${item}<br>"}
 					paragraph "${clistMap}"
 				}
-                paragraph "<hr>"
-                input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
 			}
+            paragraph "<hr>"
+            input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Departed Message Options")) {
@@ -1070,7 +1071,6 @@ def getTimeDiff(numb) {
 				if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
 				state.canSpeak = "yes"
 				globalBH = "yes"
-                //dataMap = "${globalBH}:yes"
 				gvDevice."${sendDataM}"(globalBH)
                 if(logEnable) log.trace "${app.label} - ${fName} - Sent 1 (yes) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
 			} else {
@@ -1242,6 +1242,7 @@ def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and 
 	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
 	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
 	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
+    if(delay1 == null || delay1 == "") delay1 = 5
     if(logEnable) log.debug "In messageWelcomeHome - Waiting ${delay1} seconds to Speak"
 	def delay1ms = delay1 * 1000
 	pauseExecution(delay1ms)
