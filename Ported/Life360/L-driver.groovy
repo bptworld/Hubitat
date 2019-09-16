@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.1.5 - 09/16/19 - Updated 'free' tile to show more data points
  *  v1.1.4 - 08/29/19 - App Watchdog Compatible
  *  v1.1.3 - 08/06/19 - Added new attribute, lastUpdated
  *  V1.1.2 - 07/28/19 - Squashed a bug
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     appName = "Life360User"
-	version = "v1.1.4" 
+	version = "v1.1.5" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -178,17 +179,17 @@ String dateSince = DATE_FORMAT.format(theDate)
 
 theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue('latitude')},${device.currentValue('longitude')}"
     
-if(life360Paid) {
+//if(life360Paid) {
 	tileMap = "<table width='100%' valign='top'>"
     tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
     tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: <a href='${theMap}' target='_blank'>${add1}</a><br>Since: ${dateSince}<br>${device.currentValue('status')}<br>${binTransita} - ${bUnitsa}<br>Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}</p></td>"
     tileMap += "</tr></table>"
-} else {  // Free
-    tileMap = "<table width='100%' valign='top'>"
-    tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
-    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: ${add1}<br>Since: ${dateSince}<br>${device.currentValue('status')}</p></td>"
+//} else {  // Free
+//    tileMap = "<table width='100%' valign='top'>"
+//    tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
+//    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: ${add1}<br>Since: ${dateSince}<br>${device.currentValue('status')}</p></td>"
     tileMap += "</tr></table>"
-}
+//}
 
 	state.tileDevice1Count = tileMap.length()
 	if(state.tileDevice1Count <= 1000) {
