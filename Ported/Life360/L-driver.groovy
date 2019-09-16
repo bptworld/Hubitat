@@ -188,7 +188,7 @@ theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue(
 //    tileMap = "<table width='100%' valign='top'>"
 //    tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
 //    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: ${add1}<br>Since: ${dateSince}<br>${device.currentValue('status')}</p></td>"
-    tileMap += "</tr></table>"
+//    tileMap += "</tr></table>"
 //}
 
 	state.tileDevice1Count = tileMap.length()
