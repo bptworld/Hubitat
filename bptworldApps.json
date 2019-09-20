@@ -443,7 +443,7 @@
   "TileMasterChild2RawCode": "",
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
-  "TileMasterDiscussion": "",
+  "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
   "TileMasterUpdateNote": "V2.0.1 - 09/20/19 - Initial release.",
   
   "WebPingerParentVersion": "v2.0.0",
