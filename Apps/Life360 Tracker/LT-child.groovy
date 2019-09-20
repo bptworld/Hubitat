@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 09/20/19 - History logging adjustments
  *  V2.0.1 - 09/06/19 - Fixed bug with timeMove
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.3.0 - 08/15/19 - Changed trigger back to lastLocationUpdate. Working on Departure delay.
@@ -78,7 +79,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "Life360TrackerChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -163,7 +164,7 @@ def pageConfig() {
             paragraph "<small>This is useful if you have another app announcing when you are home, like 'Welcome Home'</small>"
             input(name: "homeNow", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange: "true")
             paragraph "<small>This will give a nice heads up that someone is home. But can be a false alarm if they are just driving by.</small>"
-            input(name: "homeDepartedDelayed", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User departs from 'Home', after a 2 minute delay? (off='No', on='Yes') ** Needs Testing **", description: "Delayed Home Depart", submitOnChange: "true")
+            input(name: "homeDepartedDelayed", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User departs from 'Home', after a 2 minute delay? (off='No', on='Yes')", description: "Delayed Home Depart", submitOnChange: "true")
             paragraph "<small>This will give a heads up that someone has departed home. But help with false announcements.</small>"
             input(name: "homeDeparted", type: "bool", defaultValue: "false", title: "Should Tracker announce right away, when the User departs from 'Home'? (off='No', on='Yes')", description: "Home Depart", submitOnChange: "true")
             paragraph "<small>This will give a heads up that someone has departed home. As soon as it is detected.</small>"
@@ -875,15 +876,15 @@ def messageHandler() {
         if((pushHasDeparted) && (state.speakDEP == "yes")) pushHandler()
         if((pushOnTheMove) && (state.speakMOVE == "yes")) pushHandler()
         
-        if((historyMap) && (state.speakAT == "yes")) {
+        if(historyMap && historyHasArrived) {
             state.theHistoryMessage = "${state.theMessage} - ${theMapLink}"
             presenceDevice.sendHistory(state.theHistoryMessage)
             log.info "Life360 Tracker-HISTORY-A: ${state.theHistoryMessage}"
-        } else if((historyMap) && (state.speakDEP == "yes")) {
+        } else if(historyMap && historyHasDeparted) {
             state.theHistoryMessage = "${state.theMessage} - ${theMapLink}"
             presenceDevice.sendHistory(state.theHistoryMessage)
             log.info "Life360 Tracker-HISTORY-D: ${state.theHistoryMessage}"
-        } else if((historyMap) && (state.speakMOVE == "yes")) {
+        } else if(historyMap && historyOnTheMove) {
             state.theHistoryMessage = "${state.theMessage} - ${theMapLink}"
             presenceDevice.sendHistory(state.theHistoryMessage)
             log.info "Life360 Tracker-HISTORY-M: ${state.theHistoryMessage}"
