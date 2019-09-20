@@ -56,7 +56,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Tile Master Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Tile Master Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Driver.groovy") {
    		capability "Actuator"
 
 		command "sendTile01", ["string"]
