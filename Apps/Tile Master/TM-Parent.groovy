@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 09/21/19 - Added device value color options
  *  V2.0.1 - 09/20/19 - Initial release.
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.0 - 02/16/19 - Initially started working on this concept but never released.
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterParentVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -121,6 +122,27 @@ def mainPage() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
+            section(getFormat("header-green", "${getImage("Blank")}"+" Device Value Color Config")) {}
+			section("Color Options:", hideable: true, hidden: false) {
+                paragraph "Color is optional and is selectable within each child app. All child apps will get the values from here."
+				paragraph "Enter in the colors you would like assigned to each value.<br>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White"
+				input "colorOn", "text", title: "<span style='color: ${colorOn};font-size: 25px'>on</span>", submitOnChange: true, width: 6
+                input "colorOff", "text", title: "<span style='color: ${colorOff};font-size: 25px'>off</span>", submitOnChange: true, width: 6
+                
+                input "colorOpen", "text", title: "<span style='color: ${colorOpen};font-size: 25px'>open</span>", submitOnChange: true, width: 6
+                input "colorClosed", "text", title: "<span style='color: ${colorClosed};font-size: 25px'>closed</span>", submitOnChange: true, width: 6
+                
+                input "colorLocked", "text", title: "<span style='color: ${colorLock};font-size: 25px'>locked</span>", submitOnChange: true, width: 6
+                input "colorUnlocked", "text", title: "<span style='color: ${colorUnlock};font-size: 25px'>unlocked</span>", submitOnChange: true, width: 6
+                
+                input "colorWet", "text", title: "<span style='color: ${colorWet};font-size: 25px'>wet</span>", submitOnChange: true, width: 6
+                input "colorDry", "text", title: "<span style='color: ${colorDry};font-size: 25px'>dry</span>", submitOnChange: true, width: 6
+                
+                input "colorPresent", "text", title: "<span style='color: ${colorPresent};font-size: 25px'>present</span>", submitOnChange: true, width: 6
+                input "colorNotPresent", "text", title: "<span style='color: ${colorNotPresent};font-size: 25px'>not present</span>", submitOnChange: true, width: 6
+                paragraph "<hr>"
+                paragraph "Still working on Temps and Battery Lvl"
+            }
 			display()
 		}
 	}
