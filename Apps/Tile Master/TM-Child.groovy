@@ -1200,20 +1200,22 @@ def makeTile() {
 def getStatusColors(deviceStatus,deviceAtts) {
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceAtts} - ${deviceStatus}"
     
-    if(deviceAtts.toLowerCase() == "temperature") {
-        tempLow = parent.tempLow.toInteger()
-        tempHigh = parent.tempHigh.toInteger()
-        if(deviceStatus <= tempLow) deviceStatus1 = "<span style='color:${parent.colorTempLow};'>${deviceStatus}</span>"
-        if(deviceStatus > tempLow && deviceStatus < tempHigh) deviceStatus1 = "<span style='color:${parent.colorTemp};'>${deviceStatus}</span>"
-        if(deviceStatus >= tempHigh) deviceStatus1 = "<span style='color:${parent.colorTempHigh};'>${deviceStatus}</span>"
-    }
+    if(deviceAtts) {
+        if(deviceAtts.toLowerCase() == "temperature") {
+            tempLow = parent.tempLow.toInteger()
+            tempHigh = parent.tempHigh.toInteger()
+            if(deviceStatus <= tempLow) deviceStatus1 = "<span style='color:${parent.colorTempLow};'>${deviceStatus}</span>"
+            if(deviceStatus > tempLow && deviceStatus < tempHigh) deviceStatus1 = "<span style='color:${parent.colorTemp};'>${deviceStatus}</span>"
+            if(deviceStatus >= tempHigh) deviceStatus1 = "<span style='color:${parent.colorTempHigh};'>${deviceStatus}</span>"
+        }
     
-    if(deviceAtts.toLowerCase() == "battery") {
-        battLow = parent.battLow.toInteger()
-        battHigh = parent.battHigh.toInteger()
-        if(deviceStatus <= battLow) deviceStatus1 = "<span style='color:${parent.colorBattLow};'>${deviceStatus}</span>"
-        if(deviceStatus > battLow && deviceStatus < battHigh) deviceStatus1 = "<span style='color:${parent.colorBatt};'>${deviceStatus}</span>"
-        if(deviceStatus >= battHigh) deviceStatus1 = "<span style='color:${parent.colorBattHigh};'>${deviceStatus}</span>"
+        if(deviceAtts.toLowerCase() == "battery") {
+            battLow = parent.battLow.toInteger()
+            battHigh = parent.battHigh.toInteger()
+            if(deviceStatus <= battLow) deviceStatus1 = "<span style='color:${parent.colorBattLow};'>${deviceStatus}</span>"
+            if(deviceStatus > battLow && deviceStatus < battHigh) deviceStatus1 = "<span style='color:${parent.colorBatt};'>${deviceStatus}</span>"
+            if(deviceStatus >= battHigh) deviceStatus1 = "<span style='color:${parent.colorBattHigh};'>${deviceStatus}</span>"
+        }
     }
     
     if(deviceStatus == "on") deviceStatus1 = "<span style='color:${parent.colorOn};'>on</span>"
