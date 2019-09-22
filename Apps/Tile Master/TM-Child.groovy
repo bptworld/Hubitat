@@ -34,6 +34,8 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 09/21/19 - Added background colors to sample tile, Added preview to section buttons on main screen, Added device value
+color options to each device selection section, Lots of little adjustments
  *  V2.0.1 - 09/20/19 - Initial release.
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.0 - 02/16/19 - Initially started working on this concept but never released.
@@ -44,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -85,11 +87,11 @@ def pageConfig() {
 			paragraph "Create a tile with multiple devices and customization options."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Choose which line configure")) {
-			href "line01Options", title:"Line 1 Options", description:"Click here to setup line 1"
-			href "line02Options", title:"Line 2 Options", description:"Click here to setup line 2"
-			href "line03Options", title:"Line 3 Options", description:"Click here to setup line 3"
-			href "line04Options", title:"Line 4 Options", description:"Click here to setup line 4"
-			href "line05Options", title:"Line 5 Options", description:"Click here to setup line 5"
+			href "line01Options", title:"Line 1 Options - Click Here", description:"Preview: ${state.theTile01}"
+			href "line02Options", title:"Line 2 Options - Click Here", description:"Preview: ${state.theTile02}"
+			href "line03Options", title:"Line 3 Options - Click Here", description:"Preview: ${state.theTile03}"
+			href "line04Options", title:"Line 4 Options - Click Here", description:"Preview: ${state.theTile04}"
+			href "line05Options", title:"Line 5 Options - Click Here", description:"Preview: ${state.theTile05}"
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {
             input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: true, multiple: false)
@@ -105,19 +107,18 @@ def pageConfig() {
 
 def line01Options(){
     dynamicPage(name: "line01Options", title: "Line 01 Options", install: false, uninstall: false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections01", "enum", title: "Number of Sections", required: true, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "border01", "enum", title: "Show a Border for Testing", required: true, multiple: false, options: ["Yes","No"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: true, defaultValue: "300", submitOnChange: true
+		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {           
+            input "nSections01", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
+			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
 			if(nSections01 == "1") {
-				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:6
+				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections01 == "2") {
-				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth01a", "number", title: "Section 2 Percent of Total Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth01a", "number", title: "Section 2 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			} else if(nSections01 == "3") {
-				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth01a", "number", title: "Section 2 Percent of Total Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth01b", "number", title: "Section 3 Percent of Total Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth01a", "number", title: "Section 2 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth01b", "number", title: "Section 3 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			}
 			
 			if(nSections01 == "1") {
@@ -149,6 +150,7 @@ def line01Options(){
 					def allAtts01 = [:]
 					allAtts01 = device01.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01
+                    input "useColors01", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
 					if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
 					if(device01 && deviceAtts01) paragraph "Current Status of Device Attribute: ${device01} - ${deviceAtts01} - ${state.deviceStatus01}"
@@ -168,6 +170,7 @@ def line01Options(){
 					def allAtts01a = [:]
 					allAtts01a = device01a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01a
+                    input "useColors01a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 					if(state.deviceStatus01a == null) state.deviceStatus01a = "No Data"
 					if(device01a && deviceAtts01a) paragraph "Current Status of Device Attribute: ${device01a} - ${deviceAtts01a} - ${state.deviceStatus01a}"
@@ -187,6 +190,7 @@ def line01Options(){
 					def allAtts01b = [:]
 					allAtts01b = device01b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01b
+                    input "useColors01b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
 					if(state.deviceStatus01b == null) state.deviceStatus01b = "No Data"
 					if(device01b && deviceAtts01b) paragraph "Current Status of Device Attribute: ${device01b} - ${deviceAtts01b} - ${state.deviceStatus01b}"
@@ -203,18 +207,17 @@ def line01Options(){
 def line02Options(){
     dynamicPage(name: "line02Options", title: "Line 02 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections02", "enum", title: "Number of Sections", required: true, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "border02", "enum", title: "Show a Border for Testing", required: true, multiple: false, options: ["Yes","No"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: true, defaultValue: "300", submitOnChange: true
+			input "nSections02", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
+			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
 			if(nSections02 == "1") {
-				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:6
+				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections02 == "2") {
-				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth02a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth02a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			} else if(nSections02 == "3") {
-				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth02a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth02b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth02a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth02b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			}
 			
 			if(nSections02 == "1") {
@@ -246,6 +249,7 @@ def line02Options(){
 					def allAtts02 = [:]
 					allAtts02 = device02.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02
+                    input "useColors02", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 					if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
 					if(device02 && deviceAtts02) paragraph "Current Status of Device Attribute: ${device02} - ${deviceAtts02} - ${state.deviceStatus02}"
@@ -265,6 +269,7 @@ def line02Options(){
 					def allAtts02a = [:]
 					allAtts02a = device02a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02a
+                    input "useColors02a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 					if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
 					if(device02a && deviceAtts02a) paragraph "Current Status of Device Attribute: ${device02a} - ${deviceAtts02a} - ${state.deviceStatus02a}"
@@ -284,6 +289,7 @@ def line02Options(){
 					def allAtts02b = [:]
 					allAtts02b = device02b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02b
+                    input "useColors02b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus02b = device02b.currentValue("${deviceAtts02b}")
 					if(state.deviceStatus02b == null) state.deviceStatus02b = "No Data"
 					if(device02b && deviceAtts02b) paragraph "Current Status of Device Attribute: ${device02b} - ${deviceAtts02b} - ${state.deviceStatus02b}"
@@ -300,18 +306,17 @@ def line02Options(){
 def line03Options(){
     dynamicPage(name: "line03Options", title: "Line 03 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections03", "enum", title: "Number of Sections", required: true, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "border03", "enum", title: "Show a Border for Testing", required: true, multiple: false, options: ["Yes","No"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: true, defaultValue: "300", submitOnChange: true
+			input "nSections03", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
+			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
 			if(nSections03 == "1") {
-				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:6
+				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections03 == "2") {
-				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth03a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth03a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			} else if(nSections03 == "3") {
-				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth03a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth03b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth03a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth03b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			}
 			
 			if(nSections03 == "1") {
@@ -343,6 +348,7 @@ def line03Options(){
 					def allAtts03 = [:]
 					allAtts03 = device03.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03
+                    input "useColors03", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus03 = device03.currentValue("${deviceAtts03}")
 					if(state.deviceStatus03 == null) state.deviceStatus03 = "No Data"
 					if(device03 && deviceAtts03) paragraph "Current Status of Device Attribute: ${device03} - ${deviceAtts03} - ${state.deviceStatus03}"
@@ -362,6 +368,7 @@ def line03Options(){
 					def allAtts03a = [:]
 					allAtts03a = device03a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03a
+                    input "useColors03a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 					if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
 					if(device03a && deviceAtts03a) paragraph "Current Status of Device Attribute: ${device03a} - ${deviceAtts03a} - ${state.deviceStatus03a}"
@@ -381,6 +388,7 @@ def line03Options(){
 					def allAtts03b = [:]
 					allAtts03b = device03b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03b
+                    input "useColors03b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus03b = device03b.currentValue("${deviceAtts03b}")
 					if(state.deviceStatus03b == null) state.deviceStatus03b = "No Data"
 					if(device03b && deviceAtts03b) paragraph "Current Status of Device Attribute: ${device03b} - ${deviceAtts03b} - ${state.deviceStatus03b}"
@@ -397,18 +405,17 @@ def line03Options(){
 def line04Options(){
     dynamicPage(name: "line04Options", title: "Line 04 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections04", "enum", title: "Number of Sections", required: true, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "border04", "enum", title: "Show a Border for Testing", required: true, multiple: false, options: ["Yes","No"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: true, defaultValue: "300", submitOnChange: true
+			input "nSections04", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
+			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
 			if(nSections04 == "1") {
-				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:6
+				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections04 == "2") {
-				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth04a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth04a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			} else if(nSections04 == "3") {
-				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth04a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth04b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth04a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth04b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			}
 			
 			if(nSections04 == "1") {
@@ -440,6 +447,7 @@ def line04Options(){
 					def allAtts04 = [:]
 					allAtts04 = device04.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04
+                    input "useColors04", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 					if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
 					if(device04 && deviceAtts04) paragraph "Current Status of Device Attribute: ${device04} - ${deviceAtts04} - ${state.deviceStatus04}"
@@ -459,6 +467,7 @@ def line04Options(){
 					def allAtts04a = [:]
 					allAtts04a = device04a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04a
+                    input "useColors04a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 					if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
 					if(device04a && deviceAtts04a) paragraph "Current Status of Device Attribute: ${device04a} - ${deviceAtts04a} - ${state.deviceStatus04a}"
@@ -478,6 +487,7 @@ def line04Options(){
 					def allAtts04b = [:]
 					allAtts04b = device04b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04b
+                    input "useColors04b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus04b = device04b.currentValue("${deviceAtts04b}")
 					if(state.deviceStatus04b == null) state.deviceStatus04b = "No Data"
 					if(device04b && deviceAtts04b) paragraph "Current Status of Device Attribute: ${device04b} - ${deviceAtts04b} - ${state.deviceStatus04b}"
@@ -494,18 +504,17 @@ def line04Options(){
 def line05Options(){
     dynamicPage(name: "line05Options", title: "Line 05 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections05", "enum", title: "Number of Sections", required: true, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "border05", "enum", title: "Show a Border for Testing", required: true, multiple: false, options: ["Yes","No"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: true, defaultValue: "300", submitOnChange: true
+			input "nSections05", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
+			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
 			if(nSections05 == "1") {
-				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:6
+				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections05 == "2") {
-				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth05a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth05a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			} else if(nSections05 == "3") {
-				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth05a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
-				input "secWidth05b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: true, submitOnChange: true, width:4
+				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth05a", "number", title: "Section 2 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
+				input "secWidth05b", "number", title: "Section 3 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:4
 			}
 			
 			if(nSections05 == "1") {
@@ -537,6 +546,7 @@ def line05Options(){
 					def allAtts05 = [:]
 					allAtts05 = device05.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05
+                    input "useColors05", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 					if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
 					if(device05 && deviceAtts05) paragraph "Current Status of Device Attribute: ${device05} - ${deviceAtts05} - ${state.deviceStatus05}"
@@ -556,6 +566,7 @@ def line05Options(){
 					def allAtts05a = [:]
 					allAtts05a = device05a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05a
+                    input "useColors05a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 					if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
 					if(device05a && deviceAtts05a) paragraph "Current Status of Device Attribute: ${device05a} - ${deviceAtts05a} - ${state.deviceStatus05a}"
@@ -575,6 +586,7 @@ def line05Options(){
 					def allAtts05b = [:]
 					allAtts05b = device05b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05b
+                    input "useColors05b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus05b = device05b.currentValue("${deviceAtts05b}")
 					if(state.deviceStatus05b == null) state.deviceStatus05b = "No Data"
 					if(device05b && deviceAtts05b) paragraph "Current Status of Device Attribute: ${device05b} - ${deviceAtts05b} - ${state.deviceStatus05b}"
@@ -633,14 +645,26 @@ def tileHandler01(){
 		state.style01 = "text-align:${align01};"
 		if(device01) {
 			state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
-			if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
-		} else state.deviceStatus01 = ""
+            if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
+            if(useColors01) {
+                getStatusColors(state.deviceStatus01)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler01 - Received: ${deviceStatus1}"
+                state.deviceStatus01 = deviceStatus1
+            }
+        } else state.deviceStatus01 = ""
 	}
 	if(nSections01 == "2" || nSections01 == "3") {
 		state.style01a = "text-align:${align01a};"
 		if(device01a) {
 			state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 			if(state.deviceStatus01a == null) state.deviceStatus01a = "No Data"
+            if(useColors01a) {
+                getStatusColors(state.deviceStatus01a)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler01a - Received: ${deviceStatus1}"
+                state.deviceStatus01a = deviceStatus1
+            }
 		} else state.deviceStatus01a = ""
 	}
 	if(nSections01 == "3") {
@@ -648,17 +672,19 @@ def tileHandler01(){
 		if(device01b) {
 			state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
 			if(state.deviceStatus01b == null) state.deviceStatus01b = "No Data"
+            if(useColors01b) {
+                getStatusColors(state.deviceStatus01b)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler01b - Received: ${deviceStatus1}"
+                state.deviceStatus01b = deviceStatus1
+            }
 		} else state.deviceStatus01b = ""
 	}
 	
 // ***** Make the table for line 1	*****
 	
 	if(nSections01 == "1") {
-		if(border01 == "Yes") {
-			state.theTile01 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
-		} else {
-			state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
-		}
+		state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
@@ -666,11 +692,7 @@ def tileHandler01(){
 		state.theTile01 += "</td></tr></table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "2") {
-		if(border01 == "Yes") {
-			state.theTile01 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
-		} else {
-			state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
-		}
+		state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
@@ -683,11 +705,7 @@ def tileHandler01(){
 		state.theTile01 += "</td></tr></table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "3") {
-		if(border01 == "Yes") {
-			state.theTile01 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
-		} else {
-			state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
-		}
+		state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
@@ -704,7 +722,10 @@ def tileHandler01(){
 		
 		state.theTile01 += "</td></tr></table>"
 		state.theTileLength01 = state.theTile01.length()
-	}
+	} else {
+        state.theTile01 = ""
+        state.theTileLength05 = state.theTile01.length()
+    }
 	if(logEnable) log.debug "In tileHandler01 - state.theTile01: ${state.theTile01}"
 	if(state.theTileLength01 == null) state.theTileLength01 = 0
 }
@@ -722,6 +743,12 @@ def tileHandler02(){
 		if(device02) {
 			state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 			if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
+            if(useColors02) {
+                getStatusColors(state.deviceStatus02)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler02 - Received: ${deviceStatus1}"
+                state.deviceStatus02 = deviceStatus1
+            }
 		} else state.deviceStatus02 = ""
 	}
 	if(nSections02 == "2" || nSections02 == "3") {
@@ -729,6 +756,12 @@ def tileHandler02(){
 		if(device02a) {
 			state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 			if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
+            if(useColors02a) {
+                getStatusColors(state.deviceStatus02a)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler02a - Received: ${deviceStatus1}"
+                state.deviceStatus02a = deviceStatus1
+            }
 		} else state.deviceStatus02a = ""
 	}
 	if(nSections02 == "3") {
@@ -736,17 +769,19 @@ def tileHandler02(){
 		if(device02b) {
 			state.deviceStatus02b = device02b.currentValue("${deviceAtts02b}")
 			if(state.deviceStatus02b == null) state.deviceStatus02b = "No Data"
+            if(useColors02b) {
+                getStatusColors(state.deviceStatus02b)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler02b - Received: ${deviceStatus1}"
+                state.deviceStatus02b = deviceStatus1
+            }
 		} else state.deviceStatus02b = ""
 	}
 	
 // ***** Make the table for line 2	*****
 	
 	if(nSections02 == "1") {
-		if(border02 == "Yes") {
-			state.theTile02 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
-		} else {
-			state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
-		}
+		state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
@@ -754,11 +789,7 @@ def tileHandler02(){
 		state.theTile02 += "</td></tr></table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "2") {
-		if(border02 == "Yes") {
-			state.theTile02 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
-		} else {
-			state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
-		}
+		state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
@@ -771,11 +802,7 @@ def tileHandler02(){
 		state.theTile02 += "</td></tr></table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "3") {
-		if(border02 == "Yes") {
-			state.theTile02 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
-		} else {
-			state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
-		}
+		state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
@@ -792,7 +819,10 @@ def tileHandler02(){
 		
 		state.theTile02 += "</td></tr></table>"
 		state.theTileLength02 = state.theTile02.length()
-	}
+	} else {
+        state.theTile02 = ""
+        state.theTileLength05 = state.theTile02.length()
+    }
 	if(logEnable) log.debug "In tileHandler02 - state.theTile02: ${state.theTile02}"
 	if(state.theTileLength02 == null) state.theTileLength02 = 0
 }
@@ -813,6 +843,12 @@ def tileHandler03(){
 		if(device03) {
 			state.deviceStatus03 = device03.currentValue("${deviceAtts03}")
 			if(state.deviceStatus03 == null) state.deviceStatus03 = "No Data"
+            if(useColors03) {
+                getStatusColors(state.deviceStatus03)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler03 - Received: ${deviceStatus1}"
+                state.deviceStatus03 = deviceStatus1
+            }
 		} else state.deviceStatus03 = ""
 	}
 	if(nSections03 == "2" || nSections03 == "3") {
@@ -820,6 +856,12 @@ def tileHandler03(){
 		if(device03a) {
 			state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 			if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
+            if(useColors03a) {
+                getStatusColors(state.deviceStatus03a)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler03a - Received: ${deviceStatus1}"
+                state.deviceStatus03a = deviceStatus1
+            }
 		} else state.deviceStatus03a = ""
 	}
 	if(nSections03 == "3") {
@@ -827,17 +869,19 @@ def tileHandler03(){
 		if(device03b) {
 			state.deviceStatus03b = device03b.currentValue("${deviceAtts03b}")
 			if(state.deviceStatus03b == null) state.deviceStatus03b = "No Data"
+            if(useColors03b) {
+                getStatusColors(state.deviceStatus03b)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler03b - Received: ${deviceStatus1}"
+                state.deviceStatus03b = deviceStatus1
+            }
 		} else state.deviceStatus03b = ""
 	}
 	
 // ***** Make the table for line 3	*****
 	
 	if(nSections03 == "1") {
-		if(border03 == "Yes") {
-			state.theTile03 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
-		} else {
-			state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
-		}
+		state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
@@ -845,11 +889,7 @@ def tileHandler03(){
 		state.theTile03 += "</td></tr></table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "2") {
-		if(border03 == "Yes") {
-			state.theTile03 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
-		} else {
-			state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
-		}
+		state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
@@ -862,11 +902,7 @@ def tileHandler03(){
 		state.theTile03 += "</td></tr></table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "3") {
-		if(border03 == "Yes") {
-			state.theTile03 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
-		} else {
-			state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
-		}
+		state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
@@ -883,7 +919,10 @@ def tileHandler03(){
 		
 		state.theTile03 += "</td></tr></table>"
 		state.theTileLength03 = state.theTile03.length()
-	}
+	} else {
+        state.theTile03 = ""
+        state.theTileLength05 = state.theTile03.length()
+    }
 	if(logEnable) log.debug "In tileHandler03 - state.theTile03: ${state.theTile03}"
 	if(state.theTileLength03 == null) state.theTileLength03 = 0
 }
@@ -904,6 +943,12 @@ def tileHandler04(){
 		if(device04) {
 			state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 			if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
+            if(useColors04) {
+                getStatusColors(state.deviceStatus04)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler04 - Received: ${deviceStatus1}"
+                state.deviceStatus04 = deviceStatus1
+            }
 		} else state.deviceStatus04 = ""
 	}
 	if(nSections04 == "2" || nSections04 == "3") {
@@ -911,6 +956,12 @@ def tileHandler04(){
 		if(device04a) {
 			state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 			if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
+            if(useColors04a) {
+                getStatusColors(state.deviceStatus04a)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler04a - Received: ${deviceStatus1}"
+                state.deviceStatus04a = deviceStatus1
+            }
 		} else state.deviceStatus04a = ""
 	}
 	if(nSections04 == "3") {
@@ -918,17 +969,19 @@ def tileHandler04(){
 		if(device04b) {
 			state.deviceStatus04b = device04b.currentValue("${deviceAtts04b}")
 			if(state.deviceStatus04b == null) state.deviceStatus04b = "No Data"
+            if(useColors04b) {
+                getStatusColors(state.deviceStatus04b)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler04b - Received: ${deviceStatus1}"
+                state.deviceStatus04b = deviceStatus1
+            }
 		} else state.deviceStatus04b = ""
 	}
 	
 // ***** Make the table for line 4	*****
 	
 	if(nSections04 == "1") {
-		if(border04 == "Yes") {
-			state.theTile04 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
-		} else {
-			state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"	// 61 + 12 + 17 (100)
-		}
+		state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"	// 61 + 12 + 17 (100)
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
@@ -936,11 +989,7 @@ def tileHandler04(){
 		state.theTile04 += "</td></tr></table>"		// 18
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "2") {
-		if(border04 == "Yes") {
-			state.theTile04 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
-		} else {
-			state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
-		}
+		state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
@@ -953,11 +1002,7 @@ def tileHandler04(){
 		state.theTile04 += "</td></tr></table>"
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "3") {
-		if(border04 == "Yes") {
-			state.theTile04 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
-		} else {
-			state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
-		}
+		state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
@@ -974,7 +1019,10 @@ def tileHandler04(){
 		
 		state.theTile04 += "</td></tr></table>"
 		state.theTileLength04 = state.theTile04.length()
-	}
+	} else {
+        state.theTile04 = ""
+        state.theTileLength05 = state.theTile04.length()
+    }
 	if(logEnable) log.debug "In tileHandler04 - state.theTile04: ${state.theTile04}"
 	if(state.theTileLength04 == null) state.theTileLength04 = 0
 }
@@ -995,6 +1043,12 @@ def tileHandler05(){
 		if(device05) {
 			state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 			if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
+            if(useColors05) {
+                getStatusColors(state.deviceStatus05)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler05 - Received: ${deviceStatus1}"
+                state.deviceStatus05 = deviceStatus1
+            }
 		} else state.deviceStatus05 = ""
 	}
 	if(nSections05 == "2" || nSections05 == "3") {
@@ -1002,6 +1056,12 @@ def tileHandler05(){
 		if(device05a) {
 			state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 			if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
+            if(useColors05a) {
+                getStatusColors(state.deviceStatus05a)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler05a - Received: ${deviceStatus1}"
+                state.deviceStatus05a = deviceStatus1
+            }
 		} else state.deviceStatus05a = ""
 	}
 	if(nSections05 == "3") {
@@ -1009,17 +1069,19 @@ def tileHandler05(){
 		if(device05b) {
 			state.deviceStatus05b = device05b.currentValue("${deviceAtts05b}")
 			if(state.deviceStatus05b == null) state.deviceStatus05b = "No Data"
+            if(useColors05b) {
+                getStatusColors(state.deviceStatus05b)
+                pauseExecution(500)
+                if(logEnable) log.debug "In tileHandler05b - Received: ${deviceStatus1}"
+                state.deviceStatus05b = deviceStatus1
+            }
 		} else state.deviceStatus05b = ""
 	}
 	
 // ***** Make the table for line 5	*****
 	
 	if(nSections05 == "1") {
-		if(border05 == "Yes") {
-			state.theTile05 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
-		} else {
-			state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
-		}
+		state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
@@ -1027,11 +1089,7 @@ def tileHandler05(){
 		state.theTile05 += "</td></tr></table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "2") {
-		if(border05 == "Yes") {
-			state.theTile05 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
-		} else {
-			state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
-		}
+		state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
@@ -1044,11 +1102,7 @@ def tileHandler05(){
 		state.theTile05 += "</td></tr></table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "3") {
-		if(border05 == "Yes") {
-			state.theTile05 = "<table border=1 width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
-		} else {
-			state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
-		}
+		state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
@@ -1065,7 +1119,10 @@ def tileHandler05(){
 		
 		state.theTile05 += "</td></tr></table>"
 		state.theTileLength05 = state.theTile05.length()
-	}
+    } else {
+        state.theTile05 = ""
+        state.theTileLength05 = state.theTile05.length()
+    }
 	if(logEnable) log.debug "In tileHandler05 - state.theTile05: ${state.theTile05}"
 	if(state.theTileLength05 == null) state.theTileLength05 = 0
 }
@@ -1080,20 +1137,22 @@ def sampleTileHandler(evt){
 	
 	if(logEnable) log.debug "In sampleTileHandler - Back in sampleTileHandler"
 	section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
+        paragraph "For testing purposes only..."
+        input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true
 		if(state.theTile01 && !state.theTile02) {
-			paragraph "<table align='center'><tr><td>${state.theTile01}</td></tr></table>"
+			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}</td></tr></table>"
 		}
 		if(state.theTile01 && state.theTile02 && !state.theTile03) {
-			paragraph "<table align='center'><tr><td>${state.theTile01}${state.theTile02}</td></tr></table>"
+            paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}</td></tr></table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && !state.theTile04) {
-			paragraph "<table align='center'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}</td></tr></table>"
+			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}</td></tr></table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && state.theTile04 && !state.theTile05) {
-			paragraph "<table align='center'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}</td></tr></table>"
+			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}</td></tr></table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && state.theTile04 && state.theTile05) {
-			paragraph "<table align='center'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</td></tr></table>"
+			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</td></tr></table>"
 		}
 		
 		if(logEnable) log.debug "In sampleTileHandler - theTileLength01: ${state.theTileLength01} - tTL02: ${state.theTileLength02} - tTL03: ${state.theTileLength03} - tTL04: ${state.theTileLength04} - tTL05: ${state.theTileLength05}"
@@ -1109,9 +1168,9 @@ def sampleTileHandler(evt){
         paragraph "<hr>"
 		paragraph "Characters - Line 1: ${tileLength01} - Line 2: ${tileLength02} - Line 3: ${tileLength03} - Line 4: ${tileLength04} - Line 5: ${tileLength05}<br>* This is only an estimate. Actual character count can be found in the tile device."
 		if(totalLength <= 1024) {
-			paragraph "Total Number of Characters: <font color='green'>${totalLength}</font><br><small>* Must stay under 1024 to display on Dashboard.</small>"
+			paragraph "Total Number of Characters: <font color='green'>${totalLength}</font><br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small>"
 		} else {
-			paragraph "Total Number of Characters: <font color='red'>${totalLength}<br><small>* Must stay under 1024 to display on Dashboard.</small></font>"
+			paragraph "Total Number of Characters: <font color='red'>${totalLength}<br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small></font>"
 		}
         makeTile()
 	}
@@ -1131,6 +1190,28 @@ def makeTile() {
         tileDevice.sendTile01(tileData)
         if(logEnable) log.debug "In makeTile - tileData sent"
     }
+}
+
+def getStatusColors(deviceStatus) {
+    if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceStatus}"
+    if(deviceStatus == "on") deviceStatus1 = "<span style='color: ${parent.colorOn};'>on</span>"
+    if(deviceStatus == "off") deviceStatus1 = "<span style='color: ${parent.colorOff};'>off</span>"
+    
+    if(deviceStatus == "open") deviceStatus1 = "<span style='color: ${parent.colorOpen};'>open</span>"
+    if(deviceStatus == "closed") deviceStatus1 = "<span style='color: ${parent.colorClosed};'>closed</span>"
+
+    if(deviceStatus == "locked") deviceStatus1 = "<span style='color: ${parent.colorLocked};'>locked</span>"
+    if(deviceStatus == "unlocked") deviceStatus1 = "<span style='color: ${parent.colorUnlocked};'>unlocked</span>"
+    
+    if(deviceStatus == "wet") deviceStatus1 = "<span style='color: ${parent.colorWet};'>wet</span>"
+    if(deviceStatus == "dry") deviceStatus1 = "<span style='color: ${parent.colorDry};'>dry</span>"
+    
+    if(deviceStatus == "present") deviceStatus1 = "<span style='color: ${parent.colorPresent};'>present</span>"
+    if(deviceStatus == "not present") deviceStatus1 = "<span style='color: ${parent.colorNotPresent};'>not present</span>"
+    
+    
+    if(logEnable) log.debug "In getStatusColors (${state.version}) - Returning: ${deviceStatus1}"
+    return deviceStatus1
 }
 
 // ********** Normal Stuff **********
