@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 09/22/19 - Code changes to make the html footprint smaller (less of a hit to the character count)
  *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Level
  *  V2.0.2 - 09/21/19 - Added background colors to sample tile, Added preview to section buttons on main screen, Added device value
 color options to each device selection section, Lots of little adjustments
@@ -47,7 +48,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.3"
+	state.version = "v2.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -94,6 +95,9 @@ def pageConfig() {
 			href "line04Options", title:"Line 4 Options - Click Here", description:"Preview: ${state.theTile04}"
 			href "line05Options", title:"Line 5 Options - Click Here", description:"Preview: ${state.theTile05}"
 		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Global Table Options")) {
+            input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {
             input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: true, multiple: false)
         }
@@ -109,8 +113,7 @@ def pageConfig() {
 def line01Options(){
     dynamicPage(name: "line01Options", title: "Line 01 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {           
-            input "nSections01", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
+            input "nSections01", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections01 == "1") {
 				input "secWidth01", "number", title: "Section 1 Percent of Total Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections01 == "2") {
@@ -136,9 +139,9 @@ def line01Options(){
 				tableLength = secWidth01 + secWidth01a + secWidth01b
 			}
 			if(tableLength == 100) {
-				paragraph "Table Length: <font color='green'>${tableLength}</font><br><small>* Total table length must equal 100</small>"
+				paragraph "Table Width: <font color='green'>${tableLength}</font><br><small>* Total table width must equal 100</small>"
 			} else {
-				paragraph "Table Length: <font color='red'>${tableLength}<br><small>* Total table length must equal 100</small></font>"
+				paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
 			}
 		}
 		if(nSections01 == "1" || nSections01 == "2" || nSections01 == "3") {
@@ -208,8 +211,7 @@ def line01Options(){
 def line02Options(){
     dynamicPage(name: "line02Options", title: "Line 02 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections02", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
+			input "nSections02", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections02 == "1") {
 				input "secWidth02", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections02 == "2") {
@@ -235,9 +237,9 @@ def line02Options(){
 				tableLength = secWidth02 + secWidth02a + secWidth02b
 			}
 			if(tableLength == 100) {
-				paragraph "Table Length: <font color='green'>${tableLength}</font><br><small>* Total table length must equal 100</small>"
+				paragraph "Table Width: <font color='green'>${tableLength}</font><br><small>* Total table width must equal 100</small>"
 			} else {
-				paragraph "Table Length: <font color='red'>${tableLength}<br><small>* Total table length must equal 100</small></font>"
+				paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
 			}
 		}
 		if(nSections02 == "1" || nSections02 == "2" || nSections02 == "3") {
@@ -307,8 +309,7 @@ def line02Options(){
 def line03Options(){
     dynamicPage(name: "line03Options", title: "Line 03 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections03", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
+			input "nSections03", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections03 == "1") {
 				input "secWidth03", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections03 == "2") {
@@ -334,9 +335,9 @@ def line03Options(){
 				tableLength = secWidth03 + secWidth03a + secWidth03b
 			}
 			if(tableLength == 100) {
-				paragraph "Table Length: <font color='green'>${tableLength}</font><br><small>* Total table length must equal 100</small>"
+				paragraph "Table Width: <font color='green'>${tableLength}</font><br><small>* Total table width must equal 100</small>"
 			} else {
-				paragraph "Table Length: <font color='red'>${tableLength}<br><small>* Total table length must equal 100</small></font>"
+				paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
 			}
 		}
 		if(nSections03 == "1" || nSections03 == "2" || nSections03 == "3") {
@@ -406,8 +407,7 @@ def line03Options(){
 def line04Options(){
     dynamicPage(name: "line04Options", title: "Line 04 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections04", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
+			input "nSections04", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections04 == "1") {
 				input "secWidth04", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections04 == "2") {
@@ -433,9 +433,9 @@ def line04Options(){
 				tableLength = secWidth04 + secWidth04a + secWidth04b
 			}
 			if(tableLength == 100) {
-				paragraph "Table Length: <font color='green'>${tableLength}</font><br><small>* Total table length must equal 100</small>"
+				paragraph "Table Width: <font color='green'>${tableLength}</font><br><small>* Total table width must equal 100</small>"
 			} else {
-				paragraph "Table Length: <font color='red'>${tableLength}<br><small>* Total table length must equal 100</small></font>"
+				paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
 			}
 		}
 		if(nSections04 == "1" || nSections04 == "2" || nSections04 == "3") {
@@ -505,8 +505,7 @@ def line04Options(){
 def line05Options(){
     dynamicPage(name: "line05Options", title: "Line 05 Options", install: false, uninstall: false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {
-			input "nSections05", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true, width: 6
-			input "tableWidth", "number", title: "Table 1 Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
+			input "nSections05", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections05 == "1") {
 				input "secWidth05", "number", title: "Section 1 Width (1 - 100)", description: "1-100", required: false, submitOnChange: true, width:6
 			} else if(nSections05 == "2") {
@@ -532,9 +531,9 @@ def line05Options(){
 				tableLength = secWidth05 + secWidth05a + secWidth05b
 			}
 			if(tableLength == 100) {
-				paragraph "Table Length: <font color='green'>${tableLength}</font><br><small>* Total table length must equal 100</small>"
+				paragraph "Table Width: <font color='green'>${tableLength}</font><br><small>* Total table width must equal 100</small>"
 			} else {
-				paragraph "Table Length: <font color='red'>${tableLength}<br><small>* Total table length must equal 100</small></font>"
+				paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
 			}
 		}
 		if(nSections05 == "1" || nSections05 == "2" || nSections05 == "3") {
@@ -643,7 +642,6 @@ def tileHandler01(){
 	if(words01a == null) words01a = ""
 	if(words01b == null) words01b = ""
 	if(nSections01 == "1" || nSections01 == "2" || nSections01 == "3") {
-		state.style01 = "text-align:${align01};"
 		if(device01) {
 			state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
             if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
@@ -657,7 +655,6 @@ def tileHandler01(){
         } else state.deviceStatus01 = ""
 	}
 	if(nSections01 == "2" || nSections01 == "3") {
-		state.style01a = "text-align:${align01a};"
 		if(device01a) {
 			state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 			if(state.deviceStatus01a == null) state.deviceStatus01a = "No Data"
@@ -671,7 +668,6 @@ def tileHandler01(){
 		} else state.deviceStatus01a = ""
 	}
 	if(nSections01 == "3") {
-		state.style01b = "text-align:${align01b};"
 		if(device01b) {
 			state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
 			if(state.deviceStatus01b == null) state.deviceStatus01b = "No Data"
@@ -688,43 +684,43 @@ def tileHandler01(){
 // ***** Make the table for line 1	*****
 	
 	if(nSections01 == "1") {
-		state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
+        state.theTile01 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
 		
-		state.theTile01 += "</td></tr></table>"
+		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "2") {
-		state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width: ${secWidth01}%;'>"
+		state.theTile01 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
 		
-		state.theTile01 += "</td><td style='${state.style01a}color:${color01a};font-size:${fontSize01a}px;width: ${secWidth01a}%;'>"
+		state.theTile01 += "<td style='text-align:${align01a};color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%;'>"
 		if(wordsBEF01a) state.theTile01 += "${wordsBEF01a}"
 		if(state.deviceStatus01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) state.theTile01 += "${wordsAFT01a}"
 		
-		state.theTile01 += "</td></tr></table>"
+		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "3") {
-		state.theTile01 = "<table width='${tableWidth}'><tr><td style='${state.style01}color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
+		state.theTile01 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
 		
-		state.theTile01 += "</td><td style='${state.style01a}color:${color01a};font-size:${fontSize01a}px;width: ${secWidth01a}%;'>"
+		state.theTile01 += "<td style='${state.style01a}color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%;'>"
 		if(wordsBEF01a) state.theTile01 += "${wordsBEF01a}"
 		if(state.deviceStatus01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) state.theTile01 += "${wordsAFT01a}"
 		
-		state.theTile01 += "</td><td style='${state.style01b}color:${color01b};font-size:${fontSize01b}px;width: ${secWidth01b}%;'>"
+		state.theTile01 += "<td style='text-align:${align01b};color:${color01b};font-size:${fontSize01b}px;width:${secWidth01b}%;'>"
 		if(wordsBEF01b) state.theTile01 += "${wordsBEF01b}"
 		if(state.deviceStatus01b) state.theTile01 += "${state.deviceStatus01b}"
 		if(wordsAFT01b) state.theTile01 += "${wordsAFT01b}"
 		
-		state.theTile01 += "</td></tr></table>"
+		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else {
         state.theTile01 = ""
@@ -743,7 +739,6 @@ def tileHandler02(){
 	if(words02a == null) words02a = ""
 	if(words02b == null) words02b = ""
 	if(nSections02 == "1" || nSections02 == "2" || nSections02 == "3") {
-		state.style02 = "text-align:${align02};"
 		if(device02) {
 			state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 			if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
@@ -757,7 +752,6 @@ def tileHandler02(){
 		} else state.deviceStatus02 = ""
 	}
 	if(nSections02 == "2" || nSections02 == "3") {
-		state.style02a = "text-align:${align02a};"
 		if(device02a) {
 			state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 			if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
@@ -771,7 +765,6 @@ def tileHandler02(){
 		} else state.deviceStatus02a = ""
 	}
 	if(nSections02 == "3") {
-		state.style02b = "text-align:${align02b};"
 		if(device02b) {
 			state.deviceStatus02b = device02b.currentValue("${deviceAtts02b}")
 			if(state.deviceStatus02b == null) state.deviceStatus02b = "No Data"
@@ -788,43 +781,43 @@ def tileHandler02(){
 // ***** Make the table for line 2	*****
 	
 	if(nSections02 == "1") {
-		state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
+		state.theTile02 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
 		
-		state.theTile02 += "</td></tr></table>"
+		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "2") {
-		state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
+		state.theTile02 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
 		
-		state.theTile02 += "</td><td style='${state.style02a}color:${color02a};font-size:${fontSize02a}px;width: ${secWidth02a}%;'>"
+		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width: ${secWidth02a}%;'>"
 		if(wordsBEF02a) state.theTile02 += "${wordsBEF02a}"
 		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) state.theTile02 += "${wordsAFT02a}"
 		
-		state.theTile02 += "</td></tr></table>"
+		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "3") {
-		state.theTile02 = "<table width='${tableWidth}'><tr><td style='${state.style02}color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
+		state.theTile02 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
 		
-		state.theTile02 += "</td><td style='${state.style02a}color:${color02a};font-size:${fontSize02a}px;width: ${secWidth02a}%;'>"
+		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width: ${secWidth02a}%;'>"
 		if(wordsBEF02a) state.theTile02 += "${wordsBEF02a}"
 		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) state.theTile02 += "${wordsAFT02a}"
 		
-		state.theTile02 += "</td><td style='${state.style02b}color:${color02b};font-size:${fontSize02b}px;width: ${secWidth02b}%;'>"
+		state.theTile02 += "<td style='text-align:${align02b};color:${color02b};font-size:${fontSize02b}px;width: ${secWidth02b}%;'>"
 		if(wordsBEF02b) state.theTile02 += "${wordsBEF02b}"
 		if(state.deviceStatus02b) state.theTile02 += "${state.deviceStatus02b}"
 		if(wordsAFT02b) state.theTile02 += "${wordsAFT02b}"
 		
-		state.theTile02 += "</td></tr></table>"
+		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else {
         state.theTile02 = ""
@@ -843,7 +836,6 @@ def tileHandler03(){
 	if(words03a == null) words03a = ""
 	if(words03b == null) words03b = ""
 	if(nSections03 == "1" || nSections03 == "2" || nSections03 == "3") {
-		state.style03 = "text-align:${align03};"
 		if(line03) state.style03 += "text-decoration:${line03};"
 		if(bold03) state.style03 += "font-weight:bold;"
 		if(italic03) state.style03 += "font-style:italic;"
@@ -860,7 +852,6 @@ def tileHandler03(){
 		} else state.deviceStatus03 = ""
 	}
 	if(nSections03 == "2" || nSections03 == "3") {
-		state.style03a = "text-align:${align03a};"
 		if(device03a) {
 			state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 			if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
@@ -874,7 +865,6 @@ def tileHandler03(){
 		} else state.deviceStatus03a = ""
 	}
 	if(nSections03 == "3") {
-		state.style03b = "text-align:${align03b};"
 		if(device03b) {
 			state.deviceStatus03b = device03b.currentValue("${deviceAtts03b}")
 			if(state.deviceStatus03b == null) state.deviceStatus03b = "No Data"
@@ -891,43 +881,43 @@ def tileHandler03(){
 // ***** Make the table for line 3	*****
 	
 	if(nSections03 == "1") {
-		state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
+		state.theTile03 = "<table width='${tableWidth}px'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
 		
-		state.theTile03 += "</td></tr></table>"
+		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "2") {
-		state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
+		state.theTile03 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
 		
-		state.theTile03 += "</td><td style='${state.style03a}color:${color03a};font-size:${fontSize03a}px;width: ${secWidth03a}%;'>"
+		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width: ${secWidth03a}%;'>"
 		if(wordsBEF03a) state.theTile03 += "${wordsBEF03a}"
 		if(state.deviceStatus03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) state.theTile03 += "${wordsAFT03a}"
 		
-		state.theTile03 += "</td></tr></table>"
+		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "3") {
-		state.theTile03 = "<table width='${tableWidth}'><tr><td style='${state.style03}color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
+		state.theTile03 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
 		
-		state.theTile03 += "</td><td style='${state.style03a}color:${color03a};font-size:${fontSize03a}px;width: ${secWidth03a}%;'>"
+		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width: ${secWidth03a}%;'>"
 		if(wordsBEF03a) state.theTile03 += "${wordsBEF03a}"
 		if(state.deviceStatus03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) state.theTile03 += "${wordsAFT03a}"
 		
-		state.theTile03 += "</td><td style='${state.style03b}color:${color03b};font-size:${fontSize03b}px;width: ${secWidth03b}%;'>"
+		state.theTile03 += "<td style='text-align:${align03b};color:${color03b};font-size:${fontSize03b}px;width: ${secWidth03b}%;'>"
 		if(wordsBEF03b) state.theTile03 += "${wordsBEF03b}"
 		if(state.deviceStatus03b) state.theTile03 += "${state.deviceStatus03b}"
 		if(wordsAFT03b) state.theTile03 += "${wordsAFT03b}"
 		
-		state.theTile03 += "</td></tr></table>"
+		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else {
         state.theTile03 = ""
@@ -946,10 +936,6 @@ def tileHandler04(){
 	if(words04a == null) words04a = ""
 	if(words04b == null) words04b = ""
 	if(nSections04 == "1" || nSections04 == "2" || nSections04 == "3") {
-		state.style04 = "text-align:${align04};"
-		if(line04) state.style04 += "text-decoration:${line04};"
-		if(bold04) state.style04 += "font-weight:bold;"
-		if(italic04) state.style04 += "font-style:italic;"
 		if(device04) {
 			state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 			if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
@@ -963,7 +949,6 @@ def tileHandler04(){
 		} else state.deviceStatus04 = ""
 	}
 	if(nSections04 == "2" || nSections04 == "3") {
-		state.style04a = "text-align:${align04a};"
 		if(device04a) {
 			state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 			if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
@@ -977,7 +962,6 @@ def tileHandler04(){
 		} else state.deviceStatus04a = ""
 	}
 	if(nSections04 == "3") {
-		state.style04b = "text-align:${align04b};"
 		if(device04b) {
 			state.deviceStatus04b = device04b.currentValue("${deviceAtts04b}")
 			if(state.deviceStatus04b == null) state.deviceStatus04b = "No Data"
@@ -994,43 +978,43 @@ def tileHandler04(){
 // ***** Make the table for line 4	*****
 	
 	if(nSections04 == "1") {
-		state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"	// 61 + 12 + 17 (100)
+		state.theTile04 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"	// 61 + 12 + 17 (100)
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
 		
-		state.theTile04 += "</td></tr></table>"		// 18
+		state.theTile04 += "</table>"		// 18
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "2") {
-		state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
+		state.theTile04 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
 		
-		state.theTile04 += "</td><td style='${state.style04a}color:${color04a};font-size:${fontSize04a}px;width: ${secWidth04a}%;'>"
+		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width: ${secWidth04a}%;'>"
 		if(wordsBEF04a) state.theTile04 += "${wordsBEF04a}"
 		if(state.deviceStatus04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) state.theTile04 += "${wordsAFT04a}"
 		
-		state.theTile04 += "</td></tr></table>"
+		state.theTile04 += "</table>"
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "3") {
-		state.theTile04 = "<table width='${tableWidth}'><tr><td style='${state.style04}color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
+		state.theTile04 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
 		
-		state.theTile04 += "</td><td style='${state.style04a}color:${color04a};font-size:${fontSize04a}px;width: ${secWidth04a}%;'>"
+		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width: ${secWidth04a}%;'>"
 		if(wordsBEF04a) state.theTile04 += "${wordsBEF04a}"
 		if(state.deviceStatus04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) state.theTile04 += "${wordsAFT04a}"
 		
-		state.theTile04 += "</td><td style='${state.style04b}color:${color04b};font-size:${fontSize04b}px;width: ${secWidth04b}%;'>"
+		state.theTile04 += "<td style='text-align:${align04b};color:${color04b};font-size:${fontSize04b}px;width: ${secWidth04b}%;'>"
 		if(wordsBEF04b) state.theTile04 += "${wordsBEF04b}"
 		if(state.deviceStatus04b) state.theTile04 += "${state.deviceStatus04b}"
 		if(wordsAFT04b) state.theTile04 += "${wordsAFT04b}"
 		
-		state.theTile04 += "</td></tr></table>"
+		state.theTile04 += "</table>"
 		state.theTileLength04 = state.theTile04.length()
 	} else {
         state.theTile04 = ""
@@ -1049,10 +1033,6 @@ def tileHandler05(){
 	if(words05a == null) words05a = ""
 	if(words05b == null) words05b = ""
 	if(nSections05 == "1" || nSections05 == "2" || nSections05 == "3") {
-		state.style05 = "text-align:${align05};"
-		if(line05) state.style05 += "text-decoration:${line05};"
-		if(bold05) state.style05 += "font-weight:bold;"
-		if(italic05) state.style05 += "font-style:italic;"
 		if(device05) {
 			state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 			if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
@@ -1066,7 +1046,6 @@ def tileHandler05(){
 		} else state.deviceStatus05 = ""
 	}
 	if(nSections05 == "2" || nSections05 == "3") {
-		state.style05a = "text-align:${align05a};"
 		if(device05a) {
 			state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 			if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
@@ -1080,7 +1059,6 @@ def tileHandler05(){
 		} else state.deviceStatus05a = ""
 	}
 	if(nSections05 == "3") {
-		state.style05b = "text-align:${align05b};"
 		if(device05b) {
 			state.deviceStatus05b = device05b.currentValue("${deviceAtts05b}")
 			if(state.deviceStatus05b == null) state.deviceStatus05b = "No Data"
@@ -1097,43 +1075,43 @@ def tileHandler05(){
 // ***** Make the table for line 5	*****
 	
 	if(nSections05 == "1") {
-		state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
+		state.theTile05 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
 		
-		state.theTile05 += "</td></tr></table>"
+		state.theTile05 += "></table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "2") {
-		state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
+		state.theTile05 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
 		
-		state.theTile05 += "</td><td style='${state.style05a}color:${color05a};font-size:${fontSize05a}px;width: ${secWidth05a}%;'>"
+		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width: ${secWidth05a}%;'>"
 		if(wordsBEF05a) state.theTile05 += "${wordsBEF05a}"
 		if(state.deviceStatus05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) state.theTile05 += "${wordsAFT05a}"
 		
-		state.theTile05 += "</td></tr></table>"
+		state.theTile05 += "</table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "3") {
-		state.theTile05 = "<table width='${tableWidth}'><tr><td style='${state.style05}color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
+		state.theTile05 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
 		
-		state.theTile05 += "</td><td style='${state.style05a}color:${color05a};font-size:${fontSize05a}px;width: ${secWidth05a}%;'>"
+		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width: ${secWidth05a}%;'>"
 		if(wordsBEF05a) state.theTile05 += "${wordsBEF05a}"
 		if(state.deviceStatus05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) state.theTile05 += "${wordsAFT05a}"
 		
-		state.theTile05 += "</td><td style='${state.style05b}color:${color05b};font-size:${fontSize05b}px;width: ${secWidth05b}%;'>"
+		state.theTile05 += "<td style='text-align:${align05b};color:${color05b};font-size:${fontSize05b}px;width: ${secWidth05b}%;'>"
 		if(wordsBEF05b) state.theTile05 += "${wordsBEF05b}"
 		if(state.deviceStatus05b) state.theTile05 += "${state.deviceStatus05b}"
 		if(wordsAFT05b) state.theTile05 += "${wordsAFT05b}"
 		
-		state.theTile05 += "</td></tr></table>"
+		state.theTile05 += "</table>"
 		state.theTileLength05 = state.theTile05.length()
     } else {
         state.theTile05 = ""
@@ -1155,32 +1133,44 @@ def sampleTileHandler(evt){
 	section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
         paragraph "For testing purposes only..."
         input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true
+        
 		if(state.theTile01 && !state.theTile02) {
-			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}</td></tr></table>"
+            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && !state.theTile03) {
-            paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}</td></tr></table>"
+            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && !state.theTile04) {
-			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}</td></tr></table>"
+			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && state.theTile04 && !state.theTile05) {
-			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}</td></tr></table>"
+			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && state.theTile04 && state.theTile05) {
-			paragraph "<table style='background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</td></tr></table>"
+			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</table>"
 		}
 		
-		if(logEnable) log.debug "In sampleTileHandler - theTileLength01: ${state.theTileLength01} - tTL02: ${state.theTileLength02} - tTL03: ${state.theTileLength03} - tTL04: ${state.theTileLength04} - tTL05: ${state.theTileLength05}"
-		int tileLength01 = state.theTileLength01 + 20
-		int tileLength02 = state.theTileLength02 + 20
-		int tileLength03 = state.theTileLength03 + 20
-		int tileLength04 = state.theTileLength04 + 20
-		int tileLength05 = state.theTileLength05 + 20
-		
+		log.debug "In sampleTileHandler - theTileLength01: ${state.theTileLength01} - tTL02: ${state.theTileLength02} - tTL03: ${state.theTileLength03} - tTL04: ${state.theTileLength04} - tTL05: ${state.theTileLength05}"
+		int tileLength01 = state.theTileLength01 + 8
+		int tileLength02 = state.theTileLength02 + 8
+		int tileLength03 = state.theTileLength03 + 8
+		int tileLength04 = state.theTileLength04 + 8
+        int tileLength05 = state.theTileLength05 + 8
+        int tableLength = 15
+        
+        try {
+            totalLength = tableLength
+            if(state.theTile01) totalLength = totalLength + tileLength01
+            if(state.theTile02) totalLength = totalLength + tileLength02
+            if(state.theTile03) totalLength = totalLength + tileLength03
+            if(state.theTile04) totalLength = totalLength + tileLength04
+            if(state.theTile05) totalLength = totalLength + tileLength05
+        } catch(e) {
+            log.error "Tile Master - Something went wrong. ${e}"
+        }
+
 		if(logEnable) log.debug "In sampleTileHandler - tileLength01: ${tileLength01} - tL02: ${tileLength02} - tL03: ${tileLength03} - tL04: ${tileLength04} - tL05: ${tileLength05}"
-		
-		int totalLength = tileLength01 + tileLength02 + tileLength03 + tileLength04 + tileLength05
+
         paragraph "<hr>"
 		paragraph "Characters - Line 1: ${tileLength01} - Line 2: ${tileLength02} - Line 3: ${tileLength03} - Line 4: ${tileLength04} - Line 5: ${tileLength05}<br>* This is only an estimate. Actual character count can be found in the tile device."
 		if(totalLength <= 1024) {
@@ -1194,13 +1184,13 @@ def sampleTileHandler(evt){
 
 def makeTile() {
     if(logEnable) log.debug "In makeTile"
-    tileData = "<table align='center'>"  // 21
-    if(state.theTile01) tileData +="<tr><td>${state.theTile01}</td></tr>"    // 18
-    if(state.theTile02) tileData +="<tr><td>${state.theTile02}</td></tr>"
-    if(state.theTile03) tileData +="<tr><td>${state.theTile03}</td></tr>"
-    if(state.theTile04) tileData +="<tr><td>${state.theTile04}</td></tr>"
-    if(state.theTile05) tileData +="<tr><td>${state.theTile05}</td></tr>"
-    tileData +="</table>"    // 8
+    tileData = "<table>"  // 7
+    if(state.theTile01) tileData +="<tr><td>${state.theTile01}"    // 8
+    if(state.theTile02) tileData +="<tr><td>${state.theTile02}"
+    if(state.theTile03) tileData +="<tr><td>${state.theTile03}"
+    if(state.theTile04) tileData +="<tr><td>${state.theTile04}"
+    if(state.theTile05) tileData +="<tr><td>${state.theTile05}"
+    tileData +="</table>"    // 8  total: 56
     if(logEnable) log.debug "${tileData}"
     if(tileDevice) {
         tileDevice.sendTile01(tileData)
