@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
  *  V2.0.2 - 09/21/19 - Added device value color options
  *  V2.0.1 - 09/20/19 - Initial release.
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -45,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterParentVersion"
-	state.version = "v2.0.2"
+	state.version = "v2.0.3"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -140,8 +141,18 @@ def mainPage() {
                 
                 input "colorPresent", "text", title: "<span style='color: ${colorPresent};font-size: 25px'>present</span>", submitOnChange: true, width: 6
                 input "colorNotPresent", "text", title: "<span style='color: ${colorNotPresent};font-size: 25px'>not present</span>", submitOnChange: true, width: 6
-                paragraph "<hr>"
-                paragraph "Still working on Temps and Battery Lvl"
+                
+                paragraph "<b>Temperature Options</b>"
+                input "colorT0to40", "text", title: "<span style='color: ${colorT0to40};font-size: 25px'>Temp <= 40</span>", submitOnChange: true, width: 4
+                input "colorT41to70", "text", title: "<span style='color: ${colorT41to70};font-size: 25px'>Temp 41 to 70</span>", submitOnChange: true, width: 4
+                input "colorT71to100", "text", title: "<span style='color: ${colorT71to100};font-size: 25px'>Temp >= 71</span>", submitOnChange: true, width: 4
+                
+                paragraph "<b>Battery Level Options</b>"
+                input "colorB0to40", "text", title: "<span style='color: ${colorB0to40};font-size: 25px'>Batt Lvl <= 40</span>", submitOnChange: true, width: 4
+                input "colorB41to70", "text", title: "<span style='color: ${colorB41to70};font-size: 25px'>Batt Lvl 41 to 70</span>", submitOnChange: true, width: 4
+                input "colorB71to100", "text", title: "<span style='color: ${colorB71to100};font-size: 25px'>Batt Lvl >= 71</span>", submitOnChange: true, width: 4
+                
+                
             }
 			display()
 		}
