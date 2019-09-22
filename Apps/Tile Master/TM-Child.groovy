@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
  *  V2.0.2 - 09/21/19 - Added background colors to sample tile, Added preview to section buttons on main screen, Added device value
 color options to each device selection section, Lots of little adjustments
  *  V2.0.1 - 09/20/19 - Initial release.
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.2"
+	state.version = "v2.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -647,7 +648,8 @@ def tileHandler01(){
 			state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
             if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
             if(useColors01) {
-                getStatusColors(state.deviceStatus01)
+                deviceStatus01 = state.deviceStatus01
+                getStatusColors(deviceStatus01, deviceAtts01)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler01 - Received: ${deviceStatus1}"
                 state.deviceStatus01 = deviceStatus1
@@ -660,7 +662,8 @@ def tileHandler01(){
 			state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 			if(state.deviceStatus01a == null) state.deviceStatus01a = "No Data"
             if(useColors01a) {
-                getStatusColors(state.deviceStatus01a)
+                deviceStatus01a = state.deviceStatus01a
+                getStatusColors(deviceStatus01a, deviceAtts01a)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler01a - Received: ${deviceStatus1}"
                 state.deviceStatus01a = deviceStatus1
@@ -673,7 +676,8 @@ def tileHandler01(){
 			state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
 			if(state.deviceStatus01b == null) state.deviceStatus01b = "No Data"
             if(useColors01b) {
-                getStatusColors(state.deviceStatus01b)
+                deviceStatus01b = state.deviceStatus01b
+                getStatusColors(deviceStatus01b, deviceAtts01b)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler01b - Received: ${deviceStatus1}"
                 state.deviceStatus01b = deviceStatus1
@@ -744,7 +748,8 @@ def tileHandler02(){
 			state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 			if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
             if(useColors02) {
-                getStatusColors(state.deviceStatus02)
+                deviceStatus02 = state.deviceStatus02
+                getStatusColors(deviceStatus02, deviceAtts02)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler02 - Received: ${deviceStatus1}"
                 state.deviceStatus02 = deviceStatus1
@@ -757,7 +762,8 @@ def tileHandler02(){
 			state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 			if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
             if(useColors02a) {
-                getStatusColors(state.deviceStatus02a)
+                deviceStatus02a = state.deviceStatus02a
+                getStatusColors(deviceStatus02a, deviceAtts02a)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler02a - Received: ${deviceStatus1}"
                 state.deviceStatus02a = deviceStatus1
@@ -770,7 +776,8 @@ def tileHandler02(){
 			state.deviceStatus02b = device02b.currentValue("${deviceAtts02b}")
 			if(state.deviceStatus02b == null) state.deviceStatus02b = "No Data"
             if(useColors02b) {
-                getStatusColors(state.deviceStatus02b)
+                deviceStatus02b = state.deviceStatus02b
+                getStatusColors(deviceStatus02b, deviceAtts02b)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler02b - Received: ${deviceStatus1}"
                 state.deviceStatus02b = deviceStatus1
@@ -844,7 +851,8 @@ def tileHandler03(){
 			state.deviceStatus03 = device03.currentValue("${deviceAtts03}")
 			if(state.deviceStatus03 == null) state.deviceStatus03 = "No Data"
             if(useColors03) {
-                getStatusColors(state.deviceStatus03)
+                deviceStatus03 = state.deviceStatus03
+                getStatusColors(deviceStatus03, deviceAtts03)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler03 - Received: ${deviceStatus1}"
                 state.deviceStatus03 = deviceStatus1
@@ -857,7 +865,8 @@ def tileHandler03(){
 			state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 			if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
             if(useColors03a) {
-                getStatusColors(state.deviceStatus03a)
+                deviceStatus03a = state.deviceStatus03a
+                getStatusColors(deviceStatus03a, deviceAtts03a)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler03a - Received: ${deviceStatus1}"
                 state.deviceStatus03a = deviceStatus1
@@ -870,7 +879,8 @@ def tileHandler03(){
 			state.deviceStatus03b = device03b.currentValue("${deviceAtts03b}")
 			if(state.deviceStatus03b == null) state.deviceStatus03b = "No Data"
             if(useColors03b) {
-                getStatusColors(state.deviceStatus03b)
+                deviceStatus03b = state.deviceStatus03b
+                getStatusColors(deviceStatus03b, deviceAtts03b)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler03b - Received: ${deviceStatus1}"
                 state.deviceStatus03b = deviceStatus1
@@ -944,7 +954,8 @@ def tileHandler04(){
 			state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 			if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
             if(useColors04) {
-                getStatusColors(state.deviceStatus04)
+                deviceStatus04 = state.deviceStatus04
+                getStatusColors(deviceStatus04, deviceAtts04)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler04 - Received: ${deviceStatus1}"
                 state.deviceStatus04 = deviceStatus1
@@ -957,7 +968,8 @@ def tileHandler04(){
 			state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 			if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
             if(useColors04a) {
-                getStatusColors(state.deviceStatus04a)
+                deviceStatus04a = state.deviceStatus04a
+                getStatusColors(deviceStatus04a, deviceAtts04a)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler04a - Received: ${deviceStatus1}"
                 state.deviceStatus04a = deviceStatus1
@@ -970,7 +982,8 @@ def tileHandler04(){
 			state.deviceStatus04b = device04b.currentValue("${deviceAtts04b}")
 			if(state.deviceStatus04b == null) state.deviceStatus04b = "No Data"
             if(useColors04b) {
-                getStatusColors(state.deviceStatus04b)
+                deviceStatus04b = state.deviceStatus04b
+                getStatusColors(deviceStatus04b, deviceAtts04b)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler04b - Received: ${deviceStatus1}"
                 state.deviceStatus04b = deviceStatus1
@@ -1044,7 +1057,8 @@ def tileHandler05(){
 			state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 			if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
             if(useColors05) {
-                getStatusColors(state.deviceStatus05)
+                deviceStatus05 = state.deviceStatus05
+                getStatusColors(deviceStatus05, deviceAtts05)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler05 - Received: ${deviceStatus1}"
                 state.deviceStatus05 = deviceStatus1
@@ -1057,7 +1071,8 @@ def tileHandler05(){
 			state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 			if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
             if(useColors05a) {
-                getStatusColors(state.deviceStatus05a)
+                deviceStatus05a = state.deviceStatus05a
+                getStatusColors(deviceStatus05a, deviceAtts05a)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler05a - Received: ${deviceStatus1}"
                 state.deviceStatus05a = deviceStatus1
@@ -1070,7 +1085,8 @@ def tileHandler05(){
 			state.deviceStatus05b = device05b.currentValue("${deviceAtts05b}")
 			if(state.deviceStatus05b == null) state.deviceStatus05b = "No Data"
             if(useColors05b) {
-                getStatusColors(state.deviceStatus05b)
+                deviceStatus05b = state.deviceStatus05b
+                getStatusColors(deviceStatus05b, deviceAtts05b)
                 pauseExecution(500)
                 if(logEnable) log.debug "In tileHandler05b - Received: ${deviceStatus1}"
                 state.deviceStatus05b = deviceStatus1
@@ -1192,8 +1208,19 @@ def makeTile() {
     }
 }
 
-def getStatusColors(deviceStatus) {
-    if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceStatus}"
+def getStatusColors(deviceStatus,deviceAtts) {
+    if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceAtts} - ${deviceStatus}"
+    
+    if(deviceAtts) {
+        if((deviceAtts.toLowerCase() == "temperature") && (deviceStatus <= 40)) deviceStatus1 = "<span style='color: ${parent.colorT0to40};'>${deviceStatus}</span>"
+        if((deviceAtts.toLowerCase() == "temperature") && (deviceStatus > 41 && deviceStatus < 71)) deviceStatus1 = "<span style='color: ${parent.colorT41to70};'>${deviceStatus}</span>"
+        if((deviceAtts.toLowerCase() == "temperature") && (deviceStatus >= 71)) deviceStatus1 = "<span style='color: ${parent.colorT71to100};'>${deviceStatus}</span>"
+    
+        if((deviceAtts.toLowerCase() == "battery") && (deviceStatus <= 40)) deviceStatus1 = "<span style='color: ${parent.colorB0to40};'>${deviceStatus}</span>"
+        if((deviceAtts.toLowerCase() == "battery") && (deviceStatus > 41 && deviceStatus < 71)) deviceStatus1 = "<span style='color: ${parent.colorB41to70};'>${deviceStatus}</span>"
+        if((deviceAtts.toLowerCase() == "battery") && (deviceStatus >= 71)) deviceStatus1 = "<span style='color: ${parent.colorB71to100};'>${deviceStatus}</span>"
+    }
+    
     if(deviceStatus == "on") deviceStatus1 = "<span style='color: ${parent.colorOn};'>on</span>"
     if(deviceStatus == "off") deviceStatus1 = "<span style='color: ${parent.colorOff};'>off</span>"
     
@@ -1210,7 +1237,7 @@ def getStatusColors(deviceStatus) {
     if(deviceStatus == "not present") deviceStatus1 = "<span style='color: ${parent.colorNotPresent};'>not present</span>"
     
     
-    if(logEnable) log.debug "In getStatusColors (${state.version}) - Returning: ${deviceStatus1}"
+    if(logEnable) log.debug "In getStatusColors - Returning: ${deviceStatus1}"
     return deviceStatus1
 }
 
