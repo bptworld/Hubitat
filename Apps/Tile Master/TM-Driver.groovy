@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 09/22/19 - Removed 'Font Size', Also added new attribute: lastUpdated, removed several 'state.*'
  *  V2.0.1 - 09/20/19 - Initial release.
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.0 - 02/16/19 - Initially started working on this concept but never released.
@@ -45,7 +46,7 @@
 
 def setVersion(){
     appName = "TileMasterDriver"
-	version = "v2.0.1" 
+	version = "v2.0.2" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -63,13 +64,13 @@ metadata {
 		
     	attribute "tile01", "string"
         attribute "tile01Count", "number"
+        attribute "lastUpdated", "string"
         
         attribute "dwDriverInfo", "string"
         command "updateVersion"
 	}
 	preferences() {    	
         section(""){
-			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
         }
     }
@@ -77,13 +78,16 @@ metadata {
 	
 def sendTile01(tile1) {
     if(logEnable) log.debug "In Tile Master Driver - Received new data!"
-    state.device1 = tile1
-	state.device1Count = state.device1.length()
-	if(state.device1Count <= 1024) {
-		if(logEnable) log.debug "device1 - has ${state.device1Count} Characters<br>${state.device1}"
+    device1 = tile1
+	device1Count = device1.length()
+	if(device1Count <= 1024) {
+		if(logEnable) log.debug "device1 - has ${device1Count} Characters<br>${device1}"
 	} else {
-		state.device1 = "Too many characters to display on Dashboard (${state.device1Count})"
+		device1 = "Too many characters to display on Dashboard (${device1Count})"
 	}
-	sendEvent(name: "tile01", value: state.device1, displayed: true)
-    sendEvent(name: "tile01Count", value: state.device1Count, displayed: true)
+	sendEvent(name: "tile01", value: device1, displayed: true)
+    sendEvent(name: "tile01Count", value: device1Count, displayed: true)
+    
+    lastUpdated = new Date()
+    sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
 }
