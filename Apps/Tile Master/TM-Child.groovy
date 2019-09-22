@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.5 - 09/22/19 - Table spacing enhancements
  *  V2.0.4 - 09/22/19 - Code changes to make the html footprint smaller (less of a hit to the character count)
  *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Level
  *  V2.0.2 - 09/21/19 - Added background colors to sample tile, Added preview to section buttons on main screen, Added device value
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.4"
+	state.version = "v2.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -94,9 +95,6 @@ def pageConfig() {
 			href "line03Options", title:"Line 3 Options - Click Here", description:"Preview: ${state.theTile03}"
 			href "line04Options", title:"Line 4 Options - Click Here", description:"Preview: ${state.theTile04}"
 			href "line05Options", title:"Line 5 Options - Click Here", description:"Preview: ${state.theTile05}"
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Global Table Options")) {
-            input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {
             input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: true, multiple: false)
@@ -684,7 +682,7 @@ def tileHandler01(){
 // ***** Make the table for line 1	*****
 	
 	if(nSections01 == "1") {
-        state.theTile01 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
+        state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
@@ -692,7 +690,7 @@ def tileHandler01(){
 		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "2") {
-		state.theTile01 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
+		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
@@ -705,7 +703,7 @@ def tileHandler01(){
 		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "3") {
-		state.theTile01 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
+		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%;'>"
 		if(wordsBEF01) state.theTile01 += "${wordsBEF01}"
 		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) state.theTile01 += "${wordsAFT01}"
@@ -781,7 +779,7 @@ def tileHandler02(){
 // ***** Make the table for line 2	*****
 	
 	if(nSections02 == "1") {
-		state.theTile02 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
+		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
@@ -789,12 +787,12 @@ def tileHandler02(){
 		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "2") {
-		state.theTile02 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
+		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
 		
-		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width: ${secWidth02a}%;'>"
+		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%;'>"
 		if(wordsBEF02a) state.theTile02 += "${wordsBEF02a}"
 		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) state.theTile02 += "${wordsAFT02a}"
@@ -802,17 +800,17 @@ def tileHandler02(){
 		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "3") {
-		state.theTile02 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width: ${secWidth02}%;'>"
+		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%;'>"
 		if(wordsBEF02) state.theTile02 += "${wordsBEF02}"
 		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) state.theTile02 += "${wordsAFT02}"
 		
-		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width: ${secWidth02a}%;'>"
+		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%;'>"
 		if(wordsBEF02a) state.theTile02 += "${wordsBEF02a}"
 		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) state.theTile02 += "${wordsAFT02a}"
 		
-		state.theTile02 += "<td style='text-align:${align02b};color:${color02b};font-size:${fontSize02b}px;width: ${secWidth02b}%;'>"
+		state.theTile02 += "<td style='text-align:${align02b};color:${color02b};font-size:${fontSize02b}px;width:${secWidth02b}%;'>"
 		if(wordsBEF02b) state.theTile02 += "${wordsBEF02b}"
 		if(state.deviceStatus02b) state.theTile02 += "${state.deviceStatus02b}"
 		if(wordsAFT02b) state.theTile02 += "${wordsAFT02b}"
@@ -881,7 +879,7 @@ def tileHandler03(){
 // ***** Make the table for line 3	*****
 	
 	if(nSections03 == "1") {
-		state.theTile03 = "<table width='${tableWidth}px'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
+		state.theTile03 = "<table width='100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
@@ -889,12 +887,12 @@ def tileHandler03(){
 		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "2") {
-		state.theTile03 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
+		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
 		
-		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width: ${secWidth03a}%;'>"
+		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%;'>"
 		if(wordsBEF03a) state.theTile03 += "${wordsBEF03a}"
 		if(state.deviceStatus03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) state.theTile03 += "${wordsAFT03a}"
@@ -902,17 +900,17 @@ def tileHandler03(){
 		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "3") {
-		state.theTile03 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width: ${secWidth03}%;'>"
+		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%;'>"
 		if(wordsBEF03) state.theTile03 += "${wordsBEF03}"
 		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) state.theTile03 += "${wordsAFT03}"
 		
-		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width: ${secWidth03a}%;'>"
+		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%;'>"
 		if(wordsBEF03a) state.theTile03 += "${wordsBEF03a}"
 		if(state.deviceStatus03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) state.theTile03 += "${wordsAFT03a}"
 		
-		state.theTile03 += "<td style='text-align:${align03b};color:${color03b};font-size:${fontSize03b}px;width: ${secWidth03b}%;'>"
+		state.theTile03 += "<td style='text-align:${align03b};color:${color03b};font-size:${fontSize03b}px;width:${secWidth03b}%;'>"
 		if(wordsBEF03b) state.theTile03 += "${wordsBEF03b}"
 		if(state.deviceStatus03b) state.theTile03 += "${state.deviceStatus03b}"
 		if(wordsAFT03b) state.theTile03 += "${wordsAFT03b}"
@@ -978,7 +976,7 @@ def tileHandler04(){
 // ***** Make the table for line 4	*****
 	
 	if(nSections04 == "1") {
-		state.theTile04 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"	// 61 + 12 + 17 (100)
+		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"	// 61 + 12 + 17 (100)
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
@@ -986,12 +984,12 @@ def tileHandler04(){
 		state.theTile04 += "</table>"		// 18
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "2") {
-		state.theTile04 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
+		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
 		
-		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width: ${secWidth04a}%;'>"
+		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%;'>"
 		if(wordsBEF04a) state.theTile04 += "${wordsBEF04a}"
 		if(state.deviceStatus04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) state.theTile04 += "${wordsAFT04a}"
@@ -999,17 +997,17 @@ def tileHandler04(){
 		state.theTile04 += "</table>"
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "3") {
-		state.theTile04 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width: ${secWidth04}%;'>"
+		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%;'>"
 		if(wordsBEF04) state.theTile04 += "${wordsBEF04}"
 		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) state.theTile04 += "${wordsAFT04}"
 		
-		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width: ${secWidth04a}%;'>"
+		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%;'>"
 		if(wordsBEF04a) state.theTile04 += "${wordsBEF04a}"
 		if(state.deviceStatus04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) state.theTile04 += "${wordsAFT04a}"
 		
-		state.theTile04 += "<td style='text-align:${align04b};color:${color04b};font-size:${fontSize04b}px;width: ${secWidth04b}%;'>"
+		state.theTile04 += "<td style='text-align:${align04b};color:${color04b};font-size:${fontSize04b}px;width:${secWidth04b}%;'>"
 		if(wordsBEF04b) state.theTile04 += "${wordsBEF04b}"
 		if(state.deviceStatus04b) state.theTile04 += "${state.deviceStatus04b}"
 		if(wordsAFT04b) state.theTile04 += "${wordsAFT04b}"
@@ -1075,7 +1073,7 @@ def tileHandler05(){
 // ***** Make the table for line 5	*****
 	
 	if(nSections05 == "1") {
-		state.theTile05 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
+		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
@@ -1083,12 +1081,12 @@ def tileHandler05(){
 		state.theTile05 += "></table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "2") {
-		state.theTile05 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
+		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
 		
-		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width: ${secWidth05a}%;'>"
+		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%;'>"
 		if(wordsBEF05a) state.theTile05 += "${wordsBEF05a}"
 		if(state.deviceStatus05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) state.theTile05 += "${wordsAFT05a}"
@@ -1096,17 +1094,17 @@ def tileHandler05(){
 		state.theTile05 += "</table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "3") {
-		state.theTile05 = "<table style='width:${tableWidth}px'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width: ${secWidth05}%;'>"
+		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%;'>"
 		if(wordsBEF05) state.theTile05 += "${wordsBEF05}"
 		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) state.theTile05 += "${wordsAFT05}"
 		
-		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width: ${secWidth05a}%;'>"
+		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%;'>"
 		if(wordsBEF05a) state.theTile05 += "${wordsBEF05a}"
 		if(state.deviceStatus05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) state.theTile05 += "${wordsAFT05a}"
 		
-		state.theTile05 += "<td style='text-align:${align05b};color:${color05b};font-size:${fontSize05b}px;width: ${secWidth05b}%;'>"
+		state.theTile05 += "<td style='text-align:${align05b};color:${color05b};font-size:${fontSize05b}px;width:${secWidth05b}%;'>"
 		if(wordsBEF05b) state.theTile05 += "${wordsBEF05b}"
 		if(state.deviceStatus05b) state.theTile05 += "${state.deviceStatus05b}"
 		if(wordsAFT05b) state.theTile05 += "${wordsAFT05b}"
@@ -1132,22 +1130,23 @@ def sampleTileHandler(evt){
 	if(logEnable) log.debug "In sampleTileHandler - Back in sampleTileHandler"
 	section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
         paragraph "For testing purposes only..."
-        input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true
+        input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true, width: 6
+        input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
         
 		if(state.theTile01 && !state.theTile02) {
-            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}</table>"
+            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${state.theTile01}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && !state.theTile03) {
-            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}</table>"
+            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${state.theTile01}${state.theTile02}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && !state.theTile04) {
-			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}</table>"
+            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && state.theTile04 && !state.theTile05) {
-			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}</table>"
+			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}</table>"
 		}
 		if(state.theTile01 && state.theTile02 && state.theTile03 && state.theTile04 && state.theTile05) {
-			paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border: 1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</table>"
+			paragraph "<table style='width:1${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</table>"
 		}
 		
 		log.debug "In sampleTileHandler - theTileLength01: ${state.theTileLength01} - tTL02: ${state.theTileLength02} - tTL03: ${state.theTileLength03} - tTL04: ${state.theTileLength04} - tTL05: ${state.theTileLength05}"
@@ -1156,7 +1155,7 @@ def sampleTileHandler(evt){
 		int tileLength03 = state.theTileLength03 + 8
 		int tileLength04 = state.theTileLength04 + 8
         int tileLength05 = state.theTileLength05 + 8
-        int tableLength = 15
+        int tableLength = 34
         
         try {
             totalLength = tableLength
@@ -1184,13 +1183,13 @@ def sampleTileHandler(evt){
 
 def makeTile() {
     if(logEnable) log.debug "In makeTile"
-    tileData = "<table>"  // 7
+    tileData = "<table style='width:100%'>"  // 26
     if(state.theTile01) tileData +="<tr><td>${state.theTile01}"    // 8
     if(state.theTile02) tileData +="<tr><td>${state.theTile02}"
     if(state.theTile03) tileData +="<tr><td>${state.theTile03}"
     if(state.theTile04) tileData +="<tr><td>${state.theTile04}"
     if(state.theTile05) tileData +="<tr><td>${state.theTile05}"
-    tileData +="</table>"    // 8  total: 56
+    tileData +="</table>"    // 8  total: 75
     if(logEnable) log.debug "${tileData}"
     if(tileDevice) {
         tileDevice.sendTile01(tileData)
@@ -1204,33 +1203,33 @@ def getStatusColors(deviceStatus,deviceAtts) {
     if(deviceAtts.toLowerCase() == "temperature") {
         tempLow = parent.tempLow.toInteger()
         tempHigh = parent.tempHigh.toInteger()
-        if(deviceStatus <= tempLow) deviceStatus1 = "<span style='color: ${parent.colorTempLow};'>${deviceStatus}</span>"
-        if(deviceStatus > tempLow && deviceStatus < tempHigh) deviceStatus1 = "<span style='color: ${parent.colorTemp};'>${deviceStatus}</span>"
-        if(deviceStatus >= tempHigh) deviceStatus1 = "<span style='color: ${parent.colorTempHigh};'>${deviceStatus}</span>"
+        if(deviceStatus <= tempLow) deviceStatus1 = "<span style='color:${parent.colorTempLow};'>${deviceStatus}</span>"
+        if(deviceStatus > tempLow && deviceStatus < tempHigh) deviceStatus1 = "<span style='color:${parent.colorTemp};'>${deviceStatus}</span>"
+        if(deviceStatus >= tempHigh) deviceStatus1 = "<span style='color:${parent.colorTempHigh};'>${deviceStatus}</span>"
     }
     
     if(deviceAtts.toLowerCase() == "battery") {
         battLow = parent.battLow.toInteger()
         battHigh = parent.battHigh.toInteger()
-        if(deviceStatus <= battLow) deviceStatus1 = "<span style='color: ${parent.colorBattLow};'>${deviceStatus}</span>"
-        if(deviceStatus > battLow && deviceStatus < battHigh) deviceStatus1 = "<span style='color: ${parent.colorBatt};'>${deviceStatus}</span>"
-        if(deviceStatus >= battHigh) deviceStatus1 = "<span style='color: ${parent.colorBattHigh};'>${deviceStatus}</span>"
+        if(deviceStatus <= battLow) deviceStatus1 = "<span style='color:${parent.colorBattLow};'>${deviceStatus}</span>"
+        if(deviceStatus > battLow && deviceStatus < battHigh) deviceStatus1 = "<span style='color:${parent.colorBatt};'>${deviceStatus}</span>"
+        if(deviceStatus >= battHigh) deviceStatus1 = "<span style='color:${parent.colorBattHigh};'>${deviceStatus}</span>"
     }
     
-    if(deviceStatus == "on") deviceStatus1 = "<span style='color: ${parent.colorOn};'>on</span>"
-    if(deviceStatus == "off") deviceStatus1 = "<span style='color: ${parent.colorOff};'>off</span>"
+    if(deviceStatus == "on") deviceStatus1 = "<span style='color:${parent.colorOn};'>on</span>"
+    if(deviceStatus == "off") deviceStatus1 = "<span style='color:${parent.colorOff};'>off</span>"
     
-    if(deviceStatus == "open") deviceStatus1 = "<span style='color: ${parent.colorOpen};'>open</span>"
-    if(deviceStatus == "closed") deviceStatus1 = "<span style='color: ${parent.colorClosed};'>closed</span>"
+    if(deviceStatus == "open") deviceStatus1 = "<span style='color:${parent.colorOpen};'>open</span>"
+    if(deviceStatus == "closed") deviceStatus1 = "<span style='color:${parent.colorClosed};'>closed</span>"
 
-    if(deviceStatus == "locked") deviceStatus1 = "<span style='color: ${parent.colorLocked};'>locked</span>"
-    if(deviceStatus == "unlocked") deviceStatus1 = "<span style='color: ${parent.colorUnlocked};'>unlocked</span>"
+    if(deviceStatus == "locked") deviceStatus1 = "<span style='color:${parent.colorLocked};'>locked</span>"
+    if(deviceStatus == "unlocked") deviceStatus1 = "<span style='color:${parent.colorUnlocked};'>unlocked</span>"
     
-    if(deviceStatus == "wet") deviceStatus1 = "<span style='color: ${parent.colorWet};'>wet</span>"
-    if(deviceStatus == "dry") deviceStatus1 = "<span style='color: ${parent.colorDry};'>dry</span>"
+    if(deviceStatus == "wet") deviceStatus1 = "<span style='color:${parent.colorWet};'>wet</span>"
+    if(deviceStatus == "dry") deviceStatus1 = "<span style='color:${parent.colorDry};'>dry</span>"
     
-    if(deviceStatus == "present") deviceStatus1 = "<span style='color: ${parent.colorPresent};'>present</span>"
-    if(deviceStatus == "not present") deviceStatus1 = "<span style='color: ${parent.colorNotPresent};'>not present</span>"
+    if(deviceStatus == "present") deviceStatus1 = "<span style='color:${parent.colorPresent};'>present</span>"
+    if(deviceStatus == "not present") deviceStatus1 = "<span style='color:${parent.colorNotPresent};'>not present</span>"
     
     
     if(logEnable) log.debug "In getStatusColors - Returning: ${deviceStatus1}"
