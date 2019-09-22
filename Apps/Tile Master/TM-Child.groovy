@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
+ *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Level
  *  V2.0.2 - 09/21/19 - Added background colors to sample tile, Added preview to section buttons on main screen, Added device value
 color options to each device selection section, Lots of little adjustments
  *  V2.0.1 - 09/20/19 - Initial release.
@@ -1211,14 +1211,20 @@ def makeTile() {
 def getStatusColors(deviceStatus,deviceAtts) {
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceAtts} - ${deviceStatus}"
     
-    if(deviceAtts) {
-        if((deviceAtts.toLowerCase() == "temperature") && (deviceStatus <= 40)) deviceStatus1 = "<span style='color: ${parent.colorT0to40};'>${deviceStatus}</span>"
-        if((deviceAtts.toLowerCase() == "temperature") && (deviceStatus > 41 && deviceStatus < 71)) deviceStatus1 = "<span style='color: ${parent.colorT41to70};'>${deviceStatus}</span>"
-        if((deviceAtts.toLowerCase() == "temperature") && (deviceStatus >= 71)) deviceStatus1 = "<span style='color: ${parent.colorT71to100};'>${deviceStatus}</span>"
+    if(deviceAtts.toLowerCase() == "temperature") {
+        tempLow = parent.tempLow.toInteger()
+        tempHigh = parent.tempHigh.toInteger()
+        if(deviceStatus <= tempLow) deviceStatus1 = "<span style='color: ${parent.colorTempLow};'>${deviceStatus}</span>"
+        if(deviceStatus > tempLow && deviceStatus < tempHigh) deviceStatus1 = "<span style='color: ${parent.colorTemp};'>${deviceStatus}</span>"
+        if(deviceStatus >= tempHigh) deviceStatus1 = "<span style='color: ${parent.colorTempHigh};'>${deviceStatus}</span>"
+    }
     
-        if((deviceAtts.toLowerCase() == "battery") && (deviceStatus <= 40)) deviceStatus1 = "<span style='color: ${parent.colorB0to40};'>${deviceStatus}</span>"
-        if((deviceAtts.toLowerCase() == "battery") && (deviceStatus > 41 && deviceStatus < 71)) deviceStatus1 = "<span style='color: ${parent.colorB41to70};'>${deviceStatus}</span>"
-        if((deviceAtts.toLowerCase() == "battery") && (deviceStatus >= 71)) deviceStatus1 = "<span style='color: ${parent.colorB71to100};'>${deviceStatus}</span>"
+    if(deviceAtts.toLowerCase() == "battery") {
+        battLow = parent.battLow.toInteger()
+        battHigh = parent.battHigh.toInteger()
+        if(deviceStatus <= battLow) deviceStatus1 = "<span style='color: ${parent.colorBattLow};'>${deviceStatus}</span>"
+        if(deviceStatus > battLow && deviceStatus < battHigh) deviceStatus1 = "<span style='color: ${parent.colorBatt};'>${deviceStatus}</span>"
+        if(deviceStatus >= battHigh) deviceStatus1 = "<span style='color: ${parent.colorBattHigh};'>${deviceStatus}</span>"
     }
     
     if(deviceStatus == "on") deviceStatus1 = "<span style='color: ${parent.colorOn};'>on</span>"
