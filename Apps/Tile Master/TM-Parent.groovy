@@ -143,14 +143,18 @@ def mainPage() {
                 input "colorNotPresent", "text", title: "<span style='color: ${colorNotPresent};font-size: 25px'>not present</span>", submitOnChange: true, width: 6
                 
                 paragraph "<b>Temperature Options</b>"
-                input "colorT0to40", "text", title: "<span style='color: ${colorT0to40};font-size: 25px'>Temp <= 40</span>", submitOnChange: true, width: 4
-                input "colorT41to70", "text", title: "<span style='color: ${colorT41to70};font-size: 25px'>Temp 41 to 70</span>", submitOnChange: true, width: 4
-                input "colorT71to100", "text", title: "<span style='color: ${colorT71to100};font-size: 25px'>Temp >= 71</span>", submitOnChange: true, width: 4
+                input "tempLow", "text", title: "Temp <= LOW", submitOnChange: true, width: 6
+                input "tempHigh", "text", title: "Temp >= HIGH", submitOnChange: true, width: 6
+                input "colorTempLow", "text", title: "<span style='color: ${colorTempLow};font-size: 25px'>Temp <= ${tempLow}</span>", submitOnChange: true, width: 4
+                input "colorTemp", "text", title: "<span style='color: ${colorTemp};font-size: 25px'>Temp Between</span>", submitOnChange: true, width: 4
+                input "colorTempHigh", "text", title: "<span style='color: ${colorTempHigh};font-size: 25px'>Temp >= ${tempHigh}</span>", submitOnChange: true, width: 4
                 
                 paragraph "<b>Battery Level Options</b>"
-                input "colorB0to40", "text", title: "<span style='color: ${colorB0to40};font-size: 25px'>Batt Lvl <= 40</span>", submitOnChange: true, width: 4
-                input "colorB41to70", "text", title: "<span style='color: ${colorB41to70};font-size: 25px'>Batt Lvl 41 to 70</span>", submitOnChange: true, width: 4
-                input "colorB71to100", "text", title: "<span style='color: ${colorB71to100};font-size: 25px'>Batt Lvl >= 71</span>", submitOnChange: true, width: 4
+                input "battLow", "text", title: "Battery <= LOW", submitOnChange: true, width: 6
+                input "battHigh", "text", title: "Battery >= HIGH", submitOnChange: true, width: 6
+                input "colorBattLow", "text", title: "<span style='color: ${colorBattLow};font-size: 25px'>Battery <= ${battLow}</span>", submitOnChange: true, width: 4
+                input "colorBatt", "text", title: "<span style='color: ${colorBatt};font-size: 25px'>Battery Between</span>", submitOnChange: true, width: 4
+                input "colorBattHigh", "text", title: "<span style='color: ${colorBattHigh};font-size: 25px'>Battery >= ${battHigh}</span>", submitOnChange: true, width: 4
                 
                 
             }
