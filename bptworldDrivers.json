@@ -65,10 +65,10 @@
   "SnapshotDriverDiscussion": "",
   "SnapshotDriverUpdateNote": "V1.1.0 - 08/28/19 - Device Watchdog compatible",
   
-  "TileMasterDriverVersion": "v2.0.1",
+  "TileMasterDriverVersion": "v2.0.2",
   "TileMasterDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Driver.groovy",
   "TileMasterDriverDiscussion": "",
-  "TileMasterDriverUpdateNote": "V2.0.1 - 09/20/19 - Initial release.",
+  "TileMasterDriverUpdateNote": "V2.0.2 - 09/22/19 - Removed 'Font Size', Also added new attribute: lastUpdated, removed several 'state.*'",
   
   "WelcomeHomeDriverVersion": "v1.0.4",
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
