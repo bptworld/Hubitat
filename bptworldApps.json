@@ -429,8 +429,8 @@
   "SnapshotDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
-  "TileMasterParentVersion": "v2.0.1",
-  "TileMasterChild1Version": "v2.0.1",
+  "TileMasterParentVersion": "v2.0.2",
+  "TileMasterChild1Version": "v2.0.2",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -444,7 +444,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.0.1 - 09/20/19 - Initial release.",
+  "TileMasterUpdateNote": "V2.0.2 - 09/21/19 - Added background colors to sample tile, Added preview to section buttons on main screen, Added device value color options to each device selection section, Lots of little adjustments",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.1",
