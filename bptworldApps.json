@@ -430,7 +430,7 @@
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "TileMasterParentVersion": "v2.0.3",
-  "TileMasterChild1Version": "v2.0.4",
+  "TileMasterChild1Version": "v2.0.5",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -444,7 +444,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.0.4 - 09/22/19 - Code changes to make the html footprint smaller (less of a hit to the character count)",
+  "TileMasterUpdateNote": "V2.0.5 - 09/22/19 - Table spacing enhancements",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.1",
