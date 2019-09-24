@@ -65,7 +65,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-child.groovy",
 )
 
 preferences {
@@ -76,8 +76,9 @@ def pageConfig() {
     dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Hub Watchdog</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
+            paragraph "Simple way to monitor if your hub is slowing down or not."
 			paragraph "<b>Notes:</b>"
-			paragraph "Simple way to monitor if your hub is slowing down or not."
+			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device you use will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
 		}
 		
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to watch")) {
@@ -109,6 +110,15 @@ def pageConfig() {
             input "ruleMachine", "enum", title: "Select which rules to run", options: rules, multiple: false
 */            
 		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
+		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
+			paragraph "<b>Want to be able to view your counts on a Dashboard? Now you can, simply follow these instructions!</b>"
+			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Hub Watchdog Tile'<br> - Use our 'Hub Watchdog Driver' as the Driver<br> - Then select this new device below"
+			paragraph "Now all you have to do is add this device to one of your dashboards to see your data on a tile!"
+			}
+		section() {
+			input(name: "sendToDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true)
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Manual Run")) {
             paragraph "Hub Watchdog is set to run once an hour. To run now, click this button"
             input "testBtn1", "button", title: "Run Test Now"
@@ -208,6 +218,12 @@ def lookingAtData() {
 
 def sendNotification() {
     if(logEnable) log.debug "In sendNotification (${state.version})"
+    
+    if(sendToDevice) {
+        if(logEnable) log.debug "In sendNotification - Sending ${state.timeDiffMs} to ${sendToDevice}"
+        sendToDevice.dataPoint1(state.timeDiffMs)
+    }
+    
     def timeDiff = state.timeDiffMs.toFloat()
     def mDelay = maxDelay.toFloat()
     
