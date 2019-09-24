@@ -50,7 +50,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Hub Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Hub Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy") {
    		capability "Initialize"
 		capability "Actuator"
         capability "Switch"
