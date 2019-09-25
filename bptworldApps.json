@@ -243,7 +243,7 @@
   "HomeTrackerUpdateNote": "V2.0.3 - 09/14/19 - More tweaking...",
   
   "HubWatchdogParentVersion": "V1.0.0",
-  "HubWatchdogChild1Version": "V1.0.3",
+  "HubWatchdogChild1Version": "V1.0.4",
   "HubWatchdogChild1Name": "",
   "HubWatchdogChild2Version": "",
   "HubWatchdogChild2Name": "",
@@ -257,7 +257,7 @@
   "HubWatchdogChild3RawCode": "",
   "HubWatchdogChild4RawCode": "",
   "HubWatchdogDiscussion": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371",
-  "HubWatchdogUpdateNote": "V1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section",
+  "HubWatchdogUpdateNote": "V1.0.4 - 09/25/19 - Here comes the reports!",
   
   "Life360TrackerParentVersion": "v2.0.0",
   "Life360TrackerChild1Version": "v2.0.2",
