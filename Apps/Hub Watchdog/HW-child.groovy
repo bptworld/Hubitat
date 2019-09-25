@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
  *  V1.0.2 - 09/24/19 - Added Run time options
  *  V1.0.1 - 09/24/19 - Added Data device options
  *  V1.0.0 - 09/24/19 - Initial release.
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -72,6 +73,7 @@ definition(
 
 preferences {
     page name: "pageConfig"
+    page name: "reportOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -86,7 +88,7 @@ def pageConfig() {
             input(name: "watchDevice", type: "capability.switch", title: "Device", required: true, multiple: false)
             input "maxDelay", "text", title: "Max delay allowed (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".500"
             
-            input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true,  options: ["15_Min","30_Min","1_Hour","3_Hour"], required: true
+            input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required: true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
             paragraph "If over the Max Delay, do the following"
@@ -107,11 +109,20 @@ def pageConfig() {
                     }
 				}
             }
-/**
-            paragraph "<b>Rule Machine</b>"
+		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
             def rules = RMUtils.getRuleList()
-            input "ruleMachine", "enum", title: "Select which rules to run", options: rules, multiple: false
-*/            
+		    paragraph "Perform an action with Rule Machine."
+			input "rmRule", "enum", title: "Select which rules", required: true, multiple: true, options: rules
+			input "rmAction", "enum", title: "Action", required: true, multiple: false, options: [
+                ["runRuleAct":"Run"],
+                ["stopRuleAct":"Stop"],
+                ["pauseRule":"Pause"],
+                ["resumeRule":"Resume"],
+                ["runRule":"Evaluate"],
+                ["setRuleBooleanTrue":"Set Boolean True"],
+                ["setRuleBooleanFalse":"Set Boolean False"]
+            ]
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {}
 		section("Instructions for Data Device:", hideable: true, hidden: true) {
@@ -123,15 +134,26 @@ def pageConfig() {
 			input(name: "sendToDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Manual Run")) {
-            paragraph "Hub Watchdog is set to run once an hour. To run now, click this button"
+            paragraph "Hub Watchdog is set to run once an hour. To run now, click this button<br>Remember to save any changes before running the test."
             input "testBtn1", "button", title: "Run Test Now"
         }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
+			href "reportOptions", title: "Reports", description: "Click here to view the Data Reports."
+		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging")
+            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true)
 		}
 		display2()
 	}
+}
+
+def reportOptions(){
+    dynamicPage(name: "reportOptions", title: "Report Options", install: false, uninstall:false){
+        section(getFormat("header-green", "${getImage("Blank")}"+" Report Options")) { 
+            paragraph "<b>Got you!</b>  -  Nothing to see here, move along..."
+        }
+    }
 }
 
 def installed() {
@@ -151,6 +173,9 @@ def initialize() {
     subscribe(watchDevice, "switch.on", startTimeHandler)
     subscribe(watchDevice, "switch.off", endTimeHandler)
     
+    if(triggerMode == "1_Min") runEvery1Minute(testingDevice)
+    if(triggerMode == "5_Min") runEvery5Minutes(testingDevice)
+    if(triggerMode == "10_Min") runEvery10Minutes(testingDevice)
     if(triggerMode == "15_Min") runEvery15Minutes(testingDevice)
     if(triggerMode == "30_Min") runEvery30Minutes(testingDevice)
 	if(triggerMode == "1_Hour") runEvery1Hour(testingDevice)
@@ -254,21 +279,13 @@ def sendNotification() {
             pushNow(theMessage)
         }
         
-        if(ruleMachine) rulesHandler(ruleMachine)
-    
+        if(rmRule) {
+            if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
+            RMUtils.sendAction(rmRule, rmAction, app.label)
+        }
     } else {
         if(isDataDevice) isDataDevice.off()
         if(logEnable) log.debug "In sendNotification - No need to send notifications"
-    }
-}
-
-def rulesHandler(rules) {
-    if(logEnable) log.debug "In rulesHandler - rules: ${rules}"
-    try {
-        RMUtils.sendAction(rules, "runRule", app.label)
-    }
-    catch(e) {
-        log.debug "In rulesHandler - Something went wrong - ${e}"
     }
 }
 
