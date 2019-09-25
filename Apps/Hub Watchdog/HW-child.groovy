@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 09/25/19 - Added a failsafe, test has to fail 3 times before notification is sent. Other small adjustments
  *  V1.0.4 - 09/25/19 - Here comes the reports!
  *  V1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
  *  V1.0.2 - 09/24/19 - Added Run time options
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -92,7 +93,7 @@ def pageConfig() {
             input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required: true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
-            paragraph "If over the Max Delay, do the following"
+            paragraph "If delay is over the max delay, it will automaticaly rerun the test in 1 minute. If 3 tests fail in a row, then it will do the following"
 			input "isDataDevice", "capability.switch", title: "Turn this device on", required: false, multiple: false         
 			input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple: true, required: false, submitOnChange: true
             if(sendPushMessage) {
@@ -151,7 +152,7 @@ def pageConfig() {
 
 def reportOptions(){
     dynamicPage(name: "reportOptions", title: "Report Data", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Report Options")) { 
+        section(getFormat("header-green", "${getImage("Blank")}"+" Report Data")) { 
             if(logEnable) log.debug "In bringOverResults (${state.version})"
             theReadings = sendToDevice.currentValue("readings1")
             theDataPoints1 = sendToDevice.currentValue("dataPoints1")
@@ -168,15 +169,15 @@ def reportOptions(){
             
             rangeD = "${minimumD} - ${maximumD}"
             
-            paragraph "<b>Let's take a look at the data!</b>"
+            paragraph "<b>Lets take a look at the data!</b>"
             paragraph "<hr>"
-            reportStats1 = "<table width='100%'><tr><td>Number of Data Points: ${readingsSize1}<br>Number of Bad Data Points: ${listSizeB}<br>Range Delay: ${rangeD}</td></tr></table>"
+            reportStats1 = "<table width='100%'><tr><td>Number of Data Points: ${readingsSize1}<br>Over Max Threshold: ${listSizeB}<br>Current Max Delay: ${maxDelay}<br>Range Delay: ${rangeD}</td></tr></table>"
             
             reportStats2= "<table width='100%'><tr><td>Mean Delay: ${meanD}<br>Median Delay: ${medianD}<br>Minimum Delay: ${minimumD}<br>Maximum Delay: ${maximumD}</td></tr></table>"
             
             paragraph "<table width='100%'><tr><td width='45%'>${reportStats1}</td><td width='10%'> </td><td width='45%'>${reportStats2}</td></tr></table>"
             paragraph "<hr>"
-            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='3'><b>Raw Data - Last 30 Readings</b></a></td><td><b>Bad Readings</b></td></tr>"
+            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='3'><b>Raw Data - Last 30 Readings</b></a></td><td><b>Over Max Threshold</b></td></tr>"
             report1+= "<tr><td>${theDataPoints1}</td><td>${theDataPoints2}</td><td>${theDataPoints3}</td><td>${theDataPointsB}</td></tr>"
             report1+= "</table>"
             paragraph "${report1}"
@@ -217,7 +218,7 @@ def testingDevice() {
     if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
     watchDevice.off()
     pauseExecution(5000)
-    if(logEnable) log.debug "In testingDevice - ***** Starting Test *****"
+    log.trace "Hub Watchdog - ***** Starting Test *****"
     if(logEnable) log.debug "In testingDevice - Turning Device On"
     state.testInProgress = "no"
     watchDevice.on()
@@ -251,10 +252,10 @@ def endTimeHandler(evt) {
         long unxNow = newLastActivity.getTime()
         unxNow = unxNow
         state.unxNow = unxNow
+        runIn(1, lookingAtData)
     } else {
-        if(logEnable) log.debug "In startTimeHandler - Device wasn't off or testInProgress was no! - device: ${cStatus} - testInProgress: ${state.testInProgress}"
+        if(logEnable) log.debug "In endTimeHandler - Device wasn't off or testInProgress was no! - device: ${cStatus} - testInProgress: ${state.testInProgress}"
     }
-    runIn(1, lookingAtData)
 }
 
 def lookingAtData() {
@@ -266,21 +267,20 @@ def lookingAtData() {
         timeDiff = Math.abs(unxNow-unxPrev)
         state.timeDiffMs = (timeDiff / 1000) - 5
     
-        log.info "Hub Watchdog - ${app.label} - ${watchDevice} - timeDiff: ${state.timeDiffMs} msec"
+        if(logEnable) log.debug "Hub Watchdog - ${app.label} - ${watchDevice} - timeDiff: ${state.timeDiffMs} msec"
     }
     catch(e) {
         log.warn "Something went wrong - ${e}"
     }
     state.testInProgress = "no"
-    if(logEnable) log.debug "In lookingAtData - ***** Ending Test *****"
+    log.trace "Hub Watchdog - ***** Ending Test *****"
     sendNotification()
 }
 
 def sendNotification() {
     if(logEnable) log.debug "In sendNotification (${state.version})"
-    
     if(sendToDevice) {
-        if(logEnable) log.debug "In sendNotification - Sending ${state.timeDiffMs} to ${sendToDevice}"
+        if(logEnable) log.debug "In sendNotification - Sending data: ${state.timeDiffMs} to ${sendToDevice}"
         sendToDevice.maxDelay(maxDelay)
         sendToDevice.dataPoint1(state.timeDiffMs)
     }
@@ -289,32 +289,43 @@ def sendNotification() {
     def mDelay = maxDelay.toFloat()
     
     if(timeDiff >= mDelay) {
-        if(isDataDevice) isDataDevice.on()
+        if(state.failedCount <= 2) {
+            state.failedCount = state.failedCount + 1
+            if(logEnable) log.debug "In sendNotification - failedCount: ${state.failedCount} - Waiting 1 minute and will run again"
+            runIn(60, testingDevice)
+        } else {  
+            if(logEnable) log.debug "In sendNotification - failedCount: ${state.failedCount} - Sending Notifications"
+            if(isDataDevice) isDataDevice.on()
     
-        if(sendPushMessage) {
-            if(nRandom) {
-		        def nvalues = "${nMessage}".split(";")
-		        nvSize = nvalues.size()
-		        ncount = nvSize.toInteger()
-    	        def nrandomKey = new Random().nextInt(ncount)
+            if(sendPushMessage) {
+                if(nRandom) {
+		            def nvalues = "${nMessage}".split(";")
+		            nvSize = nvalues.size()
+		            ncount = nvSize.toInteger()
+    	            def nrandomKey = new Random().nextInt(ncount)
 
-		        theMessage = nvalues[nrandomKey]
-		        if(logEnable) log.debug "In sendNotification - Random - theMessage: ${theMessage}"
-	        } else {
-		        theMessage = "${nMessage}"
-		        if(logEnable) log.debug "In sendNotification - Static - theMessage: ${theMessage}"
+		            theMessage = nvalues[nrandomKey]
+		            if(logEnable) log.debug "In sendNotification - Random - theMessage: ${theMessage}"
+	            } else {
+		            theMessage = "${nMessage}"
+		            if(logEnable) log.debug "In sendNotification - Static - theMessage: ${theMessage}"
+                }
+                if (theMessage.contains("%adelay%")) {theMessage = theMessage.replace('%adelay%', "${state.timeDiffMs}" )}
+                if (theMessage.contains("%mdelay%")) {theMessage = theMessage.replace('%mdelay%', "${maxDelay}" )}
+                pushNow(theMessage)
             }
-            if (theMessage.contains("%adelay%")) {theMessage = theMessage.replace('%adelay%', "${state.timeDiffMs}" )}
-            if (theMessage.contains("%mdelay%")) {theMessage = theMessage.replace('%mdelay%', "${maxDelay}" )}
-            pushNow(theMessage)
-        }
         
-        if(rmRule) {
-            if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
-            RMUtils.sendAction(rmRule, rmAction, app.label)
+            if(rmRule) {
+                if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
+                RMUtils.sendAction(rmRule, rmAction, app.label)
+            }
+            
+            state.failedCount = 0
         }
     } else {
         if(isDataDevice) isDataDevice.off()
+        state.failedCount = 0
+        state.testInProgress = "no"
         if(logEnable) log.debug "In sendNotification - No need to send notifications"
     }
 }
@@ -341,6 +352,7 @@ def appButtonHandler(buttonPressed) {
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
+    state.failedCount = 0
     if(state.testInProgress == null || state.testInProgress == "") state.testInProgress = "no"
 }
 
