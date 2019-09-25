@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 09/24/19 - Added Run time options
  *  V1.0.1 - 09/24/19 - Added Data device options
  *  V1.0.0 - 09/24/19 - Initial release.
  *
@@ -45,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -81,10 +82,11 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
 			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device you use will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
 		}
-		
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to watch")) {
             input(name: "watchDevice", type: "capability.switch", title: "Device", required: true, multiple: false)
             input "maxDelay", "text", title: "Max delay allowed (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".500"
+            
+            input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true,  options: ["15_Min","30_Min","1_Hour","3_Hour"], required: true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
             paragraph "If over the Max Delay, do the following"
@@ -149,7 +151,10 @@ def initialize() {
     subscribe(watchDevice, "switch.on", startTimeHandler)
     subscribe(watchDevice, "switch.off", endTimeHandler)
     
-	runEvery1Hour(testingDevice)
+    if(triggerMode == "15_Min") runEvery15Minutes(testingDevice)
+    if(triggerMode == "30_Min") runEvery30Minutes(testingDevice)
+	if(triggerMode == "1_Hour") runEvery1Hour(testingDevice)
+    if(triggerMode == "3_Hour") runEvery3Hours(testingDevice)
 
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
