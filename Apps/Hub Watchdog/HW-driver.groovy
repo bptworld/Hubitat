@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 09/25/19 - More tweaks
  *  V1.0.2 - 09/25/19 - Attempt to fix a null object error
  *  V1.0.1 - 09/25/19 - Added a lot of data points
  *  V1.0.0 - 09/24/19 - Initial release
@@ -41,7 +42,7 @@
     
 def setVersion(){
     appName = "HubWatchdogDriver"
-	version = "v1.0.1" 
+	version = "v1.0.3" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -130,7 +131,11 @@ def makeList(theMessage) {
                 if(state.listB == null) state.listB = []
                 state.listB.add(0,nMessageB)  
 
-                if(state.listB) listSizeB = state.listB.size()
+                if(state.listB) {
+                    listSizeB = state.listB.size()
+                } else {
+                    listSizeB = 0
+                }
                 if(listSizeB > 10) state.listB.removeAt(10)
 
                 String resultB = state.listB.join(";")
@@ -164,7 +169,11 @@ def makeList(theMessage) {
             if(state.list1 == null) state.list1 = []
             state.list1.add(0,nMessage1)  
 
-            if(state.list1) listSize1 = state.list1.size()
+            if(state.list1) {
+                listSize1 = state.list1.size()
+            } else {
+                listSize1 = 0
+            }
             
             if(listSize1 > 30) state.list1.removeAt(30)
 
@@ -277,7 +286,11 @@ def makeList(theMessage) {
     // *** end From            
 
             if(state.readings1) readingsSize1 = state.readings1.size()
-            if(state.listB) listSizeB = state.listB.size()
+            if(state.listB) {
+                listSizeB = state.listB.size()
+            } else {
+                listSizeB = 0
+            }
             
             sendEvent(name: "readingsSize1", value: readingsSize1, displayed: true)
             sendEvent(name: "listSizeB", value: listSizeB, displayed: true)
@@ -295,11 +308,11 @@ def makeList(theMessage) {
 }
 
 def installed(){
-    log.info "What Did I Say has been Installed"
+    log.info "Hub Watchdog Driver has been Installed"
 }
 
 def updated() {
-    log.info "What Did I Say has been Updated"
+    log.info "Hub Watchdog Driver has been Updated"
 }
 
 def initialize() {
@@ -324,6 +337,7 @@ def off() {
 def clearData1() {
     state.readings1 = []
     state.list1 = []
+    state.listB = []
     
     sendEvent(name: "dataPoints1", value: "-", displayed: true)
     sendEvent(name: "numOfCharacters1", value: 0, displayed: true)
@@ -338,4 +352,7 @@ def clearData1() {
     sendEvent(name: "numOfCharactersB", value: 0, displayed: true)
     
     sendEvent(name: "readings1", value: state.readings1, displayed: true)
+    sendEvent(name: "readingsSize1", value: 0, displayed: true)
+    sendEvent(name: "listSizeB", value: 0, displayed: true)
+    sendEvent(name: "listSize1", value: 0, displayed: true)
 }
