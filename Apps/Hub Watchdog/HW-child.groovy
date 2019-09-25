@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 09/25/19 - Here comes the reports!
  *  V1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
  *  V1.0.2 - 09/24/19 - Added Run time options
  *  V1.0.1 - 09/24/19 - Added Data device options
@@ -47,7 +48,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -86,7 +87,7 @@ def pageConfig() {
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to watch")) {
             input(name: "watchDevice", type: "capability.switch", title: "Device", required: true, multiple: false)
-            input "maxDelay", "text", title: "Max delay allowed (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".500"
+            input "maxDelay", "text", title: "Max delay allowed (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".500", submitOnChange: true
             
             input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required: true
         }
@@ -113,8 +114,8 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
             def rules = RMUtils.getRuleList()
 		    paragraph "Perform an action with Rule Machine."
-			input "rmRule", "enum", title: "Select which rules", required: true, multiple: true, options: rules
-			input "rmAction", "enum", title: "Action", required: true, multiple: false, options: [
+			input "rmRule", "enum", title: "Select which rules", multiple: true, options: rules
+			input "rmAction", "enum", title: "Action", multiple: false, options: [
                 ["runRuleAct":"Run"],
                 ["stopRuleAct":"Stop"],
                 ["pauseRule":"Pause"],
@@ -149,9 +150,37 @@ def pageConfig() {
 }
 
 def reportOptions(){
-    dynamicPage(name: "reportOptions", title: "Report Options", install: false, uninstall:false){
+    dynamicPage(name: "reportOptions", title: "Report Data", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Report Options")) { 
-            paragraph "<b>Got you!</b>  -  Nothing to see here, move along..."
+            if(logEnable) log.debug "In bringOverResults (${state.version})"
+            theReadings = sendToDevice.currentValue("readings1")
+            theDataPoints1 = sendToDevice.currentValue("dataPoints1")
+            theDataPoints2 = sendToDevice.currentValue("dataPoints2")
+            theDataPoints3 = sendToDevice.currentValue("dataPoints3")
+            theDataPointsB = sendToDevice.currentValue("dataPointsB")
+            readingsSize1 = sendToDevice.currentValue("readingsSize1")
+            listSizeB = sendToDevice.currentValue("listSizeB")
+            
+            meanD = sendToDevice.currentValue("meanD")
+            medianD = sendToDevice.currentValue("medianD")
+            minimumD = sendToDevice.currentValue("minimumD")
+            maximumD = sendToDevice.currentValue("maximumD")
+            
+            rangeD = "${minimumD} - ${maximumD}"
+            
+            paragraph "<b>Let's take a look at the data!</b>"
+            paragraph "<hr>"
+            reportStats1 = "<table width='100%'><tr><td>Number of Data Points: ${readingsSize1}<br>Number of Bad Data Points: ${listSizeB}<br>Range Delay: ${rangeD}</td></tr></table>"
+            
+            reportStats2= "<table width='100%'><tr><td>Mean Delay: ${meanD}<br>Median Delay: ${medianD}<br>Minimum Delay: ${minimumD}<br>Maximum Delay: ${maximumD}</td></tr></table>"
+            
+            paragraph "<table width='100%'><tr><td width='45%'>${reportStats1}</td><td width='10%'> </td><td width='45%'>${reportStats2}</td></tr></table>"
+            paragraph "<hr>"
+            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='3'><b>Raw Data - Last 30 Readings</b></a></td><td><b>Bad Readings</b></td></tr>"
+            report1+= "<tr><td>${theDataPoints1}</td><td>${theDataPoints2}</td><td>${theDataPoints3}</td><td>${theDataPointsB}</td></tr>"
+            report1+= "</table>"
+            paragraph "${report1}"
+            paragraph "<hr>"
         }
     }
 }
@@ -252,6 +281,7 @@ def sendNotification() {
     
     if(sendToDevice) {
         if(logEnable) log.debug "In sendNotification - Sending ${state.timeDiffMs} to ${sendToDevice}"
+        sendToDevice.maxDelay(maxDelay)
         sendToDevice.dataPoint1(state.timeDiffMs)
     }
     
