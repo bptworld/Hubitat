@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 09/25/19 - Attempt to fix a null object error
  *  V1.0.1 - 09/25/19 - Added a lot of data points
  *  V1.0.0 - 09/24/19 - Initial release
  */
@@ -116,7 +117,7 @@ def makeList(theMessage) {
             if(state.readings1 == null) state.readings1 = []
             state.readings1.add(0,theMessage) 
             
-            readingsSize1 = state.readings1.size()
+            if(state.readings1) readingsSize1 = state.readings1.size()
             if(readingsSize1 > 30) state.readings1.removeAt(30)
             
             getDateTime()
@@ -129,7 +130,7 @@ def makeList(theMessage) {
                 if(state.listB == null) state.listB = []
                 state.listB.add(0,nMessageB)  
 
-                listSizeB = state.listB.size()
+                if(state.listB) listSizeB = state.listB.size()
                 if(listSizeB > 10) state.listB.removeAt(10)
 
                 String resultB = state.listB.join(";")
@@ -163,7 +164,7 @@ def makeList(theMessage) {
             if(state.list1 == null) state.list1 = []
             state.list1.add(0,nMessage1)  
 
-            listSize1 = state.list1.size()
+            if(state.list1) listSize1 = state.list1.size()
             
             if(listSize1 > 30) state.list1.removeAt(30)
 
@@ -275,8 +276,8 @@ def makeList(theMessage) {
             maximum = Collections.max(state.readings1)
     // *** end From            
 
-            readingsSize1 = state.readings1.size()
-            listSizeB = state.listB.size()
+            if(state.readings1) readingsSize1 = state.readings1.size()
+            if(state.listB) listSizeB = state.listB.size()
             
             sendEvent(name: "readingsSize1", value: readingsSize1, displayed: true)
             sendEvent(name: "listSizeB", value: listSizeB, displayed: true)
@@ -332,6 +333,9 @@ def clearData1() {
     
     sendEvent(name: "dataPoints3", value: "-", displayed: true)
     sendEvent(name: "numOfCharacters3", value: 0, displayed: true)
+    
+    sendEvent(name: "dataPointsB", value: "-", displayed: true)
+    sendEvent(name: "numOfCharactersB", value: 0, displayed: true)
     
     sendEvent(name: "readings1", value: state.readings1, displayed: true)
 }
