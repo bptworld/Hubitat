@@ -1311,7 +1311,7 @@ def sampleTileHandler(evt){
 			paragraph "<table style='width:1${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${state.theTile01}${state.theTile02}${state.theTile03}${state.theTile04}${state.theTile05}</table>"
 		}
 		
-		log.debug "In sampleTileHandler - theTileLength01: ${state.theTileLength01} - tTL02: ${state.theTileLength02} - tTL03: ${state.theTileLength03} - tTL04: ${state.theTileLength04} - tTL05: ${state.theTileLength05}"
+		if(logEnable) log.debug "In sampleTileHandler - theTileLength01: ${state.theTileLength01} - tTL02: ${state.theTileLength02} - tTL03: ${state.theTileLength03} - tTL04: ${state.theTileLength04} - tTL05: ${state.theTileLength05}"
 		int tileLength01 = state.theTileLength01 + 8
 		int tileLength02 = state.theTileLength02 + 8
 		int tileLength03 = state.theTileLength03 + 8
