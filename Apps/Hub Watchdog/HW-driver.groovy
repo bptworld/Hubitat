@@ -313,11 +313,11 @@ def getDateTime() {
 }
 
 def on() {
-    sendEvent(name: "switch", value: on)
+    sendEvent(name: "switch", value: on, isStateChange: true)
 }
 
 def off() {
-    sendEvent(name: "switch", value: off)
+    sendEvent(name: "switch", value: off, isStateChange: true)
 }
 
 def clearData1() {
