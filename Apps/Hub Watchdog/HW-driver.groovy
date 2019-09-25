@@ -34,12 +34,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 09/25/19 - Added a lot of data points
  *  V1.0.0 - 09/24/19 - Initial release
  */
     
 def setVersion(){
     appName = "HubWatchdogDriver"
-	version = "v1.0.0" 
+	version = "v1.0.1" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -60,9 +61,21 @@ metadata {
         attribute "dataPoints2", "string"
         attribute "dataPoints3", "string"
 		attribute "lastDataPoint1", "string"
+        attribute "dataPointsB", "string"
         attribute "numOfCharacters1", "string"
         attribute "numOfCharacters2", "string"
         attribute "numOfCharacters3", "string"
+        attribute "numOfCharactersB", "string"
+        attribute "maxDelay", "number"
+        attribute "readingsSize1", "number"
+        attribute "listSizeB", "number"
+        
+        attribute "meanD", "number"
+        attribute "midNumberD", "number"
+        attribute "medianD", "number"
+        attribute "minimumD", "number"
+        attribute "maximumD", "number"
+        
         
         attribute "dwDriverInfo", "string"
         command "updateVersion"
@@ -71,6 +84,7 @@ metadata {
         command "on"
         command "off"
         command "clearData1"
+        command "maxDelay"
 	}
 	preferences() {    	
         section(){
@@ -82,14 +96,22 @@ metadata {
 }
 
 def dataPoint1(message) {
+    if(logEnable) log.trace "In dataPoint1 - Received: ${message}"
     theMessage = message
     sendEvent(name: "lastDataPoint1", value: theMessage)
     makeList(theMessage)
 }
 
+def maxDelay(message) {
+    if(logEnable) log.trace "In maxDelay - Received: ${message}"
+    if(message) maxDelay = message.toFloat()
+    sendEvent(name: "maxDelay", value: maxDelay)
+}
+
 def makeList(theMessage) {
     if(logEnable) log.trace "In makeList - working on ${theMessage}"
-
+    def maxDelay = device.currentValue('maxDelay')
+    
         try {
             if(state.readings1 == null) state.readings1 = []
             state.readings1.add(0,theMessage) 
@@ -98,19 +120,57 @@ def makeList(theMessage) {
             if(readingsSize1 > 30) state.readings1.removeAt(30)
             
             getDateTime()
-	        nMessage1 = newdate + " - " + theMessage
-        
+     
+            // Over Max Delay Threshold
+            if(logEnable) log.trace "In makeList - Checking if ${theMessage} >= ${maxDelay}"
+            if(theMessage >= maxDelay) {
+                if(logEnable) log.trace "In makeList - maxDelay was greater than the threshold!"
+                nMessageB = newdate + " - " + theMessage
+                if(state.listB == null) state.listB = []
+                state.listB.add(0,nMessageB)  
+
+                listSizeB = state.listB.size()
+                if(listSizeB > 10) state.listB.removeAt(10)
+
+                String resultB = state.listB.join(";")
+                def linesB = resultB.split(";")
+            
+                if(logEnable) log.trace "In makeList - Making theDataB List"
+                theDataB = "<table><tr><td><div style='font-size:${fontSize}px'>"
+                if(listSizeB >= 1) theDataB += "${linesB[0]}<br>"
+                if(listSizeB >= 2) theDataB += "${linesB[1]}<br>"
+                if(listSizeB >= 3) theDataB += "${linesB[2]}<br>"
+                if(listSizeB >= 4) theDataB += "${linesB[3]}<br>"
+                if(listSizeB >= 5) theDataB += "${linesB[4]}<br>"
+                if(listSizeB >= 6) theDataB += "${linesB[5]}<br>"
+                if(listSizeB >= 7) theDataB += "${linesB[6]}<br>"
+                if(listSizeB >= 8) theDataB += "${linesB[7]}<br>"
+                if(listSizeB >= 9) theDataB += "${linesB[8]}<br>"
+                if(listSizeB >= 10) theDataB += "${linesB[9]}<br>"
+                theDataB += "</div></td></tr></table>"
+                
+                dataCharCountB = theDataB.length()
+	            if(dataCharCountB <= 1024) {
+	        	    if(logEnable) log.debug "Hub Watchdog Driver - dataPointsB - ${dataCharCountB} Characters"
+	            } else {
+                    theDataB = "Too many characters to display on Dashboard (${dataCharCountB})"
+	            }
+            }
+            // End Over Max Delay
+            
+	        // Full List
+            nMessage1 = newdate + " - " + theMessage
             if(state.list1 == null) state.list1 = []
             state.list1.add(0,nMessage1)  
 
             listSize1 = state.list1.size()
+            
             if(listSize1 > 30) state.list1.removeAt(30)
 
             String result1 = state.list1.join(";")
             def lines1 = result1.split(";")
             
-            
-            if(logEnable) log.trace "In makeList"
+            if(logEnable) log.trace "In makeList - All"
             theData1 = "<table><tr><td><div style='font-size:${fontSize}px'>"
             if(listSize1 >= 1) theData1 += "${lines1[0]}<br>"
             if(listSize1 >= 2) theData1 += "${lines1[1]}<br>"
@@ -170,6 +230,7 @@ def makeList(theMessage) {
 	        } else {
                 theData3 = "Too many characters to display on Dashboard (${dataCharCount3})"
 	        }
+            // End Full List
             
 	        sendEvent(name: "dataPoints1", value: theData1, displayed: true)
             sendEvent(name: "numOfCharacters1", value: dataCharCount1, displayed: true)
@@ -181,6 +242,51 @@ def makeList(theMessage) {
             sendEvent(name: "numOfCharacters3", value: dataCharCount3, displayed: true)
             
             sendEvent(name: "readings1", value: state.readings1, displayed: true)
+            sendEvent(name: "dataPointsB", value: theDataB, displayed: true)
+            
+            
+            // Lets make sure Data
+            if(logEnable) log.debug "Hub Watchdog Driver - Lets Make Some Data"            
+            
+    //  ** From https://www.javaworld.com/article/2073174/groovy--means--medians--modes--and-ranges-calculations.html            
+            numberItems = state.readings1.size()
+            sum = 0
+            modeMap = new HashMap<BigDecimal, Integer>()
+            for (item in state.readings1) {
+               sum += item
+               if (modeMap.get(item) == null) {
+                   modeMap.put(item, 1)
+               } else {
+                  count = modeMap.get(item) + 1
+                  modeMap.put(item, count)
+               }
+            }
+            mode = new ArrayList<Integer>()
+            modeCount = 0
+            modeMap.each() { key, value -> 
+               if (value > modeCount) { mode.clear(); mode.add(key); modeCount = value}
+               else if (value == modeCount) { mode.add(key) }
+            }
+            sumDelayRecorded = sum 
+            mean = sum / numberItems
+            midNumber = (int)(numberItems/2)
+            median = numberItems %2 != 0 ? state.readings1[midNumber] : (state.readings1[midNumber] + state.readings1[midNumber-1])/2 
+            minimum = Collections.min(state.readings1)
+            maximum = Collections.max(state.readings1)
+    // *** end From            
+
+            readingsSize1 = state.readings1.size()
+            listSizeB = state.listB.size()
+            
+            sendEvent(name: "readingsSize1", value: readingsSize1, displayed: true)
+            sendEvent(name: "listSizeB", value: listSizeB, displayed: true)
+            
+            sendEvent(name: "meanD", value: mean, displayed: true)
+            sendEvent(name: "midNumberD", value: midNumber, displayed: true)
+            sendEvent(name: "medianD", value: median, displayed: true)
+            sendEvent(name: "minimumD", value: minimum, displayed: true)
+            sendEvent(name: "maximumD", value: maximum, displayed: true)
+            
         }
         catch(e1) {
             log.error "${e1}"
