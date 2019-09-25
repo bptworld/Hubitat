@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *  V1.0.0 - 02/16/19 - Initial release.
+ *  V1.0.1 - 09/24/19 - Added Data device options
+ *  V1.0.0 - 09/24/19 - Initial release.
  *
  */
 
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -110,9 +111,9 @@ def pageConfig() {
             input "ruleMachine", "enum", title: "Select which rules to run", options: rules, multiple: false
 */            
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
-		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
-			paragraph "<b>Want to be able to view your counts on a Dashboard? Now you can, simply follow these instructions!</b>"
+        section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {}
+		section("Instructions for Data Device:", hideable: true, hidden: true) {
+            paragraph "<b>** This is where the data is stored for the reports **</b>"
 			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Hub Watchdog Tile'<br> - Use our 'Hub Watchdog Driver' as the Driver<br> - Then select this new device below"
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your data on a tile!"
 			}
