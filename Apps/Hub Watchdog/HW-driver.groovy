@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 09/26/19 - More color choices, rounded Med to 3
  *  V1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding
  *  V1.0.3 - 09/25/19 - More tweaks
  *  V1.0.2 - 09/25/19 - Attempt to fix a null object error
@@ -43,7 +44,7 @@
     
 def setVersion(){
     appName = "HubWatchdogDriver"
-	version = "v1.0.4" 
+	version = "v1.0.5" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -103,8 +104,9 @@ metadata {
         section(){
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "12")
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
-            input("overColor", "text", title: "Change color for 'Over Threshold' readings", required: true, defaultValue: "red")
+            input("normalColor", "text", title: "Normal color for 'Under Threshold' readings", required: true, defaultValue: "blue")
             input("warnColor", "text", title: "Change color for 'Close to Threshold' readings", required: true, defaultValue: "orange")
+            input("overColor", "text", title: "Change color for 'Over Threshold' readings", required: true, defaultValue: "red")
 			input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
     }
@@ -144,15 +146,15 @@ def makeList(theMessage) {
             getDateTime()
             
             if(theMessage >= maxDelay) {
-                nMessage1 = "<span style='color: ${overColor}'>${newdate} - ${theMessage}</span>"
+                nMessage1 = "<span style='color: ${normalColor}'>${newdate}</span> - <span style='color: ${overColor}'>${theMessage}</span>"
                 if(state.listSizeB == null) state.listSizeB = 0
                 state.listSizeB = state.listSizeB + 1
             } else if(theMessage >= warnValue) {
-                nMessage1 = "<span style='color: ${warnColor}'>${newdate} - ${theMessage}</span>"
+                nMessage1 = "<span style='color: ${normalColor}'>${newdate}</span> - <span style='color: ${warnColor}'>${theMessage}</span>"
                 if(state.listSizeW == null) state.listSizeW = 0
                 state.listSizeW = state.listSizeW + 1
             } else {
-                nMessage1 = "${newdate} - ${theMessage}"
+                nMessage1 = "<span style='color: ${normalColor}'>${newdate}</span> - ${theMessage}"
             }
             if(state.list1 == null) state.list1 = []
             state.list1.add(0,nMessage1)  
@@ -347,6 +349,12 @@ def makeList(theMessage) {
             sendEvent(name: "dataPoints6", value: theData6, displayed: true)
             sendEvent(name: "numOfCharacters6", value: dataCharCount6, displayed: true)
             
+            sendEvent(name: "dataPoints7", value: theData7, displayed: true)
+            sendEvent(name: "numOfCharacters7", value: dataCharCount7, displayed: true)
+            
+            sendEvent(name: "dataPoints8", value: theData8, displayed: true)
+            sendEvent(name: "numOfCharacters8", value: dataCharCount8, displayed: true)
+            
             sendEvent(name: "readings1", value: state.readings1, displayed: true)
             sendEvent(name: "listSizeB", value: state.listSizeB, displayed: true)
             sendEvent(name: "listSizeW", value: state.listSizeW, displayed: true)
@@ -357,39 +365,46 @@ def makeList(theMessage) {
             // Lets make sure Data
             if(logEnable) log.debug "Hub Watchdog Driver - Lets Make Some Data"            
             
-    //  ** From https://www.javaworld.com/article/2073174/groovy--means--medians--modes--and-ranges-calculations.html            
-            numberItems = state.readings1.size()
-            sum = 0
-            modeMap = new HashMap<BigDecimal, Integer>()
-            for (item in state.readings1) {
-               sum += item
-               if (modeMap.get(item) == null) {
-                   modeMap.put(item, 1)
-               } else {
-                  count = modeMap.get(item) + 1
-                  modeMap.put(item, count)
-               }
+    //  ** From https://www.javaworld.com/article/2073174/groovy--means--medians--modes--and-ranges-calculations.html 
+            try {
+                numberItems = state.readings1.size()
+                sum = 0
+                modeMap = new HashMap<BigDecimal, Integer>()
+                for (item in state.readings1) {
+                   sum += item
+                   if (modeMap.get(item) == null) {
+                       modeMap.put(item, 1)
+                   } else {
+                      count = modeMap.get(item) + 1
+                      modeMap.put(item, count)
+                   }
+                }
+                mode = new ArrayList<Integer>()
+                modeCount = 0
+                modeMap.each() { key, value -> 
+                   if (value > modeCount) { mode.clear(); mode.add(key); modeCount = value}
+                   else if (value == modeCount) { mode.add(key) }
+                }
+                sumDelayRecorded = sum 
+                mn = sum / numberItems
+                mean = mn.toFloat().round(3)
+                midNumber = (int)(numberItems/2)
+                med = numberItems %2 != 0 ? state.readings1[midNumber] : (state.readings1[midNumber] + state.readings1[midNumber-1])/2
+                median = med.toFloat().round(3)
+                minimum = Collections.min(state.readings1)
+                maximum = Collections.max(state.readings1)
+            } catch(e) {
+                log.error "Hub Watchdog Driver - ${e}"  
             }
-            mode = new ArrayList<Integer>()
-            modeCount = 0
-            modeMap.each() { key, value -> 
-               if (value > modeCount) { mode.clear(); mode.add(key); modeCount = value}
-               else if (value == modeCount) { mode.add(key) }
-            }
-            sumDelayRecorded = sum 
-            mean = sum / numberItems
-            midNumber = (int)(numberItems/2)
-            median = numberItems %2 != 0 ? state.readings1[midNumber] : (state.readings1[midNumber] + state.readings1[midNumber-1])/2 
-            minimum = Collections.min(state.readings1)
-            maximum = Collections.max(state.readings1)
-    // *** end From
             
+    // *** end From
+            if(logEnable) log.debug "Hub Watchdog Driver - Sending Data to attributes"
             sendEvent(name: "meanD", value: mean, displayed: true)
             sendEvent(name: "midNumberD", value: midNumber, displayed: true)
             sendEvent(name: "medianD", value: median, displayed: true)
             sendEvent(name: "minimumD", value: minimum, displayed: true)
             sendEvent(name: "maximumD", value: maximum, displayed: true)
-            
+            if(logEnable) log.debug "Hub Watchdog Driver - Finished"
         }
         catch(e1) {
             log.error "${e1}"
