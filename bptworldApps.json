@@ -464,7 +464,7 @@
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "TileMasterParentVersion": "v2.0.3",
-  "TileMasterChild1Version": "v2.0.6",
+  "TileMasterChild1Version": "v2.0.7",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -478,7 +478,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.0.6 - 09/22/19 - Added ability to use links on tiles",
+  "TileMasterUpdateNote": "V2.0.7 - 09/26/19 - Fixed issue with line 2 After device text",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.1",
