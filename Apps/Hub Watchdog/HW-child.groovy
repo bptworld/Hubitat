@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 09/26/19 - Holds up to 80 data points, added color coding
  *  V1.0.5 - 09/25/19 - Added a failsafe, test has to fail 3 times before notification is sent. Other small adjustments
  *  V1.0.4 - 09/25/19 - Here comes the reports!
  *  V1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -89,7 +90,8 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to watch")) {
             input(name: "watchDevice", type: "capability.switch", title: "Device", required: true, multiple: false)
             input "maxDelay", "text", title: "Max delay allowed (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".500", submitOnChange: true
-            
+            input "warnValue", "text", title: "Get a warning in over this value (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".400", submitOnChange: true
+            paragraph "<small>* This will not send a notification but rather color code the value in the report so it stands out.</small>"
             input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required: true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
@@ -158,9 +160,14 @@ def reportOptions(){
             theDataPoints1 = sendToDevice.currentValue("dataPoints1")
             theDataPoints2 = sendToDevice.currentValue("dataPoints2")
             theDataPoints3 = sendToDevice.currentValue("dataPoints3")
-            theDataPointsB = sendToDevice.currentValue("dataPointsB")
+            theDataPoints4 = sendToDevice.currentValue("dataPoints4")
+            theDataPoints5 = sendToDevice.currentValue("dataPoints5")
+            theDataPoints6 = sendToDevice.currentValue("dataPoints6")
+            theDataPoints7 = sendToDevice.currentValue("dataPoints7")
+            theDataPoints8 = sendToDevice.currentValue("dataPoints8")
             readingsSize1 = sendToDevice.currentValue("readingsSize1")
             listSizeB = sendToDevice.currentValue("listSizeB")
+            listSizeW = sendToDevice.currentValue("listSizeW")
             
             meanD = sendToDevice.currentValue("meanD")
             medianD = sendToDevice.currentValue("medianD")
@@ -169,16 +176,16 @@ def reportOptions(){
             
             rangeD = "${minimumD} - ${maximumD}"
             
-            paragraph "<b>Lets take a look at the data!</b>"
-            paragraph "<hr>"
-            reportStats1 = "<table width='100%'><tr><td>Number of Data Points: ${readingsSize1}<br>Over Max Threshold: ${listSizeB}<br>Current Max Delay: ${maxDelay}<br>Range Delay: ${rangeD}</td></tr></table>"
+            paragraph "Testing Device: <b>${watchDevice}</b>"
+            reportStats1 = "<table width='100%'><tr><td>Number of Data Points: ${readingsSize1}<br>Over Max Threshold: ${listSizeB}<br>Over Warning Threshold: ${listSizeW}<br>Current Max Delay: ${maxDelay}<br>Current Warning Delay: ${warnValue}</td></tr></table>"
             
             reportStats2= "<table width='100%'><tr><td>Mean Delay: ${meanD}<br>Median Delay: ${medianD}<br>Minimum Delay: ${minimumD}<br>Maximum Delay: ${maximumD}</td></tr></table>"
             
             paragraph "<table width='100%'><tr><td width='45%'>${reportStats1}</td><td width='10%'> </td><td width='45%'>${reportStats2}</td></tr></table>"
             paragraph "<hr>"
-            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='3'><b>Raw Data - Last 30 Readings</b></a></td><td><b>Over Max Threshold</b></td></tr>"
-            report1+= "<tr><td>${theDataPoints1}</td><td>${theDataPoints2}</td><td>${theDataPoints3}</td><td>${theDataPointsB}</td></tr>"
+            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='4'><b>Raw Data - Last 80 Readings</b></a></td></tr>"
+            report1+= "<tr><td width='25%'>${theDataPoints1}</td><td width='25%'>${theDataPoints2}</td><td width='25%'>${theDataPoints3}</td><td width='25%'>${theDataPoints4}</td></tr>"
+            report1+= "<tr><td>${theDataPoints5}</td><td>${theDataPoints6}</td><td>${theDataPoints7}</td><td>${theDataPoints8}</td></tr>"
             report1+= "</table>"
             paragraph "${report1}"
             paragraph "<hr>"
@@ -282,6 +289,7 @@ def sendNotification() {
     if(sendToDevice) {
         if(logEnable) log.debug "In sendNotification - Sending data: ${state.timeDiffMs} to ${sendToDevice}"
         sendToDevice.maxDelay(maxDelay)
+        sendToDevice.warnValue(warnValue)
         sendToDevice.dataPoint1(state.timeDiffMs)
     }
     
