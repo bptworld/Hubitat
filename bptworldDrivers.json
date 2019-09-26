@@ -29,10 +29,10 @@
   "HomeTrackerDriverDiscussion": "",
   "HomeTrackerDriverUpdateNote": "V1.0.0 - 09/10/19 - Initial release",
   
-  "HubWatchdogDriverVersion": "v1.0.3",
+  "HubWatchdogDriverVersion": "v1.0.4",
   "HubWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy",
   "HubWatchdogDriverDiscussion": "",
-  "HubWatchdogDriverUpdateNote": "V1.0.3 - 09/25/19 - More tweaks",
+  "HubWatchdogDriverUpdateNote": "V1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding",
   
   "IP2IRTelnetVersion": "v1.0.4",
   "IP2IRTelnetRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy",
