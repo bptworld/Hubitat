@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.7 - 09/26/19 - Fixed issue with line 2 After device text
  *  V2.0.6 - 09/22/19 - Added ability to use links on tiles
  *  V2.0.5 - 09/22/19 - Table spacing enhancements
  *  V2.0.4 - 09/22/19 - Code changes to make the html footprint smaller (less of a hit to the character count)
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.6"
+	state.version = "v2.0.7"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -919,7 +920,7 @@ def tileHandler02(){
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
 		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) makeTileLine(wordsAFT02a,linkAFT02a)
-        if(wordsAFT0a2) state.theTile02 += "${newWords2}"
+        if(wordsAFT02a) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
