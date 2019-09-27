@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 09/26/19 - Added a 'push all' option
  *  V1.0.6 - 09/26/19 - Holds up to 80 data points, added color coding
  *  V1.0.5 - 09/25/19 - Added a failsafe, test has to fail 3 times before notification is sent. Other small adjustments
  *  V1.0.4 - 09/25/19 - Here comes the reports!
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.6"
+	state.version = "v1.0.7"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -99,6 +100,8 @@ def pageConfig() {
 			input "isDataDevice", "capability.switch", title: "Turn this device on", required: false, multiple: false         
 			input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple: true, required: false, submitOnChange: true
             if(sendPushMessage) {
+                input(name: "pushAll", type: "bool", defaultValue: "false", title: "Sometimes you may want to get ALL reading pushed. Turn this option 'ON' to receive all readings. <small><b>* Warning: depending on your settings, this could be a lot of messages!</b></small>", description: "Push All", submitOnChange: "true")
+                
                 paragraph "<u>Optional wildcards:</u><br>%adelay% - returns the Actual Delay value<br>%mdelay% - returns the Max Delay value"
                 input(name: "nRandom", type: "bool", defaultValue: "false", title: "Random message?", description: "Random", submitOnChange: "true")
                 if(!nRandom) input "nMessage", "text", title: "Message to be spoken - Single message",  required: true, defaultValue: "Hub Watchdog is reporting a delay of %adelay%, which is over the max %mdelay%"
@@ -292,6 +295,7 @@ def sendNotification() {
         sendToDevice.warnValue(warnValue)
         sendToDevice.dataPoint1(state.timeDiffMs)
     }
+    if(sendPushMessage && pushAll) pushHandler()
     
     def timeDiff = state.timeDiffMs.toFloat()
     def mDelay = maxDelay.toFloat()
@@ -305,23 +309,7 @@ def sendNotification() {
             if(logEnable) log.debug "In sendNotification - failedCount: ${state.failedCount} - Sending Notifications"
             if(isDataDevice) isDataDevice.on()
     
-            if(sendPushMessage) {
-                if(nRandom) {
-		            def nvalues = "${nMessage}".split(";")
-		            nvSize = nvalues.size()
-		            ncount = nvSize.toInteger()
-    	            def nrandomKey = new Random().nextInt(ncount)
-
-		            theMessage = nvalues[nrandomKey]
-		            if(logEnable) log.debug "In sendNotification - Random - theMessage: ${theMessage}"
-	            } else {
-		            theMessage = "${nMessage}"
-		            if(logEnable) log.debug "In sendNotification - Static - theMessage: ${theMessage}"
-                }
-                if (theMessage.contains("%adelay%")) {theMessage = theMessage.replace('%adelay%', "${state.timeDiffMs}" )}
-                if (theMessage.contains("%mdelay%")) {theMessage = theMessage.replace('%mdelay%', "${maxDelay}" )}
-                pushNow(theMessage)
-            }
+            if(sendPushMessage && !pushAll) pushHandler()
         
             if(rmRule) {
                 if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
@@ -336,6 +324,23 @@ def sendNotification() {
         state.testInProgress = "no"
         if(logEnable) log.debug "In sendNotification - No need to send notifications"
     }
+}
+
+def pushHandler() {
+    if(nRandom) {
+        def nvalues = "${nMessage}".split(";")
+		nvSize = nvalues.size()
+		ncount = nvSize.toInteger()
+    	def nrandomKey = new Random().nextInt(ncount)
+        theMessage = nvalues[nrandomKey]
+		if(logEnable) log.debug "In sendNotification - Random - theMessage: ${theMessage}"
+	} else {
+		theMessage = "${nMessage}"
+		if(logEnable) log.debug "In sendNotification - Static - theMessage: ${theMessage}"
+    }
+    if (theMessage.contains("%adelay%")) {theMessage = theMessage.replace('%adelay%', "${state.timeDiffMs}" )}
+    if (theMessage.contains("%mdelay%")) {theMessage = theMessage.replace('%mdelay%', "${maxDelay}" )}
+    pushNow(theMessage)
 }
 
 def pushNow(msg) {
