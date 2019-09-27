@@ -464,7 +464,7 @@
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "TileMasterParentVersion": "v2.0.4",
-  "TileMasterChild1Version": "v2.0.7",
+  "TileMasterChild1Version": "v2.0.8",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -478,7 +478,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.0.7 - 09/26/19 - Fixed issue with line 2 After device text",
+  "TileMasterUpdateNote": "V2.0.8 - 09/27/19 - Fixed issue with line 5 and with motion sensor colors",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.1",
