@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 09/27/19 - Fixed missing motion color options
  *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
  *  V2.0.2 - 09/21/19 - Added device value color options
  *  V2.0.1 - 09/20/19 - Initial release.
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterParentVersion"
-	state.version = "v2.0.3"
+	state.version = "v2.0.4"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -133,6 +134,9 @@ def mainPage() {
                 input "colorOpen", "text", title: "<span style='color: ${colorOpen};font-size: 25px'>open</span>", submitOnChange: true, width: 6
                 input "colorClosed", "text", title: "<span style='color: ${colorClosed};font-size: 25px'>closed</span>", submitOnChange: true, width: 6
                 
+                input "colorActive", "text", title: "<span style='color: ${colorOpen};font-size: 25px'>active</span>", submitOnChange: true, width: 6
+                input "colorInactive", "text", title: "<span style='color: ${colorClosed};font-size: 25px'>inactive</span>", submitOnChange: true, width: 6
+                
                 input "colorLocked", "text", title: "<span style='color: ${colorLock};font-size: 25px'>locked</span>", submitOnChange: true, width: 6
                 input "colorUnlocked", "text", title: "<span style='color: ${colorUnlock};font-size: 25px'>unlocked</span>", submitOnChange: true, width: 6
                 
@@ -154,9 +158,7 @@ def mainPage() {
                 input "battHigh", "text", title: "Battery >= HIGH", submitOnChange: true, width: 6
                 input "colorBattLow", "text", title: "<span style='color: ${colorBattLow};font-size: 25px'>Battery <= ${battLow}</span>", submitOnChange: true, width: 4
                 input "colorBatt", "text", title: "<span style='color: ${colorBatt};font-size: 25px'>Battery Between</span>", submitOnChange: true, width: 4
-                input "colorBattHigh", "text", title: "<span style='color: ${colorBattHigh};font-size: 25px'>Battery >= ${battHigh}</span>", submitOnChange: true, width: 4
-                
-                
+                input "colorBattHigh", "text", title: "<span style='color: ${colorBattHigh};font-size: 25px'>Battery >= ${battHigh}</span>", submitOnChange: true, width: 4  
             }
 			display()
 		}
