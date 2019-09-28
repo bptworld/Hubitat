@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 09/28/19 - Fixed the '60' error.
  *  V1.0.5 - 09/26/19 - More color choices, rounded Med to 3
  *  V1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding
  *  V1.0.3 - 09/25/19 - More tweaks
@@ -44,7 +45,7 @@
     
 def setVersion(){
     appName = "HubWatchdogDriver"
-	version = "v1.0.5" 
+	version = "v1.0.6" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -88,7 +89,7 @@ metadata {
         attribute "medianD", "number"
         attribute "minimumD", "number"
         attribute "maximumD", "number"
-        
+        attribute "list1", "string"
         
         attribute "dwDriverInfo", "string"
         command "updateVersion"
@@ -165,7 +166,7 @@ def makeList(theMessage) {
                 listSize1 = 0
             }
             
-            if(listSize1 > 60) state.list1.removeAt(60)
+            if(listSize1 > 80) state.list1.removeAt(80)
 
             String result1 = state.list1.join(";")
             def lines1 = result1.split(";")
@@ -356,6 +357,8 @@ def makeList(theMessage) {
             sendEvent(name: "numOfCharacters8", value: dataCharCount8, displayed: true)
             
             sendEvent(name: "readings1", value: state.readings1, displayed: true)
+            
+            sendEvent(name: "list1", value: state.list1, displayed: true)
             sendEvent(name: "listSizeB", value: state.listSizeB, displayed: true)
             sendEvent(name: "listSizeW", value: state.listSizeW, displayed: true)
             
