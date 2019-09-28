@@ -29,10 +29,10 @@
   "HomeTrackerDriverDiscussion": "",
   "HomeTrackerDriverUpdateNote": "V1.0.0 - 09/10/19 - Initial release",
   
-  "HubWatchdogDriverVersion": "v1.0.5",
+  "HubWatchdogDriverVersion": "v1.0.6",
   "HubWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy",
   "HubWatchdogDriverDiscussion": "",
-  "HubWatchdogDriverUpdateNote": "V1.0.5 - 09/26/19 - More color choices, rounded Med to 3",
+  "HubWatchdogDriverUpdateNote": "V1.0.6 - 09/28/19 - Fixed the '60' error.",
   
   "IP2IRTelnetVersion": "v1.0.4",
   "IP2IRTelnetRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy",
