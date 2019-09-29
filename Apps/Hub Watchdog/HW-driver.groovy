@@ -105,9 +105,9 @@ metadata {
         section(){
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "12")
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
-            input("normalColor", "text", title: "Normal color for 'Under Threshold' readings", required: true, defaultValue: "blue")
             input("warnColor", "text", title: "Change color for 'Close to Threshold' readings", required: true, defaultValue: "orange")
             input("overColor", "text", title: "Change color for 'Over Threshold' readings", required: true, defaultValue: "red")
+            input("uniqueID", "text", title: "Unique Identifier (Virt, Zwav, Zigb or Other)", required: true)
 			input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
     }
@@ -147,15 +147,15 @@ def makeList(theMessage) {
             getDateTime()
             
             if(theMessage >= maxDelay) {
-                nMessage1 = "<span style='color: ${normalColor}'>${newdate}</span> - <span style='color: ${overColor}'>${theMessage}</span>"
+                nMessage1 = "${newdate} - <span style='color: ${overColor}'>${theMessage}</span> - ${uniqueID}"
                 if(state.listSizeB == null) state.listSizeB = 0
                 state.listSizeB = state.listSizeB + 1
             } else if(theMessage >= warnValue) {
-                nMessage1 = "<span style='color: ${normalColor}'>${newdate}</span> - <span style='color: ${warnColor}'>${theMessage}</span>"
+                nMessage1 = "${newdate} - <span style='color: ${warnColor}'>${theMessage}</span> - ${uniqueID}"
                 if(state.listSizeW == null) state.listSizeW = 0
                 state.listSizeW = state.listSizeW + 1
             } else {
-                nMessage1 = "<span style='color: ${normalColor}'>${newdate}</span> - ${theMessage}"
+                nMessage1 = "${newdate} - ${theMessage} - ${uniqueID}"
             }
             if(state.list1 == null) state.list1 = []
             state.list1.add(0,nMessage1)  
@@ -171,7 +171,7 @@ def makeList(theMessage) {
             String result1 = state.list1.join(";")
             def lines1 = result1.split(";")
             
-            if(logEnable) log.trace "In makeList - All"
+            if(logEnable) log.trace "In makeList - All - listSize1: ${listSize1}"
             theData1 = "<table><tr><td><div style='font-size:${fontSize}px'>"
             if(listSize1 >= 1) theData1 += "${lines1[0]}<br>"
             if(listSize1 >= 2) theData1 += "${lines1[1]}<br>"
@@ -430,7 +430,7 @@ def initialize() {
 def getDateTime() {
 	def date = new Date()
 	if(hourType == false) newdate=date.format("MM-d HH:mm")
-	if(hourType == true) newdate=date.format("MM-d hh:mm")
+	if(hourType == true) newdate=date.format("MM-d hh:mm a")
     return newdate
 }
 
@@ -443,6 +443,8 @@ def off() {
 }
 
 def clearData1() {
+    state.theDataMap = [:]
+    
     state.readings1 = []
     state.list1 = []
     state.listB = []
@@ -478,6 +480,7 @@ def clearData1() {
     sendEvent(name: "listSizeB", value: 0, displayed: true)
     sendEvent(name: "listSizeW", value: 0, displayed: true)
     sendEvent(name: "listSize1", value: 0, displayed: true)
+    sendEvent(name: "list1", value: 0, displayed: true)
     
     sendEvent(name: "meanD", value: 0, displayed: true)
     sendEvent(name: "midNumberD", value: 0, displayed: true)
