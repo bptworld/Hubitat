@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 09/29/19 - Added support for 'Examiner' child app
  *  V1.0.6 - 09/28/19 - Fixed the '60' error.
  *  V1.0.5 - 09/26/19 - More color choices, rounded Med to 3
  *  V1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding
@@ -45,7 +46,7 @@
     
 def setVersion(){
     appName = "HubWatchdogDriver"
-	version = "v1.0.6" 
+	version = "v1.0.7" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
