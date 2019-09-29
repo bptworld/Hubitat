@@ -35,6 +35,7 @@
  *  Changes:
  *
  *
+ *  V1.0.1 - 09/29/19 - Added second type of child device - Hub Watchdog Examiner
  *  V1.0.0 - 09/24/19 - Initial release.
  *
  */
@@ -43,7 +44,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -62,7 +63,8 @@ definition(
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
-    iconX3Url: ""
+    iconX3Url: "",
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-parent.groovy"
 )
 
 preferences {
@@ -102,6 +104,7 @@ def mainPage() {
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Hub Watchdog Child", namespace: "BPTWorld", title: "<b>Add a new 'Hub Watchdog' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Hub Watchdog Examiner Child", namespace: "BPTWorld", title: "<b>Add a new 'Hub Watchdog Examiner' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
