@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 09/30/19 - Lots of little changes
  *  V1.0.0 - 09/29/19 - Initial release.
  *
  */
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogExaminerChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -83,23 +84,28 @@ def pageConfig() {
 			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device you use will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
 		}  
         section(getFormat("header-green", "${getImage("Blank")}"+" Data Devices")) {
-			input(name: "getDevice1", type: "capability.actuator", title: "Device 1 to compare:", submitOnChange: true)
-            input(name: "getDevice2", type: "capability.actuator", title: "Device 2 to compare:", submitOnChange: true)
-            input(name: "getDevice3", type: "capability.actuator", title: "Device 3 to compare:", submitOnChange: true)
+			input(name: "getDevice1", type: "capability.actuator", title: "Device 1 to compare:", submitOnChange: true, width: 4)
+            input(name: "getDevice2", type: "capability.actuator", title: "Device 2 to compare:", submitOnChange: true, width: 4)
+            input(name: "getDevice3", type: "capability.actuator", title: "Device 3 to compare:", submitOnChange: true, width: 4)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Color Coding the Raw Data")) {
-            input "colorZwav", "text", title: "Color code data Zwav", submitOnChange: true, width: 6
-            input "colorZigb", "text", title: "Color code data Zigb", submitOnChange: true, width: 6
-            input "colorVirt", "text", title: "Color code data Virt", submitOnChange: true, width: 6
-            input "colorOther", "text", title: "Color code data Other", submitOnChange: true, width: 6
+            paragraph "Color code data for:"
+            input "colorZwav", "text", title: "Zwav", submitOnChange: true, width: 3
+            input "colorZigb", "text", title: "Zigb", submitOnChange: true, width: 3
+            input "colorVirt", "text", title: "Virt", submitOnChange: true, width: 3
+            input "colorOther", "text", title: "Other", submitOnChange: true, width: 3
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Report Summary Data")) {
+            if(getDevice1 == null || getDevice1 == "") state.reportStats1 = "Nothing to report"
+            if(getDevice2 == null || getDevice2 == "") state.reportStats2 = "Nothing to report"
+            if(getDevice3 == null || getDevice3 == "") state.reportStats3 = "Nothing to report"
+            
+            paragraph "<table width='100%' border='1'><tr><td width='33%'>${state.reportStats1}</td><td width='33%'>${state.reportStats2}</td><td width='33%'>${state.reportStats3}</td></tr></table>"
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
-			input "testBtn1", "button", title: "Collect Summary Data Now", width: 6
-            input "testBtn2", "button", title: "Collect Raw Data Now", width: 6
-            href "reportSummaryOptions", title: "Summary Report", description: "Click here to view the Summary Report."
             href "reportRawOptions", title: "Raw Data Report", description: "Click here to view the Raw Data Report."
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true)
 		}
@@ -107,7 +113,19 @@ def pageConfig() {
 	}
 }
 
-def getSummaryData(){
+def getRawData(evt){
+    // *** Raw Data ***
+    if(logEnable) log.debug "In getTheData (${state.version})"
+    if(getDevice1) deviceData1 = getDevice1.currentValue("list1")
+    if(getDevice2) deviceData2 = getDevice2.currentValue("list1")
+    if(getDevice3) deviceData3 = getDevice3.currentValue("list1")
+    
+    if(deviceData1) deviceD1 = deviceData1.replace("["," ").replace("]","")
+    if(deviceData2) deviceD2 = deviceData2.replace("["," ").replace("]","")
+    if(deviceData3) deviceD3 = deviceData3.replace("["," ").replace("]","")
+    state.deviceData = [deviceD1, deviceD2, deviceD3].flatten().findAll{it}
+    
+    // *** Summary Data ***
     if(logEnable) log.debug "In getDataSummary (${state.version})"
     if(getDevice1) {
         meanD1 = getDevice1.currentValue("meanD")
@@ -119,6 +137,7 @@ def getSummaryData(){
         listSizeW1 = getDevice1.currentValue("listSizeW")
         maxDelay1 = getDevice1.currentValue("maxDelay")
         warnValue1 = getDevice1.currentValue("warnValue")
+        lastUpdated1 = getDevice1.currentValue("lastUpdated")
     }
     if(getDevice2) {
         meanD2 = getDevice2.currentValue("meanD")
@@ -130,6 +149,7 @@ def getSummaryData(){
         listSizeW2 = getDevice2.currentValue("listSizeW")
         maxDelay2 = getDevice2.currentValue("maxDelay")
         warnValue2 = getDevice2.currentValue("warnValue")
+        lastUpdated2 = getDevice2.currentValue("lastUpdated")
     }
     if(getDevice3) {
         meanD3 = getDevice3.currentValue("meanD")
@@ -141,35 +161,24 @@ def getSummaryData(){
         listSizeW3 = getDevice3.currentValue("listSizeW")
         maxDelay3 = getDevice3.currentValue("maxDelay")
         warnValue3 = getDevice3.currentValue("warnValue")
+        lastUpdated3 = getDevice3.currentValue("lastUpdated")
     }
 
-    state.reportStats1 = "<table width='100%'><tr><td><b>${getDevice1}</b></td></tr><tr><td> </td></tr>"
+    state.reportStats1 = "<table width='100%'><tr><td><b>${getDevice1}</b><br>${lastUpdated1}</td></tr><tr><td> </td></tr>"
     state.reportStats1 += "<tr><td>Number of Data Points: ${readingsSize1}<br>Over Max Threshold: ${listSizeB1}<br>Over Warning Threshold: ${listSizeW1}<br>Current Max Delay: ${maxDelay1}<br>Current Warning Delay: ${warnValue1}</td></tr><tr><td> </td></tr>"
-    state.reportStats1 += "<tr><td>Mean Delay: ${meanD1}<br>Median Delay: ${medianD1}<br>Minimum Delay: ${minimumD1}<br>Maximum Delay: ${maximumD1}</td></tr></table>"  
-    
-    state.reportStats2 = "<table width='100%'><tr><td><b>${getDevice2}</b></td></tr><tr><td> </td></tr>"
+    state.reportStats1 += "<tr><td>Mean Delay: ${meanD1}<br>Median Delay: ${medianD1}<br>Minimum Delay: ${minimumD1}<br>Maximum Delay: ${maximumD1}</td></tr></table>"
+
+    state.reportStats2 = "<table width='100%'><tr><td><b>${getDevice2}</b><br>${lastUpdated2}</td></tr><tr><td> </td></tr>"
     state.reportStats2 += "<tr><td>Number of Data Points: ${readingsSize2}<br>Over Max Threshold: ${listSizeB2}<br>Over Warning Threshold: ${listSizeW2}<br>Current Max Delay: ${maxDelay2}<br>Current Warning Delay: ${warnValue2}</td></tr><tr><td> </td></tr>"
     state.reportStats2 += "<tr><td>Mean Delay: ${meanD2}<br>Median Delay: ${medianD2}<br>Minimum Delay: ${minimumD2}<br>Maximum Delay: ${maximumD2}</td></tr></table>"
     
-    state.reportStats3 = "<table width='100%'><tr><td><b>${getDevice3}</b></td></tr><tr><td> </td></tr>"
+    state.reportStats3 = "<table width='100%'><tr><td><b>${getDevice3}</b><br>${lastUpdated3}</td></tr><tr><td> </td></tr>"
     state.reportStats3 += "<tr><td>Number of Data Points: ${readingsSize3}<br>Over Max Threshold: ${listSizeB3}<br>Over Warning Threshold: ${listSizeW3}<br>Current Max Delay: ${maxDelay3}<br>Current Warning Delay: ${warnValue3}</td></tr><tr><td> </td></tr>"
     state.reportStats3 += "<tr><td>Mean Delay: ${meanD3}<br>Median Delay: ${medianD3}<br>Minimum Delay: ${minimumD3}<br>Maximum Delay: ${maximumD3}</td></tr></table>"
 }
 
-def getRawData(){
-    if(logEnable) log.debug "In getTheData (${state.version})"
-    if(getDevice1) deviceData1 = getDevice1.currentValue("list1")
-    if(getDevice2) deviceData2 = getDevice2.currentValue("list1")
-    if(getDevice3) deviceData3 = getDevice3.currentValue("list1")
-    
-    if(deviceData1) deviceD1 = deviceData1.replace("["," ").replace("]","")
-    if(deviceData2) deviceD2 = deviceData2.replace("["," ").replace("]","")
-    if(deviceData3) deviceD3 = deviceData3.replace("["," ").replace("]","")
-    state.deviceData = [deviceD1, deviceD2, deviceD3].flatten().findAll{it}
-}
-
 def styleHandler(data){
-    if(logEnable) log.debug "In styleHandler (${state.version})"
+    //if(logEnable) log.debug "In styleHandler (${state.version})"
     if(data.contains(" - Zwav")) {
         strippedData = data.replace(" - Zwav","")
         def (dataZw1, dataZw2) = strippedData.split(" - ")
@@ -199,7 +208,7 @@ def styleHandler(data){
         return colorData
     }
 }
-    
+
 def reportRawOptions(){
     dynamicPage(name: "reportRawOptions", title: "Report Raw Data", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Report Raw Data")) {
@@ -487,18 +496,6 @@ def reportRawOptions(){
     }
 }
 
-def reportSummaryOptions(){
-    dynamicPage(name: "reportOptions", title: "Report Summary Data", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Report Summary Data")) {
-            if(getDevice1 == null || getDevice1 == "") state.reportStats1 = "Nothing to report"
-            if(getDevice2 == null || getDevice2 == "") state.reportStats2 = "Nothing to report"
-            if(getDevice3 == null || getDevice3 == "") state.reportStats3 = "Nothing to report"
-            
-            paragraph "<table width='100%' border='1'><tr><td width='33%'>${state.reportStats1}</td><td width='33%'>${state.reportStats2}</td><td width='33%'>${state.reportStats3}</td></tr></table>"
-        }
-    }
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -513,7 +510,10 @@ def updated() {
 
 def initialize() {
     setDefaults()
-
+    if(getDevice1) subscribe(getDevice1, "list1", getRawData)
+    if(getDevice1) subscribe(getDevice2, "list2", getRawData)
+    if(getDevice1) subscribe(getDevice3, "list3", getRawData)
+    
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
