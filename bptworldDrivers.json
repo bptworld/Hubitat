@@ -29,10 +29,10 @@
   "HomeTrackerDriverDiscussion": "",
   "HomeTrackerDriverUpdateNote": "V1.0.0 - 09/10/19 - Initial release",
   
-  "HubWatchdogDriverVersion": "v1.0.7",
+  "HubWatchdogDriverVersion": "v1.0.8",
   "HubWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy",
   "HubWatchdogDriverDiscussion": "",
-  "HubWatchdogDriverUpdateNote": "V1.0.7 - 09/29/19 - Added support for 'Examiner' child app",
+  "HubWatchdogDriverUpdateNote": "V1.0.8 - 09/30/19 - Lots of little changes",
   
   "IP2IRTelnetVersion": "v1.0.4",
   "IP2IRTelnetRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy",
