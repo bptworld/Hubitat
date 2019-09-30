@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causes troubles
  *  V2.0.8 - 09/27/19 - Fixed issue with line 5 and with motion sensor colors
  *  V2.0.7 - 09/26/19 - Fixed issue with line 2 After device text
  *  V2.0.6 - 09/22/19 - Added ability to use links on tiles
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.8"
+	state.version = "v2.0.9"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -164,7 +165,7 @@ def line01Options(){
 					input "deviceAtts01", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01
                     input "useColors01", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
-					if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
+					if(state.deviceStatus01 == null || state.deviceStatus01 == "") state.deviceStatus01 = "No Data"
 					if(device01 && deviceAtts01) paragraph "Current Status of Device Attribute: ${device01} - ${deviceAtts01} - ${state.deviceStatus01}"
 				}
 				input "fontSize01", "number", title: "Font Size", required: true, defaultValue: "15", submitOnChange: true, width:6
@@ -191,7 +192,7 @@ def line01Options(){
 					input "deviceAtts01a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01a
                     input "useColors01a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
-					if(state.deviceStatus01a == null) state.deviceStatus01a = "No Data"
+					if(state.deviceStatus01a == null || state.deviceStatus01a == "") state.deviceStatus01a = "No Data"
 					if(device01a && deviceAtts01a) paragraph "Current Status of Device Attribute: ${device01a} - ${deviceAtts01a} - ${state.deviceStatus01a}"
 				}
 				input "fontSize01a", "number", title: "Font Size", required: true, defaultValue: "15", submitOnChange: true, width:6
@@ -218,7 +219,7 @@ def line01Options(){
 					input "deviceAtts01b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01b
                     input "useColors01b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
 					state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
-					if(state.deviceStatus01b == null) state.deviceStatus01b = "No Data"
+					if(state.deviceStatus01b == null || state.deviceStatus01b == "") state.deviceStatus01b = "No Data"
 					if(device01b && deviceAtts01b) paragraph "Current Status of Device Attribute: ${device01b} - ${deviceAtts01b} - ${state.deviceStatus01b}"
 				}
 				input "fontSize01b", "number", title: "Font Size", required: true, defaultValue: "15", submitOnChange: true, width:6
@@ -750,7 +751,7 @@ def tileHandler01(){
 	if(nSections01 == "1" || nSections01 == "2" || nSections01 == "3") {
 		if(device01) {
 			state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
-            if(state.deviceStatus01 == null) state.deviceStatus01 = "No Data"
+            if(state.deviceStatus01 == null || state.deviceStatus01 == "") state.deviceStatus01 = "No Data"
             if(useColors01) {
                 deviceStatus01 = state.deviceStatus01
                 getStatusColors(deviceStatus01, deviceAtts01)
@@ -763,7 +764,7 @@ def tileHandler01(){
 	if(nSections01 == "2" || nSections01 == "3") {
 		if(device01a) {
 			state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
-			if(state.deviceStatus01a == null) state.deviceStatus01a = "No Data"
+			if(state.deviceStatus01a == null || state.deviceStatus01a == "") state.deviceStatus01a = "No Data"
             if(useColors01a) {
                 deviceStatus01a = state.deviceStatus01a
                 getStatusColors(deviceStatus01a, deviceAtts01a)
@@ -776,7 +777,7 @@ def tileHandler01(){
 	if(nSections01 == "3") {
 		if(device01b) {
 			state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
-			if(state.deviceStatus01b == null) state.deviceStatus01b = "No Data"
+			if(state.deviceStatus01b == null || state.deviceStatus01b == "") state.deviceStatus01b = "No Data"
             if(useColors01b) {
                 deviceStatus01b = state.deviceStatus01b
                 getStatusColors(deviceStatus01b, deviceAtts01b)
@@ -793,7 +794,7 @@ def tileHandler01(){
         state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
         if(wordsBEF01) makeTileLine(wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
+		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) makeTileLine(wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 		
@@ -803,14 +804,14 @@ def tileHandler01(){
 		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
 		if(wordsBEF01) makeTileLine(wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
+		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) makeTileLine(wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "<td style='text-align:${align01a};color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%'>"
 		if(wordsBEF01a) makeTileLine(wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
-		if(state.deviceStatus01a) state.theTile01 += "${state.deviceStatus01a}"
+		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) makeTileLine(wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
 		
@@ -820,21 +821,21 @@ def tileHandler01(){
 		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
 		if(wordsBEF01) makeTileLine(wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(state.deviceStatus01) state.theTile01 += "${state.deviceStatus01}"
+		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) makeTileLine(wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "<td style='${state.style01a}color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%'>"
 		if(wordsBEF01a) makeTileLine(wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
-		if(state.deviceStatus01a) state.theTile01 += "${state.deviceStatus01a}"
+		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) makeTileLine(wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "<td style='text-align:${align01b};color:${color01b};font-size:${fontSize01b}px;width:${secWidth01b}%'>"
 		if(wordsBEF01b) makeTileLine(wordsBEF01b,linkBEF01b)
         if(wordsBEF01b) state.theTile01 += "${newWords2}"
-		if(state.deviceStatus01b) state.theTile01 += "${state.deviceStatus01b}"
+		if(deviceAtts01b) state.theTile01 += "${state.deviceStatus01b}"
 		if(wordsAFT01b) makeTileLine(wordsAFT01b,linkAFT01b)
         if(wordsAFT01b) state.theTile01 += "${newWords2}"
 		
@@ -902,7 +903,7 @@ def tileHandler02(){
 		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
 		if(wordsBEF02) makeTileLine(wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
+		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) makeTileLine(wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 		
@@ -912,14 +913,14 @@ def tileHandler02(){
 		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
 		if(wordsBEF02) makeTileLine(wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
+		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) makeTileLine(wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%'>"
 		if(wordsBEF02a) makeTileLine(wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
-		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
+		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) makeTileLine(wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
 		
@@ -929,20 +930,20 @@ def tileHandler02(){
 		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
 		if(wordsBEF02) makeTileLine(wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(state.deviceStatus02) state.theTile02 += "${state.deviceStatus02}"
+		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) makeTileLine(wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%'>"
 		if(wordsBEF02a) makeTileLine(wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
-		if(state.deviceStatus02a) state.theTile02 += "${state.deviceStatus02a}"
+		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) makeTileLine(wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "<td style='text-align:${align02b};color:${color02b};font-size:${fontSize02b}px;width:${secWidth02b}%'>"
 		if(wordsBEF02b) state.theTile02 += "${wordsBEF02b}"
-		if(state.deviceStatus02b) state.theTile02 += "${state.deviceStatus02b}"
+		if(deviceAtts02b) state.theTile02 += "${state.deviceStatus02b}"
 		if(wordsAFT02b) makeTileLine(wordsAFT02b,linkAFT02b)
         if(wordsAFT02b) state.theTile02 += "${newWords2}"
 		
@@ -1010,7 +1011,7 @@ def tileHandler03(){
 		state.theTile03 = "<table width='100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
 		if(wordsBEF03) makeTileLine(wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
+		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) makeTileLine(wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 		
@@ -1020,14 +1021,14 @@ def tileHandler03(){
 		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
 		if(wordsBEF03) makeTileLine(wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
+		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) makeTileLine(wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%'>"
 		if(wordsBEF03a) makeTileLine(wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
-		if(state.deviceStatus03a) state.theTile03 += "${state.deviceStatus03a}"
+		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) makeTileLine(wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
 		
@@ -1037,21 +1038,21 @@ def tileHandler03(){
 		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
 		if(wordsBEF03) makeTileLine(wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(state.deviceStatus03) state.theTile03 += "${state.deviceStatus03}"
+		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) makeTileLine(wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%'>"
 		if(wordsBEF03a) makeTileLine(wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
-		if(state.deviceStatus03a) state.theTile03 += "${state.deviceStatus03a}"
+		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) makeTileLine(wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "<td style='text-align:${align03b};color:${color03b};font-size:${fontSize03b}px;width:${secWidth03b}%'>"
 		if(wordsBEF03b) makeTileLine(wordsBEF03b,linkBEF03b)
         if(wordsBEF03b) state.theTile03 += "${newWords2}"
-		if(state.deviceStatus03b) state.theTile03 += "${state.deviceStatus03b}"
+		if(deviceAtts03b) state.theTile03 += "${state.deviceStatus03b}"
 		if(wordsAFT03b) makeTileLine(wordsAFT03b,linkAFT03b)
         if(wordsAFT03b) state.theTile03 += "${newWords2}"
 		
@@ -1119,7 +1120,7 @@ def tileHandler04(){
 		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"	// 61 + 12 + 17 (100)
 		if(wordsBEF04) makeTileLine(wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
+		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) makeTileLine(wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 		
@@ -1129,14 +1130,14 @@ def tileHandler04(){
 		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"
 		if(wordsBEF04) makeTileLine(wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
+		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) makeTileLine(wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%'>"
 		if(wordsBEF04a) makeTileLine(wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
-		if(state.deviceStatus04a) state.theTile04 += "${state.deviceStatus04a}"
+		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) makeTileLine(wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
 		
@@ -1146,21 +1147,21 @@ def tileHandler04(){
 		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"
 		if(wordsBEF04) makeTileLine(wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(state.deviceStatus04) state.theTile04 += "${state.deviceStatus04}"
+		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) makeTileLine(wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%'>"
 		if(wordsBEF04a) makeTileLine(wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
-		if(state.deviceStatus04a) state.theTile04 += "${state.deviceStatus04a}"
+		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) makeTileLine(wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "<td style='text-align:${align04b};color:${color04b};font-size:${fontSize04b}px;width:${secWidth04b}%'>"
 		if(wordsBEF04b) makeTileLine(wordsBEF04b,linkBEF04b)
         if(wordsBEF04b) state.theTile04 += "${newWords2}"
-		if(state.deviceStatus04b) state.theTile04 += "${state.deviceStatus04b}"
+		if(deviceAtts04b) state.theTile04 += "${state.deviceStatus04b}"
 		if(wordsAFT04b) makeTileLine(wordsAFT04b,linkAFT04b)
         if(wordsAFT04b) state.theTile04 += "${newWords2}"
 		
@@ -1228,7 +1229,7 @@ def tileHandler05(){
 		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
 		if(wordsBEF05) makeTileLine(wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
+		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) makeTileLine(wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 		
@@ -1238,14 +1239,14 @@ def tileHandler05(){
 		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
 		if(wordsBEF05) makeTileLine(wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
+		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) makeTileLine(wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%'>"
 		if(wordsBEF05a) makeTileLine(wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
-		if(state.deviceStatus05a) state.theTile05 += "${state.deviceStatus05a}"
+		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) makeTileLine(wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
 		
@@ -1255,21 +1256,21 @@ def tileHandler05(){
 		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
 		if(wordsBEF05) makeTileLine(wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(state.deviceStatus05) state.theTile05 += "${state.deviceStatus05}"
+		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) makeTileLine(wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%'>"
 		if(wordsBEF05a) makeTileLine(wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
-		if(state.deviceStatus05a) state.theTile05 += "${state.deviceStatus05a}"
+		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) makeTileLine(wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "<td style='text-align:${align05b};color:${color05b};font-size:${fontSize05b}px;width:${secWidth05b}%'>"
 		if(wordsBEF05b) makeTileLine(wordsBEF05b,linkBEF05b)
         if(wordsBEF05b) state.theTile05 += "${newWords2}"
-		if(state.deviceStatus05b) state.theTile05 += "${state.deviceStatus05b}"
+		if(deviceAtts05b) state.theTile05 += "${state.deviceStatus05b}"
 		if(wordsAFT05b) makeTileLine(wordsAFT05b,linkAFT05b)
         if(wordsAFT05b) state.theTile05 += "${newWords2}"
 		
@@ -1400,7 +1401,7 @@ def getStatusColors(deviceStatus,deviceAtts) {
     if(deviceStatus == "present") deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
     if(deviceStatus == "not present") deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
     
-    
+    if(deviceStatus1 == null) deviceStatus1 = deviceStatus
     if(logEnable) log.debug "In getStatusColors - Returning: ${deviceStatus1}"
     return deviceStatus1
 }
