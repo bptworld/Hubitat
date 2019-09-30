@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V1.0.8 - 09/30/19 - Lots of little changes
  *  V1.0.7 - 09/29/19 - Added support for 'Examiner' child app
  *  V1.0.6 - 09/28/19 - Fixed the '60' error.
  *  V1.0.5 - 09/26/19 - More color choices, rounded Med to 3
@@ -46,7 +47,7 @@
     
 def setVersion(){
     appName = "HubWatchdogDriver"
-	version = "v1.0.7" 
+	version = "v1.0.8" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -91,6 +92,7 @@ metadata {
         attribute "minimumD", "number"
         attribute "maximumD", "number"
         attribute "list1", "string"
+        attribute "lastUpdated", "string"
         
         attribute "dwDriverInfo", "string"
         command "updateVersion"
@@ -430,8 +432,14 @@ def initialize() {
 
 def getDateTime() {
 	def date = new Date()
-	if(hourType == false) newdate=date.format("MM-d HH:mm")
-	if(hourType == true) newdate=date.format("MM-d hh:mm a")
+    if(hourType == false) {
+        newdate=date.format("MM-dd HH:mm")
+        sendEvent( name: "lastUpdated", value: date.format("MM-dd - HH:mm:ss") )
+    }
+    if(hourType == true) {
+        newdate=date.format("MM-dd hh:mm a")
+        sendEvent( name: "lastUpdated", value: date.format("MM-dd - h:mm:ss a") )
+    }
     return newdate
 }
 
