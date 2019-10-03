@@ -35,9 +35,11 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 10/03/19 - LOTS of changes, added some rule machine options, lock codes can be used as presence sensors and name
+will be added to the announcement. Greetings have returned! Be sure to load up each child app and fill in the missing pieces!
  *  V2.0.3 - 09/14/19 - More tweaking...
  *  V2.0.2 - 09/14/19 - Tried to make the opening and closing sections more clear. Added green check marks to sections that are
- *    filled out. Found a couple of typos.
+filled out. Found a couple of typos.
  *  V2.0.1 - 09/13/19 - Adjusted message sections
  *  V2.0.0 - 09/10/19 - Combined Welcome Home, Departures and Arrivals. Major rewrite of all models.
  *
@@ -50,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.3"
+	state.version = "v2.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -158,11 +160,14 @@ def presenceOptions(){
             paragraph "<small>This will give a heads up that someone is home. But can be a false alarm if they are just driving by.</small>" 
         }
 
-		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Home DELAYED Options")) { 
-			paragraph "If a presence sensor has been detected for less than x minutes (set the minutes below), after the trigger, then speak the message."
-			paragraph "Note: If you are not seeing your 'Friendly Names', then go back to the parent app, enter them in and hit 'done' before setting up any child apps."
-            input "timeHome", "number", title: "How many minutes can the presence sensor be home and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10  
+		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Sensor Options")) { 
+			paragraph "If a presence sensor has been present for less than x minutes, after the trigger, then speak the message."
+            input "timeHome", "number", title: "How many minutes can the presence sensor be present and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10  
             
+            paragraph "If a presence sensor has been not present for less than x minutes, after the trigger, then speak the message."
+            input "timeAway", "number", title: "How many minutes can the presence sensor be not present and still be considered for a departed message (default=2)", required: true, defaultValue: 2
+            
+            paragraph "Note: If you are not seeing your 'Friendly Names', then go back to the parent app, enter them in and hit 'done' before setting up any child apps."
 			if(parent.friendlyName1 != "Not set") input(name: "ps1a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName1}", description: "PS1", submitOnChange: true)
 			if(ps1a) input("presenceSensor1", "capability.presenceSensor", title: "Match a Presence Sensor to a Friendly Name", required: true)
 			if(parent.friendlyName2 != "Not set") input(name: "ps2a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName2}", description: "PS2", submitOnChange: true)
@@ -177,7 +182,7 @@ def presenceOptions(){
             if(parent.friendlyName6 != "Not set") input(name: "ps6a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName6}", description: "PS6", submitOnChange: true)
 			if(ps6a) input("presenceSensor6", "capability.presenceSensor", title: "Match a Presence Sensor to a Friendly Name", required: true)
             if(parent.friendlyName7 != "Not set") input(name: "ps7a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName7}", description: "PS7", submitOnChange: true)
-			if(ps7a) input("presenceSensor7", "capability.presenceSensor", title: "Match a Presence Sensor to a Friendly Name", required: true)
+			if(ps7a) input("presenceSensor0", "capability.presenceSensor", title: "Match a Presence Sensor to a Friendly Name", required: true)
             if(parent.friendlyName8 != "Not set") input(name: "ps8a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName8}", description: "PS8", submitOnChange: true)
 			if(ps8a) input("presenceSensor8", "capability.presenceSensor", title: "Match a Presence Sensor to a Friendly Name", required: true)
             if(parent.friendlyName9 != "Not set") input(name: "ps9a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName9}", description: "PS9", submitOnChange: true)
@@ -249,15 +254,15 @@ def messageOptions(){
     dynamicPage(name: "messageOptions", title: "Message Options", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Home NOW Message Options")) {
             paragraph "This will give a heads up that someone is home. But can be a false alarm if they are just driving by."
-            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor"
+            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
             paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
             paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
             if(homeNow) {
                 input(name: "oRandomHN", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
-			    if(!oRandomHN) input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
-                if(!oRandomHN) input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
+			    if(!oRandomHN) input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Single message", required: true
+                if(!oRandomHN) input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Single message", required: true
 			    if(oRandomHN) {
-				    input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				    input(name: "oMsgListHN", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
 				    if(oMsgListHN) {
 				    	def ovaluesHN = "${omessageHN}".split(";")
@@ -265,7 +270,7 @@ def messageOptions(){
     				    ovaluesHN.each { item -> olistMapHN += "${item}<br>"}
 					    paragraph "${olistMapHN}"
 				    }
-                    input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+                    input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				    input(name: "cMsgListHN", type: "bool", defaultValue: "true", title: "Show a list view of the closing messages?", description: "List View", submitOnChange: "true")
 				    if(cMsgListHN) {
 				    	def cvaluesHN = "${cmessageHN}".split(";")
@@ -275,19 +280,70 @@ def messageOptions(){
 				    }
                 }
             } else {
-                paragraph "Turn this option on in the 'Presence Options' section."
+                paragraph "<b>Turn this option on in the 'Presence Options' section.</b>"
             }
         }       
 		section(getFormat("header-green", "${getImage("Blank")}"+" Welcome Home Message Options")) {
             paragraph "This will speak a nice 'Welcome Home' message AFTER you have entered the house."
             paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
-            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
+            paragraph "Message constructed as 'Greeting' + 'Opening message' + 'Closing message'<br>REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
+            
+            paragraph "<hr>"
+            paragraph "<b>Greeting Options</b>"
+            paragraph "Between what times will Greeting 1 be used"
+            input "fromTimeG1", "time", title: "From", required: true, width: 6
+        	input "toTimeG1", "time", title: "To", required: true, width: 6
+            input(name: "oRandomG1", type: "bool", defaultValue: "false", title: "Random Greeting 1?", description: "Random", submitOnChange: "true")
+			if(!oRandomG1) input "greeting1", "text", required: true, title: "Greeting - 1 (am) - Single message", defaultValue: "Good Morning"
+			if(oRandomG1) {
+				input "greeting1", "text", title: "Random Greeting - 1 (am) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG1List", type: "bool", defaultValue: "false", title: "Show a list view of random messages 1?", description: "List View", submitOnChange: "true")
+				if(oG1List) {
+					def valuesG1 = "${greeting1}".split(";")
+					listMapG1 = ""
+    				valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
+					paragraph "${listMapG1}"
+				}
+			}
+            paragraph "Between what times will Greeting 2 be used"
+            input "fromTimeG2", "time", title: "From", required: true, width: 6
+        	input "toTimeG2", "time", title: "To", required: true, width: 6
+            input(name: "oRandomG2", type: "bool", defaultValue: "false", title: "Random Greeting 2?", description: "Random", submitOnChange: "true")
+			if(!oRandomG2) input "greeting2", "text", required: true, title: "Greeting - 2 (pm before 6) - Single message", defaultValue: "Good Afternoon"
+			if(oRandomG2) {
+				input "greeting2", "text", title: "Random Greeting - 2 (pm before 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG2List", type: "bool", defaultValue: "false", title: "Show a list view of the random messages 2?", description: "List View", submitOnChange: "true")
+				if(oG2List) {
+					def valuesG2 = "${greeting2}".split(";")
+					listMapG2 = ""
+    				valuesG2.each { itemG2 -> listMapG2 += "${itemG2}<br>" }
+					paragraph "${listMapG2}"
+				}
+			}
+            paragraph "Between what times will Greeting 3 be used"
+            input "fromTimeG3", "time", title: "From", required: true, width: 6
+        	input "toTimeG3", "time", title: "To", required: true, width: 6
+            input(name: "oRandomG3", type: "bool", defaultValue: "false", title: "Random Greeting 3?", description: "Random", submitOnChange: "true")
+			if(!oRandomG3) input "greeting3", "text", required: true, title: "Greeting - 3 (pm after 6) - Single message", defaultValue: "Good Evening"
+			if(oRandomG3) {
+				input "greeting3", "text", title: "Random Greeting - 3 (pm after 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
+				input(name: "oG3List", type: "bool", defaultValue: "false", title: "Show a list view of the random messages 3?", description: "List View", submitOnChange: "true")
+				if(oG3List) {
+					def valuesG3 = "${greeting3}".split(";")
+					listMapG3 = ""
+    				valuesG3.each { itemG3 -> listMapG3 += "${itemG3}<br>" }
+					paragraph "${listMapG3}"
+				}
+			}
+			paragraph "<hr>"
+            
+            paragraph "<b>Opening and Closing Options</b>"
             paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
 			input(name: "oRandom", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
-			if(!oRandom) input "omessage", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
-            if(!oRandom) input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
+			if(!oRandom) input "omessage", "text", title: "<b>Opening message</b> to be spoken - Single message", required: true
+            if(!oRandom) input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Single message", required: true
 			if(oRandom) {
-				input "omessage", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				input "omessage", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				input(name: "oMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
 				if(oMsgList) {
 					def ovalues = "${omessage}".split(";")
@@ -310,15 +366,15 @@ def messageOptions(){
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Departed Message Options")) {
             paragraph "This will give a heads up that someone has departed."
-            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor"
+            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
             paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. '%name%' + 'is no longer here'"
             paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
             if(departedNow || departedDelayed) {
 			    input(name: "oRandomD", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
-			    if(!oRandomD) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message",  required: true
-                if(!oRandomD) input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Single message",  required: true
+			    if(!oRandomD) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message", required: true
+                if(!oRandomD) input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Single message", required: true
 			    if(oRandomD) {
-				    input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				    input(name: "oMsgListD", type: "bool", defaultValue: "true", title: "Show a list view of the opening messages?", description: "List View", submitOnChange: "true")
 				    if(oMsgListD) {
 				    	def ovaluesD = "${omessageD}".split(";")
@@ -326,7 +382,7 @@ def messageOptions(){
     				    ovaluesD.each { item -> olistMapD += "${item}<br>"}
 					    paragraph "${olistMapD}"
 				    }
-                    input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+                    input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				    input(name: "cMsgListD", type: "bool", defaultValue: "true", title: "Show a list view of the closing messages?", description: "List View", submitOnChange: "true")
 				    if(cMsgListD) {
 				    	def cvaluesD = "${cmessageD}".split(";")
@@ -371,7 +427,7 @@ def doorLockOptions(){
                 input(name: "nRandomDU", type: "bool", defaultValue: "false", title: "Random 'unlocked' message?", description: "Random", submitOnChange: "true")
                 if(!nRandomDU) input "nMessageDU", "text", title: "Message to be spoken - Single message",  required: true
                 if(nRandomDU) {
-				    input "nMessageDU", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+				    input "nMessageDU", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				    input(name: "nMsgListDU", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
 				    if(nMsgListDU) {
 					    def nvaluesDU = "${nMessageDU}".split(";")
@@ -383,12 +439,12 @@ def doorLockOptions(){
             }
         }       
         section(getFormat("header-green", "${getImage("Blank")}"+" Door Lock As Presence Sensor")) {
-            paragraph "If a person doesn't have presence tracking available, Arrivals can be tracked by lock code."
+            paragraph "If a person doesn't have presence tracking available, they can still be included in the 'Welcome Home' message by lock code."
 			paragraph "Note: Lock codes must be setup in Hubitat's Lock Code Manager."
-            input "myLock1", "capability.lock", title: "Activate the arrival message when this door is unlocked - Lock 1"
-            input "myLock2", "capability.lock", title: "Activate the arrival message when this door is unlocked - Lock 2"
-            input "myLock3", "capability.lock", title: "Activate the arrival message when this door is unlocked - Lock 3"
-            input "myLock4", "capability.lock", title: "Activate the arrival message when this door is unlocked - Lock 4"
+            input "myLock1", "capability.lock", title: "Activate the 'Welcome Home' message when this door is unlocked - Lock 1"
+            input "myLock2", "capability.lock", title: "Activate the 'Welcome Home' message when this door is unlocked - Lock 2"
+            input "myLock3", "capability.lock", title: "Activate the 'Welcome Home' message when this door is unlocked - Lock 3"
+            input "myLock4", "capability.lock", title: "Activate the 'Welcome Home' message when this door is unlocked - Lock 4"
         }
     }
 }
@@ -400,12 +456,11 @@ def ruleMachineOptions(){
             paragraph "<b>Run a rule when certain conditions are met.</b>"
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
-            paragraph "<br>********** <b>Coming Soon!</b> **********<br>"
             paragraph "<b>If everyone leaves...</b>"
-        //    input "rmEveryoneLeaaves", "enum", title: "Select which rule actions to run", options: rules, multiple: true
+            input "rmEveryoneLeaves", "enum", title: "Select which rules to run", options: rules, multiple: true
             paragraph "<hr>"
             paragraph "<b>If nobody's home and someone returns...</b>"
-        //    input "rmAnyoneReturns", "enum", title: "Select which rule actions to run", options: rules, multiple: true
+            input "rmAnyoneReturns", "enum", title: "Select which rules to run", options: rules, multiple: true
             paragraph "<hr>"
             
         }
@@ -427,33 +482,33 @@ def updated() {
 def initialize() {
     setDefaults()
 
-	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
-	if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler2)
-	if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler3)
-	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
-	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
-    if(presenceSensor6) subscribe(presenceSensor6, "presence", presenceSensorHandler6)
-    if(presenceSensor7) subscribe(presenceSensor7, "presence", presenceSensorHandler7)
-    if(presenceSensor8) subscribe(presenceSensor8, "presence", presenceSensorHandler8)
-    if(presenceSensor9) subscribe(presenceSensor9, "presence", presenceSensorHandler9)
-    if(presenceSensor10) subscribe(presenceSensor10, "presence", presenceSensorHandler10)
-    if(presenceSensor11) subscribe(presenceSensor11, "presence", presenceSensorHandler11)
-    if(presenceSensor12) subscribe(presenceSensor12, "presence", presenceSensorHandler12)
-    if(presenceSensor13) subscribe(presenceSensor13, "presence", presenceSensorHandler13)
-    if(presenceSensor14) subscribe(presenceSensor14, "presence", presenceSensorHandler14)
-    if(presenceSensor15) subscribe(presenceSensor15, "presence", presenceSensorHandler15)
-    if(presenceSensor16) subscribe(presenceSensor16, "presence", presenceSensorHandler16)
-    if(presenceSensor17) subscribe(presenceSensor17, "presence", presenceSensorHandler17)
-    if(presenceSensor18) subscribe(presenceSensor18, "presence", presenceSensorHandler18)
-    if(presenceSensor19) subscribe(presenceSensor19, "presence", presenceSensorHandler19)
-    if(presenceSensor20) subscribe(presenceSensor20, "presence", presenceSensorHandler20)
-    if(myLock1) subscribe(myLock1, "lock.unlocked", lockCodeHandler)
-    if(myLock2) subscribe(myLock2, "lock.unlocked", lockCodeHandler)
-    if(myLock3) subscribe(myLock3, "lock.unlocked", lockCodeHandler)
-    if(myLock4) subscribe(myLock4, "lock.unlocked", lockCodeHandler)
-    if(theLocks) subscribe(theLocks, "lock.unlocked", lockCodeHandler)
+	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler)
+	if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler)
+	if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler)
+	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler)
+	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler)
+    if(presenceSensor6) subscribe(presenceSensor6, "presence", presenceSensorHandler)
+    if(presenceSensor7) subscribe(presenceSensor7, "presence", presenceSensorHandler)
+    if(presenceSensor8) subscribe(presenceSensor8, "presence", presenceSensorHandler)
+    if(presenceSensor9) subscribe(presenceSensor9, "presence", presenceSensorHandler)
+    if(presenceSensor10) subscribe(presenceSensor10, "presence", presenceSensorHandler)
+    if(presenceSensor11) subscribe(presenceSensor11, "presence", presenceSensorHandler)
+    if(presenceSensor12) subscribe(presenceSensor12, "presence", presenceSensorHandler)
+    if(presenceSensor13) subscribe(presenceSensor13, "presence", presenceSensorHandler)
+    if(presenceSensor14) subscribe(presenceSensor14, "presence", presenceSensorHandler)
+    if(presenceSensor15) subscribe(presenceSensor15, "presence", presenceSensorHandler)
+    if(presenceSensor16) subscribe(presenceSensor16, "presence", presenceSensorHandler)
+    if(presenceSensor17) subscribe(presenceSensor17, "presence", presenceSensorHandler)
+    if(presenceSensor18) subscribe(presenceSensor18, "presence", presenceSensorHandler)
+    if(presenceSensor19) subscribe(presenceSensor19, "presence", presenceSensorHandler)
+    if(presenceSensor20) subscribe(presenceSensor20, "presence", presenceSensorHandler)
+    if(myLock1) subscribe(myLock1, "lock.unlocked", presenceSensorHandler)
+    if(myLock2) subscribe(myLock2, "lock.unlocked", presenceSensorHandler)
+    if(myLock3) subscribe(myLock3, "lock.unlocked", presenceSensorHandler)
+    if(myLock4) subscribe(myLock4, "lock.unlocked", presenceSensorHandler)
+    if(theLocks) subscribe(theLocks, "lock.unlocked", lockHandler)
 	
-	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
+	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockSensorHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
     
@@ -461,524 +516,321 @@ def initialize() {
 }
 
 def setupNewStuff() {
-	if(logEnable) log.debug "In setupNewStuff - Setting up Maps"
+	if(logEnable) log.debug "In setupNewStuff (${state.version}) - Setting up Maps"
 	if(state.presenceMap == null) state.presenceMap = [:]
 }
-		
-def presenceSensorHandler1(evt){
-	state.presenceSensorValue1 = evt.value   
-	if(logEnable) log.debug "In presenceSensorHandler1 - ${parent.friendlyName1} - Presence Sensor: ${state.presenceSensorValue1}"
-    if(state.presenceSensorValue1 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName1} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH1 = "no"
-		gvDevice.sendDataMap1(state.globalBH1)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName1}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName1}"
-            runIn(120, messageDeparted)
+
+def presenceSensorHandler(evt){
+    triggerName = evt.getDisplayName()
+    if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - triggerName: ${triggerName}"
+    match = false
+    if(triggerName.contains("${presenceSensor1}")) { match = true;numb = 1 }
+    if(triggerName.contains("${presenceSensor2}")) { match = true;numb = 2 }
+    if(triggerName.contains("${presenceSensor3}")) { match = true;numb = 3 }
+    if(triggerName.contains("${presenceSensor4}")) { match = true;numb = 4 }
+    if(triggerName.contains("${presenceSensor5}")) { match = true;numb = 5 }
+    if(triggerName.contains("${presenceSensor6}")) { match = true;numb = 6 }
+    if(triggerName.contains("${presenceSensor7}")) { match = true;numb = 7 }
+    if(triggerName.contains("${presenceSensor8}")) { match = true;numb = 8 }
+    if(triggerName.contains("${presenceSensor9}")) { match = true;numb = 9 }
+    if(triggerName.contains("${presenceSensor10}")) { match = true;numb = 10 }
+    if(triggerName.contains("${presenceSensor11}")) { match = true;numb = 11 }
+    if(triggerName.contains("${presenceSensor12}")) { match = true;numb = 12 }
+    if(triggerName.contains("${presenceSensor13}")) { match = true;numb = 13 }
+    if(triggerName.contains("${presenceSensor14}")) { match = true;numb = 14 }
+    if(triggerName.contains("${presenceSensor15}")) { match = true;numb = 15 }
+    if(triggerName.contains("${presenceSensor16}")) { match = true;numb = 16 }
+    if(triggerName.contains("${presenceSensor17}")) { match = true;numb = 17 }
+    if(triggerName.contains("${presenceSensor18}")) { match = true;numb = 18 }
+    if(triggerName.contains("${presenceSensor19}")) { match = true;numb = 19 }
+    if(triggerName.contains("${presenceSensor20}")) { match = true;numb = 20 }
+    if(triggerName.contains("${myLock1}")) { match = true;numb = 21 }
+    if(triggerName.contains("${myLock2}")) { match = true;numb = 22 }
+    if(triggerName.contains("${myLock3}")) { match = true;numb = 23 }
+    if(triggerName.contains("${myLock4}")) { match = true;numb = 24 }
+
+    if(match) {
+        if(logEnable) log.debug "In presenceSensorHandler - We have a match! numb: ${numb}"
+        whichPresenceSensor(numb)
+    
+        // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH
+        if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - fName: ${fName} - pSensor: ${pSensor} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
+    
+	    if(logEnable) log.debug "In presenceSensorHandler - ${fName} - Presence Sensor: ${pSensor}"
+        if(pSensor == "not present"){
+        	if(logEnable) log.debug "${fName} - Presence Sensor is not present - Been Here is now 'no'."
+	    	globalBH = "no"
+	    	gvDevice."${sendDataM}"(globalBH)
+            if(departedNow) {
+                handler = "messageDeparted"
+                whosHere(handler)
+            }
+            if(departedDelayed) {
+                runIn(120, whosHere, [data: [key1:'messageDeparted']])
+            }
+        } else {
+	    	if(logEnable) log.debug "${fName} - Presence Sensor is present - Waiting for Trigger"
+            unschedule(scheduledMessageNowHandler)
+            if(homeNow) {
+                handler = "messageHomeNow"
+                whosHere(handler)
+            
+                if(timeHome == null || timeHome == "") timeHome = 5
+                int makeHomeIn = timeHome * 60
+                runIn(makeHomeIn, makeGlobalHere, [data: [key1:'${sendDataM}']])
+            }
         }
     } else {
-		if(logEnable) log.debug "${parent.friendlyName1} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName1}"
-            messageHomeNow()
-        }
+        if(logEnable) log.warn "In presenceSensorHandler - No match found - triggerName: ${triggerName}"
     }
 }
 
-def presenceSensorHandler2(evt){
-	state.presenceSensorValue2 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler2 - ${parent.friendlyName2} - Presence Sensor: ${state.presenceSensorValue2}"
-    if(state.presenceSensorValue2 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName2} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH2 = "no"
-		gvDevice.sendDataMap2(state.globalBH2)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName2}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName2}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName2} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName2}"
-            messageHomeNow()
-        }
+def whichPresenceSensor(numb) {
+    if(numb==1) { 
+        pSensor=presenceSensor1.currentValue("presence")
+        lastActivity = presenceSensor1.getLastActivity()
+        fName="${parent.friendlyName1}"
+        sendDataM="sendDataMap1"
+        globalBH=gvDevice.currentValue("globalBH1")
     }
-}
-
-def presenceSensorHandler3(evt){
-	state.presenceSensorValue3 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler3 - ${parent.friendlyName3} - Presence Sensor: ${state.presenceSensorValue3}"
-    if(state.presenceSensorValue3 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName3} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH3 = "no"
-		gvDevice.sendDataMap3(state.globalBH3)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName3}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName3}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName3} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName3}"
-            messageHomeNow()
-        }
+    if(numb==2) {
+        pSensor=presenceSensor2.currentValue("presence")
+        lastActivity = presenceSensor2.getLastActivity()
+        fName="${parent.friendlyName2}"
+        sendDataM="sendDataMap2"
+        globalBH=gvDevice.currentValue("globalBH2")
     }
-}
-
-def presenceSensorHandler4(evt){
-	state.presenceSensorValue4 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler4 - ${parent.friendlyName4} - Presence Sensor: ${state.presenceSensorValue4}"
-    if(state.presenceSensorValue4 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName4} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH4 = "no"
-		gvDevice.sendDataMap4(state.globalBH4)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName4}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName4}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName4} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName4}"
-            messageHomeNow()
-        }
+    if(numb==3) {
+        pSensor=presenceSensor3.currentValue("presence")
+        lastActivity = presenceSensor3.getLastActivity()
+        fName="${parent.friendlyName3}"
+        sendDataM="sendDataMap3"
+        globalBH=gvDevice.currentValue("globalBH3")
     }
-}
-
-def presenceSensorHandler5(evt){
-	state.presenceSensorValue5 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler5 - ${parent.friendlyName5} - Presence Sensor: ${state.presenceSensorValue5}"
-    if(state.presenceSensorValue5 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName5} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH5 = "no"
-		gvDevice.sendDataMap5(state.globalBH5)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName5}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName5}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName5} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName5}"
-            messageHomeNow()
-        }
+    if(numb==4) {
+        pSensor=presenceSensor4.currentValue("presence")
+        lastActivity = presenceSensor4.getLastActivity()
+        fName="${parent.friendlyName4}"
+        sendDataM="sendDataMap4"
+        globalBH=gvDevice.currentValue("globalBH4")
     }
-}
-
-def presenceSensorHandler6(evt){
-	state.presenceSensorValue6 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler6 - ${parent.friendlyName6} - Presence Sensor: ${state.presenceSensorValue6}"
-    if(state.presenceSensorValue6 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName6} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH6 = "no"
-		gvDevice.sendDataMap6(state.globalBH6)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName6}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName6}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName6} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName6}"
-            messageHomeNow()
-        }
+    if(numb==5) {
+        pSensor=presenceSensor5.currentValue("presence")
+        lastActivity = presenceSensor5.getLastActivity()
+        fName="${parent.friendlyName5}"
+        sendDataM="sendDataMap5"
+        globalBH=gvDevice.currentValue("globalBH5")
     }
-}
-
-def presenceSensorHandler7(evt){
-	state.presenceSensorValue7 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler7 - ${parent.friendlyName7} - Presence Sensor: ${state.presenceSensorValue7}"
-    if(state.presenceSensorValue7 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName7} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH7 = "no"
-		gvDevice.sendDataMap7(state.globalBH7)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName7}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName7}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName7} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName7}"
-            messageHomeNow()
-        }
+    if(numb==6) {
+        pSensor=presenceSensor6.currentValue("presence")
+        lastActivity = presenceSensor6.getLastActivity()
+        fName="${parent.friendlyName6}"
+        sendDataM="sendDataMap6"
+        globalBH=gvDevice.currentValue("globalBH6")
     }
-}
-
-def presenceSensorHandler8(evt){
-	state.presenceSensorValue8 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler8 - ${parent.friendlyName8} - Presence Sensor: ${state.presenceSensorValue8}"
-    if(state.presenceSensorValue8 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName8} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH8 = "no"
-		gvDevice.sendDataMap8(state.globalBH8)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName8}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName8}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName8} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName8}"
-            messageHomeNow()
-        }
+    if(numb==7) {
+        pSensor=presenceSensor7currentValue("presence")
+        lastActivity = presenceSensor7.getLastActivity()
+        fName="${parent.friendlyName7}"
+        sendDataM="sendDataMap7"
+        globalBH=gvDevice.currentValue("globalBH7")
     }
-}
-
-def presenceSensorHandler9(evt){
-	state.presenceSensorValue9 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler9 - ${parent.friendlyName9} - Presence Sensor: ${state.presenceSensorValue9}"
-    if(state.presenceSensorValue9 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName9} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH9 = "no"
-		gvDevice.sendDataMap9(state.globalBH9)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName9}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName9}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName9} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName9}"
-            messageHomeNow()
-        }
+    if(numb==8) {
+        pSensor=presenceSensor8currentValue("presence")
+        lastActivity = presenceSensor8.getLastActivity()
+        fName="${parent.friendlyName8}"
+        sendDataM="sendDataMap8"
+        globalBH=gvDevice.currentValue("globalBH8")
     }
-}
-
-def presenceSensorHandler10(evt){
-	state.presenceSensorValue10 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler10 - ${parent.friendlyName10} - Presence Sensor: ${state.presenceSensorValue10}"
-    if(state.presenceSensorValue10 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName10} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH10 = "no"
-		gvDevice.sendDataMap10(state.globalBH10)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName10}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName10}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName10} - Presence Sensor is present - Waiting for Trigger"
-        unschedule(scheduledMessageNowHandler)
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName10}"
-            messageHomeNow()
-        }
+    if(numb==9) {
+        pSensor=presenceSensor9.currentValue("presence")
+        lastActivity = presenceSensor9.getLastActivity()
+        fName="${parent.friendlyName9}"
+        sendDataM="sendDataMap9"
+        globalBH=gvDevice.currentValue("globalBH9")
     }
-}
-
-def presenceSensorHandler11(evt){
-	state.presenceSensorValue11 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler11 - ${parent.friendlyName11} - Presence Sensor: ${state.presenceSensorValue11}"
-    if(state.presenceSensorValue11 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName11} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH11 = "no"
-		gvDevice.sendDataMap11(state.globalBH11)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName11}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName11}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName11} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName11}"
-            messageHomeNow()
-        }
+    if(numb==10) {
+        pSensor=presenceSensor10.currentValue("presence")
+        lastActivity = presenceSensor10.getLastActivity()
+        fName="${parent.friendlyName10}"
+        sendDataM="sendDataMap10"
+        globalBH=gvDevice.currentValue("globalBH10")
     }
-}
-
-def presenceSensorHandler12(evt){
-	state.presenceSensorValue12 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler12 - ${parent.friendlyName12} - Presence Sensor: ${state.presenceSensorValue12}"
-    if(state.presenceSensorValue12 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName12} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH12 = "no"
-		gvDevice.sendDataMap12(state.globalBH12)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName12}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName12}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName12} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName12}"
-            messageHomeNow()
-        }
+    if(numb==11) {
+        pSensor=presenceSensor11.currentValue("presence")
+        lastActivity = presenceSensor11.getLastActivity()
+        fName="${parent.friendlyName11}"
+        sendDataM="sendDataMap11"
+        globalBH=gvDevice.currentValue("globalBH11")
     }
-}
-
-def presenceSensorHandler13(evt){
-	state.presenceSensorValue13 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler13 - ${parent.friendlyName13} - Presence Sensor: ${state.presenceSensorValue13}"
-    if(state.presenceSensorValue13 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName13} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH13 = "no"
-		gvDevice.sendDataMap13(state.globalBH13)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName13}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName13}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName13} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName13}"
-            messageHomeNow()
-        }
+    if(numb==12) {
+        pSensor=presenceSensor12.currentValue("presence")
+        lastActivity = presenceSensor12.getLastActivity()
+        fName="${parent.friendlyName12}"
+        sendDataM="sendDataMap12"
+        globalBH=gvDevice.currentValue("globalBH12")
     }
-}
-
-def presenceSensorHandler14(evt){
-	state.presenceSensorValue14 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler14 - ${parent.friendlyName14} - Presence Sensor: ${state.presenceSensorValue14}"
-    if(state.presenceSensorValue14 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName14} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH14 = "no"
-		gvDevice.sendDataMap14(state.globalBH14)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName14}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName14}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName14} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName14}"
-            messageHomeNow()
-        }
+    if(numb==13) {
+        pSensor=presenceSensor13.currentValue("presence")
+        lastActivity = presenceSensor13.getLastActivity()
+        fName="${parent.friendlyName13}"
+        sendDataM="sendDataMap13"
+        globalBH=gvDevice.currentValue("globalBH13")
     }
-}
-
-def presenceSensorHandler15(evt){
-	state.presenceSensorValue15 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler15 - ${parent.friendlyName15} - Presence Sensor: ${state.presenceSensorValue15}"
-    if(state.presenceSensorValue15 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName15} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH15 = "no"
-		gvDevice.sendDataMap15(state.globalBH15)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName15}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName15}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName15} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName15}"
-            messageHomeNow()
-        }
+    if(numb==14) {
+        pSensor=presenceSensor14.currentValue("presence")
+        lastActivity = presenceSensor14.getLastActivity()
+        fName="${parent.friendlyName14}"
+        sendDataM="sendDataMap14"
+        globalBH=gvDevice.currentValue("globalBH14")
     }
-}
-
-def presenceSensorHandler16(evt){
-	state.presenceSensorValue16 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler16 - ${parent.friendlyName16} - Presence Sensor: ${state.presenceSensorValue16}"
-    if(state.presenceSensorValue16 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName16} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH16 = "no"
-		gvDevice.sendDataMap16(state.globalBH16)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName16}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName16}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName16} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName16}"
-            messageHomeNow()
-        }
+    if(numb==15) {
+        pSensor=presenceSensor15.currentValue("presence")
+        lastActivity = presenceSensor15.getLastActivity()
+        fName="${parent.friendlyName15}"
+        sendDataM="sendDataMap15"
+        globalBH=gvDevice.currentValue("globalBH15")
     }
-}
-
-def presenceSensorHandler17(evt){
-	state.presenceSensorValue17 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler17 - ${parent.friendlyName17} - Presence Sensor: ${state.presenceSensorValue17}"
-    if(state.presenceSensorValue17 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName17} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH17 = "no"
-		gvDevice.sendDataMap17(state.globalBH17)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName17}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName17}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName17} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName17}"
-            messageHomeNow()
-        }
+    if(numb==16) {
+        pSensor=presenceSensor16.currentValue("presence")
+        lastActivity = presenceSensor16.getLastActivity()
+        fName="${parent.friendlyName16}"
+        sendDataM="sendDataMap16"
+        globalBH=gvDevice.currentValue("globalBH16")
     }
-}
-
-def presenceSensorHandler18(evt){
-	state.presenceSensorValue18 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler18 - ${parent.friendlyName18} - Presence Sensor: ${state.presenceSensorValue18}"
-    if(state.presenceSensorValue18 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName18} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH18 = "no"
-		gvDevice.sendDataMap18(state.globalBH18)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName18}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName18}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName18} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName18}"
-            messageHomeNow()
-        }
+    if(numb==17) {
+        pSensor=presenceSensor17.currentValue("presence")
+        lastActivity = presenceSensor17.getLastActivity()
+        fName="${parent.friendlyName17}"
+        sendDataM="sendDataMap17"
+        globalBH=gvDevice.currentValue("globalBH17")
     }
-}
-
-def presenceSensorHandler19(evt){
-	state.presenceSensorValue19 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler19 - ${parent.friendlyName19} - Presence Sensor: ${state.presenceSensorValue19}"
-    if(state.presenceSensorValue19 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName19} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH19 = "no"
-		gvDevice.sendDataMap19(state.globalBH19)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName19}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName19}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName19} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName19}"
-            messageHomeNow()
-        }
+    if(numb==18) {
+        pSensor=presenceSensor18.currentValue("presence")
+        lastActivity = presenceSensor18.getLastActivity()
+        fName="${parent.friendlyName18}"
+        sendDataM="sendDataMap18"
+        globalBH=gvDevice.currentValue("globalBH18")
     }
-}
-
-def presenceSensorHandler20(evt){
-	state.presenceSensorValue20 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler20 - ${parent.friendlyName20} - Presence Sensor: ${state.presenceSensorValue20}"
-    if(state.presenceSensorValue20 == "not present"){
-    	if(logEnable) log.debug "${parent.friendlyName20} - Presence Sensor is not present - Been Here is now off."
-		state.globalBH20 = "no"
-		gvDevice.sendDataMap20(state.globalBH20)
-        if(departedNow) {
-            state.nowName = "${parent.friendlyName20}"
-            messageDeparted()
-        }
-        if(departedDelayed) {
-            state.nowName = "${parent.friendlyName20}"
-            runIn(120, messageDeparted)
-        }
-    } else {
-		if(logEnable) log.debug "${parent.friendlyName20} - Presence Sensor is present - Waiting for Trigger"
-        if(homeNow) {
-            state.nowName = "${parent.friendlyName20}"
-            messageHomeNow()
-        }
+    if(numb==19) {
+        pSensor=presenceSensor19.currentValue("presence")
+        lastActivity = presenceSensor19.getLastActivity()
+        fName="${parent.friendlyName19}"
+        sendDataM="sendDataMap19"
+        globalBH=gvDevice.currentValue("globalBH19")
     }
+    if(numb==20) {
+        pSensor=presenceSensor20.currentValue("presence")
+        lastActivity = presenceSensor20.getLastActivity()
+        fName="${parent.friendlyName20}"
+        sendDataM="sendDataMap20"
+        globalBH=gvDevice.currentValue("globalBH20")
+    }
+    if(numb==21) {
+        pSensor=myLock1.currentValue("lock")
+        lastActivity = myLock1.getLastActivity()
+        fName=myLock1.currentValue("lastCodeName")
+        sendDataM="NA"
+        globalBH="NA"
+    }
+    if(numb==22) {
+        pSensor=myLock2.currentValue("lock")
+        lastActivity = myLock2.getLastActivity()
+        fName=myLock2.currentValue("lastCodeName")
+        sendDataM="NA"
+        globalBH="NA"
+    }
+    if(numb==23) {
+        pSensor=myLock3.currentValue("lock")
+        lastActivity = myLock3.getLastActivity()
+        fName=myLock3.currentValue("lastCodeName")
+        sendDataM="NA"
+        globalBH="NA"
+    }
+    if(numb==24) {
+        pSensor=myLock4.currentValue("lock")
+        lastActivity = myLock4.getLastActivity()
+        fName=myLock4.currentValue("lastCodeName")
+        sendDataM="NA"
+        globalBH="NA"
+    }
+    return [pSensor,lastActivity,fName,sendDataM,globalBH]
 }
 
 def lockHandler(evt) {
-	state.lockStatus = evt.value
+    lockdata = evt.data
+	lockStatus = evt.value
+	lockName = evt.displayName
+	if(logEnable) log.debug "In lockHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus} - theLocks: ${theLocks}"
+	if(lockStatus == "unlocked") {
+        if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
+        if(theLocks) {
+            if (lockdata && !lockdata[0].startsWith("{")) {
+                lockdata = decrypt(lockdata)
+                //log.info "Lock Data: ${lockdata}"
+                if (lockdata == null) {
+                    log.warn "Unable to decrypt lock code from device: ${lockName}"
+                    return
+                }
+            }
+            def codeMap = parseJson(lockdata ?: "{}").find{ it }
+            if (!codeMap) return
+    
+            unlockedBy = "${codeMap?.value?.name}"
+	        if(logEnable) log.debug "In lockHandler - ${lockName} was unlocked by ${unlockedBy}"	
+
+	        if(nRandomDU) {
+		        def nvaluesDU = "${nMessageDU}".split(";")
+		        nvSizeDU = nvaluesDU.size()
+		        ncountDU = nvSizeDU.toInteger()
+    	        def nrandomKeyDU = new Random().nextInt(ncountDU)
+
+		        theMessage = nvaluesDU[nrandomKeyDU]
+		        if(logEnable) log.info "In messageDoorUnlocked - Random - nvSize: ${nvSizeDU}, nrandomKey: ${nrandomKeyDU}, theMessage: ${theMessage}"
+	        } else {
+		        theMessage = "${nMessageDU}"
+		        if(logEnable) log.info "In messageDoorUnlocked - Static - theMessage: ${theMessage}"
+            }
+            if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${unlockedBy}" )}
+            if (theMessage.contains("%door%")) {theMessage = theMessage.replace('%door%', "${lockName}" )}
+            if(logEnable) log.debug "In messageDoorUnlocked - going to letsTalkQueue with theMessage"
+            state.canSpeak = "yes"
+            state.unlockedBy = "${unlockedBy}"
+            letsTalkQueue(theMessage)
+        }
+        if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 1"
+        pauseExecution(500)
+	}
+    if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 2"
+}
+
+def lockSensorHandler(evt) {
+    state.lockStatus = evt.value
 	state.lockName = evt.displayName
-	if(logEnable) log.debug "In lockHandler - Lock: ${state.lockName} - Status: ${state.lockStatus}"
+	if(logEnable) log.debug "In lockSensorHandler (${state.version}) - Contact: ${state.lockName} - Status: ${state.lockStatus}"
 	if(state.lockStatus == "unlocked") {
-		if(logEnable) log.debug "In lockHandler..."
-        whosHere()
+		if(logEnable) log.debug "In lockSensorHandler - unlocked"
+		handler = "lock"
+        whosHere(handler)
 	}
 }
 
 def contactSensorHandler(evt) {
 	state.contactStatus = evt.value
 	state.contactName = evt.displayName
-	if(logEnable) log.debug "In contactSensorHandler - Contact: ${state.contactName} - Status: ${state.contactStatus}"
+	if(logEnable) log.debug "In contactSensorHandler (${state.version}) - Contact: ${state.contactName} - Status: ${state.contactStatus}"
 	if(csOpenClosed == "Open") {
 		if(state.contactStatus == "open") {
-			if(logEnable) log.debug "In contactSensorHandler..."
-			whosHere()
+			if(logEnable) log.debug "In contactSensorHandler - open"
+			handler = "contact"
+            whosHere(handler)
 		}
 	}
 	if(csOpenClosed == "Closed") {
 		if(state.contactStatus == "closed") {
-			if(logEnable) log.debug "In contactSensorHandler..."
-			whosHere()
+			if(logEnable) log.debug "In contactSensorHandler - closed"
+			handler = "contact"
+            whosHere(handler)
 		}
 	}
 }
@@ -986,268 +838,144 @@ def contactSensorHandler(evt) {
 def motionSensorHandler(evt) {
 	state.motionStatus = evt.value
 	state.motionName = evt.displayName
-	if(logEnable) log.debug "In motionSensorHandler - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
+	if(logEnable) log.debug "In motionSensorHandler (${state.version}) - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
 	if(state.motionStatus == "active") {
-		if(logEnable) log.debug "In motionSensorHandler..."
-		whosHere()
+		if(logEnable) log.debug "In motionSensorHandler - active"
+		handler = "motion"
+        whosHere(handler)
 	}
 }
 
-def whosHere() {
+def whosHere(handler) {
+    handlerValue = handler
+    
+    if(logEnable) log.debug "In whosHere (${state.version}) - ${handlerValue}"
     state.presenceMap = [:]
+    state.prevNameCount = state.nameCount
 	state.nameCount = 0
 	state.canSpeak = "no"
-    if(presenceSensor1) getTimeDiff(1)
-	if(presenceSensor2) getTimeDiff(2)
-	if(presenceSensor3) getTimeDiff(3)
-	if(presenceSensor4) getTimeDiff(4)
-	if(presenceSensor5) getTimeDiff(5)
-    if(presenceSensor6) getTimeDiff(6)
-    if(presenceSensor7) getTimeDiff(7)
-    if(presenceSensor8) getTimeDiff(8)
-    if(presenceSensor9) getTimeDiff(9)
-    if(presenceSensor10) getTimeDiff(10)
-    if(presenceSensor11) getTimeDiff(11)
-    if(presenceSensor12) getTimeDiff(12)
-    if(presenceSensor13) getTimeDiff(13)
-    if(presenceSensor14) getTimeDiff(14)
-    if(presenceSensor15) getTimeDiff(15)
-    if(presenceSensor16) getTimeDiff(16)
-    if(presenceSensor17) getTimeDiff(17)
-    if(presenceSensor18) getTimeDiff(18)
-    if(presenceSensor19) getTimeDiff(19)
-    if(presenceSensor20) getTimeDiff(20)
-    
-   // if(state.canSpeak == "yes" && rmAnyoneReturns) rulesHandler(rmAnyoneReturns)
-	if(state.canSpeak == "yes") messageWelcomeHome()
+    if(presenceSensor1) getTimeDiff(1,handlerValue)
+	if(presenceSensor2) getTimeDiff(2,handlerValue)
+	if(presenceSensor3) getTimeDiff(3,handlerValue)
+	if(presenceSensor4) getTimeDiff(4,handlerValue)
+	if(presenceSensor5) getTimeDiff(5,handlerValue)
+    if(presenceSensor6) getTimeDiff(6,handlerValue)
+    if(presenceSensor7) getTimeDiff(7,handlerValue)
+    if(presenceSensor8) getTimeDiff(8,handlerValue)
+    if(presenceSensor9) getTimeDiff(9,handlerValue)
+    if(presenceSensor10) getTimeDiff(10,handlerValue)
+    if(presenceSensor11) getTimeDiff(11,handlerValue)
+    if(presenceSensor12) getTimeDiff(12,handlerValue)
+    if(presenceSensor13) getTimeDiff(13,handlerValue)
+    if(presenceSensor14) getTimeDiff(14,handlerValue)
+    if(presenceSensor15) getTimeDiff(15,handlerValue)
+    if(presenceSensor16) getTimeDiff(16,handlerValue)
+    if(presenceSensor17) getTimeDiff(17,handlerValue)
+    if(presenceSensor18) getTimeDiff(18,handlerValue)
+    if(presenceSensor19) getTimeDiff(19,handlerValue)
+    if(presenceSensor20) getTimeDiff(20,handlerValue)
+    if(myLock1) getTimeDiff(21,handlerValue)
+    if(myLock2) getTimeDiff(22,handlerValue)
+    if(myLock3) getTimeDiff(23,handlerValue)
+    if(myLock4) getTimeDiff(24,handlerValue)
+
+    if(handlerValue == "messageHomeNow" && state.canSpeak == "yes") messageHomeNow()
+    if(handlerValue == "lock" && state.canSpeak == "yes") messageWelcomeHome()
+	if(handlerValue == "contact" && state.canSpeak == "yes") messageWelcomeHome()
+    if(handlerValue == "motion" && state.canSpeak == "yes") messageWelcomeHome()
+    if(handlerValue == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
+       
+    if(logEnable) log.debug "In whosHere - nameCount: ${state.nameCount}"
+    if(state.nameCount == 0 && rmEveryoneLeaves) rulesHandler(rmEveryoneLeaves)
+    if(state.prevNameCount == 0 && state.nameCount > 0 && rmAnyoneReturns) rulesHandler(rmAnyoneReturns)
 }
 
-def getTimeDiff(numb) {
-    if(numb == 1) { pSensor = presenceSensor1;fName = "${parent.friendlyName1}";globalBH = "${state.globalBH1}";sendDataM = "sendDataMap1";globalBH = gvDevice.currentValue("globalBH1") }
-    if(numb == 2) { pSensor = presenceSensor2;fName = "${parent.friendlyName2}";globalBH = "${state.globalBH2}";sendDataM = "sendDataMap2";globalBH = gvDevice.currentValue("globalBH2") }
-    if(numb == 3) { pSensor = presenceSensor3;fName = "${parent.friendlyName3}";globalBH = "${state.globalBH3}";sendDataM = "sendDataMap3";globalBH = gvDevice.currentValue("globalBH3") }
-    if(numb == 4) { pSensor = presenceSensor4;fName = "${parent.friendlyName4}";globalBH = "${state.globalBH4}";sendDataM = "sendDataMap4";globalBH = gvDevice.currentValue("globalBH4") }
-    if(numb == 5) { pSensor = presenceSensor5;fName = "${parent.friendlyName5}";globalBH = "${state.globalBH5}";sendDataM = "sendDataMap5";globalBH = gvDevice.currentValue("globalBH5") }
-    if(numb == 6) { pSensor = presenceSensor6;fName = "${parent.friendlyName6}";globalBH = "${state.globalBH6}";sendDataM = "sendDataMap6";globalBH = gvDevice.currentValue("globalBH6") }
-    if(numb == 7) { pSensor = presenceSensor7;fName = "${parent.friendlyName7}";globalBH = "${state.globalBH7}";sendDataM = "sendDataMap7";globalBH = gvDevice.currentValue("globalBH7") }
-    if(numb == 8) { pSensor = presenceSensor8;fName = "${parent.friendlyName8}";globalBH = "${state.globalBH8}";sendDataM = "sendDataMap8";globalBH = gvDevice.currentValue("globalBH8") }
-    if(numb == 9) { pSensor = presenceSensor9;fName = "${parent.friendlyName9}";globalBH = "${state.globalBH9}";sendDataM = "sendDataMap9";globalBH = gvDevice.currentValue("globalBH9") }
-    if(numb == 10) { pSensor = presenceSensor10;fName = "${parent.friendlyName10}";globalBH = "${state.globalBH10}";sendDataM = "sendDataMap10";globalBH = gvDevice.currentValue("globalBH10") }
-    if(numb == 11) { pSensor = presenceSensor11;fName = "${parent.friendlyName11}";globalBH = "${state.globalBH11}";sendDataM = "sendDataMap11";globalBH = gvDevice.currentValue("globalBH11") }
-    if(numb == 12) { pSensor = presenceSensor12;fName = "${parent.friendlyName12}";globalBH = "${state.globalBH12}";sendDataM = "sendDataMap12";globalBH = gvDevice.currentValue("globalBH12") }
-    if(numb == 13) { pSensor = presenceSensor13;fName = "${parent.friendlyName13}";globalBH = "${state.globalBH13}";sendDataM = "sendDataMap13";globalBH = gvDevice.currentValue("globalBH13") }
-    if(numb == 14) { pSensor = presenceSensor14;fName = "${parent.friendlyName14}";globalBH = "${state.globalBH14}";sendDataM = "sendDataMap14";globalBH = gvDevice.currentValue("globalBH14") }
-    if(numb == 15) { pSensor = presenceSensor15;fName = "${parent.friendlyName15}";globalBH = "${state.globalBH15}";sendDataM = "sendDataMap15";globalBH = gvDevice.currentValue("globalBH15") }
-    if(numb == 16) { pSensor = presenceSensor16;fName = "${parent.friendlyName16}";globalBH = "${state.globalBH16}";sendDataM = "sendDataMap16";globalBH = gvDevice.currentValue("globalBH16") }
-    if(numb == 17) { pSensor = presenceSensor17;fName = "${parent.friendlyName17}";globalBH = "${state.globalBH17}";sendDataM = "sendDataMap17";globalBH = gvDevice.currentValue("globalBH17") }
-    if(numb == 18) { pSensor = presenceSensor18;fName = "${parent.friendlyName18}";globalBH = "${state.globalBH18}";sendDataM = "sendDataMap18";globalBH = gvDevice.currentValue("globalBH18") }
-    if(numb == 19) { pSensor = presenceSensor19;fName = "${parent.friendlyName19}";globalBH = "${state.globalBH19}";sendDataM = "sendDataMap19";globalBH = gvDevice.currentValue("globalBH19") }
-    if(numb == 20) { pSensor = presenceSensor20;fName = "${parent.friendlyName20}";globalBH = "${state.globalBH20}";sendDataM = "sendDataMap20";globalBH = gvDevice.currentValue("globalBH20") }
+def getTimeDiff(numb,handler) {
+    whichPresenceSensor(numb)
 
-    if(logEnable) log.debug "In getTimeDiff - ${numb} - ${fName}"
-	def sensorStatus = pSensor.currentValue("presence")
-	if(logEnable) log.debug "${fName} - Presence Sensor Status: ${sensorStatus}"
-	if(sensorStatus == "present") {
-		if(logEnable) log.debug "${fName} - Global Been Here: ${globalBH}"
-		def lastActivity = pSensor.getLastActivity()
-		
-		if(logEnable) log.debug "${fName} - lastActivity: ${lastActivity}"
-    	long timeDiff
-   		def now = new Date()
-    	def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
-    	long unxNow = now.getTime()
-    	long unxPrev = prev.getTime()
-    	unxNow = unxNow/1000
-    	unxPrev = unxPrev/1000
-    	timeDiff = Math.abs(unxNow-unxPrev)
-    	timeDiff = Math.round(timeDiff/60)
+    // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH
     
-		if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff}"
-  		if(timeDiff < timeHome) {
-			if(globalBH == "no") {
-				log.info "${app.label} - ${fName} just got here! Time Diff = ${timeDiff}"
-				state.nameCount = state.nameCount + 1
-                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-				if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-				state.canSpeak = "yes"
-				globalBH = "yes"
-				gvDevice."${sendDataM}"(globalBH)
-                if(logEnable) log.trace "${app.label} - ${fName} - Sent 1 (yes) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-			} else {
-                log.info "${app.label} - ${fName} - Global 'Been Here' is ${globalBH}. No announcement needed."
-			}
-		} else {
-			globalBH = "no"
-			gvDevice."${sendDataM}"(globalBH)
-            if(logEnable) log.trace "${app.label} - ${fName} - Sent 2 (no) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-            log.info "${app.label} - ${fName} - No announcement needed. Time Diff = ${timeDiff}"
-		}
-	} else {
-        if(logEnable) log.debug "${fName} - Global Been Here: ${globalBH}"
-        if(logEnable) log.debug "${fName} - Presence Sensor: ${sensorStatus} - No announcement needed."
-		globalBH = "no"
-        gvDevice."${sendDataM}"(globalBH)
-        if(logEnable) log.trace "${app.label} - ${fName} - Sent 3 (no) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-	}
-}
+    if(logEnable) log.debug "In getTimeDiff (${state.version}) - ${numb} - ${fName} - Presence Sensor Status: ${pSensor} - Global Been Here: ${globalBH} - lastActivity: ${lastActivity}"
 
-def lockCodeHandler(evt) {
-    if(logEnable) log.debug "In lockCodeHandler (${state.version})"
-    state.presenceMap = ""
-	state.nameCount = 0
-	def data = evt.data
-    state.lockName = evt.displayName
-    //log.info "Lock Data: ${data}"
-    if (data && !data[0].startsWith("{")) {
-        data = decrypt(data)
-        log.info "Lock Data: ${data}"
-        if (data == null) {
-            log.warn "Unable to decrypt lock code from device:${state.lockName}"
-            return
+    long timeDiff
+   	def now = new Date()
+    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
+    long unxNow = now.getTime()
+    long unxPrev = prev.getTime()
+    unxNow = unxNow/1000
+    unxPrev = unxPrev/1000
+    timeDiff = Math.abs(unxNow-unxPrev)
+    timeDiff = Math.round(timeDiff/60)
+    
+    if(pSensor == "unlocked") {
+        if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff} - handler: ${handler}"
+        if((handlerValue == "lock" || handlerValue == "motion" || handlerValue == "contact") && timeDiff < timeHome) {    // ** Welcome Home **
+            log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+			state.nameCount = state.nameCount + 1
+            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			state.canSpeak = "yes"
         }
     }
-    def codeMap = parseJson(data ?: "{}").find{ it }
-    if (!codeMap) return
-    
-    state.nowName = "${codeMap?.value?.name}"
-	if(logEnable) log.debug "In lockCodeHandler - ${state.lockName} was unlocked by ${state.nowName}"	
-    if(myLock1 || myLock2 || myLock3 || myLock4) {
-        state.nameCount = state.nameCount + 1
-	    if(state.nameCount == 1) state.presenceMap = ["${state.nowName}"]
-	    if(state.nameCount >= 2) state.presenceMap += ["${state.nowName}"]
-	    if(logEnable) log.debug "In lockCodeHandler - ${state.presenceMap}"
-    }
-    state.canSpeak = "yes"
-    if(theLocks) messageDoorUnlocked()
-    if(myLock1 || myLock2 || myLock3 || myLock4) whosHere()
-}
 
-def letsTalkQueue(text) {
-    if(logEnable) log.debug "In letsTalkQueue - ${text}"
-    // Start modified from @djgutheinz
-    def duration = Math.max(Math.round(text.length()/12),2)+3
-	state.TTSQueue << [text, duration]
-    
-    queueSize = state.TTSQueue.size()
- 
-	if(state.playingTTS == false) { 
-        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Going to Lets Talk"
-        runIn(1, letsTalk)
-    } else {
-        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Queing the message"
-    }
-    // End modified from @djgutheinz
-}
-
-def letsTalk() {
-    // Start modified from @djgutheinz
-    state.playingTTS = true
-	def queueSize = state.TTSQueue.size()
-	if(queueSize == 0) {
-		state.playingTTS = false
-        if(logEnable) log.debug "In letsTalk - queueSize: ${queueSize} - Finished Speaking"
-		return
+    if(pSensor == "present") {
+        if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff} - handler: ${handler}"
+        if(handler == "messageHomeNow" && timeDiff < 1) {    // ** Home Now **
+            if(globalBH != "homeNow") {
+                log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+			    state.nameCount = state.nameCount + 1
+                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			    state.canSpeak = "yes"
+                globalBH = "homeNow"
+                
+                gvDevice."${sendDataM}"(globalBH)
+                if(logEnable) log.trace "${app.label} - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+            } else {
+                if(logEnable) log.trace "${app.label} - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
+			}
+        }
+        
+        if((handlerValue == "lock" || handlerValue == "motion" || handlerValue == "contact") && timeDiff < timeHome) {    // ** Welcome Home **
+			if(logEnable) log.debug "${fName} - Welcome Home - PASSED TEST ONE"
+            if(globalBH != "yes") {
+                if(logEnable) log.debug "${fName} - Welcome Home - PASSED TEST TWO - globalBH: ${globalBH}"
+                if(globalBH != "welcomeHome") {  
+                    if(logEnable) log.debug "${fName} - Welcome Home - PASSED TEST THREE - globalBH: ${globalBH}"
+				    log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+				    state.nameCount = state.nameCount + 1
+                    if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+				    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+				    state.canSpeak = "yes"
+                    globalBH = "welcomeHome"
+                
+				    gvDevice."${sendDataM}"(globalBH)
+                    if(logEnable) log.trace "${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+                } else {
+                    if(logEnable) log.trace "${fName} - 3 - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
+			    }
+			} else {
+                if(logEnable) log.trace "${fName} - 4 - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
+			}
+        }
+	} else if(pSensor == "not present") {
+        if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff}"
+  		if(timeDiff < timeAway) {
+			log.info "${app.label} - ${fName} just left! Time Diff = ${timeDiff}"
+			state.nameCount = state.nameCount + 1
+            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			state.canSpeak = "yes"
+			globalBH = "no"
+            gvDevice."${sendDataM}"(globalBH)
+            if(logEnable) log.trace "${fName} - Sent 4 (no) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+		} else {
+            log.info "${app.label} - ${fName} - has been gone too long. No announcement needed."
+            globalBH = "no"
+            gvDevice."${sendDataM}"(globalBH)
+            if(logEnable) log.trace "${fName} - Sent 5 (no) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+		}
 	}
-    def nextTTS = state.TTSQueue[0]
-    state.TTSQueue.remove(0)
-    // End modified from @djgutheinz
-    
-	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
-	    checkTime()
-	    checkVol()
-        if(state.timeBetween == true) {
-		    theMsg = nextTTS[0]
-    	    if(logEnable) log.debug "In letsTalk (${state.version}) - speaker: ${speaker}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
-            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-            state.speakers.each {
-                if(logEnable) log.debug "Speaker in use: ${it}"
-                if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk (${state.version}) - speakerProxy - ${it}"
-                    it.speak(theMsg)
-                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk (${state.version}) - setVolumeSpeakAndRestore - ${it}"
-                    def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-                } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk (${state.version}) - playTextAndRestore - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(theMsg, prevVolume)
-                } else {		        
-                    if(logEnable) log.debug "In letsTalk (${state.version}) - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.speak(theMsg)
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                }
-            }
-            state.canSpeak = "no"
-	        if(logEnable) log.debug "In letsTalk (${state.version}) - Finished speaking, checking queue in ${nextTTS[1]} seconds"  
-		    log.info "${app.label} - ${theMsg}"
-            if(sendPushMessage) pushNow(theMsg)
-            runIn(nextTTS[1], letsTalk)    // Modified from @djgutheinz
-	    } else {
-            state.canSpeak = "no"
-		    if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
-            runIn(nextTTS[1], letsTalk)    // Modified from @djgutheinz
-	    }
-}
-
-def checkVol(){
-	if(logEnable) log.debug "In checkVol (${state.version})"
-	if(QfromTime) {
-		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-		if(logEnable) log.debug "In checkVol (${state.version}) - quietTime: ${state.quietTime}"
-    	if(state.quietTime) state.volume = volQuiet
-		if(!state.quietTime) state.volume = volSpeech
-	} else {
-		state.volume = volSpeech
-	}
-	if(logEnable) log.debug "In checkVol (${state.version}) - volume: ${state.volume}"
-}
-
-def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) state.timeBetween = true
-		if(!state.betweenTime) state.timeBetween = false
-  	} else {  
-		state.timeBetween = true
-  	}
-	if(logEnable) log.debug "In checkTime (${state.version}) - timeBetween: ${state.timeBetween}"
-}
-
-def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and closing message code
-	if(logEnable) log.debug "In messageWelcomeHome (${state.version})"
-	if(oRandom) {
-		def ovalues = "${omessage}".split(";")
-		ovSize = ovalues.size()
-		ocount = ovSize.toInteger()
-    	def orandomKey = new Random().nextInt(ocount)
-
-        def cvalues = "${cmessage}".split(";")
-		cvSize = cvalues.size()
-		ccount = cvSize.toInteger()
-    	def crandomKey = new Random().nextInt(ccount)
-
-		theMessage = ovalues[orandomKey] + ". " + cvalues[crandomKey]
-		if(logEnable) log.debug "In messageWelcomeHome - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}; Random - cvSize: ${cvSize}, crandomKey: ${crandomKey}, theMessage: ${theMessage}"
-	} else {
-		theMessage = "${omessage}. ${cmessage}"
-		if(logEnable) log.debug "In messageWelcomeHome - Static - theMessage: ${theMessage}"
-	}
-	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
-	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
-	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
-    if(delay1 == null || delay1 == "") delay1 = 5
-    if(logEnable) log.debug "In messageWelcomeHome - Waiting ${delay1} seconds to Speak"
-	def delay1ms = delay1 * 1000
-	pauseExecution(delay1ms)
-    if(logEnable) log.debug "In messageWelcomeHome - going to letsTalkQueue with theMessage"
-	letsTalkQueue(theMessage)
 }
 
 def messageHomeNow() {
@@ -1269,10 +997,41 @@ def messageHomeNow() {
 		theMessage = "${omessageHN}. ${cmessageHN}"
 		if(logEnable) log.debug "In messageHomeNow - Static - theMessage: ${theMessage}"
 	}
-	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
 	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
 	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
     if(logEnable) log.debug "In messageHomeNow - going to letsTalkQueue with theMessage"
+	letsTalkQueue(theMessage)
+}
+
+def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and closing message code
+    checkTimeForGreeting()
+	if(logEnable) log.debug "In messageWelcomeHome (${state.version})"
+	if(oRandom) {
+		def ovalues = "${omessage}".split(";")
+		ovSize = ovalues.size()
+		ocount = ovSize.toInteger()
+    	def orandomKey = new Random().nextInt(ocount)
+
+        def cvalues = "${cmessage}".split(";")
+		cvSize = cvalues.size()
+		ccount = cvSize.toInteger()
+    	def crandomKey = new Random().nextInt(ccount)
+
+        theMessage = "${state.greeting}, " + ovalues[orandomKey] + ". " + cvalues[crandomKey]
+		if(logEnable) log.debug "In messageWelcomeHome - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}; Random - cvSize: ${cvSize}, crandomKey: ${crandomKey}, theMessage: ${theMessage}"
+	} else {
+		theMessage = "${omessage}. ${cmessage}"
+		if(logEnable) log.debug "In messageWelcomeHome - Static - theMessage: ${theMessage}"
+	}
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
+	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
+	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
+    if(delay1 == null || delay1 == "") delay1 = 5
+    if(logEnable) log.debug "In messageWelcomeHome - Waiting ${delay1} seconds to Speak"
+	def delay1ms = delay1 * 1000
+	pauseExecution(delay1ms)
+    if(logEnable) log.debug "In messageWelcomeHome - going to letsTalkQueue with theMessage"
 	letsTalkQueue(theMessage)
 }
 
@@ -1295,101 +1054,261 @@ def messageDeparted() {
 		theMessage = "${omessageD}. ${cmessageD}"
 		if(logEnable) log.debug "In messageDeparted - Static - theMessage: ${theMessage}"
 	}
-	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
+	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
 	if (theMessage.contains("%is_are%")) {theMessage = theMessage.replace('%is_are%', "${is_are}" )}
 	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
     if(logEnable) log.debug "In messageDeparted - going to letsTalkQueue with theMessage"
 	letsTalkQueue(theMessage)
 }
 
-def messageDoorUnlocked() {
-	if(logEnable) log.debug "In messageDoorUnlocked (${state.version})"
-	if(nRandomDU) {
-		def nvaluesDU = "${nMessageDU}".split(";")
-		nvSizeDU = nvaluesDU.size()
-		ncountDU = nvSizeDU.toInteger()
-    	def nrandomKeyDU = new Random().nextInt(ncountDU)
+def makeGlobalHere(sendData) {
+    if(logEnable) log.debug "In makeGlobalHere - sendData: ${sendData}"
+    sendDataValue = sendData.value
+    gBH = "yes"
+    if(logEnable) log.trace "In makeGlobalHere - ${fName} - sendDataValue: ${sendDataValue} - gBH ${gBH}"
+	gvDevice."${sendDataValue}"(gBH)
+    if(logEnable) log.trace "${fName} is now considered Home."
+}
 
-		theMessage = nvaluesDU[nrandomKeyDU]
-		if(logEnable) log.debug "In messageDoorUnlocked - Random - nvSize: ${nvSizeDU}, nrandomKey: ${nrandomKeyDU}, theMessage: ${theMessage}"
-	} else {
-		theMessage = "${nMessageDU}"
-		if(logEnable) log.debug "In messageDoorUnlocked - Static - theMessage: ${theMessage}"
+def letsTalkQueue(text) {
+    if(logEnable) log.debug "In letsTalkQueue (${state.version}) - ${text}"
+    // Start modified from @djgutheinz
+    def duration = Math.max(Math.round(text.length()/12),2)+3
+	state.TTSQueue << [text, duration]
+    
+    queueSize = state.TTSQueue.size()
+ 
+	if(state.playingTTS == false) { 
+        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Going to Lets Talk"
+        runIn(1, letsTalk)
+    } else {
+        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Queing the message"
+    }
+    // End modified from @djgutheinz
+}
+
+def letsTalk() {
+    // Start modified from @djgutheinz
+    state.playingTTS = true
+	queueSize = state.TTSQueue.size()
+	if(queueSize == 0) {
+		state.playingTTS = false
+        if(logEnable) log.debug "In letsTalk - queueSize: ${queueSize} - Finished Speaking"
+		return
 	}
-    if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${state.nowName}" )}
-    if (theMessage.contains("%door%")) {theMessage = theMessage.replace('%door%', "${state.lockName}" )}
-    if(logEnable) log.debug "In messageDoorUnlocked - going to letsTalkQueue with theMessage"
-    letsTalkQueue(theMessage)
+    def nextTTS = state.TTSQueue[0]
+    state.TTSQueue.remove(0)
+    // End modified from @djgutheinz
+    
+	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
+	    checkTime()
+	    checkVol()
+        if(state.timeBetween == true) {
+		    theMsg = nextTTS[0]
+            theDuration = nextTTS[1] * 1000
+            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
+            state.speakers.each { it ->
+                if(logEnable) log.debug "Speaker in use: ${it}"
+                if(speakerProxy) {
+                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                    it.speak(theMsg)
+                    alreadyPaused = "no"
+                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                    def prevVolume = it.currentValue("volume")
+                    it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
+                    alreadyPaused = "no"
+                } else if(it.hasCommand('playTextAndRestore')) {   
+                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    def prevVolume = it.currentValue("volume")
+                    it.playTextAndRestore(theMsg, prevVolume)
+                    alreadyPaused = "no"
+                } else {		        
+                    if(logEnable) log.debug "In letsTalk - ${it}"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    it.speak(theMsg)
+                    pauseExecution(theDuration)
+                    alreadyPaused = "yes"
+                    queueSize = state.TTSQueue.size()
+                    if(queueSize == 0) {
+                        if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                        if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+                    }
+                }
+            }
+            state.canSpeak = "no"
+	        if(logEnable) log.debug "In letsTalk - Finished speaking, checking queue"  
+		    log.info "${app.label} - ${theMsg}"
+            if(sendPushMessage) pushNow(theMsg)
+            if(alreadyPaused == "no") {
+                runIn(nextTTS[1], letsTalk) 
+            } else {
+                runIn(1, letsTalk)
+            }
+	    } else {
+            state.canSpeak = "no"
+		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+            runIn(nextTTS[1], letsTalk)    // Modified from @djgutheinz
+	    }
+}
+
+def checkVol(){
+	if(logEnable) log.debug "In checkVol (${state.version})"
+	if(QfromTime) {
+		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
+    	if(state.quietTime) state.volume = volQuiet
+		if(!state.quietTime) state.volume = volSpeech
+	} else {
+		state.volume = volSpeech
+	}
+	if(logEnable) log.debug "In checkVol - setting volume: ${state.volume}"
+}
+
+def checkTime() {
+	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
+	if((fromTime != null) && (toTime != null)) {
+		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+		if(state.betweenTime) state.timeBetween = true
+		if(!state.betweenTime) state.timeBetween = false
+  	} else {  
+		state.timeBetween = true
+  	}
+	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+}
+
+def checkTimeForGreeting() {
+    if(logEnable) log.debug "In checkTimeForGreeting (${state.version}) - G1 - ${fromTimeG1} - ${toTimeG1}"
+    state.betweenTimeG1 = timeOfDayIsBetween(toDateTime(fromTimeG1), toDateTime(toTimeG1), new Date(), location.timeZone)
+    if(state.betweenTimeG1) {
+        if(oRandomG1) {
+		    def values = "${greeting1}".split(";")
+			vSize = values.size()
+			count = vSize.toInteger()
+    	    def randomKey = new Random().nextInt(count)
+			state.greeting = values[randomKey]
+			if(logEnable) log.debug "In checkTimeForGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
+		} else {
+			state.greeting = "${greeting1}"
+			if(logEnable) log.debug "In checkTimeForGreeting - Static - greeting: ${state.greeting}"
+		}
+    }
+    
+    if(logEnable) log.debug "In checkTimeForGreeting (${state.version}) - G2 - ${fromTimeG2} - ${toTimeG2}"
+    state.betweenTimeG2 = timeOfDayIsBetween(toDateTime(fromTimeG2), toDateTime(toTimeG2), new Date(), location.timeZone)
+    if(state.betweenTimeG2) {
+        if(oRandomG2) {
+		    def values = "${greeting2}".split(";")
+		    vSize = values.size()
+		    count = vSize.toInteger()
+    	    def randomKey = new Random().nextInt(count)
+		    state.greeting = values[randomKey]
+		    if(logEnable) log.debug "In checkTimeForGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
+		} else {
+		    state.greeting = "${greeting2}"
+		    if(logEnable) log.debug "In checkTimeForGreeting - Static - greeting: ${state.greeting}"
+        }
+    }
+
+    if(logEnable) log.debug "In checkTimeForGreeting (${state.version}) - G3 - ${fromTimeG3} - ${toTimeG3}"
+    state.betweenTimeG3 = timeOfDayIsBetween(toDateTime(fromTimeG3), toDateTime(toTimeG3), new Date(), location.timeZone)
+    if(state.betweenTimeG3) {
+        if(oRandomG3) {
+		    def values = "${greeting3}".split(";")
+			vSize = values.size()
+			count = vSize.toInteger()
+    		def randomKey = new Random().nextInt(count)
+			state.greeting = values[randomKey]
+			if(logEnable) log.debug "In checkTimeForGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}"
+		} else {
+			state.greeting = "${greeting3}"
+			if(logEnable) log.debug "In checkTimeForGreeting - Static - greeting: ${state.greeting}"
+	    }
+    }
 }
 
 private getName(){
-	if(logEnable) log.debug "In getName - Number of Names: ${state.nameCount}, Names: ${state.presenceMap}"
+	if(logEnable) log.debug "In getName (${state.version}) - Number of Names: ${state.nameCount}, Names: ${state.presenceMap}"
+    presenceMap = state.presenceMap.unique()
+    nameCount = presenceMap.size()
 	name = ""
-	myCount = 0
-	if(state.nameCount == 1) {
-		state.presenceMap.each { it -> 
+	myCount = 1
+	if(nameCount == 1) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=1: myCount = ${myCount}"
 			name = "${it}"
 		}
 	}
-	if(state.nameCount == 2) {
-		state.presenceMap.each { it -> 
+	if(nameCount == 2) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=2: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it} "
-			if(myCount == 1) name = "${name}" + "and "
+            if(!name.contains("${it}")) {
+			    name = "${name}" + "${it} "
+			    if(myCount == 1) name = "${name}" + "and "
+            }
 		}
 		name = "${name}" + "!"
 	}
-	if(state.nameCount == 3) {
-		state.presenceMap.each { it -> 
+	if(nameCount == 3) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=3: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 2) name = "${name}" + "and "
+            if(!name.contains("${it}")) {
+			    name = "${name}" + "${it}, "
+			    if(myCount == 2) name = "${name}" + "and "
+            }
 		}
 	}
-	if(state.nameCount == 4) {
-		state.presenceMap.each { it -> 
+	if(nameCount == 4) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=4: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 3) name = "${name}" + "and "
+            if(!name.contains("${it}")) {
+			    name = "${name}" + "${it}, "
+			    if(myCount == 3) name = "${name}" + "and "
+            }
 		}
 	}
-	if(state.nameCount == 5) {
-		state.presenceMap.each { it -> 
+	if(nameCount == 5) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=5: myCount: ${myCount}"
 			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 4) name = "${name}" + "and "
+            if(!name.contains("${it}")) {
+			    name = "${name}" + "${it}, "
+			    if(myCount == 4) name = "${name}" + "and "
+            }
 		}
 	}
-    if(state.nameCount == 6) {
-		state.presenceMap.each { it -> 
+    if(nameCount == 6) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=6: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it}, "
 			if(myCount == 5) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 7) {
-		state.presenceMap.each { it -> 
+    if(nameCount == 7) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=7: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it}, "
 			if(myCount == 6) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 8) {
-		state.presenceMap.each { it -> 
+    if(nameCount == 8) {
+		presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=8: myCount: ${myCount}"
 			myCount = myCount + 1
 			name = "${name}" + "${it}, "
 			if(myCount == 7) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 9) {
+    if(nameCount == 9) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=9: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1397,7 +1316,7 @@ private getName(){
 			if(myCount == 8) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 10) {
+    if(nameCount == 10) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=10: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1405,7 +1324,7 @@ private getName(){
 			if(myCount == 9) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 11) {
+    if(nameCount == 11) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=11: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1413,7 +1332,7 @@ private getName(){
 			if(myCount == 10) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 12) {
+    if(nameCount == 12) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=12: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1421,7 +1340,7 @@ private getName(){
 			if(myCount == 11) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 13) {
+    if(nameCount == 13) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=13: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1429,7 +1348,7 @@ private getName(){
 			if(myCount == 12) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 14) {
+    if(nameCount == 14) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=14: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1437,7 +1356,7 @@ private getName(){
 			if(myCount == 13) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 15) {
+    if(nameCount == 15) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=15: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1445,7 +1364,7 @@ private getName(){
 			if(myCount == 14) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 16) {
+    if(nameCount == 16) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=16: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1453,7 +1372,7 @@ private getName(){
 			if(myCount == 15) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 17) {
+    if(nameCount == 17) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=17: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1461,7 +1380,7 @@ private getName(){
 			if(myCount == 16) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 18) {
+    if(nameCount == 18) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=18: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1469,7 +1388,7 @@ private getName(){
 			if(myCount == 17) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 19) {
+    if(nameCount == 19) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=19: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1477,7 +1396,7 @@ private getName(){
 			if(myCount == 18) name = "${name}" + "and "
 		}
 	}
-    if(state.nameCount == 20) {
+    if(nameCount == 20) {
 		state.presenceMap.each { it -> 
 			if(logEnable) log.debug "*********** In nameCount=20: myCount: ${myCount}"
 			myCount = myCount + 1
@@ -1485,22 +1404,23 @@ private getName(){
 			if(myCount == 19) name = "${name}" + "and "
 		}
 	}
-    
-	is_are = (name.contains(' and ') ? 'are' : 'is')
+  
+    is_are = (name.contains(' and ') ? 'are' : 'is')
 	has_have = (name.contains(' and ') ? 'have' : 'has')
-	if(name == null) names = "Whoever you are"
-	if(name == "") names = "Whoever you are"
-	if(logEnable) log.debug "AGAIN...Name = ${name}"
+    
+	if(name == null || name == "") names = "Whoever you are"
+    
+	if(logEnable) log.debug "Name: ${name}"
 	return name
 }
 
 def rulesHandler(rules) {
-    if(logEnable) log.debug "In rulesHandler - Running ${rules}"
+    if(logEnable) log.debug "In rulesHandler - rules: ${rules}"
     RMUtils.sendAction(rules, "runRule", app.label)
 }
 
 def pushNow(msg) {
-	if(logEnable) log.debug "In pushNow"
+	if(logEnable) log.debug "In pushNow (${state.version})"
 	if(sendPushMessage) {
 		pushMessage = "${app.label} \n"
 		pushMessage += msg
