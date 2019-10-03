@@ -1066,7 +1066,7 @@ def makeGlobalHere(sendData) {
     sendDataValue = sendData.value
     gBH = "yes"
     if(logEnable) log.trace "In makeGlobalHere - ${fName} - sendDataValue: ${sendDataValue} - gBH ${gBH}"
-	if(fName) gvDevice."${sendDataValue}"(gBH)
+	if(sendDataValue) gvDevice."${sendDataValue}"(gBH)
     if(logEnable) log.trace "${fName} is now considered Home."
 }
 
