@@ -199,8 +199,8 @@ def numbersPage() {
 		}
 
 		section {
-			input(name: "startTempLevel", type: "number", range: "0..99", title: "From this level", defaultValue: defaultStart(), description: "Current Level", required: false, multiple: false, width: 6)
-			input(name: "endTempLevel", type: "number", range: "0..99", title: "To this level", defaultValue: defaultEnd(), description: "Between 0 and 99", required: true, multiple: false, width: 6)
+			input(name: "startLevel", type: "number", range: "0..99", title: "From this level", defaultValue: defaultStart(), description: "Current Level", required: false, multiple: false, width: 6)
+			input(name: "endLevel", type: "number", range: "0..99", title: "To this level", defaultValue: defaultEnd(), description: "Between 0 and 99", required: true, multiple: false, width: 6)
 		}
 
 		def colorDimmers = dimmersWithSetColorCommand()
