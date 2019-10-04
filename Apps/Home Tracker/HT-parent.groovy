@@ -43,7 +43,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "HomeTrackerParentVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
