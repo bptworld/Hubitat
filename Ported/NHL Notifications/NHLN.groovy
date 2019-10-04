@@ -48,11 +48,9 @@
  *    - Removed text notifications, buttons, tile stuff and more junk
  *    - Added Speech Options to support almost all speaker types (only Sonos was supported before)
  *    - Added Time retrictions for notifications
+ *    - Thanks to Chuck Schwer (@chuck.schwer) for solving the date/time/timezone problems
  *    - Gave it my flair, with colored headers and better layout
  *
-* *** ISSUES ***
-* App goes out and gets the next game schedule but date/time is wrong
-*
 */
 
 import groovy.time.TimeCategory
@@ -228,6 +226,9 @@ def intitInitalStates() {
     state.NHL_API_URL = "${state.NHL_URL}${state.NHL_API}"
     state.HORN_URL = "http://wejustscored.com/audio/"
 	state.BOO_URL = "http://soundbible.com/mp3/Crowd Boo 5-SoundBible.com-339165240.mp3"
+    
+    // lets make the url
+    // http://statsapi.web.nhl.com/api/v1/schedule?teamId=6&date=2019-10-03&expand=schedule.teams,schedule.broadcasts.all
 
     state.GAME_STATUS_SCHEDULED            = '1'
     state.GAME_STATUS_PREGAME              = '2'
@@ -263,7 +264,7 @@ def updated() {
 }
 
 def uninstalled() {
-	removeSwitch()
+
 }
 
 def initialize() {
@@ -777,7 +778,7 @@ def getBroadcastStations(game) {
             } 
         }
     } catch(ex) {
-        if(logEnable) log.error "caught exception ${e}"
+        if(logEnable) log.error "caught exception 1 - ${ex}"
         stations = null
     }
 
@@ -789,12 +790,14 @@ def getTimeZone() {
         if (useTeamLocation) {
             if (state.Team) {
                 def tz = state.Team.venue.timeZone.id
+                //def os = state.Team.venue.timeZone.offset
                 if(logEnable) log.debug "In getTimeZone - tz: ${tz}"
-                return TimeZone.getTimeZone(tz)                        
+                return TimeZone.getTimeZone(tz)    
+                //return TimeZone.getTimeZone("EDT")
             }
         }
     } catch(ex) {
-        if(logEnable) log.error "caught exception ${e}"
+        if(logEnable) log.error "caught exception 2 - ${ex}"
     }
     
 	return location.timeZone
@@ -807,7 +810,7 @@ def getLocation(game) {
         def team = game.teams.home.team
         location = team.venue.name + ", " + team.venue.city
     } catch(ex) {
-        if(logEnable) log.error "caught exception ${e}"
+        if(logEnable) log.error "caught exception 3 - ${ex}"
         location = null
     }
 
@@ -818,7 +821,7 @@ def gameDateTime() {
 	def gameStartTime = null
     
     if (state.gameDate) {
-    	gameStartTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss'Z'", state.gameDate)
+    	gameStartTime = Date.parse("yyyy-MM-dd'T'HH:mm:ssX", state.gameDate)
     }
     if(logEnable) log.debug "In gameDateTime - gameDate: ${state.gameDate} - gameStartTime: ${gameStartTime}"
 	return gameStartTime
@@ -1092,7 +1095,7 @@ def getHornURL(team) {
         }
 
     } catch(ex) {
-        if(logEnable) log.error "caught exception ${e}"
+        if(logEnable) log.error "caught exception ${ex}"
         hornURL = null
     }
 
@@ -1215,7 +1218,7 @@ def triggerSwitches() {
             runIn(delay, switchOnHandler)
         }
     } catch(ex) {
-        if(logEnable) log.error "Error triggering switches: $ex"
+        if(logEnable) log.error "Error triggering switches: ${ex}"
     }
 }
 
@@ -1227,7 +1230,7 @@ def switchOnHandler() {
 
         runIn(switchOffSecs, switchOffHandler)
     } catch(ex) {
-        if(logEnable) log.error "Error turning on switches: $ex"
+        if(logEnable) log.error "Error turning on switches: ${ex}"
     }
 }
 
@@ -1237,7 +1240,7 @@ def switchOffHandler() {
         
 		setSwitches(settings.switchDevices, false)
     } catch(ex) {
-        if(logEnable) log.error "Error turning off switches: $ex"
+        if(logEnable) log.error "Error turning off switches: ${ex}"
     }
 }
 
@@ -1248,7 +1251,7 @@ def triggerFlashing() {
             runIn(delay, flashingHandler)
         }
    } catch(ex) {
-        if(logEnable) log.error "Error Flashing Lights: $ex"
+        if(logEnable) log.error "Error Flashing Lights: ${ex}"
     }
 }
 
@@ -1304,7 +1307,7 @@ def flashingHandler() {
         }
 
     } catch(ex) {
-        if(logEnable) log.error "Error Flashing Lights: $ex"
+        if(logEnable) log.error "Error Flashing Lights: ${ex}"
     }
 }
 
@@ -1313,7 +1316,7 @@ def flashRestoreLightsHandler() {
         if(logEnable) log.debug "restoring flash devices"
         restoreLightOptions(settings.flashLights)
     } catch(ex) {
-        if(logEnable) log.error "Error restoring flashing lights: $ex"
+        if(logEnable) log.error "Error restoring flashing lights: ${ex}"
     }
 }
 
@@ -1324,7 +1327,7 @@ def triggerSirens() {
             runIn(delay, sirenOnHandler)
         }
     } catch(ex) {
-        if(logEnable) log.error "Error triggering sirens: $ex"
+        if(logEnable) log.error "Error triggering sirens: ${ex}"
     }
 }
 
@@ -1343,7 +1346,7 @@ def sirenOnHandler() {
 
         runIn(sirensOffSecs, sirenOffHandler)
     } catch(ex) {
-        if(logEnable) log.error "Error turning on sirens: $ex"
+        if(logEnable) log.error "Error turning on sirens: ${ex}"
     }
 }
 
@@ -1355,7 +1358,7 @@ def sirenOffHandler() {
             if(logEnable) log.debug "Siren=$s.id off"
         }
     } catch(ex) {
-        if(logEnable) log.error "Error turning off sirens: $ex"
+        if(logEnable) log.error "Error turning off sirens: ${ex}"
     }
 }
 
@@ -1366,7 +1369,7 @@ def triggerHorn() {
            	runIn(delay, playHornHandler)
         }
     } catch(ex) {
-        if(logEnable) log.error "Error running horn: $ex"
+        if(logEnable) log.error "Error running horn: ${ex}"
     }
 }
 
@@ -1377,7 +1380,7 @@ def triggerBoo() {
            	runIn(delay, playBooHandler)
         }
     } catch(ex) {
-        if(logEnable) log.error "Error running boo: $ex"
+        if(logEnable) log.error "Error running boo: ${ex}"
     }
 }
 
@@ -1571,9 +1574,9 @@ def triggerStatusNotifications() {
 
 def sendTextNotification(msg) {
     try {
-    	sendPush(app.label, sendPushMessage, sendPhoneMessage, msg)
+        sendPush("${app.label} - ${msg}")
     } catch(ex) {
-        if(logEnable) log.error "Error sending notifications: $ex"
+        if(logEnable) log.error "Error sending notifications: ${ex}"
         return false
     }
 
