@@ -34,6 +34,7 @@
  *
  *  Changes:
  *.
+ *  V2.0.1 - 10/04/19 - added pronunciation to friendly names (aaronward)
  *  V2.0.0 - 09/10/19 - Initial release.
  *
  */
@@ -130,26 +131,46 @@ def mainPage() {
 			section("Presence Sensors:", hideable: true, hidden: true) {
 				paragraph "Enter in your 'Friendly Names' for the presence sensors to be used with this app. You'll still attach them to the presence sensors within each child app. This will keep them in order across multiple child apps."
 				input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, defaultValue: "Not set"
-				input "friendlyName2", "text", title: "Friendly name for presence sensor 2", required: false, multiple: false, defaultValue: "Not set"
-				input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, defaultValue: "Not set"
-				input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, defaultValue: "Not set"
-				input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce1", "text", title: "Pronunciation for presence sensor 1", required: false, multiple: false, defaultValue: "Not set"
+				input "friendlyName2", "text", title: "Friendly name for presence sensor 2", required: false, multiple: false, defaultValue: "Not set" 
+				input "pronounce2", "text" , title: "Pronunciation for presence sensor 2", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, defaultValue: "Not set"
+				input "pronounce3", "text", title: "Pronunciation for presence sensor 3", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, defaultValue: "Not set"
+				input "pronounce4", "text", title: "Pronunciation for presence sensor 4", required: false, multiple: false, defaultValue: "Not set"
+                input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce5", "text", title: "Pronunciation for presence sensor 5", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName6", "text", title: "Friendly name for presence sensor 6", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce6", "text", title: "Pronunciation for presence sensor 6", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName7", "text", title: "Friendly name for presence sensor 7", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce7", "text", title: "Pronunciation for presence sensor 7", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName8", "text", title: "Friendly name for presence sensor 8", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce8", "text", title: "Pronunciation for presence sensor 8", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName9", "text", title: "Friendly name for presence sensor 9", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce9", "text", title: "Pronunciation for presence sensor 9", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName10", "text", title: "Friendly name for presence sensor 10", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce10", "text", title: "Pronunciation for presence sensor 10", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName11", "text", title: "Friendly name for presence sensor 11", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce11", "text", title: "Pronunciation for presence sensor 11", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName12", "text", title: "Friendly name for presence sensor 12", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce12", "text", title: "Pronunciation for presence sensor 12", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName13", "text", title: "Friendly name for presence sensor 13", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce13", "text", title: "Pronunciation for presence sensor 13", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName14", "text", title: "Friendly name for presence sensor 14", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce14", "text", title: "Pronunciation for presence sensor 14", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName15", "text", title: "Friendly name for presence sensor 15", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce15", "text", title: "Pronunciation for presence sensor 15", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName16", "text", title: "Friendly name for presence sensor 16", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce16", "text", title: "Pronunciation for presence sensor 16", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName17", "text", title: "Friendly name for presence sensor 17", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce17", "text", title: "Pronunciation for presence sensor 17", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName18", "text", title: "Friendly name for presence sensor 18", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce18", "text", title: "Pronunciation for presence sensor 18", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName19", "text", title: "Friendly name for presence sensor 19", required: false, multiple: false, defaultValue: "Not set"
+                input "pronounce19", "text", title: "Pronunciation for presence sensor 19", required: false, multiple: false, defaultValue: "Not set"
                 input "friendlyName20", "text", title: "Friendly name for presence sensor 20", required: false, multiple: false, defaultValue: "Not set"
-			}
+	            input "pronounce20", "text", title: "Pronunciation for presence sensor 20", required: false, multiple: false, defaultValue: "Not set"		
+            }
 		}
 		display()
 	}
