@@ -35,7 +35,7 @@
  *
  *  Changes:
  *
- *  V2.0.5 - 10/04/19 - Support for pronunciation of Presence Sensor names
+ *  V2.0.5 - 10/04/19 - Support for pronunciation of Presence Sensor names - Changes by @aaron
  *  V2.0.4 - 10/03/19 - LOTS of changes, added some rule machine options, lock codes can be used as presence sensors and name
 will be added to the announcement. Greetings have returned! Be sure to load up each child app and fill in the missing pieces!
  *  V2.0.3 - 09/14/19 - More tweaking...
