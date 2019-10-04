@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.5 - 10/04/19 - Support for pronunciation of Presence Sensor names
  *  V2.0.4 - 10/03/19 - LOTS of changes, added some rule machine options, lock codes can be used as presence sensors and name
 will be added to the announcement. Greetings have returned! Be sure to load up each child app and fill in the missing pieces!
  *  V2.0.3 - 09/14/19 - More tweaking...
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.4"
+	state.version = "v2.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -589,140 +590,160 @@ def whichPresenceSensor(numb) {
     if(numb==1) { 
         pSensor=presenceSensor1.currentValue("presence")
         lastActivity = presenceSensor1.getLastActivity()
-        fName="${parent.friendlyName1}"
+        if(parent.pronunciation1.contains("Not set") || parent.procunciation1=="") fName=parent.friendlyName1
+        else fName=parent.pronunciation1
         sendDataM="sendDataMap1"
         globalBH=gvDevice.currentValue("globalBH1")
     }
     if(numb==2) {
         pSensor=presenceSensor2.currentValue("presence")
         lastActivity = presenceSensor2.getLastActivity()
-        fName="${parent.friendlyName2}"
+        if(parent.pronunciation2.contains("Not set") || parent.procunciation2=="") fName=parent.friendlyName2
+        else fName=parent.pronunciation2
         sendDataM="sendDataMap2"
         globalBH=gvDevice.currentValue("globalBH2")
     }
     if(numb==3) {
         pSensor=presenceSensor3.currentValue("presence")
         lastActivity = presenceSensor3.getLastActivity()
-        fName="${parent.friendlyName3}"
+        if(parent.pronunciation3.contains("Not set") || parent.procunciation3=="") fName=parent.friendlyName3
+        else fName=parent.pronunciation3
         sendDataM="sendDataMap3"
         globalBH=gvDevice.currentValue("globalBH3")
     }
     if(numb==4) {
         pSensor=presenceSensor4.currentValue("presence")
         lastActivity = presenceSensor4.getLastActivity()
-        fName="${parent.friendlyName4}"
+        if(parent.pronunciation4.contains("Not set") || parent.procunciation4=="") fName=parent.friendlyName4
+        else fName=parent.pronunciation4
         sendDataM="sendDataMap4"
         globalBH=gvDevice.currentValue("globalBH4")
     }
     if(numb==5) {
         pSensor=presenceSensor5.currentValue("presence")
         lastActivity = presenceSensor5.getLastActivity()
-        fName="${parent.friendlyName5}"
+        if(parent.pronunciation5.contains("Not set") || parent.procunciation5=="") fName=parent.friendlyName5
+        else fName=parent.pronunciation5
         sendDataM="sendDataMap5"
         globalBH=gvDevice.currentValue("globalBH5")
     }
     if(numb==6) {
         pSensor=presenceSensor6.currentValue("presence")
         lastActivity = presenceSensor6.getLastActivity()
-        fName="${parent.friendlyName6}"
+        if(parent.pronunciation6.contains("Not set") || parent.procunciation6=="") fName=parent.friendlyName6
+        else fName=parent.pronunciation6
         sendDataM="sendDataMap6"
         globalBH=gvDevice.currentValue("globalBH6")
     }
     if(numb==7) {
         pSensor=presenceSensor7currentValue("presence")
         lastActivity = presenceSensor7.getLastActivity()
-        fName="${parent.friendlyName7}"
+        if(parent.pronunciation7.contains("Not set") || parent.procunciation7=="") fName=parent.friendlyName7
+        else fName=parent.pronunciation7
         sendDataM="sendDataMap7"
         globalBH=gvDevice.currentValue("globalBH7")
     }
     if(numb==8) {
         pSensor=presenceSensor8currentValue("presence")
         lastActivity = presenceSensor8.getLastActivity()
-        fName="${parent.friendlyName8}"
+        if(parent.pronunciation8.contains("Not set") || parent.procunciation8=="") fName=parent.friendlyName8
+        else fName=parent.pronunciation8
         sendDataM="sendDataMap8"
         globalBH=gvDevice.currentValue("globalBH8")
     }
     if(numb==9) {
         pSensor=presenceSensor9.currentValue("presence")
         lastActivity = presenceSensor9.getLastActivity()
-        fName="${parent.friendlyName9}"
+        if(parent.pronunciation9.contains("Not set") || parent.procunciation9=="") fName=parent.friendlyName9
+        else fName=parent.pronunciation9
         sendDataM="sendDataMap9"
         globalBH=gvDevice.currentValue("globalBH9")
     }
     if(numb==10) {
         pSensor=presenceSensor10.currentValue("presence")
         lastActivity = presenceSensor10.getLastActivity()
-        fName="${parent.friendlyName10}"
+        if(parent.pronunciation10.contains("Not set") || parent.procunciation10=="") fName=parent.friendlyName10
+        else fName=parent.pronunciation10
         sendDataM="sendDataMap10"
         globalBH=gvDevice.currentValue("globalBH10")
     }
     if(numb==11) {
         pSensor=presenceSensor11.currentValue("presence")
         lastActivity = presenceSensor11.getLastActivity()
-        fName="${parent.friendlyName11}"
+        if(parent.pronunciation11.contains("Not set") || parent.procunciation11=="") fName=parent.friendlyName11
+        else fName=parent.pronunciation11
         sendDataM="sendDataMap11"
         globalBH=gvDevice.currentValue("globalBH11")
     }
     if(numb==12) {
         pSensor=presenceSensor12.currentValue("presence")
         lastActivity = presenceSensor12.getLastActivity()
-        fName="${parent.friendlyName12}"
+        if(parent.pronunciation12.contains("Not set") || parent.procunciation12=="") fName=parent.friendlyName12
+        else fName=parent.pronunciation12
         sendDataM="sendDataMap12"
         globalBH=gvDevice.currentValue("globalBH12")
     }
     if(numb==13) {
         pSensor=presenceSensor13.currentValue("presence")
         lastActivity = presenceSensor13.getLastActivity()
-        fName="${parent.friendlyName13}"
+        if(parent.pronunciation13.contains("Not set") || parent.procunciation13=="") fName=parent.friendlyName13
+        else fName=parent.pronunciation13
         sendDataM="sendDataMap13"
         globalBH=gvDevice.currentValue("globalBH13")
     }
     if(numb==14) {
         pSensor=presenceSensor14.currentValue("presence")
         lastActivity = presenceSensor14.getLastActivity()
-        fName="${parent.friendlyName14}"
+        if(parent.pronunciation14.contains("Not set") || parent.procunciation14=="") fName=parent.friendlyName14
+        else fName=parent.pronunciation14
         sendDataM="sendDataMap14"
         globalBH=gvDevice.currentValue("globalBH14")
     }
     if(numb==15) {
         pSensor=presenceSensor15.currentValue("presence")
         lastActivity = presenceSensor15.getLastActivity()
-        fName="${parent.friendlyName15}"
+        if(parent.pronunciation15.contains("Not set") || parent.procunciation15=="") fName=parent.friendlyName15
+        else fName=parent.pronunciation15
         sendDataM="sendDataMap15"
         globalBH=gvDevice.currentValue("globalBH15")
     }
     if(numb==16) {
         pSensor=presenceSensor16.currentValue("presence")
         lastActivity = presenceSensor16.getLastActivity()
-        fName="${parent.friendlyName16}"
+        if(parent.pronunciation16.contains("Not set") || parent.procunciation16=="") fName=parent.friendlyName16
+        else fName=parent.pronunciation16
         sendDataM="sendDataMap16"
         globalBH=gvDevice.currentValue("globalBH16")
     }
     if(numb==17) {
         pSensor=presenceSensor17.currentValue("presence")
         lastActivity = presenceSensor17.getLastActivity()
-        fName="${parent.friendlyName17}"
+        if(parent.pronunciation17.contains("Not set") || parent.procunciation17=="") fName=parent.friendlyName17
+        else fName=parent.pronunciation17
         sendDataM="sendDataMap17"
         globalBH=gvDevice.currentValue("globalBH17")
     }
     if(numb==18) {
         pSensor=presenceSensor18.currentValue("presence")
         lastActivity = presenceSensor18.getLastActivity()
-        fName="${parent.friendlyName18}"
+        if(parent.pronunciation18.contains("Not set") || parent.procunciation18=="") fName=parent.friendlyName18
+        else fName=parent.pronunciation18
         sendDataM="sendDataMap18"
         globalBH=gvDevice.currentValue("globalBH18")
     }
     if(numb==19) {
         pSensor=presenceSensor19.currentValue("presence")
         lastActivity = presenceSensor19.getLastActivity()
-        fName="${parent.friendlyName19}"
+        if(parent.pronunciation19.contains("Not set") || parent.procunciation19=="") fName=parent.friendlyName19
+        else fName=parent.pronunciation19
         sendDataM="sendDataMap19"
         globalBH=gvDevice.currentValue("globalBH19")
     }
     if(numb==20) {
         pSensor=presenceSensor20.currentValue("presence")
         lastActivity = presenceSensor20.getLastActivity()
-        fName="${parent.friendlyName20}"
+        if(parent.pronunciation20.contains("Not set") || parent.procunciation20=="") fName=parent.friendlyName20
+        else fName=parent.pronunciation20
         sendDataM="sendDataMap20"
         globalBH=gvDevice.currentValue("globalBH20")
     }
