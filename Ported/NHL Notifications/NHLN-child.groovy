@@ -41,15 +41,16 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 10/04/19 - Now Parent/Child. Create new child apps for each team you want to follow
  *  V1.0.0 - 10/03/19 - Initial release for Hubitat
  *    - Fixed the async to be compatible with Hubitat
  *    - Fixed the push notifications 
  *    - Fixed the debug logging, now able to turn on/off
  *    - Removed text notifications, buttons, tile stuff and more junk
  *    - Added Speech Options to support almost all speaker types (only Sonos was supported before)
- *    - Added Time retrictions for notifications
+ *    - Added Time restrictions for notifications
  *    - Thanks to Chuck Schwer (@chuck.schwer) for solving the date/time/timezone problems
- *    - Gave it my flair, with colored headers and better layout
+ *    - Gave it some flair, with colored headers and better layout
  *
 */
 
@@ -61,7 +62,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "NHLNotificationsChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -78,7 +79,7 @@ definition(
     author: "Bryan Turcotte",
     description: "Get NHL notifications when your favorite team is playing!",
     category: "",
-   // parent: "BPTWorld:NHL Notifications",
+    parent: "BPTWorld:NHL Notifications",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: ""
