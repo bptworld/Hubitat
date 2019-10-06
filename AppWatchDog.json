@@ -1,0 +1,31 @@
+{
+  "Developer": "Aaron Ward",
+  "GitHubURL": "https://github.com/PrayerfulDrop/Hubitat",
+  "PayPalURL": "https://paypal.me/aaronmward?locale.x=en_US",
+  "application": [
+    {
+      "name": "NOAA Weather Alerts",
+      "version": "2.4.5",
+      "RAW": "https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/NOAA/NOAA-Severe-Weather.groovy",
+      "child": [],
+      "driver": [
+        {
+          "name": "NOAA Tile",
+          "version": "1.2.1",
+          "RAW": "https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/NOAA/NOAA-Tile-Driver.groovy"
+        }
+      ],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-noaa-weather-alerts/11141",
+      "updateNote": "2.4.5 - fixed 'final' bug in repeat - forgot to convert to integers for calculations, complete reorganization of code"
+    },
+    "drivers": [
+    {
+      "name": "MQTT Generic Driver",
+      "version": "1.0.2",
+      "RAW": "https://community.hubitat.com/t/project-mqtt-generic-driver-and-salt-tank-monitor-using-arduino/16008",
+      "child": [],
+      "hubitatDiscussion": "",
+      "updateNote": "1.0.2 - added support for AppWatchDogv2"
+    },
+  ]
+}
