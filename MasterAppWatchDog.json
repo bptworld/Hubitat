@@ -2,7 +2,7 @@
   "AppWatchDog": [
     {
       "developer": "BPTWorld",
-      "jsonURL": "https://raw.githubusercontent.com/bptworld/Hubitat/master/bptworldApps.json"
+      "jsonURL": "https://raw.githubusercontent.com/bptworld/Hubitat/master/AppWatchDog.json"
     },
     {
       "developer": "Aaron Ward",
