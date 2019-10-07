@@ -101,7 +101,8 @@ def mainPage() {
 				paragraph "Get NHL notifications when your favorite team is playing!"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "NHL Notifications Child", namespace: "BPTWorld", title: "<b>Add a new 'NHL Notifications' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "NHL Game Day Child", namespace: "BPTWorld", title: "<b>Add a new 'NHL Game Day' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "NHL Stats Child", namespace: "BPTWorld", title: "<b>Add a new 'NHL Stats' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
