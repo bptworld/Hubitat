@@ -22,7 +22,7 @@
 *
 * ---- New Header ----
 *
- *  ****************  NHL Notifications App  ****************
+ *  ****************  NHL Game Day App  ****************
  *
  *  Design Usage:
  *  Get NHL notifications when your favorite team is playing!
@@ -41,6 +41,11 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 10/06/19 - Changed child name to NHL Game Day
+ *    - Started to streamline the code
+ *    - fixed daily check.
+ *    - Started collecting code to virtual device
+ *    - 
  *  V1.0.1 - 10/04/19 - Now Parent/Child. Create new child apps for each team you want to follow
  *  V1.0.0 - 10/03/19 - Initial release for Hubitat
  *    - Fixed the async to be compatible with Hubitat
@@ -61,8 +66,8 @@ import groovy.json.JsonOutput
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "NHLNotificationsChildVersion"
-	state.version = "v1.0.1"
+    state.appName = "NHLGameDayChildVersion"
+	state.version = "v1.0.2"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -74,7 +79,7 @@ def setVersion(){
 }
 
 definition(
-    name: "NHL Notifications Child",
+    name: "NHL Game Day Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Get NHL notifications when your favorite team is playing!",
@@ -94,7 +99,7 @@ preferences {
 
 def pageMain() {
     intitInitalStates()
-    dynamicPage(name: "pageMain", title: "<h2 style='color:#1A77C9;font-weight: bold'>NHL Notification</h2>", install: true, uninstall: true) {
+    dynamicPage(name: "pageMain", title: "<h2 style='color:#1A77C9;font-weight: bold'>NHL Game Day</h2>", install: true, uninstall: true) {
         display()
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Your Team")) {
             input "nhlTeam", "enum", title: "Select NHL Team", required: true, displayDuringSetup: true, options: getTeamEnums()
@@ -114,9 +119,12 @@ def pageMain() {
             }
         }
         section("Misc Options") {
-            input "useTeamLocation", "bool", title: "Use Time Zone of Selected Team?", defaultValue: "false", required: "false"
-            input "serviceStartTime", "time", title: "Daily Game Check", defaultValue: "1:00", required: false, multiple: false, displayDuringSetup: true
-            input "hourBeforeGame", "number", title: "Hours Before Game Start", description: "0-12 hours", required: false, multiple: false, displayDuringSetup: true, range: "0..12"
+            input "useTeamLocation", "bool", title: "Use Time Zone of Selected Team?", defaultValue: "true", required: "true"
+            input "serviceStartTime", "time", title: "Daily Game Check", defaultValue: "1:00", required: true
+            input "hourBeforeGame", "number", title: "Hours Before Game Start", description: "0-12 hours", required: true, range: "0..12"
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {
+            input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: true, multiple: false)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
         section() {
@@ -130,14 +138,14 @@ def pageGoals() {
     dynamicPage(name: "pageGoals", title: "Goal Notifications") {
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {}
         section("Turn On/Off Switches") {
-            input "switchDevices", "capability.switch", title: "Select Switches", required: false, multiple: true, displayDuringSetup: true, submitOnChange: true
+            input "switchDevices", "capability.switch", title: "Select Switches", required: false, multiple: true, submitOnChange: true
             if (switchDevices) {
-                input "switchOnFor", "number", title: "Turn Off After", description: "1-120 seconds", required: false, multiple: false, displayDuringSetup: true, range: "1..120"
+                input "switchOnFor", "number", title: "Turn Off After", description: "1-120 seconds", required: false, multiple: false, range: "1..120"
                 input "switchDelay", "number", title: "Delay after goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             }
         }
         section("Flashing Lights"){
-            input "flashLights", "capability.switch", title: "Select Lights", multiple: true, required: false, displayDuringSetup: true, submitOnChange: true
+            input "flashLights", "capability.switch", title: "Select Lights", multiple: true, required: false, submitOnChange: true
             if (flashLights) {
                 input "numFlashes", "number", title: "Number Of Times To Flash", description: "1-50 times", required: false, range: "1..50"
                 input "flashOnFor", "number", title: "On For (default 1000ms)", description: "milliseconds", required: false
@@ -150,10 +158,10 @@ def pageGoals() {
             input "lightLevel", "enum", title: "Lighting Level?", required: false, options: [[10:"10%"],[20:"20%"],[30:"30%"],[40:"40%"],[50:"50%"],[60:"60%"],[70:"70%"],[80:"80%"],[90:"90%"],[100:"100%"]]
         }
         section("Sirens To Trigger"){
-            input "sirens", "capability.alarm", title: "Select Sirens", required: false, multiple: true, displayDuringSetup: true, submitOnChange: true
+            input "sirens", "capability.alarm", title: "Select Sirens", required: false, multiple: true, submitOnChange: true
             if (sirens) {
-                input "sirensOnly", "bool", title: "Don't Use The Strobe", defaultValue: "false", displayDuringSetup: true, required:false
-                input "sirensOnFor", "number", title: "Turn Off After", description: "1-10 seconds", required: false, multiple: false, displayDuringSetup: true, range: "1..10"
+                input "sirensOnly", "bool", title: "Don't Use The Strobe", defaultValue: "false", required:false
+                input "sirensOnFor", "number", title: "Turn Off After", description: "1-10 seconds", required: false, multiple: false, range: "1..10"
                 input "sirenDelay", "number", title: "Delay After Goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             }
         }
@@ -179,7 +187,7 @@ def pageGoals() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Other Sound Options")) {
             input "soundDuration", "number", title: "Duration To Play (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             input "soundDelay", "number", title: "Delay After Goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
-	        input "soundBooOpponent", "bool", title: "Boo When The Opponent Scores?", defaultValue: "true", displayDuringSetup: true, required:false
+	        input "soundBooOpponent", "bool", title: "Boo When The Opponent Scores?", defaultValue: "true", required:false
         }
     }
 }
@@ -188,9 +196,9 @@ def pageText() {
     dynamicPage(name: "pageText", title: "Push Notifications") {
         section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {}
         section("Notification Types") {
-            input "sendGoalMessage", "bool", title: "Enable Goal Score Notifications?", defaultValue: "true", displayDuringSetup: true, required:false
-            input "sendGameDayMessage", "bool", title: "Enable Game Day Status Notifications?", defaultValue: "false", displayDuringSetup: true, required:false
-            input "sendPregameMessage", "bool", title: "Send Custom Pregame Message?", required: false, displayDuringSetup: true, submitOnChange: true
+            input "sendGoalMessage", "bool", title: "Enable Goal Score Notifications?", defaultValue: "true", required:false
+            input "sendGameDayMessage", "bool", title: "Enable Game Day Status Notifications?", defaultValue: "false", required:false
+            input "sendPregameMessage", "bool", title: "Send Custom Pregame Message?", required: false, submitOnChange: true
             if (sendPregameMessage) {
                 input "pregameMinutesBefore", "number", title: "Minutes Before Game", description: "1-120 minutes (default 10)", default: 10, required: false, range: "1..2400"
                 input "pregameMessage", "text", title: "Pregame Message", description: "Tap to Set Message", required: false
@@ -207,13 +215,13 @@ def pageGame() {
     dynamicPage(name: "pageGame", title: "Game Actions") {
         section(getFormat("header-green", "${getImage("Blank")}"+" Game Actions")) {}
         section("Turn On At Start Of Game"){
-            input "gameSwitches", "capability.switch", title: "Select Switches", required: false, multiple: true, displayDuringSetup: true, submitOnChange: true
+            input "gameSwitches", "capability.switch", title: "Select Switches", required: false, multiple: true, submitOnChange: true
             if (gameSwitches) {
-                input "gameSwitchOff", "bool", title: "Turn Off After Game?", defaultValue: "true", displayDuringSetup: true, required:false
+                input "gameSwitchOff", "bool", title: "Turn Off After Game?", defaultValue: "true", required:false
             }
         }
         section("Misc Game Actions") {
-            input "gameGoalIfWin", "bool", title: "Send Goal Notification If Team Wins", defaultValue: "false", displayDuringSetup: true, required:false
+            input "gameGoalIfWin", "bool", title: "Send Goal Notification If Team Wins", defaultValue: "false", required:false
         }
     }
 }
@@ -248,7 +256,6 @@ def intitInitalStates() {
 
 def installed() {
 	// create during install only 
-    state.enableGameNotifications = true
     state.prevTeamList = null
 
     intitInitalStates()
@@ -257,10 +264,8 @@ def installed() {
 
 def updated() {
     intitInitalStates()
-
     unschedule()
     unsubscribe()
-
     initialize()
 }
 
@@ -271,7 +276,6 @@ def uninstalled() {
 def initialize() {
     if(logEnable) log.debug "In initialize (${state.version})"
     setVersion()
-    state.enableGameNotifications = true
     
     state.Team = null
     state.teamList = null
@@ -286,58 +290,12 @@ def initialize() {
     setGameStates(null)
 
     getTeam()
-    
-    if(switchDevice) subscribe(switchDevice, "switch", notificationSwitchHandler)
-/**    
-    // schedule to run every day at specified time
-    def start = getStartTime(settings.serviceStartTime)
-    def startText = start.format('h:mm a',location.timeZone)
-    if(logEnable) log.debug "Scheduling game day check once per day at ${startText}"
 
     // setup schedule
-    schedule(start, gameDayCheck)
-
-    // start with initial gameday check
-    gameDayCheck()
-*/    
-    if(logEnable) log.debug "${app.label} enableGameNotifications: ${state.enableGameNotifications}"
-    if (state.enableGameNotifications) {
-        startGameDay()
-    } else {
-        unschedule()
-    }
-}
-
-def setGameNotifications(enable) {
-    if(logEnable) log.debug "${app.label} enabled=${enable}"
-    if ( state.enableGameNotifications != enable) {
-        state.enableGameNotifications = enable
-
-        if (enable) {
-        	startGameDay()
-        } else {
-	        unschedule()
-        }
-        
-    } else {
-	    if(logEnable) log.debug "${app.label}: enable state remained unchanged"
-    }
-}
-
-def notificationSwitchHandler(evt) {
-    if(logEnable) log.debug "notificationSwitchHandler: evt=${evt.value}"
+    schedule(serviceStartTime, startGameDay)
     
-    try {
-        if (evt.value == "on") {
-            if(logEnable) log.debug "Enabling Sport Notification"
-            setGameNotifications(true)
-        } else if (evt.value == "off") {
-            if(logEnable) log.debug "Disabling Sport Notification"
-            setGameNotifications(false)
-        }
-    } catch (e) {
-        if(logEnable) log.error "caught exception - ${e}"
-    }
+    if(logEnable) log.debug "In initialize - Making initial game day checks"
+    startGameDay()
 }
 
 def getTeamEnums() {
@@ -353,7 +311,6 @@ def getTeamEnums() {
                 for (rec in json.teams) {
                     teams += rec.teamName
                 } 
-
             }
             
     		state.teamList = teams
@@ -412,6 +369,7 @@ def getTeam() {
 }
 
 def setGameStates(game) { 
+    if(logEnable) log.debug "In setGameStates (${state.version})"
 	if (game) {
         // set current game info
         state.Game = game
@@ -434,6 +392,7 @@ def setGameStates(game) {
 
 // game day URL fuctions and handlers
 def startGameDay() {
+    if(logEnable) log.debug "In startGameDay (${state.version})"
     if (checkIfGameDay()) {
         def gameStartDate =  gameDateTime()
 
@@ -476,31 +435,59 @@ def startGameDay() {
 
         } else {
             if(logEnable) log.debug "Unable to retrieve game time from ${app.label}"
-            unschedule()
         }
     } else {
-        if(logEnable) log.debug "Not a gameday for ${app.label}"
-        unschedule()
+        if(logEnable) log.debug "Today is not a gameday for the ${settings.nhlTeam}"
     }
 }
 
-def checkIfGameDayHandler(resp) {    
+def checkIfGameDayHandler(resp,gDate) {    
+    if(logEnable) log.debug "In checkIfGameDayHandler (${state.version})"
     def isGameDay = false
 
     if (resp.status == 200) {
         def result = resp.data
 
         for (date in result.dates) {
-            for (game in date.games)
-            {
+            for (game in date.games){
                 isGameDay = true
-
 				setGameStates(game)
                 
-                if(logEnable) log.debug "A game is scheduled for today - ${game.teams.away.team.name} vs ${game.teams.home.team.name} at ${gameTimeText()}"
+                if(logEnable) log.info "A game is scheduled for ${gDate} - ${game.teams.away.team.name} vs ${game.teams.home.team.name} at ${gameTimeText()}"
 
+                if(tileDevice) {
+                    hVenue = game.venue.name
+                    if(hVenue == null || hVenue =="") hVenue = "-"
+                    gameData = "${gDate};${game.teams.away.team.name};${game.teams.home.team.name};${gameTimeText()};${hVenue}"
+                    tileDevice.todayGameData(gameData)                   
+                    
+                    hTeamWins = game.teams.home.leagueRecord.wins
+                    hTeamLosses = game.teams.home.leagueRecord.losses
+                    hTeamOTs = game.teams.home.leagueRecord.ot
+                    hTeamRecord = "(${hTeamWins}-${hTeamLosses}-${hTeamOTs})"
+
+                    aTeamWins = game.teams.away.leagueRecord.wins
+                    aTeamLosses = game.teams.away.leagueRecord.losses
+                    aTeamOTs = game.teams.away.leagueRecord.ot
+                    aTeamRecord = "(${aTeamWins}-${aTeamLosses}-${aTeamOTs})"
+                    
+                    teamData = "${aTeamRecord};${hTeamRecord}"
+                    tileDevice.todayTeamRecords(teamData)
+                    
+                    if(logEnable) log.debug "In checkIfGameDayHandler1 - sending gameData: ${gameData} - teamData: ${teamData}"
+                }
                 // break out of loop
                 break
+            }
+        }
+        if(hVenue == null || hVenue == "" || hVenue == "-") {
+            if(tileDevice) {
+                gameData = "${gDate};-;-;No Game;-"
+                tileDevice.todayGameData(gameData)
+                
+                teamData = "-;-"
+                tileDevice.todayTeamRecords(teamData)
+                if(logEnable) log.debug "In checkIfGameDayHandler2 - sending gameData: ${gameData} - teamData: ${teamData}"
             }
         }
     } else {
@@ -511,16 +498,16 @@ def checkIfGameDayHandler(resp) {
 }
 
 def checkIfGameDay() {
+    if(logEnable) log.debug "In checkIfGameDay (${state.version})"
 	def isGameDay = false
-    try {
-        if (state.enableGameNotifications == true) {
-            def todaysDate = new Date().format('yyyy-MM-dd', getTimeZone())
-            def params = [uri: "${state.NHL_API_URL}/schedule?teamId=${state.Team.id}&date=${todaysDate}&expand=schedule.teams,schedule.broadcasts.all"] 
-
-            if(logEnable) log.debug "Determine if it is game day for team ${settings.nhlTeam}, requesting game day schedule for ${todaysDate}"
-            httpGet(params) { resp ->
-                isGameDay = checkIfGameDayHandler(resp)
-            }
+    try {  // Today
+        def todayDate = new Date().format('yyyy-MM-dd', getTimeZone())
+        def params = [uri: "${state.NHL_API_URL}/schedule?teamId=${state.Team.id}&date=${todayDate}&expand=schedule.teams,schedule.broadcasts.all"] 
+            
+        def tDate = new Date().format('MM-dd-yyyy', getTimeZone())
+        if(logEnable) log.debug "Determine if it's a game day for the ${settings.nhlTeam}, requesting game day schedule for ${tDate}"
+        httpGet(params) { resp ->
+            isGameDay = checkIfGameDayHandler(resp,tDate)
         }
     } catch (e) {
         if(logEnable) log.error "caught exception ${e}"
@@ -529,17 +516,8 @@ def checkIfGameDay() {
     return isGameDay
 }
 
-def sendPregameText() {
-    try {
-        if (settings.sendPregameMessage) {
-            sendTextNotification(settings.pregameMessage)
-        }
-    } catch (e) {
-        if(logEnable) log.error "caught exception ${e}"
-    }
-}
-
 def checkGameStatusHandler(resp, data) {
+   if(logEnable) log.debug "In checkGameStatusHandler (${state.version})"
    def rescheduleNextCheck = true
    def runDelay = 30
     
@@ -565,8 +543,15 @@ def checkGameStatusHandler(resp, data) {
                 if(logEnable) log.debug "Current game status = ${state.gameStatus}"
                 switch (state.gameStatus) {
                     case state.GAME_STATUS_SCHEDULED:
-                    if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name}  - scheduled for today at ${gameTimeText()}!"
+                    if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - scheduled for today at ${gameTimeText()}!"
 
+                    if(tileDevice) {
+                        gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - scheduled for today at ${gameTimeText()}!"
+                        gameStatus = "${game.status.statusCode};${gameMessage}"
+                        tileDevice.gameStatus(gameStatus)
+                        if(logEnable) log.debug "In checkGameStatusHandler1 - tileData sent"
+                    }
+    
                     // delay for 2 minutes before checking game day status again
                     runDelay = (2 * 60) 
                     
@@ -576,6 +561,13 @@ def checkGameStatusHandler(resp, data) {
                     case state.GAME_STATUS_PREGAME:
                     if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - pregame!"
 
+                    if(tileDevice) {
+                        gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - pregame!"
+                        gameStatus = "${game.status.statusCode};${gameMessage}"
+                        tileDevice.gameStatus(gameStatus)
+                        if(logEnable) log.debug "In checkGameStatusHandler2 - tileData sent"
+                    }
+                    
                     // start checking every 15 seconds now that it is pregame status
                     runDelay = 15
 
@@ -584,8 +576,15 @@ def checkGameStatusHandler(resp, data) {
 
                     case state.GAME_STATUS_IN_PROGRESS:
                     case state.GAME_STATUS_IN_PROGRESS_CRITICAL:
-                    if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is on!!!"
+                    if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is on!"
 
+                    if(tileDevice) {
+                        gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is on!"
+                        gameStatus = "${game.status.statusCode};${gameMessage}"
+                        tileDevice.gameStatus(gameStatus)
+                        if(logEnable) log.debug "In checkGameStatusHandler3 - tileData sent"
+                    }
+                    
                     // check every 5 seconds when game is active, looking for score changes asap
                     runDelay = 5
 
@@ -619,8 +618,15 @@ def checkGameStatusHandler(resp, data) {
 
                     case state.GAME_STATUS_FINAL6:
                     case state.GAME_STATUS_FINAL7:
-                    if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is over!"
+                    if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is over."
 
+                    if(tileDevice) {
+                        gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is over."
+                        gameStatus = "${game.status.statusCode};${gameMessage}"
+                        tileDevice.gameStatus(gameStatus)
+                        if(logEnable) log.debug "In checkGameStatusHandler4 - tileData sent"
+                    }
+                    
                     // check for overtime score
                     def overtimeScore = checkForGoal()
     
@@ -708,20 +714,14 @@ def checkGameStatusHandler(resp, data) {
 
 def checkGameStatus() {
     try {
-
-        if (state.enableGameNotifications == false) {
-            if(logEnable) log.debug "Game Notifications has been disabled, ignore Game Status checks."
-            return
-        }
-
-        def todaysDate = new Date().format('yyyy-MM-dd', getTimeZone())
+        def todayDate = new Date().format('yyyy-MM-dd', getTimeZone())
         if (settings.debugCheckDate) {
-            todaysDate = settings.debugCheckDate
+            todayDate = settings.debugCheckDate
         }
-        def params = [uri: "${state.NHL_API_URL}/schedule?teamId=${state.Team.id}&date=${todaysDate}"] 
+        def params = [uri: "${state.NHL_API_URL}/schedule?teamId=${state.Team.id}&date=${todayDate}"] 
 
-        if(logEnable) log.debug "Requesting ${settings.nhlTeam} game schedule for ${todaysDate}"
-        //asynchttp_v1.get(checkGameStatusHandler, params)
+        def tDate = new Date().format('MM-dd-yyyy', getTimeZone())
+        if(logEnable) log.debug "Requesting ${settings.nhlTeam} game schedule for ${tDate}"
         asynchttpGet("checkGameStatusHandler", params)
     } catch (e) {
         if(logEnable) log.error "caught exception ${e}"
@@ -742,6 +742,13 @@ def checkForGoal() {
             if(logEnable) log.debug "Change in team score"
             goalScored = true
             state.teamScore = team
+            if(tileDevice) {
+                if(game.teams.home.team.id == state.Team.id) {
+                    tileDevice.scoreUpdateHome(state.teamScore)
+                } else {
+                    tileDevice.scoreUpdateAway(state.teamScore)
+                }
+            }
            	runIn(delay, teamGoalScored)
         }
         
@@ -749,6 +756,13 @@ def checkForGoal() {
             if(logEnable) log.debug "Change in opponent score"
             goalScored = true
             state.opponentScore = opponent
+            if(tileDevice) {
+                if(game.teams.away.team.id == state.Team.id) {
+                    tileDevice.scoreUpdateAway(state.opponentScore)
+                } else { 
+                    tileDevice.scoreUpdateHome(state.opponentScore)
+                }
+            }
             runIn(delay, opponentGoalScored)
         } 
     } else {
@@ -791,10 +805,8 @@ def getTimeZone() {
         if (useTeamLocation) {
             if (state.Team) {
                 def tz = state.Team.venue.timeZone.id
-                //def os = state.Team.venue.timeZone.offset
-                if(logEnable) log.debug "In getTimeZone - tz: ${tz}"
+                //if(logEnable) log.debug "In getTimeZone - tz: ${tz}"
                 return TimeZone.getTimeZone(tz)    
-                //return TimeZone.getTimeZone("EDT")
             }
         }
     } catch(ex) {
@@ -1433,7 +1445,6 @@ def letsTalk(uri) {
             }
 	        if(logEnable) log.debug "In letsTalk - Finished speaking"  
 		    if(logEnable) log.debug "${app.label} - ${theMsg}"
-            //if(sendPushMessage) sendPush(theMsg)
 	    } else {
 		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	    }
@@ -1612,6 +1623,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>NHL Notifications - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>NHL Game Day - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
 }
