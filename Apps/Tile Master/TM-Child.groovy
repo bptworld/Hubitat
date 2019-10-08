@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causes troubles
+ *  V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device
+ *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causing troubles
  *  V2.0.8 - 09/27/19 - Fixed issue with line 5 and with motion sensor colors
  *  V2.0.7 - 09/26/19 - Fixed issue with line 2 After device text
  *  V2.0.6 - 09/22/19 - Added ability to use links on tiles
@@ -53,7 +54,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.0.9"
+	state.version = "v2.1.9"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -149,6 +150,7 @@ def line01Options(){
 		if(nSections01 == "1" || nSections01 == "2" || nSections01 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 01 - Section 1 Options")) {
 				paragraph "<b>SECTION 1</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF01", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT01", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -176,6 +178,7 @@ def line01Options(){
 		if(nSections01 == "2" || nSections01 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 01 - Section 2 Options")) {
 				paragraph "<b>SECTION 2</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF01a", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT01a", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -203,6 +206,7 @@ def line01Options(){
 		if(nSections01 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 01 - Section 3 Options")) {
 				paragraph "<b>SECTION 3</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF01b", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT01b", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -268,6 +272,7 @@ def line02Options(){
 		if(nSections02 == "1" || nSections02 == "2" || nSections02 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 02 - Section 1 Options")) {
 				paragraph "<b>SECTION 1</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF02", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT02", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -295,6 +300,7 @@ def line02Options(){
 		if(nSections02 == "2" || nSections02 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 02 - Section 2 Options")) {
 				paragraph "<b>SECTION 2</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF02a", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT02a", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -322,6 +328,7 @@ def line02Options(){
 		if(nSections02 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 02 - Section 3 Options")) {
 				paragraph "<b>SECTION 3</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF02b", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT02b", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -387,6 +394,7 @@ def line03Options(){
 		if(nSections03 == "1" || nSections03 == "2" || nSections03 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 03 - Section 1 Options")) {
 				paragraph "<b>SECTION 1</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF03", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT03", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -414,6 +422,7 @@ def line03Options(){
 		if(nSections03 == "2" || nSections03 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 03 - Section 2 Options")) {
 				paragraph "<b>SECTION 2</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF03a", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT03a", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -441,6 +450,7 @@ def line03Options(){
 		if(nSections03 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 03 - Section 3 Options")) {
 				paragraph "<b>SECTION 3</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF03b", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT03b", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -506,6 +516,7 @@ def line04Options(){
 		if(nSections04 == "1" || nSections04 == "2" || nSections04 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 04 - Section 1 Options")) {
 				paragraph "<b>SECTION 1</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF04", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT04", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -533,6 +544,7 @@ def line04Options(){
 		if(nSections04 == "2" || nSections04 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 04 - Section 2 Options")) {
 				paragraph "<b>SECTION 2</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF04a", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT04a", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -560,6 +572,7 @@ def line04Options(){
 		if(nSections04 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 04 - Section 3 Options")) {
 				paragraph "<b>SECTION 3</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF04b", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT04b", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -625,6 +638,7 @@ def line05Options(){
 		if(nSections05 == "1" || nSections05 == "2" || nSections05 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 05 - Section 1 Options")) {
 				paragraph "<b>SECTION 1</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF05", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT05", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -652,6 +666,7 @@ def line05Options(){
 		if(nSections05 == "2" || nSections05 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 05 - Section 2 Options")) {
 				paragraph "<b>SECTION 2</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF05a", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT05a", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -679,6 +694,7 @@ def line05Options(){
 		if(nSections05 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 05 - Section 3 Options")) {
 				paragraph "<b>SECTION 3</b>"
+                paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
                 paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
 				input "wordsBEF05b", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
 				input "wordsAFT05b", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
@@ -713,7 +729,7 @@ def installed() {
 }
 
 def updated() {	
-    if(logEnable) log.debug "Updated with settings: ${settings}"
+    if(logEnable) log.debug "Updated with settings: ${settings} (${state.version})"
     unsubscribe()
 	unschedule()
 	initialize()
@@ -741,7 +757,7 @@ def initialize() {
 }
 
 def tileHandler01(){
-	if(logEnable) log.debug "In tileHandler01..."
+	if(logEnable) log.debug "In tileHandler01 (${state.version})"
 	if(state.style01 == null) state.style01 = ""
 	if(state.style01a == null) state.style01a = ""
 	if(state.style01b == null) state.style01b = ""
@@ -792,51 +808,51 @@ def tileHandler01(){
 	
 	if(nSections01 == "1") {
         state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
-        if(wordsBEF01) makeTileLine(wordsBEF01,linkBEF01)
+        if(wordsBEF01) makeTileLine(1,wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
 		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
-		if(wordsAFT01) makeTileLine(wordsAFT01,linkAFT01)
+		if(wordsAFT01) makeTileLine(1,wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "2") {
 		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
-		if(wordsBEF01) makeTileLine(wordsBEF01,linkBEF01)
+		if(wordsBEF01) makeTileLine("1",wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
 		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
-		if(wordsAFT01) makeTileLine(wordsAFT01,linkAFT01)
+		if(wordsAFT01) makeTileLine("1",wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "<td style='text-align:${align01a};color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%'>"
-		if(wordsBEF01a) makeTileLine(wordsBEF01a,linkBEF01a)
+		if(wordsBEF01a) makeTileLine("1a",wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
 		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
-		if(wordsAFT01a) makeTileLine(wordsAFT01a,linkAFT01a)
+		if(wordsAFT01a) makeTileLine("1a",wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "</table>"
 		state.theTileLength01 = state.theTile01.length()
 	} else if(nSections01 == "3") {
 		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
-		if(wordsBEF01) makeTileLine(wordsBEF01,linkBEF01)
+		if(wordsBEF01) makeTileLine("1",wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
 		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
-		if(wordsAFT01) makeTileLine(wordsAFT01,linkAFT01)
+		if(wordsAFT01) makeTileLine("1",wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "<td style='${state.style01a}color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%'>"
-		if(wordsBEF01a) makeTileLine(wordsBEF01a,linkBEF01a)
+		if(wordsBEF01a) makeTileLine("1a",wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
 		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
-		if(wordsAFT01a) makeTileLine(wordsAFT01a,linkAFT01a)
+		if(wordsAFT01a) makeTileLine("1a",wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "<td style='text-align:${align01b};color:${color01b};font-size:${fontSize01b}px;width:${secWidth01b}%'>"
-		if(wordsBEF01b) makeTileLine(wordsBEF01b,linkBEF01b)
+		if(wordsBEF01b) makeTileLine("1b",wordsBEF01b,linkBEF01b)
         if(wordsBEF01b) state.theTile01 += "${newWords2}"
 		if(deviceAtts01b) state.theTile01 += "${state.deviceStatus01b}"
-		if(wordsAFT01b) makeTileLine(wordsAFT01b,linkAFT01b)
+		if(wordsAFT01b) makeTileLine("1b",wordsAFT01b,linkAFT01b)
         if(wordsAFT01b) state.theTile01 += "${newWords2}"
 		
 		state.theTile01 += "</table>"
@@ -850,7 +866,7 @@ def tileHandler01(){
 }
 
 def tileHandler02(){
-	if(logEnable) log.debug "In tileHandler02..."
+	if(logEnable) log.debug "In tileHandler02 (${state.version})"
 	if(state.style02 == null) state.style02 = ""
 	if(state.style02a == null) state.style02a = ""
 	if(state.style02b == null) state.style02b = ""
@@ -901,50 +917,51 @@ def tileHandler02(){
 	
 	if(nSections02 == "1") {
 		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
-		if(wordsBEF02) makeTileLine(wordsBEF02,linkBEF02)
+		if(wordsBEF02) makeTileLine("2",wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
 		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
-		if(wordsAFT02) makeTileLine(wordsAFT02,linkAFT02)
+		if(wordsAFT02) makeTileLine("2",wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "2") {
 		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
-		if(wordsBEF02) makeTileLine(wordsBEF02,linkBEF02)
+		if(wordsBEF02) makeTileLine("2",wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
 		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
-		if(wordsAFT02) makeTileLine(wordsAFT02,linkAFT02)
+		if(wordsAFT02) makeTileLine("2",wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%'>"
-		if(wordsBEF02a) makeTileLine(wordsBEF02a,linkBEF02a)
+		if(wordsBEF02a) makeTileLine("2a",wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
 		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
-		if(wordsAFT02a) makeTileLine(wordsAFT02a,linkAFT02a)
+		if(wordsAFT02a) makeTileLine("2a",wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "</table>"
 		state.theTileLength02 = state.theTile02.length()
 	} else if(nSections02 == "3") {
 		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
-		if(wordsBEF02) makeTileLine(wordsBEF02,linkBEF02)
+		if(wordsBEF02) makeTileLine("2",wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
 		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
-		if(wordsAFT02) makeTileLine(wordsAFT02,linkAFT02)
+		if(wordsAFT02) makeTileLine("2",wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%'>"
-		if(wordsBEF02a) makeTileLine(wordsBEF02a,linkBEF02a)
+		if(wordsBEF02a) makeTileLine("2a",wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
 		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
-		if(wordsAFT02a) makeTileLine(wordsAFT02a,linkAFT02a)
+		if(wordsAFT02a) makeTileLine("2a",wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "<td style='text-align:${align02b};color:${color02b};font-size:${fontSize02b}px;width:${secWidth02b}%'>"
+        if(wordsBEF02b) makeTileLine("2b",wordsBEF02b,linkBEF02b)
 		if(wordsBEF02b) state.theTile02 += "${wordsBEF02b}"
 		if(deviceAtts02b) state.theTile02 += "${state.deviceStatus02b}"
-		if(wordsAFT02b) makeTileLine(wordsAFT02b,linkAFT02b)
+		if(wordsAFT02b) makeTileLine("2b",wordsAFT02b,linkAFT02b)
         if(wordsAFT02b) state.theTile02 += "${newWords2}"
 		
 		state.theTile02 += "</table>"
@@ -958,7 +975,7 @@ def tileHandler02(){
 }
 
 def tileHandler03(){
-	if(logEnable) log.debug "In tileHandler03..."
+	if(logEnable) log.debug "In tileHandler03 (${state.version})"
 	if(state.style03 == null) state.style03 = ""
 	if(state.style03a == null) state.style03a = ""
 	if(state.style03b == null) state.style03b = ""
@@ -1009,51 +1026,51 @@ def tileHandler03(){
 	
 	if(nSections03 == "1") {
 		state.theTile03 = "<table width='100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
-		if(wordsBEF03) makeTileLine(wordsBEF03,linkBEF03)
+		if(wordsBEF03) makeTileLine("3",wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
 		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
-		if(wordsAFT03) makeTileLine(wordsAFT03,linkAFT03)
+		if(wordsAFT03) makeTileLine("3",wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "2") {
 		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
-		if(wordsBEF03) makeTileLine(wordsBEF03,linkBEF03)
+		if(wordsBEF03) makeTileLine("3",wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
 		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
-		if(wordsAFT03) makeTileLine(wordsAFT03,linkAFT03)
+		if(wordsAFT03) makeTileLine("3",wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%'>"
-		if(wordsBEF03a) makeTileLine(wordsBEF03a,linkBEF03a)
+		if(wordsBEF03a) makeTileLine("3a",wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
 		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
-		if(wordsAFT03a) makeTileLine(wordsAFT03a,linkAFT03a)
+		if(wordsAFT03a) makeTileLine("3a",wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "</table>"
 		state.theTileLength03 = state.theTile03.length()
 	} else if(nSections03 == "3") {
 		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
-		if(wordsBEF03) makeTileLine(wordsBEF03,linkBEF03)
+		if(wordsBEF03) makeTileLine("3",wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
 		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
-		if(wordsAFT03) makeTileLine(wordsAFT03,linkAFT03)
+		if(wordsAFT03) makeTileLine("3",wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%'>"
-		if(wordsBEF03a) makeTileLine(wordsBEF03a,linkBEF03a)
+		if(wordsBEF03a) makeTileLine("3a",wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
 		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
-		if(wordsAFT03a) makeTileLine(wordsAFT03a,linkAFT03a)
+		if(wordsAFT03a) makeTileLine("3a",wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "<td style='text-align:${align03b};color:${color03b};font-size:${fontSize03b}px;width:${secWidth03b}%'>"
-		if(wordsBEF03b) makeTileLine(wordsBEF03b,linkBEF03b)
+		if(wordsBEF03b) makeTileLine("3b",wordsBEF03b,linkBEF03b)
         if(wordsBEF03b) state.theTile03 += "${newWords2}"
 		if(deviceAtts03b) state.theTile03 += "${state.deviceStatus03b}"
-		if(wordsAFT03b) makeTileLine(wordsAFT03b,linkAFT03b)
+		if(wordsAFT03b) makeTileLine("3b",wordsAFT03b,linkAFT03b)
         if(wordsAFT03b) state.theTile03 += "${newWords2}"
 		
 		state.theTile03 += "</table>"
@@ -1067,7 +1084,7 @@ def tileHandler03(){
 }
 
 def tileHandler04(){
-	if(logEnable) log.debug "In tileHandler04..."
+	if(logEnable) log.debug "In tileHandler04 (${state.version})"
 	if(state.style04 == null) state.style04 = ""
 	if(state.style04a == null) state.style04a = ""
 	if(state.style04b == null) state.style04b = ""
@@ -1118,51 +1135,51 @@ def tileHandler04(){
 	
 	if(nSections04 == "1") {
 		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"	// 61 + 12 + 17 (100)
-		if(wordsBEF04) makeTileLine(wordsBEF04,linkBEF04)
+		if(wordsBEF04) makeTileLine("4",wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
 		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
-		if(wordsAFT04) makeTileLine(wordsAFT04,linkAFT04)
+		if(wordsAFT04) makeTileLine("4",wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "</table>"		// 18
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "2") {
 		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"
-		if(wordsBEF04) makeTileLine(wordsBEF04,linkBEF04)
+		if(wordsBEF04) makeTileLine("4",wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
 		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
-		if(wordsAFT04) makeTileLine(wordsAFT04,linkAFT04)
+		if(wordsAFT04) makeTileLine("4",wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%'>"
-		if(wordsBEF04a) makeTileLine(wordsBEF04a,linkBEF04a)
+		if(wordsBEF04a) makeTileLine("4a",wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
 		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
-		if(wordsAFT04a) makeTileLine(wordsAFT04a,linkAFT04a)
+		if(wordsAFT04a) makeTileLine("4a",wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "</table>"
 		state.theTileLength04 = state.theTile04.length()
 	} else if(nSections04 == "3") {
 		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"
-		if(wordsBEF04) makeTileLine(wordsBEF04,linkBEF04)
+		if(wordsBEF04) makeTileLine("4",wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
 		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
-		if(wordsAFT04) makeTileLine(wordsAFT04,linkAFT04)
+		if(wordsAFT04) makeTileLine("4",wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%'>"
-		if(wordsBEF04a) makeTileLine(wordsBEF04a,linkBEF04a)
+		if(wordsBEF04a) makeTileLine("4a",wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
 		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
-		if(wordsAFT04a) makeTileLine(wordsAFT04a,linkAFT04a)
+		if(wordsAFT04a) makeTileLine("4a",wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "<td style='text-align:${align04b};color:${color04b};font-size:${fontSize04b}px;width:${secWidth04b}%'>"
-		if(wordsBEF04b) makeTileLine(wordsBEF04b,linkBEF04b)
+		if(wordsBEF04b) makeTileLine("4b",wordsBEF04b,linkBEF04b)
         if(wordsBEF04b) state.theTile04 += "${newWords2}"
 		if(deviceAtts04b) state.theTile04 += "${state.deviceStatus04b}"
-		if(wordsAFT04b) makeTileLine(wordsAFT04b,linkAFT04b)
+		if(wordsAFT04b) makeTileLine("4b",wordsAFT04b,linkAFT04b)
         if(wordsAFT04b) state.theTile04 += "${newWords2}"
 		
 		state.theTile04 += "</table>"
@@ -1176,7 +1193,7 @@ def tileHandler04(){
 }
 
 def tileHandler05(){
-	if(logEnable) log.debug "In tileHandler05..."
+	if(logEnable) log.debug "In tileHandler05 (${state.version})"
 	if(state.style05 == null) state.style05 = ""
 	if(state.style05a == null) state.style05a = ""
 	if(state.style05b == null) state.style05b = ""
@@ -1227,51 +1244,51 @@ def tileHandler05(){
 	
 	if(nSections05 == "1") {
 		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
-		if(wordsBEF05) makeTileLine(wordsBEF05,linkBEF05)
+		if(wordsBEF05) makeTileLine("5",wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
 		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
-		if(wordsAFT05) makeTileLine(wordsAFT05,linkAFT05)
+		if(wordsAFT05) makeTileLine("5",wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "</table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "2") {
 		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
-		if(wordsBEF05) makeTileLine(wordsBEF05,linkBEF05)
+		if(wordsBEF05) makeTileLine("5",wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
 		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
-		if(wordsAFT05) makeTileLine(wordsAFT05,linkAFT05)
+		if(wordsAFT05) makeTileLine("5",wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%'>"
-		if(wordsBEF05a) makeTileLine(wordsBEF05a,linkBEF05a)
+		if(wordsBEF05a) makeTileLine("5a",wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
 		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
-		if(wordsAFT05a) makeTileLine(wordsAFT05a,linkAFT05a)
+		if(wordsAFT05a) makeTileLine("5a",wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "</table>"
 		state.theTileLength05 = state.theTile05.length()
 	} else if(nSections05 == "3") {
 		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
-		if(wordsBEF05) makeTileLine(wordsBEF05,linkBEF05)
+		if(wordsBEF05) makeTileLine("5",wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
 		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
-		if(wordsAFT05) makeTileLine(wordsAFT05,linkAFT05)
+		if(wordsAFT05) makeTileLine("5",wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%'>"
-		if(wordsBEF05a) makeTileLine(wordsBEF05a,linkBEF05a)
+		if(wordsBEF05a) makeTileLine("5a",wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
 		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
-		if(wordsAFT05a) makeTileLine(wordsAFT05a,linkAFT05a)
+		if(wordsAFT05a) makeTileLine("5a",wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "<td style='text-align:${align05b};color:${color05b};font-size:${fontSize05b}px;width:${secWidth05b}%'>"
-		if(wordsBEF05b) makeTileLine(wordsBEF05b,linkBEF05b)
+		if(wordsBEF05b) makeTileLine("5b",wordsBEF05b,linkBEF05b)
         if(wordsBEF05b) state.theTile05 += "${newWords2}"
 		if(deviceAtts05b) state.theTile05 += "${state.deviceStatus05b}"
-		if(wordsAFT05b) makeTileLine(wordsAFT05b,linkAFT05b)
+		if(wordsAFT05b) makeTileLine("5b",wordsAFT05b,linkAFT05b)
         if(wordsAFT05b) state.theTile05 += "${newWords2}"
 		
 		state.theTile05 += "</table>"
@@ -1285,7 +1302,7 @@ def tileHandler05(){
 }
 
 def sampleTileHandler(evt){
-	if(logEnable) log.debug "In sampleTileHandler"
+	if(logEnable) log.debug "In sampleTileHandler (${state.version})"
 	tileHandler01()
 	tileHandler02()
 	tileHandler03()
@@ -1347,7 +1364,7 @@ def sampleTileHandler(evt){
 }
 
 def makeTile() {
-    if(logEnable) log.debug "In makeTile"
+    if(logEnable) log.debug "In makeTile (${state.version})"
     tileData = "<table style='width:100%'>"  // 26
     if(state.theTile01) tileData +="<tr><td>${state.theTile01}"    // 8
     if(state.theTile02) tileData +="<tr><td>${state.theTile02}"
@@ -1406,17 +1423,39 @@ def getStatusColors(deviceStatus,deviceAtts) {
     return deviceStatus1
 }
 
-def makeTileLine(words,linkName) {
-    if(logEnable) log.debug "In makeTileLine (${state.version}) - ${words}"
+def makeTileLine(dev,words,linkName) {
+    String device = dev
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - device: ${device} - words: ${words} - linkName: ${linkName}"
     if(words.toLowerCase().contains("wlink")) { 
         newWords = words.toLowerCase()
         if(logEnable) log.debug "In makeTileLine - newWords contains wlink"
         newWords = newWords.replace("wlink","http")
         newWords2 = "<a href='${newWords}'>${linkName}</a>"
         if(logEnable) log.debug "In makeTileLine - newWords: ${newWords}"
+    } else if(words.toLowerCase().contains("%lastact%")) {
+        if(device == "1") { lAct = device01.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "1a") { lAct = device01a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "1b") { lAct = device01b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        
+        if(device == "2") { lAct = device02.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "2a") { lAct = device02a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "2b") { lAct = device02b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        
+        if(device == "3") { lAct = device03.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "3a") { lAct = device03a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "3b") { lAct = device03b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        
+        if(device == "4") { lAct = device04.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "4a") { lAct = device04a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "4b") { lAct = device04b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        
+        if(device == "5") { lAct = device05.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "5a") { lAct = device05a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        if(device == "5b") { lAct = device05b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
     } else {
         newWords2 = "${words}"
     }
+    if(logEnable) log.debug "In makeTileLine - newWords2: ${newWords2}"
     return newWords2
 }
 
