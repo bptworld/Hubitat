@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  V1.0.7 - 10/08/19 - Now handles only 1 keyset per child app
  *  V1.0.6 - 09/07/19 - Added some error catching
  *  V1.0.5 - 09/05/19 - Getter better!
  *  V1.0.4 - 09/05/19 - Trying some new things
@@ -51,7 +52,7 @@
 
 def setVersion(){
     appName = "LogWatchdogDriver"
-	version = "v1.0.6" 
+	version = "v1.0.7" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -66,21 +67,9 @@ metadata {
    		capability "Actuator"
        
         attribute "status", "string"
-        attribute "lastLogMessage1", "string"
-        attribute "lastLogMessage2", "string"
-        attribute "lastLogMessage3", "string"
-        attribute "lastLogMessage4", "string"
-        attribute "lastLogMessage5", "string"
-        attribute "logData1", "string"
-        attribute "logData2", "string"
-        attribute "logData3", "string"
-        attribute "logData4", "string"
-        attribute "logData5", "string"
+        attribute "lastLogMessage1", "string"       
+        attribute "logData1", "string"        
         attribute "numOfCharacters1", "number"
-        attribute "numOfCharacters2", "number"
-        attribute "numOfCharacters3", "number"
-        attribute "numOfCharacters4", "number"
-        attribute "numOfCharacters5", "number"
         attribute "keywordInfo", "string"
         
         command "connect"
@@ -156,30 +145,6 @@ def keywordInfo(keys) {
     def keyValue = "${keySetType};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
 
     if(keySet == "keySet01") {
-        newMap = "${keySet}:${keyValue}"
-        def newData = stringToMap(newMap)
-        state.keysMap << newData
-        if(traceEnable) log.trace "Recieved ${keySet}"
-    }
-    if(keySet == "keySet02") {
-        newMap = "${keySet}:${keyValue}"
-        def newData = stringToMap(newMap)
-        state.keysMap << newData
-        if(traceEnable) log.trace "Recieved ${keySet}"
-    }
-    if(keySet == "keySet03") {
-        newMap = "${keySet}:${keyValue}"
-        def newData = stringToMap(newMap)
-        state.keysMap << newData
-        if(traceEnable) log.trace "Recieved ${keySet}"
-    }
-    if(keySet == "keySet04") {
-        newMap = "${keySet}:${keyValue}"
-        def newData = stringToMap(newMap)
-        state.keysMap << newData
-        if(traceEnable) log.trace "Recieved ${keySet}"
-    }
-    if(keySet == "keySet05") {
         newMap = "${keySet}:${keyValue}"
         def newData = stringToMap(newMap)
         state.keysMap << newData
@@ -334,7 +299,7 @@ def makeList(msgValue,nameValue,listNum) {
             def lines1 = result1.split(";")
             linesSize1 = lines1.size()
             if(traceEnable) log.trace "In makeList - lines1: ${linesSize1}"
-            logTop101= "<table><tr><td><div style='font-size:.${fontSize}em;'>"
+            logTop101= "<table><tr><td><div style='font-size:${fontSize}px;'>"
             if(linesSize1 >= 1) logTop101 += "${lines1[0]}<br>"
             if(linesSize1 >= 2) logTop101 += "${lines1[1]}<br>"
             if(linesSize1 >= 3) logTop101 += "${lines1[2]}<br>"
@@ -355,190 +320,6 @@ def makeList(msgValue,nameValue,listNum) {
             
         }
     }
-    
-    if(listNum == "2") {
-        try {
-            if(traceEnable) log.trace "In listNum: ${listNum}"
-            msgValueShort2 = msgValue.take(70)
-            getDateTime()
-	        nMessage2 = newdate + " - " + msgValueShort2
-        
-            if(state.list2 == null) state.list2 = []
-            state.list2.add(0,nMessage2)  
-
-            listSize2 = state.list2.size()
-            if(listSize2 > 10) state.list2.removeAt(10)
-
-            String result2 = state.list2.join(";")
-            logCharCount2 = result2.length()
-	       if(logTopCount2 <= 1000) {
-	        	if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount2} Characters"
-	        } else {
-	        	logTop102 = "Too many characters to display on Dashboard"
-	        }
-
-            def lines2 = result2.split(";")
-            linesSize2 = lines2.size()
-            if(traceEnable) log.trace "In makeList - lines2: ${linesSize2}"
-            logTop102= "<table><tr><td><div style='font-size:.${fontSize}em;'>"
-            if(linesSize2 >= 1) logTop102 += "${lines2[0]}<br>"
-            if(linesSize2 >= 2) logTop102 += "${lines2[1]}<br>"
-            if(linesSize2 >= 3) logTop102 += "${lines2[2]}<br>"
-            if(linesSize2 >= 4) logTop102 += "${lines2[3]}<br>"
-            if(linesSize2 >= 5) logTop102 += "${lines2[4]}<br>"
-            if(linesSize2 >= 6) logTop102 += "${lines2[5]}<br>"
-            if(linesSize2 >= 7) logTop102 += "${lines2[6]}<br>"
-            if(linesSize2 >= 8) logTop102 += "${lines2[7]}<br>"
-            if(linesSize2 >= 9) logTop102 += "${lines2[8]}<br>"
-            if(linesSize2 >= 10) logTop102 += "${lines2[9]}"
-            logTop102 += "</div></td></tr></table>"
-    
-	        sendEvent(name: "logData2", value: logTop102, displayed: true)
-            sendEvent(name: "numOfCharacters2", value: logCharCount2, displayed: true)
-            sendEvent(name: "lastLogMessage2", value: msgValueShort2, displayed: true)
-        }
-        catch(e2) {
-            
-        }
-    }
-    
-    if(listNum == "3") {
-        try {
-            if(traceEnable) log.trace "In listNum: ${listNum}"
-            msgValueShort3 = msgValue.take(70)
-            getDateTime()
-	        nMessage3 = newdate + " - " + msgValueShort3
-        
-            if(state.list3 == null) state.list3 = []
-            state.list3.add(0,nMessage3)  
-
-            listSize3 = state.list3.size()
-            if(listSize3 > 10) state.list3.removeAt(10)
-
-            String result3 = state.list3.join(";")
-            logCharCount3 = result3.length()
-	        if(logTopCount3 <= 1000) {
-	        	if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount3} Characters"
-	        } else {
-	        	logTop103 = "Too many characters to display on Dashboard"
-	        }
-
-            def lines3 = result3.split(";")
-            linesSize3 = lines3.size()
-            if(traceEnable) log.trace "In makeList - lines3: ${linesSize3}"
-            logTop103= "<table><tr><td><div style='font-size:.${fontSize}em;'>"
-            if(linesSize3 >= 1) logTop103 += "${lines3[0]}<br>"
-            if(linesSize3 >= 2) logTop103 += "${lines3[1]}<br>"
-            if(linesSize3 >= 3) logTop103 += "${lines3[2]}<br>"
-            if(linesSize3 >= 4) logTop103 += "${lines3[3]}<br>"
-            if(linesSize3 >= 5) logTop103 += "${lines3[4]}<br>"
-            if(linesSize3 >= 6) logTop103 += "${lines3[5]}<br>"
-            if(linesSize3 >= 7) logTop103 += "${lines3[6]}<br>"
-            if(linesSize3 >= 8) logTop103 += "${lines3[7]}<br>"
-            if(linesSize3 >= 9) logTop103 += "${lines3[8]}<br>"
-            if(linesSize3 >= 10) logTop103 += "${lines3[9]}"
-            logTop103 += "</div></td></tr></table>"
-    
-	        sendEvent(name: "logData3", value: logTop103, displayed: true)
-            sendEvent(name: "numOfCharacters3", value: logCharCount3, displayed: true)
-            sendEvent(name: "lastLogMessage3", value: msgValueShort3, displayed: true)
-        }
-        catch(e3) {
-            
-        }
-    }
-    
-    if(listNum == "4") {
-        try {
-            if(traceEnable) log.trace "In listNum: ${listNum}"
-            msgValueShort4 = msgValue.take(70)
-            getDateTime()
-	        nMessage4 = newdate + " - " + msgValueShort4
-        
-            if(state.list4 == null) state.list4 = []
-            state.list4.add(0,nMessage4)  
-
-            listSize4 = state.list4.size()
-            if(listSize4 > 10) state.list4.removeAt(10)
-
-            String result4 = state.list4.join(";")
-            logCharCount4 = result4.length()
-	        if(logTopCount4 <= 1000) {
-	    	    if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount4} Characters"
-	        } else {
-	    	    logTop104 = "Too many characters to display on Dashboard"
-	        }
-
-            def lines4 = result4.split(";")
-            linesSize4 = lines4.size()
-            if(traceEnable) log.trace "In makeList - lines4: ${linesSize4}"
-            logTop104= "<table><tr><td><div style='font-size:.${fontSize}em;'>"
-            if(linesSize4 >= 1) logTop104 += "${lines4[0]}<br>"
-            if(linesSize4 >= 2) logTop104 += "${lines4[1]}<br>"
-            if(linesSize4 >= 3) logTop104 += "${lines4[2]}<br>"
-            if(linesSize4 >= 4) logTop104 += "${lines4[3]}<br>"
-            if(linesSize4 >= 5) logTop104 += "${lines4[4]}<br>"
-            if(linesSize4 >= 6) logTop104 += "${lines4[5]}<br>"
-            if(linesSize4 >= 7) logTop104 += "${lines4[6]}<br>"
-            if(linesSize4 >= 8) logTop104 += "${lines4[7]}<br>"
-            if(linesSize4 >= 9) logTop104 += "${lines4[8]}<br>"
-            if(linesSize4 >= 10) logTop104 += "${lines4[9]}"
-            logTop104 += "</div></td></tr></table>"
-    
-	        sendEvent(name: "logData4", value: logTop104, displayed: true)
-            sendEvent(name: "numOfCharacters4", value: logCharCount4, displayed: true)
-            sendEvent(name: "lastLogMessage4", value: msgValueShort4, displayed: true)
-        }
-        catch(e4) {
-            
-        }
-    }
-    
-    if(listNum == "5") {
-        try {
-            if(traceEnable) log.trace "In listNum: ${listNum}"
-            msgValueShort5 = msgValue.take(70)
-            getDateTime()
-	        nMessage5 = newdate + " - " + msgValueShort5
-        
-            if(state.list5 == null) state.list5 = []
-            state.list5.add(0,nMessage5)  
-
-            listSize5 = state.list5.size()
-            if(listSize5 > 10) state.list5.removeAt(10)
-
-            String result5 = state.list5.join(";")
-            logCharCount5 = result5.length()
-	        if(logTopCount5 <= 1000) {
-	        	if(logEnable) log.debug "Log Watchdog Driver - ${logCharCount5} Characters"
-	        } else {
-	        	logTop105 = "Too many characters to display on Dashboard"
-	        }
-
-            def lines5 = result5.split(";")
-            linesSize5 = lines5.size()
-            if(traceEnable) log.trace "In makeList - lines5: ${linesSize5}"
-            logTop105= "<table><tr><td><div style='font-size:.${fontSize}em;'>"
-            if(linesSize5 >= 1) logTop105 += "${lines5[0]}<br>"
-            if(linesSize5 >= 2) logTop105 += "${lines5[1]}<br>"
-            if(linesSize5 >= 3) logTop105 += "${lines5[2]}<br>"
-            if(linesSize5 >= 4) logTop105 += "${lines5[3]}<br>"
-            if(linesSize5 >= 5) logTop105 += "${lines5[4]}<br>"
-            if(linesSize5 >= 6) logTop105 += "${lines5[5]}<br>"
-            if(linesSize5 >= 7) logTop105 += "${lines5[6]}<br>"
-            if(linesSize5 >= 8) logTop105 += "${lines5[7]}<br>"
-            if(linesSize5 >= 9) logTop105 += "${lines5[8]}<br>"
-            if(linesSize5 >= 10) logTop105 += "${lines5[9]}"
-            logTop105 += "</div></td></tr></table>"
-    
-	        sendEvent(name: "logData5", value: logTop105, displayed: true)
-            sendEvent(name: "numOfCharacters5", value: logCharCount5, displayed: true)
-            sendEvent(name: "lastLogMessage5", value: msgValueShort5, displayed: true)
-        }
-        catch(e5) {
-            
-        }
-    }
 }
 
 def clearData(){
@@ -548,29 +329,9 @@ def clearData(){
     
     state.list1 = []
     sendEvent(name: "logData1", value: state.list1, displayed: true)
-    
-    state.list2 = []
-    sendEvent(name: "logData2", value: state.list2, displayed: true)
-    
-    state.list3 = []
-    sendEvent(name: "logData3", value: state.list3, displayed: true)
-    
-    state.list4 = []
-    sendEvent(name: "logData4", value: state.list4, displayed: true)
-    
-    state.list5 = []
-    sendEvent(name: "logData5", value: state.list5, displayed: true)
 	
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
-    sendEvent(name: "lastLogMessage2", value: msgValue, displayed: true)
-    sendEvent(name: "lastLogMessage3", value: msgValue, displayed: true)
-    sendEvent(name: "lastLogMessage4", value: msgValue, displayed: true)
-    sendEvent(name: "lastLogMessage5", value: msgValue, displayed: true)
     sendEvent(name: "numOfCharacters1", value: logCharCount, displayed: true)
-    sendEvent(name: "numOfCharacters2", value: logCharCount, displayed: true)
-    sendEvent(name: "numOfCharacters3", value: logCharCount, displayed: true)
-    sendEvent(name: "numOfCharacters4", value: logCharCount, displayed: true)
-    sendEvent(name: "numOfCharacters5", value: logCharCount, displayed: true)
 }
 
 def getDateTime() {
