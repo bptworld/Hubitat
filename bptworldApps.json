@@ -464,7 +464,7 @@
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "TileMasterParentVersion": "v2.0.4",
-  "TileMasterChild1Version": "v2.0.9",
+  "TileMasterChild1Version": "v2.1.0",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -478,7 +478,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causes troubles",
+  "TileMasterUpdateNote": "V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.1",
