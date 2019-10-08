@@ -14,7 +14,7 @@ Driver:<br>
 * Select ‘Tile Master Driver’ under ‘Type’
 * Click 'Save Device'
 
-<br>
+<br><br>
 Loading the App:<br>
 * Go to ‘Apps’
 * Click ‘Load New Apps’
