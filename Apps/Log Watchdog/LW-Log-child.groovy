@@ -38,7 +38,7 @@
  *
  *  Changes:
  *
- *  V2.0.4 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
+ *  V2.0.5 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
  *  V2.0.4 - 09/05/19 - More code changes... this is a beta app ;)
  *  V2.0.3 - 09/04/19 - Fixed some typos
  *  V2.0.2 - 09/03/19 - Added 'does not contain' keywords
@@ -51,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "LogWatchdogChildVersion"
-	state.version = "v2.0.4"
+	state.version = "v2.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
