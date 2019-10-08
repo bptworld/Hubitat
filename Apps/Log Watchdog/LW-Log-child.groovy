@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
  *  V2.0.4 - 09/05/19 - More code changes... this is a beta app ;)
  *  V2.0.3 - 09/04/19 - Fixed some typos
  *  V2.0.2 - 09/03/19 - Added 'does not contain' keywords
@@ -77,10 +78,6 @@ definition(
 preferences {
     page(name: "pageConfig")
     page name: "pageKeySet01", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "pageKeySet02", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "pageKeySet03", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "pageKeySet04", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "pageKeySet05", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -91,16 +88,8 @@ def pageConfig() {
     		paragraph "Keep an eye on what's important in the log."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Keyset Options")) {
-            href "pageKeySet01", title: "Keyset 01 Setup", description: "Click here to setup Keywords."
-            if(state.if01) paragraph "Keyset 01: ${state.if01}"
-            href "pageKeySet02", title: "Keyset 02 Setup", description: "Click here to setup Keywords."
-            if(state.if02) paragraph "Keyset 02: ${state.if02}"
-            href "pageKeySet03", title: "Keyset 03 Setup", description: "Click here to setup Keywords."
-            if(state.if03) paragraph "Keyset 03: ${state.if03}"
-            href "pageKeySet04", title: "Keyset 04 Setup", description: "Click here to setup Keywords."
-            if(state.if04) paragraph "Keyset 04: ${state.if04}"
-            href "pageKeySet05", title: "Keyset 05 Setup", description: "Click here to setup Keywords."
-            if(state.if05) paragraph "Keyset 05: ${state.if05}"
+            href "pageKeySet01", title: "Keyset Setup", description: "Click here to setup Keywords."
+            if(state.if01) paragraph "Keyset: ${state.if01}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
@@ -177,170 +166,6 @@ def pageKeySet01(){
     }
 }
 
-def pageKeySet02(){
-    dynamicPage(name: "pageKeySet02", title: "Keyset 02 Options", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-            input "option2", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
-            
-            if(option2 == "Keywords") {  
-                keySetType2 = "K"
-			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
-                input "keyword21", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option2 == "Logging Level") {
-                keySetType2 = "L"
-                paragraph "<b>Primary Check</b> - Select logging level"
-                input "keyword21", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
-            }
-            paragraph "<b>AND</b>"    
-            paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword21", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword22", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword23", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword24", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
-            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
-            paragraph "<b>Third Check</b> - Select up to 2 keywords"
-            input "nKeyword21", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "nKeyword22", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
-            paragraph "<hr>"
-            if(!keyword21) keyword21 = "-"
-            if(!sKeyword21) sKeyword21 = "-"
-            if(!sKeyword22) sKeyword22 = "-"
-            if(!sKeyword23) sKeyword23 = "-"
-            if(!sKeyword24) sKeyword24 = "-"
-            if(!nKeyword21) nKeyword21 = "-"
-            if(!nKeyword22) nKeyword22 = "-"
-            
-            state.if02 = "<b>(${keySetType2}) if (${keyword21}) and (${sKeyword21} or ${sKeyword22} or ${sKeyword23} or ${sKeyword24}) but not (${nKeyword21} or ${nKeyword22})</b>"
-            paragraph "<b>Complete Check</b><br>${state.if02}"
-            
-            state.theData02 = "keySet02;${keySetType2};${keyword21};${sKeyword21};${sKeyword22};${sKeyword23};${sKeyword24};${nKeyword21};${nKeyword22}"
-        }
-    }
-}
-
-def pageKeySet03(){
-    dynamicPage(name: "pageKeySet03", title: "Keyset 03 Options", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-			input "option3", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
-            
-            if(option3 == "Keywords") {  
-                keySetType3 = "K"
-			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
-                input "keyword31", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option3 == "Logging Level") {
-                keySetType3 = "L"
-                paragraph "<b>Primary Check</b> - Select logging level"
-                input "keyword31", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
-            }
-            paragraph "<b>AND</b>"    
-            paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword31", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword32", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword33", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword34", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
-            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
-            paragraph "<b>Third Check</b> - Select up to 2 keywords"
-            input "nKeyword31", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "nKeyword32", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
-            paragraph "<hr>"
-            if(!keyword31) keyword31 = "-"
-            if(!sKeyword31) sKeyword31 = "-"
-            if(!sKeyword32) sKeyword32 = "-"
-            if(!sKeyword33) sKeyword33 = "-"
-            if(!sKeyword34) sKeyword34 = "-"
-            if(!nKeyword31) nKeyword31 = "-"
-            if(!nKeyword32) nKeyword32 = "-"
-            
-            state.if03 = "<b>(${keySetType3}) if (${keyword31}) and (${sKeyword31} or ${sKeyword32} or ${sKeyword33} or ${sKeyword34}) but not (${nKeyword31} or ${nKeyword32})</b>"
-            paragraph "<b>Complete Check</b><br>${state.if03}"
-       
-            state.theData03 = "keySet03;${keySetType3};${keyword31};${sKeyword31};${sKeyword32};${sKeyword33};${sKeyword34};${nKeyword31};${nKeyword32}"
-        }
-    }
-}
-
-def pageKeySet04(){
-    dynamicPage(name: "pageKeySet04", title: "Keyset 04 Options", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-			input "option4", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
-            
-            if(option4 == "Keywords") { 
-                keySetType4 = "K"
-			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
-                input "keyword41", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option4 == "Logging Level") {
-                keySetType4 = "L"
-                paragraph "<b>Primary Check</b> - Select logging level"
-                input "keyword41", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
-            }
-            paragraph "<b>AND</b>"    
-            paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword41", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword42", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword43", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword44", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
-            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
-            paragraph "<b>Third Check</b> - Select up to 2 keywords"
-            input "nKeyword41", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "nKeyword42", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
-            paragraph "<hr>"
-            if(!keyword41) keyword41 = "-"
-            if(!sKeyword41) sKeyword41 = "-"
-            if(!sKeyword42) sKeyword42 = "-"
-            if(!sKeyword43) sKeyword43 = "-"
-            if(!sKeyword44) sKeyword44 = "-"
-            if(!nKeyword41) nKeyword41 = "-"
-            if(!nKeyword42) nKeyword42 = "-"
-            
-            state.if04 = "<b>(${keySetType4}) if (${keyword41}) and (${sKeyword41} or ${sKeyword42} or ${sKeyword43} or ${sKeyword44}) but not (${nKeyword41} or ${nKeyword42})</b>"
-            paragraph "<b>Complete Check</b><br>${state.if04}"
-
-            state.theData04 = "keySet04;${keySetType4};${keyword41};${sKeyword41};${sKeyword42};${sKeyword43};${sKeyword44};${nKeyword41};${nKeyword42}"
-        }
-    }
-}
-
-def pageKeySet05(){
-    dynamicPage(name: "pageKeySet05", title: "Keyset 05 Options", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-			input "option5", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
-            
-            if(option5 == "Keywords") {  
-                keySetType5 = "K"
-			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
-                input "keyword51", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
-            } else if(option5 == "Logging Level") {
-                keySetType5 = "L"
-                paragraph "<b>Primary Check</b> - Select logging level"
-                input "keyword51", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
-            }
-            paragraph "<b>AND</b>"    
-            paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword51", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword52", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword53", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword54", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
-            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
-            paragraph "<b>Third Check</b> - Select up to 2 keywords"
-            input "nKeyword51", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "nKeyword52", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
-            paragraph "<hr>"
-            if(!keyword51) keyword51 = "-"
-            if(!sKeyword51) sKeyword51 = "-"
-            if(!sKeyword52) sKeyword52 = "-"
-            if(!sKeyword53) sKeyword53 = "-"
-            if(!sKeyword54) sKeyword54 = "-"
-            if(!nKeyword51) nKeyword51 = "-"
-            if(!nKeyword52) nKeyword52 = "-"
-           
-            state.if05 = "<b>(${keySetType5}) if (${keyword51}) and (${sKeyword51} or ${sKeyword52} or ${sKeyword53} or ${sKeyword54}) but not (${nKeyword51} or ${nKeyword52})</b>"
-            paragraph "<b>Complete Check</b><br>${state.if05}"
-
-            state.theData05 = "keySet05;${keySetType5};${keyword51};${sKeyword51};${sKeyword52};${sKeyword53};${sKeyword54};${nKeyword51};${nKeyword52}"
-        }
-    }
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -371,22 +196,6 @@ def sendToDevice() {
     if(state.theData01) {
         lwdDevice.keywordInfo(state.theData01) 
         log.info "Log Watchdog - Sending theData01"
-    }
-    if(state.theData02) {
-        lwdDevice.keywordInfo(state.theData02)
-        log.info "Log Watchdog - Sending theData02"
-    }
-    if(state.theData03) {
-        lwdDevice.keywordInfo(state.theData03)
-        log.info "Log Watchdog - Sending theData03"
-    }
-    if(state.theData04) {
-        lwdDevice.keywordInfo(state.theData04)
-        log.info "Log Watchdog - Sending theData04"
-    }
-    if(state.theData05) {
-        lwdDevice.keywordInfo(state.theData05)
-        log.info "Log Watchdog - Sending theData05"
     }
 }
 
