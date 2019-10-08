@@ -6,7 +6,7 @@ Parent/Child apps:<br>
 * Copy the Parent code from GitHub into a ‘New App’ under the ‘Apps Code’ menu then click ‘Done’
 * Copy the Child code from GitHub into a second ‘New App’ & save this too
 
-<br><br>
+<br>
 Driver:<br>
 * Copy the Driver code from GitHub into a ‘New driver’ under the ‘Drivers Code’ menu then click ‘Done’
 * Go to ‘Devices’ and create a new 'Add Virtual Device'
@@ -14,7 +14,7 @@ Driver:<br>
 * Select ‘Tile Master Driver’ under ‘Type’
 * Click 'Save Device'
 
-<br><br>
+<br>
 Loading the App:<br>
 * Go to ‘Apps’
 * Click ‘Load New Apps’
