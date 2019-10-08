@@ -50,10 +50,10 @@
   "Life360UserUpdateNote": "v1.1.6 - 09/20/19 - Small changes to tile code, rewrite of the History Log code",
   
   
-  "LogWatchdogVersion": "v1.0.6",
+  "LogWatchdogVersion": "v1.0.7",
   "LogWatchdogRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",
   "LogWatchdogDiscussion": "",
-  "LogWatchdogUpdateNote": "V1.0.6 - 09/07/19 - Added some error catching",
+  "LogWatchdogUpdateNote": "V1.0.7 - 10/08/19 - Now handles only 1 keyset per child app",
   
   "PollenForecasterVersion": "v2.0.5",
   "PollenForecasterRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy",
