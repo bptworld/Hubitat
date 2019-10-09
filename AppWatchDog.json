@@ -36,47 +36,7 @@
         },
       ],
       "driver": [
-        {
-          "name": "",
-          "version": "",
-          "RAW": ""
-        },
-      ],
-      "hubitatDiscussion": "",
-      "updateNote": ""
-    }
-  ],
-  "drivers": [
-    {
-      "name": "",
-      "version": "",
-      "RAW": "",
-      "child": [
-        {
-          "name": "",
-          "version": "",
-          "RAW": ""
-        },
-        {
-          "name": "",
-          "version": "",
-          "RAW": ""
-        }
-      ],
-      "hubitatDiscussion": "",
-      "updateNote": ""
-    },
-    {
-      "name": "",
-      "version": "",
-      "RAW": "",
-      "child": [
-        {
-          "name": "",
-          "version": "",
-          "RAW": ""
-        },
-        {
+      {
           "name": "",
           "version": "",
           "RAW": ""
