@@ -450,7 +450,7 @@
     },
     {
       "name": "Pollen Forecaster",
-      "version": "2.0.5,
+      "version": "2.0.5",
       "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Pollen%20Forecaster/PF-driver.groovy",
       "child": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-pollen-forecaster-and-asthma-forecaster/13636",
