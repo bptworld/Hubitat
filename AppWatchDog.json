@@ -227,7 +227,8 @@
           "name": "Life360 User",
           "version": "2.0.0",
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy"
-        }],
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-life360-with-states-track-all-attributes-with-app-and-driver-also-supports-rm4-and-dashboards/18274",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     }
