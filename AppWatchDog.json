@@ -95,7 +95,7 @@
         {
           "name": "Departures Child",
           "version": "2.0.1",
-          "RAW": https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy"
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy"
         },
         {
           "name": "Arrivals Child",
