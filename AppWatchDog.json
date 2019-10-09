@@ -201,6 +201,35 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371",
       "updateNote": "1.0.7 - 09/26/19 - Added a 'push all' option"
+    },
+    {
+      "name": "Life360 Tracker",
+      "version": "2.0.0,
+      "RAW": "ttps://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/LT-parent.groovy",
+      "child": [
+        {
+          "name": "Life360 Tracker Child",
+          "version": "2.0.2",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/LT-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276",
+      "updateNote": "2.0.2 - 09/20/19 - History logging adjustments"
+    },
+    {
+      "name": "Life360 with States",
+      "version": "2.0.0,
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-app.groovy",
+      "child": [],
+      "driver": [
+        {
+          "name": "Life360 User",
+          "version": "2.0.0,
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy"
+        }],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-life360-with-states-track-all-attributes-with-app-and-driver-also-supports-rm4-and-dashboards/18274",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     }
     
     
