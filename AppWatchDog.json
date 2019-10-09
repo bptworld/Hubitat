@@ -139,7 +139,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "DeviceWatchdogTile",
+          "version": "1.0.5",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
       "updateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     },
@@ -179,12 +185,18 @@
       "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
       "child": [
         {
-          "name": "HomeTracker Child",
+          "name": "Home Tracker Child",
           "version": "2.0.5",
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Home Tracker Driver",
+          "version": "1.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-child.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
       "updateNote": "2.0.5 - 10/04/19 - Support for pronunciation of Presence Sensor names - Changes by @aaron"
     },
@@ -204,7 +216,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HWE-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Hub Watchdog Driver",
+          "version": "1.0.8",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371",
       "updateNote": "1.0.7 - 09/26/19 - Added a 'push all' option"
     },
@@ -385,12 +403,12 @@
   ],
   "drivers": [
     {
-      "name": "Test Driver",
-      "version": "1.0.0",
-      "RAW": "https://community.hubitat.com/t/project-mqtt-generic-driver-and-salt-tank-monitor-using-arduino/16008",
+      "name": "Asthma Forecaster Driver",
+      "version": "2.0.3",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Asthma%20Forecaster/AF-driver.groovy.groovy",
       "child": [],
-      "hubitatDiscussion": "",
-      "updateNote": "1.0.0 - Initial Test"
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-pollen-forecaster-and-asthma-forecaster/13636",
+      "updateNote": "2.0.3 - 08/29/2019 - App Watchdog compatible"
     }
   ]
 }
