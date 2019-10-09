@@ -375,7 +375,7 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
       "updateNote": "2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'"
-    },
+    }
   ],
   "drivers": [
     {
