@@ -77,7 +77,38 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-catt-director-app-and-driver/20894",
       "updateNote": "2.0.1 - 09/09/19 - Fixed typo"
+    },
+    {
+      "name": "Chromecast Helper",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/CH.groovy",
+      "child": [],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    ],
+    {
+      "name": "Departures",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-parent.groovy",
+      "child": [
+        {
+          "name": "Departures Child",
+          "version": "2.0.1",
+          "RAW": https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy"
+        },
+        {
+          "name": "Arrivals Child",
+          "version": "2.0.2",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/A-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-departures/12039",
+      "updateNote": "2.0.2 - 08/26/19 - Now messages have an 'opening' and a 'closing' segment. Code additions from @Matthew, Thank you."
     }
+    
+    
   ],
   "drivers": [
     {
