@@ -45,5 +45,15 @@
       "hubitatDiscussion": "",
       "updateNote": ""
     }
+  ],
+  "drivers": [
+    {
+      "name": "MQTT Generic Driver",
+      "version": "1.0.2",
+      "RAW": "https://community.hubitat.com/t/project-mqtt-generic-driver-and-salt-tank-monitor-using-arduino/16008",
+      "child": [],
+      "hubitatDiscussion": "",
+      "updateNote": "1.0.2 - added support for AppWatchDogv2"
+    }
   ]
 }
