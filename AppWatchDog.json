@@ -330,10 +330,52 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-simple-irrigation/14420",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
-    }
-    
-    
-    
+    },
+    {
+      "name": "Snapshot",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy",
+      "child": [
+        {
+          "name": "Snapshot Child",
+          "version": "2.0.1",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
+      "updateNote": "2.0.1 - 09/01/19 - Added custom color options"
+    },
+    {
+      "name": "Tile Master",
+      "version": "2.0.4",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Parent.groovy",
+      "child": [
+        {
+          "name": "Tile Master Child",
+          "version": "2.1.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
+      "updateNote": "2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device"
+    },
+    {
+      "name": "Web Pinger",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-parent.groovy",
+      "child": [
+        {
+          "name": "Web Pinger Child",
+          "version": "2.0.1",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
+      "updateNote": "2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'"
+    },
   ],
   "drivers": [
     {
