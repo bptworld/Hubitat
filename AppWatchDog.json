@@ -1,31 +1,89 @@
 {
-  "Developer": "Aaron Ward",
-  "GitHubURL": "https://github.com/PrayerfulDrop/Hubitat",
-  "PayPalURL": "https://paypal.me/aaronmward?locale.x=en_US",
+  "Developer": "BPTWorld",
+  "GitHubURL": "https://github.com/bptworld/Hubitat",
+  "PayPalURL": "https://paypal.me/bptworld",
   "application": [
     {
-      "name": "NOAA Weather Alerts",
-      "version": "2.4.5",
-      "RAW": "https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/NOAA/NOAA-Severe-Weather.groovy",
-      "child": [],
-      "driver": [
+      "name": "Abacus Intense Counting",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-parent.groovy",
+      "child": [
         {
-          "name": "NOAA Tile",
-          "version": "1.2.1",
-          "RAW": "https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/NOAA/NOAA-Tile-Driver.groovy"
+          "name": "Abacus Intense Counting Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy"
         }
       ],
-      "hubitatDiscussion": "https://community.hubitat.com/t/release-noaa-weather-alerts/11141",
-      "updateNote": "2.4.5 - fixed 'final' bug in repeat - forgot to convert to integers for calculations, complete reorganization of code"
+      "driver": [
+        {
+          "name": "",
+          "version": "",
+          "RAW": ""
+        }
+      ],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-intense-counting/7883",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     },
-    "drivers": [
     {
-      "name": "MQTT Generic Driver",
-      "version": "1.0.2",
-      "RAW": "https://community.hubitat.com/t/project-mqtt-generic-driver-and-salt-tank-monitor-using-arduino/16008",
-      "child": [],
+      "name": "Abacus Time Traveler",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-parent.groovy",
+      "child": [
+        {
+          "name": "Abacus Time Traveler Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-child.groovy"
+        },
+      ],
+      "driver": [
+        {
+          "name": "",
+          "version": "",
+          "RAW": ""
+        },
+      ],
       "hubitatDiscussion": "",
-      "updateNote": "1.0.2 - added support for AppWatchDogv2"
+      "updateNote": ""
+    }
+  ],
+  "drivers": [
+    {
+      "name": "",
+      "version": "",
+      "RAW": "",
+      "child": [
+        {
+          "name": "",
+          "version": "",
+          "RAW": ""
+        },
+        {
+          "name": "",
+          "version": "",
+          "RAW": ""
+        }
+      ],
+      "hubitatDiscussion": "",
+      "updateNote": ""
     },
+    {
+      "name": "",
+      "version": "",
+      "RAW": "",
+      "child": [
+        {
+          "name": "",
+          "version": "",
+          "RAW": ""
+        },
+        {
+          "name": "",
+          "version": "",
+          "RAW": ""
+        }
+      ],
+      "hubitatDiscussion": "",
+      "updateNote": ""
+    }
   ]
 }
