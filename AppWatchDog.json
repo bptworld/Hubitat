@@ -194,7 +194,7 @@
         },
         {
           "name": "Examiner Child",
-          "version": "1.0.1,
+          "version": "1.0.1",
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HWE-child.groovy"
         }
       ],
