@@ -80,7 +80,12 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/CATTD-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Send to Hub with CATT Driver",
+          "version": "1.0.3",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20to%20Hub%20with%20CATT/STHWC-driver.groovy"
+        }],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-catt-director-app-and-driver/20894",
       "updateNote": "2.0.1 - 09/09/19 - Fixed typo"
     },
@@ -160,7 +165,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "What Did I Say",
+          "version": "2.0.3",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
       "updateNote": "2.0.3 - 08/30/19 - Code cleanup"
     },
@@ -359,7 +370,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Dates/SD-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Simple Dates Driver",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Dates/SD-driver.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-simple-dates-create-countdowns-of-your-special-dates/21859",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     },
@@ -404,7 +421,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Snapshot Driver",
+          "version": "1.1.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-driver.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
       "updateNote": "2.0.1 - 09/01/19 - Added custom color options"
     },
@@ -419,7 +442,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Tile Master Driver",
+          "version": "2.0.2",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Driver.groovy"
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
       "updateNote": "2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device"
     },
