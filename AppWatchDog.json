@@ -17,6 +17,21 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-intense-counting/7883",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "Abacus Time Traveler",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-parent.groovy",
+      "child": [
+        {
+          "name": "Abacus Time Traveler Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Time%20Traveler/ATT-parent.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     }
   ],
   "drivers": [
