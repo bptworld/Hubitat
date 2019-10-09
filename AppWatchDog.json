@@ -106,6 +106,101 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-departures/12039",
       "updateNote": "2.0.2 - 08/26/19 - Now messages have an 'opening' and a 'closing' segment. Code additions from @Matthew, Thank you."
+    },
+    {
+      "name": "Device Sequencer",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-parent.groovy",
+      "child": [
+        {
+          "name": "Device Sequencer Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-device-sequencer/8596",
+      "updateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "Device Watchdog",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
+      "child": [
+        {
+          "name": "Device Watchdog Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
+      "updateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "Follow Me",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
+      "child": [
+        {
+          "name": "Follow Me Child",
+          "version": "2.0.3",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
+      "updateNote": "2.0.3 - 08/30/19 - Code cleanup"
+    },
+    {
+      "name": "Fully Kiosk Director",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/FKC-parent.groovy",
+      "child": [
+        {
+          "name": "Fully Kiosk Director Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/FKC-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-fully-kiosk-director/15310",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "Home Tracker",
+      "version": "2.0.1",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
+      "child": [
+        {
+          "name": "HomeTracker Child",
+          "version": "2.0.5",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
+      "updateNote": "2.0.5 - 10/04/19 - Support for pronunciation of Presence Sensor names - Changes by @aaron"
+    },
+    {
+      "name": "Hub Watchdog",
+      "version": "10.1",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-parent.groovy",
+      "child": [
+        {
+          "name": "Hub Watchdog Child",
+          "version": "1.0.7",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-child.groovy"
+        },
+        {
+          "name": "Examiner Child",
+          "version": "1.0.1,
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HWE-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371",
+      "updateNote": "1.0.7 - 09/26/19 - Added a 'push all' option"
     }
     
     
