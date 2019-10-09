@@ -14,7 +14,13 @@
           "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-child.groovy"
         }
       ],
-      "driver": [],
+      "driver": [
+        {
+          "name": "Abacus - Counting Tile",
+          "version": "1.0.3",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20-%20Intense%20Counting/AIC-driver.groovy""
+        }
+      ],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-intense-counting/7883",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     },
