@@ -55,7 +55,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Simple Dates Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Simple Dates Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Dates/SD-driver.groovy") {
    		capability "Actuator"
 
 		command "sendSimpleReminder1", ["string"]
