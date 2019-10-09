@@ -88,7 +88,7 @@
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     },
     {
-      "name": "Departures",
+      "name": "Departures and Arrivals",
       "version": "2.0.0",
       "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-parent.groovy",
       "child": [
