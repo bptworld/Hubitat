@@ -32,6 +32,51 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "At Home Simulator",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-parent.groovy",
+      "child": [
+        {
+          "name": "At Home Simulator Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/beta-at-home-simulator/8697",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "BI Control",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Parent.groovy",
+      "child": [
+        {
+          "name": "BI Control Child",
+          "version": "2.0.0",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454",
+      "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
+    },
+    {
+      "name": "CATT Director",
+      "version": "2.0.0",
+      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/CATTD-parent.groovy",
+      "child": [
+        {
+          "name": "CATT Director Child",
+          "version": "2.0.1",
+          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/CATTD-child.groovy"
+        }
+      ],
+      "driver": [],
+      "hubitatDiscussion": "https://community.hubitat.com/t/release-catt-director-app-and-driver/20894",
+      "updateNote": "2.0.1 - 09/09/19 - Fixed typo"
     }
   ],
   "drivers": [
