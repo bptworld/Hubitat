@@ -86,7 +86,7 @@
       "driver": [],
       "hubitatDiscussion": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
-    ],
+    },
     {
       "name": "Departures",
       "version": "2.0.0",
