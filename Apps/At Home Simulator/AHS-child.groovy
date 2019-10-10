@@ -141,8 +141,8 @@ def pageConfig() {
 			if(g5Switches) input "g5TimeToStayOn", "number", title: "How long should lights stay On (in minutes)", required: true, defaultValue: 5
 			if(g5Switches) input "timeToPause5", "number", title: "Time to pause between devices turning On within group 5 (in seconds)", required: true, defaultValue: 1
 			if(g5Switches) paragraph "Extra Time to pause between Group 5 and ending the Simulation. This is a random delay based on the two numbers you select below."
-			if(g5Switches) input "pFrom4", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
-			if(g5Switches) input "pTo4", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
+			if(g5Switches) input "pFrom5", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
+			if(g5Switches) input "pTo5", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Random Lights")) {}
 		section("<b>Random Lights</b>", hideable: true, hidden: true) {
