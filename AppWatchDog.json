@@ -99,26 +99,6 @@
       "updateNote": "2.0.0 - 08/18/19 - App Watchdog 2 compatible"
     },
     {
-      "name": "Departures and Arrivals",
-      "version": "2.0.0",
-      "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-parent.groovy",
-      "child": [
-        {
-          "name": "Departures Child",
-          "version": "2.0.1",
-          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/D-child.groovy"
-        },
-        {
-          "name": "Arrivals Child",
-          "version": "2.0.2",
-          "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Departures/A-child.groovy"
-        }
-      ],
-      "driver": [],
-      "hubitatDiscussion": "https://community.hubitat.com/t/release-departures/12039",
-      "updateNote": "2.0.2 - 08/26/19 - Now messages have an 'opening' and a 'closing' segment. Code additions from @Matthew, Thank you."
-    },
-    {
       "name": "Device Sequencer",
       "version": "2.0.0",
       "RAW": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-parent.groovy",
