@@ -137,7 +137,7 @@
   "DeviceCheckPlusChild2RawCode": "",
   "DeviceCheckPlusChild3RawCode": "",
   "DeviceCheckPlusChild4RawCode": "",
-  "DeviceCheckPlusDiscussion": "",
+  "DeviceCheckPlusDiscussion": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454",
   "DeviceCheckPlusUpdateNote": "V1.0.0 - 10/13/19 - Initial release",
   
   "DeviceSequencerParentVersion": "v2.0.0",
