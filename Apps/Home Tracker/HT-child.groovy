@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.6 - 10/13/19 - Cosmetic changes to Global Variable section and new error message if not used. New option 'auto clear' for message queueing issues.
  *  V2.0.5 - 10/04/19 - Support for pronounce of Presence Sensor names (aaronward)
  *  V2.0.4 - 10/03/19 - LOTS of changes, added some rule machine options, lock codes can be used as presence sensors and name
 will be added to the announcement. Greetings have returned! Be sure to load up each child app and fill in the missing pieces!
@@ -53,7 +54,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.5"
+	state.version = "v2.0.6"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -132,24 +133,20 @@ def pageConfig() {
             href "ruleMachineOptions", title:"Rule Machine Options", description:"Click here to setup the Rule Machine Options"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Global Variables")) {
-			paragraph "This app requires a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
-			paragraph "* Vitual Device must use our custom 'Welcome Home Driver'"
-			input "gvDevice", "capability.actuator", title: "Virtual Device created for Welcome Home", required: false, multiple: false
+			paragraph "This app <b>requires</b> a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
+			paragraph "* Vitual Device must use our custom 'Home Tracker Driver'"
+			input "gvDevice", "capability.actuator", title: "Virtual Device created for Home Tracker", required: false, multiple: false
 		}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
+            paragraph "Home Tracker uses an experimental speach queue. In testing, sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
+			input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
+            input(name: "clearQueue", type: "bool", defaultValue: "false", title: "Manually Clear the Queue right now", description: "Clear", submitOnChange: "true")
+            if(clearQueue) clearTheQueue()
+        }
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging")
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-			paragraph "In case the Queue gets stuck, flip this switch to clear the queue."
-            input(name: "clearQueue", type: "bool", defaultValue: "false", title: "Clear the Queue", description: "Clear", submitOnChange: "true")
-            if(clearQueue) {
-			    app?.updateSetting("clearQueue",[value:"false",type:"bool"])
-				if(logEnable) log.debug "Resetting the Queue"
-                state.TTSQueue = []
-				state.playingTTS = false
-			}
-        }
 		display2()
 	}
 }
@@ -586,14 +583,43 @@ def presenceSensorHandler(evt){
     }
 }
 
+def whichPresenceSensorShort(numb) {
+    if(logEnable) log.debug "In whichPresenceSensor (${state.version}) - Checking which Presence Sensor: ${numb}"
+    if(numb >= 1 && numb <= 20) {
+        pSensor=presenceSensor1.currentValue("presence")
+        lastActivity = presenceSensor$numb.getLastActivity()
+        if(parent.pronounce$numb.contains("Not set") || parent.procunciation$numb=="") fName="${parent.friendlyName$numb}"
+        else fName="${parent.pronounce$numb}"
+        sendDataM="sendDataMap$numb"
+        try { globalBH=gvDevice.currentValue("globalBH$numb") }
+        catch (e) { log.warn "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+    }
+    
+    if(numb >= 21 && numb <= 24) {
+        if(numb == 21) lockNumb = 1
+        if(numb == 22) lockNumb = 2
+        if(numb == 23) lockNumb = 3
+        if(numb == 24) lockNumb = 4
+        
+        pSensor=myLock$lockNumb.currentValue("lock")
+        lastActivity = myLock$lockNumb.getLastActivity()
+        fName=myLock$lockNumb.currentValue("lastCodeName")
+        sendDataM="NA"
+        globalBH="NA"
+    }
+    return [pSensor,lastActivity,fName,sendDataM,globalBH]
+}
+
 def whichPresenceSensor(numb) {
+    if(logEnable) log.debug "In whichPresenceSensor (${state.version}) - Checking which Presence Sensor: ${numb}"
     if(numb==1) { 
         pSensor=presenceSensor1.currentValue("presence")
         lastActivity = presenceSensor1.getLastActivity()
-        if(parent.pronounce1 =="Not set" || parent.pronounce1=="") fName="${parent.friendlyName1}"
+        if(parent.pronounce1.contains("Not set") || parent.procunciation1=="") fName="${parent.friendlyName1}"
         else fName="${parent.pronounce1}"
         sendDataM="sendDataMap1"
-        globalBH=gvDevice.currentValue("globalBH1")
+        try { globalBH=gvDevice.currentValue("globalBH1") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==2) {
         pSensor=presenceSensor2.currentValue("presence")
@@ -601,7 +627,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce2.contains("Not set") || parent.procunciation2=="") fName="${parent.friendlyName2}"
         else fName="${parent.pronounce2}"
         sendDataM="sendDataMap2"
-        globalBH=gvDevice.currentValue("globalBH2")
+        try { globalBH=gvDevice.currentValue("globalBH2") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==3) {
         pSensor=presenceSensor3.currentValue("presence")
@@ -609,7 +636,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce3.contains("Not set") || parent.procunciation3=="") fName=parent.friendlyName3
         else fName=parent.pronounce3
         sendDataM="sendDataMap3"
-        globalBH=gvDevice.currentValue("globalBH3")
+        try { globalBH=gvDevice.currentValue("globalBH3") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==4) {
         pSensor=presenceSensor4.currentValue("presence")
@@ -617,7 +645,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce4.contains("Not set") || parent.procunciation4=="") fName=parent.friendlyName4
         else fName=parent.pronounce4
         sendDataM="sendDataMap4"
-        globalBH=gvDevice.currentValue("globalBH4")
+        try { globalBH=gvDevice.currentValue("globalBH4") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==5) {
         pSensor=presenceSensor5.currentValue("presence")
@@ -625,7 +654,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce5.contains("Not set") || parent.procunciation5=="") fName=parent.friendlyName5
         else fName=parent.pronounce5
         sendDataM="sendDataMap5"
-        globalBH=gvDevice.currentValue("globalBH5")
+        try { globalBH=gvDevice.currentValue("globalBH5") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==6) {
         pSensor=presenceSensor6.currentValue("presence")
@@ -633,7 +663,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce6.contains("Not set") || parent.procunciation6=="") fName=parent.friendlyName6
         else fName=parent.pronounce6
         sendDataM="sendDataMap6"
-        globalBH=gvDevice.currentValue("globalBH6")
+        try { globalBH=gvDevice.currentValue("globalBH6") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==7) {
         pSensor=presenceSensor7currentValue("presence")
@@ -641,7 +672,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce7.contains("Not set") || parent.procunciation7=="") fName=parent.friendlyName7
         else fName=parent.pronounce7
         sendDataM="sendDataMap7"
-        globalBH=gvDevice.currentValue("globalBH7")
+        try { globalBH=gvDevice.currentValue("globalBH7") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==8) {
         pSensor=presenceSensor8currentValue("presence")
@@ -649,7 +681,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce8.contains("Not set") || parent.procunciation8=="") fName=parent.friendlyName8
         else fName=parent.pronounce8
         sendDataM="sendDataMap8"
-        globalBH=gvDevice.currentValue("globalBH8")
+        try { globalBH=gvDevice.currentValue("globalBH8") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==9) {
         pSensor=presenceSensor9.currentValue("presence")
@@ -657,7 +690,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce9.contains("Not set") || parent.procunciation9=="") fName=parent.friendlyName9
         else fName=parent.pronounce9
         sendDataM="sendDataMap9"
-        globalBH=gvDevice.currentValue("globalBH9")
+        try { globalBH=gvDevice.currentValue("globalBH9") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==10) {
         pSensor=presenceSensor10.currentValue("presence")
@@ -665,7 +699,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce10.contains("Not set") || parent.procunciation10=="") fName=parent.friendlyName10
         else fName=parent.pronounce10
         sendDataM="sendDataMap10"
-        globalBH=gvDevice.currentValue("globalBH10")
+        try { globalBH=gvDevice.currentValue("globalBH0") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==11) {
         pSensor=presenceSensor11.currentValue("presence")
@@ -673,7 +708,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce11.contains("Not set") || parent.procunciation11=="") fName=parent.friendlyName11
         else fName=parent.pronounce11
         sendDataM="sendDataMap11"
-        globalBH=gvDevice.currentValue("globalBH11")
+        try { globalBH=gvDevice.currentValue("globalBH11") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==12) {
         pSensor=presenceSensor12.currentValue("presence")
@@ -681,7 +717,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce12.contains("Not set") || parent.procunciation12=="") fName=parent.friendlyName12
         else fName=parent.pronounce12
         sendDataM="sendDataMap12"
-        globalBH=gvDevice.currentValue("globalBH12")
+        try { globalBH=gvDevice.currentValue("globalBH12") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==13) {
         pSensor=presenceSensor13.currentValue("presence")
@@ -689,7 +726,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce13.contains("Not set") || parent.procunciation13=="") fName=parent.friendlyName13
         else fName=parent.pronounce13
         sendDataM="sendDataMap13"
-        globalBH=gvDevice.currentValue("globalBH13")
+        try { globalBH=gvDevice.currentValue("globalBH13") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==14) {
         pSensor=presenceSensor14.currentValue("presence")
@@ -697,7 +735,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce14.contains("Not set") || parent.procunciation14=="") fName=parent.friendlyName14
         else fName=parent.pronounce14
         sendDataM="sendDataMap14"
-        globalBH=gvDevice.currentValue("globalBH14")
+        try { globalBH=gvDevice.currentValue("globalBH14") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==15) {
         pSensor=presenceSensor15.currentValue("presence")
@@ -705,7 +744,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce15.contains("Not set") || parent.procunciation15=="") fName=parent.friendlyName15
         else fName=parent.pronounce15
         sendDataM="sendDataMap15"
-        globalBH=gvDevice.currentValue("globalBH15")
+        try { globalBH=gvDevice.currentValue("globalBH15") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==16) {
         pSensor=presenceSensor16.currentValue("presence")
@@ -713,7 +753,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce16.contains("Not set") || parent.procunciation16=="") fName=parent.friendlyName16
         else fName=parent.pronounce16
         sendDataM="sendDataMap16"
-        globalBH=gvDevice.currentValue("globalBH16")
+        try { globalBH=gvDevice.currentValue("globalBH16") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==17) {
         pSensor=presenceSensor17.currentValue("presence")
@@ -721,7 +762,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce17.contains("Not set") || parent.procunciation17=="") fName=parent.friendlyName17
         else fName=parent.pronounce17
         sendDataM="sendDataMap17"
-        globalBH=gvDevice.currentValue("globalBH17")
+        try { globalBH=gvDevice.currentValue("globalBH17") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==18) {
         pSensor=presenceSensor18.currentValue("presence")
@@ -729,7 +771,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce18.contains("Not set") || parent.procunciation18=="") fName=parent.friendlyName18
         else fName=parent.pronounce18
         sendDataM="sendDataMap18"
-        globalBH=gvDevice.currentValue("globalBH18")
+        try { globalBH=gvDevice.currentValue("globalBH18") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==19) {
         pSensor=presenceSensor19.currentValue("presence")
@@ -737,7 +780,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce19.contains("Not set") || parent.procunciation19=="") fName=parent.friendlyName19
         else fName=parent.pronounce19
         sendDataM="sendDataMap19"
-        globalBH=gvDevice.currentValue("globalBH19")
+        try { globalBH=gvDevice.currentValue("globalBH19") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==20) {
         pSensor=presenceSensor20.currentValue("presence")
@@ -745,7 +789,8 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce20.contains("Not set") || parent.procunciation20=="") fName=parent.friendlyName20
         else fName=parent.pronounce20
         sendDataM="sendDataMap20"
-        globalBH=gvDevice.currentValue("globalBH20")
+        try { globalBH=gvDevice.currentValue("globalBH20") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==21) {
         pSensor=myLock1.currentValue("lock")
@@ -1098,12 +1143,13 @@ def letsTalkQueue(text) {
 	state.TTSQueue << [text, duration]
     
     queueSize = state.TTSQueue.size()
+    if(queueSize > maxQueued) clearTheQueue()
  
 	if(state.playingTTS == false) { 
         if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Going to Lets Talk"
         runIn(1, letsTalk)
     } else {
-        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Queing the message"
+        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Queing the message"  
     }
     // End modified from @djgutheinz
 }
@@ -1448,6 +1494,13 @@ def pushNow(msg) {
 		if(logEnable) log.debug "In pushNow - Sending message: ${pushMessage}"
         sendPushMessage.deviceNotification(pushMessage)
 	}	
+}
+
+def clearTheQueue() {
+    app?.updateSetting("clearQueue",[value:"false",type:"bool"])
+    if(logEnable) log.debug "In clearTheQueue (${state.version}) - Resetting the Queue"
+    state.TTSQueue = []
+	state.playingTTS = false
 }
 
 // ********** Normal Stuff **********
