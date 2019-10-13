@@ -29,7 +29,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
 <b>Device Check Plus</b> - Check selected devices, then warn you what's not in the right state.<br>
-Hubitat Forum Discussion: <a href="" target="_blank">Not yet!</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454" target="_blank">Go Here</a>
 <br><br>
 <b>Device Sequencer</b> - Turn on/off several devices in a row, with a user defined pause in between each.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-sequencer/8596" target="_blank">Go Here</a>
