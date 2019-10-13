@@ -38,15 +38,16 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 10/13/19 - Cosmetic changes. 
  *  V1.0.0 - 10/13/19 - Initial release.
  *
  */
 
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -73,6 +74,9 @@ definition(
 preferences {
     page(name: "pageConfig")
     page(name: "checkConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "triggerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "notificationOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "speechOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -81,11 +85,68 @@ def pageConfig() {
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Check selected devices, then warn you what's not in the right state."
+            paragraph "<b>Examples of Usage:</b>"
+            paragraph " - <u>Getting ready to go to bed</u><br> * hit the 'On demand' switch (or use Google to turn it on)<br> * Check will run and announce any problems!<br> * Go to bed knowing everthing is secure!"
+            paragraph " - <u>Heat is on</u><br> * Someone opens a window or door<br> * Check will run and announce what window is open!"
+            paragraph " - <u>Cool is on</u><br> * Someone closes a door<br> * Check will run and announce that the door should be open when cool is on!"
+            paragraph " - <u>Other usage...</u><br> * Going out? Make sure all your windows are closed<br> * Is it raining, check the windows!<br> * Think you forgot to do something? This will let you know!"
+            paragraph "<b>The only limit is your imagination!</b>"
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            href "checkConfig", title:"Select Devices to check", description:"Click here for Options" 
+        section(getFormat("header-green", "${getImage("Blank")}"+" Options, Options and more Options")) {
+            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked) {
+                href "checkConfig", title:"${getImage("checkMarkGreen")} Select Devices to check", description:"Click here for Options"
+            } else {
+                href "checkConfig", title:"Select Devices to check", description:"Click here for Options"
+            }
+            
+            if(onDemandSwitch || days || modeName || thermostats) {
+                href "triggerOptions", title:"${getImage("checkMarkGreen")} Select Trigger options here", description:"Click here for Options"
+            } else {
+                href "triggerOptions", title:"Select Trigger options here", description:"Click here for Options"
+            }
+            
+            if(isDataDevice || preMsg || postMsg) {
+                href "notificationOptions", title:"${getImage("checkMarkGreen")} Select Notification options here", description:"Click here for Options"
+            } else {
+                href "notificationOptions", title:"Select Notification options here", description:"Click here for Options"
+            }
+            
+            if(isDataDevice || preMsg || postMsg) {
+                href "speechOptions", title:"${getImage("checkMarkGreen")} Select Speech options here", description:"Click here for Options"
+            } else {
+                href "speechOptions", title:"Select Speech options here", description:"Click here for Options"
+            }
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Trigger Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
+            paragraph "Device Check Plus uses an experimental speach queue. In testing, sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
+			input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
+            input(name: "clearQueue", type: "bool", defaultValue: "false", title: "Manually Clear the Queue right now", description: "Clear", submitOnChange: "true")
+            if(clearQueue) clearTheQueue()
+        }
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
+        section() {
+            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: true
+		}
+		display2()
+	}
+}
+
+def checkConfig() {
+    dynamicPage(name: "checkConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Check Devices</h2>", install: false, uninstall:false) {
+		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Check")) {
+			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false
+			input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple: true, required: false
+			input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple: true, required: false
+			input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple: true, required: false
+			input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple: true, required: false
+			input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple: true, required: false
+		}
+    }
+}
+
+def triggerOptions() {
+    dynamicPage(name: "triggerOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Trigger Options</h2>", install: false, uninstall:false) {
+		section(getFormat("header-green", "${getImage("Blank")}"+"  Trigger Options")) {
             paragraph "<b>Run 'Device Check' anytime this switch is turned on.</b> Recommended to create a 'virtual switch' with 'Enable auto off' set to '1s'"
             input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required: false
             paragraph "<hr>"
@@ -99,12 +160,17 @@ def pageConfig() {
             paragraph "<b>Run 'Device Check' on Thermostat Activity</b> (optional)"
             input "thermostats", "capability.thermostat", title: "Thermostat to track", required: false, multiple: true, submitOnChange: true
             if(thermostats) {
-                input "thermOption", "bool", title: "Use thermostatMode or thermostatOperatingState (off=thermostatMode, on=thermostatOperatingState", description: "Therm Options", defaultValue: true, submitOnChange: true
-                paragraph " - thermostatMode: When in heat or cool mode, it will trigger a 'Device Check' anytime a selected device changes state."
-                paragraph " - thermostatOperatingState: This will trigger a 'Device Check' anytime the thermostat goes into heating or cooling state."
+                input "thermOption", "bool", title: "Use Mode or State (off=Mode, on=State)", description: "Therm Options", defaultValue: true, submitOnChange: true
+                paragraph " - <b>Mode</b>: When in heat or cool mode, it will trigger a 'Device Check' anytime a selected device changes state."
+                paragraph " - <b>State</b>: This will trigger a 'Device Check' anytime the thermostat goes into heating or cooling state."
             }
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
+    }
+}
+
+def notificationOptions() {
+    dynamicPage(name: "notificationOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Notification Options</h2>", install: false, uninstall:false) {
+		section(getFormat("header-green", "${getImage("Blank")}"+"  Notification Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange: true, required: false, multiple: false
 			paragraph "<hr>"
             paragraph "Receive device notifications with voice and push options."
@@ -134,21 +200,28 @@ def pageConfig() {
 					paragraph "${listMapPost}"
 				}
 			}
-		}	
-        section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
-          	paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
+        }
+    }
+}
+
+def speechOptions() {
+    dynamicPage(name: "speechOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Speech Options</h2>", install: false, uninstall:false) {
+		section(getFormat("header-green", "${getImage("Blank")}"+"  Speech Options")) {
+            paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
            input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
            input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
            input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		    paragraph "NOTE: Not all speakers can use volume controls.", width:8
-            paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-            input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
-		    input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
-            input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
-			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+        if(speakerMP || speakerSS) {
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		        paragraph "NOTE: Not all speakers can use volume controls.", width:8
+                paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
+		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
+                input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
+		    	if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
+    	    	if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+            }
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
             input "fromTime", "time", title: "From", required: false, width: 6
@@ -157,30 +230,6 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
     	}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            paragraph "Device Check Plus uses an experimental speach queue. In testing, sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
-			input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
-            input(name: "clearQueue", type: "bool", defaultValue: "false", title: "Manually Clear the Queue right now", description: "Clear", submitOnChange: "true")
-            if(clearQueue) clearTheQueue()
-        }
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Debugging")
-		}
-		display2()
-	}
-}
-
-def checkConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Check Devices</h2>", install: false, uninstall:false) {
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Check")) {
-			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false
-			input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple: true, required: false
-			input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple: true, required: false
-			input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple: true, required: false
-			input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple: true, required: false
-			input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple: true, required: false
-		}
     }
 }
 
@@ -563,6 +612,7 @@ def setDefaults(){
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=15 width=15>"
 }
 
 def getFormat(type, myText=""){			// Modified from @Stephack Code
