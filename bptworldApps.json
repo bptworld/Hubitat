@@ -226,7 +226,7 @@
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "HomeTrackerParentVersion": "v2.0.1",
-  "HomeTrackerChild1Version": "v2.0.5",
+  "HomeTrackerChild1Version": "v2.0.6",
   "HomeTrackerChild1Name": "",
   "HomeTrackerChild2Version": "",
   "HomeTrackerChild2Name": "",
@@ -235,7 +235,7 @@
   "HomeTrackerChild4Version": "",
   "HomeTrackerChild4Name": "",
   "HomeTrackerParentRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
-  "HomeTrackerChild1RawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-child.groovy",
+  "HomeTrackerChild1RawCode": "2.0.6 - 10/13/19 - Cosmetic changes to Global Variable section and new error message if not used. New option 'auto clear' for message queueing issues.",
   "HomeTrackerChild2RawCode": "",
   "HomeTrackerChild3RawCode": "",
   "HomeTrackerChild4RawCode": "",
