@@ -1,19 +1,8 @@
 # Gentle Wake Up - PORT
 <b>Design Usage:</b><br>
 PORT of ST Gentle Wake Up<br><br>
+Please vist my <a href='https://github.com/bptworld/Hubitat/tree/master/Docs' target='_blank'>Docs</a> section for Install and other information!
 <br><br>
-<b>New Install:</b><br>
-Install App
-* Copy the App code from GitHub into a ‘New App’ under the ‘Apps Code’ menu
-* Click ‘Save’
-* Do this for both Parent and Child apps
-
-Install Driver
-* Copy the Driver code from GitHub into a ‘New Driver’ under the 'Driver Code' menu then click ‘Done’
-
-Go to ‘Apps’
-* Click ‘Load New Apps’
-* Select ‘Gentle Wake Up’ under ‘User Apps’
-<br><br>
+Thanks,<br>
 Bryan<br>
 @BPTWorld
