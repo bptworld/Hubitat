@@ -3,7 +3,7 @@
 # App Watchdog
 <b>Design Usage:</b><br>
 See if any compatible app needs an update, all in one place.<br><br>
-Please vist our <a href='https://github.com/bptworld/Hubitat/tree/master/Docs' target='_blank'>Docs</a> section for Install and other information!
+Please vist my <a href='https://github.com/bptworld/Hubitat/tree/master/Docs' target='_blank'>Docs</a> section for Install and other information!
 <br><br>
 Thanks,<br>
 Bryan<br>
