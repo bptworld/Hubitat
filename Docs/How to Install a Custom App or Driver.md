@@ -1,4 +1,4 @@
-# How to Install an App from BPTWorld
+# How to Install an App or Driver from BPTWorld
 <b>Design Usage:</b><br>
 Basic instructions on installing a custom app from GitHub.<br><br>
 
