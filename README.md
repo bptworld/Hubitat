@@ -11,6 +11,7 @@ UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <hr>
 <b>Be sure to visit my '<a href="https://github.com/bptworld/Hubitat/tree/master/Docs" target="_blank">Docs</a>' folder for instructions on how to install Custom Apps and Drivers!</b>
 <br><br>
+<hr>
 <b>Abacus - Intense Counting</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
