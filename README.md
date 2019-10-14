@@ -1,6 +1,6 @@
 # Apps/Drivers for Hubitat Elevation
 Apps for use with the Hubitat Elevation Hub.<br>
-Website: www.hubitat.com<br>
+Offiical Website: www.hubitat.com<br>
 Official Forum: https://community.hubitat.com/<br>
 UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br>
@@ -9,7 +9,8 @@ UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br><br>
 <small>* Note: Acceptance of donation in no way guarentees support or updates. All apps/drivers are provided 'as is'. While I do my best to maintain/update each app/driver, priorities do change and any app/driver could be depreciated at any time. Thank you for your understanding.</small>
 <hr>
-<br>
+<b>Be sure to visit my 'Docs' folder for instructions on how to install Custom Apps and Drivers!</b>
+<br><br>
 <b>Abacus - Intense Counting</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
@@ -96,14 +97,6 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-p
 <br><br>
 <b>What Did I Say</b> (Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
-<br><br>
-<hr>
-My apps do NOT collect any data of any kind from any users. The only app that reaches out is my App Watchdog. This tags out to a json file located on gitHub and only contains information regarding all of my apps. This file is openly available to anyone who would want to see what's in it. Simply click on it to see its contents.
-<br><br>
-I do not collect any IP addresses, download statistics, app usage or any other information - I can't tell you how many people use or download any of my apps/drivers or access the json file. ABSOLUTELY NOTHING.
-<br><br>
-Remember - Your data is your data and what you do with it is your business and nobody else's.
-<hr>
 <br><br>
 Bryan<br>
 @BPTWorld
