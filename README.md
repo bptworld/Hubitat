@@ -98,5 +98,5 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-p
 <b>What Did I Say</b> (Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
 <hr>
-<center><b><i>Thanks for supporting BPTWorld Apps and Drivers!</b></i></center>
+<b><i>Thanks for supporting BPTWorld Apps and Drivers!</b></i>
 <hr>
