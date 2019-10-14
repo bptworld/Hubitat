@@ -5,7 +5,7 @@ Official Forum: https://community.hubitat.com/<br>
 UnOfficial User Created Apps and Drivers Wiki: www.HubitatApps.com
 <br>
 <hr>
-<b>Donations to support development efforts are accepted via Paypal: https://paypal.me/bptworld</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated.<br><b>I 'Thank You' for your support.</b>
+<b>Donations to support development efforts are accepted via Paypal: https://paypal.me/bptworld</b><br>Remember...I am not a professional programmer, everything I do takes a lot of time and research! Donations for this time and effort are always greatly appreciated. <b>I 'Thank You' for your support.</b>
 <br><br>
 <small>* Note: Acceptance of donation in no way guarentees support or updates. All apps/drivers are provided 'as is'. While I do my best to maintain/update each app/driver, priorities do change and any app/driver could be depreciated at any time. Thank you for your understanding.</small>
 <hr>
@@ -98,5 +98,5 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-p
 <b>What Did I Say</b> (Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
 <hr>
-<b><i>Thanks for supporting BPTWorld Apps and Drivers!</b></i>
+<center><b><i>Thanks for supporting BPTWorld Apps and Drivers!</b></i></center>
 <hr>
