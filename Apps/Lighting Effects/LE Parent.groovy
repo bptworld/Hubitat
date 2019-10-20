@@ -141,7 +141,7 @@ def mainPage() {
         	}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Lighting Effects Child", namespace: "BPTWorld", title: "<b>Add a new 'Lighting Effects' child</b>", multiple: true)
-                app(name: "anyOpenApp", appName: "Lighting Effects 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Lighting Effects 2' child</b>", multiple: true)
+                //app(name: "anyOpenApp", appName: "Lighting Effects 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Lighting Effects 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
