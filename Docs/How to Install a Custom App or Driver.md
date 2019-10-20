@@ -1,6 +1,6 @@
 # How to Install an App or Driver from BPTWorld
 <b>Design Usage:</b><br>
-Basic instructions on installing a custom app from GitHub.<br><br>
+Basic instructions on installing a custom app or driver from GitHub.<br><br>
 
 <b>New Install: Copying the Code from GitHub</b><br>
 * Locate the code that you want to install on GitHub
