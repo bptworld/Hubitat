@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating
+ *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating (jerry.molenaar)
  *  V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device
  *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causing troubles
  *  V2.0.8 - 09/27/19 - Fixed issue with line 5 and with motion sensor colors
@@ -55,7 +55,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.1.9"
+	state.version = "v2.1.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
