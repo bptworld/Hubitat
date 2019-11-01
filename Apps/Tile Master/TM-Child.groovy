@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating
  *  V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device
  *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causing troubles
  *  V2.0.8 - 09/27/19 - Fixed issue with line 5 and with motion sensor colors
@@ -764,7 +765,7 @@ def tileHandler01(){
 	if(words01 == null) words01 = ""
 	if(words01a == null) words01a = ""
 	if(words01b == null) words01b = ""
-	if(nSections01 == "1" || nSections01 == "2" || nSections01 == "3") {
+	if(nSections01 >= "1") {
 		if(device01) {
 			state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
             if(state.deviceStatus01 == null || state.deviceStatus01 == "") state.deviceStatus01 = "No Data"
@@ -777,7 +778,7 @@ def tileHandler01(){
             }
         } else state.deviceStatus01 = ""
 	}
-	if(nSections01 == "2" || nSections01 == "3") {
+	if(nSections01 >= "2") {
 		if(device01a) {
 			state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 			if(state.deviceStatus01a == null || state.deviceStatus01a == "") state.deviceStatus01a = "No Data"
@@ -805,62 +806,47 @@ def tileHandler01(){
 	}
 	
 // ***** Make the table for line 1	*****
-	
-	if(nSections01 == "1") {
-        state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
+
+    state.theTile01 = ""
+
+    if(nSections01 >= "1") {
+        state.theTile01 = "<table style='width:100%'><tr style='text-align:${align01};color:${color01};font-size:${fontSize01}px'><td style='"
+        state.theTile01 += "width:${secWidth01}%'>"
         if(wordsBEF01) makeTileLine(1,wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
 		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) makeTileLine(1,wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
-		
-		state.theTile01 += "</table>"
-		state.theTileLength01 = state.theTile01.length()
-	} else if(nSections01 == "2") {
-		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
-		if(wordsBEF01) makeTileLine("1",wordsBEF01,linkBEF01)
-        if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
-		if(wordsAFT01) makeTileLine("1",wordsAFT01,linkAFT01)
-        if(wordsAFT01) state.theTile01 += "${newWords2}"
-		
-		state.theTile01 += "<td style='text-align:${align01a};color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%'>"
+	} 
+    if(nSections01 >= "2") {
+		state.theTile01 += "<td style='"
+        if (align01a != align01) state.theTile01 += "text-align:${align01a};"
+        if (color01a != color01) state.theTile01 += "color:${color01a};"
+        if (fontSize01a != fontSize01) state.theTile01 += "font-size:${fontSize01a}px;"
+        state.theTile01 += "width:${secWidth01a}%'>"
 		if(wordsBEF01a) makeTileLine("1a",wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
 		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) makeTileLine("1a",wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
-		
-		state.theTile01 += "</table>"
-		state.theTileLength01 = state.theTile01.length()
-	} else if(nSections01 == "3") {
-		state.theTile01 = "<table style='width:100%'><tr><td style='text-align:${align01};color:${color01};font-size:${fontSize01}px;width:${secWidth01}%'>"
-		if(wordsBEF01) makeTileLine("1",wordsBEF01,linkBEF01)
-        if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
-		if(wordsAFT01) makeTileLine("1",wordsAFT01,linkAFT01)
-        if(wordsAFT01) state.theTile01 += "${newWords2}"
-		
-		state.theTile01 += "<td style='${state.style01a}color:${color01a};font-size:${fontSize01a}px;width:${secWidth01a}%'>"
-		if(wordsBEF01a) makeTileLine("1a",wordsBEF01a,linkBEF01a)
-        if(wordsBEF01a) state.theTile01 += "${newWords2}"
-		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
-		if(wordsAFT01a) makeTileLine("1a",wordsAFT01a,linkAFT01a)
-        if(wordsAFT01a) state.theTile01 += "${newWords2}"
-		
-		state.theTile01 += "<td style='text-align:${align01b};color:${color01b};font-size:${fontSize01b}px;width:${secWidth01b}%'>"
+	}
+    if(nSections01 == "3") {
+		state.theTile01 += "<td style='"
+        if (align01b != align01) {state.theTile01 += "text-align:${align01b};"}
+        if (color01b != color01) {state.theTile01 += "color:${color01b};"}
+        if (fontSize01b != fontSize01) {state.theTile01 += "font-size:${fontSize01b}px;"}
+        state.theTile01 += "width:${secWidth01b}%'>"
 		if(wordsBEF01b) makeTileLine("1b",wordsBEF01b,linkBEF01b)
         if(wordsBEF01b) state.theTile01 += "${newWords2}"
 		if(deviceAtts01b) state.theTile01 += "${state.deviceStatus01b}"
 		if(wordsAFT01b) makeTileLine("1b",wordsAFT01b,linkAFT01b)
         if(wordsAFT01b) state.theTile01 += "${newWords2}"
-		
-		state.theTile01 += "</table>"
-		state.theTileLength01 = state.theTile01.length()
-	} else {
-        state.theTile01 = ""
-        state.theTileLength05 = state.theTile01.length()
+	}
+    if(nSections01 >= "1") {
+    	state.theTile01 += "</table>"
     }
+    state.theTileLength01 = state.theTile01.length()
+    
 	if(logEnable) log.debug "In tileHandler01 - state.theTile01: ${state.theTile01}"
 	if(state.theTileLength01 == null) state.theTileLength01 = 0
 }
@@ -873,7 +859,7 @@ def tileHandler02(){
 	if(words02 == null) words02 = ""
 	if(words02a == null) words02a = ""
 	if(words02b == null) words02b = ""
-	if(nSections02 == "1" || nSections02 == "2" || nSections02 == "3") {
+	if(nSections02 >= "1") {
 		if(device02) {
 			state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 			if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
@@ -886,7 +872,7 @@ def tileHandler02(){
             }
 		} else state.deviceStatus02 = ""
 	}
-	if(nSections02 == "2" || nSections02 == "3") {
+	if(nSections02 >= "2") {
 		if(device02a) {
 			state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 			if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
@@ -915,61 +901,46 @@ def tileHandler02(){
 	
 // ***** Make the table for line 2	*****
 	
-	if(nSections02 == "1") {
-		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
-		if(wordsBEF02) makeTileLine("2",wordsBEF02,linkBEF02)
+    state.theTile02 = ""
+
+    if(nSections02 >= "1") {
+        state.theTile02 = "<table style='width:100%'><tr style='text-align:${align02};color:${color02};font-size:${fontSize02}px'><td style='"
+        state.theTile02 += "width:${secWidth02}%'>"
+        if(wordsBEF02) makeTileLine(2,wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
 		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
-		if(wordsAFT02) makeTileLine("2",wordsAFT02,linkAFT02)
+		if(wordsAFT02) makeTileLine(2,wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
-		
-		state.theTile02 += "</table>"
-		state.theTileLength02 = state.theTile02.length()
-	} else if(nSections02 == "2") {
-		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
-		if(wordsBEF02) makeTileLine("2",wordsBEF02,linkBEF02)
-        if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
-		if(wordsAFT02) makeTileLine("2",wordsAFT02,linkAFT02)
-        if(wordsAFT02) state.theTile02 += "${newWords2}"
-		
-		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%'>"
+	} 
+    if(nSections02 >= "2") {
+		state.theTile02 += "<td style='"
+        if (align02a != align02) state.theTile02 += "text-align:${align02a};"
+        if (color02a != color02) state.theTile02 += "color:${color02a};"
+        if (fontSize02a != fontSize02) state.theTile02 += "font-size:${fontSize02a}px;"
+        state.theTile02 += "width:${secWidth02a}%'>"
 		if(wordsBEF02a) makeTileLine("2a",wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
 		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) makeTileLine("2a",wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
-		
-		state.theTile02 += "</table>"
-		state.theTileLength02 = state.theTile02.length()
-	} else if(nSections02 == "3") {
-		state.theTile02 = "<table style='width:100%'><tr><td style='text-align:${align02};color:${color02};font-size:${fontSize02}px;width:${secWidth02}%'>"
-		if(wordsBEF02) makeTileLine("2",wordsBEF02,linkBEF02)
-        if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
-		if(wordsAFT02) makeTileLine("2",wordsAFT02,linkAFT02)
-        if(wordsAFT02) state.theTile02 += "${newWords2}"
-		
-		state.theTile02 += "<td style='text-align:${align02a};color:${color02a};font-size:${fontSize02a}px;width:${secWidth02a}%'>"
-		if(wordsBEF02a) makeTileLine("2a",wordsBEF02a,linkBEF02a)
-        if(wordsBEF02a) state.theTile02 += "${newWords2}"
-		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
-		if(wordsAFT02a) makeTileLine("2a",wordsAFT02a,linkAFT02a)
-        if(wordsAFT02a) state.theTile02 += "${newWords2}"
-		
-		state.theTile02 += "<td style='text-align:${align02b};color:${color02b};font-size:${fontSize02b}px;width:${secWidth02b}%'>"
-        if(wordsBEF02b) makeTileLine("2b",wordsBEF02b,linkBEF02b)
-		if(wordsBEF02b) state.theTile02 += "${wordsBEF02b}"
+	}
+    if(nSections02 == "3") {
+		state.theTile02 += "<td style='"
+        if (align02b != align02) {state.theTile02 += "text-align:${align02b};"}
+        if (color02b != color02) {state.theTile02 += "color:${color02b};"}
+        if (fontSize02b != fontSize02) {state.theTile02 += "font-size:${fontSize02b}px;"}
+        state.theTile02 += "width:${secWidth02b}%'>"
+		if(wordsBEF02b) makeTileLine("2b",wordsBEF02b,linkBEF02b)
+        if(wordsBEF02b) state.theTile02 += "${newWords2}"
 		if(deviceAtts02b) state.theTile02 += "${state.deviceStatus02b}"
 		if(wordsAFT02b) makeTileLine("2b",wordsAFT02b,linkAFT02b)
         if(wordsAFT02b) state.theTile02 += "${newWords2}"
-		
-		state.theTile02 += "</table>"
-		state.theTileLength02 = state.theTile02.length()
-	} else {
-        state.theTile02 = ""
-        state.theTileLength05 = state.theTile02.length()
+	}
+    if(nSections02 >= "1") {
+    	state.theTile02 += "</table>"
     }
+    state.theTileLength02 = state.theTile02.length()
+    
 	if(logEnable) log.debug "In tileHandler02 - state.theTile02: ${state.theTile02}"
 	if(state.theTileLength02 == null) state.theTileLength02 = 0
 }
@@ -982,7 +953,7 @@ def tileHandler03(){
 	if(words03 == null) words03 = ""
 	if(words03a == null) words03a = ""
 	if(words03b == null) words03b = ""
-	if(nSections03 == "1" || nSections03 == "2" || nSections03 == "3") {
+	if(nSections03 >= "1") {
 		if(device03) {
 			state.deviceStatus03 = device03.currentValue("${deviceAtts03}")
 			if(state.deviceStatus03 == null) state.deviceStatus03 = "No Data"
@@ -995,7 +966,7 @@ def tileHandler03(){
             }
 		} else state.deviceStatus03 = ""
 	}
-	if(nSections03 == "2" || nSections03 == "3") {
+	if(nSections03 >= "2") {
 		if(device03a) {
 			state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 			if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
@@ -1024,61 +995,46 @@ def tileHandler03(){
 	
 // ***** Make the table for line 3	*****
 	
-	if(nSections03 == "1") {
-		state.theTile03 = "<table width='100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
-		if(wordsBEF03) makeTileLine("3",wordsBEF03,linkBEF03)
+    state.theTile03 = ""
+
+    if(nSections03 >= "1") {
+        state.theTile03 = "<table style='width:100%'><tr style='text-align:${align03};color:${color03};font-size:${fontSize03}px'><td style='"
+        state.theTile03 += "width:${secWidth03}%'>"
+        if(wordsBEF03) makeTileLine(3,wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
 		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
-		if(wordsAFT03) makeTileLine("3",wordsAFT03,linkAFT03)
+		if(wordsAFT03) makeTileLine(3,wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
-		
-		state.theTile03 += "</table>"
-		state.theTileLength03 = state.theTile03.length()
-	} else if(nSections03 == "2") {
-		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
-		if(wordsBEF03) makeTileLine("3",wordsBEF03,linkBEF03)
-        if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
-		if(wordsAFT03) makeTileLine("3",wordsAFT03,linkAFT03)
-        if(wordsAFT03) state.theTile03 += "${newWords2}"
-		
-		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%'>"
+	} 
+    if(nSections03 >= "2") {
+		state.theTile03 += "<td style='"
+        if (align03a != align03) state.theTile03 += "text-align:${align03a};"
+        if (color03a != color03) state.theTile03 += "color:${color03a};"
+        if (fontSize03a != fontSize03) state.theTile03 += "font-size:${fontSize03a}px;"
+        state.theTile03 += "width:${secWidth03a}%'>"
 		if(wordsBEF03a) makeTileLine("3a",wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
 		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) makeTileLine("3a",wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
-		
-		state.theTile03 += "</table>"
-		state.theTileLength03 = state.theTile03.length()
-	} else if(nSections03 == "3") {
-		state.theTile03 = "<table style='width:100%'><tr><td style='text-align:${align03};color:${color03};font-size:${fontSize03}px;width:${secWidth03}%'>"
-		if(wordsBEF03) makeTileLine("3",wordsBEF03,linkBEF03)
-        if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
-		if(wordsAFT03) makeTileLine("3",wordsAFT03,linkAFT03)
-        if(wordsAFT03) state.theTile03 += "${newWords2}"
-		
-		state.theTile03 += "<td style='text-align:${align03a};color:${color03a};font-size:${fontSize03a}px;width:${secWidth03a}%'>"
-		if(wordsBEF03a) makeTileLine("3a",wordsBEF03a,linkBEF03a)
-        if(wordsBEF03a) state.theTile03 += "${newWords2}"
-		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
-		if(wordsAFT03a) makeTileLine("3a",wordsAFT03a,linkAFT03a)
-        if(wordsAFT03a) state.theTile03 += "${newWords2}"
-		
-		state.theTile03 += "<td style='text-align:${align03b};color:${color03b};font-size:${fontSize03b}px;width:${secWidth03b}%'>"
+	}
+    if(nSections03 == "3") {
+		state.theTile03 += "<td style='"
+        if (align03b != align03) {state.theTile03 += "text-align:${align03b};"}
+        if (color03b != color03) {state.theTile03 += "color:${color03b};"}
+        if (fontSize03b != fontSize03) {state.theTile03 += "font-size:${fontSize03b}px;"}
+        state.theTile03 += "width:${secWidth03b}%'>"
 		if(wordsBEF03b) makeTileLine("3b",wordsBEF03b,linkBEF03b)
         if(wordsBEF03b) state.theTile03 += "${newWords2}"
 		if(deviceAtts03b) state.theTile03 += "${state.deviceStatus03b}"
 		if(wordsAFT03b) makeTileLine("3b",wordsAFT03b,linkAFT03b)
         if(wordsAFT03b) state.theTile03 += "${newWords2}"
-		
-		state.theTile03 += "</table>"
-		state.theTileLength03 = state.theTile03.length()
-	} else {
-        state.theTile03 = ""
-        state.theTileLength05 = state.theTile03.length()
+	}
+    if(nSections03 >= "1") {
+    	state.theTile03 += "</table>"
     }
+    state.theTileLength03 = state.theTile03.length()
+    
 	if(logEnable) log.debug "In tileHandler03 - state.theTile03: ${state.theTile03}"
 	if(state.theTileLength03 == null) state.theTileLength03 = 0
 }
@@ -1091,7 +1047,7 @@ def tileHandler04(){
 	if(words04 == null) words04 = ""
 	if(words04a == null) words04a = ""
 	if(words04b == null) words04b = ""
-	if(nSections04 == "1" || nSections04 == "2" || nSections04 == "3") {
+	if(nSections04 >= "1") {
 		if(device04) {
 			state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 			if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
@@ -1104,7 +1060,7 @@ def tileHandler04(){
             }
 		} else state.deviceStatus04 = ""
 	}
-	if(nSections04 == "2" || nSections04 == "3") {
+	if(nSections04 >= "2") {
 		if(device04a) {
 			state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 			if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
@@ -1133,61 +1089,46 @@ def tileHandler04(){
 	
 // ***** Make the table for line 4	*****
 	
-	if(nSections04 == "1") {
-		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"	// 61 + 12 + 17 (100)
-		if(wordsBEF04) makeTileLine("4",wordsBEF04,linkBEF04)
+    state.theTile04 = ""
+
+    if(nSections04 >= "1") {
+        state.theTile04 = "<table style='width:100%'><tr style='text-align:${align04};color:${color04};font-size:${fontSize04}px'><td style='"
+        state.theTile04 += "width:${secWidth04}%'>"
+        if(wordsBEF04) makeTileLine(4,wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
 		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
-		if(wordsAFT04) makeTileLine("4",wordsAFT04,linkAFT04)
+		if(wordsAFT04) makeTileLine(4,wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
-		
-		state.theTile04 += "</table>"		// 18
-		state.theTileLength04 = state.theTile04.length()
-	} else if(nSections04 == "2") {
-		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"
-		if(wordsBEF04) makeTileLine("4",wordsBEF04,linkBEF04)
-        if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
-		if(wordsAFT04) makeTileLine("4",wordsAFT04,linkAFT04)
-        if(wordsAFT04) state.theTile04 += "${newWords2}"
-		
-		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%'>"
+	} 
+    if(nSections04 >= "2") {
+		state.theTile04 += "<td style='"
+        if (align04a != align04) state.theTile04 += "text-align:${align04a};"
+        if (color04a != color04) state.theTile04 += "color:${color04a};"
+        if (fontSize04a != fontSize04) state.theTile04 += "font-size:${fontSize04a}px;"
+        state.theTile04 += "width:${secWidth04a}%'>"
 		if(wordsBEF04a) makeTileLine("4a",wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
 		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) makeTileLine("4a",wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
-		
-		state.theTile04 += "</table>"
-		state.theTileLength04 = state.theTile04.length()
-	} else if(nSections04 == "3") {
-		state.theTile04 = "<table style='width:100%'><tr><td style='text-align:${align04};color:${color04};font-size:${fontSize04}px;width:${secWidth04}%'>"
-		if(wordsBEF04) makeTileLine("4",wordsBEF04,linkBEF04)
-        if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
-		if(wordsAFT04) makeTileLine("4",wordsAFT04,linkAFT04)
-        if(wordsAFT04) state.theTile04 += "${newWords2}"
-		
-		state.theTile04 += "<td style='text-align:${align04a};color:${color04a};font-size:${fontSize04a}px;width:${secWidth04a}%'>"
-		if(wordsBEF04a) makeTileLine("4a",wordsBEF04a,linkBEF04a)
-        if(wordsBEF04a) state.theTile04 += "${newWords2}"
-		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
-		if(wordsAFT04a) makeTileLine("4a",wordsAFT04a,linkAFT04a)
-        if(wordsAFT04a) state.theTile04 += "${newWords2}"
-		
-		state.theTile04 += "<td style='text-align:${align04b};color:${color04b};font-size:${fontSize04b}px;width:${secWidth04b}%'>"
+	}
+    if(nSections04 == "3") {
+		state.theTile04 += "<td style='"
+        if (align04b != align04) {state.theTile04 += "text-align:${align04b};"}
+        if (color04b != color04) {state.theTile04 += "color:${color04b};"}
+        if (fontSize04b != fontSize04) {state.theTile04 += "font-size:${fontSize04b}px;"}
+        state.theTile04 += "width:${secWidth04b}%'>"
 		if(wordsBEF04b) makeTileLine("4b",wordsBEF04b,linkBEF04b)
         if(wordsBEF04b) state.theTile04 += "${newWords2}"
 		if(deviceAtts04b) state.theTile04 += "${state.deviceStatus04b}"
 		if(wordsAFT04b) makeTileLine("4b",wordsAFT04b,linkAFT04b)
         if(wordsAFT04b) state.theTile04 += "${newWords2}"
-		
-		state.theTile04 += "</table>"
-		state.theTileLength04 = state.theTile04.length()
-	} else {
-        state.theTile04 = ""
-        state.theTileLength05 = state.theTile04.length()
+	}
+    if(nSections04 >= "1") {
+    	state.theTile04 += "</table>"
     }
+    state.theTileLength04 = state.theTile04.length()
+    
 	if(logEnable) log.debug "In tileHandler04 - state.theTile04: ${state.theTile04}"
 	if(state.theTileLength04 == null) state.theTileLength04 = 0
 }
@@ -1200,7 +1141,7 @@ def tileHandler05(){
 	if(words05 == null) words05 = ""
 	if(words05a == null) words05a = ""
 	if(words05b == null) words05b = ""
-	if(nSections05 == "1" || nSections05 == "2" || nSections05 == "3") {
+	if(nSections05 >= "1") {
 		if(device05) {
 			state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 			if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
@@ -1213,7 +1154,7 @@ def tileHandler05(){
             }
 		} else state.deviceStatus05 = ""
 	}
-	if(nSections05 == "2" || nSections05 == "3") {
+	if(nSections05 >= "2") {
 		if(device05a) {
 			state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 			if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
@@ -1242,61 +1183,46 @@ def tileHandler05(){
 	
 // ***** Make the table for line 5	*****
 	
-	if(nSections05 == "1") {
-		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
-		if(wordsBEF05) makeTileLine("5",wordsBEF05,linkBEF05)
+    state.theTile05 = ""
+
+    if(nSections05 >= "1") {
+        state.theTile05 = "<table style='width:100%'><tr style='text-align:${align05};color:${color05};font-size:${fontSize05}px'><td style='"
+        state.theTile05 += "width:${secWidth05}%'>"
+        if(wordsBEF05) makeTileLine(5,wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
 		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
-		if(wordsAFT05) makeTileLine("5",wordsAFT05,linkAFT05)
+		if(wordsAFT05) makeTileLine(5,wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
-		
-		state.theTile05 += "</table>"
-		state.theTileLength05 = state.theTile05.length()
-	} else if(nSections05 == "2") {
-		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
-		if(wordsBEF05) makeTileLine("5",wordsBEF05,linkBEF05)
-        if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
-		if(wordsAFT05) makeTileLine("5",wordsAFT05,linkAFT05)
-        if(wordsAFT05) state.theTile05 += "${newWords2}"
-		
-		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%'>"
+	} 
+    if(nSections05 >= "2") {
+		state.theTile05 += "<td style='"
+        if (align05a != align05) state.theTile05 += "text-align:${align05a};"
+        if (color05a != color05) state.theTile05 += "color:${color05a};"
+        if (fontSize05a != fontSize05) state.theTile05 += "font-size:${fontSize05a}px;"
+        state.theTile05 += "width:${secWidth05a}%'>"
 		if(wordsBEF05a) makeTileLine("5a",wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
 		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) makeTileLine("5a",wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
-		
-		state.theTile05 += "</table>"
-		state.theTileLength05 = state.theTile05.length()
-	} else if(nSections05 == "3") {
-		state.theTile05 = "<table style='width:100%'><tr><td style='text-align:${align05};color:${color05};font-size:${fontSize05}px;width:${secWidth05}%'>"
-		if(wordsBEF05) makeTileLine("5",wordsBEF05,linkBEF05)
-        if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
-		if(wordsAFT05) makeTileLine("5",wordsAFT05,linkAFT05)
-        if(wordsAFT05) state.theTile05 += "${newWords2}"
-		
-		state.theTile05 += "<td style='text-align:${align05a};color:${color05a};font-size:${fontSize05a}px;width:${secWidth05a}%'>"
-		if(wordsBEF05a) makeTileLine("5a",wordsBEF05a,linkBEF05a)
-        if(wordsBEF05a) state.theTile05 += "${newWords2}"
-		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
-		if(wordsAFT05a) makeTileLine("5a",wordsAFT05a,linkAFT05a)
-        if(wordsAFT05a) state.theTile05 += "${newWords2}"
-		
-		state.theTile05 += "<td style='text-align:${align05b};color:${color05b};font-size:${fontSize05b}px;width:${secWidth05b}%'>"
+	}
+    if(nSections05 == "3") {
+		state.theTile05 += "<td style='"
+        if (align05b != align05) {state.theTile05 += "text-align:${align05b};"}
+        if (color05b != color05) {state.theTile05 += "color:${color05b};"}
+        if (fontSize05b != fontSize05) {state.theTile05 += "font-size:${fontSize05b}px;"}
+        state.theTile05 += "width:${secWidth05b}%'>"
 		if(wordsBEF05b) makeTileLine("5b",wordsBEF05b,linkBEF05b)
         if(wordsBEF05b) state.theTile05 += "${newWords2}"
 		if(deviceAtts05b) state.theTile05 += "${state.deviceStatus05b}"
 		if(wordsAFT05b) makeTileLine("5b",wordsAFT05b,linkAFT05b)
         if(wordsAFT05b) state.theTile05 += "${newWords2}"
-		
-		state.theTile05 += "</table>"
-		state.theTileLength05 = state.theTile05.length()
-    } else {
-        state.theTile05 = ""
-        state.theTileLength05 = state.theTile05.length()
+	}
+    if(nSections05 >= "1") {
+    	state.theTile05 += "</table>"
     }
+    state.theTileLength05 = state.theTile05.length()
+    
 	if(logEnable) log.debug "In tileHandler05 - state.theTile05: ${state.theTile05}"
 	if(state.theTileLength05 == null) state.theTileLength05 = 0
 }
