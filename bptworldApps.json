@@ -463,7 +463,7 @@
   "SnapshotDiscussion": "https://community.hubitat.com/t/release-snapshot/12042",
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
-  "TileMasterParentVersion": "v2.0.4",
+  "TileMasterParentVersion": "v2.0.5",
   "TileMasterChild1Version": "v2.1.1",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
@@ -478,7 +478,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.1.1 - 11/01/19 - Updated Table build logic to minimize formatting (jerry.molenaar)",
+  "TileMasterUpdateNote": "V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.1",
