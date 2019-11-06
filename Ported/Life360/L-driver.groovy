@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.1.7 - 11/03/19 - Minor changes
  *  v1.1.6 - 09/20/19 - Small changes to tile code, rewrite of the History Log code
  *  v1.1.5 - 09/16/19 - Updated 'free' tile to show more data points
  *  v1.1.4 - 08/29/19 - App Watchdog Compatible
@@ -35,15 +36,7 @@
  *  V1.1.2 - 07/28/19 - Squashed a bug
  *  V1.1.1 - 07/19/19 - Place is now clickable on the status tile.
  *  V1.1.0 - 07/17/19 - Added map link to attributes
- *  V1.0.9 - 07/13/19 - Code touchups by cwwilson08
- *  V1.0.8 - 07/12/19 - Minor changes, code cleanup
- *  V1.0.7 - 07/10/19 - Added code for dashboard tiles, Info and Places tiles
- *  V1.0.6 - 07/10/19 - Added a Dashboard Tile
- *  V1.0,5 - 07/08/19 - Added Avatar and code cleanup (cwwilson08)
- *  V1.0.4 - 07/07/19 - Removed clientID field, no longer needed
- *  V1.0.3 - 07/03/19 - Changed booleans to strings so it'll work with RM. Thanks @doug
- *  V1.0.2 - 07/02/19 - Added clientID, updated namespace/author so if something goes wrong people know who to contact.
- *  V1.0.1 - 06/30/19 - Added code to turn debug logging on and off (bptworld)
+ *  --
  *  V1.0.0 - 06/30/19 - Initial port of driver for Hubitat (bptworld)
  */
  
@@ -51,7 +44,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     appName = "Life360User"
-	version = "v1.1.6" 
+	version = "v1.1.7" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -86,8 +79,7 @@ metadata {
 	    attribute "distanceMetric", "Number"
    	    attribute "distanceKm", "Number"
 	    attribute "distanceMiles", "Number"
-        attribute "prevAddress1", "String"
-        attribute "prevAddress2", "String"
+        attribute "address1Prev", "String"
 	    attribute "address1", "String"
   	    attribute "address2", "String"
   	    attribute "battery", "number"
@@ -136,7 +128,6 @@ def sendLife360Tile1() {
     if(logEnable) log.debug "in Life360 User - Making the Avatar Tile"
     def avat = device.currentValue('avatar')
     def add1 = device.currentValue('address1')
-    def bThere = device.currentValue('since')
     def bLevel = device.currentValue('battery')
     def bCharge = device.currentValue('powerSource')
     def bSpeedKm = device.currentValue('speedKm')
@@ -330,56 +321,54 @@ private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriv
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
 	if(address1 != device.currentValue('address1')){
-sendEvent( name: "prevAddress1", value: device.currentValue('address1') )
-sendEvent( name: "address1", value: address1, isStateChange: true, displayed: false )
+        sendEvent( name: "address1Prev", value: device.currentValue('address1') )
+        sendEvent( name: "address1", value: address1, isStateChange: true, displayed: true )
+        sendEvent( name: "since", value: since )
 	}
-if(address2 != device.currentValue('address2')){
-sendEvent( name: "prevAddress2", value: device.currentValue('address2') )
-sendEvent( name: "address2", value: address2 )   
+    if(address2 != device.currentValue('address2')){
+        sendEvent( name: "address2", value: address2 )   
 	}
 	if(battery != device.currentValue('battery'))
-   	sendEvent( name: "battery", value: battery )
-if(charge != device.currentValue('charge'))
-   	sendEvent( name: "charge", value: charge )
+   	    sendEvent( name: "battery", value: battery )
+    if(charge != device.currentValue('charge'))
+   	    sendEvent( name: "charge", value: charge )
 
-def curcheckin = device.currentValue('lastCheckin').toString()
-if(endTimestamp != curcheckin)
-   	sendEvent( name: "lastCheckin", value: endTimestamp )
-if(inTransit != device.currentValue('inTransit'))
-   	sendEvent( name: "inTransit", value: inTransit )
+    def curcheckin = device.currentValue('lastCheckin').toString()
+    if(endTimestamp != curcheckin)
+   	    sendEvent( name: "lastCheckin", value: endTimestamp )
+    if(inTransit != device.currentValue('inTransit'))
+   	    sendEvent( name: "inTransit", value: inTransit )
 
 	def curDriving = device.currentValue('isDriving')
-//if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
-if(isDriving != device.currentValue('isDriving')){
+    //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
+    if(isDriving != device.currentValue('isDriving')){
 	//if(logEnable) log.debug "If was different, isDriving = $isDriving"
-   	sendEvent( name: "isDriving", value: isDriving )
-}
-def curlat = device.currentValue('latitude').toString()
-def curlong = device.currentValue('longitude').toString()
-latitude = latitude.toString()
-longitude = longitude.toString()
-if(latitude != curlat)
-sendEvent( name: "latitude", value: latitude )
-if(longitude != curlong)
-   	sendEvent( name: "longitude", value: longitude )
-if(since != device.currentValue('since'))
-   	sendEvent( name: "since", value: since )
-if(speedMetric != device.currentValue('speedMetric'))
-	sendEvent( name: "speedMetric", value: speedMetric )
-if(speedMiles != device.currentValue('speedMiles'))
-	sendEvent( name: "speedMiles", value: speedMiles )
-if(speedKm != device.currentValue('speedKm'))
-	sendEvent( name: "speedKm", value: speedKm )
-if(wifiState != device.currentValue('wifiState'))
-   	sendEvent( name: "wifiState", value: wifiState )
-setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+   	    sendEvent( name: "isDriving", value: isDriving )
+    }
+    def curlat = device.currentValue('latitude').toString()
+    def curlong = device.currentValue('longitude').toString()
+    latitude = latitude.toString()
+    longitude = longitude.toString()
+    if(latitude != curlat)
+        sendEvent( name: "latitude", value: latitude )
+    if(longitude != curlong)
+       	sendEvent( name: "longitude", value: longitude )
+    if(speedMetric != device.currentValue('speedMetric'))
+    	sendEvent( name: "speedMetric", value: speedMetric )
+    if(speedMiles != device.currentValue('speedMiles'))
+    	sendEvent( name: "speedMiles", value: speedMiles )
+    if(speedKm != device.currentValue('speedKm'))
+    	sendEvent( name: "speedKm", value: speedKm )
+    if(wifiState != device.currentValue('wifiState'))
+       	sendEvent( name: "wifiState", value: wifiState )
+    setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
 
-sendEvent( name: "savedPlaces", value: xplaces )
+    sendEvent( name: "savedPlaces", value: xplaces )
     
-sendEvent( name: "avatar", value: avatar )
-sendEvent( name: "avatarHtml", value: avatarHtml )
+    sendEvent( name: "avatar", value: avatar )
+    sendEvent( name: "avatarHtml", value: avatarHtml )
 
-sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
+    sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
     
     sendLife360Tile1()
 }
