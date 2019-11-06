@@ -44,10 +44,10 @@
   "Life360ContainerDiscussion": "",
   "Life360ContainerUpdateNote": "v1.0.2 - 08/29/19 - App Watchdog compatible",
   
-  "Life360UserVersion": "v1.1.6",
+  "Life360UserVersion": "v1.1.7",
   "Life360UserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
   "Life360UserDiscussion": "",
-  "Life360UserUpdateNote": "v1.1.6 - 09/20/19 - Small changes to tile code, rewrite of the History Log code",
+  "Life360UserUpdateNote": "v1.1.7 - 11/03/19 - Minor changes",
   
   
   "LogWatchdogVersion": "v1.0.7",
