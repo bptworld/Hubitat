@@ -240,7 +240,7 @@
   "HomeTrackerChild3RawCode": "",
   "HomeTrackerChild4RawCode": "",
   "HomeTrackerDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
-  "HomeTrackerUpdateNote": "V2.0.7 - 11/04/19 - Code changes to get rid of some gremlins, got rid of the message queue as it was always getting stuck,
+  "HomeTrackerUpdateNote": "V2.0.7 - 11/04/19 - Code changes to get rid of some gremlins, got rid of the message queue as it was always getting stuck",
   
   "HubWatchdogParentVersion": "V1.0.1",
   "HubWatchdogChild1Version": "V1.0.7",
