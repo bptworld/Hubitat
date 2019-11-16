@@ -2,7 +2,7 @@
  *  ****************  Simple Dates Child App  ****************
  *
  *  Design Usage:
- *  Create a simple coutdown to your most important dates.
+ *  Create a simple countdown to your most important dates.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 11/16/19 - Date output now available in two formats - MM/DD/YYYY or DD/MM/YYY
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.0 - 06/03/19 - Initial release.
  *
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "SimpleDatesChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -64,7 +65,7 @@ definition(
     name: "Simple Dates Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Create a simple coutdown to your most important dates.",
+    description: "Create a simple countdown to your most important dates.",
     category: "Convenience",
 	parent: "BPTWorld:Simple Dates",
     iconUrl: "",
@@ -80,9 +81,9 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Simple Dates</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
-        section("Instructions:", hideable: true, hidden: true) {
+        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-            paragraph "Simple Dates - Create a simple coutdown to your most important dates."
+            paragraph "Simple Dates - Create a simple countdown to your most important dates."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Event Dates")) {
 			input "month1", "enum", title: "Select Month", required: false, multiple: false, width: 4, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
@@ -188,7 +189,8 @@ def pageConfig() {
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input "dateType", "bool", title: "Date Format - <b>off</b>: MM/DD/YYYY - <b>on</b>: DD/MM/YYYY", defaultValue:false, submitOnChange:true
+            input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "debugging"
 		}
 		display2()
 	}
@@ -250,8 +252,12 @@ def startTheProcess() {
 				if(daysLeft1 <= 3 && daysLeft1 >= 1) daysLeft2 = "<div style='color: ${threeDayColor};'><b>${daysLeft1}</b></div>"
 				if(daysLeft1 == 0) daysLeft2 = "<div style='color: ${theDayColor};'><b>Today!</b></div>"
 			
-				fDate = futureDate.getDateString()
-			
+				nfDate = futureDate.getDateString()
+                
+                def dateFormat = nfDate.split("/")
+                if(!dateType) { fDate = "${dateFormat[0]}/${dateFormat[1]}/${dateFormat[2]}" }
+                if(dateType) { fDate = "${dateFormat[1]}/${dateFormat[0]}/${dateFormat[2]}" }
+
 				if((state.count >= 1) && (state.count <= 5)) state.theReminderMap1S += "<tr><td width='8%'>${fDate}</td><td width='2%'> </td><td width='80%'>${theEvent}</td><td width='10%'>${daysLeft2}</td></tr>"
 				if((state.count >= 6) && (state.count <= 10)) state.theReminderMap2S += "<tr><td width='8%'>${fDate}</td><td width='2%'> </td><td width='80%'>${theEvent}</td><td width='10%'>${daysLeft2}</td></tr>"
 				state.reminderMapPhoneS += "${fDate} - ${theEvent} - ${daysLeft1} \n"
@@ -279,8 +285,9 @@ def startTheProcess() {
 def createMaps(){
     Calendar calendar = new GregorianCalendar()
     int currentYear = calendar.get(Calendar.YEAR)
-    def nowDate = new Date().format('MM/dd/yyyy', location.timeZone)
+    def nowDate = new Date().format('MM/dd/yyyy', location.timeZone)        
 	Date todayDate = Date.parse('MM/dd/yyyy', nowDate).clearTime()
+        
     if(logEnable) log.debug "In createMaps - Year: ${currentYear}"
     
 	state.reminderMap = [:]
@@ -445,16 +452,28 @@ def pushHandler(){
    	sendPushMessage.deviceNotification(theMessage)
 }
 
+def getDateTime() {
+	def date = new Date()
+	if(dateType == false) newdate=date.format("MM-d HH:mm")
+	if(dateType == true) newdate=date.format("MM-d hh:mm")
+    return newdate
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
+    if(dateType == null){dateType = false}
 	if(state.msg == null){state.msg = ""}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
 }
 
 def getFormat(type, myText=""){			// Modified from @Stephack Code
