@@ -2,7 +2,7 @@
  *  **************** Room Director Parent ****************
  *
  *  Design Usage:
- *  Make your rooms smarter by directing them to do what you want, automaticaly.
+ *  Make your rooms smarter by directing them to do what you want, automatically.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *
@@ -57,7 +57,7 @@ definition(
     name:"Room Director",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Make your rooms smarter by directing them to do what you want, automaticaly.",
+    description: "Make your rooms smarter by directing them to do what you want, automatically.",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
@@ -94,7 +94,7 @@ def mainPage() {
 		if(state.appInstalled == 'COMPLETE'){
             display()
 			section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-                paragraph "<div style='color:#1A77C9'>Make your rooms smarter by directing them to do what you want, automaticaly.</div>"
+                paragraph "<div style='color:#1A77C9'>Make your rooms smarter by directing them to do what you want, automatically.</div>"
 				paragraph "<b>Notes:</b>"
 				paragraph "- Create a new child app for each room you want to control"
 			}
