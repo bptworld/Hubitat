@@ -290,19 +290,27 @@ def speechOptions(){
            input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
            input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		    paragraph "NOTE: Not all speakers can use volume controls.", width:8
-            paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-            input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
-		    input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
-            input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
-			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-            input "fromTime", "time", title: "From", required: false, width: 6
-        	input "toTime", "time", title: "To", required: false, width: 6
-		}
+        if(!speakerProxy) {
+            if(speakerMP || speakerSS) {
+		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
+                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
+		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
+                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
+		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
+    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
+                }
+		    }
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+                input "fromTime", "time", title: "From", required:false, width: 6
+        	    input "toTime", "time", title: "To", required:false, width: 6
+		    }
+        } else {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
+		        paragraph "Speaker proxy in use (Smaht!)."
+            }
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
         }
