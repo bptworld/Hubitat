@@ -1,7 +1,7 @@
 /**
  *  **************** Room Director Child App ****************
  *  Design Usage:
- *  Make your rooms smarter by directing them to do what you want, automaticaly.
+ *  Make your rooms smarter by directing them to do what you want, automatically.
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
@@ -59,7 +59,7 @@ definition(
     name: "Room Director Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Make your rooms smarter by directing them to do what you want, automaticaly.",
+    description: "Make your rooms smarter by directing them to do what you want, automatically.",
     category: "",
 	parent: "BPTWorld:Room Director",
     iconUrl: "",
@@ -81,7 +81,7 @@ def pageConfig() {
 		display()
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-			paragraph "Make your rooms smarter by directing them to do what you want, automaticaly."
+			paragraph "Make your rooms smarter by directing them to do what you want, automatically."
 		}
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Trigger")) {
             paragraph "This is what will trigger the room to be occupied."
