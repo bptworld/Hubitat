@@ -6,7 +6,7 @@
  *
  *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
  *  people know that it exists!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
@@ -35,63 +35,24 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.3.4 - 05/24/19 - Fixed typo
- *  V1.3.3 - 04/26/19 - Fix Device turning on when there is nothing to report.
- *  V1.3.2 - 04/22/19 - Put a trap in to catch devices that have no previous activity.
- *  V1.3.1 - 04/15/19 - More Code cleanup
- *  V1.3.0 - 04/14/19 - Adjusted reports, added importUrl and some code cleanup.
- *  V1.2.9 - 03/31/19 - Fix bug in push for Device Status. Status report now available for dashboard tiles.
- *  V1.2.8 - 03/30/19 - Fix push notifications going out even if there was nothing to report.
- *  V1.2.7 - 03/18/19 - BIG changes due to tile limit size.
- *  V1.2.6 - 03/12/19 - Battery report is now sorted lowest to highest battery percentage. Activity is sorted newest to oldest.
- *						Status is sorted by Device Name.
- *  V1.2.5 - 03/03/19 - Removed some error checking put in v1.2.2 - If you have a device causing an error in the Device Status
- *						reporting, you will need to remove the device from this app rather than the app catching it.
- *  V1.2.4 - 03/03/19 - Functions cleanup. Changes by @gabriele
- *  V1.2.3 - 02/26/19 - Removed Actuator and Sensor options for Device Status reporting
- *  V1.2.2 - 02/26/19 - Attempt to fix an error in the new Device Status reporting
- *  V1.2.1 - 02/25/19 - Second attempt at new Device Status reporting
- *  V1.2.0 - 02/25/19 - Added a new report type - Device Status
- *  V1.1.9 - 02/24/19 - Fixed Pushover reports.
- *  V1.1.8 - 02/16/19 - Trying to track down an error - Resolved.
- *  V1.1.7 - 02/13/19 - Added more error checking.
- *  V1.1.6 - 02/12/19 - Removed 'All battery devices' switch and other code cleanup.
- *  V1.1.5 - 02/11/19 - Fix the previous report not sometimes clearing before displaying the new report.
- *  V1.1.4 - 02/10/19 - Added a switch to run a report any time.
- *  V1.1.3 - 01/31/19 - Fixed Pause and Disable/Enable not working.
- *  V1.1.2 - 01/31/19 - Added ability to turn on a device when there is something to report
- *  V1.1.1 - 01/28/19 - Under the hood rewrite, better reporting. Also added NEW Device Watchdog Tile for use with dashboards
- *  V1.1.0 - 01/25/19 - Added more wording regarding the 'all battery devices' switch
- *  V1.0.9 - 01/17/19 - Toggle switch added, Send or not to send Push notification when there is nothing to report.
- *  V1.0.8 - 01/15/19 - Updated footer with update check and links
- *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
- *						attribute is null/blank/non-existent. Previously it showed 0. Also adjusted the output on the Push report.
- *  V1.0.6 - 01/01/19 - Fixed typo in Pushover module.
- *  V1.0.5 - 12/31/18 - Fixed debug logging.
- *  V1.0.4 - 12/30/18 - Updated to my new color theme.
- *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
- *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
- *						Added option to select 'all devices' for Battery Level trigger.
- *						Fixed Pushover to send a 'No devices to report' message instead of a blank message.
- *  V1.0.1 - 12/27/18 - Code cleanup.
+ *  ---
  *  V1.0.0 - 12/21/18 - Initial release.
  *
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceWatchdogChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -115,14 +76,14 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "pageConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Device Watchdog</h2>", nextPage: null, install: true, uninstall: true) {	
+    dynamicPage(name: "pageConfig", title: "", nextPage: null, install: true, uninstall: true) {	
     display()
-		section("Instructions:", hideable: true, hidden: true) {
+		section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "- Devices may show up in multiple lists but each device only needs to be selected once.<br>- All changes are saved right away, no need to exit out and back in before generating a new report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
-			href "pageStatus", title: "Device Report", description: "Click here to view the Device Report."
+			href "pageStatus", title: "${getImage('reports')} Device Report", description: "Click here to view the Device Report."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Define whether this child app will be for checking Activity, Battery Levels or Status")) {
 			input "triggerMode", "enum", required: true, title: "Select Trigger Type", submitOnChange: true, options: ["Activity", "Battery_Level", "Status"]
@@ -214,7 +175,7 @@ def pageConfig() {
 				input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to a run new report", submitOnChange: true, required: false, multiple: false
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
-			section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
+			section("${getImage('instructions')} <b>Instructions for Dashboard Tile</b>:", hideable: true, hidden: true) {
 				paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
 				paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Device Watchdog Tile'<br> - Use our 'Device Watchdog Tile' Driver<br> - Then select this new device below"
 				paragraph "Now all you have to do is add this device to one of your dashboards to see your counts on a tile!<br>Add a new tile with the following selections"
@@ -282,12 +243,14 @@ def pageConfig() {
 }
 
 def pageStatus(params) {
-	dynamicPage(name: "pageStatus", title: "Device Watchdog - Status", nextPage: null, install: false, uninstall: false) {
+	dynamicPage(name: "pageStatus", title: "", nextPage: null, install: false, uninstall: false) {
 		activityHandler()
+        display()
 		if(triggerMode == "Battery_Level") {  // Battery
 			if(badORgood == false) {  // less than
 				if(state.count >= 1) {
-        			section("${state.count} devices have reported Battery levels less than $batteryThreshold - From low to high<br>* Only showing the lowest 25") {
+        			section() {
+                        paragraph "getFormat('title2', '${state.count} devices have reported Battery levels less than $batteryThreshold - From low to high<br>* Only showing the lowest 25'"
 						paragraph "${state.batteryMap1S}<br>${state.batteryMap2S}<br>${state.batteryMap3S}<br>${state.batteryMap4S}<br>${state.batteryMap5S}<br>${state.batteryMap6S}"
         			}
 				} else {
@@ -310,21 +273,21 @@ def pageStatus(params) {
 		if(triggerMode == "Activity") {
 			if(badORgood == false) {
 				if(state.count >= 1) {
-        			section("${state.count} devices have not reported in for $timeAllowed hour(s)") {
+        			section(getFormat("title2", "${state.count} devices have not reported in for $timeAllowed hour(s)")) {
 						paragraph "${state.timeSinceMap1S}<br>${state.timeSinceMap2S}<br>${state.timeSinceMap3S}<br>${state.timeSinceMap4S}<br>${state.timeSinceMap5S}<br>${state.timeSinceMap6S}"
         			}
 				} else {
-					section("${state.count} devices have not reported in for $timeAllowed hour(s)") {
+					section(getFormat("title2", "${state.count} devices have not reported in for $timeAllowed hour(s)")) {
 						paragraph "Nothing to report"
         			}
 				}
 			} else {
 				if(state.count >= 1) {
-        			section("${state.count} devices have reported in less than $timeAllowed hour(s)") {
+        			section(getFormat("title2", "${state.count} devices have reported in less than $timeAllowed hour(s)")) {
 						paragraph "${state.timeSinceMap1S}<br>${state.timeSinceMap2S}<br>${state.timeSinceMap3S}<br>${state.timeSinceMap4S}<br>${state.timeSinceMap5S}<br>${state.timeSinceMap6S}"
         			}
 				} else {
-					section("${state.count} devices have reported in less than $timeAllowed hour(s)") {
+					section(getFormat("title2", "${state.count} devices have reported in less than $timeAllowed hour(s)")) {
 						paragraph "Nothing to report"
 					}
 				}
@@ -335,6 +298,7 @@ def pageStatus(params) {
 				paragraph "${state.statusMap1S}<br>${state.statusMap2S}<br>${state.statusMap3S}<br>${state.statusMap4S}<br>${state.statusMap5S}"
 			}
 		}
+        section() { paragraph getFormat("line") }
 	}
 }
 
@@ -364,6 +328,8 @@ def initialize() {
 		if(timeToRun) schedule(timeToRun, activityHandler)
 	}
 	if(runReportSwitch) subscribe(runReportSwitch, "switch", activityHandler)
+    
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def watchdogMapHandler(evt) {
@@ -425,8 +391,6 @@ def watchdogMapHandler(evt) {
 
 def activityHandler(evt) {
 	clearMaps()
-		if(pauseApp == true){log.warn "${app.label} - App paused"}
-    	if(pauseApp == false){
 			if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
 			if(actuatorDevice) {
 				if(triggerMode == "Activity") mySensorHandler("Actuator", actuatorDevice)
@@ -544,7 +508,6 @@ def activityHandler(evt) {
 			if(isDataBatteryDevice) isThereData()
 			if(isDataStatusDevice) isThereData()
 			if(sendPushMessage) pushNow()
-		}
 }	
 
 def myBatteryHandler(myType, mySensors) {
@@ -857,7 +820,7 @@ def isThereData(){
 	if(logEnable) log.debug "In isThereData..."
 	if(triggerMode == "Activity") {
 		if(logEnable) log.debug "In isThereData - Activity - ${state.timeSinceCount}"
-		if(state.timeSinceCount >= 0) {
+		if(state.timeSinceCount >= 1) {
 			isDataActivityDevice.on()
 		} else {
 			isDataActivityDevice.off()
@@ -865,7 +828,7 @@ def isThereData(){
 	}
 	if(triggerMode == "Battery_Level") {
 		if(logEnable) log.debug "In isThereData - Battery - ${state.batteryCount}"
-		if(state.batteryCount >= 0) {
+		if(state.batteryCount >= 1) {
 			isDataBatteryDevice.on()
 		} else {
 			isDataBatteryDevice.off()
@@ -873,7 +836,7 @@ def isThereData(){
 	}
 	if(triggerMode == "Status") {
 		if(logEnable) log.debug "In isThereData - Status - ${state.statusCount}"
-		if(state.statusCount >= 0) {
+		if(state.statusCount >= 1) {
 			isDataStatusDevice.on()
 		} else {
 			isDataStatusDevice.off()
@@ -950,7 +913,6 @@ def eventCheck(evt) {						// Added by @gabriele
 
 def setDefaults(){
 	setupNewStuff()
-    if(pauseApp == null){pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(pushAll == null){pushAll = false}
 	if(state.reportCount == null){state.reportCount = 0}
@@ -959,20 +921,26 @@ def setDefaults(){
 def getImage(type) {							// Modified Code from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30>"
+    if(type == "reports") return "${loc}reports.jpg height=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){					// Modified Code from @Stephack
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "title2") return "<div style='color:#1A77C9;font-weight: bold'>${myText}</div>"
 }
 
 def display() {
-	section() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " Device Watchdog - ${theName}")) {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
