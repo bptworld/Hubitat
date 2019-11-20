@@ -72,7 +72,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-a
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-pollen-forecaster-and-asthma-forecaster/13636" target="_blank">Go Here</a>
 <br><br>
 <b>Room Director</b> - Make your rooms smarter by directing them to do what you want, automaticaly.<br>
-Hubitat Forum Discussion: Not yet
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-room-director-smarter-rooms-automatically/27291" target="_blank">Go Here</a>
 <br><br>
 <b>Send IP2IR</b> - Designed to send commands to an iTach IP2IR device.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-send-ip2ir-control-all-of-your-ir-devices-from-your-dashboard/4667" target="_blank">Go Here</a>
