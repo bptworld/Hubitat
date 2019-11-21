@@ -123,7 +123,7 @@ private flashLights() {
 		state.lastActivated = now()
 		log.debug "LAST ACTIVATED SET TO: ${state.lastActivated}"
 		def initialActionOn = switches.collect{it.currentSwitch != "on"}
-		def delay = 0L
+		def delay = 0
 		numFlashes.times {
 			log.trace "Switch on after  $delay msec"
 			switches.eachWithIndex {s, i ->
