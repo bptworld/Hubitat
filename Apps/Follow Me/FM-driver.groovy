@@ -257,10 +257,21 @@ def populateMap(speech) {
         priority = "X:X"
 	}
 	
-	if((priority.toUpperCase().contains("L")) || (priority.toUpperCase().contains("N")) || (priority.toUpperCase().contains("H"))) {
-		if(priority.toUpperCase().contains("L")) { lastSpoken = "<font color='yellow'>${speech}</font>" }
-		if(priority.toUpperCase().contains("N")) { lastSpoken = "${speech}" }
-		if(priority.toUpperCase().contains("H")) { lastSpoken = "<font color='red'>${speech}</font>" }
+    try {
+        def thePriority = message.priority.split(":")
+        priorityValue = thePriority[0]
+        priorityVoice = thePriority[1]
+    } catch (e) {
+        log.warn "Follow Me Driver - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
+        if(logEnable) log.error "In populateMap - ${e}"
+        priorityValue = "X"
+        priorityVoice = "X"
+    }
+    
+	if((priorityValue.toUpperCase().contains("L")) || (priorityValue.toUpperCase().contains("N")) || (priorityValue.toUpperCase().contains("H"))) {
+		if(priorityValue.toUpperCase().contains("L")) { lastSpoken = "<font color='yellow'>${speech}</font>" }
+		if(priorityValue.toUpperCase().contains("N")) { lastSpoken = "${speech}" }
+		if(priorityValue.toUpperCase().contains("H")) { lastSpoken = "<font color='red'>${speech}</font>" }
 	} else {
 		lastSpoken = "${speech}"
 	}
