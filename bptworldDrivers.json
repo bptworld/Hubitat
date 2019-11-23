@@ -2,7 +2,7 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Watchdog Tile, Home Tracker, Hub Watchdog, IP2IR Telnet, Life360 Container, Life360 User, Log Watchdog, Pollen Forecaster, Send to Hub with CATT Driver, Simple Dates Driver, Snapshot Driver, Tile Master Driver, Welcome Home Driver, What Did I Say",
+  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Watchdog Tile, Follow Me Driver, Home Tracker, Hub Watchdog, IP2IR Telnet, Life360 Container, Life360 User, Log Watchdog, Pollen Forecaster, Send to Hub with CATT Driver, Simple Dates Driver, Snapshot Driver, Tile Master Driver, Welcome Home Driver",
   
   "AppWatchdog2DriverVersion": "v2.0.5",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
@@ -23,6 +23,11 @@
   "DeviceWatchdogTileRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogTileDiscussion": "",
   "DeviceWatchdogTileUpdateNote": "V1.0.5 - 08/29/19 - App Watchdog compatible",
+  
+  "FollowMeDriverVersion": "v2.0.3",
+  "FollowMeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy",
+  "FollowMeDriverDiscussion": "",
+  "FollowMeDriverUpdateNote": "V2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)",
   
   "HomeTrackerDriverVersion": "v1.0.0",
   "HomeTrackerDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy",
@@ -84,9 +89,4 @@
   "WelcomeHomeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Welcome%20Home/WH%20Driver.groovy",
   "WelcomeHomeDriverDiscussion": "",
   "WelcomeHomeDriverUpdateNote": "V1.0.4 - 09/11/19 - Now handles up to 20 people",
-  
-  "WhatDidISayVersion": "v2.0.3",
-  "WhatDidISayRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/What%20Did%20I%20Say/WDIS-driver.groovy",
-  "WhatDidISayDiscussion": "",
-  "WhatDidISayUpdateNote": "V2.0.3 - 08/29/19 - App Watchdog Compatible",
 }
