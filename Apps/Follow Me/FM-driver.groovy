@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
