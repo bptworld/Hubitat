@@ -54,7 +54,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Follow Me Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Follow Me Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy") {
    		capability "Initialize"
 		capability "Actuator"
 		capability "Speech Synthesis"
