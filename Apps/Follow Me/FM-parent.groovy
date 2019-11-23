@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 11/23/19 - Cosmetic changes
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.1 - 04/03/19 - Added importURL
  *  V1.0.0 - 03/17/19 - Initial release.
@@ -41,11 +42,10 @@
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "FollowMeParentVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -96,15 +96,13 @@ def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
-			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!</div>"
-				paragraph getFormat("line")
-			}
-			section("Instructions:", hideable: true, hidden: true) {
+			display()
+			section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+                paragraph "<div style='color:#1A77C9'>Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!</div>"
 				paragraph "<b>Notes:</b>"
 				paragraph "- Create a new child app for each room that has a speaker in it.<br>- Pushover child app can have up to 5 sensors defined<br>- If more than 5 sensors are needed, simply add another child device."
 				paragraph "<b>Requirements:</b>"
-				paragraph "- Virtual Device using our custom 'What Did I Say' driver"
+				paragraph "- Virtual Device using our custom 'Follow Me Driver'"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Follow Me Child", namespace: "BPTWorld", title: "<b>Add a new 'Follow Me' child</b>", multiple: true)
@@ -140,15 +138,30 @@ def installCheck(){
   	}
 }
 
-def getImage(type) {
+def getImage(type) {							// Modified Code from @Stephack
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30>"
+    if(type == "reports") return "${loc}reports.jpg height=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "title2") return "<div style='color:#1A77C9;font-weight: bold'>${myText}</div>"
+}
+
+def display() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " Follow Me")) {
+		paragraph getFormat("line")
+	}
 }
 
 def display2(){
