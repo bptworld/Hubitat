@@ -258,7 +258,7 @@ def populateMap(speech) {
 	}
 	
     try {
-        def thePriority = message.priority.split(":")
+        def thePriority = priority.split(":")
         priorityValue = thePriority[0]
         priorityVoice = thePriority[1]
     } catch (e) {
