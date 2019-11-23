@@ -174,8 +174,8 @@
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
   "DeviceWatchdogUpdateNote": "V2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up",
   
-  "FollowMeParentVersion": "v2.0.0",
-  "FollowMeChild1Version": "v2.0.3",
+  "FollowMeParentVersion": "v2.0.1",
+  "FollowMeChild1Version": "v2.1.0",
   "FollowMeChild1Name": "",
   "FollowMeChild2Version": "",
   "FollowMeChild2Name": "",
@@ -189,7 +189,7 @@
   "FollowMeChild3RawCode": "",
   "FollowMeChild4RawCode": "",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V2.0.3 - 08/30/19 - Code cleanup",
+  "FollowMeUpdateNote": "V2.1.0 - 11/23/19 - Major rewrite - More possibilities!",
   
   "FullyKioskDirectorParentVersion": "v2.0.0",
   "FullyKioskDirectorChild1Version": "v2.0.0",
