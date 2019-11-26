@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 11/26/19 - Minor changes
  *  V1.0.5 - 08/29/19 - App Watchdog compatible
  *  V1.0.4 - 04/16/19 - Cleanup Code, added importURL
  *  V1.0.3 - 03/31/19 - Added support for Status tiles
@@ -48,7 +49,7 @@
 
 def setVersion(){
     appName = "DeviceWatchdogTile"
-	version = "v1.0.5" 
+	version = "v1.0.6" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -103,7 +104,7 @@ metadata {
 	}
 	preferences() {    	
         section(""){
-			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "40")
+			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "12")
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
         }
     }
@@ -112,7 +113,7 @@ metadata {
 def sendWatchdogActivityMap1(activityMap1) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Activity data!"
 	state.activityDevice1 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.activityDevice1+= "<div style='font-size:.${fontSize}em;'>${activityMap1}</div>"
+	state.activityDevice1+= "<div style='font-size:${fontSize}px'>${activityMap1}</div>"
 	state.activityDevice1+= "</td></tr></table>"
 	state.activityDevice1Count = state.activityDevice1.length()
 	if(state.activityDevice1Count <= 1000) {
@@ -126,7 +127,7 @@ def sendWatchdogActivityMap1(activityMap1) {
 def sendWatchdogActivityMap2(activityMap2) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Activity data!"
 	state.activityDevice2 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.activityDevice2+= "<div style='font-size:.${fontSize}em;'>${activityMap2}</div>"
+	state.activityDevice2+= "<div style='font-size:${fontSize}px'>${activityMap2}</div>"
 	state.activityDevice2+= "</td></tr></table>"
 	state.activityDevice2Count = state.activityDevice2.length()
 	if(state.activityDevice2Count <= 1000) {
@@ -140,7 +141,7 @@ def sendWatchdogActivityMap2(activityMap2) {
 def sendWatchdogActivityMap3(activityMap3) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Activity data!"
 	state.activityDevice3 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.activityDevice3+= "<div style='font-size:.${fontSize}em;'>${activityMap3}</div>"
+	state.activityDevice3+= "<div style='font-size:${fontSize}px'>${activityMap3}</div>"
 	state.activityDevice3+= "</td></tr></table>"
 	state.activityDevice3Count = state.activityDevice3.length()
 	if(state.activityDevice3Count <= 1000) {
@@ -154,7 +155,7 @@ def sendWatchdogActivityMap3(activityMap3) {
 def sendWatchdogActivityMap4(activityMap4) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Activity data!"
 	state.activityDevice4 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.activityDevice4+= "<div style='font-size:.${fontSize}em;'>${activityMap4}</div>"
+	state.activityDevice4+= "<div style='font-size:${fontSize}px'>${activityMap4}</div>"
 	state.activityDevice4+= "</td></tr></table>"
 	state.activityDevice4Count = state.activityDevice4.length()
 	if(state.activityDevice4Count <= 1000) {
@@ -168,7 +169,7 @@ def sendWatchdogActivityMap4(activityMap4) {
 def sendWatchdogActivityMap5(activityMap5) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Activity data!"
 	state.activityDevice5 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.activityDevice5+= "<div style='font-size:.${fontSize}em;'>${activityMap5}</div>"
+	state.activityDevice5+= "<div style='font-size:${fontSize}px'>${activityMap5}</div>"
 	state.activityDevice5+= "</td></tr></table>"
 	state.activityDevice5Count = state.activityDevice5.length()
 	if(state.activityDevice5Count <= 1000) {
@@ -182,7 +183,7 @@ def sendWatchdogActivityMap5(activityMap5) {
 def sendWatchdogBatteryMap1(batteryMap1) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Battery data!"
 	state.batteryDevice1 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.batteryDevice1+= "<div style='font-size:.${fontSize}em;'>${batteryMap1}</div>"
+	state.batteryDevice1+= "<div style='font-size:${fontSize}px'>${batteryMap1}</div>"
 	state.batteryDevice1+= "</td></tr></table>"
 	state.batteryDevice1Count = state.batteryDevice1.length()
 	if(state.batteryDevice1Count <= 1000) {
@@ -196,7 +197,7 @@ def sendWatchdogBatteryMap1(batteryMap1) {
 def sendWatchdogBatteryMap2(batteryMap2) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Battery data!"
 	state.batteryDevice2 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.batteryDevice2+= "<div style='font-size:.${fontSize}em;'>${batteryMap2}</div>"
+	state.batteryDevice2+= "<div style='font-size:${fontSize}px'>${batteryMap2}</div>"
 	state.batteryDevice2+= "</td></tr></table>"
 	state.batteryDevice2Count = state.batteryDevice2.length()
 	if(state.batteryDevice2Count <= 1000) {
@@ -210,7 +211,7 @@ def sendWatchdogBatteryMap2(batteryMap2) {
 def sendWatchdogBatteryMap3(batteryMap3) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Battery data!"
 	state.batteryDevice3 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.batteryDevice3+= "<div style='font-size:.${fontSize}em;'>${batteryMap3}</div>"
+	state.batteryDevice3+= "<div style='font-size:${fontSize}px'>${batteryMap3}</div>"
 	state.batteryDevice3+= "</td></tr></table>"
 	state.batteryDevice3Count = state.batteryDevice3.length()
 	if(state.batteryDevice3Count <= 1000) {
@@ -224,7 +225,7 @@ def sendWatchdogBatteryMap3(batteryMap3) {
 def sendWatchdogBatteryMap4(batteryMap4) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Battery data!"
 	state.batteryDevice4 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.batteryDevice4+= "<div style='font-size:.${fontSize}em;'>${batteryMap4}</div>"
+	state.batteryDevice4+= "<div style='font-size:${fontSize}px'>${batteryMap4}</div>"
 	state.batteryDevice4+= "</td></tr></table>"
 	state.batteryDevice4Count = state.batteryDevice4.length()
 	if(state.batteryDevice4Count <= 1000) {
@@ -238,7 +239,7 @@ def sendWatchdogBatteryMap4(batteryMap4) {
 def sendWatchdogBatteryMap5(batteryMap5) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Battery data!"
 	state.batteryDevice5 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.batteryDevice5+= "<div style='font-size:.${fontSize}em;'>${batteryMap5}</div>"
+	state.batteryDevice5+= "<div style='font-size:${fontSize}px'>${batteryMap5}</div>"
 	state.batteryDevice5+= "</td></tr></table>"
 	state.batteryDevice5Count = state.batteryDevice5.length()
 	if(state.batteryDevice5Count <= 1000) {
@@ -252,7 +253,7 @@ def sendWatchdogBatteryMap5(batteryMap5) {
 def sendWatchdogStatusMap1(statusMap1) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Status data!"
 	state.statusDevice1 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.statusDevice1+= "<div style='font-size:.${fontSize}em;'>${statusMap1}</div>"
+	state.statusDevice1+= "<div style='font-size:${fontSize}px'>${statusMap1}</div>"
 	state.statusDevice1+= "</td></tr></table>"
 	sendEvent(name: "watchdogStatus1", value: state.statusDevice1, displayed: true)
 }
@@ -260,7 +261,7 @@ def sendWatchdogStatusMap1(statusMap1) {
 def sendWatchdogStatusMap2(statusMap2) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Status data!"
 	state.statusDevice2 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.statusDevice2+= "<div style='font-size:.${fontSize}em;'>${statusMap2}</div>"
+	state.statusDevice2+= "<div style='font-size:${fontSize}px'>${statusMap2}</div>"
 	state.statusDevice2+= "</td></tr></table>"
 	sendEvent(name: "watchdogStatus2", value: state.statusDevice2, displayed: true)
 }
@@ -268,7 +269,7 @@ def sendWatchdogStatusMap2(statusMap2) {
 def sendWatchdogStatusMap3(statusMap3) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Status data!"
 	state.statusDevice3 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.statusDevice3+= "<div style='font-size:.${fontSize}em;'>${statusMap3}</div>"
+	state.statusDevice3+= "<div style='font-size:${fontSize}px'>${statusMap3}</div>"
 	state.statusDevice3+= "</td></tr></table>"
 	sendEvent(name: "watchdogStatus3", value: state.statusDevice3, displayed: true)
 }
@@ -276,7 +277,7 @@ def sendWatchdogStatusMap3(statusMap3) {
 def sendWatchdogStatusMap4(statusMap4) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Status data!"
 	state.statusDevice4 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.statusDevice4+= "<div style='font-size:.${fontSize}em;'>${statusMap4}</div>"
+	state.statusDevice4+= "<div style='font-size:${fontSize}px'>${statusMap4}</div>"
 	state.statusDevice4+= "</td></tr></table>"
 	sendEvent(name: "watchdogStatus4", value: state.statusDevice4, displayed: true)
 }
@@ -284,7 +285,7 @@ def sendWatchdogStatusMap4(statusMap4) {
 def sendWatchdogStatusMap5(statusMap5) {
     if(logEnable) log.debug "In Device Watchdog Tile - Received new Status data!"
 	state.statusDevice5 = "<table width='100%'><tr><td width='10'><td align='left'>"
-	state.statusDevice5+= "<div style='font-size:.${fontSize}em;'>${statusMap5}</div>"
+	state.statusDevice5+= "<div style='font-size:${fontSize}px'>${statusMap5}</div>"
 	state.statusDevice5+= "</td></tr></table>"
 	sendEvent(name: "watchdogStatus5", value: state.statusDevice5, displayed: true)
 }
