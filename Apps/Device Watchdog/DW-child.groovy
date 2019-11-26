@@ -35,6 +35,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 11/26/19 - Cosmetic changes
  *  V2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  ---
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceWatchdogChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -151,7 +152,7 @@ def pageConfig() {
 				input "voltageMeasurementDevice", "capability.voltageMeasurement", title: "Select Voltage Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "waterSensorDevice", "capability.waterSensor", title: "Select Water Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 			}
-			section("If you have a device not found in the list above, try these two options.") {
+			section("If you have a device not found in the list above, try this option.") {
 				input "actuatorDevice", "capability.actuator", title: "Select Actuator Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "sensorDevice", "capability.sensor", title: "Select Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 			}
@@ -249,22 +250,21 @@ def pageStatus(params) {
 		if(triggerMode == "Battery_Level") {  // Battery
 			if(badORgood == false) {  // less than
 				if(state.count >= 1) {
-        			section() {
-                        paragraph "getFormat('title2', '${state.count} devices have reported Battery levels less than $batteryThreshold - From low to high<br>* Only showing the lowest 25'"
+        			section(getFormat("title2", "${state.count} devices have reported Battery levels less than $batteryThreshold - From low to high<br>* Only showing the lowest 25")) {
 						paragraph "${state.batteryMap1S}<br>${state.batteryMap2S}<br>${state.batteryMap3S}<br>${state.batteryMap4S}<br>${state.batteryMap5S}<br>${state.batteryMap6S}"
         			}
 				} else {
-					section("${state.count} devices have reported Battery levels less than $batteryThreshold") { 
+					section(getFormat("title2", "${state.count} devices have reported Battery levels less than $batteryThreshold")) { 
 						paragraph "Nothing to report"
 					}
 				}
 			} else {  // more than
 				if(state.count >= 1) {
-        			section("${state.count} devices with Battery reporting more than $batteryThreshold - From low to high<br>* Only showing the lowest 25") {
+        			section(getFormat("title2", "${state.count} devices with Battery reporting more than $batteryThreshold - From low to high<br>* Only showing the lowest 25")) {
 						paragraph "${state.batteryMap1S}<br>${state.batteryMap2S}<br>${state.batteryMap3S}<br>${state.batteryMap4S}<br>${state.batteryMap5S}<br>${state.batteryMap6S}"
         			}
 				} else {
-					section("${state.count} devices with Battery reporting more than $batteryThreshold") { 
+					section(getFormat("title2", "${state.count} devices with Battery reporting more than $batteryThreshold")) { 
 						paragraph "Nothing to report"
 					}
 				}
