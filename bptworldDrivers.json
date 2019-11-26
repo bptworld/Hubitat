@@ -19,10 +19,10 @@
   "AsthmaForecasterDriverDiscussion": "",
   "AsthmaForecasterDriverUpdateNote": "v2.0.3 - 08/29/2019 - App Watchdog compatible",
   
-  "DeviceWatchdogTileVersion": "v1.0.5",
+  "DeviceWatchdogTileVersion": "v1.0.6",
   "DeviceWatchdogTileRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
   "DeviceWatchdogTileDiscussion": "",
-  "DeviceWatchdogTileUpdateNote": "V1.0.5 - 08/29/19 - App Watchdog compatible",
+  "DeviceWatchdogTileUpdateNote": "V1.0.6 - 11/26/19 - Minor changes",
   
   "FollowMeDriverVersion": "v2.0.3",
   "FollowMeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy",
