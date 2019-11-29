@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums! Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,18 +37,19 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 11/27/19 - Major overhaul
  *  V1.0.0 - 10/06/19 - Initial release.
  */
 
 def setVersion(){
     appName = "NHLNotificationsDriver"
-	version = "v1.0.0" 
-    dwInfo = "${appName}:${version}"
+	state.version = "v1.0.1" 
+    dwInfo = "${appName}:${state.version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
 
-def updateVersion() {
-    log.info "In updateVersion"
+def updated() {
+    log.info "In update"
     setVersion()
 }
 
@@ -71,9 +71,8 @@ metadata {
         command "d3TeamRecords", ["string"]
 		command "d3GameData", ["string"]
         
-        command "scoreUpdateHome", ["string"]
-        command "scoreUpdateAway", ["string"]
         command "gameStatus", ["string"]
+        command "gameStatus2", ["string"]
 		
     	attribute "todayGameDate", "string"
         attribute "todayGameTime", "string"
@@ -85,9 +84,18 @@ metadata {
         
         attribute "gameStatus", "string"
         attribute "gameMessage", "string"
+        attribute "gamePeriod", "string"
+        attribute "liveGameTile", "string"
+        attribute "liveGameTileCount", "number"       
+        attribute "gameSchedule", "string"
+        attribute "gameScheduleCount", "number"
         
-        attribute "liveScoreHome", "string"
-        attribute "liveScoreAway", "string"
+        attribute "homeGoals", "string"
+        attribute "awayGoals", "string"
+        attribute "livePeriod", "string"
+        attribute "liveTimeRemaining", "string"
+        attribute "homeSOG", "string"
+        attribute "awaySOG", "string"
         
         attribute "d1GameDate", "string"
         attribute "d1AwayTeam", "string"
@@ -112,13 +120,7 @@ metadata {
         attribute "d3HomeTeamRecord", "string"
         attribute "d3GameTime", "string"
         attribute "d3Venue", "string"
-        
-        attribute "liveGameTile", "string"
-        attribute "liveGameTileCount", "number"
-        
-        attribute "gameSchedule", "string"
-        attribute "gameScheduleCount", "number"
-        
+
         attribute "lastUpdated", "string"
         
         attribute "dwDriverInfo", "string"
@@ -135,7 +137,7 @@ def todayTeamRecords(data) {
     if(logEnable) log.debug "In todayTeamRecords - Received new data! ${data}"
     def (aTeamRecord,hTeamRecord) = data.split(";")
     state.awayTeamRecord = aTeamRecord
-    state.homeTeamRecord = HTeamRecord
+    state.homeTeamRecord = hTeamRecord
     sendEvent(name: "homeTeamRecord", value: hTeamRecord, displayed: true)
     sendEvent(name: "awayTeamRecord", value: aTeamRecord, displayed: true)
     liveGameTile()
@@ -195,7 +197,7 @@ def d2TeamRecords(data) {
     if(logEnable) log.debug "In d2TeamRecords - Received new data! ${data}"
     def (aTeamRecord,hTeamRecord) = data.split(";")
     state.d2AwayTeamRecord = aTeamRecord
-    state.d2HomeTeamRecord = HTeamRecord
+    state.d2HomeTeamRecord = hTeamRecord
     sendEvent(name: "d2HomeTeamRecord", value: hTeamRecord, displayed: true)
     sendEvent(name: "d2AwayTeamRecord", value: aTeamRecord, displayed: true)
 }
@@ -224,7 +226,7 @@ def d3TeamRecords(data) {
     if(logEnable) log.debug "In d3TeamRecords - Received new data! ${data}"
     def (aTeamRecord,hTeamRecord) = data.split(";")
     state.d3AwayTeamRecord = aTeamRecord
-    state.d3HomeTeamRecord = HTeamRecord
+    state.d3HomeTeamRecord = hTeamRecord
     sendEvent(name: "d3HomeTeamRecord", value: hTeamRecord, displayed: true)
     sendEvent(name: "d3AwayTeamRecord", value: aTeamRecord, displayed: true)
     gameScheduleTile()
@@ -251,20 +253,6 @@ def d3GameData(game) {
     gameScheduleTile()
 }
 
-def scoreUpdateHome(scoreUpdate) {
-    if(logEnable) log.debug "In scoreUpdateHome - Received new data! - ${scoreUpdate}"
-    state.liveScoreHome = scoreUpdate
-    sendEvent(name: "liveScoreHome", value: scoreUpdate, displayed: true)
-    liveGameTile()
-}
-
-def scoreUpdateAway(scoreUpdate) {
-    if(logEnable) log.debug "In scoreUpdateAway - Received new data! - ${scoreUpdate}"
-    state.liveScoreAway = scoreUpdate
-    sendEvent(name: "liveScoreAway", value: scoreUpdate, displayed: true)
-    liveGameTile()
-}
-
 def gameStatus(stats) {
     if(logEnable) log.debug "In gameStatus - Received new data! - ${stats}"
     def (status,message) = stats.split(";")
@@ -272,6 +260,24 @@ def gameStatus(stats) {
     state.message = message
     sendEvent(name: "gameStatus", value: status, displayed: true)
     sendEvent(name: "gameMessage", value: message, displayed: true)
+    liveGameTile()
+}
+
+def gameStatus2(stats) {
+    if(logEnable) log.debug "In gameStatus2 - Received new data! - ${stats}"
+    def (period,timeRemaining,awayGoals,homeGoals,awaySOG,homeSOG) = stats.split(";")
+    state.livePeriod = period
+    state.liveTimeRemaining = timeRemaining
+    state.awayGoals = awayGoals
+    state.homeGoals = homeGoals
+    state.awaySOG = awaySOG
+    state.homeSOG = homeSOG
+    sendEvent(name: "livePeriod", value: state.livePeriod, displayed: true)
+    sendEvent(name: "liveTimeRemaining", value: state.liveTimeRemaining, displayed: true)
+    sendEvent(name: "homeGoals", value: state.homeGoals, displayed: true)
+    sendEvent(name: "awayGoals", value: state.awayGoals, displayed: true)
+    sendEvent(name: "homeSOG", value: state.homeSOG, displayed: true)
+    sendEvent(name: "awaySOG", value: state.awaySOG, displayed: true)
     liveGameTile()
 }
 
@@ -299,8 +305,8 @@ def gameScheduleTile() {
 def liveGameTile() {
     if(logEnable) log.debug "In liveGameTile  (${state.version}) - Updating Live Game Tile - gameStatus: ${state.gameStatus}"
 
-    if(state.liveScoreAway == null || state.liveScoreAway == "") state.liveScoreAway = "0"
-    if(state.liveScoreHome == null || state.liveScoreHome == "") state.liveScoreHome = "0"
+    if(state.homeGoals == null || state.homeGoals == "") state.homeGoals = "0"
+    if(state.awayGoals == null || state.awayGoals == "") state.awayGoals = "0"
 /*    
     state.GAME_STATUS_SCHEDULED            = '1'
     state.GAME_STATUS_PREGAME              = '2'
@@ -310,25 +316,27 @@ def liveGameTile() {
     state.GAME_STATUS_FINAL6               = '6'
     state.GAME_STATUS_FINAL7               = '7'
 */    
-    if(state.gameStatus == "1" || state.gameStatus == "2") {
+    if(state.gameStatus == "1") {
         gameTile = "<table>"
         gameTile += "<tr><td colspan=2><b>${state.gameMessage}</b></td></tr>"
         gameTile += "</table>"
-    } else if(state.gameStatus == "3" || state.gameStatus == "4" || state.gameStatus == "5") {
+    } else if(state.gameStatus == "2" || state.gameStatus == "3" || state.gameStatus == "4" || state.gameStatus == "5") {
         gameTile = "<table>"
-        gameTile += "<tr><td colspan=2><b>Live Game Updates</b></td></tr>"
-        gameTile += "<tr><td><b>${state.awayTeamName}</b></td><td><b>${state.homeTeamName}</b></td></tr>"
-        gameTile += "<tr><td><small>${state.awayTeamRecord}</small></td><td><small>${state.homeTeamRecord}</small></td></tr>"
-        gameTile += "<tr><td>${state.liveScoreAway}</td><td>${state.liveScoreHome}</td></tr>"
-        gameTile += "<tr><td colspan=2>${state.todayVenue}</td></tr>"
+        gameTile += "<tr><td colspan=2 align='center'><b>Live Game Updates</b></td></tr>"
+        gameTile += "<tr><td align='center'><b>${state.todayAwayTeam}</b></td><td align='center'><b>${state.todayHomeTeam}</b></td></tr>"
+        gameTile += "<tr><td align='center'><small>${state.awayTeamRecord}</small></td><td align='center'><small>${state.homeTeamRecord}</small></td></tr>"
+        gameTile += "<tr><td align='center'><b>${state.awayGoals}</b> <small>(${state.awaySOG})</small></td><td align='center'><b>${state.homeGoals}</b> <small>(${state.homeSOG})</small></td></tr>"
+        gameTile += "<tr><td colspan=2 align='center'>Period: ${state.livePeriod} - Time Remaining: ${state.liveTimeRemaining}</td></tr>"
+        gameTile += "<tr><td colspan=2 align='center'>@ ${state.todayVenue}</td></tr>"
         gameTile += "</table>"
     } else if(state.gameStatus == "6" || state.gameStatus == "7") {
-        gameTile = "<table>"
-        gameTile += "<tr><td colspan=2><b>Game is Final</b></td></tr>"
-        gameTile += "<tr><td><b>${state.awayTeamName}</b></td><td><b>${state.homeTeamName}</b></td></tr>"
-        gameTile += "<tr><td><small>${state.awayTeamRecord}</small></td><td><small>${state.homeTeamRecord}</small></td></tr>"
-        gameTile += "<tr><td>${state.liveScoreAway}</td><td>${state.liveScoreHome}</td></tr>"
-        gameTile += "<tr><td colspan=2>${state.todayVenue}</td></tr>"
+        gameTile = "<table align='center'>"
+        gameTile += "<tr><td colspan=2 align='center'><b>Game is Final</b></td></tr>"
+        gameTile += "<tr><td align='center'><b>${state.todayAwayTeam}</b></td><td align='center'><b>${state.todayHomeTeam}</b></td></tr>"
+        gameTile += "<tr><td align='center'><small>${state.awayTeamRecord}</small></td><td align='center'><small>${state.homeTeamRecord}</small></td></tr>"
+        gameTile += "<tr><td align='center'>${state.awayGoals} <small>(${state.awaySOG})</small></td><td align='center'>${state.homeGoals} <small>(${state.homeSOG})</small></td></tr>"
+        gameTile += "<tr><td colspan=2 align='center'>Period: ${state.livePeriod} - Time Remaining: ${state.liveTimeRemaining}</td></tr>"
+        gameTile += "<tr><td colspan=2 align='center'>@ ${state.todayVenue}</td></tr>"
         gameTile += "</table>"
     } else {
         gameTile = "<table>"
@@ -345,4 +353,7 @@ def liveGameTile() {
 	}
     sendEvent(name: "liveGameTileCount", value: gameTileCount, displayed: true)
     sendEvent(name: "liveGameTile", value: gameTile, displayed: true)
+    lastUpdated = new Date()
+    sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
 }
+
