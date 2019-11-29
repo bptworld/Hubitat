@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -181,7 +180,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {}
 		section("Instructions for Dashboard Tile:", hideable: true, hidden: true) {
 			paragraph "<b>Want to be able to view your data on a Dashboard? Now you can, simply follow these instructions!</b>"
-			paragraph " - Create a new 'Virtual Device' using our Device Container app.<br> - Then select this new device below.<br> - Now all you have to do is add this device to any of your dashboards to see your data on a tile!"
+			paragraph " - Create a new 'Virtual Device' using our 'Simple Dates Driver'.<br> - Then select this new device below.<br> - Now all you have to do is add this device to any of your dashboards to see your data on a tile!"
             paragraph "- Example: I have 3 child apps/virtual devices for dates...<br> - Simple Dates - Holidays<br> - Simple Dates - Special<br> - Simple Dates - School Days Off"
 		}
 		section() {
