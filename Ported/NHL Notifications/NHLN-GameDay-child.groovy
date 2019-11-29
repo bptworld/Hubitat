@@ -27,8 +27,7 @@
  *  Design Usage:
  *  Get NHL notifications when your favorite team is playing!
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -41,11 +40,17 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 11/27/19 - Major enchancements! Reworked several modules and added a couple too!
+ *    - Fixed Pregame Message
+ *    - Major enhancements to speaker section
+ *    - Horn and Boo now play over speakers, also honors the Sound Duration setting
+ *    - Added text to speech if your speakers can't handle Sounds
+ *    - Changed up the Tile, much better formatting
+ *
  *  V1.0.2 - 10/06/19 - Changed child name to NHL Game Day
  *    - Started to streamline the code
  *    - fixed daily check.
- *    - Started collecting code to virtual device
- *    - 
+ *    - Started collecting data to virtual device
  *  V1.0.1 - 10/04/19 - Now Parent/Child. Create new child apps for each team you want to follow
  *  V1.0.0 - 10/03/19 - Initial release for Hubitat
  *    - Fixed the async to be compatible with Hubitat
@@ -67,7 +72,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "NHLGameDayChildVersion"
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -84,7 +89,7 @@ definition(
     author: "Bryan Turcotte",
     description: "Get NHL notifications when your favorite team is playing!",
     category: "",
-    parent: "BPTWorld:NHL Notifications",
+    parent: "BPTWorld:NHL Game Day",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: ""
@@ -99,18 +104,22 @@ preferences {
 
 def pageMain() {
     intitInitalStates()
-    dynamicPage(name: "pageMain", title: "<h2 style='color:#1A77C9;font-weight: bold'>NHL Game Day</h2>", install: true, uninstall: true) {
-        display()
+    dynamicPage(name: "", title: "", install: true, uninstall: true) {
+		display() 
+        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+            paragraph "<b>Notes:</b>"
+            paragraph "Goal announcements can be drastically delayed depending on your internet connection and your means of watching the game."
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Your Team")) {
             input "nhlTeam", "enum", title: "Select NHL Team", required: true, displayDuringSetup: true, options: getTeamEnums()
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-            input "enableGoals", "bool", title: "Enable Goal Notifications", defaultValue: "false", required: "false", submitOnChange: true
-            if (enableGoals) {
+            input "enableGoals", "bool", title: "Enable Goal Notifications", defaultValue: "true", required: "false", submitOnChange: true
+            if(enableGoals) {
                 href(name: "goals", title:"Goal Notifications", description:"Tap to setup goal scoring", required: false, page: "pageGoals")
             }
             input "enableTextNotifications", "bool", title: "Enable Push Notifications", defaultValue: "false", required: "false", submitOnChange: true
-            if (enableTextNotifications) {
+            if(enableTextNotifications) {
                 href(name: "notify", title:"Push Notifications", description:"Tap to setup game notifications", required: false, page: "pageText")
             }
             input "enableGame", "bool", title: "Enable Game Actions", defaultValue: "false", required: "false", submitOnChange: true
@@ -118,13 +127,13 @@ def pageMain() {
                 href(name: "game", title:"Game Actions", description:"Tap to setup game state actions", required: false, page: "pageGame")
             }
         }
-        section("Misc Options") {
-            input "useTeamLocation", "bool", title: "Use Time Zone of Selected Team?", defaultValue: "true", required: "true"
-            input "serviceStartTime", "time", title: "Daily Game Check", defaultValue: "1:00", required: true
-            input "hourBeforeGame", "number", title: "Hours Before Game Start", description: "0-12 hours", required: true, range: "0..12"
+        section(getFormat("header-green", "${getImage("Blank")}"+" Misc Options")) {
+            input "useTeamLocation", "bool", title: "Use Time Zone of Selected Team?", defaultValue: "true", required: "false"
+            input "serviceStartTime", "time", title: "Daily Game Check", defaultValue: "1:00", required: false
+            input "hourBeforeGame", "number", title: "Hours Before Game Start", description: "0-12 hours", required: false, range: "0..12"
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {
-            input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: true, multiple: false)
+            input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: false, multiple: false)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
         section() {
@@ -137,27 +146,27 @@ def pageMain() {
 def pageGoals() {
     dynamicPage(name: "pageGoals", title: "Goal Notifications") {
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {}
-        section("Turn On/Off Switches") {
-            input "switchDevices", "capability.switch", title: "Select Switches", required: false, multiple: true, submitOnChange: true
-            if (switchDevices) {
+        section("<b>Turn On/Off Switches</b>") {
+            input "switchDevices", "capability.switch", title: "Select Switches to turn on", required: false, multiple: true, submitOnChange: true
+            if(switchDevices) {
                 input "switchOnFor", "number", title: "Turn Off After", description: "1-120 seconds", required: false, multiple: false, range: "1..120"
                 input "switchDelay", "number", title: "Delay after goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             }
         }
-        section("Flashing Lights"){
+        section("<b>Flashing Lights</b>"){
             input "flashLights", "capability.switch", title: "Select Lights", multiple: true, required: false, submitOnChange: true
-            if (flashLights) {
+            if(flashLights) {
                 input "numFlashes", "number", title: "Number Of Times To Flash", description: "1-50 times", required: false, range: "1..50"
                 input "flashOnFor", "number", title: "On For (default 1000ms)", description: "milliseconds", required: false
                 input "flashOffFor", "number", title: "Off For (default 1000ms)", description: "milliseconds", required: false
                 input "flashDelay", "number", title: "Delay After Goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             }
         }
-        section("Lighting Level And Color Settings"){
+        section("<b>Lighting Level And Color Settings</b>"){
             input "lightColor", "enum", title: "Lighting Color?", required: false, multiple:false, options: ["White", "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
             input "lightLevel", "enum", title: "Lighting Level?", required: false, options: [[10:"10%"],[20:"20%"],[30:"30%"],[40:"40%"],[50:"50%"],[60:"60%"],[70:"70%"],[80:"80%"],[90:"90%"],[100:"100%"]]
         }
-        section("Sirens To Trigger"){
+        section("<b>Sirens To Trigger</b>"){
             input "sirens", "capability.alarm", title: "Select Sirens", required: false, multiple: true, submitOnChange: true
             if (sirens) {
                 input "sirensOnly", "bool", title: "Don't Use The Strobe", defaultValue: "false", required:false
@@ -165,29 +174,43 @@ def pageGoals() {
                 input "sirenDelay", "number", title: "Delay After Goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             }
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
-           paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
-        }
-		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		    paragraph "NOTE: Not all speakers can use volume controls.", width:8
-            paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-            input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
-		    input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
-            input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
-			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-            input "fromTime", "time", title: "From", required: false, width: 6
-        	input "toTime", "time", title: "To", required: false, width: 6
-		}       
-        section(getFormat("header-green", "${getImage("Blank")}"+" Other Sound Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Sound Options")) {
+            input "soundHornTeam", "bool", title: "Sound Horn When Your Team Scores?", defaultValue: "true", required:false
             input "soundDuration", "number", title: "Duration To Play (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
             input "soundDelay", "number", title: "Delay After Goal (in seconds)", description: "1-120 seconds", required: false, range: "1..120"
 	        input "soundBooOpponent", "bool", title: "Boo When The Opponent Scores?", defaultValue: "true", required:false
+            paragraph "Note: Not all speakers can play sounds. If your speaker doesn't have this ability then play the following speech."
+            input "hornMessage", "text", title: "My Team Scores", required: false, defaultValue: "Oh ya, Goal!"
+            input "booMessage", "text", title: "Other Team Scores", required: false, defaultValue: "Oh No! Opponent goal."
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) {
+            paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
+           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required:false, multiple:true, submitOnChange:true
+           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required:false, multiple:true, submitOnChange:true
+           paragraph "This app supports speaker proxies like, 'Follow Me'. This allows all speech to be controlled by one app. Follow Me features - Priority Messaging, volume controls, voices, sound files and more!"
+           input "speakerProxy", "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange:true
+        }
+        if(!speakerProxy) {
+            if(speakerMP || speakerSS) {
+		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
+                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
+		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
+                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
+		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
+    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
+                }
+		    }
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+                input "fromTime", "time", title: "From", required:false, width: 6
+        	    input "toTime", "time", title: "To", required:false, width: 6
+		    }
+        } else {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
+		        paragraph "Speaker proxy in use."
+            }
         }
     }
 }
@@ -331,8 +354,7 @@ def getTeamEnums() {
             if(logEnable) log.debug "Reset to previous Team list"
     		state.teamList = state.prevTeamList
         }
-    }
-    
+    }    
     return state.teamList.sort()
 }
 
@@ -400,10 +422,7 @@ def startGameDay() {
             def hoursBefore = hourBeforeGame ?: 0
             def now = new Date()
             def gameTime = new Date(gameStartDate.getTime())
-            def gameCheck = new Date(gameStartDate.getTime() - (((hoursBefore * (60 * 60))+30) * 1000))
-
-			// try not to have all notification services run at the exact same time
-            def startTime = randomizeRunTime(gameCheck, 30)
+            def startTime = new Date(gameStartDate.getTime() - (((hoursBefore * (60 * 60))+30) * 1000))
 
 			// if startTime is later than game time, set to run at game time minus 5 seconds
             if (gameTime < startTime) {
@@ -455,7 +474,7 @@ def checkIfGameDayHandler(resp,gDate) {
                 
                 if(logEnable) log.info "A game is scheduled for ${gDate} - ${game.teams.away.team.name} vs ${game.teams.home.team.name} at ${gameTimeText()}"
 
-                if(tileDevice) {
+                if(tileDevice) {        // NEW - only in the Hubitat version!
                     hVenue = game.venue.name
                     if(hVenue == null || hVenue =="") hVenue = "-"
                     gameData = "${gDate};${game.teams.away.team.name};${game.teams.home.team.name};${gameTimeText()};${hVenue}"
@@ -481,7 +500,7 @@ def checkIfGameDayHandler(resp,gDate) {
             }
         }
         if(hVenue == null || hVenue == "" || hVenue == "-") {
-            if(tileDevice) {
+            if(tileDevice) {        // NEW - only in the Hubitat version!
                 gameData = "${gDate};-;-;No Game;-"
                 tileDevice.todayGameData(gameData)
                 
@@ -516,6 +535,16 @@ def checkIfGameDay() {
     return isGameDay
 }
 
+def sendPregameText() {
+    try {
+        if (settings.sendPregameMessage) {
+            sendTextNotification(settings.pregameMessage)
+        }
+    } catch (e) {
+        log.error("caught exception", e)
+    }
+}
+
 def checkGameStatusHandler(resp, data) {
    if(logEnable) log.debug "In checkGameStatusHandler (${state.version})"
    def rescheduleNextCheck = true
@@ -533,6 +562,7 @@ def checkGameStatusHandler(resp, data) {
             {
                 // set current game info
                 state.Game = game
+                state.gamePk = game.gamePk
 
                 // set game status and date
                 state.gameStatus = game.status.statusCode
@@ -545,7 +575,7 @@ def checkGameStatusHandler(resp, data) {
                     case state.GAME_STATUS_SCHEDULED:
                     if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - scheduled for today at ${gameTimeText()}!"
 
-                    if(tileDevice) {
+                    if(tileDevice) {        // NEW - only in the Hubitat version!
                         gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - scheduled for today at ${gameTimeText()}!"
                         gameStatus = "${game.status.statusCode};${gameMessage}"
                         tileDevice.gameStatus(gameStatus)
@@ -561,7 +591,7 @@ def checkGameStatusHandler(resp, data) {
                     case state.GAME_STATUS_PREGAME:
                     if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - pregame!"
 
-                    if(tileDevice) {
+                    if(tileDevice) {        // NEW - only in the Hubitat version!
                         gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - pregame!"
                         gameStatus = "${game.status.statusCode};${gameMessage}"
                         tileDevice.gameStatus(gameStatus)
@@ -578,7 +608,7 @@ def checkGameStatusHandler(resp, data) {
                     case state.GAME_STATUS_IN_PROGRESS_CRITICAL:
                     if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is on!"
 
-                    if(tileDevice) {
+                    if(tileDevice) {        // NEW - only in the Hubitat version!
                         gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is on!"
                         gameStatus = "${game.status.statusCode};${gameMessage}"
                         tileDevice.gameStatus(gameStatus)
@@ -612,7 +642,10 @@ def checkGameStatusHandler(resp, data) {
 
                     // check for new goal
                     checkForGoal()
-
+                    
+                    // check live game stats - Only available in Hubitat version!
+                    checkLiveGameStats()
+                    
                     //done
                     break
 
@@ -620,7 +653,7 @@ def checkGameStatusHandler(resp, data) {
                     case state.GAME_STATUS_FINAL7:
                     if(logEnable) log.debug "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is over."
 
-                    if(tileDevice) {
+                    if(tileDevice) {        // NEW - only in the Hubitat version!
                         gameMessage = "${game.teams.away.team.name} vs ${game.teams.home.team.name} - game is over."
                         gameStatus = "${game.status.statusCode};${gameMessage}"
                         tileDevice.gameStatus(gameStatus)
@@ -712,7 +745,39 @@ def checkGameStatusHandler(resp, data) {
     }
 }
 
+def checkLiveGameStatsHandler(resp, data) {        // NEW - only in the Hubitat version!
+   if(logEnable) log.debug "In checkLiveGameStatsHandler (${state.version})"
+
+    // check for valid response
+    if (resp.status == 200) {
+        def slurper = new groovy.json.JsonSlurper()
+        def result = slurper.parseText(resp.getData())
+        
+        liveData = result.liveData
+
+        currentPeriod = liveData.linescore.currentPeriodOrdinal
+        timeRemaining = liveData.linescore.currentPeriodTimeRemaining
+        
+        awayGoals = liveData.linescore.teams.away.goals
+        homeGoals = liveData.linescore.teams.home.goals
+        
+        awaySOG = liveData.linescore.teams.away.shotsOnGoal
+        homeSOG = liveData.linescore.teams.home.shotsOnGoal
+        
+        if(logEnable) log.debug "In checkLiveGameStatsHandler - currentPeriod: ${currentPeriod} - timeRemaining: ${timeRemaining} - awayGoals:${awayGoals} - homeGoals:${homeGoals} - awaySOG:${awaySOG} - homeSOG:${homeSOG}"
+      
+        if(tileDevice) {
+            gameStatus2 = "${currentPeriod};${timeRemaining};${awayGoals};${homeGoals};${awaySOG};${homeSOG}"
+            tileDevice.gameStatus2(gameStatus2)
+            if(logEnable) log.debug "In checkLiveGameStatsHandler - tileData sent"
+        }
+    } else {
+        if(logEnable) log.debug "In checkLiveGameStatsHandler - Request Failed! Response: $resp.errorData"
+    }
+}
+
 def checkGameStatus() {
+    if(logEnable) log.debug "In checkGameStatus (${state.version})"
     try {
         def todayDate = new Date().format('yyyy-MM-dd', getTimeZone())
         if (settings.debugCheckDate) {
@@ -724,12 +789,28 @@ def checkGameStatus() {
         if(logEnable) log.debug "Requesting ${settings.nhlTeam} game schedule for ${tDate}"
         asynchttpGet("checkGameStatusHandler", params)
     } catch (e) {
-        if(logEnable) log.error "caught exception ${e}"
+        if(logEnable) log.error "In checkGameStatus - caught exception ${e}"
+    }
+}
+
+def checkLiveGameStats() {        // NEW - only in the Hubitat version!
+    if(logEnable) log.debug "In checkLiveGameStats (${state.version})"
+    try {
+        def todayDate = new Date().format('yyyy-MM-dd', getTimeZone())
+        if (settings.debugCheckDate) {
+            todayDate = settings.debugCheckDate
+        }
+        def params = [uri: "${state.NHL_API_URL}/game/${state.gamePk}/feed/live"] 
+
+        def tDate = new Date().format('MM-dd-yyyy', getTimeZone())
+        if(logEnable) log.debug "Requesting ${settings.nhlTeam} game stats for ${tDate}"
+        asynchttpGet("checkLiveGameStatsHandler", params)
+    } catch (e) {
+        if(logEnable) log.error "In checkLiveGameStats - caught exception ${e}"
     }
 }
 
 def checkForGoal() {
-	def goalScored = false
     def game = state.Game
     
     if (game) {
@@ -740,36 +821,18 @@ def checkForGoal() {
         def delay = settings.goalDelay ?: 0
         if (team > state.teamScore) {
             if(logEnable) log.debug "Change in team score"
-            goalScored = true
             state.teamScore = team
-            if(tileDevice) {
-                if(game.teams.home.team.id == state.Team.id) {
-                    tileDevice.scoreUpdateHome(state.teamScore)
-                } else {
-                    tileDevice.scoreUpdateAway(state.teamScore)
-                }
-            }
            	runIn(delay, teamGoalScored)
         }
         
         if (opponent > state.opponentScore) {
             if(logEnable) log.debug "Change in opponent score"
-            goalScored = true
             state.opponentScore = opponent
-            if(tileDevice) {
-                if(game.teams.away.team.id == state.Team.id) {
-                    tileDevice.scoreUpdateAway(state.opponentScore)
-                } else { 
-                    tileDevice.scoreUpdateHome(state.opponentScore)
-                }
-            }
             runIn(delay, opponentGoalScored)
         } 
     } else {
         if(logEnable) log.debug "No game setup yet!"
     }
-    
-    return goalScored
 }
 
 
@@ -796,7 +859,6 @@ def getBroadcastStations(game) {
         if(logEnable) log.error "caught exception 1 - ${ex}"
         stations = null
     }
-
     return stations
 }
 
@@ -811,8 +873,7 @@ def getTimeZone() {
         }
     } catch(ex) {
         if(logEnable) log.error "caught exception 2 - ${ex}"
-    }
-    
+    }  
 	return location.timeZone
 }
 
@@ -826,7 +887,6 @@ def getLocation(game) {
         if(logEnable) log.error "caught exception 3 - ${ex}"
         location = null
     }
-
     return location
 }
 
@@ -845,12 +905,12 @@ def gameTimeText() {
     if(logEnable) log.debug "In gameTimeText - gameTime: ${gameTime}"
     if (gameTime) {
 		return gameTime.format('h:mm:ss a', getTimeZone())
-    }
-    
+    }   
     return "?:??:??"
 }
 
 def setSwitches(switches, turnon) {
+    if(logEnable) log.debug "In setSwitches"
     switches.eachWithIndex {s, i ->
     	if (turnon) {
             s.on()
@@ -863,6 +923,7 @@ def setSwitches(switches, turnon) {
 }
 
 def setLightPrevious(lights) {
+    if(logEnable) log.debug "In setLightPrevious"
     lights.each {
         if (it.hasCapability("Color Control")) {
             if(logEnable) log.debug "save light color values"
@@ -890,6 +951,7 @@ def setLightPrevious(lights) {
 }
 
 def setLightOptions(lights) {
+    if(logEnable) log.debug "In setLightOptions"
     def color = settings.lightColor
     def level = (settings.lightLevel as Integer) ?: 100
 
@@ -944,6 +1006,7 @@ def setLightOptions(lights) {
 }
 
 def restoreLightOptions(lights) {
+    if(logEnable) log.debug "In restoreLightOptions"
     lights.each {
         if (settings.lightColor && it.hasCapability("Color Control")) {
            def oldColorValue = [hue: state.lightsPrevious[it.id].hue, saturation: state.lightsPrevious[it.id].saturation, level: state.lightsPrevious[it.id].level]
@@ -968,11 +1031,11 @@ def restoreLightOptions(lights) {
 def randomizeRunTime(runTime, seconds) {
     def randSecs = new Random().nextInt(seconds) + 1
 	def returnTime = new Date(runTime.getTime() + (randSecs * 1000))
-
     return returnTime
 }
 
 def getHornURL(team) {
+    if(logEnable) log.debug "In getHornURL - ${team.teamName}"
     def hornURL = null
 
     try {
@@ -1111,7 +1174,6 @@ def getHornURL(team) {
         if(logEnable) log.error "caught exception ${ex}"
         hornURL = null
     }
-
     return hornURL
 }
 
@@ -1153,7 +1215,6 @@ def getScore(teams, opponent) {
     } else {
         if(logEnable) log.debug "found team score ${score}"
     }
-
     return score
 }
 
@@ -1181,14 +1242,13 @@ def getName(teams, opponent) {
             return teams.home.team.name
         }
     }
-
     return name
 }
 
 // goal and message notifications
 
 def teamGoalScored() {
-    if(logEnable) log.debug "GGGOOOAAALLL!!!"
+    if(logEnable) log.debug "In teamGoalScored - GGGOOOAAALLL!!!"
 
 	// Only send goal text notifications if game in progress, if game
     // is over there will be a final score sent already
@@ -1207,7 +1267,7 @@ def teamGoalScored() {
 }
 
 def opponentGoalScored() {
-     if(logEnable) log.debug "BOOOOOOO!!!"
+     if(logEnable) log.warn "In opponentGoalScored - BOOOOOOO!!!"
     
     // Only send goal text notifications if game in progress, if game
     // is over there will be a final score sent already
@@ -1225,6 +1285,7 @@ def opponentGoalScored() {
 }
 
 def triggerSwitches() {
+    if(logEnable) log.debug "In triggerSwitches"
     try {
         def delay = settings.switchDelay ?: 0
         if (settings.switchDevices) {
@@ -1236,6 +1297,7 @@ def triggerSwitches() {
 }
 
 def switchOnHandler() {
+    if(logEnable) log.debug "In switchOnHandler"
     try {
         def switchOffSecs = settings.switchOnFor ?: 5
 
@@ -1248,6 +1310,7 @@ def switchOnHandler() {
 }
 
 def switchOffHandler() {
+    if(logEnable) log.debug "In switchOffHandler"
     try {        
         if(logEnable) log.debug "turn switches off"
         
@@ -1258,6 +1321,7 @@ def switchOffHandler() {
 }
 
 def triggerFlashing() {
+    if(logEnable) log.debug "In triggerFlashing"
     try {
         def delay = settings.flashDelay ?: 0
         if (settings.flashLights) {
@@ -1269,6 +1333,7 @@ def triggerFlashing() {
 }
 
 def flashingHandler() {
+    if(logEnable) log.debug "In flashingHandler"
     try {
         def doFlash = true
         def numFlash = settings.numFlashes ?: 3
@@ -1325,6 +1390,7 @@ def flashingHandler() {
 }
 
 def flashRestoreLightsHandler() {
+    if(logEnable) log.debug "In flashRestoreLightsHandler"
     try {
         if(logEnable) log.debug "restoring flash devices"
         restoreLightOptions(settings.flashLights)
@@ -1334,6 +1400,7 @@ def flashRestoreLightsHandler() {
 }
 
 def triggerSirens() {
+    if(logEnable) log.debug "In triggerSirens"
     try {
         def delay = settings.sirenDelay ?: 0
         if (settings.sirens) {
@@ -1345,6 +1412,7 @@ def triggerSirens() {
 }
 
 def sirenOnHandler() {
+    if(logEnable) log.debug "In sirenOnHandler"
     try {
         def sirensOffSecs = settings.sirensOnFor ?: 3
 
@@ -1364,6 +1432,7 @@ def sirenOnHandler() {
 }
 
 def sirenOffHandler() {
+    if(logEnable) log.debug "In sirenOffHandler"
     try {
         if(logEnable) log.debug "turn sirens off"
         settings.sirens.eachWithIndex {s, i ->
@@ -1376,9 +1445,10 @@ def sirenOffHandler() {
 }
 
 def triggerHorn() {
+    if(logEnable) log.warn "In triggerHorn"
     try {
         def delay = settings.soundDelay ?: 0
-        if (settings.sound) {
+        if (settings.soundHornTeam) {
            	runIn(delay, playHornHandler)
         }
     } catch(ex) {
@@ -1387,9 +1457,10 @@ def triggerHorn() {
 }
 
 def triggerBoo() {
+    if(logEnable) log.warn "In triggerBoo"
     try {
         def delay = settings.soundDelay ?: 0
-        if (settings.sound) {
+        if (settings.soundBooOpponent) {
            	runIn(delay, playBooHandler)
         }
     } catch(ex) {
@@ -1398,55 +1469,77 @@ def triggerBoo() {
 }
 
 def playHornHandler() {
+    if(logEnable) log.warn "In playHornHandler"
     def hornURI = getHornURL(state.Team)
-    //playSoundURI(hornURI)
-    letsTalk(hornURI)
+    type = "horn"
+    letsTalk(type,hornURI)
 }
 
 def playBooHandler() {
+    if(logEnable) log.warn "In playBooHandler"
     def booURI = getBooURL()
-    //playSoundURI(booURI)
-    letsTalk(booURI)
+    type = "boo"
+    letsTalk(type,booURI)
 }
 
-def letsTalk(uri) {
-	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
+def letsTalk(type,uri) {
+	    if(logEnable) log.warn "In letsTalk (${state.version}) - Here we go"
 	    checkTime()
 	    checkVol()
         if(state.timeBetween == true) {
 		    theMsg = uri
-            theDuration = 5000
+            theDuration = soundDuration
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
+    	    if(logEnable) log.warn "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
             state.speakers.each { it ->
                 if(logEnable) log.debug "Speaker in use: ${it}"
                 if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                    if(logEnable) log.warn "In letsTalk - speakerProxy - ${it}"
                     it.speak(theMsg)
                 } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
                     if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
                     it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
+                    pauseExecution(theDuration)
+                    it.stop()
                 } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                    if(logEnable) log.warn "In letsTalk - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
                     it.playTextAndRestore(theMsg, prevVolume)
-                } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it}"
+                    pauseExecution(theDuration)
+                    it.stop()
+                } else if(it.hasCommand('playTrack')) { 
+                    if(logEnable) log.warn "In letsTalk - playTrack - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.speak(theMsg)
+                    it.playTrack(theMsg)
+                    pauseExecution(theDuration)
+                    it.stop()
+                    if(it.hasCommand('setLevel')) it.setLevel(volRestore)
+                    if(it.hasCommand('setVolume')) it.setVolume(volRestore)
+                } else {		        
+                    if(logEnable) log.warn "In letsTalk - default - ${it}"
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                    
+                    if(type == "horn") {
+                        theMsg2 = hornMessage
+                        it.speak(theMsg2)
+                    } else if(type == "boo") {
+                        theMsg2 = booMessage
+                        it.speak(theMsg2)
+                    }
+                    
                     pauseExecution(theDuration)
                     if(it.hasCommand('setLevel')) it.setLevel(volRestore)
                     if(it.hasCommand('setVolume')) it.setVolume(volRestore)
                 }
             }
-	        if(logEnable) log.debug "In letsTalk - Finished speaking"  
-		    if(logEnable) log.debug "${app.label} - ${theMsg}"
+	        if(logEnable) log.warn "In letsTalk - Finished speaking"  
 	    } else {
-		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+		    if(logEnable) log.warn "In letsTalk - Messages not allowed at this time"
 	    }
 }
 
@@ -1586,7 +1679,7 @@ def triggerStatusNotifications() {
 
 def sendTextNotification(msg) {
     try {
-        sendPush("${app.label} - ${msg}")
+        sendPushMessage.deviceNotification("${app.label} - ${msg}")
     } catch(ex) {
         if(logEnable) log.error "Error sending notifications: ${ex}"
         return false
@@ -1601,20 +1694,26 @@ def setDefaults(){
 	if(logEnable == null){logEnable = false}
 }
 
-def getImage(type) {					// Modified from @Stephack
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=15 width=15>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " NHL Game Day - ${theName}")) {
 		paragraph getFormat("line")
 	}
 }
