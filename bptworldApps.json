@@ -413,7 +413,7 @@
   "SendIP2IRUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "SimpleDatesParentVersion": "v2.0.0",
-  "SimpleDatesChild1Version": "v2.0.1",
+  "SimpleDatesChild1Version": "v2.0.2",
   "SimpleDatesChild1Name": "",
   "SimpleDatesChild2Version": "",
   "SimpleDatesChild2Name": "",
@@ -427,7 +427,7 @@
   "SimpleDatesChild3RawCode": "",
   "SimpleDatesChild4RawCode": "",
   "SimpleDatesDiscussion": "https://community.hubitat.com/t/release-simple-dates-create-countdowns-of-your-special-dates/21859",
-  "SimpleDatesrUpdateNote": "V2.0.1 - 11/16/19 - Date output now available in two formats - MM/DD/YYYY or DD/MM/YYY",
+  "SimpleDatesrUpdateNote": "V2.0.2 - 11/30/19 - Removed 'is this a school day/work day' (they didn't do anything), added device to control",
   
   "SimpleDeviceTimerParentVersion": "v2.0.0",
   "SimpleDeviceTimerChild1Version": "v2.0.0",
