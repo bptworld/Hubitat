@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -35,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.8 - 11/30/19 - Fixed an issue causing Welcome Home to not be announced. Lot's of cosmetic changes
  *  V2.0.7 - 11/04/19 - Code changes to get rid of some gremlins, got rid of the message queue as it was always getting stuck
  *  V2.0.6 - 10/13/19 - Cosmetic changes to Global Variable section and new error message if not used. New option 'auto clear' for message queueing issues.
  *  V2.0.5 - 10/04/19 - Support for pronounce of Presence Sensor names (aaronward)
@@ -55,7 +55,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.7"
+	state.version = "v2.0.8"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -90,7 +90,7 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Home Tracker</h2>", install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "", title: "", install: true, uninstall: true) {
 		display() 
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
             paragraph "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message <i>after</i> entering the home!"
@@ -148,11 +148,6 @@ def pageConfig() {
 
 def presenceOptions(){
     dynamicPage(name: "presenceOptions", title: "Presence Options", install: false, uninstall:false){
-        section(getFormat("header-green", "${getImage("Blank")}"+" Presence Home NOW Options")) { 
-			input(name: "homeNow", type: "bool", defaultValue: "false", title: "Announce when a presence sensor arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange: "true")
-            paragraph "<small>This will give a heads up that someone is home. But can be a false alarm if they are just driving by.</small>" 
-        }
-
 		section(getFormat("header-green", "${getImage("Blank")}"+" Presence Sensor Options")) { 
 			paragraph "If a presence sensor has been present for less than x minutes, after the trigger, then speak the message."
             input "timeHome", "number", title: "How many minutes can the presence sensor be present and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10  
@@ -205,14 +200,6 @@ def presenceOptions(){
             if(parent.friendlyName20 != "Not set") input(name: "ps20a", type: "bool", defaultValue: "false", title: "Use ${parent.friendlyName20}", description: "PS20", submitOnChange: true)
 			if(ps20a) input("presenceSensor20", "capability.presenceSensor", title: "Match a Presence Sensor to a Friendly Name", required: true)
         }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Presence Departed Options")) { 
-            paragraph "Please only choose one option"
-            input(name: "departedNow", type: "bool", defaultValue: "false", title: "Announce when the presence sensor departs, right away? (off='No', on='Yes')", description: "Home Depart", submitOnChange: "true")
-            paragraph "<small>This will give a heads up that someone has departed. As soon as it is detected.</small>"
-			input(name: "departedDelayed", type: "bool", defaultValue: "false", title: "Announce when the presence sensor departs, after a 2 minute delay? (off='No', on='Yes')", description: "Delayed Home Depart", submitOnChange: "true")
-            paragraph "<small>This will give a heads up that someone has departed. But help with false announcements.</small>" 
-        }
     }
 }
 
@@ -222,21 +209,29 @@ def speechOptions(){
            paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
            input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
            input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
+           input "speakerProxy", "bool", defaultValue: false, title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange: true
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		    paragraph "NOTE: Not all speakers can use volume controls.", width:8
-            paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-            input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
-		    input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
-            input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
-			if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    		if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-            input "fromTime", "time", title: "From", required: false, width: 6
-        	input "toTime", "time", title: "To", required: false, width: 6
-		}
+        if(!speakerProxy) {
+            if(speakerMP || speakerSS) {
+		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
+                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
+		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
+                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
+		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
+    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
+                }
+		    }
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+                input "fromTime", "time", title: "From", required:false, width: 6
+        	    input "toTime", "time", title: "To", required:false, width: 6
+		    }
+        } else {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
+		        paragraph "Speaker proxy in use."
+            }
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
         }
@@ -245,12 +240,14 @@ def speechOptions(){
 
 def messageOptions(){
     dynamicPage(name: "messageOptions", title: "Message Options", install: false, uninstall:false){
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Home NOW Message Options")) {
+			input "homeNow", "bool", defaultValue: false, title: "Announce when a presence sensor arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange:true
             paragraph "This will give a heads up that someone is home. But can be a false alarm if they are just driving by."
-            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
-            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
-            paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
             if(homeNow) {
+                paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
+                paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
+                paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
                 input(name: "oRandomHN", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
 			    if(!oRandomHN) input "omessageHN", "text", title: "<b>Opening message</b> to be spoken - Single message", required: true
                 if(!oRandomHN) input "cmessageHN", "text", title: "<b>Closing message</b> to be spoken - Single message", required: true
@@ -272,8 +269,6 @@ def messageOptions(){
 					    paragraph "${clistMapHN}"
 				    }
                 }
-            } else {
-                paragraph "<b>Turn this option on in the 'Presence Options' section.</b>"
             }
         }       
 		section(getFormat("header-green", "${getImage("Blank")}"+" Welcome Home Message Options")) {
@@ -358,12 +353,19 @@ def messageOptions(){
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Departed Message Options")) {
-            paragraph "This will give a heads up that someone has departed."
-            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
-            paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. '%name%' + 'is no longer here'"
-            paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
+            paragraph "Please only choose <b>one</b> option"
+            input "departedNow", "bool", defaultValue: false, title: "Announce when the presence sensor departs, right away? (off='No', on='Yes')", description: "Home Depart", submitOnChange:true
+            paragraph "<small>This will give a heads up that someone has departed. As soon as it is detected.</small>"
+			input "departedDelayed", "bool", defaultValue: false, title: "Announce when the presence sensor departs, after a 2 minute delay? (off='No', on='Yes')", description: "Delayed Home Depart", submitOnChange:true
+            paragraph "<small>This will give a heads up that someone has departed. But help with false announcements.</small>" 
+            if(departedNow && departedDelayed) { paragraph "<b>Please only select ONE Departed option!</b>" }
+            paragraph "<hr>"
+            
             if(departedNow || departedDelayed) {
-			    input(name: "oRandomD", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
+                paragraph "<u>Optional wildcards:</u><br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
+                paragraph "Message constructed as 'Opening message' + 'Closing message' - REMEMBER to use your wildcards!<br>ie. '%name%' + 'is no longer here'"
+                paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
+                input(name: "oRandomD", type: "bool", defaultValue: "false", title: "Random Opening and Closing Messages?", description: "Random", submitOnChange: "true")
 			    if(!oRandomD) input "omessageD", "text", title: "<b>Opening message</b> to be spoken - Single message", required: true
                 if(!oRandomD) input "cmessageD", "text", title: "<b>Closing message</b> to be spoken - Single message", required: true
 			    if(oRandomD) {
@@ -384,8 +386,6 @@ def messageOptions(){
 					    paragraph "${clistMapD}"
 				    }
                 }
-            } else {
-                paragraph "Turn this option on in the 'Presence Options' section."
             }
         }
     }
@@ -513,6 +513,7 @@ def setupNewStuff() {
 }
 
 def presenceSensorHandler(evt){
+    if(logEnable) log.debug "In presenceSensorHandler - *** Starting ***"
     triggerName = evt.getDisplayName()
     if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - triggerName: ${triggerName}"
     match = false
@@ -562,7 +563,6 @@ def presenceSensorHandler(evt){
                 runIn(120, whosHere, [data: [key1:'messageDeparted']])
             }
         } else {
-	    	if(logEnable) log.debug "${fName} - Presence Sensor is present - Waiting for Trigger"
             unschedule(scheduledMessageNowHandler)
             if(homeNow) {
                 handler = "messageHomeNow"
@@ -571,7 +571,11 @@ def presenceSensorHandler(evt){
                 if(timeHome == null || timeHome == "") timeHome = 5
                 int makeHomeIn = timeHome * 60
                 runIn(makeHomeIn, makeGlobalHere, [data: [key1:'${state.sendDataM}']])
+            } else {
+                globalBH = "welcomeHome"
+	    	    gvDevice."${state.sendDataM}"(globalBH)
             }
+            if(logEnable) log.debug "${fName} - Presence Sensor is present - Waiting for Trigger - globalBH: ${globalBH} **********"
         }
     } else {
         if(logEnable) log.warn "In presenceSensorHandler - No match found - triggerName: ${triggerName}"
@@ -953,11 +957,12 @@ def whosHere(handler) {
 }
 
 def getTimeDiff(numb,handler) {
+    if(logEnable) log.debug "In getTimeDiff (${state.version})"
     whichPresenceSensor(numb)
 
     // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH
     
-    if(logEnable) log.debug "In getTimeDiff (${state.version}) - ${numb} - ${fName} - Presence Sensor Status: ${pSensor} - Global Been Here: ${globalBH} - lastActivity: ${lastActivity}"
+    if(logEnable) log.debug "In getTimeDiff - ${numb} - ${fName} - Presence Sensor Status: ${pSensor} - Global Been Here: ${globalBH} - lastActivity: ${lastActivity}"
 
     long timeDiff
    	def now = new Date()
@@ -981,16 +986,16 @@ def getTimeDiff(numb,handler) {
     }
 
     if(pSensor == "present") {
-        if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
-        if(handler == "messageHomeNow" && timeDiff < 1) {    // ** Home Now **
+        if(logEnable) log.debug "In getTimeDiff - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
+        if(handlerValue == "messageHomeNow" && timeDiff < 1) {    // ** Home Now **
             if(globalBH != "beenHome") {
                 log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
 			    state.nameCount = state.nameCount + 1
                 if(state.nameCount == 1) state.presenceMap = ["${fName}"]
 			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
 			    state.canSpeak = "yes"
-                globalBH = "welcomeHome"
                 
+                globalBH = "welcomeHome"
                 gvDevice."${sendDataM}"(globalBH)
                 if(logEnable) log.trace "${app.label} - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
             } else {
@@ -1133,13 +1138,13 @@ def makeGlobalHere(sendData) {
 }
 
 def letsTalk(theMessage) {
-	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
+	    if(logEnable) log.debug "In letsTalk (${state.version})"
 	    checkTime()
 	    checkVol()
         if(state.timeBetween == true) {
 		    theMsg = theMessage
             speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
-            state.speechDuration2 = speechDuration * 1000
+            speechDuration2 = speechDuration * 1000
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
     	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
             state.speakers.each { it ->
@@ -1162,19 +1167,20 @@ def letsTalk(theMessage) {
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     it.speak(theMsg)
-                    pauseExecution(theDuration)
+                    pauseExecution(speechDuration2)
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
                     if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
                 }
             }
             state.canSpeak = "no"
-	        if(logEnable) log.debug "In letsTalk - Finished speaking, checking queue"  
+	        if(logEnable) log.debug "In letsTalk - Finished speaking"  
 		    log.info "${app.label} - ${theMsg}"
             if(sendPushMessage) pushNow(theMsg)
 	    } else {
             state.canSpeak = "no"
 		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	    }
+    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def checkVol(){
@@ -1492,24 +1498,26 @@ def setDefaults(){
 	state.canSpeak = "no"
 }
 
-def getImage(type) {					// Modified from @Stephack
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=15 width=15>"
     if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
     if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
     if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
     if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " Home Tracker - ${theName}")) {
 		paragraph getFormat("line")
 	}
 }
