@@ -8,8 +8,7 @@
  *
  *  Thanks to Jason Botello for the original 2016 'SmartPing' code that I based this app off of.
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to give a mention it on the Hubitat!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -37,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 12/03/19 - Added more time options. Cosmetic changes
  *  V2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.4 - 04/15/19 - Code cleanup
@@ -52,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
     state.appName = "WebPingerChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -81,16 +81,19 @@ preferences {
 }
 
 def pageConfig() {
-	dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Web Pinger</h2>", install: true, uninstall: true, refreshInterval:0) {	
-    display()
-		section("Instructions:", hideable: true, hidden: true) {
+	dynamicPage(name: "", title: "", install: true, uninstall: true) {
+		display() 
+        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "Create a new child app for each website you would like to ping.<br><br>- Enter in any valid URL, ie. google.com<br>- Enter in how long between pings<br>- Enter in the False Alarm Safety Net, this is how long it will keep trying before turning on the switches and/or sending out a Pushover notification.<br>- Optional - Have the app send a Pushover if website is not available"	
 		}
 		
 		section(getFormat("header-green", "${getImage("Blank")}"+" URL to monitor")) {
             input(name: "website", title:"URL", type: "text", required: true)
-			input "timeToPing", "enum", title: "Time between pings (minutes)", submitOnChange: true,  options: ["5","10","15","30", "59"], required: true, Multiple: false
+			input "timeToPing", "enum", title: "Time between pings (minutes)", submitOnChange: true,  options: ["30s","1","5","10","15","30", "59"], required: true, Multiple: false
+            paragraph "<small>* Minimum recommended interval is 5 minutes.</small>"
+            if(timeToPing == "30s") paragraph "<b>30 second interval is not recommended and might slow down your hub.</b>"
+            if(timeToPing == "1") paragraph "<b>1 minute interval is not recommended and might slow down your hub.</b>"
             input(name: "threshold", title:"False alarm safety net (minutes)", type: "number", required: true, defaultValue:2)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) ON if URL is not available, OFF if everything is good.")) {
@@ -207,6 +210,8 @@ def poll() {
         		}
     		}
     	}
+        if(timeToPing == "30s") runIn(30, poll)   
+        if(timeToPing == "1") schedule("0 0/1 * * * ?", poll)
     	if(timeToPing == "5") schedule("0 0/5 * * * ?", poll)
 		if(timeToPing == "10") schedule("0 0/10 * * * ?", poll)
 		if(timeToPing == "15") schedule("0 0/15 * * * ?", poll)
@@ -309,19 +314,26 @@ def setDefaults(){
 	if(logEnable == null){logEnable = false}
 }
 
-def getImage(type) {							// Modified from @Stephack Code
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){					// Modified from @Stephack Code
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " Web Pinger Plus - ${theName}")) {
 		paragraph getFormat("line")
 	}
 }
