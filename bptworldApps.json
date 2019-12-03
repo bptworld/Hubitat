@@ -498,7 +498,7 @@
   "TileMasterUpdateNote": "V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!",
   
   "WebPingerParentVersion": "v2.0.0",
-  "WebPingerChild1Version": "v2.0.1",
+  "WebPingerChild1Version": "v2.0.2",
   "WebPingerChild1Name": "",
   "WebPingerChild2Version": "",
   "WebPingerChild2Name": "",
@@ -512,6 +512,6 @@
   "WebPingerChild3RawCode": "",
   "WebPingerChild4RawCode": "",
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
-  "WebPingerUpdateNote": "V2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'",
+  "WebPingerUpdateNote": "V2.0.2 - 12/03/19 - Added more time options. Cosmetic changes",
   
 }
