@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -34,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 12/04/19 - Chasing a gremlin
  *  V1.0.1 - 09/30/19 - Lots of little changes
  *  V1.0.0 - 09/29/19 - Initial release.
  *
@@ -45,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HubWatchdogExaminerChildVersion"
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -76,9 +76,9 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Hub Watchdog Examiner</h2>", install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "", title: "", install: true, uninstall: true) {
 		display() 
-        section("Instructions:", hideable: true, hidden: true) {
+        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
             paragraph "Simple way to monitor if your hub is slowing down or not."
 			paragraph "<b>Notes:</b>"
 			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device you use will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
@@ -219,12 +219,16 @@ def reportRawOptions(){
             
             paragraph "Date Color Codes - Virtual: <span style='color:${colorVirt}'>${colorVirt}</span>, Zwave: <span style='color:${colorZwav}'>${colorZwav}</span>, Zigbee: <span style='color:${colorZigb}'>${colorZigb}</span>, Other: <span style='color:${colorOther}'>${colorOther}</span>"
             
-            String result1 = state.deviceData.join(",")
-            def data = result1.split(",")
-            dataS = data.sort { a, b -> b <=> a }
-            if(dataS) {
-                dataSize1 = dataS.size()
-            } else {
+            try {
+                String result1 = state.deviceData.join(",")
+                def data = result1.split(",")
+                dataS = data.sort { a, b -> b <=> a }
+                if(dataS) {
+                    dataSize1 = dataS.size()
+                } else {
+                    dataSize1 = 0
+                }
+            } catch (e) {
                 dataSize1 = 0
             }
             
@@ -476,6 +480,7 @@ def reportRawOptions(){
             if(dataSize1 >= 239) { styleHandler(dataS[238]); theDataPoints6 += "${colorData}<br>" }
             if(dataSize1 >= 240) { styleHandler(dataS[239]); theDataPoints6 += "${colorData}<br>" }
             
+            
             if(theDataPoints1 == null) theDataPoints1 = "No Data"
             if(theDataPoints2 == null) theDataPoints2 = "No Data"
             if(theDataPoints3 == null) theDataPoints3 = "No Data"
@@ -537,16 +542,23 @@ def setDefaults(){
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " Hub Watchdog Examiner - ${theName}")) {
 		paragraph getFormat("line")
 	}
 }
