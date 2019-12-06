@@ -175,7 +175,7 @@
   "DeviceWatchdogUpdateNote": "V2.0.2 - 11/26/19 - Cosmetic changes",
   
   "FollowMeParentVersion": "v2.0.1",
-  "FollowMeChild1Version": "v2.1.0",
+  "FollowMeChild1Version": "v2.1.1",
   "FollowMeChild1Name": "",
   "FollowMeChild2Version": "",
   "FollowMeChild2Name": "",
@@ -189,7 +189,7 @@
   "FollowMeChild3RawCode": "",
   "FollowMeChild4RawCode": "",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V2.1.0 - 11/23/19 - Major rewrite - More possibilities!",
+  "FollowMeUpdateNote": "V2.1.1 - 12/02/19 - Speech queue is now optional",
   
   "FullyKioskDirectorParentVersion": "v2.0.0",
   "FullyKioskDirectorChild1Version": "v2.0.0",
