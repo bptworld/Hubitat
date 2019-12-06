@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  V2.1.1 - 12/02/19 - Speech queue is now optional
  *  V2.1.0 - 11/13/19 - Major rewrite - More possibilities!
  *  ---
  *  V1.0.0 - 03/17/19 - Initial release.
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "FollowMe2ChildVersion"
-	state.version = "v2.1.0"   
+	state.version = "v2.1.1"   
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
@@ -221,18 +222,23 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
             paragraph "<hr>"
-            paragraph "Follow Me uses a custom speech queue. Sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
-			input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
-            input "clearQueue", "bool", defaultValue:false, title: "Manually Clear the Queue right now", description: "Clear", submitOnChange:true, width:6
-            if(clearQueue) clearTheQueue()
+            paragraph "Follow Me can use a custom speech queue. If you would like to try this experimental queueing system, turn this switch on."
+            input "useQueue", "bool", defaultValue:false, title: "Use speech queueing", description: "speech queue", submitOnChange:true
             
-            input "showQueue", "bool", defaultValue:false, title: "Update the current Queue display below", description: "Show", submitOnChange:true, width:6
-            if(showQueue) showTheQueue()
-            def now = new Date()
-            paragraph "<b>Current Queue</b> - ${now}"
-            paragraph "${state.TTSQueue}"
-            paragraph "<small>* Blank [] is good! Mulitple messages is not!</small>"
-            paragraph "<hr>"
+            if(useQueue) {
+                paragraph "Follow Me uses a custom speech queue. Sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
+			    input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
+                input "clearQueue", "bool", defaultValue:false, title: "Manually Clear the Queue right now", description: "Clear", submitOnChange:true, width:6
+                if(clearQueue) clearTheQueue()
+            
+                input "showQueue", "bool", defaultValue:false, title: "Update the current Queue display below", description: "Show", submitOnChange:true, width:6
+                if(showQueue) showTheQueue()
+                def now = new Date()
+                paragraph "<b>Current Queue</b> - ${now}"
+                paragraph "${state.TTSQueue}"
+                paragraph "<small>* Blank [] is good! Mulitple messages is not!</small>"
+                paragraph "<hr>"
+            }
 		}
 		display2()
 	}
@@ -517,7 +523,7 @@ def startHandler(evt) {
     
     if(logEnable) log.debug "In startHandler (${state.version})"
     if(messageDest == "Speakers") letsTalkQueue(evt)
-	if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)    // Needs work on priority
+	if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)
 }
 
 def speechOff() {
@@ -541,25 +547,30 @@ def initializeSpeaker() {
 				
 def letsTalkQueue(evt) {
     theText = evt.value
-    if(logEnable) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
+    if(useQueue) {
+        if(logEnable) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
     
-    // Start modified from @djgutheinz
-    if(state.TTSQueue == null || state.TTSQueue == "") state.TTSQueue = []
-	state.TTSQueue << [theText]
+        // Start modified from @djgutheinz
+        if(state.TTSQueue == null || state.TTSQueue == "") state.TTSQueue = []
+	    state.TTSQueue << [theText]
     
-    queueSize = state.TTSQueue.size()
+        queueSize = state.TTSQueue.size()
     
-    if(logEnable) log.debug "In letsTalkQueue - theText: ${theText} - queueSize: ${queueSize}"
-	if(queueSize == 1) { 
-        if(logEnable) log.debug "In letsTalkQueue - queueSize: ${queueSize} - Going to Lets Talk"        
-        letsTalkUsingQueue()
-    } else if(queueSize > 1 && queueSize <= maxQueued) {
-        if(logEnable) log.debug "In letsTalkQueue - queueSize: ${queueSize} - Queing the message"  
-        log.info "Follow Me - Speaker in use, queing the message. (Queue Size: ${queueSize})"
-    } else if(queueSize > maxQueued) {
-        clearTheQueue()
+        if(logEnable) log.debug "In letsTalkQueue - theText: ${theText} - queueSize: ${queueSize}"
+	    if(queueSize == 1) { 
+            if(logEnable) log.debug "In letsTalkQueue - queueSize: ${queueSize} - Going to Lets Talk"        
+            letsTalkUsingQueue()
+        } else if(queueSize > 1 && queueSize <= maxQueued) {
+            if(logEnable) log.debug "In letsTalkQueue - queueSize: ${queueSize} - Queuing the message"  
+           log.info "Follow Me - Speaker in use, queing the message. (Queue Size: ${queueSize})"
+        } else if(queueSize > maxQueued) {
+            clearTheQueue()
+        }
+        // End modified from @djgutheinz
+    } else {
+        if(logEnable) log.debug "In letsTalkQueue (${state.version}) - Queue not activated, going to letsTalk"
+        letsTalk(theText)
     }
-    // End modified from @djgutheinz    
 }
 
 def letsTalkUsingQueue() {
@@ -571,50 +582,53 @@ def letsTalkUsingQueue() {
         if(logEnable) log.debug "**********  Follow Me (${state.version}) - Finished Speaking  **********"
     } else {
         def nextTTS = state.TTSQueue[0]
-        //state.TTSQueue.remove(0)
         // End modified from @djgutheinz
-    
-        if(logEnable) log.debug "In letsTalk - queueSize: ${queueSize} - nextTTS: ${nextTTS}"
-        def message =  new JsonSlurper().parseText(nextTTS) // Code modified from @storageanarchy
-        // Reminder to reference the attributes as message.message, message.priority, message.title, etc
+        letsTalk(nextTTS)
+    }
+}
 
-	    if(triggerMode == "Always_On") alwaysOnHandler()
-	    if(state.sZone == true){
-		    checkTime()
-		    checkVol()
+def letsTalk(msg) {
+    if(logEnable) log.debug "In letsTalk - msg: ${msg}"
+    def message =  new JsonSlurper().parseText(msg) // Code modified from @storageanarchy
+    // Reminder to reference the attributes as message.message, message.priority, message.title, etc
+
+	if(triggerMode == "Always_On") alwaysOnHandler()
+	if(state.sZone == true){
+		checkTime()
+		checkVol()
         
+        try {
+            def thePriority = message.priority.split(":")
+            priorityValue = thePriority[0]
+            priorityVoice = thePriority[1]
+        } catch (e) {
+            log.warn "Follow Me - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
+            if(logEnable) log.error "In letsTalk - ${e}"
+            priorityValue = "X"
+            priorityVoice = "X"
+        }
+            
+        checkPriority(priorityValue)
+        
+		if(logEnable) log.debug "In letsTalk - continuing"
+		if(state.timeBetween == true) {
+			state.sStatus = "speaking"
+			speakerStatus = "${app.label}:${state.sStatus}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
+            
+            theMessage = message.message
             try {
-                def thePriority = message.priority.split(":")
-                priorityValue = thePriority[0]
-                priorityVoice = thePriority[1]
+                duration = Math.max(Math.round(theMessage.length()/12),2)+3
             } catch (e) {
-                log.warn "Follow Me - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
-                if(logEnable) log.error "In letsTalk - ${e}"
-                priorityValue = "X"
-                priorityVoice = "X"
-            }
+		        duration = 10
+			}
+            theDuration = duration * 1000
             
-            checkPriority(priorityValue)
-        
-		    if(logEnable) log.debug "In letsTalk - continuing"
-		    if(state.timeBetween == true) {
-			    state.sStatus = "speaking"
-			    speakerStatus = "${app.label}:${state.sStatus}"
-			    gvDevice.sendFollowMeSpeaker(speakerStatus)
-            
-                theMessage = message.message
-                try {
-                    duration = Math.max(Math.round(theMessage.length()/12),2)+3
-                } catch (e) {
-				    duration = 10
-			    }
-                theDuration = duration * 1000
-            
-                state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-                state.speakers.each {
-                    priorityVoicesHandler(it,priorityVoice,theMessage)
+            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+            state.speakers.each {
+                priorityVoicesHandler(it,priorityVoice,theMessage)
                 
-                    switch(message.method) {        // Code modified from @storageanarchy
+                switch(message.method) {        // Code modified from @storageanarchy
                         case 'deviceNotification':
                             beforeVolume(it)
                             it.speak(message.message)
@@ -711,21 +725,20 @@ def letsTalkUsingQueue() {
                                 afterVolume(it)
                             }
                             break; 
-                    }
                 }
+            }
             
-                speakerStatus = "${app.label}:${state.sZone}"
-			    gvDevice.sendFollowMeSpeaker(speakerStatus)
-                state.TTSQueue.remove(0)
-			    if(logEnable) log.debug "In letsTalk - Ready for next message"
-                letsTalkUsingQueue()
-            } else {
-		        if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
-	        }
-	    } else {
-		    if(logEnable) log.debug "In letsTalk (${state.version}) - Zone is off"
+            speakerStatus = "${app.label}:${state.sZone}"
+			gvDevice.sendFollowMeSpeaker(speakerStatus)
+            if(useQueue) state.TTSQueue.remove(0)
+			if(logEnable) log.debug "In letsTalk - Ready for next message"
+            if(useQueue) letsTalkUsingQueue()
+        } else {
+		    if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
 	    }
-    }
+	} else {
+		if(logEnable) log.debug "In letsTalk (${state.version}) - Zone is off"
+	}
 }
 
 def playSound(it) {
