@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to metion it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 12/05/19 - Tightening up some code.
  *  V1.0.0 - 11/01/19 - Initial release.
  *
  */
@@ -46,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "PresencePlusChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -67,7 +67,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-child.groovy",
 )
 
 preferences {
@@ -152,6 +152,7 @@ def initialize() {
 }
 
 def arrSensorHandler(evt) {
+    if(ArrTriggerType == null || ArrTriggerType == "") ArrTriggerType = false
     if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType}"	
 
 	def pStatus = false
@@ -182,6 +183,7 @@ def arrSensorHandler(evt) {
 }
 
 def depSensorHandler(evt) {
+    if(DepTriggerType == null || DepTriggerType == "") DepTriggerType = false
     if(logEnable) log.debug "In depSensorHandler (${state.version}) - DepTriggerType: ${DepTriggerType}"	
 
 	def pStatus = false
@@ -239,8 +241,6 @@ def createChildDevice() {
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
-    if(ArrTriggerType == null) ArrTriggerType = false
-    if(DepTriggerType == null) DepTriggerType = false
 }
 
 def getImage(type) {					// Modified from @Stephack Code
