@@ -73,7 +73,7 @@
   "AtHomeSimulatorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "BIControlParentVersion": "v2.0.0",
-  "BIControlChild1Version": "v2.0.0",
+  "BIControlChild1Version": "v2.0.1",
   "BIControlChild1Name": "",
   "BIControlChild2Version": "",
   "BIControlChild2Name": "",
@@ -87,7 +87,7 @@
   "BIControlChild3RawCode": "",
   "BIControlChild4RawCode": "",
   "BIControlDiscussion": "https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454",
-  "BIControlUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "BIControlUpdateNote": "V2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes",
   
   "CATTDirectorParentVersion": "v2.0.0",
   "CATTDirectorChild1Version": "v2.0.1",
