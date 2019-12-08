@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 12/08/19 - Fixed push messages
  *  V1.0.1 - 12/07/19 - Bug fixes
  *  V1.0.0 - 10/15/19 - Initial release.
  *
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleRemindersChildVersion"
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -650,12 +651,11 @@ def dayOfTheWeekHandler(days) {
 	}
 }
 
-def pushNow(){
+def pushNow(theMsg){
 	if(logEnable) log.debug "In pushNow (${state.version})"
-	theMessage = "${app.label} - ${state.msg}"
-	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
+	theMessage = "${app.label} - ${theMsg}"
+	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
-	state.msg = ""
 }
 
 private flashLights(switchesFlash,numFlashes,onFor,offFor) {    // Code modified from ST documents
