@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to metion it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,6 +37,9 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 12/07/19 - Fixed some minor bugs
+ *  V1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
+ *  V1.0.2 - 10/16/19 - More cosmetic changes, added Device Time in State trigger
  *  V1.0.1 - 10/13/19 - Cosmetic changes. 
  *  V1.0.0 - 10/13/19 - Initial release.
  *
@@ -47,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.1"
+	state.version = "v1.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -80,9 +82,9 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Device Check Plus</h2>", install: true, uninstall: true) {
+    dynamicPage(name: "", title: "", install: true, uninstall: true) {
 		display() 
-        section("Instructions:", hideable: true, hidden: true) {
+        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Check selected devices, then warn you what's not in the right state."
             paragraph "<b>Examples of Usage:</b>"
@@ -92,143 +94,154 @@ def pageConfig() {
             paragraph " - <u>Other usage...</u><br> * Going out? Make sure all your windows are closed<br> * Is it raining, check the windows!<br> * Think you forgot to do something? This will let you know!"
             paragraph "<b>The only limit is your imagination!</b>"
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Options, Options and more Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
+        section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {
+            if(onDemandSwitch || days || modeName || thermostats || useTime) {
+                href "triggerOptions", title:"${getImage("optionsGreen")} Select Trigger options here", description:"Click here for Options"
+            } else {
+                href "triggerOptions", title:"${getImage("optionsRed")} Select Trigger options here", description:"Click here for Options"
+            }
+            
             if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked) {
-                href "checkConfig", title:"${getImage("checkMarkGreen")} Select Devices to check", description:"Click here for Options"
+                href "checkConfig", title:"${getImage("optionsGreen")} Select Devices to check", description:"Click here for Options"
             } else {
-                href "checkConfig", title:"Select Devices to check", description:"Click here for Options"
-            }
-            
-            if(onDemandSwitch || days || modeName || thermostats) {
-                href "triggerOptions", title:"${getImage("checkMarkGreen")} Select Trigger options here", description:"Click here for Options"
-            } else {
-                href "triggerOptions", title:"Select Trigger options here", description:"Click here for Options"
+                href "checkConfig", title:"${getImage("optionsRed")} Select Devices to check", description:"Click here for Options"
             }
             
             if(isDataDevice || preMsg || postMsg) {
-                href "notificationOptions", title:"${getImage("checkMarkGreen")} Select Notification options here", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("optionsGreen")} Select Notification options here", description:"Click here for Options"
             } else {
-                href "notificationOptions", title:"Select Notification options here", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("optionsRed")} Select Notification options here", description:"Click here for Options"
             }
             
-            if(isDataDevice || preMsg || postMsg) {
-                href "speechOptions", title:"${getImage("checkMarkGreen")} Select Speech options here", description:"Click here for Options"
+            if(speakerMP || speakerSS) {
+                href "speechOptions", title:"${getImage("optionsGreen")} Select Speech options here", description:"Click here for Options"
             } else {
-                href "speechOptions", title:"Select Speech options here", description:"Click here for Options"
+                href "speechOptions", title:"${getImage("optionsRed")} Select Speech options here", description:"Click here for Options"
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            paragraph "Device Check Plus uses an experimental speach queue. In testing, sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
-			input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
-            input(name: "clearQueue", type: "bool", defaultValue: "false", title: "Manually Clear the Queue right now", description: "Clear", submitOnChange: "true")
-            if(clearQueue) clearTheQueue()
-        }
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: true
+            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
 		}
 		display2()
 	}
 }
 
 def checkConfig() {
-    dynamicPage(name: "checkConfig", title: "<h2 style='color:#1A77C9;font-weight: bold'>Check Devices</h2>", install: false, uninstall:false) {
+    dynamicPage(name: "checkConfig", title: "", install:false, uninstall:false) {
+        display()
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Check")) {
-			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple: true, required: false
-			input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple: true, required: false
-			input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple: true, required: false
-			input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple: true, required: false
-			input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple: true, required: false
-			input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple: true, required: false
+            paragraph "<b>Select your devices from the options below</b>"
+			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple:true, required:false
+			input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple:true, required:false
+			input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple:true, required:false
+			input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple:true, required:false
+			input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple:true, required:false
+			input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple:true, required:false
 		}
     }
 }
 
 def triggerOptions() {
-    dynamicPage(name: "triggerOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Trigger Options</h2>", install: false, uninstall:false) {
+    dynamicPage(name: "triggerOptions", title: "", install:false, uninstall:false) {
+        display()
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Trigger Options")) {
-            paragraph "<b>Run 'Device Check' anytime this switch is turned on.</b> Recommended to create a 'virtual switch' with 'Enable auto off' set to '1s'"
-            input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required: false
+            paragraph "This will check if a device is not in the right state (ie. Open when it should be closed)"
+            input "useState", "bool", title: "Use Device State as Trigger", description: "use State", submitOnChange:true, defaultValue:false
+            
+            input "useTime", "bool", title: "Use Device Time in State as Trigger", description: "use Time", submitOnChange:true, defaultValue:false
             paragraph "<hr>"
-            paragraph "<b>Run 'Device Check' on a set schedule</b> (optional)"
-            input(name: "days", type: "enum", title: "Only run on these days", description: "Days to run", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
-            if(days) input "timeToRun", "time", title: "Auto Run at", required: true
-            paragraph "<hr>"
-            paragraph "<b>Run 'Device Check' on Mode Changes</b> (optional)"
-            input "modeName", "mode", title: "When hub changes to this Mode", required: false, multiple: true
-            paragraph "<hr>"
-            paragraph "<b>Run 'Device Check' on Thermostat Activity</b> (optional)"
-            input "thermostats", "capability.thermostat", title: "Thermostat to track", required: false, multiple: true, submitOnChange: true
-            if(thermostats) {
-                input "thermOption", "bool", title: "Use Mode or State (off=Mode, on=State)", description: "Therm Options", defaultValue: true, submitOnChange: true
-                paragraph " - <b>Mode</b>: When in heat or cool mode, it will trigger a 'Device Check' anytime a selected device changes state."
-                paragraph " - <b>State</b>: This will trigger a 'Device Check' anytime the thermostat goes into heating or cooling state."
+            if(useState) {
+                paragraph "<b>State Triggers</b>"
+                paragraph "<b>Run 'Device Check' anytime this switch is turned on.</b> Recommended to create a 'virtual switch' with 'Enable auto off' set to '1s'"
+                input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required:false
+                paragraph "<hr>"
+                paragraph "<b>Run 'Device Check' on a set schedule</b> (optional)"
+                input "days", "enum", title: "Only run on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                if(days) input "timeToRun", "time", title: "Auto Run at", required:true
+                paragraph "<hr>"
+                paragraph "<b>Run 'Device Check' on Mode Changes</b> (optional)"
+                input "modeName", "mode", title: "When hub changes to this Mode", required:false, multiple:true
+                paragraph "<hr>"
+                paragraph "<b>Run 'Device Check' on Thermostat Activity</b> (optional)"
+                input "thermostats", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
+                if(thermostats) {
+                    input "thermOption", "bool", title: "Use Mode or State (off=Mode, on=State)", description: "Therm Options", defaultValue:true, submitOnChange:true
+                    paragraph " - <b>Mode</b>: When in heat or cool mode, it will trigger a 'Device Check' anytime a selected device changes state."
+                    paragraph " - <b>State</b>: This will trigger a 'Device Check' anytime the thermostat goes into heating or cooling state."
+                }
+            }
+            
+            if(useTime) {
+                paragraph "<b>Time Triggers</b>"
+                input "timeInState", "number", title: "How many minutes should the device be in state before notification", defaultValue: 2, required: true, submitOnChange: true
             }
         }
     }
 }
 
 def notificationOptions() {
-    dynamicPage(name: "notificationOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Notification Options</h2>", install: false, uninstall:false) {
+    dynamicPage(name: "notificationOptions", title: "", install:false, uninstall:false) {
+        display()
 		section(getFormat("header-green", "${getImage("Blank")}"+"  Notification Options")) {
-            input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange: true, required: false, multiple: false
+            input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange:true, required:false, multiple:false
 			paragraph "<hr>"
-            paragraph "Receive device notifications with voice and push options."
-			paragraph "Each of the following messages will only be spoken if necessary..."
-			input(name: "oRandomPre", type: "bool", defaultValue: "false", title: "Random Pre Message?", description: "Random", submitOnChange: "true")
-			if(!oRandomPre) input "preMsg", "text", required: true, title: "Pre Message - Single message", defaultValue: "Warning"
-			if(oRandomPre) {
-				input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
-				input(name: "oPreList", type: "bool", defaultValue: "false", title: "Show a list view of the random pre messages?", description: "List View", submitOnChange: "true")
-				if(oPreList) {
-					def valuesPre = "${preMsg}".split(";")
-					listMapPre = ""
-    				valuesPre.each { itemPre -> listMapPre += "${itemPre}<br>" }
-					paragraph "${listMapPre}"
-				}
+            paragraph "Receive device notifications with voice and push options. Each of the following messages will only be spoken if necessary."
+			
+			input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)",  required:true, submitOnChange:true
+			input "oPreList", "bool", defaultValue:false, title: "Show a list view of the random pre messages?", description: "List View", submitOnChange:true
+			if(oPreList) {
+				def valuesPre = "${preMsg}".split(";")
+				listMapPre = ""
+    			valuesPre.each { itemPre -> listMapPre += "${itemPre}<br>" }
+				paragraph "${listMapPre}"
 			}
             paragraph "<b>All switches/contacts/locks in the wrong state will then be spoken</b>"
-			input(name: "oRandomPost", type: "bool", defaultValue: "false", title: "Random Post Message?", description: "Random", submitOnChange: "true")
-			if(!oRandomPost) input "postMsg", "text", required: true, title: "Post Message - Single message", defaultValue: "This is all I have to say"
-			if(oRandomPost) {
-				input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: "true"
-				input(name: "oPostList", type: "bool", defaultValue: "false", title: "Show a list view of the random post messages?", description: "List View", submitOnChange: "true")
-				if(oPostList) {
-					def valuesPost = "${postMsg}".split(";")
-					listMapPost = ""
-    				valuesPost.each { itemPost -> listMapPost += "${itemPost}<br>" }
-					paragraph "${listMapPost}"
-				}
+			input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange:true
+			input "oPostList", "bool", defaultValue:false, title: "Show a list view of the random post messages?", description: "List View", submitOnChange:true
+			if(oPostList) {
+				def valuesPost = "${postMsg}".split(";")
+				listMapPost = ""
+    			valuesPost.each { itemPost -> listMapPost += "${itemPost}<br>" }
+				paragraph "${listMapPost}"
 			}
         }
     }
 }
 
 def speechOptions() {
-    dynamicPage(name: "speechOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Speech Options</h2>", install: false, uninstall:false) {
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Speech Options")) {
+    dynamicPage(name: "speechOptions", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
             paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
+           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required:false, multiple:true, submitOnChange:true
+           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required:false, multiple:true, submitOnChange:true
+           paragraph "This app supports speaker proxies like, 'Follow Me'. This allows all speech to be controlled by one app. Follow Me features - Priority Messaging, volume controls, voices, sound files and more!"
+           input "speakerProxy", "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange:true
         }
-        if(speakerMP || speakerSS) {
-		    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		        paragraph "NOTE: Not all speakers can use volume controls.", width:8
-                paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required: true, width: 6
-		        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required: true, width: 6
-                input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required: false, submitOnChange: true
-		    	if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    	    	if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+        if(!speakerProxy) {
+            if(speakerMP || speakerSS) {
+		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
+                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
+		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
+                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
+		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
+    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
+                }
+		    }
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+                input "fromTime", "time", title: "From", required:false, width: 6
+        	    input "toTime", "time", title: "To", required:false, width: 6
+		    }
+        } else {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
+		        paragraph "Speaker proxy in use."
             }
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-            input "fromTime", "time", title: "From", required: false, width: 6
-        	input "toTime", "time", title: "To", required: false, width: 6
-		}
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
-            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
+            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
     	}
     }
 }
@@ -247,20 +260,22 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	if(onDemandSwitch) subscribe(onDemandSwitch, "switch.on", deviceHandler)
-    if(days) schedule(timeToRun, deviceHandler)
+	if(onDemandSwitch) subscribe(onDemandSwitch, "switch.on", deviceStateHandler)
+    if(days) schedule(timeToRun, deviceStateHandler)
     if(modeName) subscribe(location, "mode", modeHandler)
     if(thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
-    if(thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler)
-    
+    if(thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
     if(thermostats && thermOption == false) subscribe(contactsOpen, "contact", thermostatModeHandler)
     if(thermostats && thermOption == false) subscribe(contactsClosed, "contact", thermostatModeHandler)
+    
+    if(useTime && contactsOpen) subscribe(contactsOpen, "contact.open", deviceTimeHandler)
+    if(useTime && contactsClosed) subscribe(contactsClosed, "contact.closed", deviceTimeHandler)
     
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
-def deviceHandler(evt){
-    if(logEnable) log.debug "In deviceHandler (${state.version})"
+def deviceStateHandler(evt){
+    if(logEnable) log.debug "In deviceStateHandler (${state.version})"
     state.wrongSwitchesMSG = ""
     state.wrongContactsMSG = ""
     state.wrongLocksMSG = ""
@@ -271,7 +286,7 @@ def deviceHandler(evt){
 			switchesOn.each { sOn -> 
 				def switchName = sOn.displayName
 				def switchStatus = sOn.currentValue('switch')
-				if(logEnable) log.debug "In deviceHandler - Switch On - ${switchName} - ${switchStatus}"
+				if(logEnable) log.debug "In deviceStateHandler - Switch On - ${switchName} - ${switchStatus}"
 				if(switchStatus == "off") state.wrongSwitchesMSG += "${switchName}, "
 			}
 		}
@@ -279,7 +294,7 @@ def deviceHandler(evt){
 			switchesOff.each { sOff -> 
 				def switchName = sOff.displayName
 				def switchStatus = sOff.currentValue('switch')
-				if(logEnable) log.debug "In deviceHandler - Switch Off - ${switchName} - ${switchStatus}"
+				if(logEnable) log.debug "In deviceStateHandler - Switch Off - ${switchName} - ${switchStatus}"
 				if(switchStatus == "on") state.wrongSwitchesMSG += "${switchName}, "
 			}
 		}
@@ -291,7 +306,7 @@ def deviceHandler(evt){
 			contactsOpen.each { cOpen ->
 				def contactName = cOpen.displayName
 				def contactStatus = cOpen.currentValue('contact')
-				if(logEnable) log.debug "In deviceHandler - Contact Open - ${contactName} - ${contactStatus}"
+				if(logEnable) log.debug "In deviceStateHandler - Contact Open - ${contactName} - ${contactStatus}"
                 if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
 			}
 		}
@@ -299,7 +314,7 @@ def deviceHandler(evt){
 			contactsClosed.each { cClosed ->
 				def contactName = cClosed.displayName
 				def contactStatus = cClosed.currentValue('contact')
-				if(logEnable) log.debug "In deviceHandler - Contact Closed - ${contactName} - ${contactStatus}"
+				if(logEnable) log.debug "In deviceStateHandler - Contact Closed - ${contactName} - ${contactStatus}"
 				if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
 			}
 		}
@@ -311,7 +326,7 @@ def deviceHandler(evt){
 			locksUnlocked.each { lUnlocked ->
 				def lockName = lUnlocked.displayName
 				def lockStatus = lUnlocked.currentValue('lock')
-				if(logEnable) log.debug "In deviceHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
+				if(logEnable) log.debug "In deviceStateHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
 				if(lockStatus == "locked") state.wrongLocksMSG += "${lockName}, "
 			}
 		}
@@ -319,7 +334,7 @@ def deviceHandler(evt){
 			locksLocked.each { lLocked ->
 				def lockName = lLocked.displayName
 				def lockStatus = lLocked.currentValue('lock')
-				if(logEnable) log.debug "In deviceHandler - Locks Locked - ${lockName} - ${lockStatus}"
+				if(logEnable) log.debug "In deviceStateHandler - Locks Locked - ${lockName} - ${lockStatus}"
 				if(lockStatus == "unlocked") state.wrongLocksMSG += "${lockName}, "
 			}
 		}
@@ -337,45 +352,28 @@ def deviceHandler(evt){
     }
 }
 
-def letsTalkQueue(text) {
-    if(logEnable) log.debug "In letsTalkQueue (${state.version}) - ${text}"
-    // Start modified from @djgutheinz
-    def duration = Math.max(Math.round(text.length()/12),2)+3
-	state.TTSQueue << [text, duration]
+def timeContactHandler(evt){
+    if(logEnable) log.debug "In timeContactHandler (${state.version}) - evt: ${evt}"
+    beginningValue = evt.currentValue("contact")
+    pauseExecution(5000)
     
-    queueSize = state.TTSQueue.size()
-    if(queueSize > maxQueued) clearTheQueue()
- 
-	if(state.playingTTS == false) { 
-        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Going to Lets Talk"
-        runIn(1, letsTalk)
-    } else {
-        if(logEnable) log.debug "In letsTalkQueue - playingTTS: ${state.playingTTS} - queueSize: ${queueSize} - Queing the message"  
-    }
-    // End modified from @djgutheinz
+
+    
+}
+    
+def checkTimeInState(device) {
+    def lastActivity = device.getLastActivity()
 }
 
 def letsTalk() {
-    // Start modified from @djgutheinz
-    state.playingTTS = true
-	queueSize = state.TTSQueue.size()
-	if(queueSize == 0) {
-		state.playingTTS = false
-        if(logEnable) log.debug "In letsTalk (${state.version}) - queueSize: ${queueSize} - Finished Speaking"
-		return
-	}
-    def nextTTS = state.TTSQueue[0]
-    state.TTSQueue.remove(0)
-    // End modified from @djgutheinz
-    
 	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
         dayOfTheWeekHandler()
 	    checkTime()
 	    checkVol()
         if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween}"
         if(state.timeBetween && state.daysMatch) {
-		    theMsg = nextTTS[0]
-            theDuration = nextTTS[1] * 1000
+		    theMsg = state.theMsg
+            def duration = Math.max(Math.round(theMsg.length()/12),2)+3
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
     	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
             state.speakers.each { it ->
@@ -383,46 +381,31 @@ def letsTalk() {
                 if(speakerProxy) {
                     if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
                     it.speak(theMsg)
-                    alreadyPaused = "no"
                 } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
                     if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
                     def prevVolume = it.currentValue("volume")
                     it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-                    alreadyPaused = "no"
                 } else if(it.hasCommand('playTextAndRestore')) {   
                     if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     def prevVolume = it.currentValue("volume")
                     it.playTextAndRestore(theMsg, prevVolume)
-                    alreadyPaused = "no"
                 } else {		        
                     if(logEnable) log.debug "In letsTalk - ${it}"
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     it.speak(theMsg)
                     pauseExecution(theDuration)
-                    alreadyPaused = "yes"
-                    queueSize = state.TTSQueue.size()
-                    if(queueSize == 0) {
-                        if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                        if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                    }
+                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
                 }
             }
-            state.canSpeak = "no"
-	        if(logEnable) log.debug "In letsTalk - Finished speaking, checking queue"  
+	        if(logEnable) log.debug "In letsTalk - Finished speaking"  
 		    log.info "${app.label} - ${theMsg}"
             if(sendPushMessage) pushNow(theMsg)
-            if(alreadyPaused == "no") {
-                runIn(nextTTS[1], letsTalk) 
-            } else {
-                runIn(1, letsTalk)
-            }
 	    } else {
-            state.canSpeak = "no"
 		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-            runIn(nextTTS[1], letsTalk)    // Modified from @djgutheinz
 	    }
 }
 
@@ -465,7 +448,7 @@ def modeHandler(evt) {
 		    }
         }
         if(state.matchFound) {
-            deviceHandler()
+            deviceStateHandler()
         } else {
             if(logEnable) log.debug "In modeHandler - No Match Found"
         }
@@ -511,7 +494,7 @@ def thermostatHandler(evt) {
             }
 		}
         if(state.thermFound) {
-            deviceHandler()
+            deviceStateHandler()
         } else {
             if(logEnable) log.debug "In thermostatHandler - No Match Found"
         }
@@ -531,7 +514,7 @@ def thermostatModeHandler(evt) {
             }
 		}
         if(state.thermModeFound) {
-            deviceHandler()
+            deviceStateHandler()
         } else {
             if(logEnable) log.debug "In thermostatModeHandler - No Match Found"
         }
@@ -544,29 +527,19 @@ def messageHandler() {
     if(state.isData == "yes") {
 	    state.theMsg = ""
     
-	    if(oRandomPre) {
-	    	def values = "${preMsg}".split(";")
-	    	vSize = values.size()
-		    count = vSize.toInteger()
-    	    def randomKey = new Random().nextInt(count)
-		    state.preMsgR = values[randomKey]
-		    if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Pre Msg: ${state.preMsgR}"
-	    } else {
-		    state.preMsgR = "${preMsg}"
-		    if(logEnable) log.debug "In messageHandler - Static - Pre Msg: ${state.preMsgR}"
-	    }
-	
-	    if(oRandomPost) {
-	    	def values = "${postMsg}".split(";")
-	    	vSize = values.size()
-		    count = vSize.toInteger()
-        	def randomKey = new Random().nextInt(count)
-		    state.postMsgR = values[randomKey]
-		    if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, Post Msg: ${state.postMsgR}"
-	    } else {
-		    state.postMsgR = "${postMsg}"
-		    if(logEnable) log.debug "In messageHandler - Static - Post Msg: ${state.postMsgR}"
-	    }
+	    def valuesPre = "${preMsg}".split(";")
+	    vSizePre = valuesPre.size()
+		countPre = vSizePre.toInteger()
+    	def randomKeyPre = new Random().nextInt(countPre)
+		state.preMsgR = valuesPre[randomKeyPre]
+		if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizePre}, randomKey: ${randomKeyPre}, Pre Msg: ${state.preMsgR}"
+	   
+	    def valuesPost = "${postMsg}".split(";")
+	    vSizePost = valuesPost.size()
+		countPost = vSizePost.toInteger()
+        def randomKeyPost = new Random().nextInt(countPost)
+		state.postMsgR = valuesPost[randomKeyPost]
+		if(logEnable) log.debug "In messageHandler - Random Post - vSize: ${vSizePost}, randomKey: ${randomKeyPost}, Msg: ${state.postMsgR}"
 	
 	    state.theMsg = "${state.preMsgR}, "
     
@@ -578,7 +551,7 @@ def messageHandler() {
 	    state.theMsg += " ${state.postMsgR}"
 	    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
         
-        letsTalkQueue(state.theMsg)
+        letsTalk()
     } else {
 		if(logEnable) log.debug "In messageHandler - No message needed"
     }
@@ -592,37 +565,33 @@ def pushHandler(){
 	state.msg = ""
 }
 
-def clearTheQueue() {
-    app?.updateSetting("clearQueue",[value:"false",type:"bool"])
-    if(logEnable) log.debug "In clearTheQueue (${state.version}) - Resetting the Queue"
-    state.TTSQueue = []
-	state.playingTTS = false
-}
-
 // ********** Normal Stuff **********
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.msg == null){state.msg = ""}
-    state.canSpeak = "no"
-    state.playingTTS = false
-	state.TTSQueue = []
 }
 
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=15 width=15>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " Device Check Plus - ${theName}")) {
 		paragraph getFormat("line")
 	}
 }
