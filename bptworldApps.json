@@ -124,7 +124,7 @@
   "ChromecastHelperUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "DeviceCheckPlusParentVersion": "v1.0.0",
-  "DeviceCheckPlusChild1Version": "v1.0.1",
+  "DeviceCheckPlusChild1Version": "v1.0.4",
   "DeviceCheckPlusChild1Name": "",
   "DeviceCheckPlusChild2Version": "",
   "DeviceCheckPlusChild2Name": "",
@@ -138,7 +138,7 @@
   "DeviceCheckPlusChild3RawCode": "",
   "DeviceCheckPlusChild4RawCode": "",
   "DeviceCheckPlusDiscussion": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454",
-  "DeviceCheckPlusUpdateNote": "V1.0.1 - 10/13/19 - Cosmetic changes",
+  "DeviceCheckPlusUpdateNote": "V1.0.4 - 12/07/19 - Fixed some minor bugs",
   
   "DeviceSequencerParentVersion": "v2.0.0",
   "DeviceSequencerChild1Version": "v2.0.0",
