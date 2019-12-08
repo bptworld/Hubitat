@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 12/07/19 - Bug fixes
  *  V1.0.0 - 10/15/19 - Initial release.
  *
  */
@@ -47,7 +48,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleRemindersChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -420,11 +421,11 @@ def startTheProcess(numb) {
             state.everyOther = true
         }
         dayOfTheWeekHandler(days01)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg01 != null) messageHandler(msg01)
         if(state.daysMatch && switchesOn01) switchesOnHandler(switchesOn01)
         if(state.daysMatch && switchesOff01) switchesOffHandler(switchesOff01)
         if(state.daysMatch && switchesFlash01) flashLights(switchesFlash01,numFlashes01,onFor01,offFor01)
         if(state.daysMatch && newMode01) modeHandler(newMode01)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg01 != null) messageHandler(msg01)
     }
     if(numb == "02") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
@@ -437,10 +438,10 @@ def startTheProcess(numb) {
             state.everyOther = true
         }
         dayOfTheWeekHandler(days02)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg02 != null) messageHandler(msg02)
         if(state.daysMatch && switchesOn02) switchesOnHandler(switchesOn02)
         if(state.daysMatch && switchesOff02) switchesOffHandler(switchesOff02)
         if(state.daysMatch && switchesFlash02) flashLights(switchesFlash02,numFlashes02,onFor02,offFor02)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg02 != null) messageHandler(msg02)
     }
     if(numb == "03") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
@@ -453,10 +454,10 @@ def startTheProcess(numb) {
             state.everyOther = true
         }
         dayOfTheWeekHandler(days03)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg03 != null) messageHandler(msg03)
         if(state.daysMatch && switchesOn03) switchesOnHandler(switchesOn03)
         if(state.daysMatch && switchesOff03) switchesOffHandler(switchesOff03)
         if(state.daysMatch && switchesFlash03) flashLights(switchesFlash03,numFlashes03,onFor03,offFor03)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg03 != null) messageHandler(msg03)
     }
     if(numb == "04") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
@@ -469,10 +470,10 @@ def startTheProcess(numb) {
             state.everyOther = true
         }
         dayOfTheWeekHandler(days04)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg04 != null) messageHandler(msg04)
         if(state.daysMatch && switchesOn04) switchesOnHandler(switchesOn04)
         if(state.daysMatch && switchesOff04) switchesOffHandler(switchesOff04)
         if(state.daysMatch && switchesFlash04) flashLights(switchesFlash04,numFlashes04,onFor04,offFor04)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg04 != null) messageHandler(msg04)
     }
     if(numb == "05") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
@@ -485,10 +486,10 @@ def startTheProcess(numb) {
             state.everyOther = true
         }
         dayOfTheWeekHandler(days05)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg05 != null) messageHandler(msg05)
         if(state.daysMatch && switchesOn05) switchesOnHandler(switchesOn05)
         if(state.daysMatch && switchesOff05) switchesOffHandler(switchesOff05)
         if(state.daysMatch && switchesFlash05) flashLights(switchesFlash05,numFlashes05,onFor05,offFor05)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg05 != null) messageHandler(msg05)
     }
 }
 
@@ -649,7 +650,7 @@ def dayOfTheWeekHandler(days) {
 	}
 }
 
-def pushHandler(){
+def pushNow(){
 	if(logEnable) log.debug "In pushNow (${state.version})"
 	theMessage = "${app.label} - ${state.msg}"
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
