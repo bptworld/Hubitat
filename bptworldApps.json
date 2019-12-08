@@ -464,7 +464,7 @@
   "SimpleIrrigationUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "SimpleRemindersParentVersion": "v1.0.0",
-  "SimpleRemindersChild1Version": "v1.0.1",
+  "SimpleRemindersChild1Version": "v1.0.2",
   "SimpleRemindersChild1Name": "",
   "SimpleRemindersChild2Version": "",
   "SimpleRemindersChild2Name": "",
@@ -478,7 +478,7 @@
   "SimpleRemindersChild3RawCode": "",
   "SimpleRemindersChild4RawCode": "",
   "SimpleRemindersDiscussion": "",
-  "SimpleRemindersUpdateNote": "V1.0.1 - 12/07/19 - Bug Fixes",
+  "SimpleRemindersUpdateNote": "V1.0.2 - 12/08/19 - Fixed push messages",
   
   "SnapshotParentVersion": "v2.0.0",
   "SnapshotChild1Version": "v2.0.1",
