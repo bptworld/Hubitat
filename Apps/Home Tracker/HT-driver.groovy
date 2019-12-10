@@ -6,8 +6,7 @@
  *
  *  Copyright 2019 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,12 +37,13 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 12/10/19 - Adjustments for Locks
  *  V1.0.0 - 09/10/19 - Initial release
  */
 
 def setVersion(){
     appName = "HomeTrackerDriver"
-	version = "v1.0.0" 
+	version = "v1.0.1" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -77,6 +77,10 @@ metadata {
         command "sendDataMap18", ["string"]
         command "sendDataMap19", ["string"]
         command "sendDataMap20", ["string"]
+        command "sendDataMap21", ["string"]
+        command "sendDataMap22", ["string"]
+        command "sendDataMap23", ["string"]
+        command "sendDataMap24", ["string"]
 		
 		attribute "globalBH1", "string"
 		attribute "globalBH2", "string"
@@ -98,6 +102,10 @@ metadata {
         attribute "globalBH18", "string"
         attribute "globalBH19", "string"
         attribute "globalBH20", "string"
+        attribute "globalBH21", "string"
+        attribute "globalBH22", "string"
+        attribute "globalBH23", "string"
+        attribute "globalBH24", "string"
         
         attribute "dwDriverInfo", "string"
         command "updateVersion"	
@@ -219,4 +227,24 @@ def sendDataMap20(dataMap20) {
     if(logEnable) log.debug "In Home Tracker Driver - sendDataMap20 - Received new data!"
 	def dMap20 = "${dataMap20}"
 	sendEvent(name: "globalBH20", value: dMap20, displayed: true)
+}
+def sendDataMap21(dataMap21) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap21 - Received new data!"
+	def dMap21 = "${dataMap21}"
+	sendEvent(name: "globalBH21", value: dMap21, displayed: true)
+}
+def sendDataMap22(dataMap22) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap22 - Received new data!"
+	def dMap22 = "${dataMap22}"
+	sendEvent(name: "globalBH22", value: dMap22, displayed: true)
+}
+def sendDataMap23(dataMap23) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap23 - Received new data!"
+	def dMap23 = "${dataMap23}"
+	sendEvent(name: "globalBH23", value: dMap23, displayed: true)
+}
+def sendDataMap24(dataMap24) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap24 - Received new data!"
+	def dMap24 = "${dataMap24}"
+	sendEvent(name: "globalBH24", value: dMap24, displayed: true)
 }
