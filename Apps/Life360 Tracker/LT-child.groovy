@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  V2.0.5 - 12/10/19 - Minor bug fixes
  *  V2.0.4 - 11/23/19 - More code adjustments
  *  V2.0.3 - 11/03/19 - Code changes to remove some gremlins
  *  V2.0.2 - 09/20/19 - History logging adjustments
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "Life360TrackerChildVersion"
-	state.version = "v2.0.4"
+	state.version = "v2.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -508,7 +509,8 @@ def placeNotAllowedHandler() {
                 if(state.beenHere == "no") {
                     if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has arrived at ${state.address1Value}"
                     msg = "${messageAT2}"
-                    messageHandler(msg)                   
+                    where = "aAT2"
+                    messageHandler(where,msg)                   
                     if(isDataDevice) isDataDevice.on()
                     state.beenHere = "yes"
                 } else {
@@ -533,7 +535,8 @@ def placeNotAllowedHandler() {
             if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has departed from ${state.prevPlace}"
             msg = "${messageDEP2}"
             state.justDEP = "yes"
-            messageHandler(msg)
+            where = "lAT2"
+            messageHandler(where,msg)
             state.beenHere = "no"
         }                
         if(isDataDevice) isDataDevice.off()
@@ -555,14 +558,16 @@ def alertBattHandler() {
         state.prevBatt = state.battery - 10
         state.alerts = "yes"
         state.alertBattRepeat = "yes"
-        messageHandler(msg)
+        where = "battAlert"
+        messageHandler(where,msg)
     } else if((state.battery <= state.prevBatt) && (state.charge == "false")) {
         if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 2 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
         msg = "${messageAlertBatt}"
         state.prevBatt = state.prevBatt - 10
         state.alertBattRepeat = "yes"
         state.alerts = "yes"
-        messageHandler(msg)
+        where = "battAlert"
+        messageHandler(where,msg)
     } else if(state.charge == "true") {
         if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) is charging. - Step 3"
         state.alertBattRepeat = "no"
@@ -678,7 +683,7 @@ def checkTime() {
 
 def messageHandler(where,msg) {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
-    if(logEnable) log.debug "In messageHandler - name: ${} - place: ${address1} - lastplace: ${state.lastKnownPlace}"
+    //if(logEnable) log.debug "In messageHandler - name: ${} - place: ${address1} - lastplace: ${state.lastKnownPlace}"
 	message = msg
     
 	def values = "${message}".split(";")
