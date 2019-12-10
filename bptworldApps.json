@@ -260,7 +260,7 @@
   "HubWatchdogUpdateNote": "V1.0.2 - 12/04/19 - Chasing a gremlin",
   
   "Life360TrackerParentVersion": "v2.0.0",
-  "Life360TrackerChild1Version": "v2.0.4",
+  "Life360TrackerChild1Version": "v2.0.5",
   "Life360TrackerChild1Name": "",
   "Life360TrackerChild2Version": "",
   "Life360TrackerChild2Name": "",
@@ -274,7 +274,7 @@
   "Life360TrackerChild3RawCode": "",
   "Life360TrackerChild4RawCode": "",
   "Life360TrackerDiscussion": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276",
-  "Life360TrackerUpdateNote": "V2.0.4 - 11/23/19 - More code adjustments",
+  "Life360TrackerUpdateNote": "VV2.0.5 - 12/10/19 - Minor bug fixes",
   
   "Life360withStatesParentVersion": "v2.0.0",
   "Life360withStatesChild1Version": "",
