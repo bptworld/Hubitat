@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.9 - 12/10/19 - Fixed an issue with Greetings
  *  V2.0.8 - 11/30/19 - Fixed an issue causing Welcome Home to not be announced. Lot's of cosmetic changes
  *  V2.0.7 - 11/04/19 - Code changes to get rid of some gremlins, got rid of the message queue as it was always getting stuck
  *  V2.0.6 - 10/13/19 - Cosmetic changes to Global Variable section and new error message if not used. New option 'auto clear' for message queueing issues.
@@ -55,7 +56,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.8"
+	state.version = "v2.0.9"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -1088,7 +1089,7 @@ def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and 
         theMessage = "${state.greeting}, " + ovalues[orandomKey] + ". " + cvalues[crandomKey]
 		if(logEnable) log.debug "In messageWelcomeHome - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}; Random - cvSize: ${cvSize}, crandomKey: ${crandomKey}, theMessage: ${theMessage}"
 	} else {
-		theMessage = "${omessage}. ${cmessage}"
+		theMessage = "${state.greeting}, ${omessage}. ${cmessage}"
 		if(logEnable) log.debug "In messageWelcomeHome - Static - theMessage: ${theMessage}"
 	}
 	if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', getName() )}
@@ -1146,7 +1147,7 @@ def letsTalk(theMessage) {
             speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
             speechDuration2 = speechDuration * 1000
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
+    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, theMsg: ${theMsg}, volRestore: ${volRestore}"
             state.speakers.each { it ->
                 if(logEnable) log.debug "Speaker in use: ${it}"
                 if(speakerProxy) {
