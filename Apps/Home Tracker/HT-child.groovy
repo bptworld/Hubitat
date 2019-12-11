@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.1.1 - 12/11/19 - Reworked timDiff handler, lots of little changes
  *  V2.1.0 - 12/10/19 - Reworking how locks as presence sensor are handled, Added alt pronounce for locks
  *  V2.0.9 - 12/10/19 - Fixed an issue with Greetings
  *  V2.0.8 - 11/30/19 - Fixed an issue causing Welcome Home to not be announced. Lot's of cosmetic changes
@@ -57,7 +58,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.1.0"
+	state.version = "v2.1.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -586,16 +587,13 @@ def presenceSensorHandler(evt){
     if(match) {
         if(logEnable) log.debug "In presenceSensorHandler - We have a match! numb: ${numb}"
         whichPresenceSensor(numb)
-    
-        state.sendDataM = sendDataM
         // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH
-        if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - fName: ${fName} - pSensor: ${pSensor} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
+        
+        state.sendDataM = sendDataM
+        if(logEnable) log.debug "In presenceSensorHandler - fName: ${fName} - pSensor: ${pSensor} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
     
-	    if(logEnable) log.debug "In presenceSensorHandler - ${fName} - Presence Sensor: ${pSensor}"
         if(pSensor == "not present"){
-        	if(logEnable) log.debug "${fName} - Presence Sensor is not present - Been Here is now 'notHome'."
-	    	globalBH = "notHome"
-	    	gvDevice."${state.sendDataM}"(globalBH)
+        	if(logEnable) log.debug "In presenceSensorHandler - ${fName} - Presence Sensor is not present."
             if(departedNow) {
                 handler = "messageDeparted"
                 whosHere(handler)
@@ -608,15 +606,8 @@ def presenceSensorHandler(evt){
             if(homeNow) {
                 handler = "messageHomeNow"
                 whosHere(handler)
-            
-                if(timeHome == null || timeHome == "") timeHome = 5
-                int makeHomeIn = timeHome * 60
-                runIn(makeHomeIn, makeGlobalHere, [data: [key1:'${state.sendDataM}']])
-            } else {
-                globalBH = "welcomeHome"
-	    	    gvDevice."${state.sendDataM}"(globalBH)
             }
-            if(logEnable) log.debug "${fName} - Presence Sensor is present - Waiting for Trigger - globalBH: ${globalBH} **********"
+            if(logEnable) log.debug "In presenceSensorHandler - ${fName} - Presence Sensor is present - Waiting for Trigger - globalBH: ${globalBH} **********"
         }
     } else {
         if(logEnable) log.warn "In presenceSensorHandler - No match found - triggerName: ${triggerName}"
@@ -651,9 +642,13 @@ def whichPresenceSensorNew(numb) {
         codeName=myLock$lockNumb.currentValue("lastCodeName")
         getLockUserName(codeName)
 
+        if(logEnable) log.trace "In whichPresenceSensor - BACK IN whichPresenceSensor"
         sendDataM="sendDataMap$numb"
-        try { globalBH=gvDevice.currentValue("globalBH$numb") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        globalBH = "justGotHome"            
+        gvDevice."${sendDataM}"(globalBH)
+        //pauseExecution(500)
+        //try { globalBH=gvDevice.currentValue("globalBH$numb") }
+        //catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(logEnable) log.trace "In whichPresenceSensor - Returning - pSensor: ${pSensor} - lastActivity: ${lastActivity} - fName: ${fName} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
     return [pSensor,lastActivity,fName,sendDataM,globalBH]
@@ -848,8 +843,13 @@ def whichPresenceSensor(numb) {
         getLockUserName(codeName)
         
         sendDataM="sendDataMap21"
-        try { globalBH=gvDevice.currentValue("globalBH21") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        if(pSensor == "locked") {
+            globalBH = "notHome"
+            gvDevice."${sendDataM}"(globalBH)
+        } else {  
+            try { globalBH=gvDevice.currentValue("globalBH21") }
+            catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        }
     }
     if(numb==22) {
         pSensor=myLock2.currentValue("lock")
@@ -885,7 +885,7 @@ def whichPresenceSensor(numb) {
 }
 
 def getLockUserName(codeName) {
-    if(logEnable) log.debug "In getCodeName (${state.version})"
+    if(logEnable) log.debug "In getLockUserName (${state.version})"
     
     if(codeName == lockName1) {
         fName="${lockPronounce1}"
@@ -910,6 +910,8 @@ def getLockUserName(codeName) {
     } else {
         fName="${codeName}"
     }
+    
+    if(logEnable) log.debug "In getLockUserName - fName: ${fName}"
     return fName
 }
 
@@ -931,7 +933,7 @@ def lockHandler(evt) {
                 }
             }
             def codeMap = parseJson(lockdata ?: "{}").find{ it }
-            if(logEnable) log.debug "In lockHandler - codeMap: ${codeMap}"
+            //if(logEnable) log.debug "In lockHandler - codeMap: ${codeMap}"
             if (!codeMap) return
     
             codeName = "${codeMap?.value?.name}"
@@ -956,6 +958,7 @@ def lockHandler(evt) {
             if (theMessage.contains("%door%")) {theMessage = theMessage.replace('%door%', "${lockName}" )}
             if(logEnable) log.debug "In messageDoorUnlocked - going to letsTalk with theMessage"
             state.canSpeak = "yes"
+            
             letsTalk(theMessage)
         }
         if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 1"
@@ -1043,11 +1046,11 @@ def whosHere(handler) {
 def getTimeDiff(numb,handler) {
     if(logEnable) log.debug "In getTimeDiff (${state.version})"
     whichPresenceSensor(numb)
-
-    // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH
-    
+    // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH    
     if(logEnable) log.debug "In getTimeDiff - ${numb} - ${fName} - Presence Sensor Status: ${pSensor} - Global Been Here: ${globalBH} - lastActivity: ${lastActivity}"
 
+    if(timeHome == null || timeHome == "") timeHome = 5
+    
     long timeDiff
    	def now = new Date()
     def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
@@ -1058,83 +1061,97 @@ def getTimeDiff(numb,handler) {
     timeDiff = Math.abs(unxNow-unxPrev)
     timeDiff = Math.round(timeDiff/60)
     
-    if(pSensor == "unlocked") {
-        if(logEnable) log.debug "In getTimeDiff (unlocked) - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
-        if((handlerValue == "lock" || handlerValue == "motion" || handlerValue == "contact") && timeDiff < timeHome) {    // ** Welcome Home **
-            if(globalBH != "beenHome") {
-                log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
-			    state.nameCount = state.nameCount + 1
-                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			    state.canSpeak = "yes"
-                globalBH = "beenHome"
+    if(pSensor == "present" || pSensor == "unlocked") {
+        if(timeDiff < 1) {
+            if(globalBH != "hasAnnounced") {
+                globalBH = "justGotHome"
                 gvDevice."${sendDataM}"(globalBH)
-                if(logEnable) log.trace "In getTimeDiff -  - ${fName} - Sent L (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-            } else {
-                if(logEnable) log.trace "In getTimeDiff -  - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
             }
+        } else if(timeDiff < timeHome) {
+            if(globalBH != "hasAnnounced") {
+                globalBH = "welcomeHome"
+                gvDevice."${sendDataM}"(globalBH)
+            }
+        } else if(timeDiff > timeHome) {
+            globalBH = "beenHome"
+            gvDevice."${sendDataM}"(globalBH)
+        }
+    }
+    
+    if(pSensor == "locked") {
+        globalBH = "notHome"
+        gvDevice."${sendDataM}"(globalBH)
+    }
+    
+    if(pSensor == "not present") {
+        if(timeDiff < timeAway) {
+            if(globalBH != "hasAnnounced") {
+                globalBH = "justLeftHome"
+                gvDevice."${sendDataM}"(globalBH)
+            }
+        } else {
+            globalBH = "notHome"
+            gvDevice."${sendDataM}"(globalBH)
         }
     }
 
-    if(pSensor == "present") {
+    if(pSensor == "present" || pSensor =="unlocked") {
         if(logEnable) log.debug "In getTimeDiff (present) - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
-        if(handlerValue == "messageHomeNow" && timeDiff < 1) {    // ** Home Now **
-            if(globalBH != "beenHome") {
-                log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
-			    state.nameCount = state.nameCount + 1
-                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			    state.canSpeak = "yes"
-                
-                globalBH = "welcomeHome"
-                gvDevice."${sendDataM}"(globalBH)
-                if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-            } else {
-                if(logEnable) log.trace "In getTimeDiff - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
-			}
+        
+        // ** Home Now **
+        if(handlerValue == "messageHomeNow" && (globalBH == "justGotHome" || globalBH == "welcomeHome")) {
+            log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+			state.nameCount = state.nameCount + 1
+            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			state.canSpeak = "yes"
+
+            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+        } else {
+            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
         }
         
-        if((handlerValue == "lock" || handlerValue == "motion" || handlerValue == "contact") && timeDiff < timeHome) {    // ** Welcome Home **
-            if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - PASSED TEST ONE - Now what's the globalBH: ${globalBH}"
-            if(globalBH != "beenHome") {
-                if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - PASSED TEST TWO - globalBH: ${globalBH}"
-                if(globalBH == "welcomeHome") {  
-                    if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - PASSED TEST THREE - globalBH: ${globalBH}"
-				    log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
-				    state.nameCount = state.nameCount + 1
-                    if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-				    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-				    state.canSpeak = "yes"
-                    globalBH = "beenHome"
-                
-				    gvDevice."${sendDataM}"(globalBH)
-                    if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-                } else {
-                    if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 3 (not welcomeHome) - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
-			    }
-			} else {
-                if(logEnable) log.trace "In getTimeDiff - ${fName} - 4 - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
-			}
-        }
-	} else if(pSensor == "not present") {
-        if(logEnable) log.debug "In getTimeDiff (not present) - ${fName} - timeDiff: ${timeDiff}"
-  		if(timeDiff < timeAway) {
+        // ** Welcome Home **
+        if(globalBH == "justGotHome" || globalBH == "welcomeHome") {    
+            if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - globalBH: ${globalBH}"
+		    log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+			state.nameCount = state.nameCount + 1
+            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+		    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			state.canSpeak = "yes"
+            globalBH = "hasAnnounced"
+            gvDevice."${sendDataM}"(globalBH)
+                    
+            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+        } else {
+            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Global 'Been Here' is ${globalBH}. No 'welcomeHome' announcement needed. - handler: ${handler}"
+		}
+	}
+        
+    if(pSensor == "not present") {
+        if(logEnable) log.debug "In getTimeDiff (not present) - ${fName} - timeDiff: ${timeDiff} - globalBH ${globalBH}"
+        
+  		// ** justLeftHome **
+        if(globalBH == "justLeftHome" && !state.hasSpokenJustLeftHome) {
 			log.info "${app.label} - ${fName} just left! Time Diff = ${timeDiff}"
 			state.nameCount = state.nameCount + 1
             if(state.nameCount == 1) state.presenceMap = ["${fName}"]
 			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
 			state.canSpeak = "yes"
-			globalBH = "notHome"
+			globalBH = "hasAnnounced"
             gvDevice."${sendDataM}"(globalBH)
-            if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 4 (not present) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-		} else {
-            log.info "${app.label} - In getTimeDiff - ${fName} - has been gone too long. No announcement needed."
-            globalBH = "notHome"
-            gvDevice."${sendDataM}"(globalBH)
-            if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 5 (not present) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+            
+            if(logEnable) log.trace "In getTimeDiff (not present) - ${fName} - Sent 3 (justLeftHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
 		}
-	}
-//    getPresenceSensorStatus()
+        
+        // ** notHome **
+        if(globalBH == "notHome") {
+			if(logEnable) log.info "${app.label} - ${fName} is not home! Time Diff = ${timeDiff}"        
+            log.info "${app.label} - In getTimeDiff (not present) - ${fName} - has been gone too long. No announcement needed."           
+            if(logEnable) log.trace "In getTimeDiff (not present) - ${fName} - Sent 4 (notHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+		}
+	} 
+    getPresenceSensorStatus()
 }
 
 def messageHomeNow() {
@@ -1218,15 +1235,6 @@ def messageDeparted() {
 	if (theMessage.contains("%has_have%")) {theMessage = theMessage.replace('%has_have%', "${has_have}" )}
     if(logEnable) log.debug "In messageDeparted - going to letsTalk with theMessage"
 	letsTalk(theMessage)
-}
-
-def makeGlobalHere(sendData) {
-    if(logEnable) log.debug "In makeGlobalHere - sendData: ${sendData}"
-    sendDataValue = sendData.value
-    globalBH = "welcomeHome"
-    if(logEnable) log.trace "In makeGlobalHere - ${fName} - sendDataValue: ${sendDataValue} - globalBH ${globalBH}"
-	if(sendDataValue) gvDevice."${sendDataValue}"(globalBH)
-    if(logEnable) log.trace "${fName} is now considered Home."
 }
 
 def letsTalk(theMessage) {
