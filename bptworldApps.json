@@ -226,7 +226,7 @@
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "HomeTrackerParentVersion": "v2.0.1",
-  "HomeTrackerChild1Version": "v2.0.9",
+  "HomeTrackerChild1Version": "v2.1.0",
   "HomeTrackerChild1Name": "",
   "HomeTrackerChild2Version": "",
   "HomeTrackerChild2Name": "",
@@ -240,7 +240,7 @@
   "HomeTrackerChild3RawCode": "",
   "HomeTrackerChild4RawCode": "",
   "HomeTrackerDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
-  "HomeTrackerUpdateNote": "V2.0.9 - 12/10/19 - Fixed an issue with Greetings",
+  "HomeTrackerUpdateNote": "V2.1.0 - 12/10/19 - Reworking how locks as presence sensor are handled, Added alt pronounce for locks",
   
   "HubWatchdogParentVersion": "V1.0.1",
   "HubWatchdogChild1Version": "V1.0.7",
