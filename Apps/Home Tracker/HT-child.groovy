@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.1.2 - 12/11/19 - Still working on whether to make announcements or not
  *  V2.1.1 - 12/11/19 - Reworked timDiff handler, lots of little changes
  *  V2.1.0 - 12/10/19 - Reworking how locks as presence sensor are handled, Added alt pronounce for locks
  *  V2.0.9 - 12/10/19 - Fixed an issue with Greetings
@@ -58,7 +59,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.1.1"
+	state.version = "v2.1.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -615,45 +616,6 @@ def presenceSensorHandler(evt){
 //    getPresenceSensorStatus()
 }
 
-def whichPresenceSensorNew(numb) {
-    if(logEnable) log.debug "In whichPresenceSensor (${state.version}) - Checking which Presence Sensor numb: ${numb} - Presence Sensor Name: ${name}"
-    if(numb >= 1 && numb <= 20) {
-        pSensor=name.currentValue("presence")
-        lastActivity = name.getLastActivity()
-        if(parent.pronounce$numb.contains("Not set") || parent.procunciation$numb=="") {
-            fName="${parent.friendlyName$numb}"
-        } else {
-            fName="${parent.pronounce$numb}"
-        }
-        sendDataM="sendDataMap$numb"
-        try { globalBH=gvDevice.currentValue("globalBH$numb") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
-    }
-    
-    if(numb >= 21 && numb <= 24) {
-        if(numb == 21) lockNumb = 1
-        if(numb == 22) lockNumb = 2
-        if(numb == 23) lockNumb = 3
-        if(numb == 24) lockNumb = 4
-        
-        pSensor=myLock$lockNumb.currentValue("lock")
-        lastActivity = myLock$lockNumb.getLastActivity()
-        
-        codeName=myLock$lockNumb.currentValue("lastCodeName")
-        getLockUserName(codeName)
-
-        if(logEnable) log.trace "In whichPresenceSensor - BACK IN whichPresenceSensor"
-        sendDataM="sendDataMap$numb"
-        globalBH = "justGotHome"            
-        gvDevice."${sendDataM}"(globalBH)
-        //pauseExecution(500)
-        //try { globalBH=gvDevice.currentValue("globalBH$numb") }
-        //catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
-    }
-    if(logEnable) log.trace "In whichPresenceSensor - Returning - pSensor: ${pSensor} - lastActivity: ${lastActivity} - fName: ${fName} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
-    return [pSensor,lastActivity,fName,sendDataM,globalBH]
-}
-
 def whichPresenceSensor(numb) {
     if(logEnable) log.debug "In whichPresenceSensor (${state.version}) - Checking which Presence Sensor: ${numb}"
     if(numb==1) { 
@@ -662,8 +624,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce1.contains("Not set") || parent.procunciation1=="") fName="${parent.friendlyName1}"
         else fName="${parent.pronounce1}"
         sendDataM="sendDataMap1"
-        try { globalBH=gvDevice.currentValue("globalBH1") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap1(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap1(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==2) {
         pSensor=presenceSensor2.currentValue("presence")
@@ -671,8 +640,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce2.contains("Not set") || parent.procunciation2=="") fName="${parent.friendlyName2}"
         else fName="${parent.pronounce2}"
         sendDataM="sendDataMap2"
-        try { globalBH=gvDevice.currentValue("globalBH2") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap2(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap2(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==3) {
         pSensor=presenceSensor3.currentValue("presence")
@@ -680,8 +656,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce3.contains("Not set") || parent.procunciation3=="") fName=parent.friendlyName3
         else fName=parent.pronounce3
         sendDataM="sendDataMap3"
-        try { globalBH=gvDevice.currentValue("globalBH3") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap3(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap3(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==4) {
         pSensor=presenceSensor4.currentValue("presence")
@@ -689,8 +672,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce4.contains("Not set") || parent.procunciation4=="") fName=parent.friendlyName4
         else fName=parent.pronounce4
         sendDataM="sendDataMap4"
-        try { globalBH=gvDevice.currentValue("globalBH4") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap4(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap4(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==5) {
         pSensor=presenceSensor5.currentValue("presence")
@@ -698,8 +688,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce5.contains("Not set") || parent.procunciation5=="") fName=parent.friendlyName5
         else fName=parent.pronounce5
         sendDataM="sendDataMap5"
-        try { globalBH=gvDevice.currentValue("globalBH5") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap5(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap5(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==6) {
         pSensor=presenceSensor6.currentValue("presence")
@@ -707,8 +704,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce6.contains("Not set") || parent.procunciation6=="") fName=parent.friendlyName6
         else fName=parent.pronounce6
         sendDataM="sendDataMap6"
-        try { globalBH=gvDevice.currentValue("globalBH6") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap6(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap6(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==7) {
         pSensor=presenceSensor7currentValue("presence")
@@ -716,8 +720,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce7.contains("Not set") || parent.procunciation7=="") fName=parent.friendlyName7
         else fName=parent.pronounce7
         sendDataM="sendDataMap7"
-        try { globalBH=gvDevice.currentValue("globalBH7") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap7(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap7(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==8) {
         pSensor=presenceSensor8currentValue("presence")
@@ -725,8 +736,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce8.contains("Not set") || parent.procunciation8=="") fName=parent.friendlyName8
         else fName=parent.pronounce8
         sendDataM="sendDataMap8"
-        try { globalBH=gvDevice.currentValue("globalBH8") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap8(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap8(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==9) {
         pSensor=presenceSensor9.currentValue("presence")
@@ -734,8 +752,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce9.contains("Not set") || parent.procunciation9=="") fName=parent.friendlyName9
         else fName=parent.pronounce9
         sendDataM="sendDataMap9"
-        try { globalBH=gvDevice.currentValue("globalBH9") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap9(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap9(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==10) {
         pSensor=presenceSensor10.currentValue("presence")
@@ -743,8 +768,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce10.contains("Not set") || parent.procunciation10=="") fName=parent.friendlyName10
         else fName=parent.pronounce10
         sendDataM="sendDataMap10"
-        try { globalBH=gvDevice.currentValue("globalBH0") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap10(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap10(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==11) {
         pSensor=presenceSensor11.currentValue("presence")
@@ -752,8 +784,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce11.contains("Not set") || parent.procunciation11=="") fName=parent.friendlyName11
         else fName=parent.pronounce11
         sendDataM="sendDataMap11"
-        try { globalBH=gvDevice.currentValue("globalBH11") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap11(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap11(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==12) {
         pSensor=presenceSensor12.currentValue("presence")
@@ -761,8 +800,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce12.contains("Not set") || parent.procunciation12=="") fName=parent.friendlyName12
         else fName=parent.pronounce12
         sendDataM="sendDataMap12"
-        try { globalBH=gvDevice.currentValue("globalBH12") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap12(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap12(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==13) {
         pSensor=presenceSensor13.currentValue("presence")
@@ -770,8 +816,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce13.contains("Not set") || parent.procunciation13=="") fName=parent.friendlyName13
         else fName=parent.pronounce13
         sendDataM="sendDataMap13"
-        try { globalBH=gvDevice.currentValue("globalBH13") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap13(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap13(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==14) {
         pSensor=presenceSensor14.currentValue("presence")
@@ -779,8 +832,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce14.contains("Not set") || parent.procunciation14=="") fName=parent.friendlyName14
         else fName=parent.pronounce14
         sendDataM="sendDataMap14"
-        try { globalBH=gvDevice.currentValue("globalBH14") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap14(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap14(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==15) {
         pSensor=presenceSensor15.currentValue("presence")
@@ -788,8 +848,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce15.contains("Not set") || parent.procunciation15=="") fName=parent.friendlyName15
         else fName=parent.pronounce15
         sendDataM="sendDataMap15"
-        try { globalBH=gvDevice.currentValue("globalBH15") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap15(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap15(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==16) {
         pSensor=presenceSensor16.currentValue("presence")
@@ -797,8 +864,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce16.contains("Not set") || parent.procunciation16=="") fName=parent.friendlyName16
         else fName=parent.pronounce16
         sendDataM="sendDataMap16"
-        try { globalBH=gvDevice.currentValue("globalBH16") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap16(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap16(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==17) {
         pSensor=presenceSensor17.currentValue("presence")
@@ -806,8 +880,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce17.contains("Not set") || parent.procunciation17=="") fName=parent.friendlyName17
         else fName=parent.pronounce17
         sendDataM="sendDataMap17"
-        try { globalBH=gvDevice.currentValue("globalBH17") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap17(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap17(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==18) {
         pSensor=presenceSensor18.currentValue("presence")
@@ -815,8 +896,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce18.contains("Not set") || parent.procunciation18=="") fName=parent.friendlyName18
         else fName=parent.pronounce18
         sendDataM="sendDataMap18"
-        try { globalBH=gvDevice.currentValue("globalBH18") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap18(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap18(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==19) {
         pSensor=presenceSensor19.currentValue("presence")
@@ -824,8 +912,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce19.contains("Not set") || parent.procunciation19=="") fName=parent.friendlyName19
         else fName=parent.pronounce19
         sendDataM="sendDataMap19"
-        try { globalBH=gvDevice.currentValue("globalBH19") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap19(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap19(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==20) {
         pSensor=presenceSensor20.currentValue("presence")
@@ -833,8 +928,15 @@ def whichPresenceSensor(numb) {
         if(parent.pronounce20.contains("Not set") || parent.procunciation20=="") fName=parent.friendlyName20
         else fName=parent.pronounce20
         sendDataM="sendDataMap20"
-        try { globalBH=gvDevice.currentValue("globalBH20") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap20(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justLeftHome"
+                gvDevice.sendDataMap20(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==21) {
         pSensor=myLock1.currentValue("lock")
@@ -843,13 +945,15 @@ def whichPresenceSensor(numb) {
         getLockUserName(codeName)
         
         sendDataM="sendDataMap21"
-        if(pSensor == "locked") {
-            globalBH = "notHome"
-            gvDevice."${sendDataM}"(globalBH)
-        } else {  
-            try { globalBH=gvDevice.currentValue("globalBH21") }
-            catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
-        }
+        try { 
+            if(pSensor == "locked") {
+                globalBH = "beenHere"
+                gvDevice.sendDataMap21(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap21(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==22) {
         pSensor=myLock2.currentValue("lock")
@@ -858,8 +962,15 @@ def whichPresenceSensor(numb) {
         getLockUserName(codeName)
         
         sendDataM="sendDataMap22"
-        try { globalBH=gvDevice.currentValue("globalBH22") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "locked") {
+                globalBH = "beenHere"
+                gvDevice.sendDataMap22(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap22(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==23) {
         pSensor=myLock3.currentValue("lock")
@@ -868,8 +979,15 @@ def whichPresenceSensor(numb) {
         getLockUserName(codeName)
         
         sendDataM="sendDataMap23"
-        try { globalBH=gvDevice.currentValue("globalBH23") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "locked") {
+                globalBH = "beenHere"
+                gvDevice.sendDataMap23(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap23(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==24) {
         pSensor=myLock4.currentValue("lock")
@@ -878,8 +996,15 @@ def whichPresenceSensor(numb) {
         getLockUserName(codeName)
         
         sendDataM="sendDataMap24"
-        try { globalBH=gvDevice.currentValue("globalBH24") }
-        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
+        try { 
+            if(pSensor == "locked") {
+                globalBH = "beenHere"
+                gvDevice.sendDataMap24(globalBH)
+            } else if(pSensor == "not present") {
+                globalBH = "justGotHome"
+                gvDevice.sendDataMap24(globalBH)
+            }
+        } catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     return [pSensor,lastActivity,fName,sendDataM,globalBH]
 }
@@ -1061,46 +1186,14 @@ def getTimeDiff(numb,handler) {
     timeDiff = Math.abs(unxNow-unxPrev)
     timeDiff = Math.round(timeDiff/60)
     
-    if(pSensor == "present" || pSensor == "unlocked") {
-        if(timeDiff < 1) {
-            if(globalBH != "hasAnnounced") {
-                globalBH = "justGotHome"
-                gvDevice."${sendDataM}"(globalBH)
-            }
-        } else if(timeDiff < timeHome) {
-            if(globalBH != "hasAnnounced") {
-                globalBH = "welcomeHome"
-                gvDevice."${sendDataM}"(globalBH)
-            }
-        } else if(timeDiff > timeHome) {
-            globalBH = "beenHome"
-            gvDevice."${sendDataM}"(globalBH)
-        }
-    }
-    
-    if(pSensor == "locked") {
-        globalBH = "notHome"
-        gvDevice."${sendDataM}"(globalBH)
-    }
-    
-    if(pSensor == "not present") {
-        if(timeDiff < timeAway) {
-            if(globalBH != "hasAnnounced") {
-                globalBH = "justLeftHome"
-                gvDevice."${sendDataM}"(globalBH)
-            }
-        } else {
-            globalBH = "notHome"
-            gvDevice."${sendDataM}"(globalBH)
-        }
-    }
+    if(logEnable) log.debug "In getTimeDiff - ${numb} - ${fName} - timeDiff: ${timeDiff}"
 
     if(pSensor == "present" || pSensor =="unlocked") {
         if(logEnable) log.debug "In getTimeDiff (present) - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
         
         // ** Home Now **
-        if(handlerValue == "messageHomeNow" && (globalBH == "justGotHome" || globalBH == "welcomeHome")) {
-            log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+        if(handlerValue == "messageHomeNow" && globalBH != "hasAnnounced" && timeDiff < 1) {
+            if(logEnable) log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
 			state.nameCount = state.nameCount + 1
             if(state.nameCount == 1) state.presenceMap = ["${fName}"]
 			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
@@ -1108,49 +1201,56 @@ def getTimeDiff(numb,handler) {
 
             if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
         } else {
-            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
+            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Global 'Been Here': ${globalBH}. No 'homeNow' announcement needed."
         }
         
         // ** Welcome Home **
-        if(globalBH == "justGotHome" || globalBH == "welcomeHome") {    
-            if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - globalBH: ${globalBH}"
-		    log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
-			state.nameCount = state.nameCount + 1
-            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-		    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			state.canSpeak = "yes"
-            globalBH = "hasAnnounced"
-            gvDevice."${sendDataM}"(globalBH)
+        if(globalBH != "hasAnnounced") {
+            if(timeDiff < timeHome) {    
+                if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - globalBH: ${globalBH}"
+		        if(logEnable) log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+			    state.nameCount = state.nameCount + 1
+                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+		        if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			    state.canSpeak = "yes"
+                globalBH = "hasAnnounced"
+                gvDevice."${sendDataM}"(globalBH)
                     
-            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+                if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+            } else {
+                globalBH = "beenHome"
+                gvDevice."${sendDataM}"(globalBH)
+                if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Sent 3 (welcomeHome) - Global 'Been Here': ${globalBH}. No 'welcomeHome' announcement needed."
+            }
         } else {
-            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Global 'Been Here' is ${globalBH}. No 'welcomeHome' announcement needed. - handler: ${handler}"
+            if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - Global 'Been Here': ${globalBH}. Announcement was already made."
 		}
 	}
-        
-    if(pSensor == "not present") {
-        if(logEnable) log.debug "In getTimeDiff (not present) - ${fName} - timeDiff: ${timeDiff} - globalBH ${globalBH}"
-        
-  		// ** justLeftHome **
-        if(globalBH == "justLeftHome" && !state.hasSpokenJustLeftHome) {
-			log.info "${app.label} - ${fName} just left! Time Diff = ${timeDiff}"
-			state.nameCount = state.nameCount + 1
-            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			state.canSpeak = "yes"
-			globalBH = "hasAnnounced"
+    
+    if(pSensor == "not present" || pSensor == "locked") {
+        // ** justLeftHome **
+        if(timeDiff < timeAway) {
+            if(globalBH != "hasAnnounced") {
+                if(logEnable) log.info "${app.label} - ${fName} just left! Time Diff: ${timeDiff}"
+			    state.nameCount = state.nameCount + 1
+                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			    state.canSpeak = "yes"
+			    globalBH = "hasAnnounced"
+                gvDevice."${sendDataM}"(globalBH)
+            } else {
+                if(logEnable) log.trace "In getTimeDiff (not present) - ${fName} - Global 'Been Here': ${globalBH}. No 'justLeftHome' announcement needed."
+            }
+        // ** notHome **    
+        } else {
+            globalBH = "notHome"
             gvDevice."${sendDataM}"(globalBH)
-            
-            if(logEnable) log.trace "In getTimeDiff (not present) - ${fName} - Sent 3 (justLeftHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-		}
-        
-        // ** notHome **
-        if(globalBH == "notHome") {
-			if(logEnable) log.info "${app.label} - ${fName} is not home! Time Diff = ${timeDiff}"        
-            log.info "${app.label} - In getTimeDiff (not present) - ${fName} - has been gone too long. No announcement needed."           
+            if(logEnable) log.info "${app.label} - ${fName} is not home! Time Diff = ${timeDiff}"        
+            if(logEnable) log.info "${app.label} - In getTimeDiff (not present) - ${fName} - has been gone too long. No announcement needed."           
             if(logEnable) log.trace "In getTimeDiff (not present) - ${fName} - Sent 4 (notHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
-		}
-	} 
+        }
+    }
+
     getPresenceSensorStatus()
 }
 
