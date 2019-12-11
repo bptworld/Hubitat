@@ -29,10 +29,10 @@
   "FollowMeDriverDiscussion": "",
   "FollowMeDriverUpdateNote": "V2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)",
   
-  "HomeTrackerDriverVersion": "v1.0.0",
+  "HomeTrackerDriverVersion": "v1.0.1",
   "HomeTrackerDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy",
   "HomeTrackerDriverDiscussion": "",
-  "HomeTrackerDriverUpdateNote": "V1.0.0 - 09/10/19 - Initial release",
+  "HomeTrackerDriverUpdateNote": "V1.0.1 - 12/10/19 - Adjustments for Locks",
   
   "HubWatchdogDriverVersion": "v1.0.8",
   "HubWatchdogDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy",
