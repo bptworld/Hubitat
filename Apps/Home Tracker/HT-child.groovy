@@ -34,11 +34,12 @@
  *
  *  Changes:
  *
+ *  V2.1.0 - 12/10/19 - Reworking how locks as presence sensor are handled, Added alt pronounce for locks
  *  V2.0.9 - 12/10/19 - Fixed an issue with Greetings
  *  V2.0.8 - 11/30/19 - Fixed an issue causing Welcome Home to not be announced. Lot's of cosmetic changes
  *  V2.0.7 - 11/04/19 - Code changes to get rid of some gremlins, got rid of the message queue as it was always getting stuck
  *  V2.0.6 - 10/13/19 - Cosmetic changes to Global Variable section and new error message if not used. New option 'auto clear' for message queueing issues.
- *  V2.0.5 - 10/04/19 - Support for pronounce of Presence Sensor names (aaronward)
+ *  V2.0.5 - 10/04/19 - Support for alt pronounce of Presence Sensor names (aaronward)
  *  V2.0.4 - 10/03/19 - LOTS of changes, added some rule machine options, lock codes can be used as presence sensors and name
 will be added to the announcement. Greetings have returned! Be sure to load up each child app and fill in the missing pieces!
  *  V2.0.3 - 09/14/19 - More tweaking...
@@ -56,7 +57,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.0.9"
+	state.version = "v2.1.0"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -126,7 +127,7 @@ def pageConfig() {
             } else {
                 href "welcomeHomeOptions", title:"Welcome Home Options", description:"Click here to setup the Welcome Home Options"
             }
-    	    if(theLocks) {
+    	    if(theLocks || myLock1 || myLock2 || myLock3 || myLock4) {
                 href "doorLockOptions", title:"${getImage("checkMarkGreen")} Door Lock Options", description:"Click here to setup the Door Lock Options"
             } else {
                 href "doorLockOptions", title:"Door Lock Options", description:"Click here to setup the Door Lock Options"
@@ -413,6 +414,50 @@ def welcomeHomeOptions(){
 
 def doorLockOptions(){
     dynamicPage(name: "doorLockOptions", title: "Door Lock Options", install: false, uninstall:false){
+        section(getFormat("header-green", "${getImage("Blank")}"+" Lock User Names")) {
+            paragraph "If you have a name that Hubitat has a hard time pronouncing, you can put in an 'alternate' Pronunciation for each name. <small>* Only needed if you want to change the pronunciation of a name.</small>"
+		    input "lockName1", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+            input "lockPronounce1", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            if(lockName1) {
+                input "lockName2", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce2", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName2) {
+                input "lockName3", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce3", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName3) {
+                input "lockName4", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce4", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName4) {
+                input "lockName5", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce5", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName5) {
+                input "lockName6", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce6", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName6) {
+                input "lockName7", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce7", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName7) {
+                input "lockName8", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce8", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName8) {
+                input "lockName9", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce9", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName9) {
+                input "lockName10", "text", title: "Name found in Lock Code Manager", required: false, submitOnChange: true, width: 6
+                input "lockPronounce10", "text", title: "'Alt' Pronunciation", required: false, width: 6
+            }
+            if(lockName10) {
+                paragraph "<small>* Max 10 names has been reached. If more names are needed please message bptworld</small>"
+            }
+        }
         section(getFormat("header-green", "${getImage("Blank")}"+" Lock Announcements")) {
             paragraph "This will give a heads up that someone has unlocked a door."
             input "theLocks", "capability.lock", title: "Select Locks to announce when unlocked", multiple: true, submitOnChange: true
@@ -501,16 +546,11 @@ def initialize() {
     if(myLock4) subscribe(myLock4, "lock.unlocked", presenceSensorHandler)
     if(theLocks) subscribe(theLocks, "lock.unlocked", lockHandler)
 	
-	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockSensorHandler)}
+	if(triggerMode == "Door_Lock"){subscribe(lock1, "lock", lockHandler)}
 	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor1, "motion", motionSensorHandler)}
     
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
-}
-
-def setupNewStuff() {
-	if(logEnable) log.debug "In setupNewStuff (${state.version}) - Setting up Maps"
-	if(state.presenceMap == null) state.presenceMap = [:]
 }
 
 def presenceSensorHandler(evt){
@@ -581,6 +621,7 @@ def presenceSensorHandler(evt){
     } else {
         if(logEnable) log.warn "In presenceSensorHandler - No match found - triggerName: ${triggerName}"
     }
+//    getPresenceSensorStatus()
 }
 
 def whichPresenceSensorNew(numb) {
@@ -588,8 +629,11 @@ def whichPresenceSensorNew(numb) {
     if(numb >= 1 && numb <= 20) {
         pSensor=name.currentValue("presence")
         lastActivity = name.getLastActivity()
-        if(parent.pronounce$numb.contains("Not set") || parent.procunciation$numb=="") fName="${parent.friendlyName$numb}"
-        else fName="${parent.pronounce$numb}"
+        if(parent.pronounce$numb.contains("Not set") || parent.procunciation$numb=="") {
+            fName="${parent.friendlyName$numb}"
+        } else {
+            fName="${parent.pronounce$numb}"
+        }
         sendDataM="sendDataMap$numb"
         try { globalBH=gvDevice.currentValue("globalBH$numb") }
         catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
@@ -603,9 +647,13 @@ def whichPresenceSensorNew(numb) {
         
         pSensor=myLock$lockNumb.currentValue("lock")
         lastActivity = myLock$lockNumb.getLastActivity()
-        fName=myLock$lockNumb.currentValue("lastCodeName")
-        sendDataM="NA"
-        globalBH="NA"
+        
+        codeName=myLock$lockNumb.currentValue("lastCodeName")
+        getLockUserName(codeName)
+
+        sendDataM="sendDataMap$numb"
+        try { globalBH=gvDevice.currentValue("globalBH$numb") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(logEnable) log.trace "In whichPresenceSensor - Returning - pSensor: ${pSensor} - lastActivity: ${lastActivity} - fName: ${fName} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
     return [pSensor,lastActivity,fName,sendDataM,globalBH]
@@ -796,32 +844,73 @@ def whichPresenceSensor(numb) {
     if(numb==21) {
         pSensor=myLock1.currentValue("lock")
         lastActivity = myLock1.getLastActivity()
-        fName=myLock1.currentValue("lastCodeName")
-        sendDataM="NA"
-        globalBH="NA"
+        codeName=myLock1.currentValue("lastCodeName")
+        getLockUserName(codeName)
+        
+        sendDataM="sendDataMap21"
+        try { globalBH=gvDevice.currentValue("globalBH21") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==22) {
         pSensor=myLock2.currentValue("lock")
         lastActivity = myLock2.getLastActivity()
-        fName=myLock2.currentValue("lastCodeName")
-        sendDataM="NA"
-        globalBH="NA"
+        codeName=myLock2.currentValue("lastCodeName")
+        getLockUserName(codeName)
+        
+        sendDataM="sendDataMap22"
+        try { globalBH=gvDevice.currentValue("globalBH22") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==23) {
         pSensor=myLock3.currentValue("lock")
         lastActivity = myLock3.getLastActivity()
-        fName=myLock3.currentValue("lastCodeName")
-        sendDataM="NA"
-        globalBH="NA"
+        codeName=myLock3.currentValue("lastCodeName")
+        getLockUserName(codeName)
+        
+        sendDataM="sendDataMap23"
+        try { globalBH=gvDevice.currentValue("globalBH23") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     if(numb==24) {
         pSensor=myLock4.currentValue("lock")
         lastActivity = myLock4.getLastActivity()
-        fName=myLock4.currentValue("lastCodeName")
-        sendDataM="NA"
-        globalBH="NA"
+        codeName=myLock4.currentValue("lastCodeName")
+        getLockUserName(codeName)
+        
+        sendDataM="sendDataMap24"
+        try { globalBH=gvDevice.currentValue("globalBH24") }
+        catch (e) { log.error "Please go back into the Home Tracker app and select a Global Variable.<br>Error: ${e}" }
     }
     return [pSensor,lastActivity,fName,sendDataM,globalBH]
+}
+
+def getLockUserName(codeName) {
+    if(logEnable) log.debug "In getCodeName (${state.version})"
+    
+    if(codeName == lockName1) {
+        fName="${lockPronounce1}"
+    } else if(codeName == lockName2) {
+        fName="${lockPronounce2}"
+    } else if(codeName == lockName3) {
+        fName="${lockPronounce3}"
+    } else if(codeName == lockName4) {
+        fName="${lockPronounce4}"
+    } else if(codeName == lockName5) {
+        fName="${lockPronounce5}"
+    } else if(codeName == lockName6) {
+        fName="${lockPronounce6}"
+    } else if(codeName == lockName7) {
+        fName="${lockPronounce7}"
+    } else if(codeName == lockName8) {
+        fName="${lockPronounce8}"
+    } else if(codeName == lockName9) {
+        fName="${lockPronounce9}"
+    } else if(codeName == lockName10) {
+        fName="${lockPronounce10}"
+    } else {
+        fName="${codeName}"
+    }
+    return fName
 }
 
 def lockHandler(evt) {
@@ -832,6 +921,7 @@ def lockHandler(evt) {
 	if(lockStatus == "unlocked") {
         if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
         if(theLocks) {
+            //if(logEnable) log.debug "In lockHandler - lockdata: ${lockdata}"
             if (lockdata && !lockdata[0].startsWith("{")) {
                 lockdata = decrypt(lockdata)
                 //log.info "Lock Data: ${lockdata}"
@@ -841,10 +931,14 @@ def lockHandler(evt) {
                 }
             }
             def codeMap = parseJson(lockdata ?: "{}").find{ it }
+            if(logEnable) log.debug "In lockHandler - codeMap: ${codeMap}"
             if (!codeMap) return
     
-            unlockedBy = "${codeMap?.value?.name}"
-	        if(logEnable) log.debug "In lockHandler - ${lockName} was unlocked by ${unlockedBy}"	
+            codeName = "${codeMap?.value?.name}"
+            if(logEnable) log.debug "In lockHandler - GOING TO getLockUserName"
+            getLockUserName(codeName)
+            
+	        if(logEnable) log.debug "In lockHandler - ${lockName} was unlocked by ${fName}"	
 
 	        if(nRandomDU) {
 		        def nvaluesDU = "${nMessageDU}".split(";")
@@ -858,28 +952,17 @@ def lockHandler(evt) {
 		        theMessage = "${nMessageDU}"
 		        if(logEnable) log.info "In messageDoorUnlocked - Static - theMessage: ${theMessage}"
             }
-            if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${unlockedBy}" )}
+            if (theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', "${fName}" )}
             if (theMessage.contains("%door%")) {theMessage = theMessage.replace('%door%', "${lockName}" )}
             if(logEnable) log.debug "In messageDoorUnlocked - going to letsTalk with theMessage"
             state.canSpeak = "yes"
-            state.unlockedBy = "${unlockedBy}"
             letsTalk(theMessage)
         }
         if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 1"
-        pauseExecution(500)
-	}
-    if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 2"
-}
-
-def lockSensorHandler(evt) {
-    state.lockStatus = evt.value
-	state.lockName = evt.displayName
-	if(logEnable) log.debug "In lockSensorHandler (${state.version}) - Contact: ${state.lockName} - Status: ${state.lockStatus}"
-	if(state.lockStatus == "unlocked") {
-		if(logEnable) log.debug "In lockSensorHandler - unlocked"
-		handler = "lock"
+        handler = "lock"
         whosHere(handler)
 	}
+    if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 2"
 }
 
 def contactSensorHandler(evt) {
@@ -976,18 +1059,25 @@ def getTimeDiff(numb,handler) {
     timeDiff = Math.round(timeDiff/60)
     
     if(pSensor == "unlocked") {
-        if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff} - handler: ${handler}"
+        if(logEnable) log.debug "In getTimeDiff (unlocked) - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
         if((handlerValue == "lock" || handlerValue == "motion" || handlerValue == "contact") && timeDiff < timeHome) {    // ** Welcome Home **
-            log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
-			state.nameCount = state.nameCount + 1
-            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			state.canSpeak = "yes"
+            if(globalBH != "beenHome") {
+                log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
+			    state.nameCount = state.nameCount + 1
+                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			    state.canSpeak = "yes"
+                globalBH = "beenHome"
+                gvDevice."${sendDataM}"(globalBH)
+                if(logEnable) log.trace "In getTimeDiff -  - ${fName} - Sent L (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+            } else {
+                if(logEnable) log.trace "In getTimeDiff -  - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
+            }
         }
     }
 
     if(pSensor == "present") {
-        if(logEnable) log.debug "In getTimeDiff - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
+        if(logEnable) log.debug "In getTimeDiff (present) - ${fName} - timeDiff: ${timeDiff} - handler: ${handler} - globalBH: ${globalBH}"
         if(handlerValue == "messageHomeNow" && timeDiff < 1) {    // ** Home Now **
             if(globalBH != "beenHome") {
                 log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
@@ -998,18 +1088,18 @@ def getTimeDiff(numb,handler) {
                 
                 globalBH = "welcomeHome"
                 gvDevice."${sendDataM}"(globalBH)
-                if(logEnable) log.trace "${app.label} - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+                if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 1 (homeNow) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
             } else {
-                if(logEnable) log.trace "${app.label} - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
+                if(logEnable) log.trace "In getTimeDiff - ${fName} - Global 'Been Here' is ${globalBH}. No 'homeNow' announcement needed. - handler: ${handler}"
 			}
         }
         
         if((handlerValue == "lock" || handlerValue == "motion" || handlerValue == "contact") && timeDiff < timeHome) {    // ** Welcome Home **
-            if(logEnable) log.debug "${fName} - Welcome Home - PASSED TEST ONE - Now what's the globalBH: ${globalBH}"
+            if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - PASSED TEST ONE - Now what's the globalBH: ${globalBH}"
             if(globalBH != "beenHome") {
-                if(logEnable) log.debug "${fName} - Welcome Home - PASSED TEST TWO - globalBH: ${globalBH}"
+                if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - PASSED TEST TWO - globalBH: ${globalBH}"
                 if(globalBH == "welcomeHome") {  
-                    if(logEnable) log.debug "${fName} - Welcome Home - PASSED TEST THREE - globalBH: ${globalBH}"
+                    if(logEnable) log.debug "In getTimeDiff - ${fName} - Welcome Home - PASSED TEST THREE - globalBH: ${globalBH}"
 				    log.info "${app.label} - ${fName} just got here! Time Diff: ${timeDiff} - handler: ${handler}"
 				    state.nameCount = state.nameCount + 1
                     if(state.nameCount == 1) state.presenceMap = ["${fName}"]
@@ -1018,16 +1108,16 @@ def getTimeDiff(numb,handler) {
                     globalBH = "beenHome"
                 
 				    gvDevice."${sendDataM}"(globalBH)
-                    if(logEnable) log.trace "${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+                    if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 2 (welcomeHome) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
                 } else {
-                    if(logEnable) log.trace "${fName} - Sent 3 (not welcomeHome) - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
+                    if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 3 (not welcomeHome) - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
 			    }
 			} else {
-                if(logEnable) log.trace "${fName} - 4 - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
+                if(logEnable) log.trace "In getTimeDiff - ${fName} - 4 - Global 'Been Here' is ${globalBH}. No 'Welcome Home' announcement needed. - Time Diff: ${timeDiff} - handler: ${handler}"
 			}
         }
 	} else if(pSensor == "not present") {
-        if(logEnable) log.debug "${fName} - timeDiff: ${timeDiff}"
+        if(logEnable) log.debug "In getTimeDiff (not present) - ${fName} - timeDiff: ${timeDiff}"
   		if(timeDiff < timeAway) {
 			log.info "${app.label} - ${fName} just left! Time Diff = ${timeDiff}"
 			state.nameCount = state.nameCount + 1
@@ -1036,14 +1126,15 @@ def getTimeDiff(numb,handler) {
 			state.canSpeak = "yes"
 			globalBH = "notHome"
             gvDevice."${sendDataM}"(globalBH)
-            if(logEnable) log.trace "${fName} - Sent 4 (not present) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+            if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 4 (not present) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
 		} else {
-            log.info "${app.label} - ${fName} - has been gone too long. No announcement needed."
+            log.info "${app.label} - In getTimeDiff - ${fName} - has been gone too long. No announcement needed."
             globalBH = "notHome"
             gvDevice."${sendDataM}"(globalBH)
-            if(logEnable) log.trace "${fName} - Sent 5 (not present) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
+            if(logEnable) log.trace "In getTimeDiff - ${fName} - Sent 5 (not present) - sendDataM: ${sendDataM} - globalBH ${globalBH}"
 		}
 	}
+//    getPresenceSensorStatus()
 }
 
 def messageHomeNow() {
@@ -1139,48 +1230,48 @@ def makeGlobalHere(sendData) {
 }
 
 def letsTalk(theMessage) {
-	    if(logEnable) log.debug "In letsTalk (${state.version})"
-	    checkTime()
-	    checkVol()
-        if(state.timeBetween == true) {
-		    theMsg = theMessage
-            speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
-            speechDuration2 = speechDuration * 1000
-            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, theMsg: ${theMsg}, volRestore: ${volRestore}"
-            state.speakers.each { it ->
-                if(logEnable) log.debug "Speaker in use: ${it}"
-                if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                    it.speak(theMsg)
-                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                    def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-                } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(theMsg, prevVolume)
-                } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.speak(theMsg)
-                    pauseExecution(speechDuration2)
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                }
+	if(logEnable) log.debug "In letsTalk (${state.version})"
+	checkTime()
+	checkVol()
+    if(state.timeBetween == true) {
+		theMsg = theMessage
+        speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
+        speechDuration2 = speechDuration * 1000
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+        if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, theMsg: ${theMsg}, volRestore: ${volRestore}"
+        state.speakers.each { it ->
+            if(logEnable) log.debug "Speaker in use: ${it}"
+            if(speakerProxy) {
+                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                it.speak(theMsg)
+            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                def prevVolume = it.currentValue("volume")
+                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
+            } else if(it.hasCommand('playTextAndRestore')) {   
+                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                def prevVolume = it.currentValue("volume")
+                it.playTextAndRestore(theMsg, prevVolume)
+            } else {		        
+                if(logEnable) log.debug "In letsTalk - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                it.speak(theMsg)
+                pauseExecution(speechDuration2)
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
             }
-            state.canSpeak = "no"
-	        if(logEnable) log.debug "In letsTalk - Finished speaking"  
-		    log.info "${app.label} - ${theMsg}"
-            if(sendPushMessage) pushNow(theMsg)
-	    } else {
-            state.canSpeak = "no"
-		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	    }
+        }
+        state.canSpeak = "no"
+	    if(logEnable) log.debug "In letsTalk - Finished speaking"  
+	    log.info "${app.label} - ${theMsg}"
+        if(sendPushMessage) pushNow(theMsg)
+	} else {
+        state.canSpeak = "no"
+        if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+	}
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
@@ -1490,10 +1581,70 @@ def pushNow(msg) {
 	}	
 }
 
+def getPresenceSensorStatus() {
+    if(logEnable) log.debug "In getPresenceSensorStatus (${state.version})"
+    CheckGlobalBH1=gvDevice.currentValue("globalBH1")
+    CheckGlobalBH2=gvDevice.currentValue("globalBH2")
+    CheckGlobalBH3=gvDevice.currentValue("globalBH3")
+    CheckGlobalBH4=gvDevice.currentValue("globalBH4")
+    CheckGlobalBH5=gvDevice.currentValue("globalBH5")
+    CheckGlobalBH6=gvDevice.currentValue("globalBH6")
+    CheckGlobalBH7=gvDevice.currentValue("globalBH7")
+    CheckGlobalBH8=gvDevice.currentValue("globalBH8")
+    CheckGlobalBH9=gvDevice.currentValue("globalBH9")
+    CheckGlobalBH10=gvDevice.currentValue("globalBH10")
+    CheckGlobalBH11=gvDevice.currentValue("globalBH11")
+    CheckGlobalBH12=gvDevice.currentValue("globalBH12")
+    CheckGlobalBH13=gvDevice.currentValue("globalBH13")
+    CheckGlobalBH14=gvDevice.currentValue("globalBH14")
+    CheckGlobalBH15=gvDevice.currentValue("globalBH15")
+    CheckGlobalBH16=gvDevice.currentValue("globalBH16")
+    CheckGlobalBH17=gvDevice.currentValue("globalBH17")
+    CheckGlobalBH18=gvDevice.currentValue("globalBH18")
+    CheckGlobalBH19=gvDevice.currentValue("globalBH19")
+    CheckGlobalBH20=gvDevice.currentValue("globalBH20")
+    
+    CheckGlobalBH21=gvDevice.currentValue("globalBH21")
+    CheckGlobalBH22=gvDevice.currentValue("globalBH22")
+    CheckGlobalBH23=gvDevice.currentValue("globalBH23")
+    CheckGlobalBH24=gvDevice.currentValue("globalBH24")
+    
+    if(logEnable) log.debug "********** Start Global Status Check **********"
+    
+    if(CheckGlobalBH1) {if(logEnable) log.debug "Checking - GlobalBH1: ${CheckGlobalBH1}"}
+    if(CheckGlobalBH2) {if(logEnable) log.debug "Checking - GlobalBH2: ${CheckGlobalBH2}"}
+    if(CheckGlobalBH3) {if(logEnable) log.debug "Checking - GlobalBH3: ${CheckGlobalBH3}"}
+    if(CheckGlobalBH4) {if(logEnable) log.debug "Checking - GlobalBH4: ${CheckGlobalBH4}"}
+    if(CheckGlobalBH5) {if(logEnable) log.debug "Checking - GlobalBH5: ${CheckGlobalBH5}"}
+    if(CheckGlobalBH6) {if(logEnable) log.debug "Checking - GlobalBH6: ${CheckGlobalBH6}"}
+    if(CheckGlobalBH7) {if(logEnable) log.debug "Checking - GlobalBH7: ${CheckGlobalBH7}"}
+    if(CheckGlobalBH8) {if(logEnable) log.debug "Checking - GlobalBH8: ${CheckGlobalBH8}"}
+    if(CheckGlobalBH9) {if(logEnable) log.debug "Checking - GlobalBH9: ${CheckGlobalBH9}"}
+    if(CheckGlobalBH10) {if(logEnable) log.debug "Checking - GlobalBH10: ${CheckGlobalBH10}"}
+    if(CheckGlobalBH11) {if(logEnable) log.debug "Checking - GlobalBH11: ${CheckGlobalBH11}"}
+    if(CheckGlobalBH12) {if(logEnable) log.debug "Checking - GlobalBH12: ${CheckGlobalBH12}"}
+    if(CheckGlobalBH13) {if(logEnable) log.debug "Checking - GlobalBH13: ${CheckGlobalBH13}"}
+    if(CheckGlobalBH14) {if(logEnable) log.debug "Checking - GlobalBH14: ${CheckGlobalBH14}"}
+    if(CheckGlobalBH15) {if(logEnable) log.debug "Checking - GlobalBH15: ${CheckGlobalBH15}"}
+    if(CheckGlobalBH16) {if(logEnable) log.debug "Checking - GlobalBH16: ${CheckGlobalBH16}"}
+    if(CheckGlobalBH17) {if(logEnable) log.debug "Checking - GlobalBH17: ${CheckGlobalBH17}"}
+    if(CheckGlobalBH18) {if(logEnable) log.debug "Checking - GlobalBH18: ${CheckGlobalBH18}"}
+    if(CheckGlobalBH19) {if(logEnable) log.debug "Checking - GlobalBH19: ${CheckGlobalBH19}"}
+    if(CheckGlobalBH20) {if(logEnable) log.debug "Checking - GlobalBH20: ${CheckGlobalBH20}"}
+    
+    if(CheckGlobalBH21) {if(logEnable) log.debug "Checking - GlobalBH21: ${CheckGlobalBH21}"}
+    if(CheckGlobalBH22) {if(logEnable) log.debug "Checking - GlobalBH22: ${CheckGlobalBH22}"}
+    if(CheckGlobalBH23) {if(logEnable) log.debug "Checking - GlobalBH23: ${CheckGlobalBH23}"}
+    if(CheckGlobalBH24) {if(logEnable) log.debug "Checking - GlobalBH24: ${CheckGlobalBH24}"}
+ 
+    if(logEnable) log.debug "********** End Global Status Check **********"
+    
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
-	setupNewStuff()
+	if(state.presenceMap == null) state.presenceMap = [:]
 	if(logEnable == null){logEnable = false}
 	state.nameCount = 0
 	state.canSpeak = "no"
