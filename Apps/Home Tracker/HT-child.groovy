@@ -33,6 +33,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
+ *
+ *  V2.1.7 - 12/12/19 - Code reduction
  *  V2.1.6 - 12/12/19 - Major rework of the code!
  *  V2.1.1 - 12/11/19 - Reworked timDiff handler, lots of little changes
  *  V2.1.0 - 12/10/19 - Reworking how locks as presence sensor are handled, Added alt pronounce for locks
@@ -58,7 +60,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.1.6"
+	state.version = "v2.1.7"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -987,28 +989,17 @@ def whichPresenceSensor(numb) {
 def getLockUserName(codeName) {
     if(logEnable) log.debug "In getLockUserName (${state.version})"
     
-    if(codeName == lockName1) {
-        fName="${lockPronounce1}"
-    } else if(codeName == lockName2) {
-        fName="${lockPronounce2}"
-    } else if(codeName == lockName3) {
-        fName="${lockPronounce3}"
-    } else if(codeName == lockName4) {
-        fName="${lockPronounce4}"
-    } else if(codeName == lockName5) {
-        fName="${lockPronounce5}"
-    } else if(codeName == lockName6) {
-        fName="${lockPronounce6}"
-    } else if(codeName == lockName7) {
-        fName="${lockPronounce7}"
-    } else if(codeName == lockName8) {
-        fName="${lockPronounce8}"
-    } else if(codeName == lockName9) {
-        fName="${lockPronounce9}"
-    } else if(codeName == lockName10) {
-        fName="${lockPronounce10}"
-    } else {
-        fName="${codeName}"
+    if(codeName == lockName1) { fName="${lockPronounce1}"
+    } else if(codeName == lockName2) { fName="${lockPronounce2}"
+    } else if(codeName == lockName3) { fName="${lockPronounce3}"
+    } else if(codeName == lockName4) { fName="${lockPronounce4}"
+    } else if(codeName == lockName5) { fName="${lockPronounce5}"
+    } else if(codeName == lockName6) { fName="${lockPronounce6}"
+    } else if(codeName == lockName7) { fName="${lockPronounce7}"
+    } else if(codeName == lockName8) { fName="${lockPronounce8}"
+    } else if(codeName == lockName9) { fName="${lockPronounce9}"
+    } else if(codeName == lockName10) { fName="${lockPronounce10}"
+    } else { fName="${codeName}"
     }
     
     if(logEnable) log.debug "In getLockUserName - fName: ${fName}"
@@ -1140,25 +1131,25 @@ def whosHere(handler) {
 	if(presenceSensor3 && (presenceSensor3.currentValue("presence") == "not present")) getTimeDiffAway(3,handler)
 	if(presenceSensor4 && (presenceSensor4.currentValue("presence") == "not present")) getTimeDiffAway(4,handler)
 	if(presenceSensor5 && (presenceSensor5.currentValue("presence") == "not present")) getTimeDiffAway(5,handler)
-    if(presenceSensor6 && (presenceSensor6.currentValue("presence") == "not present")) getTimeDiff(6,handler)
-    if(presenceSensor7 && (presenceSensor7.currentValue("presence") == "not present")) getTimeDiff(7,handler)
-    if(presenceSensor8 && (presenceSensor8.currentValue("presence") == "not present")) getTimeDiff(8,handler)
-    if(presenceSensor9 && (presenceSensor9.currentValue("presence") == "not present")) getTimeDiff(9,handler)
-    if(presenceSensor10 && (presenceSensor10.currentValue("presence") == "not present")) getTimeDiff(10,handler)
-    if(presenceSensor11 && (presenceSensor11.currentValue("presence") == "not present")) getTimeDiff(11,handler)
-    if(presenceSensor12 && (presenceSensor12.currentValue("presence") == "not present")) getTimeDiff(12,handler)
-    if(presenceSensor13 && (presenceSensor13.currentValue("presence") == "not present")) getTimeDiff(13,handler)
-    if(presenceSensor14 && (presenceSensor14.currentValue("presence") == "not present")) getTimeDiff(14,handler)
-    if(presenceSensor15 && (presenceSensor15.currentValue("presence") == "not present")) getTimeDiff(15,handler)
-    if(presenceSensor16 && (presenceSensor16.currentValue("presence") == "not present")) getTimeDiff(16,handler)
-    if(presenceSensor17 && (presenceSensor17.currentValue("presence") == "not present")) getTimeDiff(17,handler)
-    if(presenceSensor18 && (presenceSensor18.currentValue("presence") == "not present")) getTimeDiff(18,handler)
-    if(presenceSensor19 && (presenceSensor19.currentValue("presence") == "not present")) getTimeDiff(19,handler)
-    if(presenceSensor20 && (presenceSensor20.currentValue("presence") == "not present")) getTimeDiff(20,handler)
-    if(myLock1 && (myLock1.currentValue("lock") == "locked")) getTimeDiff(21,handler)
-    if(myLock2 && (myLock2.currentValue("lock") == "locked")) getTimeDiff(22,handler)
-    if(myLock3 && (myLock3.currentValue("lock") == "locked")) getTimeDiff(23,handler)
-    if(myLock4 && (myLock4.currentValue("lock") == "locked")) getTimeDiff(24,handler)
+    if(presenceSensor6 && (presenceSensor6.currentValue("presence") == "not present")) getTimeDiffAway(6,handler)
+    if(presenceSensor7 && (presenceSensor7.currentValue("presence") == "not present")) getTimeDiffAway(7,handler)
+    if(presenceSensor8 && (presenceSensor8.currentValue("presence") == "not present")) getTimeDiffAway(8,handler)
+    if(presenceSensor9 && (presenceSensor9.currentValue("presence") == "not present")) getTimeDiffAway(9,handler)
+    if(presenceSensor10 && (presenceSensor10.currentValue("presence") == "not present")) getTimeDiffAway(10,handler)
+    if(presenceSensor11 && (presenceSensor11.currentValue("presence") == "not present")) getTimeDiffAway(11,handler)
+    if(presenceSensor12 && (presenceSensor12.currentValue("presence") == "not present")) getTimeDiffAway(12,handler)
+    if(presenceSensor13 && (presenceSensor13.currentValue("presence") == "not present")) getTimeDiffAway(13,handler)
+    if(presenceSensor14 && (presenceSensor14.currentValue("presence") == "not present")) getTimeDiffAway(14,handler)
+    if(presenceSensor15 && (presenceSensor15.currentValue("presence") == "not present")) getTimeDiffAway(15,handler)
+    if(presenceSensor16 && (presenceSensor16.currentValue("presence") == "not present")) getTimeDiffAway(16,handler)
+    if(presenceSensor17 && (presenceSensor17.currentValue("presence") == "not present")) getTimeDiffAway(17,handler)
+    if(presenceSensor18 && (presenceSensor18.currentValue("presence") == "not present")) getTimeDiffAway(18,handler)
+    if(presenceSensor19 && (presenceSensor19.currentValue("presence") == "not present")) getTimeDiffAway(19,handler)
+    if(presenceSensor20 && (presenceSensor20.currentValue("presence") == "not present")) getTimeDiffAway(20,handler)
+    if(myLock1 && (myLock1.currentValue("lock") == "locked")) getTimeDiffAway(21,handler)
+    if(myLock2 && (myLock2.currentValue("lock") == "locked")) getTimeDiffAway(22,handler)
+    if(myLock3 && (myLock3.currentValue("lock") == "locked")) getTimeDiffAway(23,handler)
+    if(myLock4 && (myLock4.currentValue("lock") == "locked")) getTimeDiffAway(24,handler)
 
     if(logEnable) log.warn "In whosHere - handler: ${handler} - canSpeak: ${state.canSpeak}"
     if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
@@ -1499,220 +1490,33 @@ def checkTimeForGreeting() {
     }
 }
 
-private getNameNEW() {
-    if(logEnable) log.debug "In getName (${state.version}) - Number of Names: ${state.nameCount}, Names: ${state.presenceMap}"
+private getName() {
+    if(logEnable) log.debug "In getName (${state.version}) - Number of Names: ${state.nameCount} - Names: ${state.presenceMap}"
     presenceMap = state.presenceMap.unique()
     nameCount = presenceMap.size()
+    nameCountM1 = nameCount - 1
+    myCount = 0
 	name = ""
-	
-    if(logEnable) log.debug "In getName - presenceMap: ${presenceMap}"
-	presenceMap.each { it -> 
-        for (i = 1; i <= nameCount; i++) {
-            if(logEnable) log.debug "*********** In getName - B - nameCount: ${nameCount} - Working on: ${i} - name: ${name}"
-            if(!name.contains("${it}")) {
-                if(logEnable) log.debug "*********** In getName - MATCH - Working on: ${i} - name: ${name}"
-                if(i == 1) {
-                    name = "${it}"
-                } else if(i > 1 && i < nameCount) {
-                    name = "${name}" + ", ${it}"
-                } else {
-                    name = "${name}" + " and ${it}"
-                }
+    
+    presenceMap.each { it -> 
+		myCount = myCount + 1
+        if(!name.contains("${it}")) {
+            if(myCount == 1) name = "${it}"
+            if(myCount > 1) {
+                if(myCount <= nameCountM1) name = "${name}" + ", ${it}"
+			    if(myCount == nameCount) name = "${name}" + " and ${it}"
             }
-            if(logEnable) log.debug "*********** In getName - A - nameCount: ${nameCount} - Working on: ${i} - name: ${name}"
-		}
+        }
+        if(logEnable) log.debug "In getName - nameCount: ${nameCount} - myCount: ${myCount} - name: ${name}"
     }
-  
+        
     is_are = (name.contains(' and ') ? 'are' : 'is')
 	has_have = (name.contains(' and ') ? 'have' : 'has')
     
 	if(name == null || name == "") names = "Whoever you are"
     
 	if(logEnable) log.debug "Name: ${name}"
-	return name
-}
-
-private getName(){
-	if(logEnable) log.debug "In getName (${state.version}) - Number of Names: ${state.nameCount}, Names: ${state.presenceMap}"
-    presenceMap = state.presenceMap.unique()
-    nameCount = presenceMap.size()
-	name = ""
-	myCount = 0
-	if(nameCount == 1) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=1: myCount = ${myCount}"
-			name = "${it}"
-		}
-	}
-	if(nameCount == 2) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=2: myCount: ${myCount}"
-			myCount = myCount + 1
-            if(!name.contains("${it}")) {
-			    name = "${name}" + "${it} "
-			    if(myCount == 1) name = "${name}" + "and "
-            }
-		}
-		name = "${name}" + "!"
-	}
-	if(nameCount == 3) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=3: myCount: ${myCount}"
-			myCount = myCount + 1
-            if(!name.contains("${it}")) {
-			    name = "${name}" + "${it}, "
-			    if(myCount == 2) name = "${name}" + "and "
-            }
-		}
-	}
-	if(nameCount == 4) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=4: myCount: ${myCount}"
-			myCount = myCount + 1
-            if(!name.contains("${it}")) {
-			    name = "${name}" + "${it}, "
-			    if(myCount == 3) name = "${name}" + "and "
-            }
-		}
-	}
-	if(nameCount == 5) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=5: myCount: ${myCount}"
-			myCount = myCount + 1
-            if(!name.contains("${it}")) {
-			    name = "${name}" + "${it}, "
-			    if(myCount == 4) name = "${name}" + "and "
-            }
-		}
-	}
-    if(nameCount == 6) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=6: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 5) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 7) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=7: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 6) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 8) {
-		presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=8: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 7) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 9) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=9: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 8) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 10) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=10: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 9) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 11) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=11: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 10) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 12) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=12: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 11) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 13) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=13: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 12) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 14) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=14: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 13) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 15) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=15: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 14) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 16) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=16: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 15) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 17) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=17: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 16) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 18) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=18: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 17) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 19) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=19: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 18) name = "${name}" + "and "
-		}
-	}
-    if(nameCount == 20) {
-		state.presenceMap.each { it -> 
-			if(logEnable) log.debug "*********** In nameCount=20: myCount: ${myCount}"
-			myCount = myCount + 1
-			name = "${name}" + "${it}, "
-			if(myCount == 19) name = "${name}" + "and "
-		}
-	}
-  
-    is_are = (name.contains(' and ') ? 'are' : 'is')
-	has_have = (name.contains(' and ') ? 'have' : 'has')
-    
-	if(name == null || name == "") names = "Whoever you are"
-    
-	if(logEnable) log.debug "Name: ${name}"
-	return name
+	return name 
 }
 
 def rulesHandler(rules) {
