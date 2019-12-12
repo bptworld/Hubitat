@@ -33,8 +33,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *
- *  V2.1.4 - 12/12/19 - Major rework, things are looking better!
+ *  V2.1.5 - 12/12/19 - Major rework, things are looking better!
+ *  V2.1.4 - 12/12/19 - Found a typo
  *  V2.1.3 - 12/12/19 - Simplified globalBH status, better status updates
  *  V2.1.2 - 12/11/19 - Still working on whether to make announcements or not
  *  V2.1.1 - 12/11/19 - Reworked timDiff handler, lots of little changes
@@ -61,7 +61,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.1.4"
+	state.version = "v2.1.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
