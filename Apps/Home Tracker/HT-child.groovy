@@ -1142,13 +1142,13 @@ def whosHere(handler) {
     if(myLock4) getTimeDiff(24,handler)
 
     if(logEnable) log.warn "In whosHere - handler: ${handler} - canSpeak: ${state.canSpeak}"
+    if(handler == "messageHomeNow" && state.canSpeak == "yes") messageHomeNow()
+    if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
     letsDoSomething(handler)
 }
 
 def letsDoSomething(handler) {
     if(logEnable) log.debug "In letsDoSomething (${state.version}) - ${handler}"
-    if(handler == "messageHomeNow" && state.canSpeak == "yes") messageHomeNow()
-    if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
     if(handler == "lock" && state.canSpeak == "yes") messageWelcomeHome()
 	if(handler == "contact" && state.canSpeak == "yes") messageWelcomeHome()
     if(handler == "motion" && state.canSpeak == "yes") messageWelcomeHome()
