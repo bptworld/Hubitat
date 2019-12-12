@@ -33,10 +33,7 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *  V2.1.5 - 12/12/19 - Major rework!
- *  V2.1.4 - 12/12/19 - Found a typo
- *  V2.1.3 - 12/12/19 - Simplified globalBH status, better status updates
- *  V2.1.2 - 12/11/19 - Still working on whether to make announcements or not
+ *  V2.1.6 - 12/12/19 - Major rework of the code!
  *  V2.1.1 - 12/11/19 - Reworked timDiff handler, lots of little changes
  *  V2.1.0 - 12/10/19 - Reworking how locks as presence sensor are handled, Added alt pronounce for locks
  *  V2.0.9 - 12/10/19 - Fixed an issue with Greetings
@@ -61,7 +58,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.1.5"
+	state.version = "v2.1.6"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -608,15 +605,10 @@ def presenceSensorHandler(evt){
             }
         } else {
             unschedule(scheduledMessageNowHandler)
-            if(homeNow) {
-                handler = "messageHomeNow"
-                whosHere(handler)
-            } else {
-                handler = "messageHome"
-                whosHere(handler)
-            }
-            if(logEnable) log.debug "In presenceSensorHandler - ${fName} - Presence Sensor is present - Waiting for Trigger **********"
+            handler = "messageHome"
+            whosHere(handler)
         }
+        if(logEnable) log.debug "In presenceSensorHandler - ${fName} - Presence Sensor is present - Waiting for Trigger **********"
     } else {
         if(logEnable) log.warn "In presenceSensorHandler - No match found - triggerName: ${triggerName}"
     }
@@ -1074,7 +1066,7 @@ def lockHandler(evt) {
         }
         if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 1"
         handler = "lock"
-        letsDoSomething(handler)
+        whosHere(handler)
 	}
     if(logEnable) log.debug "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - 2"
 }
@@ -1087,14 +1079,14 @@ def contactSensorHandler(evt) {
 		if(state.contactStatus == "open") {
 			if(logEnable) log.debug "In contactSensorHandler - open"
 			handler = "contact"
-            letsDoSomething(handler)
+            whosHere(handler)
 		}
 	}
 	if(csOpenClosed == "Closed") {
 		if(state.contactStatus == "closed") {
 			if(logEnable) log.debug "In contactSensorHandler - closed"
 			handler = "contact"
-            letsDoSomething(handler)
+            whosHere(handler)
 		}
 	}
 }
@@ -1106,59 +1098,77 @@ def motionSensorHandler(evt) {
 	if(state.motionStatus == "active") {
 		if(logEnable) log.debug "In motionSensorHandler - active"
 		handler = "motion"
-        letsDoSomething(handler)
+        whosHere(handler)
 	}
 }
 
 def whosHere(handler) {
     if(logEnable) log.debug "In whosHere (${state.version}) - ${handler}"
     
-    if(presenceSensor1) getTimeDiff(1,handler)
-	if(presenceSensor2) getTimeDiff(2,handler)
-	if(presenceSensor3) getTimeDiff(3,handler)
-	if(presenceSensor4) getTimeDiff(4,handler)
-	if(presenceSensor5) getTimeDiff(5,handler)
-    if(presenceSensor6) getTimeDiff(6,handler)
-    if(presenceSensor7) getTimeDiff(7,handler)
-    if(presenceSensor8) getTimeDiff(8,handler)
-    if(presenceSensor9) getTimeDiff(9,handler)
-    if(presenceSensor10) getTimeDiff(10,handler)
-    if(presenceSensor11) getTimeDiff(11,handler)
-    if(presenceSensor12) getTimeDiff(12,handler)
-    if(presenceSensor13) getTimeDiff(13,handler)
-    if(presenceSensor14) getTimeDiff(14,handler)
-    if(presenceSensor15) getTimeDiff(15,handler)
-    if(presenceSensor16) getTimeDiff(16,handler)
-    if(presenceSensor17) getTimeDiff(17,handler)
-    if(presenceSensor18) getTimeDiff(18,handler)
-    if(presenceSensor19) getTimeDiff(19,handler)
-    if(presenceSensor20) getTimeDiff(20,handler)
-    if(myLock1) getTimeDiff(21,handler)
-    if(myLock2) getTimeDiff(22,handler)
-    if(myLock3) getTimeDiff(23,handler)
-    if(myLock4) getTimeDiff(24,handler)
-
-    if(logEnable) log.warn "In whosHere - handler: ${handler} - canSpeak: ${state.canSpeak}"
-    if(handler == "messageHomeNow" && state.canSpeak == "yes") messageHomeNow()
-    if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
-    //letsDoSomething(handler)
-}
-
-def letsDoSomething(handler) {
-    if(logEnable) log.debug "In letsDoSomething (${state.version}) - ${handler} - canSpeak: ${state.canSpeak}"
-    if(handler == "lock" && state.canSpeak == "yes") messageWelcomeHome()
-	if(handler == "contact" && state.canSpeak == "yes") messageWelcomeHome()
-    if(handler == "motion" && state.canSpeak == "yes") messageWelcomeHome()
-  
-    if(state.nameCount == 0 && rmEveryoneLeaves) rulesHandler(rmEveryoneLeaves)
-    if(state.prevNameCount == 0 && state.nameCount > 0 && rmAnyoneReturns) rulesHandler(rmAnyoneReturns)
-
     state.presenceMap = [:]
     state.prevNameCount = state.nameCount
 	state.nameCount = 0
 	state.canSpeak = "no"
     
-//    runIn(1,getGlobalBHStatus)
+    if(presenceSensor1 && (presenceSensor1.currentValue("presence") == "present")) getTimeDiff(1,handler)
+	if(presenceSensor2 && (presenceSensor2.currentValue("presence") == "present")) getTimeDiff(2,handler)
+	if(presenceSensor3 && (presenceSensor3.currentValue("presence") == "present")) getTimeDiff(3,handler)
+	if(presenceSensor4 && (presenceSensor4.currentValue("presence") == "present")) getTimeDiff(4,handler)
+	if(presenceSensor5 && (presenceSensor5.currentValue("presence") == "present")) getTimeDiff(5,handler)
+    if(presenceSensor6 && (presenceSensor6.currentValue("presence") == "present")) getTimeDiff(6,handler)
+    if(presenceSensor7 && (presenceSensor7.currentValue("presence") == "present")) getTimeDiff(7,handler)
+    if(presenceSensor8 && (presenceSensor8.currentValue("presence") == "present")) getTimeDiff(8,handler)
+    if(presenceSensor9 && (presenceSensor9.currentValue("presence") == "present")) getTimeDiff(9,handler)
+    if(presenceSensor10 && (presenceSensor10.currentValue("presence") == "present")) getTimeDiff(10,handler)
+    if(presenceSensor11 && (presenceSensor11.currentValue("presence") == "present")) getTimeDiff(11,handler)
+    if(presenceSensor12 && (presenceSensor12.currentValue("presence") == "present")) getTimeDiff(12,handler)
+    if(presenceSensor13 && (presenceSensor13.currentValue("presence") == "present")) getTimeDiff(13,handler)
+    if(presenceSensor14 && (presenceSensor14.currentValue("presence") == "present")) getTimeDiff(14,handler)
+    if(presenceSensor15 && (presenceSensor15.currentValue("presence") == "present")) getTimeDiff(15,handler)
+    if(presenceSensor16 && (presenceSensor16.currentValue("presence") == "present")) getTimeDiff(16,handler)
+    if(presenceSensor17 && (presenceSensor17.currentValue("presence") == "present")) getTimeDiff(17,handler)
+    if(presenceSensor18 && (presenceSensor18.currentValue("presence") == "present")) getTimeDiff(18,handler)
+    if(presenceSensor19 && (presenceSensor19.currentValue("presence") == "present")) getTimeDiff(19,handler)
+    if(presenceSensor20 && (presenceSensor20.currentValue("presence") == "present")) getTimeDiff(20,handler)
+    if(myLock1 && (myLock1.currentValue("lock") == "unlocked")) getTimeDiff(21,handler)
+    if(myLock2 && (myLock2.currentValue("lock") == "unlocked")) getTimeDiff(22,handler)
+    if(myLock3 && (myLock3.currentValue("lock") == "unlocked")) getTimeDiff(23,handler)
+    if(myLock4 && (myLock4.currentValue("lock") == "unlocked")) getTimeDiff(24,handler)
+    
+    if(presenceSensor1 && (presenceSensor1.currentValue("presence") == "not present")) getTimeDiffAway(1,handler)
+	if(presenceSensor2 && (presenceSensor2.currentValue("presence") == "not present")) getTimeDiffAway(2,handler)
+	if(presenceSensor3 && (presenceSensor3.currentValue("presence") == "not present")) getTimeDiffAway(3,handler)
+	if(presenceSensor4 && (presenceSensor4.currentValue("presence") == "not present")) getTimeDiffAway(4,handler)
+	if(presenceSensor5 && (presenceSensor5.currentValue("presence") == "not present")) getTimeDiffAway(5,handler)
+    if(presenceSensor6 && (presenceSensor6.currentValue("presence") == "not present")) getTimeDiff(6,handler)
+    if(presenceSensor7 && (presenceSensor7.currentValue("presence") == "not present")) getTimeDiff(7,handler)
+    if(presenceSensor8 && (presenceSensor8.currentValue("presence") == "not present")) getTimeDiff(8,handler)
+    if(presenceSensor9 && (presenceSensor9.currentValue("presence") == "not present")) getTimeDiff(9,handler)
+    if(presenceSensor10 && (presenceSensor10.currentValue("presence") == "not present")) getTimeDiff(10,handler)
+    if(presenceSensor11 && (presenceSensor11.currentValue("presence") == "not present")) getTimeDiff(11,handler)
+    if(presenceSensor12 && (presenceSensor12.currentValue("presence") == "not present")) getTimeDiff(12,handler)
+    if(presenceSensor13 && (presenceSensor13.currentValue("presence") == "not present")) getTimeDiff(13,handler)
+    if(presenceSensor14 && (presenceSensor14.currentValue("presence") == "not present")) getTimeDiff(14,handler)
+    if(presenceSensor15 && (presenceSensor15.currentValue("presence") == "not present")) getTimeDiff(15,handler)
+    if(presenceSensor16 && (presenceSensor16.currentValue("presence") == "not present")) getTimeDiff(16,handler)
+    if(presenceSensor17 && (presenceSensor17.currentValue("presence") == "not present")) getTimeDiff(17,handler)
+    if(presenceSensor18 && (presenceSensor18.currentValue("presence") == "not present")) getTimeDiff(18,handler)
+    if(presenceSensor19 && (presenceSensor19.currentValue("presence") == "not present")) getTimeDiff(19,handler)
+    if(presenceSensor20 && (presenceSensor20.currentValue("presence") == "not present")) getTimeDiff(20,handler)
+    if(myLock1 && (myLock1.currentValue("lock") == "locked")) getTimeDiff(21,handler)
+    if(myLock2 && (myLock2.currentValue("lock") == "locked")) getTimeDiff(22,handler)
+    if(myLock3 && (myLock3.currentValue("lock") == "locked")) getTimeDiff(23,handler)
+    if(myLock4 && (myLock4.currentValue("lock") == "locked")) getTimeDiff(24,handler)
+
+    if(logEnable) log.warn "In whosHere - handler: ${handler} - canSpeak: ${state.canSpeak}"
+    if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
+    
+    if(handler == "lock" && state.canSpeak == "yes") messageWelcomeHome()
+	if(handler == "contact" && state.canSpeak == "yes") messageWelcomeHome()
+    if(handler == "motion" && state.canSpeak == "yes") messageWelcomeHome()
+    
+    if(state.nameCount == 0 && rmEveryoneLeaves) rulesHandler(rmEveryoneLeaves)
+    if(state.prevNameCount == 0 && state.nameCount > 0 && rmAnyoneReturns) rulesHandler(rmAnyoneReturns)
 }
 
 def getTimeDiff(numb,handler) {
@@ -1189,29 +1199,22 @@ def getTimeDiff(numb,handler) {
     
     if(logEnable) log.info "In getTimeDiff - ${fName} - Starting as - timeDiff: ${timeDiff} - pSensor: ${pSensor} - globalBH: ${globalBH} - handler: ${handler}"
 
-    if(pSensor == "present" || pSensor =="unlocked") {
-        if(logEnable) log.info "In getTimeDiff (present/unlocked) - Here we go!"
+    if(logEnable) log.info "In getTimeDiff (present/unlocked) - Here we go!"
         
-        // ** Home Now **
-        if(handler == "messageHomeNow") {
-            if(timeDiff < 1) {
-                if(globalBH != "announcingHomeNow") {
-                    if(logEnable) log.debug "In getTimeDiff (present/homeNow) - ${fName} just got here! Time Diff: ${timeDiff} - globalBH: ${globalBH}"
-			        state.nameCount = state.nameCount + 1
-                    if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-			        if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			        state.canSpeak = "yes"
-                    globalBH = "announcingHomeNow"
-                    gvDevice."${sendDataM}"(globalBH)
-                    if(logEnable) log.trace "In getTimeDiff (present/homeNow) - ${fName} - globalBH: ${globalBH} - Added to homeNow announcement."
-                }
-            } else {
-                globalBH = "hasAnnouncedHomeNow"
-                gvDevice."${sendDataM}"(globalBH)
-                if(logEnable) log.trace "In getTimeDiff (present/homeNow) - ${fName} - globalBH: ${globalBH} - No homeNow announcement needed."
+    // ** Home Now **
+    if(timeDiff < 1 && homeNow) {
+        if(globalBH != "announcingHomeNow") {
+            if(logEnable) log.debug "In getTimeDiff (present/homeNow) - ${fName} just got here! Time Diff: ${timeDiff} - globalBH: ${globalBH}"
+		    state.nameCount = state.nameCount + 1
+            if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			state.canSpeak = "yes"
+            globalBH = "announcingHomeNow"
+            gvDevice."${sendDataM}"(globalBH)
+            if(logEnable) log.trace "In getTimeDiff (present/homeNow) - ${fName} - globalBH: ${globalBH} - Added to homeNow announcement."
+            messageHomeNow()
             }
-        }
-        
+    } else {
         // ** Welcome Home **
         if(timeDiff < timeHome) { 
             if(globalBH != "announcingHome") { 
@@ -1230,40 +1233,68 @@ def getTimeDiff(numb,handler) {
             globalBH = "beenHome"
             gvDevice."${sendDataM}"(globalBH)
             if(logEnable) log.trace "In getTimeDiff (present) - ${fName} - globalBH: ${globalBH} - Home too long (${timeDiff}). No home announcements needed."
-		}
+        }
 	}
     
-    if(pSensor == "not present" || pSensor == "locked") {
-        if(logEnable) log.info "In getTimeDiff (not present/locked) - Here we go!"
-        
-        // ** justLeftHome **
-        if(timeDiff < timeAway) {
-            if(globalBH != "announcingJustLeft") {
-                if(logEnable) log.debug "In getTimeDiff (not present/justLeftHome) - ${fName} just left! Time Diff: ${timeDiff} - globalBH: ${globalBH}"
-                if(handler != "noMessage") {
-			        state.nameCount = state.nameCount + 1
-                    if(state.nameCount == 1) state.presenceMap = ["${fName}"]
-			        if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
-			        state.canSpeak = "yes"
-			        globalBH = "announcingJustLeft"
-                    gvDevice."${sendDataM}"(globalBH)
-                    if(logEnable) log.trace "In getTimeDiff (not present/justLeftHome) - ${fName} - globalBH: ${globalBH} - Added to justLeft announcement."
-                } else {
-                    globalBH = "notHome"
-                    gvDevice."${sendDataM}"(globalBH)
-                    if(logEnable) log.trace "In getTimeDiff (not present/justLeftHome) - ${fName} - globalBH: ${globalBH} - No away announcement needed."
-                }
-            } else {
-                if(logEnable) log.trace "In getTimeDiff (not present/justLeftHome) - ${fName} - globalBH: ${globalBH} - justLeft announcement was already made."
-            }
-        // ** notHome **    
-        } else {
-            globalBH = "notHome"
-            gvDevice."${sendDataM}"(globalBH)  
-            if(logEnable) log.trace "In getTimeDiff (not present/notHome) - ${fName} - globalBH: ${globalBH} - Gone too long (${timeDiff}). No away announcements needed."
-        }
-    }
     if(logEnable) log.debug "In getTimeDiff - ********** END - ${numb} - ${fName} **********"
+}
+
+def getTimeDiffAway(numb,handler) {
+    if(logEnable) log.debug "In getTimeDiffAway (${state.version})"
+    whichPresenceSensor(numb)
+    // returned from whichPresenceSensor - pSensor,lastActivity,fName,sendDataM,globalBH
+    
+    if(logEnable) log.debug "In getTimeDiffAway - ********** STARTING - ${numb} - ${fName} **********"
+    
+    if(logEnable) log.info "In getTimeDiffAway - returned from whichPresenceSensor - pSensor: ${pSensor} - lastActivity: ${lastActivity} - fName: ${fName} - sendDataM: ${sendDataM} - globalBH: ${globalBH}"
+    
+    if(globalBH == null || globalBH == "") {
+        globalBH = "waitingForData"
+        gvDevice."${sendDataM}"(globalBH)
+    }
+    
+    long timeDiff
+   	def now = new Date()
+    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${lastActivity}".replace("+00:00","+0000"))
+    long unxNow = now.getTime()
+    long unxPrev = prev.getTime()
+    unxNow = unxNow/1000
+    unxPrev = unxPrev/1000
+    timeDiff = Math.abs(unxNow-unxPrev)
+    timeDiff = Math.round(timeDiff/60)
+    
+    if(logEnable) log.info "In getTimeDiffAway - ${fName} - Starting as - timeDiff: ${timeDiff} - pSensor: ${pSensor} - globalBH: ${globalBH} - handler: ${handler}"
+
+    if(logEnable) log.info "In getTimeDiffAway (not present/locked) - Here we go!"
+        
+    // ** justLeftHome **
+    if(timeDiff < timeAway) {
+        if(globalBH != "announcingJustLeft") {
+            if(logEnable) log.debug "In getTimeDiffAway (not present/justLeftHome) - ${fName} just left! Time Diff: ${timeDiff} - globalBH: ${globalBH}"
+            if(handler != "noMessage") {
+			    state.nameCount = state.nameCount + 1
+                if(state.nameCount == 1) state.presenceMap = ["${fName}"]
+			    if(state.nameCount >= 2) state.presenceMap += ["${fName}"]
+			    state.canSpeak = "yes"
+			    globalBH = "announcingJustLeft"
+                gvDevice."${sendDataM}"(globalBH)
+                if(logEnable) log.trace "In getTimeDiffAway (not present/justLeftHome) - ${fName} - globalBH: ${globalBH} - Added to justLeft announcement."
+            } else {
+                globalBH = "notHome"
+                gvDevice."${sendDataM}"(globalBH)
+                if(logEnable) log.trace "In getTimeDiffAway (not present/justLeftHome) - ${fName} - globalBH: ${globalBH} - No away announcement needed."
+            }
+        } else {
+            if(logEnable) log.trace "In getTimeDiffAway (not present/justLeftHome) - ${fName} - globalBH: ${globalBH} - justLeft announcement was already made."
+        }
+    // ** notHome **    
+    } else {
+        globalBH = "notHome"
+        gvDevice."${sendDataM}"(globalBH)  
+        if(logEnable) log.trace "In getTimeDiffAway (not present/notHome) - ${fName} - globalBH: ${globalBH} - Gone too long (${timeDiff}). No away announcements needed."
+    }
+
+    if(logEnable) log.debug "In getTimeDiffAway - ********** END - ${numb} - ${fName} **********"
 }
 
 def messageHomeNow() {
@@ -1384,12 +1415,10 @@ def letsTalk(theMessage) {
                 if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
             }
         }
-        state.canSpeak = "no"
 	    if(logEnable) log.debug "In letsTalk - Finished speaking"  
 	    log.info "${app.label} - ${theMsg}"
         if(sendPushMessage) pushNow(theMsg)
 	} else {
-        state.canSpeak = "no"
         if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	}
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
