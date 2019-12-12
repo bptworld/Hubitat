@@ -1112,10 +1112,7 @@ def motionSensorHandler(evt) {
 
 def whosHere(handler) {
     if(logEnable) log.debug "In whosHere (${state.version}) - ${handler}"
-    state.presenceMap = [:]
-    state.prevNameCount = state.nameCount
-	state.nameCount = 0
-	state.canSpeak = "no"
+    
     if(presenceSensor1) getTimeDiff(1,handler)
 	if(presenceSensor2) getTimeDiff(2,handler)
 	if(presenceSensor3) getTimeDiff(3,handler)
@@ -1144,17 +1141,23 @@ def whosHere(handler) {
     if(logEnable) log.warn "In whosHere - handler: ${handler} - canSpeak: ${state.canSpeak}"
     if(handler == "messageHomeNow" && state.canSpeak == "yes") messageHomeNow()
     if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
-    letsDoSomething(handler)
+    //letsDoSomething(handler)
 }
 
 def letsDoSomething(handler) {
-    if(logEnable) log.debug "In letsDoSomething (${state.version}) - ${handler}"
+    if(logEnable) log.debug "In letsDoSomething (${state.version}) - ${handler} - canSpeak: ${state.canSpeak}"
     if(handler == "lock" && state.canSpeak == "yes") messageWelcomeHome()
 	if(handler == "contact" && state.canSpeak == "yes") messageWelcomeHome()
     if(handler == "motion" && state.canSpeak == "yes") messageWelcomeHome()
   
     if(state.nameCount == 0 && rmEveryoneLeaves) rulesHandler(rmEveryoneLeaves)
     if(state.prevNameCount == 0 && state.nameCount > 0 && rmAnyoneReturns) rulesHandler(rmAnyoneReturns)
+
+    state.presenceMap = [:]
+    state.prevNameCount = state.nameCount
+	state.nameCount = 0
+	state.canSpeak = "no"
+    
 //    runIn(1,getGlobalBHStatus)
 }
 
