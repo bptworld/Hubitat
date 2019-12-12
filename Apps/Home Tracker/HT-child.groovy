@@ -33,7 +33,7 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *  V2.1.5 - 12/12/19 - Major rework, things are looking better!
+ *  V2.1.5 - 12/12/19 - Major rework!
  *  V2.1.4 - 12/12/19 - Found a typo
  *  V2.1.3 - 12/12/19 - Simplified globalBH status, better status updates
  *  V2.1.2 - 12/11/19 - Still working on whether to make announcements or not
