@@ -620,7 +620,6 @@ def presenceSensorHandler(evt){
     } else {
         if(logEnable) log.warn "In presenceSensorHandler - No match found - triggerName: ${triggerName}"
     }
-//    getGlobalBHStatus()
 }
 
 def whichPresenceSensor(numb) {
@@ -1145,9 +1144,9 @@ def whosHere(handler) {
     if(handler == "motion" && state.canSpeak == "yes") messageWelcomeHome()
     if(handler == "messageDeparted" && state.canSpeak == "yes") messageDeparted()
        
-    if(logEnable) log.debug "In whosHere - nameCount: ${state.nameCount}"
     if(state.nameCount == 0 && rmEveryoneLeaves) rulesHandler(rmEveryoneLeaves)
     if(state.prevNameCount == 0 && state.nameCount > 0 && rmAnyoneReturns) rulesHandler(rmAnyoneReturns)
+    getGlobalBHStatus()
 }
 
 def getTimeDiff(numb,handler) {
@@ -1244,7 +1243,6 @@ def getTimeDiff(numb,handler) {
         }
     }
     if(logEnable) log.info "In getTimeDiff - ${fName} - Ending as - timeDiff: ${timeDiff} - pSensor: ${pSensor} - globalBH: ${globalBH} - handler: ${handler}"
-    getGlobalBHStatus()
 }
 
 def messageHomeNow() {
