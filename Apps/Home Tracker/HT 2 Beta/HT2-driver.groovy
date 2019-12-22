@@ -42,7 +42,7 @@
  */
 
 def setVersion(){
-    appName = "HomeTrackerDriver"
+    appName = "HomeTracker2Driver"
 	version = "v1.2.0" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
@@ -58,6 +58,11 @@ metadata {
    		capability "Actuator"
 		
 		command "sendDataMap", ["string"]
+        command "sendDataMapName", ["string"]
+        command "sendDataMapLock", ["string"]
+        command "sendDataMapLockName", ["string"]
+        command "clearData"
+        
         attribute "sensor0BH", "string"
 		attribute "sensor1BH", "string"
         attribute "sensor2BH", "string"
@@ -79,37 +84,39 @@ metadata {
         attribute "sensor18BH", "string"
         attribute "sensor19BH", "string"
         attribute "sensor20BH", "string"
-        attribute "sensor21BH", "string"
-        attribute "sensor22BH", "string"
-        attribute "sensor23BH", "string"
-        attribute "sensor24BH", "string"
         
-        attribute "sensor0LA", "string"
-        attribute "sensor1LA", "string"
-        attribute "sensor2LA", "string"
-        attribute "sensor3LA", "string"
-        attribute "sensor4LA", "string"
-        attribute "sensor5LA", "string"
-        attribute "sensor6LA", "string"
-        attribute "sensor7LA", "string"
-        attribute "sensor8LA", "string"
-        attribute "sensor9LA", "string"
-        attribute "sensor10LA", "string"
-        attribute "sensor11LA", "string"
-        attribute "sensor12LA", "string"
-        attribute "sensor13LA", "string"
-        attribute "sensor14LA", "string"
-        attribute "sensor15LA", "string"
-        attribute "sensor16LA", "string"
-        attribute "sensor17LA", "string"
-        attribute "sensor18LA", "string"
-        attribute "sensor19LA", "string"
-        attribute "sensor20LA", "string"
-        attribute "sensor21LA", "string"
-        attribute "sensor22LA", "string"
-        attribute "sensor23LA", "string"
-        attribute "sensor24LA", "string"
+        attribute "sensor0Name", "string"
+        attribute "sensor1Name", "string"
+        attribute "sensor2Name", "string"
+        attribute "sensor3Name", "string"
+        attribute "sensor4Name", "string"
+        attribute "sensor5Name", "string"
+        attribute "sensor6Name", "string"
+        attribute "sensor7Name", "string"
+        attribute "sensor8Name", "string"
+        attribute "sensor9Name", "string"
+        attribute "sensor10Name", "string"
+        attribute "sensor11Name", "string"
+        attribute "sensor12Name", "string"
+        attribute "sensor13Name", "string"
+        attribute "sensor14Name", "string"
+        attribute "sensor15Name", "string"
+        attribute "sensor16Name", "string"
+        attribute "sensor17Name", "string"
+        attribute "sensor18Name", "string"
+        attribute "sensor19Name", "string"
+        attribute "sensor20Name", "string"
         
+        attribute "lock0BH", "string"
+        attribute "lock1BH", "string"
+        attribute "lock2BH", "string"
+        attribute "lock3BH", "string"
+        
+        attribute "lock0Name", "string"
+        attribute "lock1Name", "string"
+        attribute "lock2Name", "string"
+        attribute "lock3Name", "string"
+
         attribute "dwDriverInfo", "string"
         command "updateVersion"	
 	}
@@ -121,9 +128,39 @@ metadata {
 }
 
 def sendDataMap(dataMap) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap1 - ${dataMap}"
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap - ${dataMap}"
 	status = dataMap.split(";")
-    
-    sendEvent(name: "sensor${status[0]}BH", value: status[1])
-    sendEvent(name: "sensor${status[0]}LA", value: status[2])  
+    sendEvent(name: "sensor${status[0]}BH", value: "${dataMap}")
 }
+
+def sendDataMapName(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMapName - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "sensor${status[0]}Name", value: "${dataMap}")
+}
+
+def sendDataMapLock(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMapLock - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "lock${status[0]}BH", value: "${dataMap}")
+}
+
+def sendDataMapLockName(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMapLockName - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "lock${status[0]}Name", value: "${dataMap}")
+}
+
+def clearData() {
+    log.info "Home Tracker 2 - Clearing Presesnce Sensor Data"
+    for(x=0;x < 20;x++){
+        sendEvent(name: "sensor${x}BH", value: "-;-")
+        sendEvent(name: "sensor${x}Name", value: "-;-;-")
+    }
+    log.info "Home Tracker 2 - Clearing Lock Data"
+    for(x=0;x < 4;x++){
+        sendEvent(name: "lock${x}BH", value: "-;-")
+        sendEvent(name: "lock${x}Name", value: "-;-;-")
+    }
+}
+
