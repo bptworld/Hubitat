@@ -39,7 +39,7 @@
 
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTracker2ParentVersion"
 	state.version = "v2.2.0"
     
@@ -82,7 +82,7 @@ def updated() {
 def initialize() {
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
-    log.info "Child app: ${child.label}"
+        log.info "Child app: ${child.label}"
     }
     if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
@@ -91,10 +91,7 @@ def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
-			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!</div>"
-				paragraph getFormat("line")
-			}
+            display()
 			section("Instructions:", hideable: true, hidden: true) {
         		paragraph "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message <i>after</i> entering the home!"
         	paragraph "<b>Type of 'Welcome Home' Triggers:</b>"
@@ -126,19 +123,55 @@ def mainPage() {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {}
+            section("Global Variables", hideable: true) {
+			    paragraph "This app <b>requires</b> a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
+			    paragraph "* Vitual Device must use our custom 'Home Tracker Driver'"
+			    input "gvDevice", "capability.actuator", title: "Virtual Device created for Home Tracker", required: false, multiple: false
+		    }
 			section("Presence Sensors:", hideable: true) {
-                input "presenceSensors", "capability.presenceSensor", title: "Select the Presence Sensors to use with Home Tracker 2", required: true, multiple: true, submitOnChange: true
-                
-                if(presenceSensors) {
-                    
+                input "presenceSensors", "capability.presenceSensor", title: "Select Presence Sensors to track with Home Tracker 2 (max 20)", required:true, multiple:true, submitOnChange:true
+                if(presenceSensors) {     
                     try {     
                         pSensorsSize = presenceSensors.size()
-            
                         if(logDebug) log.debug "In presenceOptions - pSensorsSize: ${pSensorsSize} - presenceSensors: ${presenceSensors}"
-            
                         for(x=0;x < pSensorsSize.toInteger();x++) {
-                            input "fName$x", "text", title: "Friendly name for ${presenceSensors[x]}", required:true, multiple:false, width: 6, submitOnChange:true
-                            input "pronounce$x", "text", title: "Alt Pronunciation for ${presenceSensors[x]}", required:false, multiple:false, width: 6, submitOnChange:true
+                            if(x < 21) {
+                                input "fName$x", "text", title: "(${x}) Friendly name for ${presenceSensors[x]}", required:true, multiple:false, width:6, submitOnChange:true
+                                input "pronounce$x", "text", title: "Alt Pronunciation for ${presenceSensors[x]}", required:false, multiple:false, width:6, submitOnChange:true
+                                
+                                fNam = app."fName$x"
+                                pro = app."pronounce$x"
+                                globalName = "${x};${fNam};${pro}"
+                                gvDevice.sendDataMapName(globalName)
+                                log.debug "In Advanced Config - locks - Sending Global Data: ${globalName}" 
+                            } else {
+                                paragraph "<b>Max number of Presence Sensors has been reached.</b>"
+                            }
+                        }
+                    } catch (e) {
+                        log.error (e)
+                    }
+                }
+            }
+            section("Door Locks:", hideable: true) {
+                input "locks", "capability.lock", title: "Select Locks to track with Home Tracker 2 (max 4)", required:true, multiple:true, submitOnChange:true
+                if(locks) {     
+                    try {     
+                        locksSize = locks.size()
+                        if(logDebug) log.debug "In presenceOptions - locksSize: ${locksSize} - locks: ${locks}"
+                        for(x=0;x < locksSize.toInteger();x++) {
+                            if(x < 5) {
+                                input "lFName$x", "text", title: "(${x}) Friendly name for ${locks[x]}", required:true, multiple:false, width: 6, submitOnChange:true
+                                input "lPronounce$x", "text", title: "Alt Pronunciation for ${locks[x]}", required:false, multiple:false, width: 6, submitOnChange:true
+
+                                lFNam = app."lFName$x"
+                                lPro = app."lPronounce$x"
+                                globalName = "${x};${lFNam};${lPro}"
+                                gvDevice.sendDataMapLockName(globalName)
+                                log.debug "In Advanced Config - locks - Sending Global Data: ${globalName}" 
+                            } else {
+                                paragraph "<b>Max number of Door Locks has been reached.</b>"
+                            }
                         }
                     } catch (e) {
                         log.error (e)
@@ -146,13 +179,14 @@ def mainPage() {
                 }
             }
 		}
-		display()
+		display2()
 	}
 }
 
 def installCheck(){         
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
+        display()
 		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
   	}
   	else{
@@ -160,21 +194,33 @@ def installCheck(){
   	}
 }
 
-def getImage(type) {
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display(){
+def display() {
+    section (getFormat("title", "${getImage("logo")}" + " Home Tracker 2")) {
+        paragraph "<div style='color:#1A77C9'>Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!</div>"
+		paragraph getFormat("line")
+	}
+}
+
+def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>Home Tracker 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
-}  
+}
