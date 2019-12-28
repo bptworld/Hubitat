@@ -97,9 +97,6 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-tile-
 <br><br>
 <b>Web Pinger</b> - Monitor a website and trigger automations if not found or if your internet goes down.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-web-pinger/8347" target="_blank">Go Here</a>
-<br><br>
-<b>What Did I Say</b> (Driver) - This driver formats Speech data to be displayed on Hubitat's Dashboards.<br>
-Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-what-did-i-say/9375" target="_blank">Go Here</a>
 <hr>
 <b><i>Thanks for supporting BPTWorld Apps and Drivers!</b></i>
 <hr>
