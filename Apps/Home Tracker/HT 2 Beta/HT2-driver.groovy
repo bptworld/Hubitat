@@ -163,4 +163,3 @@ def clearData() {
         sendEvent(name: "lock${x}Name", value: "-;-;-")
     }
 }
-
