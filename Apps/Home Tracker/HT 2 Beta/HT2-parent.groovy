@@ -33,6 +33,7 @@
  *
  *  Changes:
  *.
+ *  V2.2.1 - 12/28/19 - Bug fixes
  *  V2.2.0 - 12/17/19 - Initial release.
  *
  */
@@ -41,7 +42,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTracker2ParentVersion"
-	state.version = "v2.2.0"
+	state.version = "v2.2.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -129,6 +130,7 @@ def mainPage() {
 			    input "gvDevice", "capability.actuator", title: "Virtual Device created for Home Tracker", required: false, multiple: false
 		    }
 			section("Presence Sensors:", hideable: true) {
+                paragraph "<b>When adding or removing sensors - you may have to retype in your Friendly Names, as they will be out of order.</b>"
                 input "presenceSensors", "capability.presenceSensor", title: "Select Presence Sensors to track with Home Tracker 2 (max 20)", required:true, multiple:true, submitOnChange:true
                 if(presenceSensors) {     
                     try {     
@@ -136,7 +138,7 @@ def mainPage() {
                         if(logDebug) log.debug "In presenceOptions - pSensorsSize: ${pSensorsSize} - presenceSensors: ${presenceSensors}"
                         for(x=0;x < pSensorsSize.toInteger();x++) {
                             if(x < 21) {
-                                input "fName$x", "text", title: "(${x}) Friendly name for ${presenceSensors[x]}", required:true, multiple:false, width:6, submitOnChange:true
+                                input "fName$x", "text", title: "(${x}) Friendly name for ${presenceSensors[x]}", defaultValue: "${presenceSensors[x]}", required:true, multiple:false, width:6, submitOnChange:true
                                 input "pronounce$x", "text", title: "Alt Pronunciation for ${presenceSensors[x]}", required:false, multiple:false, width:6, submitOnChange:true
                                 
                                 fNam = app."fName$x"
@@ -154,6 +156,7 @@ def mainPage() {
                 }
             }
             section("Door Locks:", hideable: true) {
+                paragraph "<b>When adding or removing locks - you may have to retype in your Friendly Names, as they will be out of order.</b>"
                 input "locks", "capability.lock", title: "Select Locks to track with Home Tracker 2 (max 4)", required:true, multiple:true, submitOnChange:true
                 if(locks) {     
                     try {     
@@ -161,8 +164,8 @@ def mainPage() {
                         if(logDebug) log.debug "In presenceOptions - locksSize: ${locksSize} - locks: ${locks}"
                         for(x=0;x < locksSize.toInteger();x++) {
                             if(x < 5) {
-                                input "lFName$x", "text", title: "(${x}) Friendly name for ${locks[x]}", required:true, multiple:false, width: 6, submitOnChange:true
-                                input "lPronounce$x", "text", title: "Alt Pronunciation for ${locks[x]}", required:false, multiple:false, width: 6, submitOnChange:true
+                                input "lFName$x", "text", title: "(${x}) Friendly name for ${locks[x]}", defaultValue: "${locks[x]}", required:true, multiple:false, width: 6, submitOnChange:true
+                                input "lPronounce$x", "text", title: "Alt Pronunciation for ${locks[x]}", defaultValue: "", required:false, multiple:false, width: 6, submitOnChange:true
 
                                 lFNam = app."lFName$x"
                                 lPro = app."lPronounce$x"
