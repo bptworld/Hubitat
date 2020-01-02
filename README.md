@@ -93,7 +93,7 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snaps
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snapshot-lite-monitor-switches-devices-contacts-locks-and-temps-easily-get-a-notification-by-device-speech-and-push/17362" target="_blank">Go Here</a>
 <br><br>
 <b>The Flasher</b> - Flash your lights based on several triggers!<br>
-Hubitat Forum Discussion: <a href="" target="_blank">NOT YET</a>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843" target="_blank">Go Here</a>
 <br><br>
 <b>Tile Master</b> - Create a tile with multiple devices and customization options.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140" target="_blank">Go Here</a>
