@@ -47,7 +47,7 @@
 
 def setVersion(){
     appName = "SendtoHubwithCATTDriver"
-	version = "v1.0.3" 
+	version = "v1.0.4" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
