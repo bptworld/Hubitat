@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  v1.0.4 - 01/03/20 - Adjustment for AW2
  *  V1.0.3 - 08/29/19 - App Watchdog compatible
  *  V1.0.2 - 08/17/19 - Added more commands, fixed typo in volume
  *  V1.0.1 - 08/16/19 - Name changed to 'Send to Hub with CATT', added a ton more commands, added some suggestions from @Ryan780, Thank you!
@@ -58,7 +59,8 @@ def updateVersion() {
 
 metadata {
 	definition (name: "Send to Hub with CATT Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20to%20Hub%20with%20CATT/STHWC-driver.groovy") {
-	    capability "Initialize"
+	    capability "Actuator"
+        capability "Initialize"
         capability "Telnet"
         capability "Switch"
         capability "Speech Synthesis"
