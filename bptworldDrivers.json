@@ -64,10 +64,10 @@
   "PollenForecasterDiscussion": "",
   "PollenForecasterUpdateNote": "v2.0.6 - 01/03/2020 - Adjustment for AW2",
   
-  "SendtoHubwithCATTDriverVersion": "v1.0.3",
+  "SendtoHubwithCATTDriverVersion": "v1.0.4",
   "SendtoHubwithCATTDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Send%20to%20Hub%20with%20CATT/STHWC-driver.groovy",
   "SendtoHubwithCATTDriverDiscussion": "",
-  "SendtoHubwithCATTDriverUpdateNote": "V1.0.3 - 08/29/19 - App Watchdog compatible",
+  "SendtoHubwithCATTDriverUpdateNote": "v1.0.4 - 01/03/20 - Adjustment for AW2",
   
   "SimpleDatesDriverVersion": "v2.0.0",
   "SimpleDatesDriverRawCode": "",
