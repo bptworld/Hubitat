@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.1.8 - 01/03/20 - Fix for App Watchdog 2
  *  v1.1.7 - 11/03/19 - Minor changes
  *  v1.1.6 - 09/20/19 - Small changes to tile code, rewrite of the History Log code
  *  v1.1.5 - 09/16/19 - Updated 'free' tile to show more data points
@@ -44,7 +45,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     appName = "Life360User"
-	version = "v1.1.7" 
+	version = "v1.1.8" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -69,6 +70,7 @@ preferences {
  
 metadata {
 	definition (name: "Life360 User", namespace: "BPTWorld", author: "Bryan Turcotte", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy") {
+        capability "Actuator"
 	    capability "Presence Sensor"
 	    capability "Sensor"
         capability "Refresh"
@@ -185,45 +187,49 @@ def sendLife360Tile1() {
 def sendHistory(msgValue) {
     if(logEnable) log.trace "In sendHistory - nameValue: ${msgValue}"
 
-    try {
-        getDateTime()
-	    nMessage = newDate + " - " + msgValue
+    if(msgValue.contains('Data')) {
+        if(logEnable) log.trace "In sendHistory - Nothing to report (No Data)"
+    } else {   
+        try {
+            getDateTime()
+	        nMessage = newDate + " - " + msgValue
         
-        if(state.list == null) state.list = []
-        state.list.add(0,nMessage)  
+            if(state.list == null) state.list = []
+            state.list.add(0,nMessage)  
 
-        listSize = state.list.size()
-        if(listSize > 10) state.list.removeAt(10)
+            listSize = state.list.size()
+            if(listSize > 10) state.list.removeAt(10)
 
-        String result = state.list.join(";")
-        logCharCount = result.length()
-	    if(logCharCount <= 1000) {
-	        if(logEnable) log.debug "Life360 User Driver - ${logCharCount} Characters"
-	    } else {
-	        logTop10 = "Too many characters to display on Dashboard - ${logCharCount}"
-	    }
+            String result = state.list.join(";")
+            logCharCount = result.length()
+	        if(logCharCount <= 1000) {
+	            if(logEnable) log.debug "Life360 User Driver - ${logCharCount} Characters"
+	        } else {
+	            logTop10 = "Too many characters to display on Dashboard - ${logCharCount}"
+	        }
 
-        def lines = result.split(";")
-        if(logEnable) log.trace "In sendHistory - numOfLines: ${numOfLines}"
-        logTop10 = "<table><tr><td align='Left'><div style='font-size:${historyFontSize}px;'>"
-        if(numOfLines >= 1) logTop10 += "${lines[0]}<br>"
-        if(numOfLines >= 2) logTop10 += "${lines[1]}<br>"
-        if(numOfLines >= 3) logTop10 += "${lines[2]}<br>"
-        if(numOfLines >= 4) logTop10 += "${lines[3]}<br>"
-        if(numOfLines >= 5) logTop10 += "${lines[4]}<br>"
-        if(numOfLines >= 6) logTop10 += "${lines[5]}<br>"
-        if(numOfLines >= 7) logTop10 += "${lines[6]}<br>"
-        if(numOfLines >= 8) logTop10 += "${lines[7]}<br>"
-        if(numOfLines >= 9) logTop10 += "${lines[8]}<br>"
-        if(numOfLines >= 10) logTop10 += "${lines[9]}"
-        logTop10 += "</div></td></tr></table>"
+            def lines = result.split(";")
+            if(logEnable) log.trace "In sendHistory - numOfLines: ${numOfLines}"
+            logTop10 = "<table><tr><td align='Left'><div style='font-size:${historyFontSize}px'>"
+            if(numOfLines >= 1) logTop10 += "${lines[0]}<br>"
+            if(numOfLines >= 2) logTop10 += "${lines[1]}<br>"
+            if(numOfLines >= 3) logTop10 += "${lines[2]}<br>"
+            if(numOfLines >= 4) logTop10 += "${lines[3]}<br>"
+            if(numOfLines >= 5) logTop10 += "${lines[4]}<br>"
+            if(numOfLines >= 6) logTop10 += "${lines[5]}<br>"
+            if(numOfLines >= 7) logTop10 += "${lines[6]}<br>"
+            if(numOfLines >= 8) logTop10 += "${lines[7]}<br>"
+            if(numOfLines >= 9) logTop10 += "${lines[8]}<br>"
+            if(numOfLines >= 10) logTop10 += "${lines[9]}"
+            logTop10 += "</div></td></tr></table>"
     
-	    sendEvent(name: "history", value: logTop10, displayed: true)
-        sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
-        sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
-    }
-    catch(e1) {
-        log.warn "Life360 User - sendHistory - Something went wrong<br>${e1}"        
+	        sendEvent(name: "history", value: logTop10, displayed: true)
+            sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
+            sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
+        }
+        catch(e1) {
+            log.warn "Life360 User - sendHistory - Something went wrong<br>${e1}"        
+        }
     }
 }
 
@@ -285,92 +291,101 @@ def generatePresenceEvent(boolean present, homeDistance) {
     if(units == "Kilometers" || units == null || units == ""){
 	    def statusDistance = homeDistance / 1000
 	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
-    if(status != device.currentValue('status')){
-    sendEvent( name: "status", value: status, isStateChange:true)
-    state.update = true}
-    }else{
+        if(status != device.currentValue('status')){
+            sendEvent( name: "status", value: status, isStateChange:true)
+            state.update = true
+        }
+    } else {
 	    def statusDistance = (homeDistance / 1000) / 1.609344 
    	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
-    if(status != device.currentValue('status')){
+        if(status != device.currentValue('status')){
    	        sendEvent( name: "status", value: status, isStateChange:true )
+            state.update = true
+        }
+        state.status = status
+    }
+	
+    def km = sprintf("%.2f", homeDistance / 1000)
+    if(km.toDouble().round(2) != device.currentValue('distanceKm')){
+        sendEvent( name: "distanceKm", value: km.toDouble().round(2) )
         state.update = true
     }
-    state.status = status
-	}
-	
-def km = sprintf("%.2f", homeDistance / 1000)
-if(km.toDouble().round(2) != device.currentValue('distanceKm')){
-sendEvent( name: "distanceKm", value: km.toDouble().round(2) )
-state.update = true}
 
-def miles = sprintf("%.2f", (homeDistance / 1000) / 1.609344)
+    def miles = sprintf("%.2f", (homeDistance / 1000) / 1.609344)
 	if(miles.toDouble().round(2) != device.currentValue('distanceMiles')){    
-sendEvent( name: "distanceMiles", value: miles.toDouble().round(2) )
-	state.update = true}
+        sendEvent( name: "distanceMiles", value: miles.toDouble().round(2) )
+	    state.update = true
+    }
 
-if(homeDistance.toDouble().round(2) != device.currentValue('distanceMetric')){
-	sendEvent( name: "distanceMetric", value: homeDistance.toDouble().round(2) )
-	state.update = true}
+    if(homeDistance.toDouble().round(2) != device.currentValue('distanceMetric')){
+	    sendEvent( name: "distanceMetric", value: homeDistance.toDouble().round(2) )
+	    state.update = true
+    }
 
-if(state.update == true){
-	sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
-	state.update = false}
+    if(state.update == true){
+	    sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
+	    state.update = false
+    }
 }
 
 private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated){
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
-	if(address1 != device.currentValue('address1')){
-        sendEvent( name: "address1Prev", value: device.currentValue('address1') )
-        sendEvent( name: "address1", value: address1, isStateChange: true, displayed: true )
-        sendEvent( name: "since", value: since )
-	}
-    if(address2 != device.currentValue('address2')){
-        sendEvent( name: "address2", value: address2 )   
-	}
-	if(battery != device.currentValue('battery'))
-   	    sendEvent( name: "battery", value: battery )
-    if(charge != device.currentValue('charge'))
-   	    sendEvent( name: "charge", value: charge )
+    if(address1.contains('Data')) {
+        if(logEnable) log.trace "In extraInfo - Nothing to report (No Data)"
+    } else {
+    	if(address1 != device.currentValue('address1')){
+            sendEvent( name: "address1Prev", value: device.currentValue('address1') )
+            sendEvent( name: "address1", value: address1, isStateChange: true, displayed: true )
+            sendEvent( name: "since", value: since )
+	    }
+        if(address2 != device.currentValue('address2')){
+            sendEvent( name: "address2", value: address2 )   
+	    }
+	    if(battery != device.currentValue('battery'))
+       	    sendEvent( name: "battery", value: battery )
+        if(charge != device.currentValue('charge'))
+   	        sendEvent( name: "charge", value: charge )
 
-    def curcheckin = device.currentValue('lastCheckin').toString()
-    if(endTimestamp != curcheckin)
-   	    sendEvent( name: "lastCheckin", value: endTimestamp )
-    if(inTransit != device.currentValue('inTransit'))
-   	    sendEvent( name: "inTransit", value: inTransit )
+        def curcheckin = device.currentValue('lastCheckin').toString()
+        if(endTimestamp != curcheckin)
+       	    sendEvent( name: "lastCheckin", value: endTimestamp )
+        if(inTransit != device.currentValue('inTransit'))
+       	    sendEvent( name: "inTransit", value: inTransit )
 
-	def curDriving = device.currentValue('isDriving')
-    //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
-    if(isDriving != device.currentValue('isDriving')){
-	//if(logEnable) log.debug "If was different, isDriving = $isDriving"
-   	    sendEvent( name: "isDriving", value: isDriving )
+	    def curDriving = device.currentValue('isDriving')
+        //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
+        if(isDriving != device.currentValue('isDriving')){
+	    //if(logEnable) log.debug "If was different, isDriving = $isDriving"
+       	    sendEvent( name: "isDriving", value: isDriving )
+        }
+        def curlat = device.currentValue('latitude').toString()
+        def curlong = device.currentValue('longitude').toString()
+        latitude = latitude.toString()
+        longitude = longitude.toString()
+        if(latitude != curlat)
+            sendEvent( name: "latitude", value: latitude )
+        if(longitude != curlong)
+           	sendEvent( name: "longitude", value: longitude )
+        if(speedMetric != device.currentValue('speedMetric'))
+    	    sendEvent( name: "speedMetric", value: speedMetric )
+        if(speedMiles != device.currentValue('speedMiles'))
+        	sendEvent( name: "speedMiles", value: speedMiles )
+        if(speedKm != device.currentValue('speedKm'))
+        	sendEvent( name: "speedKm", value: speedKm )
+        if(wifiState != device.currentValue('wifiState'))
+           	sendEvent( name: "wifiState", value: wifiState )
+        setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+
+        sendEvent( name: "savedPlaces", value: xplaces )
+    
+        sendEvent( name: "avatar", value: avatar )
+        sendEvent( name: "avatarHtml", value: avatarHtml )
+
+        sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
+    
+        sendLife360Tile1()
     }
-    def curlat = device.currentValue('latitude').toString()
-    def curlong = device.currentValue('longitude').toString()
-    latitude = latitude.toString()
-    longitude = longitude.toString()
-    if(latitude != curlat)
-        sendEvent( name: "latitude", value: latitude )
-    if(longitude != curlong)
-       	sendEvent( name: "longitude", value: longitude )
-    if(speedMetric != device.currentValue('speedMetric'))
-    	sendEvent( name: "speedMetric", value: speedMetric )
-    if(speedMiles != device.currentValue('speedMiles'))
-    	sendEvent( name: "speedMiles", value: speedMiles )
-    if(speedKm != device.currentValue('speedKm'))
-    	sendEvent( name: "speedKm", value: speedKm )
-    if(wifiState != device.currentValue('wifiState'))
-       	sendEvent( name: "wifiState", value: wifiState )
-    setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
-
-    sendEvent( name: "savedPlaces", value: xplaces )
-    
-    sendEvent( name: "avatar", value: avatar )
-    sendEvent( name: "avatarHtml", value: avatarHtml )
-
-    sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
-    
-    sendLife360Tile1()
 }
 
 def setMemberId (String memberId) {
