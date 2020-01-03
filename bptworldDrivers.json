@@ -14,10 +14,10 @@
   "AbacusCoutingTileDiscussion": "",
   "AbacusCoutingTileUpdateNote": "V1.0.3 - 08/29/19 - App Watchdog compatible",
   
-  "AsthmaForecasterDriverVersion": "v2.0.3",
+  "AsthmaForecasterDriverVersion": "v2.0.4",
   "AsthmaForecasterDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Drivers/Asthma%20Forecaster/AF-driver.groovy.groovy",
   "AsthmaForecasterDriverDiscussion": "",
-  "AsthmaForecasterDriverUpdateNote": "v2.0.3 - 08/29/2019 - App Watchdog compatible",
+  "AsthmaForecasterDriverUpdateNote": "v2.0.4 - 01/03/2020 - Adjustment for AW2",
   
   "DeviceWatchdogTileVersion": "v1.0.6",
   "DeviceWatchdogTileRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-driver.groovy",
@@ -44,15 +44,15 @@
   "IP2IRTelnetDiscussion": "",
   "IP2IRTelnetUpdateNote": "V1.0.4 - 08/29/19 - App Watchdog Compatible",
   
-  "Life360ContainerVersion": "v2.0.2",
+  "Life360ContainerVersion": "v2.0.3",
   "Life360ContainerRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-container-driver.groovy",
   "Life360ContainerDiscussion": "",
-  "Life360ContainerUpdateNote": "v1.0.2 - 08/29/19 - App Watchdog compatible",
+  "Life360ContainerUpdateNote": "v1.0.3 - 01/03/2020 - Adjustment for AW2",
   
-  "Life360UserVersion": "v1.1.7",
+  "Life360UserVersion": "v1.1.8",
   "Life360UserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
   "Life360UserDiscussion": "",
-  "Life360UserUpdateNote": "v1.1.7 - 11/03/19 - Minor changes",
+  "Life360UserUpdateNote": "v1.1.8 - 01/03/2020 - Adjustment for AW2",
   
   "LogWatchdogVersion": "v1.0.7",
   "LogWatchdogRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",
