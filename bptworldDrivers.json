@@ -39,10 +39,10 @@
   "HubWatchdogDriverDiscussion": "",
   "HubWatchdogDriverUpdateNote": "V1.0.8 - 09/30/19 - Lots of little changes",
   
-  "IP2IRTelnetVersion": "v1.0.4",
+  "IP2IRTelnetVersion": "v1.0.5",
   "IP2IRTelnetRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy",
   "IP2IRTelnetDiscussion": "",
-  "IP2IRTelnetUpdateNote": "V1.0.4 - 08/29/19 - App Watchdog Compatible",
+  "IP2IRTelnetUpdateNote": "1.0.5 - 01/03/20 - Fix for App Watchdog 2",
   
   "Life360ContainerVersion": "v2.0.3",
   "Life360ContainerRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-container-driver.groovy",
