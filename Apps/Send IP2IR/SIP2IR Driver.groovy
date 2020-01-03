@@ -42,6 +42,7 @@
  *
  *  Changes:
  *
+ *  v1.0.5 - 01/03/20 - Fix for App Watchdog 2
  *  V1.0.4 - 08/29/19 - App Watchdog Compatible
  *  V1.0.3 - 04/16/19 - Code cleanup
  *  V1.0.2 - 12/06/18 - Minor changes and additonal error message. If the IP2IR unit is unplugged or loses connection for any
@@ -52,7 +53,7 @@
 
 def setVersion(){
     appName = "IP2IRTelnet"
-	version = "v1.0.4" 
+	version = "v1.0.5" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -64,6 +65,7 @@ def updateVersion() {
 
 metadata {
 	definition (name: "IP2IR Telnet", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy") {
+    capability "Actuator"
 	capability "Initialize"
     capability "Telnet"
     capability "Notification"
@@ -71,8 +73,8 @@ metadata {
 
     attribute "Telnet", ""
         
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
+    attribute "dwDriverInfo", "string"
+    command "updateVersion"
 }
     
 preferences() {    	
@@ -85,11 +87,12 @@ preferences() {
 
 def speak(msg) {
     state.lastmsg = msg
-    if(logEnable) log.debug "Sending Message: ${msg}"
+    if(logEnable) log.debug "In speak - Sending Message: ${msg}"
     return new hubitat.device.HubAction("${msg}\n", hubitat.device.Protocol.TELNET)
 }
 
 def deviceNotification(message) {
+    if(logEnable) log.debug "In deviceNotification - Sending Message: ${message}"
     speak(message)
 }
 
@@ -108,7 +111,7 @@ def initialize(){
 		pauseExecution(1000)
 		if(logEnable) log.debug "Telnet connection established"
     } catch(e) {
-		if(logEnable) log.debug "Initialize Error: ${e.message}"
+		log.warn "Initialize Error: ${e.message}"
     }
 }
 
