@@ -276,7 +276,7 @@
   "Life360TrackerDiscussion": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276",
   "Life360TrackerUpdateNote": "V2.0.5 - 12/10/19 - Minor bug fixes",
   
-  "Life360withStatesParentVersion": "v2.0.0",
+  "Life360withStatesParentVersion": "v2.0.1",
   "Life360withStatesChild1Version": "",
   "Life360withStatesChild1Name": "",
   "Life360withStatesChild2Version": "",
@@ -291,7 +291,7 @@
   "Life360withStatesChild3RawCode": "",
   "Life360withStatesChild4RawCode": "",
   "Life360withStatesDiscussion": "https://community.hubitat.com/t/release-life360-with-states-track-all-attributes-with-app-and-driver-also-supports-rm4-and-dashboards/18274",
-  "Life360withStatesUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "Life360withStatesUpdateNote": "V2.0.1 - 01/03/20 - Adjusted logging to not show sensitive data",
   
   "LightingEffectsParentVersion": "v2.0.0",
   "LightingEffectsChild1Version": "v2.0.0",
