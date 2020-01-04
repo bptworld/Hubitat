@@ -30,10 +30,9 @@
  *  Design Usage:
  *  Life360 with all States Included
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -47,6 +46,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 01/03/20 - Adjusted logging to not show sensitive data
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  v1.1.6 - 08/06/19 - Added new attribute, lastUpdated
  *  v1.1.5 - 07/28/19 - Members are now created within a virtual container 'Life360 Members'. Thanks to code by @stephack
@@ -71,18 +71,16 @@
 import java.text.SimpleDateFormat
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "Life360withStatesParentVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
             awInfo = "${state.appName}:${state.version}"
 		    awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
 }
@@ -126,7 +124,7 @@ mappings {
 }
 
 def getCredentialsPage() {
-    if(logEnable) log.debug "In getCredentialsPage..."
+    if(logEnable) log.debug "In getCredentialsPage - (${state.version})"
     if(state.life360AccessToken) {
         listCircles()
     } else {
@@ -140,7 +138,7 @@ def getCredentialsPage() {
 }
 
 def getCredentialsErrorPage(String message) {
-    if(logEnable) log.debug "In getCredentialsErrorPage..."
+    if(logEnable) log.debug "In getCredentialsErrorPage - (${state.version})"
     dynamicPage(name: "Credentials", title: "Enter Life360 Credentials", nextPage: "listCirclesPage", uninstall: uninstallOption, install:false) {
     	section(getFormat("header-green", "${getImage("Blank")}"+" Life360 Credentials")) {
     		input "username", "text", title: "Life360 Username?", multiple: false, required: true
@@ -151,7 +149,7 @@ def getCredentialsErrorPage(String message) {
 }
 
 def testLife360Connection() {
-    if(logEnable) log.debug "In testLife360Connection..."
+    if(logEnable) log.debug "In testLife360Connection - (${state.version})"
     if(state.life360AccessToken) {
         if(logEnable) log.debug "In testLife360Connection - Good!"
    		//listCircles()
@@ -163,7 +161,7 @@ def testLife360Connection() {
 }
 
  def initializeLife360Connection() {
-    if(logEnable) log.debug "In initializeLife360Connection..."
+    if(logEnable) log.debug "In initializeLife360Connection - (${state.version})"
 
     initialize()
 
@@ -182,14 +180,14 @@ def testLife360Connection() {
        
      		httpPost(uri: url, body: postBody, headers: ["Authorization": "Basic cFJFcXVnYWJSZXRyZTRFc3RldGhlcnVmcmVQdW1hbUV4dWNyRUh1YzptM2ZydXBSZXRSZXN3ZXJFQ2hBUHJFOTZxYWtFZHI0Vg==" ]) {response -> 
      		    result = response
-                if(logEnable) log.debug result
+                //if(logEnable) log.debug result
     		}
         if (result.data.access_token) {
-            if(logEnable) log.debug result
+            //if(logEnable) log.debug result
        		state.life360AccessToken = result.data.access_token
             return true;
        	}
-    	if(logEnable) log.debug "Life360 initializeLife360Connection, response=${result.data}"
+    	//if(logEnable) log.debug "Life360 initializeLife360Connection, response=${result.data}"
         return ;   
     }
     catch (e) {
@@ -199,7 +197,7 @@ def testLife360Connection() {
 }
 
 def listCircles() {
-    if(logEnable) log.debug "In listCircles..."
+    if(logEnable) log.debug "In listCircles - (${state.version})"
     def uninstallOption = false
     if (app.installationState == "COMPLETE") uninstallOption = true
     dynamicPage(name: "listCirclesPage", title: "<h2 style='color:#1A77C9;font-weight: bold'>Life360 with States</h2>", install: true, uninstall: true) {
@@ -210,13 +208,13 @@ def listCircles() {
     	    def urlCircles = "https://api.life360.com/v3/circles.json"
  
     	    def resultCircles = null
-            if(logEnable) log.debug "AccessToken: ${state.life360AccessToken}"
+            //if(logEnable) log.debug "AccessToken: ${state.life360AccessToken}"
        
 		    httpGet(uri: urlCircles, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
     	         resultCircles = response
 		    }
 
-		    if(logEnable) log.debug "Circles: ${resultCircles.data}"
+		    //if(logEnable) log.debug "Circles: ${resultCircles.data}"
     	    def circles = resultCircles.data.circles
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Select Life360 Circle")) {
@@ -231,7 +229,7 @@ def listCircles() {
         }
 
         if(circle) {
-            if(logEnable) log.debug "In listPlaces..."
+            if(logEnable) log.debug "In listPlaces - (${state.version})"
             if (app.installationState == "COMPLETE") uninstallOption = true
        
             if (!state?.circle) state.circle = settings.circle
@@ -261,7 +259,7 @@ def listCircles() {
         }
         
         if(place && circle) {
-            if(logEnable) log.debug "In listUsers..."
+            if(logEnable) log.debug "In listUsers - (${state.version})"
             // understand whether to present the Uninstall option
             if (app.installationState == "COMPLETE") uninstallOption = true
 
@@ -313,7 +311,7 @@ def listCircles() {
 }
 
 def installed() {
-    if(logEnable) log.debug "In installed..."
+    if(logEnable) log.debug "In installed - (${state.version})"
 	if(!state?.circle) state.circle = settings.circle
     
     settings.users.each {memberId->
@@ -353,7 +351,7 @@ def installed() {
 }
 
 def createCircleSubscription() {
-    if(logEnable) log.debug "In createCircleSubscription..."
+    if(logEnable) log.debug "In createCircleSubscription - (${state.version})"
 
     if(logEnable) log.debug "Remove any existing Life360 Webhooks for this Circle."
 
@@ -395,16 +393,16 @@ def createCircleSubscription() {
     // {"circleId":"41094b6a-32fc-4ef5-a9cd-913f82268836","userId":"0d1db550-9163-471b-8829-80b375e0fa51","clientId":"11",
     //    "hookUrl":"https://testurl.com"}
 
-    if(logEnable) log.debug "Response = ${result}"
+    //if(logEnable) log.debug "Response = ${result}"
 
     if (result.data?.hookUrl) {
-    	    if(logEnable) log.debug "Webhook creation successful. Response = ${result.data}"
+    	    if(logEnable) log.debug "Webhook creation successful."
 
     	}
     }
 
 def updated() {
-    if(logEnable) log.debug "In updated..."
+    if(logEnable) log.debug "In updated - (${state.version})"
 	if (!state?.circle)
         state.circle = settings.circle
 
@@ -462,11 +460,11 @@ def updated() {
     if(logEnable) log.debug "Child Devices: ${childDevices}"
     
     childDevices.each {childDevice->
-        if(logEnable) log.debug "(l-439) Child = ${childDevice}, DNI=${childDevice.deviceNetworkId}"
+        // log.debug "(l-439) Child = ${childDevice}, DNI=${childDevice.deviceNetworkId}"
         
         def (childAppName, childMemberId) = childDevice.deviceNetworkId.split("\\.")
-        if(logEnable) log.debug "Child Member Id = ${childMemberId}"
-        if(logEnable) log.debug "Settings.users = ${settings.users}"
+        //if(logEnable) log.debug "Child Member Id = ${childMemberId}"
+        //if(logEnable) log.debug "Settings.users = ${settings.users}"
         if (!settings.users.find{it==childMemberId}) {
             container.deleteChildDevice(childDevice.deviceNetworkId)
             def member = state.members.find {it.id==memberId}
@@ -484,13 +482,13 @@ def updated() {
 
 def generateInitialEvent (member, childDevice) {
     
-    if(logEnable) log.debug "In generateInitialEvent..."
+    if(logEnable) log.debug "In generateInitialEvent - (${state.version})"
     runEvery1Minute(updateMembers)
     //schedule("30 * * * * ?", updateMembers)
     // lets figure out if the member is currently "home" (At the place)
     
     try { // we are going to just ignore any errors
-    	if(logEnable)log.info "Life360 generateInitialEvent($member, $childDevice)"
+    	//if(logEnable)log.info "Life360 generateInitialEvent($member, $childDevice)"
         
         def place = state.places.find{it.id==settings.place}
 
@@ -594,6 +592,8 @@ def generateInitialEvent (member, childDevice) {
 
 def initialize() {
 	// TODO: subscribe to attributes, devices, locations, etc.
+    
+    if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def haversine(lat1, lon1, lat2, lon2) {
@@ -611,8 +611,8 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def placeEventHandler() {
-	if(logEnable) log.debug "Life360 placeEventHandler: params=$params"
-    if(logEnable) log.debug "Life360 placeEventHandler: settings.place=$settings.place"
+	//if(logEnable) log.debug "Life360 placeEventHandler: params=$params"
+    //if(logEnable) log.debug "Life360 placeEventHandler: settings.place=$settings.place"
     
     def circleId = params?.circleId
     def placeId = params?.placeId
@@ -646,7 +646,7 @@ def refresh() {
 }
 
 def updateMembers(){
-    if(logEnable) log.debug "In updateMembers..."
+    if(logEnable) log.debug "In updateMembers - (${state.version})"
 	if (!state?.circle) state.circle = settings.circle
     
     def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
@@ -778,7 +778,7 @@ def cmdHandler(resp, data) {
 def createContainer(member){                // Modified from @Stephack
     def container = getChildDevices().find{it.typeName == "Life360 Container"}
     if(!container){
-        if(logEnable) log.debug "Creating Life360 Container"
+        if(logEnable) log.debug "Creating Life360 Container - (${state.version})"
         try {
             container = addChildDevice("BPTWorld", "Life360 Container", "Life360-${app.id}", null, [name: "Life360-Members", label: "Life360 Members", completedSetup: true]) 
         } catch (e) {
