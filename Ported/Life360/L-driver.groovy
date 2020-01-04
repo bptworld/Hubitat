@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.1.9 - 01/04/20 - Modified how/when Tile gets updated
  *  v1.1.8 - 01/03/20 - Fix for App Watchdog 2
  *  v1.1.7 - 11/03/19 - Minor changes
  *  v1.1.6 - 09/20/19 - Small changes to tile code, rewrite of the History Log code
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     appName = "Life360User"
-	version = "v1.1.8" 
+	version = "v1.1.9" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -56,15 +57,14 @@ def updateVersion() {
 }
 
 preferences {
-	input title:"Distance", description:"This feature allows you change the display of distance to either Miles or KM. Please note, any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
+	input title:"<b>Life360 User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
-    input "life360Paid", "bool", title: "Version of Life360 (off=Free, on=Paid)", required: true, defaultValue: false
-    input("avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15")
-    input("avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75")
+    input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
+    input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
 
-    input("numOfLines", "number", title: "How many lines to display on History Tile (from 1 to 10 only)", required:true, defaultValue: 5)
-    input("historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15")
-    input("historyHourType", "bool", title: "Time Selection for History Tile (Off for 24h, On for 12h)", required: false, defaultValue: false)
+    input "numOfLines", "number", title: "How many lines to display on History Tile (from 1 to 10 only)", required:true, defaultValue: 5
+    input "historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15"
+    input "historyHourType", "bool", title: "Time Selection for History Tile (Off for 24h, On for 12h)", required: false, defaultValue: false
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
 } 
  
@@ -231,6 +231,7 @@ def sendHistory(msgValue) {
             log.warn "Life360 User - sendHistory - Something went wrong<br>${e1}"        
         }
     }
+    sendLife360Tile1()
 }
 
 def installed(){
@@ -326,6 +327,8 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	    sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
 	    state.update = false
     }
+    
+    sendLife360Tile1()
 }
 
 private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated){
@@ -383,9 +386,8 @@ private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriv
         sendEvent( name: "avatarHtml", value: avatarHtml )
 
         sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
-    
-        sendLife360Tile1()
     }
+    sendLife360Tile1()
 }
 
 def setMemberId (String memberId) {
@@ -395,7 +397,7 @@ def setMemberId (String memberId) {
 
 def getMemberId () {
 	if(logEnable) log.debug "MemberId = ${state.life360MemberId}"
-return(state.life360MemberId)
+    return(state.life360MemberId)
 }
 
 private String formatValue(boolean present) {
