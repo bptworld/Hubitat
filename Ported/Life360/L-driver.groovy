@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.2.0 - 01/05/20 - Made some changes based on @Berthoven suggestion. Thanks!
  *  v1.1.9 - 01/04/20 - Modified how/when Tile gets updated
  *  v1.1.8 - 01/03/20 - Fix for App Watchdog 2
  *  v1.1.7 - 11/03/19 - Minor changes
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     appName = "Life360User"
-	version = "v1.1.9" 
+	version = "v1.2.0" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -187,8 +188,8 @@ def sendLife360Tile1() {
 def sendHistory(msgValue) {
     if(logEnable) log.trace "In sendHistory - nameValue: ${msgValue}"
 
-    if(msgValue.contains('Data')) {
-        if(logEnable) log.trace "In sendHistory - Nothing to report (No Data)"
+    if(msgValue == "No Data") {
+       if(logEnable) log.trace "In sendHistory - Nothing to report (No Data)"
     } else {   
         try {
             getDateTime()
@@ -334,59 +335,56 @@ def generatePresenceEvent(boolean present, homeDistance) {
 private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated){
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
-    if(address1.contains('Data')) {
-        if(logEnable) log.trace "In extraInfo - Nothing to report (No Data)"
-    } else {
-    	if(address1 != device.currentValue('address1')){
-            sendEvent( name: "address1Prev", value: device.currentValue('address1') )
-            sendEvent( name: "address1", value: address1, isStateChange: true, displayed: true )
-            sendEvent( name: "since", value: since )
-	    }
-        if(address2 != device.currentValue('address2')){
-            sendEvent( name: "address2", value: address2 )   
-	    }
-	    if(battery != device.currentValue('battery'))
-       	    sendEvent( name: "battery", value: battery )
-        if(charge != device.currentValue('charge'))
-   	        sendEvent( name: "charge", value: charge )
+    if(address1 != device.currentValue('address1')){
+        sendEvent( name: "address1Prev", value: device.currentValue('address1') )
+        sendEvent( name: "address1", value: address1, isStateChange: true, displayed: true )
+        sendEvent( name: "since", value: since )
+	}
+    if(address2 != device.currentValue('address2')){
+        sendEvent( name: "address2", value: address2 )   
+	}
+	if(battery != device.currentValue('battery'))
+        sendEvent( name: "battery", value: battery )
+    if(charge != device.currentValue('charge'))
+   	    sendEvent( name: "charge", value: charge )
 
-        def curcheckin = device.currentValue('lastCheckin').toString()
-        if(endTimestamp != curcheckin)
-       	    sendEvent( name: "lastCheckin", value: endTimestamp )
-        if(inTransit != device.currentValue('inTransit'))
-       	    sendEvent( name: "inTransit", value: inTransit )
+    def curcheckin = device.currentValue('lastCheckin').toString()
+    if(endTimestamp != curcheckin)
+        sendEvent( name: "lastCheckin", value: endTimestamp )
+    if(inTransit != device.currentValue('inTransit'))
+       	sendEvent( name: "inTransit", value: inTransit )
 
-	    def curDriving = device.currentValue('isDriving')
-        //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
-        if(isDriving != device.currentValue('isDriving')){
-	    //if(logEnable) log.debug "If was different, isDriving = $isDriving"
-       	    sendEvent( name: "isDriving", value: isDriving )
-        }
-        def curlat = device.currentValue('latitude').toString()
-        def curlong = device.currentValue('longitude').toString()
-        latitude = latitude.toString()
-        longitude = longitude.toString()
-        if(latitude != curlat)
-            sendEvent( name: "latitude", value: latitude )
-        if(longitude != curlong)
-           	sendEvent( name: "longitude", value: longitude )
-        if(speedMetric != device.currentValue('speedMetric'))
-    	    sendEvent( name: "speedMetric", value: speedMetric )
-        if(speedMiles != device.currentValue('speedMiles'))
-        	sendEvent( name: "speedMiles", value: speedMiles )
-        if(speedKm != device.currentValue('speedKm'))
-        	sendEvent( name: "speedKm", value: speedKm )
-        if(wifiState != device.currentValue('wifiState'))
-           	sendEvent( name: "wifiState", value: wifiState )
-        setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
-
-        sendEvent( name: "savedPlaces", value: xplaces )
-    
-        sendEvent( name: "avatar", value: avatar )
-        sendEvent( name: "avatarHtml", value: avatarHtml )
-
-        sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
+	def curDriving = device.currentValue('isDriving')
+    //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
+    if(isDriving != device.currentValue('isDriving')){
+	//if(logEnable) log.debug "If was different, isDriving = $isDriving"
+        sendEvent( name: "isDriving", value: isDriving )
     }
+    def curlat = device.currentValue('latitude').toString()
+    def curlong = device.currentValue('longitude').toString()
+    latitude = latitude.toString()
+    longitude = longitude.toString()
+    if(latitude != curlat)
+        sendEvent( name: "latitude", value: latitude )
+    if(longitude != curlong)
+       	sendEvent( name: "longitude", value: longitude )
+    if(speedMetric != device.currentValue('speedMetric'))
+        sendEvent( name: "speedMetric", value: speedMetric )
+    if(speedMiles != device.currentValue('speedMiles'))
+        sendEvent( name: "speedMiles", value: speedMiles )
+    if(speedKm != device.currentValue('speedKm'))
+        sendEvent( name: "speedKm", value: speedKm )
+    if(wifiState != device.currentValue('wifiState'))
+        sendEvent( name: "wifiState", value: wifiState )
+    setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+
+    sendEvent( name: "savedPlaces", value: xplaces )
+    
+    sendEvent( name: "avatar", value: avatar )
+    sendEvent( name: "avatarHtml", value: avatarHtml )
+
+    sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
+
     sendLife360Tile1()
 }
 
