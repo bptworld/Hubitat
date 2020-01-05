@@ -1,7 +1,7 @@
 metadata {
-	definition (name: "AXIS Gear V5 Hubitat", namespace: "axis", author: "AXIS Labs", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Axis%20Gear/Axis%20Gear%20V5%20Driver.groovy") {  
+	definition (name: "AXIS Gear V5 Hubitat (Custom)", namespace: "axis", author: "AXIS Labs", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Axis%20Gear/Axis%20Gear%20V5%20Driver.groovy") {  
 		capability "Window Shade"
-		capability "Switch Level"
+		//capability "Switch Level"
 		capability "Battery"
 		capability "Refresh"
 		capability "Health Check"
@@ -19,7 +19,7 @@ metadata {
 		command "stop"
 		command "getversion"
 		
-		//fingerprint profileID: "0104", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
+		fingerprint profileID: "0104", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
 		fingerprint profileId: "0104", deviceId: "0202", inClusters: "0000, 0003, 0006, 0008, 0102, 0020, 0001", outClusters: "0019", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
 		//fingerprint endpointID: "01, C4", profileId: "0104, C25D", deviceId: "0202", inClusters: "0000, 0003, 0006, 0008, 0102, 0020, 0001", outClusters: "0019", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
 
@@ -31,6 +31,7 @@ metadata {
 		//Updated 2018-11-01 - added in configure reporting for refresh button, close when press on partial shade icon, update handler to parse between 0-254 as a percentage
 		//Updated 2019-06-03 - modified to use Window Covering Cluster Commands and versioning tile and backwards compatibility (firmware and app), fingerprinting enabled
 		//Updated 2019-08-09 - minor changes and improvements, onoff state reporting fixed
+        //Updated 2019-11-11 - minor changes
 	}
     
     preferences() {    	
@@ -117,6 +118,9 @@ def stop() {
 	}
 }
 
+def pause() {
+	stop()
+}
 //Send Command through setLevel()
 def on() {
 	if(logEnable) log.debug "on()"
@@ -138,6 +142,11 @@ def off() {
 	sendEvent(name: "switch", value: "off")
 	close()
 	//zigbee.off()
+}
+
+//Command to set the blind position (%) and log the event
+def setPosition(value) {
+	setLevel(value)
 }
 
 //Command to set the blind position (%) and log the event
@@ -253,7 +262,7 @@ def configure() {
 	sendEvent(name: "windowShade", value: "unknown")
 	if(logEnable) log.debug "Configuring Reporting and Bindings."
 	sendEvent(name: "checkInterval", value: (2 * 60 * 60 + 10 * 60), displayed: true, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
-
+    sendEvent(name: "supportedWindowShadeCommands", value: JsonOutput.toJson(["open", "close", "pause"]), displayed: false)
 	def attrs_refresh = zigbee.readAttribute(CLUSTER_BASIC, BASIC_ATTR_SWBUILDID) +
 						zigbee.readAttribute(CLUSTER_WINDOWCOVERING, WINDOWCOVERING_ATTR_LIFTPERCENTAGE) +
 						zigbee.readAttribute(CLUSTER_ONOFF, ONOFF_ATTR_ONOFFSTATE) +
