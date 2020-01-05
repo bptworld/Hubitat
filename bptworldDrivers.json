@@ -49,10 +49,10 @@
   "Life360ContainerDiscussion": "",
   "Life360ContainerUpdateNote": "v1.0.3 - 01/03/2020 - Adjustment for AW2",
   
-  "Life360UserVersion": "v1.1.8",
+  "Life360UserVersion": "v1.2.0",
   "Life360UserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
   "Life360UserDiscussion": "",
-  "Life360UserUpdateNote": "v1.1.8 - 01/03/2020 - Adjustment for AW2",
+  "Life360UserUpdateNote": "v1.2.0 - 01/05/20 - Made some changes based on @Berthoven suggestion. Thanks!",
   
   "LogWatchdogVersion": "v1.0.7",
   "LogWatchdogRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",
