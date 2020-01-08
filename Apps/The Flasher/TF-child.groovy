@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 01/08/20 - Added button as a trigger
  *  V1.0.0 - 01/01/20 - Initial release
  *
  */
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TheFlasherChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -84,6 +85,8 @@ def pageConfig() {
             if(acceleration) {
                 input "accelerationValue", "bool", defaultValue: false, title: "Flash when Inactive or Active (off = Inactive, On = Active)", description: "Options"
             }
+            
+            input "button", "capability.pushableButton", title: "Button Device(s)", required: false, multiple: true, submitOnChange: true
             
             input "contact", "capability.contactSensor", title: "Contact Sensor(s)", required: false, multiple: true, submitOnChange: true
             if(contact) {
@@ -141,6 +144,7 @@ def updated() {
 
 def subscribe() {
     if(acceleration) subscribe(acceleration, "acceleration", accelerationHandler)
+    if(button) subscribe(button, "pushed", buttonHandler)
 	if(contact) subscribe(contact, "contact", contactHandler)
 	if(lock) subscribe(lock, "lock", lockHandler)
 	if(motion) subscribe(motion, "motion", motionHandler)
@@ -152,6 +156,11 @@ def accelerationHandler(evt) {
 	if(logEnable) log.debug "In accelerationHandler - Acceleration: $evt.value"
 	if(evt.value == "active" && accelerationValue) flashLights()
 	if(evt.value == "inactive" && !accelerationValue) flashLights()
+}
+
+def buttonHandler(evt) {
+	if(logEnable) log.debug "In buttonHandler - Button: $evt.value"
+	flashLights()
 }
 
 def contactHandler(evt) {
