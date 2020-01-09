@@ -225,8 +225,8 @@
   "GentleWakeUpDiscussion": "https://community.hubitat.com/t/port-gentle-wake-up/19971",
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
-  "HomeTrackerParentVersion": "v2.0.1",
-  "HomeTrackerChild1Version": "v2.1.7",
+  "HomeTrackerParentVersion": "v2.2.1",
+  "HomeTrackerChild1Version": "v2.2.3",
   "HomeTrackerChild1Name": "",
   "HomeTrackerChild2Version": "",
   "HomeTrackerChild2Name": "",
@@ -240,7 +240,7 @@
   "HomeTrackerChild3RawCode": "",
   "HomeTrackerChild4RawCode": "",
   "HomeTrackerDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
-  "HomeTrackerUpdateNote": "V2.1.7 - 12/12/19 - Code reduction",
+  "HomeTrackerUpdateNote": "V2.2.3 - 01/09/20 - More changes",
   
   "HubWatchdogParentVersion": "V1.0.1",
   "HubWatchdogChild1Version": "V1.0.7",
