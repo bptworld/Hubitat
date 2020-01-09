@@ -1,5 +1,5 @@
 /**
- *  ****************  Home Tracker Driver  ****************
+ *  ****************  Home Tracker 2 Driver  ****************
  *
  *  Design Usage:
  *  This driver stores Global Variables to be used with Home Tracker.
@@ -37,14 +37,13 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 12/12/19 - Adjustments to match app
- *  V1.0.1 - 12/10/19 - Adjustments for Locks
- *  V1.0.0 - 09/10/19 - Initial release
+ *  V1.2.0 - 12/17/19 - Major rewrite
+ *
  */
 
 def setVersion(){
-    appName = "HomeTrackerDriver"
-	version = "v1.0.2" 
+    appName = "HomeTracker2Driver"
+	version = "v1.2.0" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -55,59 +54,69 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Home Tracker Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy") {
+	definition (name: "Home Tracker 2 Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy") {
    		capability "Actuator"
 		
-		command "sendDataMap01", ["string"]
-		command "sendDataMap02", ["string"]
-		command "sendDataMap03", ["string"]
-		command "sendDataMap04", ["string"]
-		command "sendDataMap05", ["string"]
-        command "sendDataMap06", ["string"]
-        command "sendDataMap07", ["string"]
-        command "sendDataMap08", ["string"]
-        command "sendDataMap09", ["string"]
-        command "sendDataMap10", ["string"]
-        command "sendDataMap11", ["string"]
-        command "sendDataMap12", ["string"]
-        command "sendDataMap13", ["string"]
-        command "sendDataMap14", ["string"]
-        command "sendDataMap15", ["string"]
-        command "sendDataMap16", ["string"]
-        command "sendDataMap17", ["string"]
-        command "sendDataMap18", ["string"]
-        command "sendDataMap19", ["string"]
-        command "sendDataMap20", ["string"]
-        command "sendDataMap21", ["string"]
-        command "sendDataMap22", ["string"]
-        command "sendDataMap23", ["string"]
-        command "sendDataMap24", ["string"]
-		
-		attribute "globalBH01", "string"
-		attribute "globalBH02", "string"
-		attribute "globalBH03", "string"
-		attribute "globalBH04", "string"
-		attribute "globalBH05", "string"
-        attribute "globalBH06", "string"
-        attribute "globalBH07", "string"
-        attribute "globalBH08", "string"
-        attribute "globalBH09", "string"
-        attribute "globalBH10", "string"
-        attribute "globalBH11", "string"
-        attribute "globalBH12", "string"
-        attribute "globalBH13", "string"
-        attribute "globalBH14", "string"
-        attribute "globalBH15", "string"
-        attribute "globalBH16", "string"
-        attribute "globalBH17", "string"
-        attribute "globalBH18", "string"
-        attribute "globalBH19", "string"
-        attribute "globalBH20", "string"
-        attribute "globalBH21", "string"
-        attribute "globalBH22", "string"
-        attribute "globalBH23", "string"
-        attribute "globalBH24", "string"
+		command "sendDataMap", ["string"]
+        command "sendDataMapName", ["string"]
+        command "sendDataMapLock", ["string"]
+        command "sendDataMapLockName", ["string"]
+        command "clearData"
         
+        attribute "sensor0BH", "string"
+		attribute "sensor1BH", "string"
+        attribute "sensor2BH", "string"
+        attribute "sensor3BH", "string"
+        attribute "sensor4BH", "string"
+        attribute "sensor5BH", "string"
+        attribute "sensor6BH", "string"
+        attribute "sensor7BH", "string"
+        attribute "sensor8BH", "string"
+        attribute "sensor9BH", "string"
+        attribute "sensor10BH", "string"
+        attribute "sensor11BH", "string"
+        attribute "sensor12BH", "string"
+        attribute "sensor13BH", "string"
+        attribute "sensor14BH", "string"
+        attribute "sensor15BH", "string"
+        attribute "sensor16BH", "string"
+        attribute "sensor17BH", "string"
+        attribute "sensor18BH", "string"
+        attribute "sensor19BH", "string"
+        attribute "sensor20BH", "string"
+        
+        attribute "sensor0Name", "string"
+        attribute "sensor1Name", "string"
+        attribute "sensor2Name", "string"
+        attribute "sensor3Name", "string"
+        attribute "sensor4Name", "string"
+        attribute "sensor5Name", "string"
+        attribute "sensor6Name", "string"
+        attribute "sensor7Name", "string"
+        attribute "sensor8Name", "string"
+        attribute "sensor9Name", "string"
+        attribute "sensor10Name", "string"
+        attribute "sensor11Name", "string"
+        attribute "sensor12Name", "string"
+        attribute "sensor13Name", "string"
+        attribute "sensor14Name", "string"
+        attribute "sensor15Name", "string"
+        attribute "sensor16Name", "string"
+        attribute "sensor17Name", "string"
+        attribute "sensor18Name", "string"
+        attribute "sensor19Name", "string"
+        attribute "sensor20Name", "string"
+        
+        attribute "lock0BH", "string"
+        attribute "lock1BH", "string"
+        attribute "lock2BH", "string"
+        attribute "lock3BH", "string"
+        
+        attribute "lock0Name", "string"
+        attribute "lock1Name", "string"
+        attribute "lock2Name", "string"
+        attribute "lock3Name", "string"
+
         attribute "dwDriverInfo", "string"
         command "updateVersion"	
 	}
@@ -118,134 +127,40 @@ metadata {
     }
 }
 
-def sendDataMap01(dataMap1) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap1 - Received new data!"
-	def dMap1 = "${dataMap1}"
-	sendEvent(name: "globalBH01", value: dMap1, displayed: true)
-}
-def sendDataMap02(dataMap2) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap2 - Received new data!"
-	def dMap2 = "${dataMap2}"
-	sendEvent(name: "globalBH02", value: dMap2, displayed: true)
-}
-def sendDataMap03(dataMap3) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap3 - Received new data!"
-	def dMap3 = "${dataMap3}"
-	sendEvent(name: "globalBH03", value: dMap3, displayed: true)
-}
-def sendDataMap04(dataMap4) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap4 - Received new data!"
-	def dMap4 = "${dataMap4}"
-	sendEvent(name: "globalBH04", value: dMap4, displayed: true)
-}
-def sendDataMap05(dataMap5) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap5 - Received new data!"
-	def dMap5 = "${dataMap5}"
-	sendEvent(name: "globalBH05", value: dMap5, displayed: true)
+def sendDataMap(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "sensor${status[0]}BH", value: "${dataMap}")
 }
 
-def sendDataMap06(dataMap6) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap6 - Received new data!"
-	def dMap6 = "${dataMap6}"
-	sendEvent(name: "globalBH06", value: dMap6, displayed: true)
+def sendDataMapName(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMapName - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "sensor${status[0]}Name", value: "${dataMap}")
 }
 
-def sendDataMap07(dataMap7) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap7 - Received new data!"
-	def dMap7 = "${dataMap7}"
-	sendEvent(name: "globalBH07", value: dMap7, displayed: true)
+def sendDataMapLock(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMapLock - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "lock${status[0]}BH", value: "${dataMap}")
 }
 
-def sendDataMap08(dataMap8) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap8 - Received new data!"
-	def dMap8 = "${dataMap8}"
-	sendEvent(name: "globalBH08", value: dMap8, displayed: true)
+def sendDataMapLockName(dataMap) {
+    if(logEnable) log.debug "In Home Tracker Driver - sendDataMapLockName - ${dataMap}"
+	status = dataMap.split(";")
+    sendEvent(name: "lock${status[0]}Name", value: "${dataMap}")
 }
 
-def sendDataMap09(dataMap9) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap9 - Received new data!"
-	def dMap9 = "${dataMap9}"
-	sendEvent(name: "globalBH09", value: dMap9, displayed: true)
+def clearData() {
+    log.info "Home Tracker 2 - Clearing Presesnce Sensor Data"
+    for(x=0;x < 20;x++){
+        sendEvent(name: "sensor${x}BH", value: "-;-")
+        sendEvent(name: "sensor${x}Name", value: "-;-;-")
+    }
+    log.info "Home Tracker 2 - Clearing Lock Data"
+    for(x=0;x < 4;x++){
+        sendEvent(name: "lock${x}BH", value: "-;-")
+        sendEvent(name: "lock${x}Name", value: "-;-;-")
+    }
 }
 
-def sendDataMap10(dataMap10) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap10 - Received new data!"
-	def dMap10 = "${dataMap10}"
-	sendEvent(name: "globalBH10", value: dMap10, displayed: true)
-}
-
-def sendDataMap11(dataMap11) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap11 - Received new data!"
-	def dMap11 = "${dataMap11}"
-	sendEvent(name: "globalBH11", value: dMap11, displayed: true)
-}
-
-def sendDataMap12(dataMap12) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap12 - Received new data!"
-	def dMap12 = "${dataMap12}"
-	sendEvent(name: "globalBH12", value: dMap12, displayed: true)
-}
-
-def sendDataMap13(dataMap13) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap13 - Received new data!"
-	def dMap13 = "${dataMap13}"
-	sendEvent(name: "globalBH13", value: dMap13, displayed: true)
-}
-
-def sendDataMap14(dataMap14) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap14 - Received new data!"
-	def dMap14 = "${dataMap14}"
-	sendEvent(name: "globalBH14", value: dMap14, displayed: true)
-}
-
-def sendDataMap15(dataMap15) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap15 - Received new data!"
-	def dMap15 = "${dataMap15}"
-	sendEvent(name: "globalBH15", value: dMap15, displayed: true)
-}
-
-def sendDataMap16(dataMap16) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap16 - Received new data!"
-	def dMap16 = "${dataMap16}"
-	sendEvent(name: "globalBH16", value: dMap16, displayed: true)
-}
-def sendDataMap17(dataMap17) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap17 - Received new data!"
-	def dMap17 = "${dataMap17}"
-	sendEvent(name: "globalBH17", value: dMap17, displayed: true)
-}
-def sendDataMap18(dataMap18) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap18 - Received new data!"
-	def dMap18 = "${dataMap18}"
-	sendEvent(name: "globalBH18", value: dMap18, displayed: true)
-}
-def sendDataMap19(dataMap19) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap19 - Received new data!"
-	def dMap19 = "${dataMap19}"
-	sendEvent(name: "globalBH19", value: dMap19, displayed: true)
-}
-def sendDataMap20(dataMap20) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap20 - Received new data!"
-	def dMap20 = "${dataMap20}"
-	sendEvent(name: "globalBH20", value: dMap20, displayed: true)
-}
-def sendDataMap21(dataMap21) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap21 - Received new data!"
-	def dMap21 = "${dataMap21}"
-	sendEvent(name: "globalBH21", value: dMap21, displayed: true)
-}
-def sendDataMap22(dataMap22) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap22 - Received new data!"
-	def dMap22 = "${dataMap22}"
-	sendEvent(name: "globalBH22", value: dMap22, displayed: true)
-}
-def sendDataMap23(dataMap23) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap23 - Received new data!"
-	def dMap23 = "${dataMap23}"
-	sendEvent(name: "globalBH23", value: dMap23, displayed: true)
-}
-def sendDataMap24(dataMap24) {
-    if(logEnable) log.debug "In Home Tracker Driver - sendDataMap24 - Received new data!"
-	def dMap24 = "${dataMap24}"
-	sendEvent(name: "globalBH24", value: dMap24, displayed: true)
-}
