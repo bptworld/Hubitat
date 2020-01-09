@@ -907,26 +907,6 @@ def pushNow(msg) {
 	}	
 }
 
-def getLockUserName(codeName) {
-    if(logEnable) log.debug "In getLockUserName (${state.version})"
-    
-    if(codeName == lockName1) { fName="${lockPronounce1}"
-    } else if(codeName == lockName2) { state.fName="${lockPronounce2}"
-    } else if(codeName == lockName3) { state.fName="${lockPronounce3}"
-    } else if(codeName == lockName4) { state.fName="${lockPronounce4}"
-    } else if(codeName == lockName5) { state.fName="${lockPronounce5}"
-    } else if(codeName == lockName6) { state.fName="${lockPronounce6}"
-    } else if(codeName == lockName7) { state.fName="${lockPronounce7}"
-    } else if(codeName == lockName8) { state.fName="${lockPronounce8}"
-    } else if(codeName == lockName9) { state.fName="${lockPronounce9}"
-    } else if(codeName == lockName10) { state.fName="${lockPronounce10}"
-    } else { state.fName="${codeName}"
-    }
-    
-    if(logEnable) log.debug "In getLockUserName - fName: ${state.fName}"
-    return
-}
-
 private flashLights() {    // Modified from ST documents
     if(logEnable) log.debug "In flashLights (${state.version})"
 	def doFlash = true
