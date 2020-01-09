@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 01/09/20 - Added color to Flash options
  *  V1.0.1 - 01/08/20 - Added button as a trigger
  *  V1.0.0 - 01/01/20 - Initial release
  *
@@ -45,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TheFlasherChildVersion"
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -79,6 +80,7 @@ def pageConfig() {
 		display() 
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
             paragraph "Flash your lights based on several triggers!"
+            paragraph "<b>Notes:</b><br>Bulb colors are based on Hue bulbs, results may vary with other type of bulbs."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Trigger Options")) {
             input "acceleration", "capability.accelerationSensor", title: "Acceleration Sensor(s)", required: false, multiple: true, submitOnChange: true
@@ -112,11 +114,22 @@ def pageConfig() {
             if(mySwitch) {
                 input "switchValue", "bool", defaultValue: false, title: "Flash when Off or On (off = Off, On = On)", description: "Options"
             }
+            
+            input "timeToRun", "time", title: "Time", required: false
 	    }
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
-		    input "switches", "capability.switch", title: "Flash these lights", multiple: true
+		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
 		    input "numFlashes", "number", title: "Number of times (default: 2)", required: false, width: 6
             input "delay", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+            if(theSwitch.hasCommand('setColor')) {
+                input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
+                    ["Soft White":"Soft White - Default"],
+                    ["White":"White - Concentrate"],
+                    ["Daylight":"Daylight - Energize"],
+                    ["Warm White":"Warm White - Relax"],
+                    "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                ]
+            }
 	    }
         section(getFormat("header-green", "${getImage("Blank")}"+" Allow flashing between what times? (Optional)")) {
             input "fromTime", "time", title: "From", required:false, width: 6
@@ -130,7 +143,6 @@ def pageConfig() {
 	}
 }    
 
-
 def installed() {
 	if(logEnable) log.debug "Installed with settings: ${settings}"
 	subscribe()
@@ -139,6 +151,7 @@ def installed() {
 def updated() {
 	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
+    unschedule()
 	subscribe()
 }
 
@@ -150,6 +163,7 @@ def subscribe() {
 	if(motion) subscribe(motion, "motion", motionHandler)
     if(myPresence) subscribe(myPresence, "presence", presenceHandler)
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
+    if(timeToRun) schedule(timeToRun, timeHandler)
 }
 
 def accelerationHandler(evt) {
@@ -193,6 +207,11 @@ def switchHandler(evt) {
 	if(evt.value == "off" && !switchValue) flashLights()
 }
 
+def timeHandler(evt) {
+	if(logEnable) log.debug "In timeHandler - Time: -"
+	flashLights()
+}
+
 def checkTime() {
 	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
 	if((fromTime != null) && (toTime != null)) {
@@ -206,6 +225,7 @@ def checkTime() {
 }
 
 private flashLights() {    // Modified from ST documents
+    if(logEnable) log.debug "******************* Start - The Flasher *******************"
     if(logEnable) log.debug "In flashLights (${state.version})"
     checkTime()
     
@@ -222,18 +242,36 @@ private flashLights() {    // Modified from ST documents
 		    if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
 	    }
 
-	    if(doFlash) {        // Modified from ST documents
+	    if(doFlash) {
 	    	if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
 	    	state.lastActivated = now()
-	    	if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: ${state.lastActivated}"
-	    	def initialActionOn = switches.collect{it.currentSwitch != "on"}
-
+	    	if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
+            
+            if(theSwitch.hasCommand('setColor')) {
+                oldSwitchState = theSwitch.currentValue("switch")
+                oldHueColor = theSwitch.currentValue("hue")
+                oldSaturation = theSwitch.currentValue("saturation")
+                oldLevel = theSwitch.currentValue("level")
+                state.oldValue = [switch: "${oldSwitchState}", hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+                if(logEnable) log.debug "In flashLights - setColor - value: $state.oldValue"
+                setLevelandColorHandler()
+            }
+            
+            def initialActionOn = (oldSwitch != "on")
+            
 	    	numFlashes.times {
 	    		if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
-		    	switches.eachWithIndex {s, i ->
-			    	if (initialActionOn[i]) {
+		    	theSwitch.eachWithIndex {s, i ->
+			    	if(initialActionOn) {
                         pauseExecution(delay)
-			    		s.on()
+                        
+                        if(s.hasCommand('setColor')) {
+            	            if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+            	            s.setColor(state.value)
+        	            } else {
+            	            if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+            	            s.on()
+        	            } 
 			    	}
 			    	else {
                         pauseExecution(delay)
@@ -241,21 +279,89 @@ private flashLights() {    // Modified from ST documents
 			    	}
 			    }
 			    if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
-			    switches.eachWithIndex {s, i ->
-			    	if (initialActionOn[i]) {
+			    theSwitch.eachWithIndex {s, i ->
+			    	if(initialActionOn) {
                         pauseExecution(delay)
 				    	s.off()
 				    }
 			    	else {
                         pauseExecution(delay)
-				    	s.on()
+				    	if(s.hasCommand('setColor')) {
+            	            if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+            	            s.setColor(state.value)
+        	            } else {
+            	            if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+            	            s.on()
+        	            }
 				    }
 			    }
 		    }
+            
+            theValue = state.oldValue
+            if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
+            if(theSwitch.hasCommand('setColor')) {
+                theSwitch.setColor(theValue)
+                if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - value: $theValue"
+            }
+            if(oldSwitchState == "on") {
+                theSwitch.on()
+            } else {
+                theSwitch.off()
+            }
 	    }
     } else {
         if(logEnable) log.debug "In flashLights - Outside of allowed time to flash lights."
     }
+    if(logEnable) log.debug "******************* Finished - The Flasher *******************"
+}
+
+def setLevelandColorHandler() {
+    if(logEnable) log.debug "In setLevelandColorHandler - (${state.version}) - fColor: ${fColor}"
+    def hueColor = 0
+    def saturation = 100
+	int onLevel = 99
+    switch(fColor) {
+            case "White":
+            hueColor = 52
+            saturation = 19
+            break;
+        case "Daylight":
+            hueColor = 53
+            saturation = 91
+            break;
+        case "Soft White":
+            hueColor = 23
+            saturation = 56
+            break;
+        case "Warm White":
+            hueColor = 20
+            saturation = 80
+            break;
+        case "Blue":
+            hueColor = 70
+            break;
+        case "Green":
+            hueColor = 39
+            break;
+        case "Yellow":
+            hueColor = 25
+            break;
+        case "Orange":
+            hueColor = 10
+            break;
+        case "Purple":
+            hueColor = 75
+            break;
+        case "Pink":
+            hueColor = 83
+            break;
+        case "Red":
+            hueColor = 100
+            break;
+    }
+    
+	state.value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    if(logEnable) log.debug "In setLevelandColorHandler - value: ${state.value}"
 }
 
 // ********** Normal Stuff **********
