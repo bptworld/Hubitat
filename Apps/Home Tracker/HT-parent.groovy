@@ -1,13 +1,12 @@
 /**
- *  ****************  Home Tracker Parent App  ****************
+ *  ****************  Home Tracker 2 Parent App  ****************
  *
  *  Design Usage:
  *  Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!
  *
  *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
  *
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -34,16 +33,16 @@
  *
  *  Changes:
  *.
- *  V2.0.1 - 10/04/19 - added pronunciation to friendly names (aaronward)
- *  V2.0.0 - 09/10/19 - Initial release.
+ *  V2.2.1 - 12/28/19 - Bug fixes
+ *  V2.2.0 - 12/17/19 - Initial release.
  *
  */
 
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "HomeTrackerParentVersion"
-	state.version = "v2.0.1"
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
+    state.appName = "HomeTracker2ParentVersion"
+	state.version = "v2.2.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -55,7 +54,7 @@ def setVersion(){
 }
 
 definition(
-    name:"Home Tracker",
+    name:"Home Tracker 2",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!",
@@ -63,7 +62,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
+	importUrl: "",
 )
 
 preferences {
@@ -84,7 +83,7 @@ def updated() {
 def initialize() {
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
-    log.info "Child app: ${child.label}"
+        log.info "Child app: ${child.label}"
     }
     if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
@@ -93,10 +92,7 @@ def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
-			section(getFormat("title", "${app.label}")) {
-				paragraph "<div style='color:#1A77C9'>Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!</div>"
-				paragraph getFormat("line")
-			}
+            display()
 			section("Instructions:", hideable: true, hidden: true) {
         		paragraph "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message <i>after</i> entering the home!"
         	paragraph "<b>Type of 'Welcome Home' Triggers:</b>"
@@ -109,7 +105,7 @@ def mainPage() {
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				paragraph "<b>Be sure to complete the 'Advanced Config' section before creating Child Apps.</b>"
-				app(name: "anyOpenApp", appName: "Home Tracker Child", namespace: "BPTWorld", title: "<b>Add a new 'Home Tracker' child</b>", multiple: true)
+                app(name: "anyOpenApp", appName: "Home Tracker 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Home Tracker 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
             section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
@@ -128,58 +124,72 @@ def mainPage() {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {}
-			section("Presence Sensors:", hideable: true, hidden: true) {
-				paragraph "Enter in your 'Friendly Names' for the presence sensors to be used with this app. You'll still attach them to the presence sensors within each child app. This will keep them in order across multiple child apps."
-                paragraph "Also, if you have a name that Hubitat has a hard time pronouncing, you can put in an 'alternate' Pronunciation for each sensor."
-				input "friendlyName1", "text", title: "Friendly name for presence sensor 1", required: true, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce1", "text", title: "Alternate Pronunciation for presence sensor 1", required: false, multiple: false, defaultValue: "Not set", width: 6
-				input "friendlyName2", "text", title: "Friendly name for presence sensor 2", required: false, multiple: false, defaultValue: "Not set", width: 6
-				input "pronounce2", "text" , title: "Pronunciation for presence sensor 2", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName3", "text", title: "Friendly name for presence sensor 3", required: false, multiple: false, defaultValue: "Not set", width: 6
-				input "pronounce3", "text", title: "Pronunciation for presence sensor 3", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName4", "text", title: "Friendly name for presence sensor 4", required: false, multiple: false, defaultValue: "Not set", width: 6
-				input "pronounce4", "text", title: "Pronunciation for presence sensor 4", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName5", "text", title: "Friendly name for presence sensor 5", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce5", "text", title: "Pronunciation for presence sensor 5", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName6", "text", title: "Friendly name for presence sensor 6", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce6", "text", title: "Pronunciation for presence sensor 6", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName7", "text", title: "Friendly name for presence sensor 7", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce7", "text", title: "Pronunciation for presence sensor 7", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName8", "text", title: "Friendly name for presence sensor 8", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce8", "text", title: "Pronunciation for presence sensor 8", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName9", "text", title: "Friendly name for presence sensor 9", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce9", "text", title: "Pronunciation for presence sensor 9", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName10", "text", title: "Friendly name for presence sensor 10", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce10", "text", title: "Pronunciation for presence sensor 10", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName11", "text", title: "Friendly name for presence sensor 11", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce11", "text", title: "Pronunciation for presence sensor 11", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName12", "text", title: "Friendly name for presence sensor 12", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce12", "text", title: "Pronunciation for presence sensor 12", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName13", "text", title: "Friendly name for presence sensor 13", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce13", "text", title: "Pronunciation for presence sensor 13", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName14", "text", title: "Friendly name for presence sensor 14", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce14", "text", title: "Pronunciation for presence sensor 14", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName15", "text", title: "Friendly name for presence sensor 15", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce15", "text", title: "Pronunciation for presence sensor 15", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName16", "text", title: "Friendly name for presence sensor 16", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce16", "text", title: "Pronunciation for presence sensor 16", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName17", "text", title: "Friendly name for presence sensor 17", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce17", "text", title: "Pronunciation for presence sensor 17", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName18", "text", title: "Friendly name for presence sensor 18", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce18", "text", title: "Pronunciation for presence sensor 18", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName19", "text", title: "Friendly name for presence sensor 19", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "pronounce19", "text", title: "Pronunciation for presence sensor 19", required: false, multiple: false, defaultValue: "Not set", width: 6
-                input "friendlyName20", "text", title: "Friendly name for presence sensor 20", required: false, multiple: false, defaultValue: "Not set", width: 6
-	            input "pronounce20", "text", title: "Pronunciation for presence sensor 20", required: false, multiple: false, defaultValue: "Not set", width: 6		
+            section("Global Variables", hideable: true) {
+			    paragraph "This app <b>requires</b> a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
+			    paragraph "* Vitual Device must use our custom 'Home Tracker Driver'"
+			    input "gvDevice", "capability.actuator", title: "Virtual Device created for Home Tracker", required: false, multiple: false
+		    }
+			section("Presence Sensors:", hideable: true) {
+                paragraph "<b>When adding or removing sensors - you may have to retype in your Friendly Names, as they will be out of order.</b>"
+                input "presenceSensors", "capability.presenceSensor", title: "Select Presence Sensors to track with Home Tracker 2 (max 20)", required:true, multiple:true, submitOnChange:true
+                if(presenceSensors) {     
+                    try {     
+                        pSensorsSize = presenceSensors.size()
+                        if(logDebug) log.debug "In presenceOptions - pSensorsSize: ${pSensorsSize} - presenceSensors: ${presenceSensors}"
+                        for(x=0;x < pSensorsSize.toInteger();x++) {
+                            if(x < 21) {
+                                input "fName$x", "text", title: "(${x}) Friendly name for ${presenceSensors[x]}", defaultValue: "${presenceSensors[x]}", required:true, multiple:false, width:6, submitOnChange:true
+                                input "pronounce$x", "text", title: "Alt Pronunciation for ${presenceSensors[x]}", required:false, multiple:false, width:6, submitOnChange:true
+                                
+                                fNam = app."fName$x"
+                                pro = app."pronounce$x"
+                                globalName = "${x};${fNam};${pro}"
+                                gvDevice.sendDataMapName(globalName)
+                                log.debug "In Advanced Config - locks - Sending Global Data: ${globalName}" 
+                            } else {
+                                paragraph "<b>Max number of Presence Sensors has been reached.</b>"
+                            }
+                        }
+                    } catch (e) {
+                        log.error (e)
+                    }
+                }
+            }
+            section("Door Locks:", hideable: true) {
+                paragraph "<b>When adding or removing locks - you may have to retype in your Friendly Names, as they will be out of order.</b>"
+                input "locks", "capability.lock", title: "Select Locks to track with Home Tracker 2 (max 4)", required:true, multiple:true, submitOnChange:true
+                if(locks) {     
+                    try {     
+                        locksSize = locks.size()
+                        if(logDebug) log.debug "In presenceOptions - locksSize: ${locksSize} - locks: ${locks}"
+                        for(x=0;x < locksSize.toInteger();x++) {
+                            if(x < 5) {
+                                input "lFName$x", "text", title: "(${x}) Friendly name for ${locks[x]}", defaultValue: "${locks[x]}", required:true, multiple:false, width: 6, submitOnChange:true
+                                input "lPronounce$x", "text", title: "Alt Pronunciation for ${locks[x]}", defaultValue: "", required:false, multiple:false, width: 6, submitOnChange:true
+
+                                lFNam = app."lFName$x"
+                                lPro = app."lPronounce$x"
+                                globalName = "${x};${lFNam};${lPro}"
+                                gvDevice.sendDataMapLockName(globalName)
+                                log.debug "In Advanced Config - locks - Sending Global Data: ${globalName}" 
+                            } else {
+                                paragraph "<b>Max number of Door Locks has been reached.</b>"
+                            }
+                        }
+                    } catch (e) {
+                        log.error (e)
+                    }
+                }
             }
 		}
-		display()
+		display2()
 	}
 }
 
 def installCheck(){         
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
+        display()
 		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
   	}
   	else{
@@ -187,21 +197,33 @@ def installCheck(){
   	}
 }
 
-def getImage(type) {
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){
+def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display(){
+def display() {
+    section (getFormat("title", "${getImage("logo")}" + " Home Tracker 2")) {
+        paragraph "<div style='color:#1A77C9'>Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!</div>"
+		paragraph getFormat("line")
+	}
+}
+
+def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Home Tracker - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Home Tracker 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
-}  
+}
