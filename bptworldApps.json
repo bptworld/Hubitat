@@ -498,7 +498,7 @@
   "SnapshotUpdateNote": "V2.0.1 - 09/01/19 - Added custom color options",
   
   "TheFlasherParentVersion": "v1.0.1",
-  "TheFlasherChild1Version": "v1.0.2",
+  "TheFlasherChild1Version": "v1.0.3",
   "TheFlasherChild1Name": "",
   "TheFlasherChild2Version": "",
   "TheFlasherChild2Name": "",
@@ -512,7 +512,7 @@
   "TheFlasherChild3RawCode": "",
   "TheFlasherChild4RawCode": "",
   "TheFlasherDiscussion": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
-  "TheFlasherUpdateNote": "V1.0.1 - 01/10/20 - Removed some leftover code",
+  "TheFlasherUpdateNote": "V1.0.3 - 01/10/20 - Fixed setup error",
   
   "TileMasterParentVersion": "v2.0.5",
   "TileMasterChild1Version": "v2.1.2",
