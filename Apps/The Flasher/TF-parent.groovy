@@ -32,7 +32,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *.
+ *
+ *  V1.0.1 - 01/10/20 - Removed some leftover code
  *  V1.0.0 - 01/01/20 - Initial release.
  *
  */
@@ -41,7 +42,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TheFlasherParentVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -96,7 +97,6 @@ def mainPage() {
         		paragraph "Flash your lights based on several triggers!"
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				paragraph "<b>Be sure to complete the 'Advanced Config' section before creating Child Apps.</b>"
                 app(name: "anyOpenApp", appName: "The Flasher Child", namespace: "BPTWorld", title: "<b>Add a new 'The Flasher' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
