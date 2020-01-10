@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 01/10/20 - Fixed setup error
  *  V1.0.2 - 01/09/20 - Added color to Flash options
  *  V1.0.1 - 01/08/20 - Added button as a trigger
  *  V1.0.0 - 01/01/20 - Initial release
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TheFlasherChildVersion"
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -121,14 +122,16 @@ def pageConfig() {
 		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
 		    input "numFlashes", "number", title: "Number of times (default: 2)", required: false, width: 6
             input "delay", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
-            if(theSwitch.hasCommand('setColor')) {
-                input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
-                    ["Soft White":"Soft White - Default"],
-                    ["White":"White - Concentrate"],
-                    ["Daylight":"Daylight - Energize"],
-                    ["Warm White":"Warm White - Relax"],
-                    "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                ]
+            if(theSwitch) {
+                if(theSwitch.hasCommand('setColor')) {
+                    input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                    ]
+                }
             }
 	    }
         section(getFormat("header-green", "${getImage("Blank")}"+" Allow flashing between what times? (Optional)")) {
