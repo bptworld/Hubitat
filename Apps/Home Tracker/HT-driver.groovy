@@ -42,7 +42,7 @@
  */
 
 def setVersion(){
-    appName = "HomeTracker2Driver"
+    appName = "HomeTrackerDriver"
 	version = "v1.2.0" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
