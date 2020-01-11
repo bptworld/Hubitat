@@ -41,7 +41,7 @@
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "HomeTracker2ParentVersion"
+    state.appName = "HomeTrackerParentVersion"
 	state.version = "v2.2.1"
     
     try {
