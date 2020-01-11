@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.2.7 - 01/11/20 - Trying to fix a problem with nameCount
  *  V2.2.6 - 01/11/20 - Delayed Welcome Home is now optional
  *  V2.2.5 - 01/11/20 - Lots of tweaks
  *  V2.2.4 - 01/10/20 - Working on locks code
@@ -51,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.2.6"
+	state.version = "v2.2.7"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -968,7 +969,7 @@ private flashLights() {    // Modified from ST documents
 // ********** Normal Stuff **********
 
 def setDefaults(){
-	state.presenceMap = [:]
+	clearPresenceMap()
 	if(settings.logEnable == null){settings.logEnable = false}
     if(settings.speakerProxy == null){settings.speakerProxy = false}
     if(settings.homeNow == null){settings.homeNow = false}
