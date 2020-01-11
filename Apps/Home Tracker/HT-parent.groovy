@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!
  *
- *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
  *
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,6 +33,8 @@
  *
  *  Changes:
  *.
+ *  V2.2.3 - 01/11/20 - Fixed sensors from jumping around unless adding/removing
+ *  V2.2.2 - 01/11/20 - Fix for locks
  *  V2.2.1 - 12/28/19 - Bug fixes
  *  V2.2.0 - 12/17/19 - Initial release.
  *
@@ -42,7 +44,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerParentVersion"
-	state.version = "v2.2.1"
+	state.version = "v2.2.3"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -62,7 +64,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
 )
 
 preferences {
@@ -134,6 +136,8 @@ def mainPage() {
                 input "presenceSensors", "capability.presenceSensor", title: "Select Presence Sensors to track with Home Tracker 2 (max 20)", required:true, multiple:true, submitOnChange:true
                 if(presenceSensors) {     
                     try {     
+                        presenceSensors = presenceSensors.sort { a, b -> a.value <=> b.value }
+                        log.debug "presenceSensors: ${presenceSensors}"
                         pSensorsSize = presenceSensors.size()
                         if(logDebug) log.debug "In presenceOptions - pSensorsSize: ${pSensorsSize} - presenceSensors: ${presenceSensors}"
                         for(x=0;x < pSensorsSize.toInteger();x++) {
@@ -157,9 +161,10 @@ def mainPage() {
             }
             section("Door Locks:", hideable: true) {
                 paragraph "<b>When adding or removing locks - you may have to retype in your Friendly Names, as they will be out of order.</b>"
-                input "locks", "capability.lock", title: "Select Locks to track with Home Tracker 2 (max 4)", required:true, multiple:true, submitOnChange:true
-                if(locks) {     
+                input "locks", "capability.lock", title: "Select Locks to track with Home Tracker 2 (max 4)", required:false, multiple:true, submitOnChange:true
+                if(locks) {
                     try {     
+                        locks = locks.sort { a, b -> a.value <=> b.value }
                         locksSize = locks.size()
                         if(logDebug) log.debug "In presenceOptions - locksSize: ${locksSize} - locks: ${locks}"
                         for(x=0;x < locksSize.toInteger();x++) {
