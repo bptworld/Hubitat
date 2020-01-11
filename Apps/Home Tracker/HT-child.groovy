@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.2.6 - 01/11/20 - Delayed Welcome Home is now optional
  *  V2.2.5 - 01/11/20 - Lots of tweaks
  *  V2.2.4 - 01/10/20 - Working on locks code
  *  V2.2.3 - 01/09/20 - More changes
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.2.5"
+	state.version = "v2.2.6"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -211,72 +212,75 @@ def messageOptions(){
         }       
 		section(getFormat("header-green", "${getImage("Blank")}"+" Welcome Home Message Options")) {
             paragraph "This will speak a nice 'Welcome Home' message AFTER you have entered the house."
-            paragraph "<u>Optional wildcards:</u><br>%greeting% - returns a Greeting based on times selected below<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
-            paragraph "Message constructed as 'Opening message' + 'Closing message'<br>REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
-            paragraph "<hr>"
-            paragraph "If a presence sensor has been present for less than x minutes, after the trigger, then speak the message."
-            input "timeHome", "number", title: "How many minutes can the presence sensor be present and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10  
+            input "welcomeHome", "bool", defaultValue:false, title: "Use Welcome Home features?", description: "Welcome Home", submitOnChange:true
+            if(welcomeHome) {
+                paragraph "<u>Optional wildcards:</u><br>%greeting% - returns a Greeting based on times selected below<br>%name% - returns the Friendly Name associcated with a Presence Sensor<br>%is_are% - returns 'is' or 'are' depending on number of sensors<br>%has_have% - returns 'has' or 'have' depending on number of sensors"
+                paragraph "Message constructed as 'Opening message' + 'Closing message'<br>REMEMBER to use your wildcards!<br>ie. 'Welcome back %name%' + 'Nice to see you again'"
+                paragraph "<hr>"
+                paragraph "If a presence sensor has been present for less than x minutes, after the trigger, then speak the message."
+                input "timeHome", "number", title: "How many minutes can the presence sensor be present and still be considered for a welcome home message (default=10)", required: true, defaultValue: 10  
             
-            paragraph "If a presence sensor has been not present for less than x minutes, after the trigger, then speak the message."
-            input "timeAway", "number", title: "How many minutes can the presence sensor be not present and still be considered for a departed message (default=2)", required: true, defaultValue: 2
-            paragraph "<hr>"
-            paragraph "<b>Greeting Options</b>"
-            paragraph "Between what times will Greeting 1 be used"
-            input "fromTimeG1", "time", title: "From", required: true, width: 6
-        	input "toTimeG1", "time", title: "To", required: true, width: 6
-			input "greeting1", "text", title: "Random Greeting - 1 (am) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-			input "oG1List", "bool", defaultValue: false, title: "Show a list view of random messages 1?", description: "List View", submitOnChange: true
-			if(oG1List) {
-				def valuesG1 = "${greeting1}".split(";")
-				listMapG1 = ""
-    			valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
-				paragraph "${listMapG1}"
-			}
-            paragraph "Between what times will Greeting 2 be used"
-            input "fromTimeG2", "time", title: "From", required: true, width: 6
-        	input "toTimeG2", "time", title: "To", required: true, width: 6
-			input "greeting2", "text", title: "Random Greeting - 2 (pm before 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-			input "oG2List", "bool", defaultValue: false, title: "Show a list view of the random messages 2?", description: "List View", submitOnChange: true
-			if(oG2List) {
-				def valuesG2 = "${greeting2}".split(";")
-				listMapG2 = ""
-    			valuesG2.each { itemG2 -> listMapG2 += "${itemG2}<br>" }
-				paragraph "${listMapG2}"
-			}
-            paragraph "Between what times will Greeting 3 be used"
-            input "fromTimeG3", "time", title: "From", required: true, width: 6
-        	input "toTimeG3", "time", title: "To", required: true, width: 6
-			input "greeting3", "text", title: "Random Greeting - 3 (pm after 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-			input "oG3List", "bool", defaultValue: false, title: "Show a list view of the random messages 3?", description: "List View", submitOnChange: true
-			if(oG3List) {
-				def valuesG3 = "${greeting3}".split(";")
-				listMapG3 = ""
-    			valuesG3.each { itemG3 -> listMapG3 += "${itemG3}<br>" }
-				paragraph "${listMapG3}"
-			}
-			paragraph "<hr>"
+                paragraph "If a presence sensor has been not present for less than x minutes, after the trigger, then speak the message."
+                input "timeAway", "number", title: "How many minutes can the presence sensor be not present and still be considered for a departed message (default=2)", required: true, defaultValue: 2
+                paragraph "<hr>"
+                paragraph "<b>Greeting Options</b>"
+                paragraph "Between what times will Greeting 1 be used"
+                input "fromTimeG1", "time", title: "From", required: true, width: 6
+        	    input "toTimeG1", "time", title: "To", required: true, width: 6
+			    input "greeting1", "text", title: "Random Greeting - 1 (am) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+			    input "oG1List", "bool", defaultValue: false, title: "Show a list view of random messages 1?", description: "List View", submitOnChange: true
+			    if(oG1List) {
+				    def valuesG1 = "${greeting1}".split(";")
+				    listMapG1 = ""
+    			    valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
+				    paragraph "${listMapG1}"
+			    }
+                paragraph "Between what times will Greeting 2 be used"
+                input "fromTimeG2", "time", title: "From", required: true, width: 6
+        	    input "toTimeG2", "time", title: "To", required: true, width: 6
+			    input "greeting2", "text", title: "Random Greeting - 2 (pm before 6) - Separate each message with <b>;</b> (semicolon)",  required:true, submitOnChange:true
+			    input "oG2List", "bool", defaultValue: false, title: "Show a list view of the random messages 2?", description: "List View", submitOnChange: true
+			    if(oG2List) {
+				    def valuesG2 = "${greeting2}".split(";")
+				    listMapG2 = ""
+    			    valuesG2.each { itemG2 -> listMapG2 += "${itemG2}<br>" }
+				    paragraph "${listMapG2}"
+			    }
+                paragraph "Between what times will Greeting 3 be used"
+                input "fromTimeG3", "time", title: "From", required: true, width: 6
+        	    input "toTimeG3", "time", title: "To", required: true, width: 6
+			    input "greeting3", "text", title: "Random Greeting - 3 (pm after 6) - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+			    input "oG3List", "bool", defaultValue: false, title: "Show a list view of the random messages 3?", description: "List View", submitOnChange: true
+			    if(oG3List) {
+				    def valuesG3 = "${greeting3}".split(";")
+				    listMapG3 = ""
+    			    valuesG3.each { itemG3 -> listMapG3 += "${itemG3}<br>" }
+				    paragraph "${listMapG3}"
+			    }
+			    paragraph "<hr>"
             
-            paragraph "<b>Opening and Closing Options</b>"
-            paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
-			input "omessage", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
-			input "oMsgList", "bool", defaultValue: true, title: "Show a list view of the opening messages?", description: "List View", submitOnChange: true
-			if(oMsgList) {
-				def ovalues = "${omessage}".split(";")
-				olistMap = ""
-    			ovalues.each { item -> olistMap += "${item}<br>"}
-				paragraph "${olistMap}"
-			}
-            input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
-			input "cMsgList", "bool", defaultValue: true, title: "Show a list view of the closing messages?", description: "List View", submitOnChange: true
-			if(cMsgList) {
-				def cvalues = "${cmessage}".split(";")
-				clistMap = ""
-    			cvalues.each { item -> clistMap += "${item}<br>"}
-				paragraph "${clistMap}"
-			}
-            paragraph "<hr>"
-            input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
-	    }
+                paragraph "<b>Opening and Closing Options</b>"
+                paragraph "If either Opening or Closing field isn't required, simply put a . (period) in that field"
+			    input "omessage", "text", title: "<b>Opening message</b> to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
+			    input "oMsgList", "bool", defaultValue: true, title: "Show a list view of the opening messages?", description: "List View", submitOnChange: true
+			    if(oMsgList) {
+				    def ovalues = "${omessage}".split(";")
+				    olistMap = ""
+    			    ovalues.each { item -> olistMap += "${item}<br>"}
+				    paragraph "${olistMap}"
+			    }
+                input "cmessage", "text", title: "<b>Closing message</b> to be spoken - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true
+			    input "cMsgList", "bool", defaultValue: true, title: "Show a list view of the closing messages?", description: "List View", submitOnChange: true
+			    if(cMsgList) {
+				    def cvalues = "${cmessage}".split(";")
+				    clistMap = ""
+    			    cvalues.each { item -> clistMap += "${item}<br>"}
+				    paragraph "${clistMap}"
+			    }
+                paragraph "<hr>"
+                input "delay1", "number", title: "How many seconds from the time the trigger being activated to the announcement being made (default=10)", required: true, defaultValue: 10
+	        }
+        }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Departed Message Options")) {
             paragraph "Please only choose <b>one</b> option"
@@ -316,17 +320,20 @@ def welcomeHomeOptions(){
     dynamicPage(name: "welcomeHomeOptions", title: "Welcome Home Trigger Options", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Welcome Home Trigger Options")) { 
             paragraph "Welcome Home is a special feature that waits for you to enter the house <i>before</i> making the announcement!  Welcoming you home with a personalized message."
-            input "triggerMode", "enum", title: "Select activation Type", submitOnChange: true,  options: ["Contact_Sensor","Door_Lock","Motion_Sensor"], required: true, Multiple: false
-			if(triggerMode == "Door_Lock"){
-				input "lock", "capability.lock", title: "Activate the welcome message when this door is unlocked", required: true, multiple: true
-			}
-			if(triggerMode == "Contact_Sensor"){
-				input "contactSensor", "capability.contactSensor", title: "Activate the welcome message when this contact sensor is activated", required: true, multiple: true
-				input "csOpenClosed", "enum", title: "Activate when Opened or Closed" , options: ["Open","Closed"], required: true, defaultValue: "Open"
-			}
-			if(triggerMode == "Motion_Sensor"){
-				input "motionSensor", "capability.motionSensor", title: "Activate the welcome message when this motion sensor is activated", required: true, multiple: true
-			}
+            input "welcomeHome", "bool", defaultValue:false, title: "Use Welcome Home features?", description: "Welcome Home", submitOnChange:true
+            if(welcomeHome) {
+                input "triggerMode", "enum", title: "Select activation Type", submitOnChange:true,  options: ["Contact_Sensor","Door_Lock","Motion_Sensor"], required:true, Multiple:false
+			    if(triggerMode == "Door_Lock"){
+				    input "lock", "capability.lock", title: "Activate the welcome message when this door is unlocked", required:true, multiple:true
+			    }
+			    if(triggerMode == "Contact_Sensor"){
+				    input "contactSensor", "capability.contactSensor", title: "Activate the welcome message when this contact sensor is activated", required:true, multiple:true
+				    input "csOpenClosed", "enum", title: "Activate when Opened or Closed" , options: ["Open","Closed"], required:true, defaultValue: "Open"
+			    }
+			    if(triggerMode == "Motion_Sensor"){
+				    input "motionSensor", "capability.motionSensor", title: "Activate the welcome message when this motion sensor is activated", required:true, multiple:true
+			    }
+            }
         }
     }
 }
@@ -390,10 +397,12 @@ def initialize() {
     setDefaults()
     subscribe(parent.presenceSensors, "presence", presenceSensorHandler)
     subscribe(parent.locks, "lock", lockPresenceHandler)
-          
-	if(triggerMode == "Door_Lock"){subscribe(parent.locks, "lock", lockHandler)}
-	if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
-	if(triggerMode == "Motion_Sensor"){subscribe(motionSensor, "motion", motionSensorHandler)}
+    
+    if(welcomeHome) {
+	    if(triggerMode == "Door_Lock"){subscribe(parent.locks, "lock", lockHandler)}
+	    if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
+	    if(triggerMode == "Motion_Sensor"){subscribe(motionSensor, "motion", motionSensorHandler)}
+    }
     
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
     
