@@ -226,7 +226,7 @@
   "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "HomeTrackerParentVersion": "v2.2.3",
-  "HomeTrackerChild1Version": "v2.2.5",
+  "HomeTrackerChild1Version": "v2.2.6",
   "HomeTrackerChild1Name": "",
   "HomeTrackerChild2Version": "",
   "HomeTrackerChild2Name": "",
@@ -240,7 +240,7 @@
   "HomeTrackerChild3RawCode": "",
   "HomeTrackerChild4RawCode": "",
   "HomeTrackerDiscussion": "https://community.hubitat.com/t/release-home-tracker-track-the-coming-and-going-of-house-members-with-announcements-and-push-messages/22709",
-  "HomeTrackerUpdateNote": "V2.2.5 - 01/11/20 - Lots of tweaks",
+  "HomeTrackerUpdateNote": "V2.2.6 - 01/11/20 - Delayed Welcome Home is now optional",
   
   "HubWatchdogParentVersion": "V1.0.1",
   "HubWatchdogChild1Version": "V1.0.7",
