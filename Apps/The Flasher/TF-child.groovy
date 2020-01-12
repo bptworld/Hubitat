@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 01/12/20 - Add Mode restriction
  *  V1.0.3 - 01/10/20 - Fixed setup error
  *  V1.0.2 - 01/09/20 - Added color to Flash options
  *  V1.0.1 - 01/08/20 - Added button as a trigger
@@ -47,7 +48,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TheFlasherChildVersion"
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -134,9 +135,12 @@ def pageConfig() {
                 }
             }
 	    }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Allow flashing between what times? (Optional)")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions")) {
+            paragraph "Allow flashing between what times"
             input "fromTime", "time", title: "From", required:false, width: 6
         	input "toTime", "time", title: "To", required:false, width: 6
+            
+            input "myMode", "mode", title: "Allow flashing when in this Mode", multiple:true, submitOnChange:true
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
@@ -227,91 +231,112 @@ def checkTime() {
 	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
+def checkMode() {
+    if(logEnable) log.debug "In checkMode (${state.version})"
+    state.modeMatch = false
+    
+    if(myMode) {
+        myMode.each { it ->
+            if(it.contains(location.mode)) {
+                state.modeMatch = true
+            }
+        }
+    } else {
+        state.modeMatch = true
+    }
+    if(logEnable) log.debug "In checkMode - modeMatch: ${state.modeMatch}"
+}
+
 private flashLights() {    // Modified from ST documents
     if(logEnable) log.debug "******************* Start - The Flasher *******************"
     if(logEnable) log.debug "In flashLights (${state.version})"
     checkTime()
+    checkMode()
     
     if(state.timeBetween) {
-	    def doFlash = true
-	    def delay = delay ?: 500
-	    def numFlashes = numFlashes ?: 2
+        if(state.modeMatch) {
+	        def doFlash = true
+	        def delay = delay ?: 500
+	        def numFlashes = numFlashes ?: 2
 
-	    if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
-	    if(state.lastActivated) {
-		    def elapsed = now() - state.lastActivated
-		    def sequenceTime = (numFlashes + 1) * (delay)
-		    doFlash = elapsed > sequenceTime
-		    if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
-	    }
+	        if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
+	        if(state.lastActivated) {
+		        def elapsed = now() - state.lastActivated
+		        def sequenceTime = (numFlashes + 1) * (delay)
+		        doFlash = elapsed > sequenceTime
+		        if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
+	        }
 
-	    if(doFlash) {
-	    	if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
-	    	state.lastActivated = now()
-	    	if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
+	        if(doFlash) {
+	        	if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
+	        	state.lastActivated = now()
+	        	if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
             
-            if(theSwitch.hasCommand('setColor')) {
-                oldSwitchState = theSwitch.currentValue("switch")
-                oldHueColor = theSwitch.currentValue("hue")
-                oldSaturation = theSwitch.currentValue("saturation")
-                oldLevel = theSwitch.currentValue("level")
-                state.oldValue = [switch: "${oldSwitchState}", hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
-                if(logEnable) log.debug "In flashLights - setColor - value: $state.oldValue"
-                setLevelandColorHandler()
-            }
+                if(theSwitch.hasCommand('setColor')) {
+                    oldSwitchState = theSwitch.currentValue("switch")
+                    oldHueColor = theSwitch.currentValue("hue")
+                    oldSaturation = theSwitch.currentValue("saturation")
+                    oldLevel = theSwitch.currentValue("level")
+                    state.oldValue = [switch: "${oldSwitchState}", hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+                    if(logEnable) log.debug "In flashLights - setColor - value: $state.oldValue"
+                    setLevelandColorHandler()
+                }
             
-            def initialActionOn = (oldSwitch != "on")
-            
-	    	numFlashes.times {
-	    		if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
-		    	theSwitch.eachWithIndex {s, i ->
-			    	if(initialActionOn) {
-                        pauseExecution(delay)
+                def initialActionOn = (oldSwitch != "on")
+                
+	        	numFlashes.times {
+	    	    	if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
+		        	theSwitch.eachWithIndex {s, i ->
+			        	if(initialActionOn) {
+                            pauseExecution(delay)
                         
-                        if(s.hasCommand('setColor')) {
-            	            if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
-            	            s.setColor(state.value)
-        	            } else {
-            	            if(logEnable) log.debug "In flashLights - $s.displayName, on()"
-            	            s.on()
-        	            } 
-			    	}
-			    	else {
-                        pauseExecution(delay)
-			    		s.off()
-			    	}
-			    }
-			    if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
-			    theSwitch.eachWithIndex {s, i ->
-			    	if(initialActionOn) {
-                        pauseExecution(delay)
-				    	s.off()
-				    }
-			    	else {
-                        pauseExecution(delay)
-				    	if(s.hasCommand('setColor')) {
-            	            if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
-            	            s.setColor(state.value)
-        	            } else {
-            	            if(logEnable) log.debug "In flashLights - $s.displayName, on()"
-            	            s.on()
-        	            }
-				    }
-			    }
-		    }
+                            if(s.hasCommand('setColor')) {
+            	                if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+            	                s.setColor(state.value)
+        	                } else {
+            	                if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+            	                s.on()
+        	                } 
+			    	    }
+			    	    else {
+                            pauseExecution(delay)
+			    	    	s.off()
+			    	    }
+			        }
+			        if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
+			        theSwitch.eachWithIndex {s, i ->
+			        	if(initialActionOn) {
+                            pauseExecution(delay)
+				        	s.off()
+				        }
+			        	else {
+                           pauseExecution(delay)
+				        	if(s.hasCommand('setColor')) {
+            	                if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+            	                s.setColor(state.value)
+        	                } else {
+            	                if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+            	                s.on()
+        	                }
+				        }
+			        }
+		        }
             
-            theValue = state.oldValue
-            if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
-            if(theSwitch.hasCommand('setColor')) {
-                theSwitch.setColor(theValue)
-                if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - value: $theValue"
-            }
-            if(oldSwitchState == "on") {
-                theSwitch.on()
-            } else {
-                theSwitch.off()
-            }
-	    }
+                theValue = state.oldValue
+                if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
+                if(theSwitch.hasCommand('setColor')) {
+                    theSwitch.setColor(theValue)
+                    if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - value: $theValue"
+                }
+                if(oldSwitchState == "on") {
+                    theSwitch.on()
+                } else {
+                    theSwitch.off()
+                }
+	        }
+        } else {
+            if(logEnable) log.debug "In flashLights - Mode does not match, can't flash lights."
+        }
     } else {
         if(logEnable) log.debug "In flashLights - Outside of allowed time to flash lights."
     }
