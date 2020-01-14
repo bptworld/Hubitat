@@ -4,10 +4,9 @@
  *  Design Usage:
  *  Keep an eye on your devices and see how long it's been since they checked in.
  *
- *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
  *
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -35,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 01/07/20 - Fixed status of button devices (status report)
  *  V2.0.2 - 11/26/19 - Cosmetic changes
  *  V2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -47,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceWatchdogChildVersion"
-	state.version = "v2.0.2"
+	state.version = "v2.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -142,7 +142,7 @@ def pageConfig() {
 				input "motionSensorDevice", "capability.motionSensor", title: "Select Motion Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "powerMeterDevice", "capability.powerMeter", title: "Select Power Meter Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "presenceSensorDevice", "capability.presenceSensor", title: "Select Presence Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-				input "pushableButtonDevice", "capability.pushableButton", title: "SelectPushable Button Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+				input "pushableButtonDevice", "capability.pushableButton", title: "Select Pushable Button Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "relativeHumidityMeasurementDevice", "capability.relativeHumidityMeasurement", title: "Select Relative Humidity Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "smokeDetectorDevice", "capability.smokeDetector", title: "Select Smoke Detector Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "switchDevice", "capability.switch", title: "Select Switch Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
@@ -205,7 +205,7 @@ def pageConfig() {
 				input "motionSensorDevice", "capability.motionSensor", title: "Select Motion Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "powerMeterDevice", "capability.powerMeter", title: "Select Power Meter Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "presenceSensorDevice", "capability.presenceSensor", title: "Select Presence Sensor Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
-				input "pushableButtonDevice", "capability.pushableButton", title: "SelectPushable Button Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
+				input "pushableButtonDevice", "capability.pushableButton", title: "Select Pushable Button Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "relativeHumidityMeasurementDevice", "capability.relativeHumidityMeasurement", title: "Select Relative Humidity Measurement Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "smokeDetectorDevice", "capability.smokeDetector", title: "Select Smoke Detector Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
 				input "switchDevice", "capability.switch", title: "Select Switch Device(s)", submitOnChange: true, hideWhenEmpty: true, required: false, multiple: true
@@ -698,6 +698,10 @@ def mySensorHandler(myType, mySensors) {
 	if(logEnable) log.debug "     - - - - - End (S) ${myType} - - - - -     "
 }
 
+def makeStatusMap(myType, mySensors) {
+    
+}
+
 def myStatusHandler(myType, mySensors) {
 	if(logEnable) log.debug "     - - - - - Start (S) ${myType} - - - - -     "
 	if(logEnable) log.debug "In myStatusHandler..."
@@ -706,6 +710,7 @@ def myStatusHandler(myType, mySensors) {
 	state.statusMapPhone = ""
 	
 	state.sortedMap = mySensors.sort { a, b -> a.displayName <=> b.displayName }
+    if(logEnable) log.debug "In myStatusHandler - sortedMap: ${state.sortedMap}"
 	
 	state.statusMap1S = ""
 	state.statusMap2S = ""
@@ -734,7 +739,7 @@ def myStatusHandler(myType, mySensors) {
 		if(myType == "Motion Sensor") { deviceStatus = device.currentValue("motion") }
 		if(myType == "Power Meter") { deviceStatus = device.currentValue("powerMeter") }
 		if(myType == "Presence Sensor") { deviceStatus = device.currentValue("presence") }
-		if(myType == "Pushable Button") { deviceStatus = device.currentValue("pushableButton") }
+        if(myType == "Pushable Button") { deviceStatus = device.currentValue("pushed") }
 		if(myType == "Relative Humidity Measurement") { deviceStatus = device.currentValue("relativeHumidityMeasurement") }
 		if(myType == "Smoke Detector") { deviceStatus = device.currentValue("smokeDetector") }
 		if(myType == "Switch") { deviceStatus = device.currentValue("switch") }
@@ -744,17 +749,17 @@ def myStatusHandler(myType, mySensors) {
 		if(myType == "Voltage Measurement") { deviceStatus = device.currentValue("voltageMeasurement") }
 		if(myType == "Water Sensor") { deviceStatus = device.currentValue("waterSensor") }
 		
-		if(logEnable) log.debug "In myStatusHandler - Working On: ${device}, myType: ${myType}, deviceStatus: ${deviceStatus}"
+        if(deviceStatus == null || deviceStatus == "") deviceStatus = "unavailable"
+        
 		def lastActivity = device.getLastActivity()
 		def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
-		if(logEnable) log.debug "In myStatusHandler - ${device} - ${newDate}"
 		
-		if(logEnable) log.debug "${myType} - myStatus: ${device} is ${deviceStatus} - last checked in ${newDate}<br>"
-		if((state.count >= 1) && (state.count <= 5)) state.statusMap1S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
-		if((state.count >= 6) && (state.count <= 10)) state.statusMap2S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
-		if((state.count >= 11) && (state.count <= 15)) state.statusMap3S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
-		if((state.count >= 16) && (state.count <= 20)) state.statusMap4S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
-		if((state.count >= 21) && (state.count <= 25)) state.statusMap5S += "<tr><td width='45%'>${device}</td><td width='10%'>${deviceStatus}</td><td width='45%'>${newDate}</td></tr>"
+		if(logEnable) log.debug "In myStatusHandler - myType: ${myType} - device: ${device} - myStatus: ${deviceStatus} - last checked: ${newDate}<br>"
+		if((state.count >= 1) && (state.count <= 5)) state.statusMap1S += "<tr><td width='45%'>${device}</td><td width='20%'> ${deviceStatus} </td><td width='35%'>${newDate}</td></tr>"
+		if((state.count >= 6) && (state.count <= 10)) state.statusMap2S += "<tr><td width='45%'>${device}</td><td width='20%'> ${deviceStatus} </td><td width='35%'>${newDate}</td></tr>"
+		if((state.count >= 11) && (state.count <= 15)) state.statusMap3S += "<tr><td width='45%'>${device}</td><td width='20%'> ${deviceStatus} </td><td width='35%'>${newDate}</td></tr>"
+		if((state.count >= 16) && (state.count <= 20)) state.statusMap4S += "<tr><td width='45%'>${device}</td><td width='20%'> ${deviceStatus} </td><td width='35%'>${newDate}</td></tr>"
+		if((state.count >= 21) && (state.count <= 25)) state.statusMap5S += "<tr><td width='45%'>${device}</td><td width='20%'> ${deviceStatus} </td><td width='35%'>${newDate}</td></tr>"
 		state.statusMapPhone += "${device} \n"
 		state.statusMapPhone += "${deviceStatus} - ${newDate} \n"
 	}
