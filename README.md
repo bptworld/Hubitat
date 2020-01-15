@@ -71,6 +71,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-a
 <b>Pollen Forecaster</b> (Driver) - Retrieve data from pollen.com. For use with Hubitat dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-pollen-forecaster-and-asthma-forecaster/13636" target="_blank">Go Here</a>
 <br><br>
+<b>Remote Wellness Check</b> - Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time.<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
+<br><br>
 <b>Room Director</b> - Make your rooms smarter by directing them to do what you want, automatically.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-room-director-smarter-rooms-automatically/27291" target="_blank">Go Here</a>
 <br><br>
