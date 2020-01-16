@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 01/16/20 - Added more 'Check' options
  *  V1.0.0 - 01/15/20 - Initial release
  *
  */
@@ -60,7 +61,7 @@ definition(
     category: "Convenience",
     parent: "BPTWorld:Remote Wellness Check",
 	iconUrl: "",
-	iconX2Url: "",
+    iconX2Url: "",
     iconX3Url: "",
     importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/RWC-child.groovg"
 )
@@ -96,9 +97,7 @@ def disclaimerPage() {
 	} else {
 		dynamicPage(name: "pageConfig") {
 			section(disclaimerText){
-				input "disclaimerResponse", "enum", title: "Accept terms", required: true,
-						options: ["I agree to these terms", "I do not agree to these terms"],
-						submitOnChange: true
+				input "disclaimerResponse", "enum", title: "Accept terms", required:true, options: ["I agree to these terms", "I do not agree to these terms"], submitOnChange:true
 			}
 		}
 	}
@@ -121,7 +120,7 @@ def pageConfig(){
             input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required:false
             paragraph "<hr>"
             paragraph "<b>Run 'Check' on a schedule.</b>"
-            input "runEvery", "enum", title: "Run 'Check' every", description: "Run Every", required:false, multiple:false, submitOnChange:true, options: ["1 Hour", "3 Hours"]
+            input "runEvery", "enum", title: "Run 'Check' every", options: ["1 Min","5 Min","10 Min","15 Min","30 Min","1 Hour","3 Hours"], required:false, multiple:false, submitOnChange:true
             input "days", "enum", title: "Only run 'Check' on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             
             paragraph "Only 'Check' between what times"
@@ -131,11 +130,11 @@ def pageConfig(){
             input "modeName", "mode", title: "Only when in this Mode", required: false, multiple: true
             
             paragraph "<hr>"
-            paragraph "<b>Go back 'How Many Hours' to see if there were any events</b>"
-            input "hoursToCheck", "number", title: "Check the Past x Hours"
+            paragraph "<b>Go back 'How Many Minutes' to see if there were any events</b>"
+            input "minsToCheck", "number", title: "Check the Past x Minutes (60 = 1 hour, 180 = 3 hours, etc)"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-		    input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange:true, required:false, multiple:false
+		    input "isDataDevice", "capability.switch", title: "Turn this device on", submitOnChange:true, required:false, multiple:false
             input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -161,7 +160,13 @@ def updated() {
 def initialize() {
     setDefaults()
     if(onDemandSwitch) subscribe(onDemandSwitch, "switch.on", scheduleCheck)
-    if(runEvery == "1 Hour") runEvery1Hour(scheduleCheck)
+    
+    if(runEvery == "1 Min") runEvery1Minute(scheduleCheck)
+    if(runEvery == "5 Min") runEvery5Minutes(scheduleCheck)
+    if(runEvery == "10 Min") runEvery10Minutes(scheduleCheck)
+    if(runEvery == "15 Min") runEvery15Minutes(scheduleCheck)
+    if(runEvery == "30 Min") runEvery30Minutes(scheduleCheck)
+	if(runEvery == "1 Hour") runEvery1Hour(scheduleCheck)
     if(runEvery == "3 Hours") runEvery3Hours(scheduleCheck)
     
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
@@ -172,7 +177,8 @@ def scheduleCheck(evt) {
     recentContact()
     recentMotion()
     recentSwitch()
-	if(recentContact && recentMotion && recentSwitch) {
+    if(logEnable) log.debug "In scheduleCheck - recentContact: ${state.recentContact} - recentMotion: ${state.recentMotion} - recentSwitch: ${state.recentSwitch}"
+	if(state.recentContact && state.recentMotion && state.recentSwitch) {
         checkTime()
         dayOfTheWeekHandler()
         modeHandler()
@@ -203,75 +209,75 @@ def scheduleCheck(evt) {
 private recentContact() {
     if(logEnable) log.debug "In recentContact (${state.version})"
     numContactEvents = 0
-    int hourCheck = hoursToCheck ?: 4
+    int minCheck = minsToCheck ?: 240
     use( groovy.time.TimeCategory ) {
-        lastActivity = hourCheck.hours.ago
+        lastActivity = minCheck.minutes.ago
+        if(logEnable) log.debug "In recentContact - lastActivity: ${lastActivity}"
     } 
 	if(contact) {
         contact.each { it ->           
 		    def contactEvents = it.eventsSince(lastActivity)
             numContactEvents = numContactEvents + contactEvents.size()
         }
-        if(numContactEvents > 0) {
-            if(logEnable) log.debug "In recentContact - There have been <b>${numContactEvents}</b> contact events in the last ${hourCheck} hours"
-			return false
+        if(logEnable) log.debug "In recentContact - There have been <b>${numContactEvents}</b> contact events in the last ${minCheck} minutes"
+        if(numContactEvents > 0) {            
+			state.recentContact = false
         } else{
-            if(logEnable) log.debug "In recentContact - There have been <b>${numContactEvents}</b> contact events in the last ${hourCheck} hours"
-			return true
+			state.recentContact = true
         }
 	} else {
-		if(logEnable) log.debug "No Contact sensors enabled"
-		return true
+		if(logEnable) log.debug "In recentContact - No Contact sensors enabled"
+		state.recentContact = true
 	}
 }
 
 private recentMotion() {
     if(logEnable) log.debug "In recentMotion (${state.version})"
 	numMotionEvents = 0
-    int hourCheck = hoursToCheck ?: 4
+    int minCheck = minsToCheck ?: 240
     use( groovy.time.TimeCategory ) {
-        lastActivity = hourCheck.hours.ago
+        lastActivity = minCheck.minutes.ago
+        if(logEnable) log.debug "In recentMotion - lastActivity: ${lastActivity}"
     } 
 	if(motion) {
         motion.each { it ->           
 		    def motionEvents = it.eventsSince(lastActivity)
             numMotionEvents = numMotionEvents + motionEvents.size()
         }
-        if(numMotionEvents > 0) {
-            if(logEnable) log.debug "In recentMotion - There have been <b>${numMotionEvents}</b> motion events in the last ${hourCheck} hours"
-			return false
+        if(logEnable) log.debug "In recentMotion - There have been <b>${numMotionEvents}</b> motion events in the last ${minCheck} minutes"
+        if(numMotionEvents > 0) {   
+			state.recentMotion = false
         } else{
-            if(logEnable) log.debug "In recentMotion - There have been <b>${numMotionEvents}</b> motion events in the last ${hourCheck} hours"
-			return true
+			state.recentMotion = true
         }
 	} else {
-		if(logEnable) log.debug "No Motion sensors enabled"
-		return true
+		if(logEnable) log.debug "In recentMotion - No Motion sensors enabled"
+		state.recentMotion = true
 	}
 }
 
 private recentSwitch() {
     if(logEnable) log.debug "In recentSwitch (${state.version})"
 	numSwitchEvents = 0
-    int hourCheck = hoursToCheck ?: 4
+    int minCheck = minsToCheck ?: 240
     use( groovy.time.TimeCategory ) {
-        lastActivity = hourCheck.hours.ago
+        lastActivity = minCheck.minutes.ago
+        if(logEnable) log.debug "In recentSwitch - lastActivity: ${lastActivity}"
     } 
 	if(switches) {
         switches.each { it ->           
 		    def switchEvents = it.eventsSince(lastActivity)
             numSwitchEvents = numSwitchEvents + switchEvents.size()
         }
-        if(numSwitchEvents > 0) {
-            if(logEnable) log.debug "In recentSwitch - There have been <b>${numSwitchEvents}</b> switch events in the last ${hourCheck} hours"
-			return false
+        if(logEnable) log.debug "In recentSwitch - There have been <b>${numSwitchEvents}</b> switch events in the last ${minCheck} minutes"
+        if(numSwitchEvents > 0) {            
+			state.recentSwitch = false
         } else{
-            if(logEnable) log.debug "In recentSwitch - There have been <b>${numSwitchEvents}</b> switch events in the last ${hourCheck} hours"
-			return true
+			state.recentSwitch = true
         }
 	} else {
-		if(logEnable) log.debug "No Switches enabled"
-		return true
+		if(logEnable) log.debug "In recentSwitch - No Switches enabled"
+		state.recentSwitch = true
 	}
 }
 
