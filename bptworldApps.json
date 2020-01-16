@@ -379,7 +379,7 @@
   "OneataTimeUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "RemoteWellnessCheckParentVersion": "v1.0.0",
-  "RemoteWellnessCheckChild1Version": "v1.0.0",
+  "RemoteWellnessCheckChild1Version": "v1.0.1",
   "RemoteWellnessCheckChild1Name": "",
   "RemoteWellnessCheckChild2Version": "",
   "RemoteWellnessCheckChild2Name": "",
@@ -393,7 +393,7 @@
   "RemoteWellnessCheckChild3RawCode": "",
   "RemoteWellnessCheckChild4RawCode": "",
   "RemoteWellnessCheckDiscussion": "",
-  "RemoteWellnessCheckUpdateNote": "V1.0.0 - 01/15/20 - Initial release.",
+  "RemoteWellnessCheckUpdateNote": "V1.0.1 - 01/16/20 - Added more 'Check' options",
   
   "RoomDirectorParentVersion": "v1.0.0",
   "RoomDirectorChild1Version": "v1.0.0",
