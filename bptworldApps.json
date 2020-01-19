@@ -546,7 +546,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.1.2 - 12/03/19 - Attempt to fix color overwriting the value",
+  "TileMasterUpdateNote": "V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
