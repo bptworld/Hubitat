@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Create a tile with multiple devices and customization options.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  V2.1.2 - 12/03/19 - Attempt to fix color overwriting the value
+ *  V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%
  *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating (jerry.molenaar)
  *  V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device
  *  V2.0.9 - 09/30/19 - Fixed issue with values of '0' not displaying and color options causing troubles
@@ -89,9 +89,9 @@ preferences {
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "", install: true, uninstall: true) {
+    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Tile Master</h2>", install: true, uninstall: true, refreshInterval:0) {
 		display() 
-        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+        section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "Create a tile with multiple devices and customization options."
 		}
@@ -1307,7 +1307,6 @@ def makeTile() {
 
 def getStatusColors(deviceStatus,deviceAtts) {
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received: ${deviceAtts} - ${deviceStatus}"
-    deviceStatus1 = ""
     
     if(deviceAtts) {
         if(deviceAtts.toLowerCase() == "temperature") {
@@ -1345,7 +1344,7 @@ def getStatusColors(deviceStatus,deviceAtts) {
     if(deviceStatus == "present") deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
     if(deviceStatus == "not present") deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
     
-    if(deviceStatus1 == null || deviceStatus1 == "") deviceStatus1 = deviceStatus
+    if(deviceStatus1 == null) deviceStatus1 = deviceStatus
     if(logEnable) log.debug "In getStatusColors - Returning: ${deviceStatus1}"
     return deviceStatus1
 }
@@ -1360,25 +1359,35 @@ def makeTileLine(dev,words,linkName) {
         newWords2 = "<a href='${newWords}'>${linkName}</a>"
         if(logEnable) log.debug "In makeTileLine - newWords: ${newWords}"
     } else if(words.toLowerCase().contains("%lastact%")) {
-        if(device == "1") { lAct = device01.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "1a") { lAct = device01a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "1b") { lAct = device01b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+        try {
+            if(device == "1") { lAct = device01.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "1a") { lAct = device01a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "1b") { lAct = device01b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
         
-        if(device == "2") { lAct = device02.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "2a") { lAct = device02a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "2b") { lAct = device02b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            if(device == "2") { lAct = device02.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "2a") { lAct = device02a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "2b") { lAct = device02b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
         
-        if(device == "3") { lAct = device03.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "3a") { lAct = device03a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "3b") { lAct = device03b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            if(device == "3") { lAct = device03.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "3a") { lAct = device03a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "3b") { lAct = device03b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
         
-        if(device == "4") { lAct = device04.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "4a") { lAct = device04a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "4b") { lAct = device04b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            if(device == "4") { lAct = device04.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "4a") { lAct = device04a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "4b") { lAct = device04b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
         
-        if(device == "5") { lAct = device05.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "5a") { lAct = device05a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
-        if(device == "5b") { lAct = device05b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' );newWords2 = words.replace("%lastAct%","${lAct}") }
+            if(device == "5") { lAct = device05.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "5a") { lAct = device05a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            if(device == "5b") { lAct = device05b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+        
+            if(lAct) {
+                newWords2 = words.replace("%lastAct%","${lAct}")
+            } else {
+                newWords2 = words.replace("%lastAct%","Not Available")
+            }
+        } catch (e) {
+            newWords2 = words.replace("%lastAct%","Not Available")
+        }
     } else {
         newWords2 = "${words}"
     }
@@ -1406,23 +1415,16 @@ def setDefaults(){
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
-    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
-    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
-    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
-    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
-    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText=""){			// Modified from @Stephack Code
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
-    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
 }
 
 def display() {
-    theName = app.label
-    if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Tile Master - ${theName}")) {
+	section() {
 		paragraph getFormat("line")
 	}
 }
