@@ -40,7 +40,8 @@
  *
  *  Changes:
  *
- *  V1.0.3 - 11/27/19 - Major enchancements! Reworked several modules and added a couple too!
+ *  V1.0.4 - 01/23/20 - Attempt to fix horn stuck in repeat, Added test buttons for Horn and Boo
+ *  V1.0.3 - 11/27/19 - Major enhancements! Reworked several modules and added a couple too!
  *    - Fixed Pregame Message
  *    - Major enhancements to speaker section
  *    - Horn and Boo now play over speakers, also honors the Sound Duration setting
@@ -72,7 +73,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "NHLGameDayChildVersion"
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -182,6 +183,14 @@ def pageGoals() {
             paragraph "Note: Not all speakers can play sounds. If your speaker doesn't have this ability then play the following speech."
             input "hornMessage", "text", title: "My Team Scores", required: false, defaultValue: "Oh ya, Goal!"
             input "booMessage", "text", title: "Other Team Scores", required: false, defaultValue: "Oh No! Opponent goal."
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Test Sound Options")) {
+            input "testHorn", "bool", defaultValue:false, title: "Test Horn", description: "Test Horn", submitOnChange:true, width:6
+            input "testBoo", "bool", defaultValue:false, title: "Test Boo", description: "Test Boo", submitOnChange:true, width:6
+            
+            if(testHorn) triggerHorn()
+            if(testBoo) triggerBoo()
+            resetHornBoo()
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) {
@@ -1355,7 +1364,7 @@ def flashingHandler() {
             state.lastActivated = now()
             if(logEnable) log.debug "LAST ACTIVATED SET TO: ${state.lastActivated}"
             def initialActionOn =  settings.flashLights.collect{it.currentSwitch != "on"}
-            def delay = 0L
+            def delay = 0
             numFlash.times {
                 if(logEnable) log.debug "Switch on after  $delay msec"
                 settings.flashLights.eachWithIndex {s, i ->
@@ -1472,75 +1481,76 @@ def playHornHandler() {
     if(logEnable) log.warn "In playHornHandler"
     def hornURI = getHornURL(state.Team)
     type = "horn"
-    letsTalk(type,hornURI)
+    if(!state.playing) letsTalk(type,hornURI)
 }
 
 def playBooHandler() {
     if(logEnable) log.warn "In playBooHandler"
     def booURI = getBooURL()
     type = "boo"
-    letsTalk(type,booURI)
+    if(!state.playing) letsTalk(type,booURI)
 }
 
 def letsTalk(type,uri) {
-	    if(logEnable) log.warn "In letsTalk (${state.version}) - Here we go"
-	    checkTime()
-	    checkVol()
-        if(state.timeBetween == true) {
-		    theMsg = uri
-            theDuration = soundDuration
-            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	    if(logEnable) log.warn "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
-            state.speakers.each { it ->
-                if(logEnable) log.debug "Speaker in use: ${it}"
-                if(speakerProxy) {
-                    if(logEnable) log.warn "In letsTalk - speakerProxy - ${it}"
-                    it.speak(theMsg)
-                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                    def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-                    pauseExecution(theDuration)
-                    it.stop()
-                } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.warn "In letsTalk - playTextAndRestore - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(theMsg, prevVolume)
-                    pauseExecution(theDuration)
-                    it.stop()
-                } else if(it.hasCommand('playTrack')) { 
-                    if(logEnable) log.warn "In letsTalk - playTrack - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.playTrack(theMsg)
-                    pauseExecution(theDuration)
-                    it.stop()
-                    if(it.hasCommand('setLevel')) it.setLevel(volRestore)
-                    if(it.hasCommand('setVolume')) it.setVolume(volRestore)
-                } else {		        
-                    if(logEnable) log.warn "In letsTalk - default - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+	if(logEnable) log.warn "In letsTalk (${state.version}) - Here we go"
+	checkTime()
+	checkVol()
+    if(state.timeBetween == true) {
+        state.playing = true
+		theMsg = uri
+        theDuration = soundDuration
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+        if(logEnable) log.warn "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
+        state.speakers.each { it ->
+            if(logEnable) log.debug "Speaker in use: ${it}"
+            if(speakerProxy) {
+                if(logEnable) log.warn "In letsTalk - speakerProxy - ${it}"
+                it.speak(theMsg)
+            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                def prevVolume = it.currentValue("volume")
+                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
+                pauseExecution(theDuration)
+                it.stop()
+            } else if(it.hasCommand('playTextAndRestore')) {   
+                if(logEnable) log.warn "In letsTalk - playTextAndRestore - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                def prevVolume = it.currentValue("volume")
+                it.playTextAndRestore(theMsg, prevVolume)
+                pauseExecution(theDuration)
+                it.stop()
+            } else if(it.hasCommand('playTrack')) { 
+                if(logEnable) log.warn "In letsTalk - playTrack - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                it.playTrack(theMsg)
+                pauseExecution(theDuration)
+                it.stop()
+                if(it.hasCommand('setLevel')) it.setLevel(volRestore)
+                if(it.hasCommand('setVolume')) it.setVolume(volRestore)
+            } else {		        
+                if(logEnable) log.warn "In letsTalk - default - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     
-                    if(type == "horn") {
-                        theMsg2 = hornMessage
-                        it.speak(theMsg2)
-                    } else if(type == "boo") {
-                        theMsg2 = booMessage
-                        it.speak(theMsg2)
-                    }
-                    
-                    pauseExecution(theDuration)
-                    if(it.hasCommand('setLevel')) it.setLevel(volRestore)
-                    if(it.hasCommand('setVolume')) it.setVolume(volRestore)
-                }
+                if(type == "horn") {
+                    theMsg2 = hornMessage
+                    it.speak(theMsg2)
+                } else if(type == "boo") {
+                    theMsg2 = booMessage
+                    it.speak(theMsg2)
+                }   
+                pauseExecution(theDuration)
+                if(it.hasCommand('setLevel')) it.setLevel(volRestore)
+                if(it.hasCommand('setVolume')) it.setVolume(volRestore)
             }
-	        if(logEnable) log.warn "In letsTalk - Finished speaking"  
-	    } else {
-		    if(logEnable) log.warn "In letsTalk - Messages not allowed at this time"
-	    }
+        }
+	    if(logEnable) log.warn "In letsTalk - Finished speaking"  
+        state.playing = false
+	} else {
+		if(logEnable) log.warn "In letsTalk - Messages not allowed at this time"
+    }
 }
 
 def checkVol(){
@@ -1686,6 +1696,11 @@ def sendTextNotification(msg) {
     }
 
     return true
+}
+
+def resetHornBoo() {
+    app?.updateSetting("testHorn",[value:"false",type:"bool"])
+    app?.updateSetting("testBoo",[value:"false",type:"bool"])
 }
 
 // ********** Normal Stuff **********
