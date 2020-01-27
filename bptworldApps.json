@@ -124,7 +124,7 @@
   "ChromecastHelperUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "DeviceCheckPlusParentVersion": "v1.0.0",
-  "DeviceCheckPlusChild1Version": "v1.0.5",
+  "DeviceCheckPlusChild1Version": "v1.0.6",
   "DeviceCheckPlusChild1Name": "",
   "DeviceCheckPlusChild2Version": "",
   "DeviceCheckPlusChild2Name": "",
@@ -138,7 +138,7 @@
   "DeviceCheckPlusChild3RawCode": "",
   "DeviceCheckPlusChild4RawCode": "",
   "DeviceCheckPlusDiscussion": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454",
-  "DeviceCheckPlusUpdateNote": "V1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.",
+  "DeviceCheckPlusUpdateNote": "V1.0.6 - 01/27/20 - Found typo, added flash lights to actions",
   
   "DeviceSequencerParentVersion": "v2.0.0",
   "DeviceSequencerChild1Version": "v2.0.0",
