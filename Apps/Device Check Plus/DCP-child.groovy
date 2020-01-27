@@ -4,9 +4,9 @@
  *  Design Usage:
  *  Check selected devices, then warn you what's not in the right state.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to metion it on the Hubitat forums!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
  *  V1.0.4 - 12/07/19 - Fixed some minor bugs
  *  V1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
  *  V1.0.2 - 10/16/19 - More cosmetic changes, added Device Time in State trigger
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.4"
+	state.version = "v1.0.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -92,32 +93,34 @@ def pageConfig() {
             paragraph " - <u>Heat is on</u><br> * Someone opens a window or door<br> * Check will run and announce what window is open!"
             paragraph " - <u>Cool is on</u><br> * Someone closes a door<br> * Check will run and announce that the door should be open when cool is on!"
             paragraph " - <u>Other usage...</u><br> * Going out? Make sure all your windows are closed<br> * Is it raining, check the windows!<br> * Think you forgot to do something? This will let you know!"
+            paragraph " - <u>Power...</u><br> * Power plug is below 5, announce that the washer or dryer is finished!"
             paragraph "<b>The only limit is your imagination!</b>"
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {
-            if(onDemandSwitch || days || modeName || thermostats || useTime) {
-                href "triggerOptions", title:"${getImage("optionsGreen")} Select Trigger options here", description:"Click here for Options"
+            if(onDemandSwitch || days || modeName || thermostats || powerEvent || useTime) {
+                href "triggerOptions", title:"${getImage("optionsGreen")} Select Trigger", description:"Click here for Options"
             } else {
-                href "triggerOptions", title:"${getImage("optionsRed")} Select Trigger options here", description:"Click here for Options"
+                href "triggerOptions", title:"${getImage("optionsRed")} Select Trigger", description:"Click here for Options"
             }
             
-            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked) {
-                href "checkConfig", title:"${getImage("optionsGreen")} Select Devices to check", description:"Click here for Options"
+            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked || switchesToTurnOn || switchesToTurnOff) {
+                href "checkConfig", title:"${getImage("optionsGreen")} Select Actions", description:"Click here for Options"
             } else {
-                href "checkConfig", title:"${getImage("optionsRed")} Select Devices to check", description:"Click here for Options"
+                href "checkConfig", title:"${getImage("optionsRed")} Select Actions", description:"Click here for Options"
             }
             
             if(isDataDevice || preMsg || postMsg) {
-                href "notificationOptions", title:"${getImage("optionsGreen")} Select Notification options here", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("optionsGreen")} Select Notifications", description:"Click here for Options"
             } else {
-                href "notificationOptions", title:"${getImage("optionsRed")} Select Notification options here", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("optionsRed")} Select Notifications", description:"Click here for Options"
             }
             
             if(speakerMP || speakerSS) {
-                href "speechOptions", title:"${getImage("optionsGreen")} Select Speech options here", description:"Click here for Options"
+                href "speechOptions", title:"${getImage("optionsGreen")} Select Speech options", description:"Click here for Options"
             } else {
-                href "speechOptions", title:"${getImage("optionsRed")} Select Speech options here", description:"Click here for Options"
+                href "speechOptions", title:"${getImage("optionsRed")} Select Speech options", description:"Click here for Options"
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -127,52 +130,135 @@ def pageConfig() {
 	}
 }
 
-def checkConfig() {
-    dynamicPage(name: "checkConfig", title: "", install:false, uninstall:false) {
-        display()
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Devices to Check")) {
-            paragraph "<b>Select your devices from the options below</b>"
-			input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple:true, required:false
-			input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple:true, required:false
-			input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple:true, required:false
-			input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple:true, required:false
-			input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple:true, required:false
-			input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple:true, required:false
-		}
-    }
-}
-
 def triggerOptions() {
     dynamicPage(name: "triggerOptions", title: "", install:false, uninstall:false) {
         display()
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Trigger Options")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Trigger Options")) {
             paragraph "This will check if a device is not in the right state (ie. Open when it should be closed)"
             input "useState", "bool", title: "Use Device State as Trigger", description: "use State", submitOnChange:true, defaultValue:false
             
             input "useTime", "bool", title: "Use Device Time in State as Trigger", description: "use Time", submitOnChange:true, defaultValue:false
             paragraph "<hr>"
-            if(useState) {
-                paragraph "<b>State Triggers</b>"
-                paragraph "<b>Run 'Device Check' anytime this switch is turned on.</b> Recommended to create a 'virtual switch' with 'Enable auto off' set to '1s'"
-                input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required:false
+        }
+        
+        if(useState) { 
+            section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
+                input "triggerType1", "enum", title: "Tigger", required: true, multiple: false, submitOnChange: true, options: [
+                    ["xDay":"Days/Time to Run"],
+                	["xHumidity":"Humidity Activity"],
+                    ["xMode":"Mode Changes"],
+                    ["xOnDemand":"On Demand"],
+                    ["xTemp":"Temperature Activity"],
+                    ["xTherm":"Thermostat Activity"],
+                    ["xPower":"Power Activity"]
+                ]
                 paragraph "<hr>"
-                paragraph "<b>Run 'Device Check' on a set schedule</b> (optional)"
-                input "days", "enum", title: "Only run on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                if(days) input "timeToRun", "time", title: "Auto Run at", required:true
-                paragraph "<hr>"
-                paragraph "<b>Run 'Device Check' on Mode Changes</b> (optional)"
-                input "modeName", "mode", title: "When hub changes to this Mode", required:false, multiple:true
-                paragraph "<hr>"
-                paragraph "<b>Run 'Device Check' on Thermostat Activity</b> (optional)"
-                input "thermostats", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
-                if(thermostats) {
-                    input "thermOption", "bool", title: "Use Mode or State (off=Mode, on=State)", description: "Therm Options", defaultValue:true, submitOnChange:true
-                    paragraph " - <b>Mode</b>: When in heat or cool mode, it will trigger a 'Device Check' anytime a selected device changes state."
-                    paragraph " - <b>State</b>: This will trigger a 'Device Check' anytime the thermostat goes into heating or cooling state."
-                }
+		    }
+               
+            if(triggerType1 == "xOnDemand") {
+                section() {
+                    paragraph "<b>Run 'Device Check' anytime this switch is turned on.</b> Recommended to create a 'virtual switch' with 'Enable auto off' set to '1s'"
+                    input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required:false
+                }  
             }
             
-            if(useTime) {
+            if(triggerType1 == "xDay") {
+                section() {
+                    paragraph "<b>Run 'Device Check' on a set schedule</b> (optional)"
+                    input "days", "enum", title: "Only run on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    if(days) input "timeToRun", "time", title: "Auto Run at", required:true
+                }
+            }
+                
+            if(triggerType1 == "xMode") {
+                section() {
+                    paragraph "<b>Run 'Device Check' on Mode Changes</b> (optional)"
+                    input "modeName", "mode", title: "When hub changes to this Mode", required:false, multiple:true
+                }
+            }
+                
+            if(triggerType1 == "xTherm") {
+                section() {
+                    paragraph "<b>Run 'Device Check' on Thermostat Activity</b> (optional)"
+                    input "thermostats", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
+                    if(thermostats) {
+                        input "thermOption", "bool", title: "Use Mode or State (off=Mode, on=State)", description: "Therm Options", defaultValue:true, submitOnChange:true
+                        paragraph " - <b>Mode</b>: When in heat or cool mode, it will trigger a 'Device Check' anytime a selected device changes state."
+                        paragraph " - <b>State</b>: This will trigger a 'Device Check' anytime the thermostat goes into heating or cooling state."
+                    }
+                }
+            }
+                
+            if(triggerType1 == "xPower") {
+                section() {
+                    paragraph "<b>Run 'Device Check' on Power Activity</b> (optional)"
+                    input "powerEvent", "capability.powerMeter", title: "Power Devices to monitor", required:false, multiple:true, submitOnChange:true
+                    if(powerEvent) {
+				        input "oSetPointHigh", "bool", defaultValue: "false", title: "<b>Trigger when Power is too High?</b>", description: "Power High", submitOnChange:true
+				        if(oSetPointHigh) input "setPointHigh", "number", title: "Power High Setpoint", required:true, defaultValue: 75, submitOnChange:true
+				        input "oSetPointLow", "bool", defaultValue: "false", title: "<b>Trigger when Power is too Low?</b>", description: "Power Low", submitOnChange:true
+				        if(oSetPointLow) input "setPointLow", "number", title: "Power Low Setpoint", required:true, defaultValue: 30, submitOnChange:true
+
+			            if(oSetPointHigh) paragraph "You will recieve notifications if Power reading is above ${setPointHigh}"
+				        if(oSetPointLow) paragraph "You will recieve notifications if Power reading is below ${setPointLow}"
+				        input "oSwitchTime", "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange:true
+				        if(oSwitchTime) {
+					        paragraph "Delay the notification until the device has been in state for XX minutes."
+					        input "notifyDelay", "number", title: "Delay (1 to 60)", required: true,multiple:false, range: '1..60'
+				        }
+			        } 
+                }
+            }
+                
+            if(triggerType1 == "xHumidity") {
+                section() {
+                    paragraph "<b>Run 'Device Check' on Humidity Activity</b> (optional)"
+                    input "humidityEvent", "capability.relativeHumidityMeasurement", title: "Humidity Devices to monitor", required:false, multiple:true, submitOnChange:true
+                    if(humidityEvent) {
+				        paragraph "<b>by Humidity Level</b>"
+				        input "oSetPointHigh", "bool", defaultValue: "false", title: "<b>Trigger when Humidity is too High?</b>", description: "Humidity High", submitOnChange:true
+				        if(oSetPointHigh) input "setPointHigh", "number", title: "Humidity High Setpoint", required: true, defaultValue: 75, submitOnChange: true
+				        input "oSetPointLow", "bool", defaultValue: "false", title: "<b>Trigger when Humidity is too Low?</b>", description: "Humidity Low", submitOnChange:true
+				        if(oSetPointLow) input "setPointLow", "number", title: "Humidity Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
+				        if(humidityEvent) {
+					        if(oSetPointHigh) paragraph "You will recieve notifications if Humidity reading is above ${setPointHigh}"
+					        if(oSetPointLow) paragraph "You will recieve notifications if Humidity reading is below ${setPointLow}"
+					        input "oSwitchTime", "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange:true
+					        if(oSwitchTime) {
+						        paragraph "Delay the notification until the device has been in state for XX minutes."
+						        input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					        }
+				        }
+                    }
+                }
+            }
+                
+            if(triggerType1 == "xTemp") {
+                section() {
+                    paragraph "<b>Run 'Device Check' on Temperature Activity</b> (optional)"
+                    input "tempEvent", "capability.temperatureMeasurement", title: "Temperature Devices to monitor", required:false, multiple:true, submitOnChange:true
+                    if(tempEvent) {
+				        paragraph "<b>by Temperature</b>"
+				        input "oSetPointHigh", "bool", defaultValue: "false", title: "<b>Trigger when Temperature is too High?</b>", description: "Temp High", submitOnChange:true
+				        if(oSetPointHigh) input "setPointHigh", "number", title: "Temperature High Setpoint", required: true, defaultValue: 75, submitOnChange: true
+				        input "oSetPointLow", "bool", defaultValue: "false", title: "<b>Trigger when Temperature is too Low?</b>", description: "Temp Low", submitOnChange:true
+				        if(oSetPointLow) input "setPointLow", "number", title: "Temperature Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
+				        if(tempEvent) {
+					        if(oSetPointHigh) paragraph "You will recieve notifications if Temperature reading is above ${setPointHigh}"
+					        if(oSetPointLow) paragraph "You will recieve notifications if Temperature reading is below ${setPointLow}"
+					        input "oSwitchTime", "bool", defaultValue: "false", title: "<b>Set Delay?</b>", description: "Switch Time", submitOnChange:true
+					        if(oSwitchTime) {
+						        paragraph "Delay the notification until the device has been in state for XX minutes."
+						        input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+					        }
+				        }
+			        }
+                }
+            }
+        }
+            
+        if(useTime) {
+            section() {
                 paragraph "<b>Time Triggers</b>"
                 input "timeInState", "number", title: "How many minutes should the device be in state before notification", defaultValue: 2, required: true, submitOnChange: true
             }
@@ -180,10 +266,37 @@ def triggerOptions() {
     }
 }
 
+def checkConfig() {
+    dynamicPage(name: "checkConfig", title: "", install:false, uninstall:false) {
+        display()
+        if(onDemandSwitch || days || modeName || thermostats || useTime) {
+		    section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Check")) {
+                paragraph "<b>Select your devices from the options below</b>"
+			    input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple:true, required:false
+			    input "switchesOff", "capability.switch", title: "Switches that should be OFF", multiple:true, required:false
+			    input "contactsOpen", "capability.contactSensor", title: "Contact Sensors that should be OPEN", multiple:true, required:false
+			    input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple:true, required:false
+			    input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple:true, required:false
+			    input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple:true, required:false
+		    }
+        }
+        
+        if(triggerxPower || humidityEvent || tempEvent) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Control")) {
+                paragraph "<b>When 'Triggered' turn these switches ON</b>"
+			    input "switchesToTurnOn", "capability.switch", title: "Switches to Turn ON", multiple:true, required:false
+                
+                paragraph "<b>When 'Triggered' turn these switches OFF</b>"
+			    input "switchesToTurnOff", "capability.switch", title: "Switches to Turn OFF", multiple:true, required:false
+            }
+        }
+    }
+}
+    
 def notificationOptions() {
     dynamicPage(name: "notificationOptions", title: "", install:false, uninstall:false) {
         display()
-		section(getFormat("header-green", "${getImage("Blank")}"+"  Notification Options")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange:true, required:false, multiple:false
 			paragraph "<hr>"
             paragraph "Receive device notifications with voice and push options. Each of the following messages will only be spoken if necessary."
@@ -196,7 +309,20 @@ def notificationOptions() {
     			valuesPre.each { itemPre -> listMapPre += "${itemPre}<br>" }
 				paragraph "${listMapPre}"
 			}
-            paragraph "<b>All switches/contacts/locks in the wrong state will then be spoken</b>"
+            paragraph "<hr>"
+            
+            if(triggerType1 == "xOnDemand" || triggerType1 == "xDay" || triggerType1 == "xMode" || triggerType1 == "xTherm" || useTime) paragraph "<b>All switches/contacts/locks in the wrong state will then be spoken</b>"
+            
+            if(triggerType1 == "xPower" || triggerType1 == "xHumidity" || triggerType1 == "xTemp") {
+                input "speakDevice", "bool", defaultValue:false, title: "Speak name of device?", description: "Power Device", submitOnChange:true
+                if(speakDevice) {
+                    paragraph "<b>Device name will then be spoken</b>"
+                } else {
+                    paragraph "<b>Device name will NOT be spoken</b>"
+                }
+            }
+            
+            paragraph "<hr>"
 			input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange:true
 			input "oPostList", "bool", defaultValue:false, title: "Show a list view of the random post messages?", description: "List View", submitOnChange:true
 			if(oPostList) {
@@ -260,21 +386,32 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	if(onDemandSwitch) subscribe(onDemandSwitch, "switch.on", deviceStateHandler)
-    if(days) schedule(timeToRun, deviceStateHandler)
-    if(modeName) subscribe(location, "mode", modeHandler)
-    if(thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
-    if(thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
-    if(thermostats && thermOption == false) subscribe(contactsOpen, "contact", thermostatModeHandler)
-    if(thermostats && thermOption == false) subscribe(contactsClosed, "contact", thermostatModeHandler)
+	if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", deviceStateHandler)
+    if(triggerType1 == "xDay" && days) schedule(timeToRun, deviceStateHandler)
+    if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
+    if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
+    if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
+    if(triggerType1 == "xTherm" && thermostats && thermOption == false) subscribe(contactsOpen, "contact", thermostatModeHandler)
+    if(triggerType1 == "xTherm" && thermostats && thermOption == false) subscribe(contactsClosed, "contact", thermostatModeHandler)
+    if(triggerType1 == "xPower" && powerEvent) subscribe(powerEvent, "power", setPointHandler)
+    if(triggerType1 == "xHumidity" && humidityEvent) subscribe(humidityEvent, "humidity", setPointHandler)
+    if(triggerType1 == "xTemp" && tempEvent) subscribe(tempEvent, "temperature", setPointHandler)
     
-    if(useTime && contactsOpen) subscribe(contactsOpen, "contact.open", deviceTimeHandler)
-    if(useTime && contactsClosed) subscribe(contactsClosed, "contact.closed", deviceTimeHandler)
+    if(useTime) {
+        if(contactsOpen) subscribe(contactsOpen, "contact", checkTimeInState)
+        if(contactsClosed) subscribe(contactsClosed, "contact", checkTimeInState)
+        
+        if(switchesOn) subscribe(switchesOn, "switch", checkTimeInState)
+        if(switchesOff) subscribe(switchesOff, "switch", checkTimeInState)
+        
+        if(locksLocked) subscribe(locksLocked, "lock", checkTimeInState)
+        if(locksUnlocked) subscribe(locksUnlocked, "lock", checkTimeInState)
+    }
     
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
-def deviceStateHandler(evt){
+def deviceStateHandler(evt) {
     if(logEnable) log.debug "In deviceStateHandler (${state.version})"
     state.wrongSwitchesMSG = ""
     state.wrongContactsMSG = ""
@@ -351,62 +488,208 @@ def deviceStateHandler(evt){
         state.isData = "no"
     }
 }
-
-def timeContactHandler(evt){
-    if(logEnable) log.debug "In timeContactHandler (${state.version}) - evt: ${evt}"
-    beginningValue = evt.currentValue("contact")
-    pauseExecution(5000)
     
-
+def deviceTriggeredHandler() {
+    if(logEnable) log.debug "In deviceControlHandler (${state.version})"
+    if(switchesToTurnOn) {
+        switchesToTurnOn.each { it ->
+		    if(logEnable) log.debug "In deviceControlHandler - Turning on ${it}"
+		    it.on()
+        }
+	}
     
+    if(switchesToTurnOff) {
+        switchesToTurnOff.each { it ->
+		    if(logEnable) log.debug "In deviceControlHandler - Turning off ${it}"
+		    it.off()
+        }
+	}
 }
+
+def deviceNotTriggeredHandler() {
+    if(logEnable) log.debug "In deviceNotTriggeredHandler (${state.version})"
+    if(switchesToTurnOn) {
+        switchesToTurnOn.each { it ->
+		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning off ${it}"
+		    it.off()
+        }
+	}
     
-def checkTimeInState(device) {
-    def lastActivity = device.getLastActivity()
+    if(switchesToTurnOff) {
+        switchesToTurnOff.each { it ->
+		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning on ${it}"
+		    it.on()
+        }
+	}
+}
+
+def checkTimeInState(evt) {
+    if(logEnable) log.debug "In checkTimeInState (${state.version})"
+    state.isData = "no"
+    
+    if(contactsClosed) {
+        contactsClosed.each { it ->
+            if(it.currentValue("contact") == "open") {
+                if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Working on: $it"
+                state.lastActivity = it.getLastActivity()
+                getTimeDiff()
+                if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
+                if(state.timeDiff >= timeInState) {
+                    state.isData = "yes"
+                    messageHandler()
+                    if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Running again in 2 minutes"
+                    runIn(120,checkTimeInState)
+                } else {
+                    if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Running again in 1 minute"
+                    runIn(60,checkTimeInState)
+                }
+            }
+        }
+    }
+    
+    if(contactsOpen) {
+        contactsOpen.each { it ->
+            if(it.currentValue("contact") == "closed") {
+                if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Working on: $it"
+                state.lastActivity = it.getLastActivity()
+                getTimeDiff()
+                if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
+                if(state.timeDiff >= timeInState) {
+                    state.isData = "yes"
+                    messageHandler()
+                    if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Running again in 2 minutes"
+                    runIn(120,checkTimeInState)
+                } else {
+                    if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Running again in 1 minute"
+                    runIn(60,checkTimeInState)
+                }
+            }
+        }
+    }
+    
+    if(switchesOn) {
+        switchesOn.each { it ->
+            if(it.currentValue("switch") == "off") {
+                if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Working on: $it"
+                state.lastActivity = it.getLastActivity()
+                getTimeDiff()
+                if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
+                if(state.timeDiff >= timeInState) {
+                    state.isData = "yes"
+                    messageHandler()
+                    if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Running again in 2 minutes"
+                    runIn(120,checkTimeInState)
+                } else {
+                    if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Running again in 1 minute"
+                    runIn(60,checkTimeInState)
+                }
+            }
+        }
+    }
+    
+    if(switchesOff) {
+        switchesOff.each { it ->
+            if(it.currentValue("switch") == "on") {
+                if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Working on: $it"
+                state.lastActivity = it.getLastActivity()
+                getTimeDiff()
+                if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
+                if(state.timeDiff >= timeInState) {
+                    state.isData = "yes"
+                    messageHandler()
+                    if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Running again in 2 minutes"
+                    runIn(120,checkTimeInState)
+                } else {
+                    if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Running again in 1 minute"
+                    runIn(60,checkTimeInState)
+                }
+            }
+        }
+    }
+    
+    if(locksLocked) {
+        locksLocked.each { it ->
+            if(it.currentValue("switch") == "unlocked") {
+                if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Working on: $it"
+                state.lastActivity = it.getLastActivity()
+                getTimeDiff()
+                if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
+                if(state.timeDiff >= timeInState) {
+                    state.isData = "yes"
+                    messageHandler()
+                    if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Running again in 2 minutes"
+                    runIn(120,checkTimeInState)
+                } else {
+                    if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Running again in 1 minute"
+                    runIn(60,checkTimeInState)
+                }
+            }
+        }
+    }
+    
+    if(locksUnlocked) {
+        locksUnlocked.each { it ->
+            if(it.currentValue("switch") == "locked") {
+                if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Working on: $it"
+                state.lastActivity = it.getLastActivity()
+                getTimeDiff()
+                if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
+                if(state.timeDiff >= timeInState) {
+                    state.isData = "yes"
+                    messageHandler()
+                    if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Running again in 2 minutes"
+                    runIn(120,checkTimeInState)
+                } else {
+                    if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Running again in 1 minute"
+                    runIn(60,checkTimeInState)
+                }
+            }
+        }
+    }
 }
 
 def letsTalk() {
-	    if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
-        dayOfTheWeekHandler()
-	    checkTime()
-	    checkVol()
-        if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween}"
-        if(state.timeBetween && state.daysMatch) {
-		    theMsg = state.theMsg
-            def duration = Math.max(Math.round(theMsg.length()/12),2)+3
-            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
-            state.speakers.each { it ->
-                if(logEnable) log.debug "Speaker in use: ${it}"
-                if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                    it.speak(theMsg)
-                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                    def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-                } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(theMsg, prevVolume)
-                } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.speak(theMsg)
-                    pauseExecution(theDuration)
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                }
+	if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
+    dayOfTheWeekHandler()
+	checkTime()
+	checkVol()
+    if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween}"
+    if(state.timeBetween && state.daysMatch) {
+		theMsg = state.theMsg
+        def duration = Math.max(Math.round(theMsg.length()/12),2)+3
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+    	if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
+        state.speakers.each { it ->
+            if(logEnable) log.debug "Speaker in use: ${it}"
+            if(speakerProxy) {
+                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                it.speak(theMsg)
+            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                def prevVolume = it.currentValue("volume")
+                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
+            } else if(it.hasCommand('playTextAndRestore')) {   
+                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                def prevVolume = it.currentValue("volume")
+                it.playTextAndRestore(theMsg, prevVolume)
+            } else {		        
+                if(logEnable) log.debug "In letsTalk - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                it.speak(theMsg)
+                pauseExecution(theDuration)
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
             }
-	        if(logEnable) log.debug "In letsTalk - Finished speaking"  
-		    log.info "${app.label} - ${theMsg}"
-            if(sendPushMessage) pushNow(theMsg)
-	    } else {
-		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	    }
+        }
+	    if(logEnable) log.debug "In letsTalk - Finished speaking"  
+	    log.info "${app.label} - ${theMsg}"
+        if(sendPushMessage) pushNow(theMsg)
+	} else {
+	    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+	}
 }
 
 def checkVol(){
@@ -521,6 +804,106 @@ def thermostatModeHandler(evt) {
     } 
 }
 
+def setPointHandler(evt) {
+	state.setPointDevice = evt.displayName
+	setPointValue = evt.value	
+    state.setPointMSG = ""
+    
+	setPointValue1 = setPointValue.toDouble()
+	if(logEnable) log.debug "In setPointHandler - Device: ${state.setPointDevice}, setPointHigh: ${setPointHigh}, setPointLow: ${setPointLow}, Acutal value: ${setPointValue1} - setPointHighOK: ${state.setPointHighOK}, setPointLowOK: ${state.setPointLowOK}"
+	// *** setPointHigh ***
+	if(oSetPointHigh && !oSetPointLow) {
+		if(setPointValue1 > setPointHigh) {
+			if(state.setPointHighOK != "no") {
+				if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
+				state.setPointHighOK = "no"
+				state.isData = "yes"
+                state.setPointMSG += "${state.setPointDevice}, "
+			} else {
+				if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+		if(setPointValue1 < setPointHigh) {
+			if(state.setPointHighOK == "no") {
+				if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${setPointHigh}"
+				state.setPointHighOK = "yes"
+				state.isData = "no"
+			} else {
+				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+	}
+	// *** setPointLow ***
+	if(oSetPointLow && !oSetPointHigh) {
+		if(setPointValue1 < setPointLow) {
+			if(state.setPointLowOK != "no") {
+				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
+				state.setPointLowOK = "no"
+				state.isData = "yes"
+                state.setPointMSG += "${state.setPointDevice}, "
+			} else {
+				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+		if(setPointValue1 > setPointLow) {
+			if(state.setPointLowOK == "no") {
+				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${setPointLow}"
+				state.setPointLowOK = "yes"
+				state.isData = "no"
+			} else {
+				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+	}
+	// *** Inbetween ***
+	if(oSetPointHigh && oSetPointLow) {
+		if(setPointValue1 > setPointHigh) {
+			if(state.setPointHighOK != "no") {
+				if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
+				state.setPointHighOK = "no"
+				state.isData = "yes"
+                state.setPointMSG += "${state.setPointDevice}, "
+			} else {
+				if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+		if(setPointValue1 < setPointLow) {
+			if(state.setPointLowOK != "no") {
+				if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
+				state.setPointLowOK = "no"
+				state.isData = "yes"
+                state.setPointMSG += "${state.setPointDevice}, "
+			} else {
+				if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+		if((setPointValue1 <= setPointHigh) && (setPointValue1 >= setPointLow)) {
+			if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
+				if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${setPointHigh} and setPointLow: ${setPointLow}"
+				state.setPointHighOK = "yes"
+				state.setPointLowOK = "yes"
+				state.isData = "no"
+			} else {
+				if(logEnable) log.debug "In setPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+			}
+		}
+	}
+    if(state.isData == "yes") {
+        if(logEnable) log.debug "In setPointHandler - Data Found"
+        if(notifyDelay) {
+            state.notifyDel = notifyDelay * 60
+            runIn(state.notifyDel,deviceTriggeredHandler)
+            runIn(state.notifyDel,messageHandler)
+        } else {
+            deviceTriggeredHandler()
+            messageHandler()
+        }
+    } else {
+        if(logEnable) log.debug "In setPointHandler - No Data Found"
+        deviceNotTriggeredHandler()
+        unschedule
+    }
+}
 
 def messageHandler() {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
@@ -547,6 +930,7 @@ def messageHandler() {
         if(state.wrongDevicesMSG) { state.theMsg += " Devices: ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}." }
         if(state.wrongContactsMSG) { state.theMsg += " Contacts: ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}." }
         if(state.wrongLocksMSG) { state.theMsg += " Locks: ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}." }
+        if(state.setPointMSG && speakDevice) { state.theMsg += " ${state.setPointMSG.substring(0, state.setPointMSG.length() - 2)}." }
     
 	    state.theMsg += " ${state.postMsgR}"
 	    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
@@ -563,6 +947,21 @@ def pushHandler(){
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
 	state.msg = ""
+}
+
+def getTimeDiff() {
+    if(logEnable) log.debug "In getTimeDiff (${state.version})"
+    
+    long timeDiff
+   	def now = new Date()
+    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${state.lastActivity}".replace("+00:00","+0000"))
+
+    long unxNow = now.getTime()
+    long unxPrev = prev.getTime()
+    unxNow = unxNow/1000
+    unxPrev = unxPrev/1000
+    state.timeDiffSecs = Math.abs(unxNow-unxPrev)         // Seconds
+    state.timeDiff = Math.round(state.timeDiffSecs/60)    // Minutes
 }
 
 // ********** Normal Stuff **********
