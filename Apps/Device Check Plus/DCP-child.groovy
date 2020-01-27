@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.6 - 01/26/20 - Found typo, added flash lights to actions
  *  V1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
  *  V1.0.4 - 12/07/19 - Fixed some minor bugs
  *  V1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.5"
+	state.version = "v1.0.6"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -269,7 +270,7 @@ def triggerOptions() {
 def checkConfig() {
     dynamicPage(name: "checkConfig", title: "", install:false, uninstall:false) {
         display()
-        if(onDemandSwitch || days || modeName || thermostats || useTime) {
+        if(triggerType1 == "xOnDemand" || triggerType1 == "xDay" || triggerType1 == "xMode" || triggerType1 == "xTherm" || useTime) {
 		    section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Check")) {
                 paragraph "<b>Select your devices from the options below</b>"
 			    input "switchesOn", "capability.switch", title: "Switches that should be ON", multiple:true, required:false
@@ -281,14 +282,17 @@ def checkConfig() {
 		    }
         }
         
-        if(triggerxPower || humidityEvent || tempEvent) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Devices to Control")) {
-                paragraph "<b>When 'Triggered' turn these switches ON</b>"
-			    input "switchesToTurnOn", "capability.switch", title: "Switches to Turn ON", multiple:true, required:false
+        section(getFormat("header-green", "${getImage("Blank")}"+" Actions")) {
+            paragraph "<b>When 'Triggered' turn these switches ON</b>"
+			input "switchesToTurnOn", "capability.switch", title: "Switches to Turn ON", multiple:true, required:false
                 
-                paragraph "<b>When 'Triggered' turn these switches OFF</b>"
-			    input "switchesToTurnOff", "capability.switch", title: "Switches to Turn OFF", multiple:true, required:false
-            }
+            paragraph "<b>When 'Triggered' turn these switches OFF</b>"
+			input "switchesToTurnOff", "capability.switch", title: "Switches to Turn OFF", multiple:true, required:false
+                
+            paragraph "<b>When 'Triggered' Flash these devices</b>"
+			input "switchesToFlash", "capability.switch", title: "Flash these lights", multiple: true
+		    input "numOfFlashes", "number", title: "Number of times (default: 2)", required: false, width: 6
+            input "delayFlashes", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
         }
     }
 }
@@ -481,11 +485,13 @@ def deviceStateHandler(evt) {
     if((state.wrongSwitchesMSG != "") || (state.wrongContactsMSG != "") || (state.wrongLocksMSG != "")) {
         if(isDataDevice) { isDataDevice.on() }
         state.isData = "yes"
+        deviceTriggeredHandler()
         messageHandler()
     }
     if((state.wrongSwitchesMSG == "") && (state.wrongContactsMSG == "") && (state.wrongLocksMSG == "")) {
         if(isDataDevice) { isDataDevice.off() }
         state.isData = "no"
+        deviceNotTriggeredHandler()
     }
 }
     
@@ -503,6 +509,10 @@ def deviceTriggeredHandler() {
 		    if(logEnable) log.debug "In deviceControlHandler - Turning off ${it}"
 		    it.off()
         }
+	}
+    
+    if(switchesToFlash) {
+        flashLights()
 	}
 }
 
@@ -964,11 +974,59 @@ def getTimeDiff() {
     state.timeDiff = Math.round(state.timeDiffSecs/60)    // Minutes
 }
 
+private flashLights() {    // Modified from ST documents
+    if(logEnable) log.debug "In flashLights (${state.version})"
+	def doFlash = true
+	def delay = delayFlashes ?: 500
+	def numFlashes = numOfFlashes ?: 2
+
+	if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
+	if(state.lastActivated) {
+		def elapsed = now() - state.lastActivated
+		def sequenceTime = (numFlashes + 1) * (delay)
+		doFlash = elapsed > sequenceTime
+		if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
+	}
+
+	if(doFlash) {
+		if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
+		state.lastActivated = now()
+		if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: ${state.lastActivated}"
+		def initialActionOn = switchesToFlash.collect{it.currentSwitch != "on"}
+
+		numFlashes.times {
+			if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
+			switchesToFlash.eachWithIndex {s, i ->
+				if (initialActionOn[i]) {
+                    pauseExecution(delay)
+					s.on()
+				}
+				else {
+                    pauseExecution(delay)
+					s.off()
+				}
+			}
+			if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
+			switchesToFlash.eachWithIndex {s, i ->
+				if (initialActionOn[i]) {
+                    pauseExecution(delay)
+					s.off()
+				}
+				else {
+                    pauseExecution(delay)
+					s.on()
+				}
+			}
+		}
+	}
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.msg == null){state.msg = ""}
+    if(state.lastActivated == null){state.lastActivated == now()}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
