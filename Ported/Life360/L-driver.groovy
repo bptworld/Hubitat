@@ -28,6 +28,7 @@
  *
  * ---- End of Original Header ----
  *
+ *  v1.2.1 - 01/28/20 - Added Line Height to avatar tile
  *  v1.2.0 - 01/05/20 - Made some changes based on @Berthoven suggestion. Thanks!
  *  v1.1.9 - 01/04/20 - Modified how/when Tile gets updated
  *  v1.1.8 - 01/03/20 - Fix for App Watchdog 2
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     appName = "Life360User"
-	version = "v1.2.0" 
+	version = "v1.2.1" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -61,6 +62,7 @@ preferences {
 	input title:"<b>Life360 User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
+    input "avatarLineHeight", "text", title: "Avatar Line Height", required: true, defaultValue: "1.5"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
 
     input "numOfLines", "number", title: "How many lines to display on History Tile (from 1 to 10 only)", required:true, defaultValue: 5
@@ -169,7 +171,7 @@ def sendLife360Tile1() {
     
 	tileMap = "<table width='100%' valign='top'>"
     tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
-    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>At: <a href='${theMap}' target='_blank'>${add1}</a><br>"
+    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px;line-height:${avatarLineHeight}'>At: <a href='${theMap}' target='_blank'>${add1}</a><br>"
     tileMap += "Since: ${dateSince}<br>${device.currentValue('status')}<br>"
     if(units == "Kilometers") tileMap += "${binTransita} - ${bSpeedKm} KMH<br>"
     if(units == "Miles") tileMap += "${binTransita} - ${bSpeedMiles} MPH<br>"
