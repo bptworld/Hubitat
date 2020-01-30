@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 01/29/20 - Attempt to fix flashing
  *  V1.0.2 - 12/08/19 - Fixed push messages
  *  V1.0.1 - 12/07/19 - Bug fixes
  *  V1.0.0 - 10/15/19 - Initial release.
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleRemindersChildVersion"
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -145,10 +146,9 @@ def reminderOptions() {
                 input "switchesOn01", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
 			    input "switchesOff01", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
                 input "switchesFlash01", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                if(switchesFlash01) {
-		            input "numFlashes01", "number", title: "Flash this number of times", required: true, width: 4, defaultValue: 2
-                    input "onFor01", "number", title: "On for (in seconds)", required: true, width: 4, defaultValue: 1
-		            input "offFor01", "number", title: "Off for (in seconds)", required: true, width: 4, defaultValue: 1
+                if(switchesFlash01) {                 
+		            input "numOfFlashes01", "number", title: "Number of times (default: 2)", required: false, width: 6
+                    input "delayFlashes01", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                 }
                 input "newMode01", "mode", title: "Change to Mode", required: false, multiple: false
                 
@@ -193,9 +193,8 @@ def reminderOptions() {
 			        input "switchesOff02", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
                     input "switchesFlash02", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
                     if(switchesFlash02) {
-		                input "numFlashes02", "number", title: "Flash this number of times", required: true, width: 4, defaultValue: 2
-                        input "onFor02", "number", title: "On for (in seconds)", required: true, width: 4, defaultValue: 1
-		                input "offFor02", "number", title: "Off for (in seconds)", required: true, width: 4, defaultValue: 1
+		                input "numOfFlashes02", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes02", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
                     input "newMode02", "mode", title: "Change to Mode", required: false, multiple: false
 				}
@@ -240,9 +239,8 @@ def reminderOptions() {
 			        input "switchesOff03", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
                     input "switchesFlash03", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
                     if(switchesFlash03) {
-		                input "numFlashes03", "number", title: "Flash this number of times", required: true, width: 4, defaultValue: 2
-                        input "onFor03", "number", title: "On for (in seconds)", required: true, width: 4, defaultValue: 1
-		                input "offFor03", "number", title: "Off for (in seconds)", required: true, width: 4, defaultValue: 1
+		                input "numOfFlashes03", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes03", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
 				}
                 paragraph "<hr>"
@@ -286,9 +284,8 @@ def reminderOptions() {
 			        input "switchesOff04", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
                     input "switchesFlash04", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
                     if(switchesFlash04) {
-		                input "numFlashes04", "number", title: "Flash this number of times", required: true, width: 4, defaultValue: 2
-                        input "onFor04", "number", title: "On for (in seconds)", required: true, width: 4, defaultValue: 1
-		                input "offFor04", "number", title: "Off for (in seconds)", required: true, width: 4, defaultValue: 1
+		                input "numOfFlashes04", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes04", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
                 }
                 paragraph "<hr>"
@@ -332,9 +329,8 @@ def reminderOptions() {
 			        input "switchesOff05", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
                     input "switchesFlash05", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
                     if(switchesFlash05) {
-		                input "numFlashes05", "number", title: "Flash this number of times", required: true, width: 4, defaultValue: 2
-                        input "onFor05", "number", title: "On for (in seconds)", required: true, width: 4, defaultValue: 1
-		                input "offFor05", "number", title: "Off for (in seconds)", required: true, width: 4, defaultValue: 1
+		                input "numOfFlashes05", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes05", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
                 }
             }
@@ -424,7 +420,7 @@ def startTheProcess(numb) {
         dayOfTheWeekHandler(days01)
         if(state.daysMatch && switchesOn01) switchesOnHandler(switchesOn01)
         if(state.daysMatch && switchesOff01) switchesOffHandler(switchesOff01)
-        if(state.daysMatch && switchesFlash01) flashLights(switchesFlash01,numFlashes01,onFor01,offFor01)
+        if(state.daysMatch && switchesFlash01) flashLights(switchesFlash01,numFlashes01,delayFlashes01)
         if(state.daysMatch && newMode01) modeHandler(newMode01)
         if(state.daysMatch && (speakerMP || speakerSS) && msg01 != null) messageHandler(msg01)
     }
@@ -441,7 +437,7 @@ def startTheProcess(numb) {
         dayOfTheWeekHandler(days02)
         if(state.daysMatch && switchesOn02) switchesOnHandler(switchesOn02)
         if(state.daysMatch && switchesOff02) switchesOffHandler(switchesOff02)
-        if(state.daysMatch && switchesFlash02) flashLights(switchesFlash02,numFlashes02,onFor02,offFor02)
+        if(state.daysMatch && switchesFlash02) flashLights(switchesFlash02,numFlashes02,delayFlashes02)
         if(state.daysMatch && (speakerMP || speakerSS) && msg02 != null) messageHandler(msg02)
     }
     if(numb == "03") {
@@ -457,7 +453,7 @@ def startTheProcess(numb) {
         dayOfTheWeekHandler(days03)
         if(state.daysMatch && switchesOn03) switchesOnHandler(switchesOn03)
         if(state.daysMatch && switchesOff03) switchesOffHandler(switchesOff03)
-        if(state.daysMatch && switchesFlash03) flashLights(switchesFlash03,numFlashes03,onFor03,offFor03)
+        if(state.daysMatch && switchesFlash03) flashLights(switchesFlash03,numFlashes03,delayFlashes03)
         if(state.daysMatch && (speakerMP || speakerSS) && msg03 != null) messageHandler(msg03)
     }
     if(numb == "04") {
@@ -473,7 +469,7 @@ def startTheProcess(numb) {
         dayOfTheWeekHandler(days04)
         if(state.daysMatch && switchesOn04) switchesOnHandler(switchesOn04)
         if(state.daysMatch && switchesOff04) switchesOffHandler(switchesOff04)
-        if(state.daysMatch && switchesFlash04) flashLights(switchesFlash04,numFlashes04,onFor04,offFor04)
+        if(state.daysMatch && switchesFlash04) flashLights(switchesFlash04,numFlashes04,delayFlashes04)
         if(state.daysMatch && (speakerMP || speakerSS) && msg04 != null) messageHandler(msg04)
     }
     if(numb == "05") {
@@ -489,7 +485,7 @@ def startTheProcess(numb) {
         dayOfTheWeekHandler(days05)
         if(state.daysMatch && switchesOn05) switchesOnHandler(switchesOn05)
         if(state.daysMatch && switchesOff05) switchesOffHandler(switchesOff05)
-        if(state.daysMatch && switchesFlash05) flashLights(switchesFlash05,numFlashes05,onFor05,offFor05)
+        if(state.daysMatch && switchesFlash05) flashLights(switchesFlash05,numFlashes05,delayFlashes05)
         if(state.daysMatch && (speakerMP || speakerSS) && msg05 != null) messageHandler(msg05)
     }
 }
@@ -658,27 +654,29 @@ def pushNow(theMsg){
    	sendPushMessage.deviceNotification(theMessage)
 }
 
-private flashLights(switchesFlash,numFlashes,onFor,offFor) {    // Code modified from ST documents
+private flashLights(switchesToFlash,numOfFlashes,delayFlashes) {    // Modified from ST documents
     if(logEnable) log.debug "In flashLights (${state.version})"
 	def doFlash = true
-    
-	if(logEnable) log.debug "In flashLights - lastActivated: ${state.lastActivated}"
-	if (state.lastActivated) {
+	def delay = delayFlashes ?: 500
+	def numFlashes = numOfFlashes ?: 2
+
+	if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
+	if(state.lastActivated) {
 		def elapsed = now() - state.lastActivated
-		def sequenceTime = (numFlashes + 1) * (onFor + offFor)
+		def sequenceTime = (numFlashes + 1) * (delay)
 		doFlash = elapsed > sequenceTime
-		if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash, ELAPSED: $elapsed, LAST ACTIVATED: ${state.lastActivated}"
+		if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
 	}
 
-	if (doFlash) {
+	if(doFlash) {
 		if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
 		state.lastActivated = now()
-		if(logEnable) log.debug "In flashLights - lastActivated set to: ${state.lastActivated}"
-		def initialActionOn = switches.collect{it.currentSwitch != "on"}
-		def delay = 0
+		if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: ${state.lastActivated}"
+		def initialActionOn = switchesToFlash.collect{it.currentSwitch != "on"}
+
 		numFlashes.times {
-			if(logEnable) log.debug "In flashLights - Switch on after $delay sec"
-			switchesFlash.eachWithIndex {s, i ->
+			if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
+			switchesToFlash.eachWithIndex {s, i ->
 				if (initialActionOn[i]) {
                     pauseExecution(delay)
 					s.on()
@@ -688,9 +686,8 @@ private flashLights(switchesFlash,numFlashes,onFor,offFor) {    // Code modified
 					s.off()
 				}
 			}
-			delay += onFor
-			if(logEnable) log.debug "In flashLights - Switch off after $delay sec"
-			switchesFlash.eachWithIndex {s, i ->
+			if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
+			switchesToFlash.eachWithIndex {s, i ->
 				if (initialActionOn[i]) {
                     pauseExecution(delay)
 					s.off()
@@ -700,9 +697,60 @@ private flashLights(switchesFlash,numFlashes,onFor,offFor) {    // Code modified
 					s.on()
 				}
 			}
-			delay += offFor
 		}
 	}
+}
+
+def setLightPrevious(lights) {        // Code modified from Eric Luttmann
+    if(logEnable) log.debug "In setLightPrevious (${state.version})"
+    if(state.lightsPrevious == null) state.lightsPrevious = ""
+    lights.each { it ->
+        if(logEnable) log.debug "In setLightPrevious - Working on $it ($it.id)"
+        if (it.hasCapability("Color Control")) {
+            if(logEnable) log.debug "In setLightPrevious - Save light color values"
+            state.lightsPrevious[it.id] = [
+                "switch": it.currentValue("switch"),
+                "level" : it.currentValue("level"),
+                "hue": it.currentValue("hue"),
+                "saturation": it.currentValue("saturation"),
+            ]
+        } else if (it.hasCapability("Switch Level")) {
+            if(logEnable) log.debug "In setLightPrevious - Save light level"
+            state.lightsPrevious[it.id] = [
+                "switch": it.currentValue("switch"),
+                "level" : it.currentValue("level"),
+            ]
+        } else {
+            if(logEnable) log.debug "In setLightPrevious - Save light switch"
+            state.lightsPrevious[it.id] = [
+                "switch": it.currentValue("switch"),
+            ]
+        }       
+        if(logEnable) log.debug "In setLightPrevious - $it.id - lightsPrevious: $state.lightsPrevious"
+    }
+}
+
+def restoreLightOptions(lights) {        // Code modified from Eric Luttmann
+    if(logEnable) log.debug "In restoreLightOptions (${state.version})"
+    lights.each {
+        if (it.hasCapability("Color Control")) {
+           def oldColorValue = [hue: state.lightsPrevious[it.id].hue, saturation: state.lightsPrevious[it.id].saturation, level: state.lightsPrevious[it.id].level]
+           if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore oldColorValue: $oldColorValue"
+            it.setColor(oldColorValue) 
+        } else if (it.hasCapability("Switch Level")) {
+            def level = state.lightsPrevious[it.id].level ?: 100
+            if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore level: $level"
+            it.setLevel(level) 
+        }
+
+        def lightSwitch = state.lightsPrevious[it.id].switch ?: "off"
+        if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore switch: $lightSwitch"
+        if (lightSwitch == "on") {
+            it.on()
+        } else {
+            it.off()
+        }
+    }
 }
 
 def switchesOnHandler(switchesOn) {
