@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Setup Simple Reminders through out the day.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.4 - 01/31/20 - Second Attempt to fix flashing, fix Repeat
  *  V1.0.3 - 01/29/20 - Attempt to fix flashing
  *  V1.0.2 - 12/08/19 - Fixed push messages
  *  V1.0.1 - 12/07/19 - Bug fixes
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleRemindersChildVersion"
-	state.version = "v1.0.3"
+	state.version = "v1.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -88,7 +89,7 @@ def pageConfig() {
             paragraph "Setup Simple Reminders through out the day."
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options, Options, Options")) {
-            if(days01) {
+            if(days1) {
                 href "reminderOptions", title:"${getImage("checkMarkGreen")} Select Reminder options here", description:"Click here for Options"
             } else {
                 href "reminderOptions", title:"Select Reminder options here", description:"Click here for Options"
@@ -111,29 +112,29 @@ def reminderOptions() {
     dynamicPage(name: "reminderOptions", title: "<h2 style='color:#1A77C9;font-weight: bold'>Reminder Options</h2>", install: false, uninstall:false) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reminder Options")) {
             paragraph "<b>Reminder 1</b>"
-            input "days01", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
-            if(days01) {
-                input "timeToRun01", "time", title: "Time for Reminder", required: false, width:6
-                input "everyOther01", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
+            input "days1", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
+            if(days1) {
+                input "timeToRun1", "time", title: "Time for Reminder", required: false, width:6
+                input "everyOther1", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
                 paragraph "<small>* To get this on the right schedule, don't turn this switch on until the week you want to start the reminder. Also, if using the Every Other option - only ONE day can be selected.</small>"
-                input "msg01", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
-				input "list01", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
-				if(list01) {
-					def values01 = "${msg01}".split(";")
-					listMap01 = ""
-    				values01.each { item01 -> listMap01 += "${item01}<br>" }
-					paragraph "${listMap01}"
+                input "msg1", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
+				input "list1", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
+				if(list1) {
+					def values1 = "${msg1}".split(";")
+					listMap1 = ""
+    				values1.each { item1 -> listMap1 += "${item1}<br>" }
+					paragraph "${listMap1}"
 				}
-                input "repeat01", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
-				if(repeat01 && msg01) {
-                    input "rControlSwitch01", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
+                input "repeat1", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
+				if(repeat1 && msg1) {
+                    input "rControlSwitch1", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
 					paragraph "<b>* Control Switch is required when using the Message Repeat option.</b>"
 					paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
-					input "repeatSeconds01", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
-					input "maxRepeats01", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
-					if(repeatSeconds01) {
-						paragraph "Message will repeat every ${repeatSeconds01} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats01})"
-						repeatTimeSeconds = (repeatSeconds01 * maxRepeats01)
+					input "repeatSeconds1", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					input "maxRepeats1", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
+					if(repeatSeconds1) {
+						paragraph "Message will repeat every ${repeatSeconds1} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats1})"
+						repeatTimeSeconds = (repeatSeconds1 * maxRepeats1)
 						int inputNow=repeatTimeSeconds
 						int nDayNow = inputNow / 86400
 						int nHrsNow = (inputNow % 86400 ) / 3600
@@ -143,43 +144,43 @@ def reminderOptions() {
 					}
 				}
                 paragraph "<hr>"
-                input "switchesOn01", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
-			    input "switchesOff01", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
-                input "switchesFlash01", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                if(switchesFlash01) {                 
-		            input "numOfFlashes01", "number", title: "Number of times (default: 2)", required: false, width: 6
-                    input "delayFlashes01", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+                input "switchesOn1", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
+			    input "switchesOff1", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
+                input "switchesFlash1", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
+                if(switchesFlash1) {                 
+		            input "numOfFlashes1", "number", title: "Number of times (default: 2)", required: false, width: 6
+                    input "delayFlashes1", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                 }
-                input "newMode01", "mode", title: "Change to Mode", required: false, multiple: false
+                input "newMode1", "mode", title: "Change to Mode", required: false, multiple: false
                 
                 paragraph "<hr>"
     	    }
             
-            if(days01) {
+            if(days1) {
                 paragraph "<b>Reminder 2</b>"
-                input "days02", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
-                if(days02) {
-                    input "timeToRun02", "time", title: "Time for Reminder", required: false, width:6
-                    input "everyOther02", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
+                input "days2", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
+                if(days2) {
+                    input "timeToRun2", "time", title: "Time for Reminder", required: false, width:6
+                    input "everyOther2", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
                     paragraph "<small>* To get this on the right schedule, don't turn this switch on until the week you want to start the reminder. Also, if using the Every Other option - only ONE day can be selected.</small>"
-                    input "msg02", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
-				    input "list02", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
-				    if(list02) {
-				    	def values02 = "${msg02}".split(";")
-				    	listMap02 = ""
-    			    	values02.each { item02 -> listMap02 += "${item02}<br>" }
-					    paragraph "${listMap02}"
+                    input "msg2", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
+				    input "list2", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
+				    if(list2) {
+				    	def values2 = "${msg2}".split(";")
+				    	listMap2 = ""
+    			    	values2.each { item2 -> listMap2 += "${item2}<br>" }
+					    paragraph "${listMap2}"
 				    }
-                    input "repeat02", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
-				    if(repeat02 && msg02) {
-                        input "rControlSwitch02", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
+                    input "repeat2", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
+				    if(repeat2 && msg2) {
+                        input "rControlSwitch2", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
 					    paragraph "<b>* Control Switch is required when using the Message Repeat option.</b>"
 					    paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
-					    input "repeatSeconds02", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
-					    input "maxRepeats02", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
-					    if(repeatSeconds02) {
-					    	paragraph "Message will repeat every ${repeatSeconds02} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats02})"
-					    	repeatTimeSeconds = (repeatSeconds02 * maxRepeats02)
+					    input "repeatSeconds2", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					    input "maxRepeats2", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
+					    if(repeatSeconds2) {
+					    	paragraph "Message will repeat every ${repeatSeconds2} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats2})"
+					    	repeatTimeSeconds = (repeatSeconds2 * maxRepeats2)
 						    int inputNow=repeatTimeSeconds
 						    int nDayNow = inputNow / 86400
 						    int nHrsNow = (inputNow % 86400 ) / 3600
@@ -189,43 +190,43 @@ def reminderOptions() {
                         }
 					}
                     paragraph "<hr>"
-                    input "switchesOn02", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
-			        input "switchesOff02", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
-                    input "switchesFlash02", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                    if(switchesFlash02) {
-		                input "numOfFlashes02", "number", title: "Number of times (default: 2)", required: false, width: 6
-                        input "delayFlashes02", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+                    input "switchesOn2", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
+			        input "switchesOff2", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
+                    input "switchesFlash2", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
+                    if(switchesFlash2) {
+		                input "numOfFlashes2", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes2", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
-                    input "newMode02", "mode", title: "Change to Mode", required: false, multiple: false
+                    input "newMode2", "mode", title: "Change to Mode", required: false, multiple: false
 				}
                 paragraph "<hr>"
             }
             
-            if(days02) {
+            if(days2) {
                 paragraph "<b>Reminder 3</b>"
-                input "days03", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
-                if(days03) {
-                    input "timeToRun03", "time", title: "Time for Reminder", required: false, width:6
-                    input "everyOther03", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
+                input "days3", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
+                if(days3) {
+                    input "timeToRun3", "time", title: "Time for Reminder", required: false, width:6
+                    input "everyOther3", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
                     paragraph "<small>* To get this on the right schedule, don't turn this switch on until the week you want to start the reminder. Also, if using the Every Other option - only ONE day can be selected.</small>"
-                    input "msg03", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
-				    input "list03", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
-				    if(list03) {
-				    	def values03 = "${msg03}".split(";")
-				    	listMap03 = ""
-    			    	values03.each { item03 -> listMap03 += "${item03}<br>" }
-					    paragraph "${listMap03}"
+                    input "msg3", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
+				    input "list3", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
+				    if(list3) {
+				    	def values3 = "${msg3}".split(";")
+				    	listMap3 = ""
+    			    	values3.each { item3 -> listMap3 += "${item3}<br>" }
+					    paragraph "${listMap3}"
 				    }
-                    input "repeat03", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
-				    if(repeat03 && msg03) {
-                        input "rControlSwitch03", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
+                    input "repeat3", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
+				    if(repeat3 && msg3) {
+                        input "rControlSwitch3", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
 					    paragraph "<b>* Control Switch is required when using the Message Repeat option.</b>"
 					    paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
-					    input "repeatSeconds03", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
-					    input "maxRepeats03", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
-					    if(repeatSeconds03) {
-						    paragraph "Message will repeat every ${repeatSeconds03} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats03})"
-						    repeatTimeSeconds = (repeatSeconds03 * maxRepeats03)
+					    input "repeatSeconds3", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					    input "maxRepeats3", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
+					    if(repeatSeconds3) {
+						    paragraph "Message will repeat every ${repeatSeconds3} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats3})"
+						    repeatTimeSeconds = (repeatSeconds3 * maxRepeats3)
 						    int inputNow=repeatTimeSeconds
 						    int nDayNow = inputNow / 86400
 						    int nHrsNow = (inputNow % 86400 ) / 3600
@@ -235,42 +236,42 @@ def reminderOptions() {
                         }
 					}
                     paragraph "<hr>"
-                    input "switchesOn03", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
-			        input "switchesOff03", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
-                    input "switchesFlash03", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                    if(switchesFlash03) {
-		                input "numOfFlashes03", "number", title: "Number of times (default: 2)", required: false, width: 6
-                        input "delayFlashes03", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+                    input "switchesOn3", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
+			        input "switchesOff3", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
+                    input "switchesFlash3", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
+                    if(switchesFlash3) {
+		                input "numOfFlashes3", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes3", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
 				}
                 paragraph "<hr>"
             }
             
-            if(days03) {
+            if(days3) {
                 paragraph "<b>Reminder 4</b>"
-                input "days04", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
-                if(days04) {
-                    input "timeToRun04", "time", title: "Time for Reminder", required: false, width:6
-                    input "everyOther04", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
+                input "days4", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
+                if(days4) {
+                    input "timeToRun4", "time", title: "Time for Reminder", required: false, width:6
+                    input "everyOther4", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
                     paragraph "<small>* To get this on the right schedule, don't turn this switch on until the week you want to start the reminder. Also, if using the Every Other option - only ONE day can be selected.</small>"
-                    input "msg04", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
-				    input "list04", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
-				    if(list04) {
-				    	def values04 = "${msg04}".split(";")
-				    	listMap04 = ""
-    			    	values04.each { item04 -> listMap04 += "${item04}<br>" }
-					    paragraph "${listMap04}"
+                    input "msg4", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
+				    input "list4", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
+				    if(list4) {
+				    	def values4 = "${msg4}".split(";")
+				    	listMap4 = ""
+    			    	values4.each { item4 -> listMap4 += "${item4}<br>" }
+					    paragraph "${listMap4}"
 				    }
-                    input "repeat04", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
-                    if(repeat04 && msg04) {
-                        input "rControlSwitch04", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
+                    input "repeat4", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
+                    if(repeat4 && msg4) {
+                        input "rControlSwitch4", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
 					    paragraph "<b>* Control Switch is required when using the Message Repeat option.</b>"
 					    paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
-					    input "repeatSeconds04", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
-					    input "maxRepeats04", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
-					    if(repeatSeconds04) {
-						    paragraph "Message will repeat every ${repeatSeconds04} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats04})"
-						    repeatTimeSeconds = (repeatSeconds04 * maxRepeats04)
+					    input "repeatSeconds4", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					    input "maxRepeats4", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
+					    if(repeatSeconds4) {
+						    paragraph "Message will repeat every ${repeatSeconds4} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats4})"
+						    repeatTimeSeconds = (repeatSeconds4 * maxRepeats4)
 						    int inputNow=repeatTimeSeconds
 						    int nDayNow = inputNow / 86400
 						    int nHrsNow = (inputNow % 86400 ) / 3600
@@ -280,42 +281,42 @@ def reminderOptions() {
                         }
 					}
                     paragraph "<hr>"
-                    input "switchesOn04", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
-			        input "switchesOff04", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
-                    input "switchesFlash04", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                    if(switchesFlash04) {
-		                input "numOfFlashes04", "number", title: "Number of times (default: 2)", required: false, width: 6
-                        input "delayFlashes04", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+                    input "switchesOn4", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
+			        input "switchesOff4", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
+                    input "switchesFlash4", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
+                    if(switchesFlash4) {
+		                input "numOfFlashes4", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes4", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
                 }
                 paragraph "<hr>"
             }
             
-            if(days04) {
+            if(days4) {
                 paragraph "<b>Reminder 5</b>"
-                input "days05", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
-                if(days05) {
-                    input "timeToRun05", "time", title: "Time for Reminder", required: false, width:6
-                    input "everyOther05", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
+                input "days5", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
+                if(days5) {
+                    input "timeToRun5", "time", title: "Time for Reminder", required: false, width:6
+                    input "everyOther5", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
                     paragraph "<small>* To get this on the right schedule, don't turn this switch on until the week you want to start the reminder. Also, if using the Every Other option - only ONE day can be selected.</small>"
-                    input "msg05", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
-				    input "list05", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
-				    if(list05) {
-				    	def values05 = "${msg05}".split(";")
-				    	listMap05 = ""
-    			    	values05.each { item05 -> listMap05 += "${item05}<br>" }
-					    paragraph "${listMap05}"
+                    input "msg5", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
+				    input "list5", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
+				    if(list5) {
+				    	def values5 = "${msg5}".split(";")
+				    	listMap5 = ""
+    			    	values5.each { item5 -> listMap5 += "${item5}<br>" }
+					    paragraph "${listMap5}"
 				    }
-                    input "repeat05", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
-                    if(repeat05 && msg05) {
-                        input "rControlSwitch05", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
+                    input "repeat5", "bool", defaultValue: false, title: "<b>Repeat Message?</b>", description: "Repeat Message", submitOnChange: true
+                    if(repeat5 && msg5) {
+                        input "rControlSwitch5", "capability.switch", title: "Control Switch to turn this reminder on and off", required: true, multiple: false
 					    paragraph "<b>* Control Switch is required when using the Message Repeat option.</b>"
 					    paragraph "Repeat message every X seconds until 'Control Switch' is turned off OR max number of repeats is reached."
-					    input "repeatSeconds05", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
-					    input "maxRepeats05", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
-					    if(repeatSeconds05) {
-						    paragraph "Message will repeat every ${repeatSeconds05} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats05})"
-						    repeatTimeSeconds = (repeatSeconds05 * maxRepeats05)
+					    input "repeatSeconds5", "number", title: "Repeat message every X seconds (1 to 600 seconds - 300=5 min, 600=10 min)", required: true, defaultValue:10, range: '1..600', submitOnChange: true
+					    input "maxRepeats5", "number", title: "Max number of repeats (1 to 100)", required: true, defaultValue:99, range: '1..100', submitOnChange: true
+					    if(repeatSeconds5) {
+						    paragraph "Message will repeat every ${repeatSeconds5} seconds until the Control Switch is turned off <b>OR</b> the Max number of repeats is reached (${maxRepeats5})"
+						    repeatTimeSeconds = (repeatSeconds5 * maxRepeats5)
 						    int inputNow=repeatTimeSeconds
 						    int nDayNow = inputNow / 86400
 						    int nHrsNow = (inputNow % 86400 ) / 3600
@@ -325,12 +326,12 @@ def reminderOptions() {
                         }
 					}
                     paragraph "<hr>"
-                    input "switchesOn05", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
-			        input "switchesOff05", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
-                    input "switchesFlash05", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                    if(switchesFlash05) {
-		                input "numOfFlashes05", "number", title: "Number of times (default: 2)", required: false, width: 6
-                        input "delayFlashes05", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+                    input "switchesOn5", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
+			        input "switchesOff5", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
+                    input "switchesFlash5", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
+                    if(switchesFlash5) {
+		                input "numOfFlashes5", "number", title: "Number of times (default: 2)", required: false, width: 6
+                        input "delayFlashes5", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
                     }
                 }
             }
@@ -390,103 +391,102 @@ def updated() {
 def initialize() {
     setVersion()
     setDefaults()
-	if(timeToRun01) schedule(timeToRun01, setTo01)
-    if(timeToRun02) schedule(timeToRun02, setTo02)
-    if(timeToRun03) schedule(timeToRun03, setTo03)
-    if(timeToRun04) schedule(timeToRun04, setTo04)
-    if(timeToRun05) schedule(timeToRun05, setTo05)
+	if(timeToRun1) schedule(timeToRun1, setTo1)
+    if(timeToRun2) schedule(timeToRun2, setTo2)
+    if(timeToRun3) schedule(timeToRun3, setTo3)
+    if(timeToRun4) schedule(timeToRun4, setTo4)
+    if(timeToRun5) schedule(timeToRun5, setTo5)
     
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
-def setTo01(evt) { startTheProcess("01") }
-def setTo02(evt) { startTheProcess("02") }
-def setTo03(evt) { startTheProcess("03") }
-def setTo04(evt) { startTheProcess("04") }
-def setTo05(evt) { startTheProcess("05") }
+def setTo1(evt) { startTheProcess("1") }
+def setTo2(evt) { startTheProcess("2") }
+def setTo3(evt) { startTheProcess("3") }
+def setTo4(evt) { startTheProcess("4") }
+def setTo5(evt) { startTheProcess("5") }
 
 def startTheProcess(numb) {
     if(logEnable) log.debug "In startTheProcess (${state.version}) - ${numb}"
-    if(numb == "01") {
+    state.repeatSeconds = ""
+    state.maxRepeats = ""
+    state.everyOther = false
+    
+    if(numb == "1") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
-        if(repeat01) {
-            state.repeatSeconds = repeatSeconds01
-            state.maxRepeats = maxRepeats01
-            state.numb = "01"
+        if(repeat1) {
+            state.repeatSeconds = repeatSeconds1
+            state.maxRepeats = maxRepeats1
         }
-        if(everyOther01) {
+        if(everyOther1) {
             state.everyOther = true
         }
-        dayOfTheWeekHandler(days01)
-        if(state.daysMatch && switchesOn01) switchesOnHandler(switchesOn01)
-        if(state.daysMatch && switchesOff01) switchesOffHandler(switchesOff01)
-        if(state.daysMatch && switchesFlash01) flashLights(switchesFlash01,numFlashes01,delayFlashes01)
-        if(state.daysMatch && newMode01) modeHandler(newMode01)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg01 != null) messageHandler(msg01)
+        dayOfTheWeekHandler(days1)
+        if(state.daysMatch && switchesOn1) switchesOnHandler(switchesOn1)
+        if(state.daysMatch && switchesOff1) switchesOffHandler(switchesOff1)
+        if(state.daysMatch && switchesFlash1) flashLights(switchesFlash1,numOfFlashes1,delayFlashes1)
+        if(state.daysMatch && newMode1) modeHandler(newMode1)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg1 != null) messageHandler(msg1)
     }
-    if(numb == "02") {
+    if(numb == "2") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
-        if(repeat02) {
-            state.repeatSeconds = repeatSeconds02
-            state.maxRepeats = maxRepeats02
-            state.numb = "02"
+        if(repeat2) {
+            state.repeatSeconds = repeatSeconds2
+            state.maxRepeats = maxRepeats2
         }
-        if(everyOther02) {
+        if(everyOther2) {
             state.everyOther = true
         }
-        dayOfTheWeekHandler(days02)
-        if(state.daysMatch && switchesOn02) switchesOnHandler(switchesOn02)
-        if(state.daysMatch && switchesOff02) switchesOffHandler(switchesOff02)
-        if(state.daysMatch && switchesFlash02) flashLights(switchesFlash02,numFlashes02,delayFlashes02)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg02 != null) messageHandler(msg02)
+        dayOfTheWeekHandler(days2)
+        if(state.daysMatch && switchesOn2) switchesOnHandler(switchesOn2)
+        if(state.daysMatch && switchesOff2) switchesOffHandler(switchesOff2)
+        if(state.daysMatch && switchesFlash2) flashLights(switchesFlash2,numOfFlashes2,delayFlashes2)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg2 != null) messageHandler(msg2)
     }
-    if(numb == "03") {
+    if(numb == "3") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
-        if(repeat03) {
-            state.repeatSeconds = repeatSeconds03
-            state.maxRepeats = maxRepeats03
-            state.numb = "03"
+        if(repeat3) {
+            state.repeatSeconds = repeatSeconds3
+            state.maxRepeats = maxRepeats3
         }
-        if(everyOther03) {
+        if(everyOther3) {
             state.everyOther = true
         }
-        dayOfTheWeekHandler(days03)
-        if(state.daysMatch && switchesOn03) switchesOnHandler(switchesOn03)
-        if(state.daysMatch && switchesOff03) switchesOffHandler(switchesOff03)
-        if(state.daysMatch && switchesFlash03) flashLights(switchesFlash03,numFlashes03,delayFlashes03)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg03 != null) messageHandler(msg03)
+        dayOfTheWeekHandler(days3)
+        if(state.daysMatch && switchesOn3) switchesOnHandler(switchesOn3)
+        if(state.daysMatch && switchesOff3) switchesOffHandler(switchesOff3)
+        if(state.daysMatch && switchesFlash3) flashLights(switchesFlash3,numOfFlashes3,delayFlashes3)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg3 != null) messageHandler(msg3)
     }
-    if(numb == "04") {
+    if(numb == "4") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
-        if(repeat04) {
-            state.repeatSeconds = repeatSeconds04
-            state.maxRepeats = maxRepeats04
-            state.numb = "04"
+        if(repeat4) {
+            state.repeatSeconds = repeatSeconds4
+            state.maxRepeats = maxRepeats4
         }
-        if(everyOther04) {
+        if(everyOther4) {
             state.everyOther = true
         }
-        dayOfTheWeekHandler(days04)
-        if(state.daysMatch && switchesOn04) switchesOnHandler(switchesOn04)
-        if(state.daysMatch && switchesOff04) switchesOffHandler(switchesOff04)
-        if(state.daysMatch && switchesFlash04) flashLights(switchesFlash04,numFlashes04,delayFlashes04)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg04 != null) messageHandler(msg04)
+        dayOfTheWeekHandler(days4)
+        if(state.daysMatch && switchesOn4) switchesOnHandler(switchesOn4)
+        if(state.daysMatch && switchesOff4) switchesOffHandler(switchesOff4)
+        if(state.daysMatch && switchesFlash4) flashLights(switchesFlash4,numOfFlashes4,delayFlashes4)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg4 != null) messageHandler(msg4)
     }
-    if(numb == "05") {
+    if(numb == "5") {
         if(logEnable) log.debug "In startTheProcess (${numb})"
-        if(repeat05) {
-            state.repeatSeconds = repeatSeconds05
-            state.maxRepeats = maxRepeats05
-            state.numb = "05"
+        if(repeat5) {
+            state.repeatSeconds = repeatSeconds5
+            state.maxRepeats = maxRepeats5
         }
-        if(everyOther05) {
+        if(everyOther5) {
             state.everyOther = true
         }
-        dayOfTheWeekHandler(days05)
-        if(state.daysMatch && switchesOn05) switchesOnHandler(switchesOn05)
-        if(state.daysMatch && switchesOff05) switchesOffHandler(switchesOff05)
-        if(state.daysMatch && switchesFlash05) flashLights(switchesFlash05,numFlashes05,delayFlashes05)
-        if(state.daysMatch && (speakerMP || speakerSS) && msg05 != null) messageHandler(msg05)
+        dayOfTheWeekHandler(days5)
+        if(state.daysMatch && switchesOn5) switchesOnHandler(switchesOn5)
+        if(state.daysMatch && switchesOff5) switchesOffHandler(switchesOff5)
+        if(state.daysMatch && switchesFlash5) flashLights(switchesFlash5,numOfFlashes5,delayFlashes5)
+        if(state.daysMatch && (speakerMP || speakerSS) && msg5 != null) messageHandler(msg5)
     }
 }
 
@@ -497,46 +497,51 @@ def letsTalk(msg) {
     checkEveryOther()
     if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween} - thisTime: ${state.thisTime}"
     if(state.timeBetween && state.daysMatch && state.thisTime == "yes") {
-        if(msg == null || msg == "") msg = state.lastMsg 
-        theMsg = msg
+        if(msg) state.theMsg = msg
+        if(state.maxRepeats == null || state.maxRepeats == "") state.maxRepeats = 1
+        if(state.repeatSeconds == null || state.repeatSeconds == "") state.repeatSeconds = 2
         
-        def duration = Math.max(Math.round(theMsg.length()/12),2)+3
-        theDuration = duration * 1000
-        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
-        state.speakers.each { it ->
-            if(logEnable) log.debug "Speaker in use: ${it}"
-            if(speakerProxy) {
-                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                it.speak(theMsg)
-            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                def prevVolume = it.currentValue("volume")
-                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-            } else if(it.hasCommand('playTextAndRestore')) {   
-                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                def prevVolume = it.currentValue("volume")
-                it.playTextAndRestore(theMsg, prevVolume)
-            } else {		        
-                if(logEnable) log.debug "In letsTalk - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                it.speak(theMsg)
-                pauseExecution(theDuration)
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+        for(x=0;x < state.maxRepeats;x++) {
+            checkControlSwitch()
+            if(state.controlValue == "on") {               
+                def duration = Math.max(Math.round(state.theMsg.length()/12),2)+3
+                theDuration = duration * 1000
+                state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+    	        if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
+                state.speakers.each { it ->
+                    if(logEnable) log.debug "Speaker in use: ${it}"
+                    if(speakerProxy) {
+                        if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                        it.speak(state.theMsg)
+                    } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                        if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                        def prevVolume = it.currentValue("volume")
+                        it.setVolumeSpeakAndRestore(state.volume, state.theMsg, prevVolume)
+                    } else if(it.hasCommand('playTextAndRestore')) {   
+                        if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                        if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                        if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                        def prevVolume = it.currentValue("volume")
+                        it.playTextAndRestore(state.theMsg, prevVolume)
+                    } else {		        
+                        if(logEnable) log.debug "In letsTalk - ${it}"
+                        if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                        if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                        it.speak(state.theMsg)
+                        pauseExecution(theDuration)
+                        if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                        if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
+                    }
+                } 
+                repeatDelay = state.repeatSeconds * 1000
+                pauseExecution(repeatDelay)
+            } else {
+                if(logEnable) log.debug "In checkRepeat - Control Switch is OFF (${state.controlValue})."
             }
         }
-            
+        if(state.theSwitch) state.theSwitch.off()
         if(logEnable) log.debug "In letsTalk - Finished speaking"  
-        if(sendPushMessage) pushNow(theMsg)
-        
-        if(state.rControlSwitch) {
-            state.lastMsg = theMsg
-            checkRepeat()
-        }
+        if(sendPushMessage) pushNow(state.theMsg)
 	} else {
 		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	}
@@ -567,32 +572,16 @@ def checkTime() {
 	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
-def checkRepeat() {
-    if(logEnable) log.debug "In checkRepeat (${state.version}) - numb: ${state.numb}"
-    if(state.numb == "01") { cSwitch = rControlSwitch01.currentValue("switch"); theSwitch = rControlSwitch01 }
-    if(state.numb == "02") { cSwitch = rControlSwitch02.currentValue("switch"); theSwitch = rControlSwitch02 }
-    if(state.numb == "03") { cSwitch = rControlSwitch03.currentValue("switch"); theSwitch = rControlSwitch03 }
-    if(state.numb == "04") { cSwitch = rControlSwitch04.currentValue("switch"); theSwitch = rControlSwitch04 }
-    if(state.numb == "05") { cSwitch = rControlSwitch05.currentValue("switch"); theSwitch = rControlSwitch05 }    
-
-    if(logEnable) log.debug "In checkRepeat - Control Switch is ${cSwitch}"
-	if(cSwitch == "on") {
-        if(logEnable) log.debug "In checkRepeat - repeat ON - value: ${cSwitch}"
-        if(state.numRepeats == null) state.numRepeats = 1
-		if(state.numRepeats < state.maxRepeats) {
-            if(logEnable) log.debug "In checkRepeat - repeat ON - numRepeats: ${state.numRepeats} - maxRepeats: ${state.maxRepeats}"
-		    state.numRepeats = state.numRepeats + 1
-			runIn(state.repeatSeconds,letsTalk)
-		} else {
-			if(logEnable) log.debug "In checkRepeat - Max repeats has been reached."
-            theSwitch.off()
-            state.numRepeats = 1
-            if(logEnable) log.debug "In checkRepeat - Control Switch is now OFF (${cSwitch})."
-		}
-        log.info "Simple Reminders - Control Switch is ON, message will repeat in ${state.repeatSeconds} seconds."
-	} else {
-		if(logEnable) log.debug "In checkRepeat - Control Switch is ${cSwitch}."
-	}
+def checkControlSwitch() {
+    if(logEnable) log.debug "In checkControlSwitch (${state.version})"
+    state.controlValue = ""
+    state.theSwitch = ""
+    if(repeat1) { state.controlValue = rControlSwitch1.currentValue("switch"); state.theSwitch = rControlSwitch1 }
+    if(repeat2) { state.controlValue = rControlSwitch2.currentValue("switch"); state.theSwitch = rControlSwitch2 }
+    if(repeat3) { state.controlValue = rControlSwitch3.currentValue("switch"); state.theSwitch = rControlSwitch3 }
+    if(repeat4) { state.controlValue = rControlSwitch4.currentValue("switch"); state.theSwitch = rControlSwitch4 }
+    if(repeat5) { state.controlValue = rControlSwitch5.currentValue("switch"); state.theSwitch = rControlSwitch5 }
+    if(state.controlValue == null || state.controlValue == "") state.controlValue = "on"
 }
 
 def checkEveryOther() {
@@ -699,58 +688,6 @@ private flashLights(switchesToFlash,numOfFlashes,delayFlashes) {    // Modified 
 			}
 		}
 	}
-}
-
-def setLightPrevious(lights) {        // Code modified from Eric Luttmann
-    if(logEnable) log.debug "In setLightPrevious (${state.version})"
-    if(state.lightsPrevious == null) state.lightsPrevious = ""
-    lights.each { it ->
-        if(logEnable) log.debug "In setLightPrevious - Working on $it ($it.id)"
-        if (it.hasCapability("Color Control")) {
-            if(logEnable) log.debug "In setLightPrevious - Save light color values"
-            state.lightsPrevious[it.id] = [
-                "switch": it.currentValue("switch"),
-                "level" : it.currentValue("level"),
-                "hue": it.currentValue("hue"),
-                "saturation": it.currentValue("saturation"),
-            ]
-        } else if (it.hasCapability("Switch Level")) {
-            if(logEnable) log.debug "In setLightPrevious - Save light level"
-            state.lightsPrevious[it.id] = [
-                "switch": it.currentValue("switch"),
-                "level" : it.currentValue("level"),
-            ]
-        } else {
-            if(logEnable) log.debug "In setLightPrevious - Save light switch"
-            state.lightsPrevious[it.id] = [
-                "switch": it.currentValue("switch"),
-            ]
-        }       
-        if(logEnable) log.debug "In setLightPrevious - $it.id - lightsPrevious: $state.lightsPrevious"
-    }
-}
-
-def restoreLightOptions(lights) {        // Code modified from Eric Luttmann
-    if(logEnable) log.debug "In restoreLightOptions (${state.version})"
-    lights.each {
-        if (it.hasCapability("Color Control")) {
-           def oldColorValue = [hue: state.lightsPrevious[it.id].hue, saturation: state.lightsPrevious[it.id].saturation, level: state.lightsPrevious[it.id].level]
-           if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore oldColorValue: $oldColorValue"
-            it.setColor(oldColorValue) 
-        } else if (it.hasCapability("Switch Level")) {
-            def level = state.lightsPrevious[it.id].level ?: 100
-            if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore level: $level"
-            it.setLevel(level) 
-        }
-
-        def lightSwitch = state.lightsPrevious[it.id].switch ?: "off"
-        if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore switch: $lightSwitch"
-        if (lightSwitch == "on") {
-            it.on()
-        } else {
-            it.off()
-        }
-    }
 }
 
 def switchesOnHandler(switchesOn) {
