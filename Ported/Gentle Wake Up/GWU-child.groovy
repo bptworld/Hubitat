@@ -29,10 +29,9 @@
  *  Design Usage:
  *  Port of the ST Gentle Wake Up App
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -43,6 +42,7 @@
  *
  *  Changes:
  *
+ *  V2.0.1 - 01/31/20 - Trying to fix a reported error
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to partent/child.
  *  v1.0.3 - 08/02/19 - Whoops, found a bug! 
@@ -61,11 +61,10 @@
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "GentleWakeUpChildVersion"
-	state.version = "v2.0.0"
+	state.version = "v2.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -400,7 +399,7 @@ private initialize() {
 		// create controller device and set name to the label used here
 		def dni = "${new Date().getTime()}"
         if(logEnable) log.debug "label: ${app.label} - dni: ${dni}"
-		addChildDevice("smartthings", "Gentle Wake Up Controller", dni, null, ["label": app.label])
+		addChildDevice("hubitat", "Gentle Wake Up Controller", dni, null, ["label": app.label])
 		state.controllerDni = dni
 	}
 }
@@ -668,13 +667,17 @@ private increment() {
 def setupTemps() {
     if(state.runSetupTempsOnce == "no") {
         state.runSetupTempsOnce = "yes"
-        state.currentTemp = startTemp
-        seconds = duration * 60
-        state.dimStep = endTemp / seconds
+        startingTemp = startTemp ?: 2200
+        state.currentTemp = startingTemp
+        theDuration = duration ?: 30
+        seconds = theDuration * 60
+        endingTemp = endTemp ?: 4000
+        
+        state.dimStep = endingTemp / seconds
         state.dimTemp = state.currentTemp
         
-        if(startTemp < endTemp) state.tempUpDown = "Up"
-        if(startTemp > endTemp) state.tempUpDown = "Down"
+        if(startingTemp < endingTemp) state.tempUpDown = "Up"
+        if(startingTemp > endingTemp) state.tempUpDown = "Down"
         if(logEnable) log.debug "In setupTemps - tempUpDown: ${state.tempUpDown}"
     }
 }
@@ -1010,34 +1013,38 @@ def getDownHue(level) {
 }
 
 def colorTempStepUp(dimmer) {
-	if(logEnable) log.debug "In colorTempStepUp"			
-    if(state.currentTemp < endTemp) {
+	if(logEnable) log.debug "In colorTempStepUp"	
+    endingTemp = endTemp ?: 4000
+    
+    if(state.currentTemp < endingTemp) {
         if(logEnable) log.debug "colorTempStepUp - dimTemp: ${state.dimTemp} - dimStep: ${state.dimStep}"
         state.dimTemp = state.dimTemp + state.dimStep
         if(logEnable) log.debug "colorTempStepUp - NEW dimTemp: ${state.dimTemp}"
-        if(state.dimTemp > endTemp) {state.dimTemp = endTemp}
+        if(state.dimTemp > endngiTemp) {state.dimTemp = endingTemp}
         state.currentTemp = state.dimTemp.toInteger()
         if(logEnable) log.debug "colorTempStepUp - NEW currentTemp: ${state.currentTemp}"
     	dimmer.setColorTemperature(state.currentTemp)
-        if(logEnable) log.debug "colorTempStepUp - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"
+        if(logEnable) log.debug "colorTempStepUp - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endingTemp}"
     } else{
-        if(logEnable) log.debug "colorTempStepUp - FINISHED - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"    
+        if(logEnable) log.debug "colorTempStepUp - FINISHED - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endingTemp}"    
     }
 }
 
 def colorTempStepDown(dimmer) {
-	if(logEnable) log.debug "In colorTempStepDown"			
-    if(state.currentTemp > endTemp) {
+	if(logEnable) log.debug "In colorTempStepDown"	
+    endingTemp = endTemp ?: 4000
+    
+    if(state.currentTemp > endingTemp) {
         if(logEnable) log.debug "colorTempStepDown - dimTemp: ${state.dimTemp} - dimStep: ${state.dimStep}"
         state.dimTemp = state.dimTemp + state.dimStep
         if(logEnable) log.debug "colorTempStepDown - NEW dimTemp: ${state.dimTemp}"
-        if(state.dimTemp > endTemp) {state.dimTemp = endTemp}
+        if(state.dimTemp > endingTemp) {state.dimTemp = endingTemp}
         state.currentTemp = state.dimTemp.toInteger()
         if(logEnable) log.debug "colorTempStepDown - NEW currentTemp: ${state.currentTemp}"
     	dimmer.setColorTemperature(state.currentTemp)
-        if(logEnable) log.debug "colorTempStepDown - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"
+        if(logEnable) log.debug "colorTempStepDown - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endingTemp}"
     } else{
-        if(logEnable) log.debug "colorTempStepDown - FINISHED - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endTemp}"    
+        if(logEnable) log.debug "colorTempStepDown - FINISHED - Current Temp: ${state.currentTemp} - dimStep: ${state.dimStep} - targetTemp: ${endingTemp}"    
     }
 }
 
