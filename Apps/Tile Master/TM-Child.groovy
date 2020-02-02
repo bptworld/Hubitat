@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.3 - 02/02/20 - Added switch to hide/unhide device attribute
  *  V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%
  *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating (jerry.molenaar)
  *  V2.1.0 - 10/08/19 - Added wildcard to display Last Activity of choosen device
@@ -55,7 +56,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.1.2"
+	state.version = "v2.1.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -166,7 +167,8 @@ def line01Options(){
 					def allAtts01 = [:]
 					allAtts01 = device01.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01
-                    input "useColors01", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors01", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr01", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus01 = device01.currentValue("${deviceAtts01}")
 					if(state.deviceStatus01 == null || state.deviceStatus01 == "") state.deviceStatus01 = "No Data"
 					if(device01 && deviceAtts01) paragraph "Current Status of Device Attribute: ${device01} - ${deviceAtts01} - ${state.deviceStatus01}"
@@ -194,7 +196,8 @@ def line01Options(){
 					def allAtts01a = [:]
 					allAtts01a = device01a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01a
-                    input "useColors01a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors01a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr01a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus01a = device01a.currentValue("${deviceAtts01a}")
 					if(state.deviceStatus01a == null || state.deviceStatus01a == "") state.deviceStatus01a = "No Data"
 					if(device01a && deviceAtts01a) paragraph "Current Status of Device Attribute: ${device01a} - ${deviceAtts01a} - ${state.deviceStatus01a}"
@@ -222,7 +225,8 @@ def line01Options(){
 					def allAtts01b = [:]
 					allAtts01b = device01b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts01b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts01b
-                    input "useColors01b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors01b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr01b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus01b = device01b.currentValue("${deviceAtts01b}")
 					if(state.deviceStatus01b == null || state.deviceStatus01b == "") state.deviceStatus01b = "No Data"
 					if(device01b && deviceAtts01b) paragraph "Current Status of Device Attribute: ${device01b} - ${deviceAtts01b} - ${state.deviceStatus01b}"
@@ -288,7 +292,8 @@ def line02Options(){
 					def allAtts02 = [:]
 					allAtts02 = device02.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02
-                    input "useColors02", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors02", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr02", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus02 = device02.currentValue("${deviceAtts02}")
 					if(state.deviceStatus02 == null) state.deviceStatus02 = "No Data"
 					if(device02 && deviceAtts02) paragraph "Current Status of Device Attribute: ${device02} - ${deviceAtts02} - ${state.deviceStatus02}"
@@ -316,7 +321,8 @@ def line02Options(){
 					def allAtts02a = [:]
 					allAtts02a = device02a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02a
-                    input "useColors02a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors02a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr02a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus02a = device02a.currentValue("${deviceAtts02a}")
 					if(state.deviceStatus02a == null) state.deviceStatus02a = "No Data"
 					if(device02a && deviceAtts02a) paragraph "Current Status of Device Attribute: ${device02a} - ${deviceAtts02a} - ${state.deviceStatus02a}"
@@ -344,7 +350,8 @@ def line02Options(){
 					def allAtts02b = [:]
 					allAtts02b = device02b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts02b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts02b
-                    input "useColors02b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors02b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr02b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus02b = device02b.currentValue("${deviceAtts02b}")
 					if(state.deviceStatus02b == null) state.deviceStatus02b = "No Data"
 					if(device02b && deviceAtts02b) paragraph "Current Status of Device Attribute: ${device02b} - ${deviceAtts02b} - ${state.deviceStatus02b}"
@@ -410,7 +417,8 @@ def line03Options(){
 					def allAtts03 = [:]
 					allAtts03 = device03.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03
-                    input "useColors03", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors03", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr03", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus03 = device03.currentValue("${deviceAtts03}")
 					if(state.deviceStatus03 == null) state.deviceStatus03 = "No Data"
 					if(device03 && deviceAtts03) paragraph "Current Status of Device Attribute: ${device03} - ${deviceAtts03} - ${state.deviceStatus03}"
@@ -438,7 +446,8 @@ def line03Options(){
 					def allAtts03a = [:]
 					allAtts03a = device03a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03a
-                    input "useColors03a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors03a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr03a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus03a = device03a.currentValue("${deviceAtts03a}")
 					if(state.deviceStatus03a == null) state.deviceStatus03a = "No Data"
 					if(device03a && deviceAtts03a) paragraph "Current Status of Device Attribute: ${device03a} - ${deviceAtts03a} - ${state.deviceStatus03a}"
@@ -466,7 +475,8 @@ def line03Options(){
 					def allAtts03b = [:]
 					allAtts03b = device03b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts03b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts03b
-                    input "useColors03b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors03b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr03b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus03b = device03b.currentValue("${deviceAtts03b}")
 					if(state.deviceStatus03b == null) state.deviceStatus03b = "No Data"
 					if(device03b && deviceAtts03b) paragraph "Current Status of Device Attribute: ${device03b} - ${deviceAtts03b} - ${state.deviceStatus03b}"
@@ -532,7 +542,8 @@ def line04Options(){
 					def allAtts04 = [:]
 					allAtts04 = device04.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04
-                    input "useColors04", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors04", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr04", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus04 = device04.currentValue("${deviceAtts04}")
 					if(state.deviceStatus04 == null) state.deviceStatus04 = "No Data"
 					if(device04 && deviceAtts04) paragraph "Current Status of Device Attribute: ${device04} - ${deviceAtts04} - ${state.deviceStatus04}"
@@ -560,7 +571,8 @@ def line04Options(){
 					def allAtts04a = [:]
 					allAtts04a = device04a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04a
-                    input "useColors04a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors04a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr04a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus04a = device04a.currentValue("${deviceAtts04a}")
 					if(state.deviceStatus04a == null) state.deviceStatus04a = "No Data"
 					if(device04a && deviceAtts04a) paragraph "Current Status of Device Attribute: ${device04a} - ${deviceAtts04a} - ${state.deviceStatus04a}"
@@ -588,7 +600,8 @@ def line04Options(){
 					def allAtts04b = [:]
 					allAtts04b = device04b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts04b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts04b
-                    input "useColors04b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors04b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr04b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus04b = device04b.currentValue("${deviceAtts04b}")
 					if(state.deviceStatus04b == null) state.deviceStatus04b = "No Data"
 					if(device04b && deviceAtts04b) paragraph "Current Status of Device Attribute: ${device04b} - ${deviceAtts04b} - ${state.deviceStatus04b}"
@@ -654,7 +667,8 @@ def line05Options(){
 					def allAtts05 = [:]
 					allAtts05 = device05.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05
-                    input "useColors05", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors05", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr05", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus05 = device05.currentValue("${deviceAtts05}")
 					if(state.deviceStatus05 == null) state.deviceStatus05 = "No Data"
 					if(device05 && deviceAtts05) paragraph "Current Status of Device Attribute: ${device05} - ${deviceAtts05} - ${state.deviceStatus05}"
@@ -682,7 +696,8 @@ def line05Options(){
 					def allAtts05a = [:]
 					allAtts05a = device05a.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05a", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05a
-                    input "useColors05a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors05a", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr05a", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus05a = device05a.currentValue("${deviceAtts05a}")
 					if(state.deviceStatus05a == null) state.deviceStatus05a = "No Data"
 					if(device05a && deviceAtts05a) paragraph "Current Status of Device Attribute: ${device05a} - ${deviceAtts05a} - ${state.deviceStatus05a}"
@@ -710,7 +725,8 @@ def line05Options(){
 					def allAtts05b = [:]
 					allAtts05b = device05b.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
 					input "deviceAtts05b", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts05b
-                    input "useColors05b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true
+                    input "useColors05b", "bool", title: "Use custom colors on device value<br><small>* will add about 35 to character count</small>", defaultValue: false, description: "Colors", submitOnChange: true, width:6
+                    input "hideAttr05b", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true, width:6
 					state.deviceStatus05b = device05b.currentValue("${deviceAtts05b}")
 					if(state.deviceStatus05b == null) state.deviceStatus05b = "No Data"
 					if(device05b && deviceAtts05b) paragraph "Current Status of Device Attribute: ${device05b} - ${deviceAtts05b} - ${state.deviceStatus05b}"
@@ -814,7 +830,7 @@ def tileHandler01(){
         state.theTile01 += "width:${secWidth01}%'>"
         if(wordsBEF01) makeTileLine(1,wordsBEF01,linkBEF01)
         if(wordsBEF01) state.theTile01 += "${newWords2}"
-		if(deviceAtts01) state.theTile01 += "${state.deviceStatus01}"
+		if(deviceAtts01 && !hideAttr01) state.theTile01 += "${state.deviceStatus01}"
 		if(wordsAFT01) makeTileLine(1,wordsAFT01,linkAFT01)
         if(wordsAFT01) state.theTile01 += "${newWords2}"
 	} 
@@ -826,7 +842,7 @@ def tileHandler01(){
         state.theTile01 += "width:${secWidth01a}%'>"
 		if(wordsBEF01a) makeTileLine("1a",wordsBEF01a,linkBEF01a)
         if(wordsBEF01a) state.theTile01 += "${newWords2}"
-		if(deviceAtts01a) state.theTile01 += "${state.deviceStatus01a}"
+		if(deviceAtts01a && !hideAttr01a) state.theTile01 += "${state.deviceStatus01a}"
 		if(wordsAFT01a) makeTileLine("1a",wordsAFT01a,linkAFT01a)
         if(wordsAFT01a) state.theTile01 += "${newWords2}"
 	}
@@ -838,7 +854,7 @@ def tileHandler01(){
         state.theTile01 += "width:${secWidth01b}%'>"
 		if(wordsBEF01b) makeTileLine("1b",wordsBEF01b,linkBEF01b)
         if(wordsBEF01b) state.theTile01 += "${newWords2}"
-		if(deviceAtts01b) state.theTile01 += "${state.deviceStatus01b}"
+		if(deviceAtts01b && !hideAttr01b) state.theTile01 += "${state.deviceStatus01b}"
 		if(wordsAFT01b) makeTileLine("1b",wordsAFT01b,linkAFT01b)
         if(wordsAFT01b) state.theTile01 += "${newWords2}"
 	}
@@ -908,7 +924,7 @@ def tileHandler02(){
         state.theTile02 += "width:${secWidth02}%'>"
         if(wordsBEF02) makeTileLine(2,wordsBEF02,linkBEF02)
         if(wordsBEF02) state.theTile02 += "${newWords2}"
-		if(deviceAtts02) state.theTile02 += "${state.deviceStatus02}"
+		if(deviceAtts02 && !hideAttr02) state.theTile02 += "${state.deviceStatus02}"
 		if(wordsAFT02) makeTileLine(2,wordsAFT02,linkAFT02)
         if(wordsAFT02) state.theTile02 += "${newWords2}"
 	} 
@@ -920,7 +936,7 @@ def tileHandler02(){
         state.theTile02 += "width:${secWidth02a}%'>"
 		if(wordsBEF02a) makeTileLine("2a",wordsBEF02a,linkBEF02a)
         if(wordsBEF02a) state.theTile02 += "${newWords2}"
-		if(deviceAtts02a) state.theTile02 += "${state.deviceStatus02a}"
+		if(deviceAtts02a && !hideAttr02a) state.theTile02 += "${state.deviceStatus02a}"
 		if(wordsAFT02a) makeTileLine("2a",wordsAFT02a,linkAFT02a)
         if(wordsAFT02a) state.theTile02 += "${newWords2}"
 	}
@@ -932,7 +948,7 @@ def tileHandler02(){
         state.theTile02 += "width:${secWidth02b}%'>"
 		if(wordsBEF02b) makeTileLine("2b",wordsBEF02b,linkBEF02b)
         if(wordsBEF02b) state.theTile02 += "${newWords2}"
-		if(deviceAtts02b) state.theTile02 += "${state.deviceStatus02b}"
+		if(deviceAtts02b && !hideAttr02b) state.theTile02 += "${state.deviceStatus02b}"
 		if(wordsAFT02b) makeTileLine("2b",wordsAFT02b,linkAFT02b)
         if(wordsAFT02b) state.theTile02 += "${newWords2}"
 	}
@@ -1002,7 +1018,7 @@ def tileHandler03(){
         state.theTile03 += "width:${secWidth03}%'>"
         if(wordsBEF03) makeTileLine(3,wordsBEF03,linkBEF03)
         if(wordsBEF03) state.theTile03 += "${newWords2}"
-		if(deviceAtts03) state.theTile03 += "${state.deviceStatus03}"
+		if(deviceAtts03 && !hideAttr03) state.theTile03 += "${state.deviceStatus03}"
 		if(wordsAFT03) makeTileLine(3,wordsAFT03,linkAFT03)
         if(wordsAFT03) state.theTile03 += "${newWords2}"
 	} 
@@ -1014,7 +1030,7 @@ def tileHandler03(){
         state.theTile03 += "width:${secWidth03a}%'>"
 		if(wordsBEF03a) makeTileLine("3a",wordsBEF03a,linkBEF03a)
         if(wordsBEF03a) state.theTile03 += "${newWords2}"
-		if(deviceAtts03a) state.theTile03 += "${state.deviceStatus03a}"
+		if(deviceAtts03a && !hideAttr03a) state.theTile03 += "${state.deviceStatus03a}"
 		if(wordsAFT03a) makeTileLine("3a",wordsAFT03a,linkAFT03a)
         if(wordsAFT03a) state.theTile03 += "${newWords2}"
 	}
@@ -1026,7 +1042,7 @@ def tileHandler03(){
         state.theTile03 += "width:${secWidth03b}%'>"
 		if(wordsBEF03b) makeTileLine("3b",wordsBEF03b,linkBEF03b)
         if(wordsBEF03b) state.theTile03 += "${newWords2}"
-		if(deviceAtts03b) state.theTile03 += "${state.deviceStatus03b}"
+		if(deviceAtts03b && !hideAttr03b) state.theTile03 += "${state.deviceStatus03b}"
 		if(wordsAFT03b) makeTileLine("3b",wordsAFT03b,linkAFT03b)
         if(wordsAFT03b) state.theTile03 += "${newWords2}"
 	}
@@ -1096,7 +1112,7 @@ def tileHandler04(){
         state.theTile04 += "width:${secWidth04}%'>"
         if(wordsBEF04) makeTileLine(4,wordsBEF04,linkBEF04)
         if(wordsBEF04) state.theTile04 += "${newWords2}"
-		if(deviceAtts04) state.theTile04 += "${state.deviceStatus04}"
+		if(deviceAtts04 && !hideAttr04) state.theTile04 += "${state.deviceStatus04}"
 		if(wordsAFT04) makeTileLine(4,wordsAFT04,linkAFT04)
         if(wordsAFT04) state.theTile04 += "${newWords2}"
 	} 
@@ -1108,7 +1124,7 @@ def tileHandler04(){
         state.theTile04 += "width:${secWidth04a}%'>"
 		if(wordsBEF04a) makeTileLine("4a",wordsBEF04a,linkBEF04a)
         if(wordsBEF04a) state.theTile04 += "${newWords2}"
-		if(deviceAtts04a) state.theTile04 += "${state.deviceStatus04a}"
+		if(deviceAtts04a && !hideAttr04a) state.theTile04 += "${state.deviceStatus04a}"
 		if(wordsAFT04a) makeTileLine("4a",wordsAFT04a,linkAFT04a)
         if(wordsAFT04a) state.theTile04 += "${newWords2}"
 	}
@@ -1120,7 +1136,7 @@ def tileHandler04(){
         state.theTile04 += "width:${secWidth04b}%'>"
 		if(wordsBEF04b) makeTileLine("4b",wordsBEF04b,linkBEF04b)
         if(wordsBEF04b) state.theTile04 += "${newWords2}"
-		if(deviceAtts04b) state.theTile04 += "${state.deviceStatus04b}"
+		if(deviceAtts04b && !hideAttr04b) state.theTile04 += "${state.deviceStatus04b}"
 		if(wordsAFT04b) makeTileLine("4b",wordsAFT04b,linkAFT04b)
         if(wordsAFT04b) state.theTile04 += "${newWords2}"
 	}
@@ -1190,7 +1206,7 @@ def tileHandler05(){
         state.theTile05 += "width:${secWidth05}%'>"
         if(wordsBEF05) makeTileLine(5,wordsBEF05,linkBEF05)
         if(wordsBEF05) state.theTile05 += "${newWords2}"
-		if(deviceAtts05) state.theTile05 += "${state.deviceStatus05}"
+		if(deviceAtts05 && !hideAttr05) state.theTile05 += "${state.deviceStatus05}"
 		if(wordsAFT05) makeTileLine(5,wordsAFT05,linkAFT05)
         if(wordsAFT05) state.theTile05 += "${newWords2}"
 	} 
@@ -1202,7 +1218,7 @@ def tileHandler05(){
         state.theTile05 += "width:${secWidth05a}%'>"
 		if(wordsBEF05a) makeTileLine("5a",wordsBEF05a,linkBEF05a)
         if(wordsBEF05a) state.theTile05 += "${newWords2}"
-		if(deviceAtts05a) state.theTile05 += "${state.deviceStatus05a}"
+		if(deviceAtts05a && !hideAttr05a) state.theTile05 += "${state.deviceStatus05a}"
 		if(wordsAFT05a) makeTileLine("5a",wordsAFT05a,linkAFT05a)
         if(wordsAFT05a) state.theTile05 += "${newWords2}"
 	}
@@ -1213,7 +1229,7 @@ def tileHandler05(){
         if (fontSize05b != fontSize05) {state.theTile05 += "font-size:${fontSize05b}px;"}
         state.theTile05 += "width:${secWidth05b}%'>"
 		if(wordsBEF05b) makeTileLine("5b",wordsBEF05b,linkBEF05b)
-        if(wordsBEF05b) state.theTile05 += "${newWords2}"
+        if(wordsBEF05b && !hideAttr05b) state.theTile05 += "${newWords2}"
 		if(deviceAtts05b) state.theTile05 += "${state.deviceStatus05b}"
 		if(wordsAFT05b) makeTileLine("5b",wordsAFT05b,linkAFT05b)
         if(wordsAFT05b) state.theTile05 += "${newWords2}"
