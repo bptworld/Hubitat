@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.4 - 02/02/20 - Added Date/Time formatting for Last Activity
  *  V2.1.3 - 02/02/20 - Added switch to hide/unhide device attribute
  *  V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%
  *  V2.1.1 - 11/01/19 - Updated Table build logic to minimize formating (jerry.molenaar)
@@ -56,7 +57,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.1.3"
+	state.version = "v2.1.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -117,6 +118,7 @@ def pageConfig() {
 
 def line01Options(){
     dynamicPage(name: "line01Options", title: "Line 01 Options", install: false, uninstall: false){
+        state.lastActiv = "no"
 		section(getFormat("header-green", "${getImage("Blank")}"+" Table Options")) {           
             input "nSections01", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
 			if(nSections01 == "1") {
@@ -158,10 +160,12 @@ def line01Options(){
 				input "wordsAFT01", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
                 if(wordsBEF01) if(wordsBEF01.toLowerCase().contains("wlink")) {
                     input "linkBEF01", "text", title: "Text Before is a link. Please enter a friendly name to display on tile.", submitOnChange: true
-                }
+                }               
                 if(wordsAFT01) if(wordsAFT01.toLowerCase().contains("wlink")) {
                     input "linkAFT01", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF01) {if(wordsBEF01.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT01) {if(wordsAFT01.contains("lastAct")) state.lastActiv = "yes"}                   
 				input "device01", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device01) {
 					def allAtts01 = [:]
@@ -176,7 +180,7 @@ def line01Options(){
 				input "fontSize01", "number", title: "Font Size", required: true, defaultValue: "15", submitOnChange: true, width:6
 				input "align01", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 4
 				input "color01", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
-				}
+            }
 		}
 		if(nSections01 == "2" || nSections01 == "3") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Line 01 - Section 2 Options")) {
@@ -191,6 +195,8 @@ def line01Options(){
                 if(wordsAFT01a) if(wordsAFT01a.toLowerCase().contains("wlink")) {
                     input "linkAFT01a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF01a) {if(wordsBEF01a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT01a) {if(wordsAFT01a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device01a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device01a) {
 					def allAtts01a = [:]
@@ -220,6 +226,8 @@ def line01Options(){
                 if(wordsAFT01b) if(wordsAFT01b.toLowerCase().contains("wlink")) {
                     input "linkAFT01b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF01b) {if(wordsBEF01b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT01b) {if(wordsAFT01b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device01b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device01b) {
 					def allAtts01b = [:]
@@ -236,6 +244,20 @@ def line01Options(){
 				input "color01b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat01", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -287,6 +309,8 @@ def line02Options(){
                 if(wordsAFT02) if(wordsAFT02.toLowerCase().contains("wlink")) {
                     input "linkAFT02", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF02) {if(wordsBEF02.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT02) {if(wordsAFT02.contains("lastAct")) state.lastActiv = "yes"}
 				input "device02", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device02) {
 					def allAtts02 = [:]
@@ -316,6 +340,8 @@ def line02Options(){
                 if(wordsAFT02a) if(wordsAFT02a.toLowerCase().contains("wlink")) {
                     input "linkAFT02a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF02a) {if(wordsBEF02a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT02a) {if(wordsAFT02a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device02a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device02a) {
 					def allAtts02a = [:]
@@ -345,6 +371,8 @@ def line02Options(){
                 if(wordsAFT02b) if(wordsAFT02b.toLowerCase().contains("wlink")) {
                     input "linkAFT02b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF02b) {if(wordsBEF02b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT02b) {if(wordsAFT02b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device02b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device02b) {
 					def allAtts02b = [:]
@@ -361,6 +389,20 @@ def line02Options(){
 				input "color02b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat02", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -412,6 +454,8 @@ def line03Options(){
                 if(wordsAFT03) if(wordsAFT03.toLowerCase().contains("wlink")) {
                     input "linkAFT03", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF03) {if(wordsBEF03.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT03) {if(wordsAFT03.contains("lastAct")) state.lastActiv = "yes"}
 				input "device03", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device03) {
 					def allAtts03 = [:]
@@ -441,6 +485,8 @@ def line03Options(){
                 if(wordsAFT03a) if(wordsAFT03a.toLowerCase().contains("wlink")) {
                     input "linkAFT03a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF03a) {if(wordsBEF03a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT03a) {if(wordsAFT03a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device03a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device03a) {
 					def allAtts03a = [:]
@@ -470,6 +516,8 @@ def line03Options(){
                 if(wordsAFT03b) if(wordsAFT03b.toLowerCase().contains("wlink")) {
                     input "linkAFT03b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF03b) {if(wordsBEF03b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT03b) {if(wordsAFT03b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device03b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device03b) {
 					def allAtts03b = [:]
@@ -486,6 +534,20 @@ def line03Options(){
 				input "color03b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat03", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -537,6 +599,8 @@ def line04Options(){
                 if(wordsAFT04) if(wordsAFT04.toLowerCase().contains("wlink")) {
                     input "linkAFT04", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF04) {if(wordsBEF04.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT04) {if(wordsAFT04.contains("lastAct")) state.lastActiv = "yes"}
 				input "device04", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device04) {
 					def allAtts04 = [:]
@@ -566,6 +630,8 @@ def line04Options(){
                 if(wordsAFT04a) if(wordsAFT04a.toLowerCase().contains("wlink")) {
                     input "linkAFT04a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF04a) {if(wordsBEF04a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT04a) {if(wordsAFT04a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device04a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device04a) {
 					def allAtts04a = [:]
@@ -595,6 +661,8 @@ def line04Options(){
                 if(wordsAFT04b) if(wordsAFT04b.toLowerCase().contains("wlink")) {
                     input "linkAFT04b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF04b) {if(wordsBEF04b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT04b) {if(wordsAFT04b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device04b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device04b) {
 					def allAtts04b = [:]
@@ -611,6 +679,20 @@ def line04Options(){
 				input "color04b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat04", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -662,6 +744,8 @@ def line05Options(){
                 if(wordsAFT05) if(wordsAFT05.toLowerCase().contains("wlink")) {
                     input "linkAFT05", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF05) {if(wordsBEF05.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT05) {if(wordsAFT05.contains("lastAct")) state.lastActiv = "yes"}
 				input "device05", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device05) {
 					def allAtts05 = [:]
@@ -691,6 +775,8 @@ def line05Options(){
                 if(wordsAFT05a) if(wordsAFT05a.toLowerCase().contains("wlink")) {
                     input "linkAFT05a", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF05a) {if(wordsBEF05a.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT05a) {if(wordsAFT05a.contains("lastAct")) state.lastActiv = "yes"}
 				input "device05a", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device05a) {
 					def allAtts05a = [:]
@@ -720,6 +806,8 @@ def line05Options(){
                 if(wordsAFT05b) if(wordsAFT05b.toLowerCase().contains("wlink")) {
                     input "linkAFT05b", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
                 }
+                if(wordsBEF05b) {if(wordsBEF05b.contains("lastAct")) state.lastActiv = "yes"}
+                if(wordsAFT05b) {if(wordsAFT05b.contains("lastAct")) state.lastActiv = "yes"}
 				input "device05b", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 				if(device05b) {
 					def allAtts05b = [:]
@@ -736,6 +824,20 @@ def line05Options(){
 				input "color05b", "text", title: "Text Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: true, defaultValue: "Black", submitOnChange: true, width:6
 			}
 		}
+        if(state.lastActiv == "yes") {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
+                input "dateTimeFormat05", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                    ["f1":"MMM dd, yyy - h:mm:ss a"],
+                	["f2":"dd MMM, yyy - h:mm:ss a"],
+                    ["f3":"MMM dd - h:mm:ss a (12 hour)"],
+                    ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                    ["f5":"MMM dd - HH:mm (24 hour)"],
+                    ["f6":"dd MMM - HH:mm (24 hour)"],
+                    ["f7":"h:mm:ss a (12 hour)"],
+                    ["f8":"HH:mm:ss (24 hour)"],
+                ]
+            }
+        }
 		sampleTileHandler()
 	}
 }	
@@ -1376,26 +1478,32 @@ def makeTileLine(dev,words,linkName) {
         if(logEnable) log.debug "In makeTileLine - newWords: ${newWords}"
     } else if(words.toLowerCase().contains("%lastact%")) {
         try {
-            if(device == "1") { lAct = device01.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "1a") { lAct = device01a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "1b") { lAct = device01b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            dateTimeFormatHandler1()
+            if(device == "1") { lAct = device01.getLastActivity().format("${dFormat1}") }
+            if(device == "1a") { lAct = device01a.getLastActivity().format("${dFormat1}") }
+            if(device == "1b") { lAct = device01b.getLastActivity().format("${dFormat1}") }
+            
+            dateTimeFormatHandler2()
+            if(device == "2") { lAct = device02.getLastActivity().format("${dFormat2}") }
+            if(device == "2a") { lAct = device02a.getLastActivity().format("${dFormat2}") }
+            if(device == "2b") { lAct = device02b.getLastActivity().format("${dFormat2}") }
         
-            if(device == "2") { lAct = device02.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "2a") { lAct = device02a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "2b") { lAct = device02b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            dateTimeFormatHandler3()
+            if(device == "3") { lAct = device03.getLastActivity().format("${dFormat3}") }
+            if(device == "3a") { lAct = device03a.getLastActivity().format("${dFormat3}") }
+            if(device == "3b") { lAct = device03b.getLastActivity().format("${dFormat3}") }
         
-            if(device == "3") { lAct = device03.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "3a") { lAct = device03a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "3b") { lAct = device03b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            dateTimeFormatHandler4()
+            if(device == "4") { lAct = device04.getLastActivity().format("${dFormat4}") }
+            if(device == "4a") { lAct = device04a.getLastActivity().format("${dFormat4}") }
+            if(device == "4b") { lAct = device04b.getLastActivity().format("${dFormat4}") }
         
-            if(device == "4") { lAct = device04.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "4a") { lAct = device04a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "4b") { lAct = device04b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
+            dateTimeFormatHandler5()
+            if(device == "5") { lAct = device05.getLastActivity().format("${dFormat5}") }
+            if(device == "5a") { lAct = device05a.getLastActivity().format("${dFormat5}") }
+            if(device == "5b") { lAct = device05b.getLastActivity().format("${dFormat5}") }
         
-            if(device == "5") { lAct = device05.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "5a") { lAct = device05a.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-            if(device == "5b") { lAct = device05b.getLastActivity().format( 'MMM dd, yyy - h:mm:ss a' ) }
-        
+            if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
             if(lAct) {
                 newWords2 = words.replace("%lastAct%","${lAct}")
             } else {
@@ -1403,12 +1511,88 @@ def makeTileLine(dev,words,linkName) {
             }
         } catch (e) {
             newWords2 = words.replace("%lastAct%","Not Available")
+            log.error e
         }
     } else {
         newWords2 = "${words}"
     }
     if(logEnable) log.debug "In makeTileLine - newWords2: ${newWords2}"
     return newWords2
+}
+
+def dateTimeFormatHandler1() {
+    if(logEnable) log.debug "In dateTimeFormatHandler1 (${state.version})"
+    if(dateTimeFormat01 == "f1") dFormat1 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat01 == "f2") dFormat1 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat01 == "f3") dFormat1 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat01 == "f4") dFormat1 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat01 == "f5") dFormat1 = "MMM dd - HH:mm"
+    if(dateTimeFormat01 == "f6") dFormat1 = "dd MMM - HH:mm"
+    if(dateTimeFormat01 == "f7") dFormat1 = "h:mm:ss a"
+    if(dateTimeFormat01 == "f8") dFormat1 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat1: ${dFormat1}"
+    return dFormat1
+}
+
+def dateTimeFormatHandler2() {
+    if(logEnable) log.debug "In dateTimeFormatHandler2 (${state.version})"
+    if(dateTimeFormat02 == "f1") dFormat2 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat02 == "f2") dFormat2 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat02 == "f3") dFormat2 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat02 == "f4") dFormat2 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat02 == "f5") dFormat2 = "MMM dd - HH:mm"
+    if(dateTimeFormat02 == "f6") dFormat2 = "dd MMM - HH:mm"
+    if(dateTimeFormat02 == "f7") dFormat2 = "h:mm:ss a"
+    if(dateTimeFormat02 == "f8") dFormat2 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat2: ${dFormat2}"
+    return dFormat2
+}
+
+def dateTimeFormatHandler3() {
+    if(logEnable) log.debug "In dateTimeFormatHandler3 (${state.version})"
+    if(dateTimeFormat03 == "f1") dFormat3 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat03 == "f2") dFormat3 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat03 == "f3") dFormat3 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat03 == "f4") dFormat3 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat03 == "f5") dFormat3 = "MMM dd - HH:mm"
+    if(dateTimeFormat03 == "f6") dFormat3 = "dd MMM - HH:mm"
+    if(dateTimeFormat03 == "f7") dFormat3 = "h:mm:ss a"
+    if(dateTimeFormat03 == "f8") dFormat3 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat3: ${dFormat3}"
+    return dFormat3
+}  
+ 
+def dateTimeFormatHandler4() {
+    if(logEnable) log.debug "In dateTimeFormatHandler4 (${state.version})"
+    if(dateTimeFormat04 == "f1") dFormat4 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat04 == "f2") dFormat4 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat04 == "f3") dFormat4 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat04 == "f4") dFormat4 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat04 == "f5") dFormat4 = "MMM dd - HH:mm"
+    if(dateTimeFormat04 == "f6") dFormat4 = "dd MMM - HH:mm"
+    if(dateTimeFormat04 == "f7") dFormat4 = "h:mm:ss a"
+    if(dateTimeFormat04 == "f8") dFormat4 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat4: ${dFormat4}"
+    return dFormat4
+}
+
+def dateTimeFormatHandler5() {
+    if(logEnable) log.debug "In dateTimeFormatHandler5 (${state.version})"
+    if(dateTimeFormat05 == "f1") dFormat5 = "MMM dd, yyy - h:mm:ss a"
+    if(dateTimeFormat05 == "f2") dFormat5 = "dd MMM, yyy - h:mm:ss a"
+    if(dateTimeFormat05 == "f3") dFormat5 = "MMM dd - h:mm:ss a"
+    if(dateTimeFormat05 == "f4") dFormat5 = "dd MMM - h:mm:ss a"
+    if(dateTimeFormat05 == "f5") dFormat5 = "MMM dd - HH:mm"
+    if(dateTimeFormat05 == "f6") dFormat5 = "dd MMM - HH:mm"
+    if(dateTimeFormat05 == "f7") dFormat5 = "h:mm:ss a"
+    if(dateTimeFormat05 == "f8") dFormat5 = "HH:mm:ss"
+    
+    if(logEnable) log.debug "In dateTimeFormatHandler - dFormat5: ${dFormat5}"
+    return dFormat5
 }
 
 // ********** Normal Stuff **********
