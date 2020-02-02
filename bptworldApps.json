@@ -532,7 +532,7 @@
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
   "TileMasterParentVersion": "v2.0.5",
-  "TileMasterChild1Version": "v2.1.2",
+  "TileMasterChild1Version": "v2.1.3",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -546,7 +546,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%",
+  "TileMasterUpdateNote": "V2.1.3 - 02/02/20 - Added switch to hide/unhide device attribute",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
