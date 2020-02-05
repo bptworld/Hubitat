@@ -1461,7 +1461,10 @@ def getStatusColors(deviceStatus,deviceAtts) {
     
     if(deviceStatus == "present") deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
     if(deviceStatus == "not present") deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
-    
+
+    if(deviceStatus == "clear") deviceStatus1 = "<span style='color:${parent.colorClear}'>clear</span>"
+    if(deviceStatus == "detected") deviceStatus1 = "<span style='color:${parent.colorDetected}'>detected</span>"
+  
     if(deviceStatus1 == null) deviceStatus1 = deviceStatus
     if(logEnable) log.debug "In getStatusColors - Returning: ${deviceStatus1}"
     return deviceStatus1
