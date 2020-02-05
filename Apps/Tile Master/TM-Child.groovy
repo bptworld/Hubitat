@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.5 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
  *  V2.1.4 - 02/02/20 - Added Date/Time formatting for Last Activity
  *  V2.1.3 - 02/02/20 - Added switch to hide/unhide device attribute
  *  V2.1.2 - 01/19/20 - Attempt to fix an issue with %lastAct%
@@ -57,7 +58,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterChildVersion"
-	state.version = "v2.1.4"
+	state.version = "v2.1.5"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
