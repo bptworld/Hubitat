@@ -531,8 +531,8 @@
   "TheFlasherDiscussion": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
-  "TileMasterParentVersion": "v2.0.5",
-  "TileMasterChild1Version": "v2.1.4",
+  "TileMasterParentVersion": "v2.0.6",
+  "TileMasterChild1Version": "v2.1.5",
   "TileMasterChild1Name": "",
   "TileMasterChild2Version": "",
   "TileMasterChild2Name": "",
@@ -546,7 +546,7 @@
   "TileMasterChild3RawCode": "",
   "TileMasterChild4RawCode": "",
   "TileMasterDiscussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMasterUpdateNote": "V2.1.4 - 02/02/20 - Added Date/Time formatting for Last Activity",
+  "TileMasterUpdateNote": "V2.1.5 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
