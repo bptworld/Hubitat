@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V2.1.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
+ *  V2.0.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
  *  V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!
  *  V2.0.4 - 09/27/19 - Fixed missing motion color options
  *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
