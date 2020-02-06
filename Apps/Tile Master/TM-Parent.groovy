@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.1.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
  *  V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!
  *  V2.0.4 - 09/27/19 - Fixed missing motion color options
  *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMasterParentVersion"
-	state.version = "v2.0.5"
+	state.version = "v2.0.6"
     
     try {
         if(sendToAWSwitch && awDevice) {
