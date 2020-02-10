@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.3.0 - 02/10/20 - More code changes to home tracking
  *  V2.2.9 - 02/10/20 - Minor tweaks to who's home tracking
  *  V2.2.8 - 01/14/20 - Tweaks to see who's home for announcements
  *  V2.2.7 - 01/11/20 - Trying to fix a problem with nameCount
@@ -54,7 +55,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.2.9"
+	state.version = "v2.3.0"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -449,24 +450,18 @@ def presenceSensorHandler(evt){
             if(logEnable) log.debug "In presenceSensorHandler - fName: ${state.fName} - globalStatus: ${state.globalStatus} - status0: ${state.status[0]} - status1: ${state.status[1]}"
          
             if(state.pSensor == "present") {
-                if(state.status[1] == "notHome" || state.status[1] == "notSet") {
-                    state.globalStatus = "${x};justArrived"
-                }
                 if(logEnable) log.debug "In presenceSensorHandler (${x}) - Working On: ${parent.presenceSensors[x]} - fName: ${state.fName} - pSensor: ${state.pSensor} - status: ${state.status[1]} - TtimeDiffSecs: ${state.timeDiffSecs} - timeDiff: ${state.timeDiff}"
-    
-                //log.trace "timeDiffSecs: ${state.timeDiffSecs}"
                 if(state.timeDiffSecs < 20) {
                     if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${state.fName} just got here! Time Diff: ${state.timeDiff}"
-                    if(homeNow) {
-                        addNameToPresenceMap()
-                        messageHomeNow()
-                    }
-                    
                     if(flashOnHome) {
                         state.fSwitches = switchesHome
                         state.fNumFlashes = numFlashesHome
                         state.fDelay = delayHome
-                        flashLights()
+                    }
+                    if(homeNow) {
+                        if(flashOnHome) flashLights()
+                        addNameToPresenceMap()
+                        messageHomeNow()
                     }
                     state.globalStatus = "${x};justArrived"
                 } else {
@@ -474,51 +469,46 @@ def presenceSensorHandler(evt){
                         if(state.status[1] == "justArrived") { 
 		                    if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} is now home! Time Diff: ${state.timeDiff}"
                             addNameToPresenceMap()
-                            state.globalStatus = "${x};beenHome"
                         } else {
-                            state.globalStatus = "${x};beenHome"
-                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - globalStatus: ${state.globalStatus} - Welcome Home announcement was already made."
+                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - Welcome Home announcement was already made."
                         }
                     } else {
-                        state.globalStatus = "${x};beenHome"
-                        if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - globalStatus: ${state.globalStatus} - Home too long (${state.timeDiff}). No home announcements needed."
+                        if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - Home too long (${state.timeDiff}). No home announcements needed."
                     }
+                    state.globalStatus = "${x};beenHome"
                 }
             }
      
             if(state.pSensor == "not present") {
-                if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} - pSensor: ${state.pSensor} - status1: ${state.status[1]}"
-                if(state.status[1] != "notHome" || state.status[1] != "justDeparted") {
-                    state.globalStatus = "${x};justDeparted"
-                }
-        
-                if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} - Time Diff: ${state.timeDiff} - status: ${state.status[1]}"
-            
-                if(state.timeDiff < 1 && (state.status[1] == "justDeparted") || (state.status[1] == "beenHome")) {
-                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} just left home! Time Diff: ${state.timeDiff} - status: ${state.status[1]}"
-                    addNameToPresenceMap()
-                    state.globalStatus = "${x};notHome"
-                    
+                if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} - Time Diff: ${state.timeDiff} - pSensor: ${state.pSensor}"            
+                if(state.timeDiff < 20) {
+                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} just left home! Time Diff: ${state.timeDiff}"   
                     if(flashOnDep) {
                         state.fSwitches = switchesDep
                         state.fNumFlashes = numFlashesDep
                         state.fDelay = delayDep
-                        flashLights()
                     }
-                    if(departedNow) messageDeparted()
+                    if(departedNow) {
+                        if(flashOnDep) flashLights()
+                        addNameToPresenceMap()
+                        messageDeparted()
+                    }                   
                     if(departedDelayed) {
                         if(logEnable) log.debug "In whosAwayHandler - Will announce departure after a 2 minutes wait"
+                        if(flashOnDep) runIn(120, flashLights)
+                        addNameToPresenceMap()
                         runIn(120, messageDeparted)
                     }
                 } else {
-                    state.globalStatus = "${x};notHome"
-                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} - globalStatus: ${state.globalStatus} - Gone too long (${state.timeDiff}). No away announcements needed."
-                }             
+                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${state.fName} - Gone too long (${state.timeDiff}). No away announcements needed."
+                }  
+                state.globalStatus = "${x};notHome"
             }
-            if(logEnable) log.debug "presenceSensorHandler - Finished (Presence) - Sending globalStatus: ${state.globalStatus}"
+            if(logEnable) log.debug "In presenceSensorHandler - Sending globalStatus: ${state.globalStatus}"
             theGvDevice.sendDataMap(state.globalStatus)
         }
     }
+    if(logEnable) log.debug "In presenceSensorHandler - Finished (Presence)"
 }
 
 def lockPresenceHandler(evt){
@@ -583,45 +573,47 @@ def lockPresenceHandler(evt){
             
             if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 1 - Working On: ${parent.locks[x]} - fName: ${state.fName} - lock: ${state.lock}"
         
-            if(state.lock == "unlocked") {
-                if(state.status[1] == "notHome" || state.status[1] == "-" || state.status[1] == "notSet") {
-                    state.globalStatus = "${x};justArrived"
-                }
-                
+            if(state.lock == "unlocked") {            
                 if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 2 - Working On: ${parent.locks[x]} - fName: ${state.fName} - lock: ${state.lock} - status: ${state.status[1]}"
                 if(state.timeDiffSecs < 20) {
                     if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${state.fName} just unlocked the door! Time Diff: ${state.timeDiff}"
-                    if(homeNow) addNameToPresenceMap()       
+                    if(flashOnHome) {
+                        state.fSwitches = switchesHome
+                        state.fNumFlashes = numFlashesHome
+                        state.fDelay = delayHome
+                    }
+                    if(homeNow) {
+                        if(flashOnHome) flashLights()
+                        addNameToPresenceMap()
+                        messageHomeNow()
+                    }
                     state.globalStatus = "${x};justArrived"
-                    if(homeNow) messageHomeNow()
                 } else {
                     if(state.timeDiff < timeHome) { 
-                        if(state.status[1] != "justArrived") { 
+                        if(state.status[1] == "justArrived") { 
 		                    if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} is now home! Time Diff: ${state.timeDiff}"
                             addNameToPresenceMap()
-                            state.globalStatus = "${x};beenHome"
                         } else {
-                            state.globalStatus = "${x};beenHome"
-                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - globalStatus: ${state.globalStatus} - Welcome Home announcement was already made."
+                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - Welcome Home announcement was already made."
                         }
                     } else {
-                        state.globalStatus = "${x};beenHome"
-                       if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - globalStatus: ${state.globalStatus} - Home too long (${state.timeDiff}). No home announcements needed."
-                    }   
+                       if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${state.fName} - Home too long (${state.timeDiff}). No home announcements needed."
+                    }
+                    state.globalStatus = "${x};beenHome"
                 }
             } else if(state.lock == "locked") {
                 state.globalStatus = "${x};notHome"
-                if(logEnable) log.trace "In lockPresenceHandler (${x}) - Lock - Working On: ${parent.locks[x]} - fName: ${state.fName} - lock: ${state.lock} - status: ${state.status[1]}"
+                if(logEnable) log.trace "In lockPresenceHandler (${x}) - Lock - Working On: ${parent.locks[x]} - fName: ${state.fName} - lock: ${state.lock}"
             }
-            if(logEnable) log.debug "lockPresenceHandler - Finished (Lock) - Sending globalStatus: ${state.globalStatus}"
+            if(logEnable) log.debug "In lockPresenceHandler - Sending globalStatus: ${state.globalStatus}"
             theGvDevice.sendDataMapLock(state.globalStatus)
         }
     }
+    if(logEnable) log.debug "In lockPresenceHandler - Finished (Lock)"
 }
 
 def addNameToPresenceMap() {
     if(logEnable) log.debug "In addNameToPresenceMap (${state.version})"
-    if(logEnable) log.debug "In addNameToPresenceMap - BEFORE - nameCount: ${state.nameCount} - presenceMap: ${state.presenceMap}"
 	state.nameCount = state.nameCount + 1
     if(state.nameCount == 1) state.presenceMap = ["${state.fName}"]
 	if(state.nameCount >= 2) state.presenceMap += ["${state.fName}"]
