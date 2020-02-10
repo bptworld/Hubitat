@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  V2.2.9 - 02/10/20 - Minor tweaks to whoe's home tracking
+ *  V2.2.9 - 02/10/20 - Minor tweaks to who's home tracking
  *  V2.2.8 - 01/14/20 - Tweaks to see who's home for announcements
  *  V2.2.7 - 01/11/20 - Trying to fix a problem with nameCount
  *  V2.2.6 - 01/11/20 - Delayed Welcome Home is now optional
