@@ -162,7 +162,7 @@ def mainPage() {
                 input "colorBatt", "text", title: "<span style='color: ${colorBatt};font-size: 25px'>Battery Between</span>", submitOnChange: true, width: 4, defaultValue: "blue"
                 input "colorBattHigh", "text", title: "<span style='color: ${colorBattHigh};font-size: 25px'>Battery >= ${battHigh}</span>", submitOnChange: true, width: 4, defaultValue: "green"  
             }
-			display()
+			display2()
 		}
 	}
 }
