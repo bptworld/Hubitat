@@ -2,7 +2,7 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Apps": "Abacus Intense Counting, Abacus Time Traveler, App Watchdog 2, At Home Simulator, BI Control, CATT Director, Chromecast Helper, Device Check Plus, Device Sequencer, Device Watchdog, Follow Me, Fully Kiosk Director, Gentle Wake Up, Home Tracker, Hub Watchdog, Life360 Tracker, Life360 with States, Lighting Effects, Magic Cube, Motion Controlled Scene Lighting, Notifier Plus, One at a Time, Remote Wellness Check, Room Director, Send IP2IR, Simple Dates, Simple Device Timer, Simple Irrigation, Simple Reminders, The Flasher, Tile Master, Snapshot, Web Pinger",
+  "Apps": "Abacus Intense Counting, Abacus Time Traveler, App Watchdog 2, At Home Simulator, BI Control, CATT Director, Chromecast Helper, Device Check Plus, Device Sequencer, Device Watchdog, Follow Me, Fully Kiosk Director, Gentle Wake Up, Home Tracker, Hub Watchdog, Life360 Tracker, Life360 with States, Lighting Effects, Magic Cube, Motion Controlled Scene Lighting, Notifier Plus, One at a Time, Remote Wellness Check, Room Director, Send IP2IR, Simple Dates, Simple Device Timer, Simple Irrigation, Simple Reminders, The Flasher, Tile Master 2, Snapshot, Web Pinger",
   
   "AbacusIntenseCountingParentVersion": "v2.0.0",
   "AbacusIntenseCountingChild1Version": "v2.0.0",
@@ -531,7 +531,7 @@
   "TheFlasherDiscussion": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
-  "TileMaster2ParentVersion": "v2.0.7",
+  "TileMaster2ParentVersion": "v2.0.8",
   "TileMaster2Child1Version": "v2.1.6",
   "TileMaster2Child1Name": "",
   "TileMaster2Child2Version": "",
