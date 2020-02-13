@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.0.8 - 02/12/20 - Cosmetic changes
  *  V2.0.7 - 02/12/20 - Added default color codes
  *  V2.0.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
  *  V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.0.7"
+	state.version = "v2.0.8"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -105,6 +106,7 @@ def mainPage() {
 				paragraph "Create a tile with multiple devices and customization options."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+                paragraph "Be sure to complete the 'Color and Level Options' section and hit 'done' BEFORE creating any child devices."
 				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
@@ -124,7 +126,7 @@ def mainPage() {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
             section(getFormat("header-green", "${getImage("Blank")}"+" Device Value Color Config")) {}
-			section("Color Options:", hideable: true, hidden: false) {
+			section("Color and Level Options:", hideable: true, hidden: false) {
                 paragraph "Color is optional and is selectable within each child app. All child apps will get the values from here."
 				paragraph "Enter in the colors you would like assigned to each value.<br>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White"
 				input "colorOn", "text", title: "<span style='color: ${colorOn};font-size: 25px'>on</span>", submitOnChange: true, width: 6, defaultValue: "red"
