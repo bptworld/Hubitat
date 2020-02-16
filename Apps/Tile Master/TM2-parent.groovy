@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.0.9 - 02/16/20 - Added Custom Icons!
  *  V2.0.8 - 02/12/20 - Cosmetic changes
  *  V2.0.7 - 02/12/20 - Added default color codes
  *  V2.0.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.0.8"
+	state.version = "v2.0.9"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -74,7 +75,8 @@ definition(
 )
 
 preferences {
-     page name: "mainPage", title: "", install: true, uninstall: true
+    page name: "mainPage", title: "", install: true, uninstall: true
+    page name: "iconOptions", title: "", install: false, uninstall: true, nextPage: "mainPage"
 } 
 
 def installed() {
@@ -124,10 +126,19 @@ def mainPage() {
             // ** End App Watchdog Code **
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
+                input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
  			}
-            section(getFormat("header-green", "${getImage("Blank")}"+" Device Value Color Config")) {}
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Device Value Color and Icon Config")) {}
+            section("Icon Options:", hideable: true, hidden: false) {
+                if(iconName || iconURL) {
+                    href "iconOptions", title:"${getImage("optionsGreen")} Select Icons", description:"Click here for Options"
+                } else {
+                    href "iconOptions", title:"${getImage("optionsRed")} Select Icons", description:"Click here for Options"
+                }
+            }
 			section("Color and Level Options:", hideable: true, hidden: false) {
-                paragraph "Color is optional and is selectable within each child app. All child apps will get the values from here."
+                paragraph "<b>Please be sure to fill in each value (even if you don't plan on using it) and then hit 'Done' BEFORE creating any child apps.</b>"
 				paragraph "Enter in the colors you would like assigned to each value.<br>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White"
 				input "colorOn", "text", title: "<span style='color: ${colorOn};font-size: 25px'>on</span>", submitOnChange: true, width: 6, defaultValue: "red"
                 input "colorOff", "text", title: "<span style='color: ${colorOff};font-size: 25px'>off</span>", submitOnChange: true, width: 6, defaultValue: "green"
@@ -169,6 +180,160 @@ def mainPage() {
 	}
 }
 
+def iconOptions() {
+    dynamicPage(name: "iconOptions", title: "", install:false, uninstall:false) {
+        display()
+        section(getFormat("header-green", "${getImage("Blank")}"+" Icon Options")) {}
+        section("Instructions:", hideable: true, hidden: true) {
+			paragraph "<b>Exchange your device status with Icons!</b>"
+            
+            instruct =  "- It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small> "
+            instruct += "This will save on character counts.<br>"
+            instruct += "- Remember to add icons for both values (ie. on and off, open and closed)<br>"
+            instruct += "- Add as many icons as you like, you can use different icons for different devices!<br>"
+            instruct += "- All icon URL addresses must include 'http://'<br>"
+            instruct += "- When deleting icons, only the Name is required (Must be exact)"
+            
+            paragraph "${instruct}"
+		}
+        section() {
+            input "iconName", "text", title: "Icon Name (ie. Green Check Mark)", submitOnChange:true
+            input "iconURL", "text", title: "Icon URL (ie. http://bit.ly/2m0udns) <small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>", submitOnChange:true
+            input "addIcon", "button", title: "Add Icon", width: 4
+            input "delIcon", "button", title: "Delete Icon", width: 4
+            input "delList", "button", title: "Delete All Icons", width: 4
+            if(state.message != null) paragraph "<b>${state.message}</b>"
+            if(state.deleteAllIcons) {
+                input "delListYes", "button", title: "Yes", width: 6
+                input "delListNo", "button", title: "No", width: 6
+            }
+            paragraph "<hr>"
+            if(state.iconList == null || state.iconList == "") state.iconList = "Empty"
+            paragraph "<b>Icon List</b><br>${state.iconList}"
+        }
+    }
+}
+
+def addIcon() {
+    if(logEnable) log.debug "******************* addIcon - Start *******************"
+    if(logEnable) log.debug "In addIcon (${state.version})"
+
+    if(state.theList == null) state.theList = []
+    newIcon = "${iconName};${iconURL}"
+    checkForMatch(iconName)
+    if(!match) {
+        state.theList << newIcon   
+        state.theList = state.theList.sort()
+        state.message = "New Icon has been added"
+    } else {
+        state.message = "Icon was found with the same name, please use a different name for each icon"
+    }
+    if(logEnable) log.debug "******************* addIcon - End *******************"
+    buildIconList()
+}
+
+def buildIconList() {
+    if(logEnable) log.debug "******************* buildIconList - Start *******************"
+    if(logEnable) log.debug "In buildIconList (${state.version})"
+    if(state.theList) {           
+	    def listView = "${state.theList}".split(", ")
+		theList = "<table>"
+    	listView.each { item -> 
+            def (iconName,iconAdd) = item.split(";")
+            iconName = iconName.replace("[","")
+            iconAdd = iconAdd.replace("]","")
+            log.debug "working on theList: ${iconName} - ${iconAdd}"
+            theList += "<tr><td>${iconName}</td><td> - </td><td><img src='$iconAdd' height=30></td></tr>"
+        }
+        theList += "</table>"
+        state.iconList = "${theList}"
+    }
+    if(logEnable) log.debug "******************* buildIconList - End *******************"
+    sendIconList()
+}
+
+def sendIconList() {
+    if(logEnable) log.debug "******************* sendIconList - Start *******************"
+    if(logEnable) log.debug "In sendIconList (${state.version}) - Sending List"
+    childApps.each {child -> child.masterListHandler(state.theList)}
+    if(logEnable) log.debug "******************* sendIconList - End *******************"
+}
+
+def checkForMatch(iconName) {
+    if(logEnable) log.debug "In checkForMatch (${state.version})"
+    match = false
+    listCount = state.theList.size()
+    for(x=0;x < listCount;x++) {
+        if(logEnable) log.debug "In checkForMatch - Looking for ${iconName}"
+        theItem = state.theList[x]
+        def (listName, listAdd) = theItem.split(";")
+        if(listName == iconName) {
+            if(logEnable) log.debug "In checkForMatch - Match! - listName: ${listName} vs iconName: ${iconName}"
+            match = true
+        } else {
+            if(logEnable) log.debug "In checkForMatch - Didin't Match! - listName: ${listName} vs iconName: ${iconName}"
+        }
+    }
+    return match
+}
+
+def delIcon() {
+    if(logEnable) log.debug "******************* delIcon - Start *******************"
+    if(logEnable) log.debug "In delIcon (${state.version})"
+    match = false
+    listCount = state.theList.size()
+    for(x=0;x < listCount;x++) {
+        if(logEnable) log.debug "In delIcon - Looking for ${iconName}"
+        theItem = state.theList[x]
+        def (listName, listAdd) = theItem.split(";")
+        if(listName == iconName) {
+            if(logEnable) log.debug "In delIcon - Match! - listName: ${listName} vs iconName: ${iconName}"
+            state.theList.remove(state.theList[x])
+            listCount = state.theList.size()
+            match = true
+        } else {
+            if(logEnable) log.debug "In delIcon - Didin't Match! - listName: ${listName} vs iconName: ${iconName}"
+        }
+    }
+    if(match) {
+        state.message = "Icon ${iconName} has been deleted"
+    } else {
+        state.message = "Icon ${iconName} was not found, Icon not deleted"
+    }
+    if(logEnable) log.debug "******************* delIcon - End *******************"
+    buildIconList()
+}
+
+def delAllIcons() {
+    if(logEnable) log.debug "In delList (${state.version})"
+    state.iconList = null
+    state.theList = null
+    state.message = "All Icons have been deleted"
+    state.deleteAllIcons = false
+}
+
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
+    if(state.whichButton == "addIcon"){
+        addIcon()
+    }
+    if(state.whichButton == "delIcon"){
+        delIcon()
+    }
+    if(state.whichButton == "delList"){
+        state.message = "Are you sure you want to DELETE all icons? This can not be undone."
+        state.deleteAllIcons = true
+    }
+    if(state.whichButton == "delListYes"){
+        delAllIcons()
+    }
+    if(state.whichButton == "delListNo"){
+        state.message = "Delete All Icons was cancelled"
+        state.deleteAllIcons = false
+    }
+}
+
 def installCheck(){
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
@@ -188,6 +353,8 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
     if(type == "logo") return "${loc}logo.png height=60>"
 }
+
+// https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/
 
 def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
