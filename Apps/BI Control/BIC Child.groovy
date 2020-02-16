@@ -4,7 +4,7 @@
  *  Design Usage:
  *  This app is designed to work locally with Blue Iris security software.
  *
- *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
  *
  *  Thanks to (@jpark40) for the original 'Blue Iris Profiles based on Modes' code that I based this app off of.
  *  
@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
  *  V2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  V1.0.9 - 05/08/19 - Fixed a typo
@@ -57,7 +58,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "BIControlChildVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -499,7 +500,7 @@ def biChangeProfile(num) {
 		} else
 	if(triggerMode == "Camera_Snapshot") {
 		if(logEnable) log.debug "I'm in Camera_Snapshot"
-		biRawCommand = "/admin?camera=${biCamera}/snapshot&user=${parent.biUser}&pw=${parent.biPass}"
+		biRawCommand = "/admin?camera=${biCamera}&snapshot&user=${parent.biUser}&pw=${parent.biPass}"
 		// /admin?camera=x&snapshot
 	} else
 	if(triggerMode == "Camera_Trigger") {
