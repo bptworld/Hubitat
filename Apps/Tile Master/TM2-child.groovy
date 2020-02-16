@@ -259,17 +259,17 @@ def pageConfig() {
                         if(uwi1) {oneSplit = uwi1.split(" - ")}     
                         if(uwi2) {twoSplit = uwi2.split(" - ")}
                         if(uwi3) {threeSplit = uwi3.split(" - ")}
-                        if(uwi1) state.iconLink1 = "${oneSplit[1]}"
-                        if(uwi2) state.iconLink2 = "${twoSplit[1]}"
-                        if(uwi3) state.iconLink3 = "${threeSplit[1]}"
+                        if(uwi1) iconLink1 = "${oneSplit[1]}"
+                        if(uwi2) iconLink2 = "${twoSplit[1]}"
+                        if(uwi3) iconLink3 = "${threeSplit[1]}"
                         thisSize = app."theSize_$x"
                         if(thisSize == null) thisSize = 30
                         
-                        if(state.iconLink1 == null) {state.iconLink1 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-                        if(state.iconLink2 == null) {state.iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-                        if(state.iconLink3 == null) {state.iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+                        if(iconLink1 == null) {iconLink1 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+                        if(iconLink2 == null) {iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+                        if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
                             
-                        iconTable = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${state.iconLink1}' height=${thisSize}></td><td><img src='${state.iconLink3}' height=${thisSize}></td><td>Icon 2:<br><img src='${state.iconLink2}' height=${thisSize}></td></tr></table>"
+                        iconTable = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${iconLink1}' height=${thisSize}></td><td><img src='${iconLink3}' height=${thisSize}></td><td>Icon 2:<br><img src='${iconLink2}' height=${thisSize}></td></tr></table>"
                         paragraph "${iconTable}"
                     }
                     paragraph "<hr>"
@@ -392,17 +392,17 @@ def pageConfig() {
                         if(uwi1a) {oneSplita = uwi1a.split(" - ")}    
                         if(uwi2a) {twoSplita = uwi2a.split(" - ")}
                         if(uwi3a) {threeSplita = uwi3a.split(" - ")}
-                        if(uwi1a) state.iconLink1a = "${oneSplita[1]}"
-                        if(uwi2a) state.iconLink2a = "${twoSplita[1]}"
-                        if(uwi3a) state.iconLink3a = "${threeSplita[1]}"
+                        if(uwi1a) iconLink1a = "${oneSplita[1]}"
+                        if(uwi2a) iconLink2a = "${twoSplita[1]}"
+                        if(uwi3a) iconLink3a = "${threeSplita[1]}"
                         thisSizea = app."theSizea_$x"
                         if(thisSizea == null) thisSizea = 30
                         
-                        if(state.iconLink1a == null) {state.iconLink1a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-                        if(state.iconLink2a == null) {state.iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-                        if(state.iconLink3a == null) {state.iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+                        if(iconLink1a == null) {iconLink1a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+                        if(iconLink2a == null) {iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+                        if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
                             
-                        iconTablea = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${state.iconLink1a}' height=${thisSizea}></td><td><img src='${state.iconLink3a}' height=${thisSizeb}></td><td>Icon 2:<br><img src='${state.iconLink2a}' height=${thisSizea}></td></tr></table>"
+                        iconTablea = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${iconLink1a}' height=${thisSizea}></td><td><img src='${iconLink3a}' height=${thisSizeb}></td><td>Icon 2:<br><img src='${iconLink2a}' height=${thisSizea}></td></tr></table>"
                         paragraph "${iconTablea}"
                     }
                     paragraph "<hr>"
@@ -525,17 +525,17 @@ def pageConfig() {
                         if(uwi1b) {oneSplitb = uwi1b.split(" - ")}    
                         if(uwi2b) {twoSplitb = uwi2b.split(" - ")}
                         if(uwi3b) {threeSplitb = uwi3b.split(" - ")}
-                        if(uwi1b) state.iconLink1b = "${oneSplitb[1]}"
-                        if(uwi2b) state.iconLink2b = "${twoSplitb[1]}"
-                        if(uwi3b) state.iconLink3b = "${threeSplitb[1]}"
+                        if(uwi1b) iconLink1b = "${oneSplitb[1]}"
+                        if(uwi2b) iconLink2b = "${twoSplitb[1]}"
+                        if(uwi3b) iconLink3b = "${threeSplitb[1]}"
                         thisSizeb = app."theSizeb_$x"
                         if(thisSizeb == null) thisSizeb = 30
                         
-                        if(state.iconLink1b == null) {state.iconLink1b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-                        if(state.iconLink2b == null) {state.iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-                        if(state.iconLink3b == null) {state.iconLink3b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+                        if(iconLink1b == null) {iconLink1b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+                        if(iconLink2b == null) {iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+                        if(iconLink3b == null) {iconLink3b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
                             
-                        iconTableb = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${state.iconLink1b}' height=${thisSizeb}></td><td><img src='${state.iconLink3b}' height=${thisSizeb}></td><td>Icon 2:<br><img src='${state.iconLink2b}' height=${thisSizeb}></td></tr></table>"
+                        iconTableb = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${iconLink1b}' height=${thisSizeb}></td><td><img src='${iconLink3b}' height=${thisSizeb}></td><td>Icon 2:<br><img src='${iconLink2b}' height=${thisSizeb}></td></tr></table>"
                         paragraph "${iconTableb}"
                     }
                     paragraph "<hr>"
@@ -649,13 +649,58 @@ def tileHandler(evt){
         iconSizea = app."theSizea_$x"
         iconSizeb = app."theSizeb_$x"
         
+        uwi1 = app."useWhichIcon1_$x"
+        uwi2 = app."useWhichIcon2_$x"
+        uwi3 = app."useWhichIcon3_$x"
+             
+        if(uwi1) {oneSplit = uwi1.split(" - ")}     
+        if(uwi2) {twoSplit = uwi2.split(" - ")}
+        if(uwi3) {threeSplit = uwi3.split(" - ")}
+        if(uwi1) iconLink1 = "${oneSplit[1]}"
+        if(uwi2) iconLink2 = "${twoSplit[1]}"
+        if(uwi3) iconLink3 = "${threeSplit[1]}"
+                        
+        if(iconLink1 == null) {iconLink1 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+        if(iconLink2 == null) {iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+        if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+        
+        uwi1a = app."useWhichIcon1a_$x"
+        uwi2a = app."useWhichIcon2a_$x"
+        uwi3a = app."useWhichIcon3a_$x"
+             
+        if(uwi1a) {oneSplita = uwi1a.split(" - ")}     
+        if(uwi2a) {twoSplita = uwi2a.split(" - ")}
+        if(uwi3a) {threeSplita = uwi3a.split(" - ")}
+        if(uwi1a) iconLink1a = "${oneSplita[1]}"
+        if(uwi2a) iconLink2a = "${twoSplita[1]}"
+        if(uwi3a) iconLink3a = "${threeSplita[1]}"
+                        
+        if(iconLink1a == null) {iconLink1a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+        if(iconLink2a == null) {iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+        if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+        
+        uwi1b = app."useWhichIcon1b_$x"
+        uwi2b = app."useWhichIcon2b_$x"
+        uwi3b = app."useWhichIcon3b_$x"
+             
+        if(uwi1b) {oneSplitb = uwi1b.split(" - ")}     
+        if(uwi2b) {twoSplitb = uwi2b.split(" - ")}
+        if(uwi3b) {threeSplitb = uwi3b.split(" - ")}
+        if(uwi1b) iconLink1b = "${oneSplitb[1]}"
+        if(uwi2b) iconLink2b = "${twoSplitb[1]}"
+        if(uwi3b) iconLink3b = "${threeSplitb[1]}"
+                        
+        if(iconLink1b == null) {iconLink1b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+        if(iconLink2b == null) {iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+        if(iconLink3b == null) {iconLink3b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+        
 	    if(nSections >= "1") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 1</b>"
 		    if(theDevice) {
 			    deviceStatus = theDevice.currentValue("${deviceAtts}")
                 if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
                 if(!valueOrCell) {
-                    getStatusColors(deviceStatus, deviceAtts, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize)
+                    getStatusColors(deviceStatus, deviceAtts, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3)
                     pauseExecution(500)
                     def (deviceStatus1,wordsBEF1,wordsAFT1) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - Received: ${theStatusCol}"
@@ -677,7 +722,7 @@ def tileHandler(evt){
 			    deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
 			    if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
                 if(!valueOrCella) {
-                    getStatusColors(deviceStatusa, deviceAttsa, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea)
+                    getStatusColors(deviceStatusa, deviceAttsa, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a)
                     pauseExecution(500)
                     def (deviceStatus1a,wordsBEF1a,wordsAFT1a) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler a - Received: ${theStatusCol}"
@@ -699,7 +744,7 @@ def tileHandler(evt){
 			    deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
 			    if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
                 if(!valueOrCellb) {
-                    getStatusColors(deviceStatusb, deviceAttsb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb)
+                    getStatusColors(deviceStatusb, deviceAttsb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b)
                     pauseExecution(500)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler b - Received: ${theStatusCol}"
@@ -933,7 +978,7 @@ def makeTile() {
     return tileData
 }
 
-def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,wordsAFT,useIcon,iconSize) {
+def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,wordsAFT,useIcon,iconSize,iconLink1,iconLink2,iconLink3) {
     if(logEnable) log.debug "*************************************** In getStatusColors - Start ***************************************"
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received - deviceStatus: ${deviceStatus} - deviceAtts: ${deviceAtts} - useColorsBEF: ${useColorsBEF} - useColorsAFT: ${useColorsAFT} - wordsBEF: ${wordsBEF} - wordsAFT: ${wordsAFT} - useIcon: ${useIcon} - iconSize: ${iconSize}"
     
@@ -948,19 +993,19 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
                     deviceStatus1 = "<span style='color:${parent.colorTempLow}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTempLow}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTempLow}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
                 }
                 if(deviceStatus > tempLow && deviceStatus < tempHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorTemp}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTemp}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTemp}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink3}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink3}' height='${iconSize}'>"
                 }
                 if(deviceStatus >= tempHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorTempHigh}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTempHigh}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTempHigh}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
                 }
                 state.battTempError = ""
             } catch (e) {
@@ -977,19 +1022,19 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
                     deviceStatus1 = "<span style='color:${parent.colorBattLow}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBattLow}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBattLow}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
                 }
                 if(deviceStatus > battLow && deviceStatus < battHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorBatt}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBatt}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBatt}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink3}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink3}' height='${iconSize}'>"
                 }
                 if(deviceStatus >= battHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorBattHigh}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBattHigh}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBattHigh}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
                 }
                 state.battTempError = ""
              } catch (e) {
@@ -1005,85 +1050,85 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
         deviceStatus1 = "<span style='color:${parent.colorOn}'>on</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOn}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOn}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "off") {
         deviceStatus1 = "<span style='color:${parent.colorOff}'>off</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOff}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOff}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "open") {
         deviceStatus1 = "<span style='color:${parent.colorOpen}'>open</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOpen}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOpen}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "closed") {
         deviceStatus1 = "<span style='color:${parent.colorClosed}'>closed</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorClosed}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorClosed}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "active") {
         deviceStatus1 = "<span style='color:${parent.colorActive}'>active</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorActive}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorActive}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "inactive") {
         deviceStatus1 = "<span style='color:${parent.colorInactive}'>inactive</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorInactive}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorInactive}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "locked") {
         deviceStatus1 = "<span style='color:${parent.colorLocked}'>locked</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorLocked}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorLocked}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "unlocked") {
         deviceStatus1 = "<span style='color:${parent.colorUnlocked}'>unlocked</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorUnlocked}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorUnlocked}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "wet") {
         deviceStatus1 = "<span style='color:${parent.colorWet}'>wet</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorWet}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorWet}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "dry") {
         deviceStatus1 = "<span style='color:${parent.colorDry}'>dry</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorDry}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorDry}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "present") {
         deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorPresent}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorPresent}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "not present") {
         deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorNotPresent}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorNotPresent}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "clear") {
         deviceStatus1 = "<span style='color:${parent.colorClear}'>clear</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorClear}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorClear}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "detected") {
         deviceStatus1 = "<span style='color:${parent.colorDetected}'>detected</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorDetected}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorDetected}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
     }
   
     if(deviceStatus1 == null) deviceStatus1 = deviceStatus
