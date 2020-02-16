@@ -263,6 +263,7 @@ def pageConfig() {
                         if(uwi2) state.iconLink2 = "${twoSplit[1]}"
                         if(uwi3) state.iconLink3 = "${threeSplit[1]}"
                         thisSize = app."theSize_$x"
+                        if(thisSize == null) thisSize = 30
                         
                         if(state.iconLink1 == null) {state.iconLink1 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
                         if(state.iconLink2 == null) {state.iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
@@ -395,6 +396,7 @@ def pageConfig() {
                         if(uwi2a) state.iconLink2a = "${twoSplita[1]}"
                         if(uwi3a) state.iconLink3a = "${threeSplita[1]}"
                         thisSizea = app."theSizea_$x"
+                        if(thisSizea == null) thisSizea = 30
                         
                         if(state.iconLink1a == null) {state.iconLink1a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
                         if(state.iconLink2a == null) {state.iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
@@ -527,6 +529,7 @@ def pageConfig() {
                         if(uwi2b) state.iconLink2b = "${twoSplitb[1]}"
                         if(uwi3b) state.iconLink3b = "${threeSplitb[1]}"
                         thisSizeb = app."theSizeb_$x"
+                        if(thisSizeb == null) thisSizeb = 30
                         
                         if(state.iconLink1b == null) {state.iconLink1b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
                         if(state.iconLink2b == null) {state.iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
@@ -934,6 +937,8 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
     if(logEnable) log.debug "*************************************** In getStatusColors - Start ***************************************"
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received - deviceStatus: ${deviceStatus} - deviceAtts: ${deviceAtts} - useColorsBEF: ${useColorsBEF} - useColorsAFT: ${useColorsAFT} - wordsBEF: ${wordsBEF} - wordsAFT: ${wordsAFT} - useIcon: ${useIcon} - iconSize: ${iconSize}"
     
+    if(iconSize == null) iconSize = 30
+    
     if(deviceAtts) {
         if(deviceAtts.toLowerCase() == "temperature") {
             try {
@@ -943,19 +948,19 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
                     deviceStatus1 = "<span style='color:${parent.colorTempLow}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTempLow}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTempLow}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "${state.iconLink1}"
+                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
                 }
                 if(deviceStatus > tempLow && deviceStatus < tempHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorTemp}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTemp}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTemp}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "${state.iconLink1a}"
+                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink3}' height='${iconSize}'>"
                 }
                 if(deviceStatus >= tempHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorTempHigh}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTempHigh}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTempHigh}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "${state.iconLink2}"
+                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
                 }
                 state.battTempError = ""
             } catch (e) {
@@ -972,19 +977,19 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
                     deviceStatus1 = "<span style='color:${parent.colorBattLow}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBattLow}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBattLow}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "${state.iconLink1}"
+                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
                 }
                 if(deviceStatus > battLow && deviceStatus < battHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorBatt}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBatt}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBatt}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "${state.iconLink1a}"
+                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink3}' height='${iconSize}'>"
                 }
                 if(deviceStatus >= battHigh) {
                     deviceStatus1 = "<span style='color:${parent.colorBattHigh}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBattHigh}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBattHigh}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "${state.iconLink2}"
+                    if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
                 }
                 state.battTempError = ""
              } catch (e) {
@@ -1012,73 +1017,73 @@ def getStatusColors(deviceStatus,deviceAtts,useColorsBEF,useColorsAFT,wordsBEF,w
         deviceStatus1 = "<span style='color:${parent.colorOpen}'>open</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOpen}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOpen}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink1}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "closed") {
         deviceStatus1 = "<span style='color:${parent.colorClosed}'>closed</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorClosed}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorClosed}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink2}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "active") {
         deviceStatus1 = "<span style='color:${parent.colorActive}'>active</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorActive}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorActive}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink1}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "inactive") {
         deviceStatus1 = "<span style='color:${parent.colorInactive}'>inactive</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorInactive}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorInactive}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink2}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "locked") {
         deviceStatus1 = "<span style='color:${parent.colorLocked}'>locked</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorLocked}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorLocked}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink1}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "unlocked") {
         deviceStatus1 = "<span style='color:${parent.colorUnlocked}'>unlocked</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorUnlocked}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorUnlocked}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink2}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "wet") {
         deviceStatus1 = "<span style='color:${parent.colorWet}'>wet</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorWet}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorWet}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink1}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "dry") {
         deviceStatus1 = "<span style='color:${parent.colorDry}'>dry</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorDry}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorDry}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink2}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "present") {
         deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorPresent}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorPresent}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink1}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "not present") {
         deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorNotPresent}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorNotPresent}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink2}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
     }
     if(deviceStatus == "clear") {
         deviceStatus1 = "<span style='color:${parent.colorClear}'>clear</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorClear}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorClear}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink1}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink1}' height='${iconSize}'>"
     }
     if(deviceStatus == "detected") {
         deviceStatus1 = "<span style='color:${parent.colorDetected}'>detected</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorDetected}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorDetected}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "${state.iconLink2}"
+        if(useIcon) deviceStatus1 = "<img src='${state.iconLink2}' height='${iconSize}'>"
     }
   
     if(deviceStatus1 == null) deviceStatus1 = deviceStatus
