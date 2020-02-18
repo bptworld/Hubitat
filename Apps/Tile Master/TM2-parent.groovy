@@ -96,6 +96,7 @@ def initialize() {
     	log.info "Child app: ${child.label}"
     }
     if(awDevice) schedule("0 0 3 ? * * *", setVersion)
+    sendIconList()
 }
 
 def mainPage() {
@@ -229,6 +230,7 @@ def addIcon() {
         state.message = "Icon was found with the same name, please use a different name for each icon"
     }
     if(logEnable) log.debug "******************* addIcon - End *******************"
+    app."lister" = state.theList
     buildIconList()
 }
 
@@ -256,6 +258,7 @@ def sendIconList() {
     if(logEnable) log.debug "******************* sendIconList - Start *******************"
     if(logEnable) log.debug "In sendIconList (${state.version}) - Sending List"
     childApps.each {child -> child.masterListHandler(state.theList)}
+    if(logEnable) log.debug "In sendIconList (${state.version}) - List Sent!"
     if(logEnable) log.debug "******************* sendIconList - End *******************"
 }
 
