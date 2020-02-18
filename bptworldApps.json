@@ -531,8 +531,8 @@
   "TheFlasherDiscussion": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
-  "TileMaster2ParentVersion": "v2.0.8",
-  "TileMaster2Child1Version": "v2.1.6",
+  "TileMaster2ParentVersion": "v2.0.9",
+  "TileMaster2Child1Version": "v2.1.7",
   "TileMaster2Child1Name": "",
   "TileMaster2Child2Version": "",
   "TileMaster2Child2Name": "",
@@ -546,7 +546,7 @@
   "TileMaster2Child3RawCode": "",
   "TileMaster2Child4RawCode": "",
   "TileMaster2Discussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMaster2UpdateNote": "V2.1.6 - 02/11/20 - BIG changes - Streamlined code, reduced by over 1000 lines! (Wow!)",
+  "TileMaster2UpdateNote": "V2.1.7 - 02/16/20 - Status Icons and the ability to change BEF and/or AFT text color based on device value",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
