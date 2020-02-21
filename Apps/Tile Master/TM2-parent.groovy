@@ -230,7 +230,6 @@ def addIcon() {
         state.message = "Icon was found with the same name, please use a different name for each icon"
     }
     if(logEnable) log.debug "******************* addIcon - End *******************"
-    app."lister" = state.theList
     buildIconList()
 }
 
