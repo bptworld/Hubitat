@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.8 - 02/19/20 - Changes to text color option, web Links and icon height. Added current Date and Time to wildcard options.
  *  V2.1.7 - 02/16/20 - Status Icons and the ability to change BEF and/or AFT text color based on device value
  *  V2.1.6 - 02/11/20 - BIG changes - Streamlined code, reduced by over 1000 lines! (Wow!)
  *            - Each child app will now automatically create the Tile Device if needed
@@ -48,7 +49,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.1.7"
+	state.version = "v2.1.8"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -91,8 +92,7 @@ def pageConfig() {
             if(userName) createChildDevice()
             if(statusMessage == null) statusMessage = "Waiting on status message..."
             paragraph "${statusMessage}"
-            
-            input(name: "tileDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", required: true, multiple: false)
+            input "tileDevice", "capability.actuator", title: "Vitual Device created to send the data to:", required:true, multiple:false
         }
 
         state.appInstalled = app.getInstallationState()
@@ -100,8 +100,8 @@ def pageConfig() {
             try { parent.sendIconList() }
             catch (e) { }
             section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
-                input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', submitOnChange:true
-                input "lineToEdit", "number", title: "Which line to edit", submitOnChange:true
+                input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true
+                input "lineToEdit", "number", title: "Which line to edit", width:6, submitOnChange:true
                 if(lineToEdit > howManyLines) {paragraph "<b>Please enter a valid line number.</b>"}
             }
             if((lineToEdit > 0) && (lineToEdit <= howManyLines)) {
@@ -147,28 +147,63 @@ def pageConfig() {
                         paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
                     }
                 }
-
+ /*  Hey, Look at this!  lol  Almost ready for the next release! Shhhhhhh
+                section(getFormat("header-green", "${getImage("Blank")}"+" Device Control")) {
+                    paragraph "<b>This is a BETA feature. Everything can and will change as it evoles.</b><br>As of right now, only On and Off is supported. This option requires about 350 characters (per device) to work.<br>* Requires Maker API"
+                    input "controlDevices", "bool", title: "Want to control devices?", defaultValue:false, description: "Control Device", submitOnChange:true
+                    if(controlDevices) {
+                        input "cAPIip", "text", title: "Maker API Hub IP Address", required:true, multiple:false, submitOnChange:true, width:6
+                        input "cAPIno", "number", title: "Maker API App Number", required:true, multiple:false, submitOnChange:true, width:6
+                        input "cAPIat", "password", title: "Maker API Access Token", required:true, multiple:false, submitOnChange:true
+                        paragraph "For testing purposes, leave this off.  For normal use, turn it on"
+                        input "useIframe", "bool", title: "Open in Hidden iframe", defaultValue:false, description: "iFrame", submitOnChange:true
+                    }   
+                }
+ */                
                 if(nSection == "1" || nSection == "2" || nSection == "3") {
                     section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Section 1 Options")) {
                         paragraph "<b>SECTION 1</b>"
-                        paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
-                        paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
+                        
+                        wildcards = "Wildcards:<br>"
+                        wildcards += "- %lastAct% = Use in any text field. Will be replaced with the selected devices Last Activity date/time<br>"
+                        wildcards += "- %currDate% = Display the current date<br>"
+                        wildcards += "- %currTime% = Display the current time (static display, does not update unless the page is updated)<br>"
+                        wildcards += "- %wLink% = Displays a clickable web link<br>"
+                        if(controlDevices) wildcards += "- %control% = Control a device right from the tile<br>"
+                        
+                        paragraph "${wildcards}"
                         input "wordsBEF_$x", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
                         input "wordsAFT_$x", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
 
                         wordsBEF = app."wordsBEF_$x"
                         wordsAFT = app."wordsAFT_$x"
 
+                        if(wordsBEF) if(wordsBEF.toLowerCase().contains("%control%")) {
+                            input "cDeviceBEF_$x", "capability.switch", title: "Device to Control", required:true, multiple:false, submitOnChange:true, width:6
+                            input "cDeviceBEFid_$x", "number", title: "Device ID", required:true, multiple:false, submitOnChange:true, width:6
+                            cDev = app."cDeviceBEF_$x"
+                            if(cDev) {
+                                cDevID = cDev.id
+                                paragraph "<b>Device ID: ${cDevID} - TYPE THIS NUMBER IN</b>"
+                            }
+                        } 
+                        
+                        
                         if(wordsBEF) if(wordsBEF.toLowerCase().contains("wlink")) {
-                            input "linkBEF_$x", "text", title: "Text Before is a link. Please enter a friendly name to display on tile.", submitOnChange: true
+                            input "linkBEF_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
+                            input "linkBEFL_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
+                            paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
                         }               
                         if(wordsAFT) if(wordsAFT.toLowerCase().contains("wlink")) {
-                            input "linkAFT_$x", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
+                            input "linkAFT_$x", "text", title: "<b>Text After is a link.</b> Please enter a friendly name to display on tile.", submitOnChange:true, width:6
+                            input "linkAFTL_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
+                            paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
                         }
 
                         if(wordsBEF) {if(wordsBEF.contains("lastAct")) state.lastActiv = "yes"}
                         if(wordsAFT) {if(wordsAFT.contains("lastAct")) state.lastActiv = "yes"}  
 
+                        paragraph "<hr>"
                         input "device_$x", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
 
                         theDevice = app."device_$x"
@@ -214,13 +249,13 @@ def pageConfig() {
                             paragraph "Only certain attributes can use Icons. Please choose the ONE set you would like to use with this device."
                             input "attOnOff", "bool", title: "On/Off", defaultValue: false, description: "on/off", submitOnChange: true, width: 4
                             input "attOpenClosed", "bool", title: "Open/Closed", defaultValue: false, description: "Open/Closed", submitOnChange: true, width: 4
-                            input "attActiveInactive", "bool", title: "Active/Inactive", defaultValue: false, description: "Active/Inactive", submitOnChange: true, width: 4
+                            input "attActiveInactive", "bool", title: "Active/Inactive", defaultValue:false, description: "Active/Inactive", submitOnChange:true, width:4
 
-                            input "attLockedUnlocked", "bool", title: "Locked/Unlocked", defaultValue: false, description: "Locked/Unlocked", submitOnChange: true, width: 4
+                            input "attLockedUnlocked", "bool", title: "Locked/Unlocked", defaultValue:false, description: "Locked/Unlocked", submitOnChange:true, width:4
                             input "attWetDry", "bool", title: "Wet/Dry", defaultValue: false, description: "Wet/Dry", submitOnChange: true, width: 4
-                            input "attPresentNotpresent", "bool", title: "Present/Not Present", defaultValue: false, description: "Present/Not Present", submitOnChange: true, width: 4
+                            input "attPresentNotpresent", "bool", title: "Present/Not Present", defaultValue: false, description: "Present/Not Present", submitOnChange:true, width:4
 
-                            input "attClearDetected", "bool", title: "Clear/Detected", defaultValue: false, description: "Clear/Detected", submitOnChange: true, width: 4
+                            input "attClearDetected", "bool", title: "Clear/Detected", defaultValue: false, description: "Clear/Detected", submitOnChange:true, width:4
                             input "attTemperature", "bool", title: "Temperature", defaultValue: false, description: "Temperature", submitOnChange: true, width: 4
                             input "attBattery", "bool", title: "Battery", defaultValue: false, description: "Battery", submitOnChange: true, width: 4
 
@@ -287,7 +322,7 @@ def pageConfig() {
                         }
                         paragraph "<hr>"
 
-                        input "color_$x", "text", title: "Text Color (Black = Default) ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Black", submitOnChange: true
+                        input "color_$x", "text", title: "Text Color (Default = use the default value set in the Dashboard) ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true
                         input "italic_$x", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:6
                         input "bold_$x", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:6
                         input "decoration_$x", "enum", title: "Decoration (None = Default)", required: true, multiple: false, options: ["None","overline","line-through","underline","underline overline"], defaultValue: "None", submitOnChange: true, width: 6
@@ -297,19 +332,32 @@ def pageConfig() {
                 if(nSection == "2" || nSection == "3") {
                     section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Section 2 Options")) {
                         paragraph "<b>SECTION 2</b>"
-                        paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
-                        paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
+                        paragraph "${wildcards}"
                         input "wordsBEFa_$x", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
                         input "wordsAFTa_$x", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
 
                         wordsBEFa = app."wordsBEFa_$x"
                         wordsAFTa = app."wordsAFTa_$x"
 
+                        if(wordsBEFa) if(wordsBEFa.toLowerCase().contains("control")) {
+                            input "cDeviceBEFa_$x", "capability.switch", title: "Device to Control", required:true, multiple:false, submitOnChange:true, width:6
+                            input "cDeviceBEFida_$x", "number", title: "Device ID", required:true, multiple:false, submitOnChange:true, width:6
+                            cDeva = app."cDeviceBEFa_$x"
+                            if(cDeva) {
+                                cDevIDa = cDeva.id
+                                paragraph "<b>Device ID: ${cDevIDa} - TYPE THIS NUMBER IN</b>"
+                            }
+                        } 
+                        
                         if(wordsBEFa) if(wordsBEFa.toLowerCase().contains("wlink")) {
-                            input "linkBEFa_$x", "text", title: "Text Before is a link. Please enter a friendly name to display on tile.", submitOnChange: true
+                            input "linkBEFa_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
+                            input "linkBEFLa_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
+                            paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
                         }               
                         if(wordsAFTa) if(wordsAFTa.toLowerCase().contains("wlink")) {
-                            input "linkAFTa_$x", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
+                            input "linkAFTa_$x", "text", title: "<b>Text After is a link.</b> Please enter a friendly name to display on tile.", submitOnChange:true, width:6
+                            input "linkAFTLa_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
+                            paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
                         }
 
                         if(wordsBEFa) {if(wordsBEFa.contains("lastAct")) state.lastActiv = "yes"}
@@ -427,7 +475,7 @@ def pageConfig() {
                         }
                         paragraph "<hr>"
 
-                        input "colora_$x", "text", title: "Text Color (Black = Default) ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Black", submitOnChange: true
+                        input "colora_$x", "text", title: "Text Color (Default = use the default value set in the Dashboard) ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Black", submitOnChange: true
                         input "italica_$x", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:6
                         input "bolda_$x", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:6
                         input "decorationa_$x", "enum", title: "Decoration (None = Default)", required: true, multiple: false, options: ["None","overline","line-through","underline","underline overline"], defaultValue: "None", submitOnChange: true, width: 6
@@ -437,19 +485,32 @@ def pageConfig() {
                 if(nSection == "3") {
                     section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Section 3 Options")) {
                         paragraph "<b>SECTION 3</b>"
-                        paragraph "Wildcards: %lastAct% = use in any text field. Will be replaced with the selected devices Last Activity date/time"
-                        paragraph "To enter in a web link, simply replace the http with wlink. ie. wlink://bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
+                        paragraph "${wildcards}"
                         input "wordsBEFb_$x", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
                         input "wordsAFTb_$x", "text", title: "Text AFTER Device Status", required: false, submitOnChange: true, width:6
 
                         wordsBEFb = app."wordsBEFb_$x"
                         wordsAFTb = app."wordsAFTb_$x"
 
+                        if(wordsBEFb) if(wordsBEFb.toLowerCase().contains("control")) {
+                            input "cDeviceBEFb_$x", "capability.switch", title: "Device to Control", required:true, multiple:false, submitOnChange:true, width:6
+                            input "cDeviceBEFidb_$x", "number", title: "Device ID", required:true, multiple:false, submitOnChange:true, width:6
+                            cDevb = app."cDeviceBEFb_$x"
+                            if(cDevb) {
+                                cDevIDb = cDevb.id
+                                paragraph "<b>Device ID: ${cDevIDb} - TYPE THIS NUMBER IN</b>"
+                            }
+                        } 
+                        
                         if(wordsBEFb) if(wordsBEFb.toLowerCase().contains("wlink")) {
-                            input "linkBEFb_$x", "text", title: "Text Before is a link. Please enter a friendly name to display on tile.", submitOnChange: true
+                            input "linkBEFb_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
+                            input "linkBEFLb_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
+                            paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
                         }               
                         if(wordsAFTb) if(wordsAFTb.toLowerCase().contains("wlink")) {
-                            input "linkAFTb_$x", "text", title: "Text After is a link. Please enter a friendly name to display on tile.", submitOnChange: true
+                            input "linkAFTb_$x", "text", title: "<b>Text After is a link.</b> Please enter a friendly name to display on tile.", submitOnChange:true, width:6
+                            input "linkAFTLb_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
+                            paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
                         }
 
                         if(wordsBEFb) {if(wordsBEFb.contains("lastAct")) state.lastActiv = "yes"}
@@ -567,7 +628,7 @@ def pageConfig() {
                         }
                         paragraph "<hr>"
 
-                        input "colorb_$x", "text", title: "Text Color (Black = Default) ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Black", submitOnChange: true
+                        input "colorb_$x", "text", title: "Text Color (Default = use the default value set in the Dashboard) ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Black", submitOnChange: true
 
                         input "italicb_$x", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:6
                         input "boldb_$x", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:6
@@ -589,11 +650,40 @@ def pageConfig() {
                     ]
                 }
             }
+            section(getFormat("header-green", "${getImage("Blank")}"+" Current Date / Time Formatting")) {
+                if(wordsBEF && wordsBEF.contains("%currDate%") || 
+                   wordsAFT && wordsAFT.contains("%currDate%") ||
+                   wordsBEFa && wordsBEFa.contains("%currDate%") ||
+                   wordsAFTa && wordsAFTa.contains("%currDate%") ||
+                   wordsBEFb && wordsBEFb.contains("%currDate%") ||
+                   wordsAFTb && wordsAFTb.contains("%currDate%")) {
+                    input "cDateFormat", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                        ["cd1":"MMM dd, yyy"],
+                        ["cd2":"dd MMM, yyy"],
+                        ["cd3":"MMM dd"],
+                        ["cd4":"dd MMM"],
+                    ], width:6
+                } else {
+                    paragraph "No Date formatting required.", width:6
+                }
+                if(wordsBEF && wordsBEF.contains("%currTime%") ||
+                   wordsAFT && wordsAFT.contains("%currTime%") ||
+                   wordsBEFa && wordsBEFa.contains("%currTime%") ||
+                   wordsAFTa && wordsAFTa.contains("%currTime%") ||
+                   wordsBEFb && wordsBEFb.contains("%currTime%") ||
+                   wordsAFTb && wordsAFTb.contains("%currTime%")) {
+                    input "cTimeFormat", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
+                        ["ct1":"h:mm:ss a (12 hour)"],
+                        ["ct2":"HH:mm:ss (24 hour)"],
+                        ["ct3":"h:mm a (12 hour)"],
+                        ["ct4":"HH:mm a (24 hour)"],
+                    ], width:6
+                } else {
+                    paragraph "No Time formatting required.", width:6
+                }
+            }
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: true}
-        section() {
-            input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true
-		}
         if(state.appInstalled != 'COMPLETE') {
             section() {
                 paragraph "<hr>"
@@ -601,6 +691,9 @@ def pageConfig() {
             }
         }
         if(state.appInstalled == 'COMPLETE') {tileHandler()}
+        section() {
+            input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true
+		}
 		display2()
 	}
 }
@@ -813,6 +906,9 @@ def tileHandler(evt){
         hideAttr = app."hideAttr_$x"
         linkBEF = app."linkBEF_$x"
         linkAFT = app."linkAFT_$x"
+        linkBEFL = app."linkBEFL_$x"
+        linkAFTL = app."linkAFTL_$x"
+        cDevBEFid = app."cDeviceBEFid_$x"
         
         aligna = app."aligna_$x"
         colora = app."colora_$x"
@@ -824,6 +920,9 @@ def tileHandler(evt){
         hideAttra = app."hideAttra_$x"
         linkBEFa = app."linkBEFa_$x"
         linkAFTa = app."linkAFTa_$x"
+        linkBEFLa = app."linkBEFLa_$x"
+        linkAFTLa = app."linkAFTLa_$x"
+        cDevBEFida = app."cDeviceBEFida_$x"
         
         alignb = app."alignb_$x"
         colorb = app."colorb_$x"
@@ -835,10 +934,13 @@ def tileHandler(evt){
         hideAttrb = app."hideAttrb_$x"
         linkBEFb = app."linkBEFb_$x"
         linkAFTb = app."linkAFTb_$x"
+        linkBEFLb = app."linkBEFLb_$x"
+        linkAFTLb = app."linkAFTLb_$x"
+        cDevBEFidb = app."cDeviceBEFidb_$x"
         
         theStyle = "style='width:${secWidth}%;"
         if(align != "Left") theStyle += "text-align:${align};"
-        if(color != "Black") theStyle += "color:${color};"
+        if(color != "Default") theStyle += "color:${color};"
         if(fontSize != 0) theStyle += "font-size:${fontSize}px;"
         if(italic) theStyle += "font-style:italic;"
         if(bold) theStyle += "font-weight:bold;"
@@ -850,7 +952,7 @@ def tileHandler(evt){
         
         theStylea = "style='width:${secWidtha}%;"
         if(aligna != "Left") theStylea += "text-align:${aligna};"
-        if(colora != "Black") theStylea += "color:${colora};"
+        if(colora != "Default") theStylea += "color:${colora};"
         if(fontSizea != 0) theStylea += "font-size:${fontSizea}px;"
         if(italica) theStylea += "font-style:italic;"
         if(bolda) theStylea += "font-weight:bold;"
@@ -862,7 +964,7 @@ def tileHandler(evt){
         
         theStyleb = "style='width:${secWidthb}%;"
         if(alignb != "Left") theStyleb += "text-align:${alignb};"
-        if(colorb != "Black") theStyleb += "color:${colorb};"
+        if(colorb != "Default") theStyleb += "color:${colorb};"
         if(fontSizeb != 0) theStyleb += "font-size:${fontSizeb}px;"
         if(italicb) theStyleb += "font-style:italic;"
         if(boldb) theStyleb += "font-weight:bold;"
@@ -876,28 +978,28 @@ def tileHandler(evt){
         
         if(nSections >= "1") {
             theTileMap += "<td $theStyle>"
-            if(wordsBEF) makeTileLine(theDevice,wordsBEF,linkBEF)
+            if(wordsBEF) makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,cDevBEFid)
             if(wordsBEF) theTileMap += "${newWords2}"
 		    if(deviceAtts && !hideAttr) theTileMap += "${deviceStatus}"
-		    if(wordsAFT) makeTileLine(theDevice,wordsAFT,linkAFT)
+		    if(wordsAFT) makeTileLine(theDevice,wordsAFT,linkAFT,linkAFTL)
             if(wordsAFT) theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	} 
         if(nSections >= "2") {
             theTileMap += "<td $theStylea>"
-            if(wordsBEFa) makeTileLine(theDevicea,wordsBEFa,linkBEFa)
+            if(wordsBEFa) makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,cDevBEFida)
             if(wordsBEFa) theTileMap += "${newWords2}"
 		    if(deviceAttsa && !hideAttra) theTileMap += "${deviceStatusa}"
-		    if(wordsAFTa) makeTileLine(theDevicea,wordsAFTa,linkAFTa)
+		    if(wordsAFTa) makeTileLine(theDevicea,wordsAFTa,linkAFTa,linkAFTLa)
             if(wordsAFTa) theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
         if(nSections == "3") {
             theTileMap += "<td $theStyleb>"
-            if(wordsBEFb) makeTileLine(theDeviceb,wordsBEFb,linkBEFb)
+            if(wordsBEFb) makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,cDevBEFidb)
             if(wordsBEFb) theTileMap += "${newWords2}"
 		    if(deviceAttsb && !hideAttrb) theTileMap += "${deviceStatusb}"
-		    if(wordsAFTb) makeTileLine(theDeviceb,wordsAFTb,linkAFTb)
+		    if(wordsAFTb) makeTileLine(theDeviceb,wordsAFTb,linkAFTb,linkAFTLb)
             if(wordsAFTb) theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
@@ -1007,6 +1109,7 @@ def makeTile() {
     if(state.theTile_7) tileData += state.theTile_7
     if(state.theTile_8) tileData += state.theTile_8
     if(state.theTile_9) tileData += state.theTile_9
+    if(controlDevices && useIframe) tileData += "<iframe name=a width=1 height=1/>"
 
     tileData += "</td></tr></table>"
     
@@ -1037,19 +1140,19 @@ def getStatusColors(deviceStatus,deviceAtts,useColors,useColorsBEF,useColorsAFT,
                     if(useColors) deviceStatus1 = "<span style='color:${parent.colorTempLow}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTempLow}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTempLow}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
                 }
                 if(deviceStatus > tempLow && deviceStatus < tempHigh) {
                     if(useColors) deviceStatus1 = "<span style='color:${parent.colorTemp}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTemp}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTemp}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${iconLink3}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink3}' style='height:${iconSize}px'>"
                 }
                 if(deviceStatus >= tempHigh) {
                     if(useColors) deviceStatus1 = "<span style='color:${parent.colorTempHigh}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorTempHigh}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorTempHigh}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
                 }
                 state.battTempError = ""
             } catch (e) {
@@ -1066,19 +1169,19 @@ def getStatusColors(deviceStatus,deviceAtts,useColors,useColorsBEF,useColorsAFT,
                     if(useColors) deviceStatus1 = "<span style='color:${parent.colorBattLow}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBattLow}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBattLow}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
                 }
                 if(deviceStatus > battLow && deviceStatus < battHigh) {
                     if(useColors) deviceStatus1 = "<span style='color:${parent.colorBatt}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBatt}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBatt}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${iconLink3}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink3}'style='height:${iconSize}px'>"
                 }
                 if(deviceStatus >= battHigh) {
                     if(useColors) deviceStatus1 = "<span style='color:${parent.colorBattHigh}'>${deviceStatus}</span>"
                     if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorBattHigh}'>${wordsBEF}</span>"
                     if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorBattHigh}'>${wordsAFT}</span>"
-                    if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+                    if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
                 }
                 state.battTempError = ""
              } catch (e) {
@@ -1094,85 +1197,85 @@ def getStatusColors(deviceStatus,deviceAtts,useColors,useColorsBEF,useColorsAFT,
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorOn}'>on</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOn}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOn}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "off") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorOff}'>off</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOff}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOff}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "open") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorOpen}'>open</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorOpen}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorOpen}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "closed") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorClosed}'>closed</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorClosed}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorClosed}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "active") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorActive}'>active</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorActive}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorActive}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "inactive") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorInactive}'>inactive</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorInactive}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorInactive}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "locked") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorLocked}'>locked</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorLocked}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorLocked}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "unlocked") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorUnlocked}'>unlocked</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorUnlocked}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorUnlocked}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "wet") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorWet}'>wet</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorWet}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorWet}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "dry") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorDry}'>dry</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorDry}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorDry}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "present") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorPresent}'>present</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorPresent}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorPresent}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "not present") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorNotPresent}'>not present</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorNotPresent}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorNotPresent}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "clear") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorClear}'>clear</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorClear}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorClear}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
     }
     if(deviceStatus == "detected") {
         if(useColors) deviceStatus1 = "<span style='color:${parent.colorDetected}'>detected</span>"
         if(useColorsBEF) wordsBEF1 = "<span style='color:${parent.colorDetected}'>${wordsBEF}</span>"
         if(useColorsAFT) wordsAFT1 = "<span style='color:${parent.colorDetected}'>${wordsAFT}</span>"
-        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' height='${iconSize}'>"
+        if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
     }
   
     if(deviceStatus1 == null) deviceStatus1 = deviceStatus
@@ -1246,15 +1349,40 @@ def getCellColors(deviceStatus,deviceAtts) {
     return theCellColor
 }
 
-def makeTileLine(theDevice,words,linkName) {
-    if(logEnable) log.debug "In makeTileLine (${state.version}) - device: ${theDevice} - words: ${words} - linkName: ${linkName} - dateTimeFormat: ${dateTimeFormat}"
+def makeTileLine(theDevice,words,linkName,linkURL,cDevBEFid) {
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - device: ${theDevice} - words: ${words} - linkName: ${linkName} - linkURL: ${linkURL} - dateTimeFormat: ${dateTimeFormat} - cDevBEFid: ${cDevBEFid}"
+    newWords2 = ""
+    dID = cDevBEFid
+    
+    if(words.toLowerCase().contains("control") && controlDevices) { 
+        toControlOn = "http://$cAPIip/apps/api/$cAPIno/devices/$dID/on?access_token=$cAPIat"
+        toControlOff = "http://$cAPIip/apps/api/$cAPIno/devices/$dID/off?access_token=$cAPIat"
+            
+        if(useIframe) {
+            // Opens in an iframe but uses around 350 characters
+            //controlLink = "<iframe src='<a href=${toControlOn} target=a>On</a>' /> <iframe name=a width=1 height=1/> <a href=${toControlOff} target=a>Off</a>"
+            controlLink = "<a href=${toControlOn} target=a>On</a> - <a href=${toControlOff} target=a>Off</a>"
+        } else {
+            // Opens in a new window, which is annoying but uses around 330 characters
+            controlLink = "<a href=${toControlOn} target=_blank>On</a> - <a href=${toControlOff} target=_blank>Off</a>"
+        }
+            
+        if(logEnable) log.debug "In makeTileLine - toControl: ${controlLink}"
+        words = words.replace("%control%","${controlLink}")
+    }
+    
+    
     if(words.toLowerCase().contains("wlink")) { 
-        newWords = words.toLowerCase()
-        if(logEnable) log.debug "In makeTileLine - newWords contains wlink"
-        newWords = newWords.replace("wlink","http")
-        newWords2 = "<a href='${newWords}'>${linkName}</a>"
-        if(logEnable) log.debug "In makeTileLine - newWords: ${newWords}"
-    } else if(words.toLowerCase().contains("%lastact%")) {
+        try {
+            theLink = "<a href='http://${linkURL}' target=_blank>${linkName}</a>"
+            
+            if(logEnable) log.debug "In makeTileLine - theLink: ${theLink}"
+            if(theLink) {words = words.replace("%wLink%","${theLink}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    if(words.toLowerCase().contains("%lastact%")) {
         try {
             if(dateTimeFormat == "f1") dFormat = "MMM dd, yyy - h:mm:ss a"
             if(dateTimeFormat == "f2") dFormat = "dd MMM, yyy - h:mm:ss a"
@@ -1268,20 +1396,54 @@ def makeTileLine(theDevice,words,linkName) {
             lAct = theDevice.getLastActivity().format("${dFormat}")
             
             if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
-            if(lAct) {
-                newWords2 = words.replace("%lastAct%","${lAct}")
-            } else {
-                newWords2 = words.replace("%lastAct%","Not Available")
-            }
+            if(lAct) {words = words.replace("%lastAct%","${lAct}")}
         } catch (e) {
-            newWords2 = words.replace("%lastAct%","Not Available")
             log.error e
         }
-    } else {
-        newWords2 = "${words}"
     }
+    if(words.toLowerCase().contains("%currdate%")) {
+        try {
+            if(cDateFormat == "cd1") cdFormat = "MMM dd, yyy"
+            if(cDateFormat == "cd2") cdFormat = "dd MMM, yyy"
+            if(cDateFormat == "cd3") cdFormat = "MMM dd"
+            if(cDateFormat == "cd4") cdFormat = "dd MMM"
+             
+            theDate = new Date()
+            if(logEnable) log.debug "In makeTileLine - theDate: ${theDate}"
+            cDate = theDate.format("${cdFormat}")
+             
+            if(logEnable) log.debug "In makeTileLine - cDate: ${cDate}"
+            if(cDate) {words = words.replace("%currDate%","${cDate}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    if(words.toLowerCase().contains("%currtime%")) {
+         try {
+            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+            if(cTimeFormat == "ct4") ctFormat = "HH:mm a"
+                 
+            theDate = new Date()
+            tDate = theDate.format("${ctFormat}")
+             
+            if(logEnable) log.debug "In makeTileLine - tDate: ${tDate}"
+            if(tDate) {words = words.replace("%currTime%","${tDate}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    newWords2 = "${words}"
+
     if(logEnable) log.debug "In makeTileLine - Returning newWords2: ${newWords2}"
     return newWords2
+}
+
+def turnDeviceOn() {
+    if(logEnable) log.warn "<b>In turnDeviceOn (${state.version}) - ********************</b>"
+    device.on()
 }
 
 def createChildDevice() {    
