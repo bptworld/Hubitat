@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.9 - 02/22/20 - Multi-Device Control!
  *  V2.1.8 - 02/19/20 - Changes to text color option, web Links and icon height. Added current Date and Time to wildcard options.
  *  V2.1.7 - 02/16/20 - Status Icons and the ability to change BEF and/or AFT text color based on device value
  *  V2.1.6 - 02/11/20 - BIG changes - Streamlined code, reduced by over 1000 lines! (Wow!)
@@ -41,7 +42,7 @@
  *            - Added Text Decoration, Bold and Italic to each line options
  *            - Each section can change color based on Device Value
  *  ---
- *  V1.0.0 - 02/16/19 - Initially started working on this concept but never released.
+ *  V1.0.0 - 02/16/19 - Initially started working on this concept.
  *
  */
 
@@ -49,7 +50,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.1.8"
+	state.version = "v2.1.9"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -147,19 +148,12 @@ def pageConfig() {
                         paragraph "Table Width: <font color='red'>${tableLength}<br><small>* Total table width must equal 100</small></font>"
                     }
                 }
- /*  Hey, Look at this!  lol  Almost ready for the next release! Shhhhhhh
-                section(getFormat("header-green", "${getImage("Blank")}"+" Device Control")) {
-                    paragraph "<b>This is a BETA feature. Everything can and will change as it evoles.</b><br>As of right now, only On and Off is supported. This option requires about 350 characters (per device) to work.<br>* Requires Maker API"
-                    input "controlDevices", "bool", title: "Want to control devices?", defaultValue:false, description: "Control Device", submitOnChange:true
-                    if(controlDevices) {
-                        input "cAPIip", "text", title: "Maker API Hub IP Address", required:true, multiple:false, submitOnChange:true, width:6
-                        input "cAPIno", "number", title: "Maker API App Number", required:true, multiple:false, submitOnChange:true, width:6
-                        input "cAPIat", "password", title: "Maker API Access Token", required:true, multiple:false, submitOnChange:true
-                        paragraph "For testing purposes, leave this off.  For normal use, turn it on"
-                        input "useIframe", "bool", title: "Open in Hidden iframe", defaultValue:false, description: "iFrame", submitOnChange:true
-                    }   
+
+                section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Device Control")) {
+                    input "controlDevices_$x", "bool", title: "Enable Device Control? (Requires Maker API)", defaultValue:false, description: "Control Device", submitOnChange:true
+                    controlDevices = app."controlDevices_$x"
                 }
- */                
+               
                 if(nSection == "1" || nSection == "2" || nSection == "3") {
                     section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Section 1 Options")) {
                         paragraph "<b>SECTION 1</b>"
@@ -169,7 +163,6 @@ def pageConfig() {
                         wildcards += "- %currDate% = Display the current date<br>"
                         wildcards += "- %currTime% = Display the current time (static display, does not update unless the page is updated)<br>"
                         wildcards += "- %wLink% = Displays a clickable web link<br>"
-                        if(controlDevices) wildcards += "- %control% = Control a device right from the tile<br>"
                         
                         paragraph "${wildcards}"
                         input "wordsBEF_$x", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
@@ -177,17 +170,6 @@ def pageConfig() {
 
                         wordsBEF = app."wordsBEF_$x"
                         wordsAFT = app."wordsAFT_$x"
-
-                        if(wordsBEF) if(wordsBEF.toLowerCase().contains("%control%")) {
-                            input "cDeviceBEF_$x", "capability.switch", title: "Device to Control", required:true, multiple:false, submitOnChange:true, width:6
-                            input "cDeviceBEFid_$x", "number", title: "Device ID", required:true, multiple:false, submitOnChange:true, width:6
-                            cDev = app."cDeviceBEF_$x"
-                            if(cDev) {
-                                cDevID = cDev.id
-                                paragraph "<b>Device ID: ${cDevID} - TYPE THIS NUMBER IN</b>"
-                            }
-                        } 
-                        
                         
                         if(wordsBEF) if(wordsBEF.toLowerCase().contains("wlink")) {
                             input "linkBEF_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
@@ -211,8 +193,25 @@ def pageConfig() {
                         if(theDevice) {
                             def allAtts = [:]
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                            if(controlDevices) paragraph "<b>To control Device, attribute 'Switch' must be selected below</b>"
                             input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts
-                            input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
+                            if(controlDevices) {
+                                cDevID = theDevice.id
+                                paragraph "<b>Device ID: ${cDevID} - Type this number in where the Maker API URL says [DEVICE ID]<br>Also, Replace [COMMANDS] with on and off respectively.</b>"
+                                input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                
+                                paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                input "useBitly_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
+                                useBitly = app."useBitly_$x"
+                                if(useBitly) {
+                                    paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                    input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                }
+                            }
+                                                                                                                              
+                            if(!controlDevices) input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             deviceAtts = app."deviceAtts_$x"
                             deviceStatus = theDevice.currentValue("${deviceAtts}")
                             if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
@@ -222,12 +221,11 @@ def pageConfig() {
                             } else {
                                 if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
                             }
-
                         }
                         paragraph "<hr>"
                         paragraph "Style Attributes - Using default values will save on character counts."
                         input "fontSize_$x", "number", title: "Font Size (0 = Default)", required: true, defaultValue: "0", submitOnChange: true, width:6
-                        input "align_$x", "enum", title: "Alignment (Left = Default)", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
+                        input "align_$x", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
                         input "useColors_$x", "bool", title: "Use custom colors on device value", defaultValue: false, description: "Colors", submitOnChange: true
                         uC = app."useColors_$x"
                         if(uC) {
@@ -338,16 +336,6 @@ def pageConfig() {
 
                         wordsBEFa = app."wordsBEFa_$x"
                         wordsAFTa = app."wordsAFTa_$x"
-
-                        if(wordsBEFa) if(wordsBEFa.toLowerCase().contains("control")) {
-                            input "cDeviceBEFa_$x", "capability.switch", title: "Device to Control", required:true, multiple:false, submitOnChange:true, width:6
-                            input "cDeviceBEFida_$x", "number", title: "Device ID", required:true, multiple:false, submitOnChange:true, width:6
-                            cDeva = app."cDeviceBEFa_$x"
-                            if(cDeva) {
-                                cDevIDa = cDeva.id
-                                paragraph "<b>Device ID: ${cDevIDa} - TYPE THIS NUMBER IN</b>"
-                            }
-                        } 
                         
                         if(wordsBEFa) if(wordsBEFa.toLowerCase().contains("wlink")) {
                             input "linkBEFa_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
@@ -370,8 +358,25 @@ def pageConfig() {
                         if(theDevicea) {
                             def allAttsa = [:]
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                            if(controlDevices) paragraph "<b>To control Device, attribute 'Switch' must be selected below</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa
-                            input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true               
+                            if(controlDevices) {
+                                cDevIDa = theDevicea.id
+                                paragraph "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]<br>Also, Replace [COMMANDS] with on and off respectively.</b>"
+                                input "controlOna_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                input "controlOffa_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                
+                                paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                input "useBitlya_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
+                                useBitlya = app."useBitlya_$x"
+                                if(useBitlya) {
+                                    paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                    input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    input "bControlOffa_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                }
+                            }
+                                                                                                                              
+                            if(!controlDevices) input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             deviceAttsa = app."deviceAttsa_$x"
                             deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
                             if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
@@ -380,7 +385,7 @@ def pageConfig() {
                         paragraph "<hr>"
                         paragraph "Style Attributes - Using default values will save on character counts."
                         input "fontSizea_$x", "number", title: "Font Size (0 = Default)", required: true, defaultValue: "0", submitOnChange: true, width:6
-                        input "aligna_$x", "enum", title: "Alignment (Left = Default)", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
+                        input "aligna_$x", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
                         input "useColorsa_$x", "bool", title: "Use custom colors on device value", defaultValue: false, description: "Colors", submitOnChange: true
                         uCa = app."useColorsa_$x"
                         if(uCa) {
@@ -491,16 +496,6 @@ def pageConfig() {
 
                         wordsBEFb = app."wordsBEFb_$x"
                         wordsAFTb = app."wordsAFTb_$x"
-
-                        if(wordsBEFb) if(wordsBEFb.toLowerCase().contains("control")) {
-                            input "cDeviceBEFb_$x", "capability.switch", title: "Device to Control", required:true, multiple:false, submitOnChange:true, width:6
-                            input "cDeviceBEFidb_$x", "number", title: "Device ID", required:true, multiple:false, submitOnChange:true, width:6
-                            cDevb = app."cDeviceBEFb_$x"
-                            if(cDevb) {
-                                cDevIDb = cDevb.id
-                                paragraph "<b>Device ID: ${cDevIDb} - TYPE THIS NUMBER IN</b>"
-                            }
-                        } 
                         
                         if(wordsBEFb) if(wordsBEFb.toLowerCase().contains("wlink")) {
                             input "linkBEFb_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
@@ -523,8 +518,25 @@ def pageConfig() {
                         if(theDeviceb) {
                             def allAttsb = [:]
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                            if(controlDevices) paragraph "<b>To control Device, attribute 'Switch' must be selected below</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb
-                            input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true               
+                            if(controlDevices) {
+                                cDevIDb = theDeviceb.id
+                                paragraph "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]<br>Also, Replace [COMMANDS] with on and off respectively.</b>"
+                                input "controlOnb_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                input "controlOffb_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                
+                                paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                input "useBitlyb_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
+                                useBitlyb = app."useBitlyb_$x"
+                                if(useBitlyb) {
+                                    paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                    input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    input "bControlOffb_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                }
+                            }
+                                                                                                                              
+                            if(!controlDevices) input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             deviceAttsb = app."deviceAttsb_$x"
                             deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
                             if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
@@ -533,7 +545,7 @@ def pageConfig() {
                         paragraph "<hr>"
                         paragraph "Style Attributes - Using default values will save on character counts."
                         input "fontSizeb_$x", "number", title: "Font Size (0 = Default)", required: true, defaultValue: "0", submitOnChange: true, width:6
-                        input "alignb_$x", "enum", title: "Alignment (Left = Default)", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
+                        input "alignb_$x", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
                         input "useColorsb_$x", "bool", title: "Use custom colors on device value", defaultValue: false, description: "Colors", submitOnChange: true
                         uCb = app."useColorsb_$x"
                         if(uCb) {
@@ -748,9 +760,9 @@ def tileHandler(evt){
         theDevice = app."device_$x"
         theDevicea = app."devicea_$x"
         theDeviceb = app."deviceb_$x"
-        deviceAtts = app."deviceAtts_$x"
-        deviceAttsa = app."deviceAttsa_$x"
-        deviceAttsb = app."deviceAttsb_$x"
+        if(theDevice) deviceAtts = app."deviceAtts_$x"
+        if(theDevicea) deviceAttsa = app."deviceAttsa_$x"
+        if(theDeviceb) deviceAttsb = app."deviceAttsb_$x"
         useColors = app."useColors_$x"
         useColorsa = app."useColorsa_$x"
         useColorsb = app."useColorsb_$x"
@@ -772,55 +784,61 @@ def tileHandler(evt){
         useIcons = app."useIcons_$x"
         useIconsa = app."useIconsa_$x"
         useIconsb = app."useIconsb_$x"
-        iconSize = app."theSize_$x"
-        iconSizea = app."theSizea_$x"
-        iconSizeb = app."theSizeb_$x"
-        //-------------
-        uwi1 = app."useWhichIcon1_$x"
-        uwi2 = app."useWhichIcon2_$x"
-        uwi3 = app."useWhichIcon3_$x"
-             
-        if(uwi1) {oneSplit = uwi1.split(" - ")}     
-        if(uwi2) {twoSplit = uwi2.split(" - ")}
-        if(uwi3) {threeSplit = uwi3.split(" - ")}
-        if(uwi1) iconLink1 = "${oneSplit[1]}"
-        if(uwi2) iconLink2 = "${twoSplit[1]}"
-        if(uwi3) iconLink3 = "${threeSplit[1]}"
-                        
-        if(iconLink1 == null) {iconLink1 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-        if(iconLink2 == null) {iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-        if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
-        //-------------
-        uwi1a = app."useWhichIcon1a_$x"
-        uwi2a = app."useWhichIcon2a_$x"
-        uwi3a = app."useWhichIcon3a_$x"
-             
-        if(uwi1a) {oneSplita = uwi1a.split(" - ")}     
-        if(uwi2a) {twoSplita = uwi2a.split(" - ")}
-        if(uwi3a) {threeSplita = uwi3a.split(" - ")}
-        if(uwi1a) iconLink1a = "${oneSplita[1]}"
-        if(uwi2a) iconLink2a = "${twoSplita[1]}"
-        if(uwi3a) iconLink3a = "${threeSplita[1]}"
-                        
-        if(iconLink1a == null) {iconLink1a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-        if(iconLink2a == null) {iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-        if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
-        //-------------
-        uwi1b = app."useWhichIcon1b_$x"
-        uwi2b = app."useWhichIcon2b_$x"
-        uwi3b = app."useWhichIcon3b_$x"
-             
-        if(uwi1b) {oneSplitb = uwi1b.split(" - ")}     
-        if(uwi2b) {twoSplitb = uwi2b.split(" - ")}
-        if(uwi3b) {threeSplitb = uwi3b.split(" - ")}
-        if(uwi1b) iconLink1b = "${oneSplitb[1]}"
-        if(uwi2b) iconLink2b = "${twoSplitb[1]}"
-        if(uwi3b) iconLink3b = "${threeSplitb[1]}"
-                        
-        if(iconLink1b == null) {iconLink1b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-        if(iconLink2b == null) {iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
-        if(iconLink3b == null) {iconLink3b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
-        //-------------
+        if(useIcons) iconSize = app."theSize_$x"
+        if(useIconsa) iconSizea = app."theSizea_$x"
+        if(useIconsb) iconSizeb = app."theSizeb_$x"
+        controlDevices = app."controlDevices_$x"
+        controlDevicesa = app."controlDevices_$x"
+        controlDevicesb = app."controlDevices_$x"
+        
+        if(useIcons) {
+            uwi1 = app."useWhichIcon1_$x"
+            uwi2 = app."useWhichIcon2_$x"
+            uwi3 = app."useWhichIcon3_$x"
+
+            if(uwi1) {oneSplit = uwi1.split(" - ")}     
+            if(uwi2) {twoSplit = uwi2.split(" - ")}
+            if(uwi3) {threeSplit = uwi3.split(" - ")}
+            if(uwi1) iconLink1 = "${oneSplit[1]}"
+            if(uwi2) iconLink2 = "${twoSplit[1]}"
+            if(uwi3) iconLink3 = "${threeSplit[1]}"
+
+            if(iconLink1 == null) {iconLink1 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+            if(iconLink2 == null) {iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+            if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+        }
+        if(useIconsa) {
+            uwi1a = app."useWhichIcon1a_$x"
+            uwi2a = app."useWhichIcon2a_$x"
+            uwi3a = app."useWhichIcon3a_$x"
+
+            if(uwi1a) {oneSplita = uwi1a.split(" - ")}     
+            if(uwi2a) {twoSplita = uwi2a.split(" - ")}
+            if(uwi3a) {threeSplita = uwi3a.split(" - ")}
+            if(uwi1a) iconLink1a = "${oneSplita[1]}"
+            if(uwi2a) iconLink2a = "${twoSplita[1]}"
+            if(uwi3a) iconLink3a = "${threeSplita[1]}"
+
+            if(iconLink1a == null) {iconLink1a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+            if(iconLink2a == null) {iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+            if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+        }
+        if(useIconsb) {
+            uwi1b = app."useWhichIcon1b_$x"
+            uwi2b = app."useWhichIcon2b_$x"
+            uwi3b = app."useWhichIcon3b_$x"
+
+            if(uwi1b) {oneSplitb = uwi1b.split(" - ")}     
+            if(uwi2b) {twoSplitb = uwi2b.split(" - ")}
+            if(uwi3b) {threeSplitb = uwi3b.split(" - ")}
+            if(uwi1b) iconLink1b = "${oneSplitb[1]}"
+            if(uwi2b) iconLink2b = "${twoSplitb[1]}"
+            if(uwi3b) iconLink3b = "${threeSplitb[1]}"
+
+            if(iconLink1b == null) {iconLink1b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+            if(iconLink2b == null) {iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
+            if(iconLink3b == null) {iconLink3b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
+        }
         
 	    if(nSections >= "1") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 1</b>"
@@ -829,10 +847,8 @@ def tileHandler(evt){
                 if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
                 if(!valueOrCell) {
                     getStatusColors(deviceStatus, deviceAtts, useColors, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3)
-                    pauseExecution(500)
                     def (deviceStatus1,wordsBEF1,wordsAFT1) = theStatusCol.split(",")
-                    if(logEnable) log.debug "In tileHandler - Received: ${theStatusCol}"
-                    (deviceStatus1, wordsBEF1, wordsAFT1) = theStatusCol.split(",")
+                    if(logEnable) log.debug "In tileHandler - deviceStatus1: ${deviceStatus1} - wordsBEF1: ${wordsBEF1} - wordsAFT1: ${wordsAFT1}"
                     if(deviceStatus1 != "null") deviceStatus = deviceStatus1
                     if(wordsBEF1 != "null") wordsBEF = wordsBEF1
                     if(wordsAFT1 != "null") wordsAFT = wordsAFT1
@@ -842,6 +858,7 @@ def tileHandler(evt){
                 }
             } else {
                 if(logEnable) log.debug "In tileHander Line: ${x}-1 - No device found - theDevice: ${theDevice}"
+                deviceStatus = ""
             }
 	    }
 
@@ -852,11 +869,8 @@ def tileHandler(evt){
 			    if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
                 if(!valueOrCella) {
                     getStatusColors(deviceStatusa, deviceAttsa, useColorsa, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a)
-                    pauseExecution(500)
                     def (deviceStatus1a,wordsBEF1a,wordsAFT1a) = theStatusCol.split(",")
-                    if(logEnable) log.debug "In tileHandler a - Received: ${theStatusCol}"
-                    (deviceStatus1a, wordsBEF1a, wordsAFT1a) = theStatusCol.split(",")
-                    if(logEnable) log.debug "In tileHandler a - deviceStatus1a: ${deviceStatus1a} - wordsBEF1a: ${wordsBEF1a} - wordsAFT1a: ${wordsAFT1a}"
+                    if(logEnable) log.debug "In tileHandler - a - deviceStatus1a: ${deviceStatus1a} - wordsBEF1a: ${wordsBEF1a} - wordsAFT1a: ${wordsAFT1a}"
                     if(deviceStatus1a != "null") deviceStatusa = deviceStatus1a
                     if(wordsBEF1a != "null") wordsBEFa = wordsBEF1a
                     if(wordsAFT1a != "null") wordsAFTa = wordsAFT1a
@@ -865,7 +879,8 @@ def tileHandler(evt){
                     cellColora = theCellColor
                 }
 		    } else {
-                if(logEnable) log.debug "In tileHander Line: ${x}-2 - No device found - theDevice: ${theDevice}"
+                if(logEnable) log.debug "In tileHander Line: ${x}-2 - No device found - theDevicea: ${theDevicea}"
+                deviceStatusa = ""
             }
 	    }
         
@@ -876,10 +891,8 @@ def tileHandler(evt){
 			    if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
                 if(!valueOrCellb) {
                     getStatusColors(deviceStatusb, deviceAttsb, useColorsb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b)
-                    pauseExecution(500)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
-                    if(logEnable) log.debug "In tileHandler b - Received: ${theStatusCol}"
-                    (deviceStatus1b, wordsBEF1b, wordsAFT1b) = theStatusCol.split(",")
+                    if(logEnable) log.debug "In tileHandler - b - deviceStatus1b: ${deviceStatus1b} - wordsBEF1b: ${wordsBEF1b} - wordsAFT1b: ${wordsAFT1b}"
                     if(deviceStatus1b != "null") deviceStatusb = deviceStatus1b
                     if(wordsBEF1b != "null") wordsBEFb = wordsBEF1b
                     if(wordsAFT1b != "null") wordsAFTb = wordsAFT1b
@@ -888,12 +901,13 @@ def tileHandler(evt){
                     cellColorb = theCellColor
                 }
 		    } else {
-                if(logEnable) log.debug "In tileHander Line: ${x}-3 - No device found - theDevice: ${theDevice}"
+                if(logEnable) log.debug "In tileHander Line: ${x}-3 - No device found - theDeviceb: ${theDeviceb}"
+                deviceStatusb = ""
             }
 	    }
 	
 // ***** Make the table for line x	*****
-        if(logEnable) log.debug "In tileHander - Making the table for line ${x}"
+        if(logEnable) log.debug "<b>In tileHander - Making the table for line ${x}</b>"
         theTileMap = ""
 
         align = app."align_$x"
@@ -908,7 +922,11 @@ def tileHandler(evt){
         linkAFT = app."linkAFT_$x"
         linkBEFL = app."linkBEFL_$x"
         linkAFTL = app."linkAFTL_$x"
-        cDevBEFid = app."cDeviceBEFid_$x"
+        useBitly = app."useBitly_$x"
+        if(!useBitly) controlOn = app."controlOn_$x"
+        if(!useBitly) controlOff = app."controlOff_$x"
+        if(useBitly) controlOn = app."bControlOn_$x"
+        if(useBitly) controlOff = app."bControlOff_$x"
         
         aligna = app."aligna_$x"
         colora = app."colora_$x"
@@ -922,7 +940,11 @@ def tileHandler(evt){
         linkAFTa = app."linkAFTa_$x"
         linkBEFLa = app."linkBEFLa_$x"
         linkAFTLa = app."linkAFTLa_$x"
-        cDevBEFida = app."cDeviceBEFida_$x"
+        useBitlya = app."useBitlya_$x"
+        if(!useBitlya) controlOna = app."controlOna_$x"
+        if(!useBitlya) controlOffa = app."controlOffa_$x"
+        if(useBitlya) controlOna = app."bControlOna_$x"
+        if(useBitlya) controlOffa = app."bControlOffa_$x"
         
         alignb = app."alignb_$x"
         colorb = app."colorb_$x"
@@ -937,9 +959,14 @@ def tileHandler(evt){
         linkBEFLb = app."linkBEFLb_$x"
         linkAFTLb = app."linkAFTLb_$x"
         cDevBEFidb = app."cDeviceBEFidb_$x"
+        useBitlyb = app."useBitlyb_$x"
+        if(!useBitlyb) controlOnb = app."controlOnb_$x"
+        if(!useBitlyb) controlOffb = app."controlOffb_$x"
+        if(useBitlyb) controlOnb = app."bControlOnb_$x"
+        if(useBitlyb) controlOffb = app."bControlOffb_$x"
         
         theStyle = "style='width:${secWidth}%;"
-        if(align != "Left") theStyle += "text-align:${align};"
+        if(align) theStyle += "text-align:${align};"
         if(color != "Default") theStyle += "color:${color};"
         if(fontSize != 0) theStyle += "font-size:${fontSize}px;"
         if(italic) theStyle += "font-style:italic;"
@@ -951,7 +978,7 @@ def tileHandler(evt){
         if(logEnable) log.debug "In tileHander - theStyle: ${theStyle}"
         
         theStylea = "style='width:${secWidtha}%;"
-        if(aligna != "Left") theStylea += "text-align:${aligna};"
+        if(aligna) theStylea += "text-align:${aligna};"
         if(colora != "Default") theStylea += "color:${colora};"
         if(fontSizea != 0) theStylea += "font-size:${fontSizea}px;"
         if(italica) theStylea += "font-style:italic;"
@@ -963,7 +990,7 @@ def tileHandler(evt){
         if(logEnable) log.debug "In tileHander - theStylea: ${theStylea}"
         
         theStyleb = "style='width:${secWidthb}%;"
-        if(alignb != "Left") theStyleb += "text-align:${alignb};"
+        if(alignb) theStyleb += "text-align:${alignb};"
         if(colorb != "Default") theStyleb += "color:${colorb};"
         if(fontSizeb != 0) theStyleb += "font-size:${fontSizeb}px;"
         if(italicb) theStyleb += "font-style:italic;"
@@ -978,29 +1005,20 @@ def tileHandler(evt){
         
         if(nSections >= "1") {
             theTileMap += "<td $theStyle>"
-            if(wordsBEF) makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,cDevBEFid)
-            if(wordsBEF) theTileMap += "${newWords2}"
-		    if(deviceAtts && !hideAttr) theTileMap += "${deviceStatus}"
-		    if(wordsAFT) makeTileLine(theDevice,wordsAFT,linkAFT,linkAFTL)
-            if(wordsAFT) theTileMap += "${newWords2}"
+            makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices)
+            theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	} 
         if(nSections >= "2") {
             theTileMap += "<td $theStylea>"
-            if(wordsBEFa) makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,cDevBEFida)
-            if(wordsBEFa) theTileMap += "${newWords2}"
-		    if(deviceAttsa && !hideAttra) theTileMap += "${deviceStatusa}"
-		    if(wordsAFTa) makeTileLine(theDevicea,wordsAFTa,linkAFTa,linkAFTLa)
-            if(wordsAFTa) theTileMap += "${newWords2}"
+            makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,wordsAFTa,linkAFTa,linkAFTLa,controlOna,controlOffa,deviceStatusa,controlDevicesa)
+            theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
         if(nSections == "3") {
             theTileMap += "<td $theStyleb>"
-            if(wordsBEFb) makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,cDevBEFidb)
-            if(wordsBEFb) theTileMap += "${newWords2}"
-		    if(deviceAttsb && !hideAttrb) theTileMap += "${deviceStatusb}"
-		    if(wordsAFTb) makeTileLine(theDeviceb,wordsAFTb,linkAFTb,linkAFTLb)
-            if(wordsAFTb) theTileMap += "${newWords2}"
+            makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,wordsAFTb,linkAFTb,linkAFTLb,controlOnb,controlOffb,deviceStatusb,controlDevicesb)
+            theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
     
@@ -1047,6 +1065,113 @@ def tileHandler(evt){
         if(logEnable) log.debug "*************************************** In tileHandler - End ***************************************"
     }
     sampleTileHandler()
+}
+
+def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices) {
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - theDevice: ${theDevice} - deviceStatus: ${deviceStatus}"
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - wordsBEF: ${wordsBEF} - linkBEF: ${linkBEF} - linkBEFL: ${linkBEFL}"
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - wordsAFT: ${wordsAFT} - linkAFT: ${linkAFT} - linkAFTL: ${linkAFTL}"
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - controlOn: ${controlOn} - controlOff: ${controlOff} - controlDevices: ${controlDevices}"
+    newWords2 = ""
+    
+    if(controlDevices) { 
+        if(theDevice) {
+            toControlOn = controlOn
+            toControlOff = controlOff
+            cStatus = theDevice.currentValue("switch")
+            
+            log.warn "Device status: $cStatus"
+            if(cStatus == "on") {
+                controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
+            } else {
+                controlLink = "<a href=${toControlOn} target=a>$deviceStatus</a>"
+            }
+            
+            if(logEnable) log.debug "In makeTileLine ** - controlLink: ${controlLink} - deviceStatus: ${deviceStatus}"
+        } else {
+            deviceStatus = ""
+            controlLink = ""
+        }
+    } else {
+        controlLink = deviceStatus
+    }
+    
+    if(wordsBEF == null) wordsBEF = ""
+    if(wordsAFT == null) wordsAFT = ""
+    if(controlLink == null) controlLink = ""
+    words = "${wordsBEF}" + "${controlLink}" + "${wordsAFT}"
+    if(logEnable) log.debug "In makeTileLine - words: ${words}"
+    
+    if(words.toLowerCase().contains("wlink")) { 
+        try {
+            theLink = "<a href='http://${linkURL}' target=_blank>${linkName}</a>"
+            
+            if(logEnable) log.debug "In makeTileLine - theLink: ${theLink}"
+            if(theLink) {words = words.replace("%wLink%","${theLink}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    if(words.toLowerCase().contains("%lastact%")) {
+        try {
+            if(dateTimeFormat == "f1") dFormat = "MMM dd, yyy - h:mm:ss a"
+            if(dateTimeFormat == "f2") dFormat = "dd MMM, yyy - h:mm:ss a"
+            if(dateTimeFormat == "f3") dFormat = "MMM dd - h:mm:ss a"
+            if(dateTimeFormat == "f4") dFormat = "dd MMM - h:mm:ss a"
+            if(dateTimeFormat == "f5") dFormat = "MMM dd - HH:mm"
+            if(dateTimeFormat == "f6") dFormat = "dd MMM - HH:mm"
+            if(dateTimeFormat == "f7") dFormat = "h:mm:ss a"
+            if(dateTimeFormat == "f8") dFormat = "HH:mm:ss"
+            
+            lAct = theDevice.getLastActivity().format("${dFormat}")
+            
+            if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
+            if(lAct) {words = words.replace("%lastAct%","${lAct}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    if(words.toLowerCase().contains("%currdate%")) {
+        try {
+            if(cDateFormat == "cd1") cdFormat = "MMM dd, yyy"
+            if(cDateFormat == "cd2") cdFormat = "dd MMM, yyy"
+            if(cDateFormat == "cd3") cdFormat = "MMM dd"
+            if(cDateFormat == "cd4") cdFormat = "dd MMM"
+             
+            theDate = new Date()
+            if(logEnable) log.debug "In makeTileLine - theDate: ${theDate}"
+            cDate = theDate.format("${cdFormat}")
+             
+            if(logEnable) log.debug "In makeTileLine - cDate: ${cDate}"
+            if(cDate) {words = words.replace("%currDate%","${cDate}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    if(words.toLowerCase().contains("%currtime%")) {
+         try {
+            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+            if(cTimeFormat == "ct4") ctFormat = "HH:mm a"
+                 
+            theDate = new Date()
+            tDate = theDate.format("${ctFormat}")
+             
+            if(logEnable) log.debug "In makeTileLine - tDate: ${tDate}"
+            if(tDate) {words = words.replace("%currTime%","${tDate}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    newWords2 = "${words}"
+
+    if(logEnable) log.debug "In makeTileLine - Returning newWords2: ${newWords2}"
+    return newWords2
 }
 
 def sampleTileHandler(evt){
@@ -1109,7 +1234,7 @@ def makeTile() {
     if(state.theTile_7) tileData += state.theTile_7
     if(state.theTile_8) tileData += state.theTile_8
     if(state.theTile_9) tileData += state.theTile_9
-    if(controlDevices && useIframe) tileData += "<iframe name=a width=1 height=1/>"
+    tileData += "<iframe name=a width=1 height=1/>"
 
     tileData += "</td></tr></table>"
     
@@ -1349,103 +1474,6 @@ def getCellColors(deviceStatus,deviceAtts) {
     return theCellColor
 }
 
-def makeTileLine(theDevice,words,linkName,linkURL,cDevBEFid) {
-    if(logEnable) log.debug "In makeTileLine (${state.version}) - device: ${theDevice} - words: ${words} - linkName: ${linkName} - linkURL: ${linkURL} - dateTimeFormat: ${dateTimeFormat} - cDevBEFid: ${cDevBEFid}"
-    newWords2 = ""
-    dID = cDevBEFid
-    
-    if(words.toLowerCase().contains("control") && controlDevices) { 
-        toControlOn = "http://$cAPIip/apps/api/$cAPIno/devices/$dID/on?access_token=$cAPIat"
-        toControlOff = "http://$cAPIip/apps/api/$cAPIno/devices/$dID/off?access_token=$cAPIat"
-            
-        if(useIframe) {
-            // Opens in an iframe but uses around 350 characters
-            //controlLink = "<iframe src='<a href=${toControlOn} target=a>On</a>' /> <iframe name=a width=1 height=1/> <a href=${toControlOff} target=a>Off</a>"
-            controlLink = "<a href=${toControlOn} target=a>On</a> - <a href=${toControlOff} target=a>Off</a>"
-        } else {
-            // Opens in a new window, which is annoying but uses around 330 characters
-            controlLink = "<a href=${toControlOn} target=_blank>On</a> - <a href=${toControlOff} target=_blank>Off</a>"
-        }
-            
-        if(logEnable) log.debug "In makeTileLine - toControl: ${controlLink}"
-        words = words.replace("%control%","${controlLink}")
-    }
-    
-    
-    if(words.toLowerCase().contains("wlink")) { 
-        try {
-            theLink = "<a href='http://${linkURL}' target=_blank>${linkName}</a>"
-            
-            if(logEnable) log.debug "In makeTileLine - theLink: ${theLink}"
-            if(theLink) {words = words.replace("%wLink%","${theLink}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    if(words.toLowerCase().contains("%lastact%")) {
-        try {
-            if(dateTimeFormat == "f1") dFormat = "MMM dd, yyy - h:mm:ss a"
-            if(dateTimeFormat == "f2") dFormat = "dd MMM, yyy - h:mm:ss a"
-            if(dateTimeFormat == "f3") dFormat = "MMM dd - h:mm:ss a"
-            if(dateTimeFormat == "f4") dFormat = "dd MMM - h:mm:ss a"
-            if(dateTimeFormat == "f5") dFormat = "MMM dd - HH:mm"
-            if(dateTimeFormat == "f6") dFormat = "dd MMM - HH:mm"
-            if(dateTimeFormat == "f7") dFormat = "h:mm:ss a"
-            if(dateTimeFormat == "f8") dFormat = "HH:mm:ss"
-            
-            lAct = theDevice.getLastActivity().format("${dFormat}")
-            
-            if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
-            if(lAct) {words = words.replace("%lastAct%","${lAct}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    if(words.toLowerCase().contains("%currdate%")) {
-        try {
-            if(cDateFormat == "cd1") cdFormat = "MMM dd, yyy"
-            if(cDateFormat == "cd2") cdFormat = "dd MMM, yyy"
-            if(cDateFormat == "cd3") cdFormat = "MMM dd"
-            if(cDateFormat == "cd4") cdFormat = "dd MMM"
-             
-            theDate = new Date()
-            if(logEnable) log.debug "In makeTileLine - theDate: ${theDate}"
-            cDate = theDate.format("${cdFormat}")
-             
-            if(logEnable) log.debug "In makeTileLine - cDate: ${cDate}"
-            if(cDate) {words = words.replace("%currDate%","${cDate}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    if(words.toLowerCase().contains("%currtime%")) {
-         try {
-            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
-            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
-            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
-            if(cTimeFormat == "ct4") ctFormat = "HH:mm a"
-                 
-            theDate = new Date()
-            tDate = theDate.format("${ctFormat}")
-             
-            if(logEnable) log.debug "In makeTileLine - tDate: ${tDate}"
-            if(tDate) {words = words.replace("%currTime%","${tDate}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    
-    newWords2 = "${words}"
-
-    if(logEnable) log.debug "In makeTileLine - Returning newWords2: ${newWords2}"
-    return newWords2
-}
-
-def turnDeviceOn() {
-    if(logEnable) log.warn "<b>In turnDeviceOn (${state.version}) - ********************</b>"
-    device.on()
-}
-
 def createChildDevice() {    
     if(logEnable) log.debug "In createChildDevice (${state.version})"
     statusMessage = ""
@@ -1499,7 +1527,7 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-// https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/instructions.png
+// https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/button-power-red.png
 
 def getFormat(type, myText=""){			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
