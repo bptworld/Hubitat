@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.1 - 02/22/20 - Bug fixes.
  *  V2.2.0 - 02/22/20 - Locks can now be controlled, bug fixes.
  *  V2.1.9 - 02/22/20 - Multi-Device Control!
  *  V2.1.8 - 02/19/20 - Changes to text color option, web Links and icon height. Added current Date and Time to wildcard options.
@@ -51,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.0"
+	state.version = "v2.2.1"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -196,35 +197,38 @@ def pageConfig() {
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts
-                            if(controlDevices) {
-                                deviceAtt = app."deviceAtts_$x"
-                                cDevID = theDevice.id
+                            deviceAtt = app."deviceAtts_$x"
+                            
+                            if(controlDevices && deviceAtt) {
+                                //paragraph "deviceAtt: ${deviceAtt}"
+                                if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock") {
+                                    cDevID = theDevice.id
+                                    instruct = "<b>Device ID: ${cDevID} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
+                                    if(deviceAtt.toLowerCase() == "switch") instruct += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
+                                    if(deviceAtt.toLowerCase() == "lock") instruct += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
+                                    paragraph "${instruct}"
                                 
-                                instruct = "<b>Device ID: ${cDevID} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
-                                if(deviceAtt.toLowerCase() == "switch") instruct += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
-                                if(deviceAtt.toLowerCase() == "lock") instruct += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
-                                paragraph "${instruct}"
-                                
-                                if(deviceAtt.toLowerCase() == "switch") {
-                                    input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                }
-                                if(deviceAtt.toLowerCase() == "lock") {
-                                    input "controlLock_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    input "controlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                }
-                                paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
-                                input "useBitly_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
-                                useBitly = app."useBitly_$x"
-                                if(useBitly) {
-                                    paragraph "Be sure to put 'http://' in front of the Bitly address"
                                     if(deviceAtt.toLowerCase() == "switch") {
-                                        input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                        input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                        input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
                                     }
                                     if(deviceAtt.toLowerCase() == "lock") {
-                                        input "bControlLock_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                        input "bControlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "controlLock_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                        input "controlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    }
+                                    paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                    input "useBitly_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
+                                    useBitly = app."useBitly_$x"
+                                    if(useBitly) {
+                                        paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                        if(deviceAtt.toLowerCase() == "switch") {
+                                            input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+                                        if(deviceAtt.toLowerCase() == "lock") {
+                                            input "bControlLock_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
                                     }
                                 }
                             }
@@ -370,7 +374,6 @@ def pageConfig() {
                         if(wordsAFTa) {if(wordsAFTa.contains("lastAct")) state.lastActiv = "yes"}  
 
                         input "devicea_$x", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
-
                         theDevicea = app."devicea_$x"
 
                         if(theDevicea) {
@@ -378,35 +381,38 @@ def pageConfig() {
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa
-                            if(controlDevices) {
-                                deviceAtta = app."deviceAttsa_$x"
-                                cDevIDa = theDevicea.id
-                                instructa = "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
-                                if(deviceAtta.toLowerCase() == "switch") instructa += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
-                                if(deviceAtta.toLowerCase() == "lock") instructa += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
-                                paragraph "${instructa}"
-                                
-                                if(deviceAtta.toLowerCase() == "switch") {
-                                    input "controlOna_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    input "controlOffa_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                }
-                                if(deviceAtta.toLowerCase() == "lock") {
-                                    input "controlLocka_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    input "controlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                }
-                                
-                                paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
-                                input "useBitlya_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
-                                useBitlya = app."useBitlya_$x"
-                                if(useBitlya) {
-                                    paragraph "Be sure to put 'http://' in front of the Bitly address"
+                            ideviceAtta = app."deviceAttsa_$x"
+                            
+                            if(controlDevices && deviceAtta) {
+                                if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock") {
+                                    cDevIDa = theDevicea.id
+                                    instructa = "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
+                                    if(deviceAtta.toLowerCase() == "switch") instructa += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
+                                    if(deviceAtta.toLowerCase() == "lock") instructa += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
+                                    paragraph "${instructa}"
+
                                     if(deviceAtta.toLowerCase() == "switch") {
-                                        input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                        input "bControlOffa_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "controlOna_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                        input "controlOffa_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
                                     }
                                     if(deviceAtta.toLowerCase() == "lock") {
-                                        input "bControlLocka_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                        input "bControlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "controlLocka_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                        input "controlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    }
+
+                                    paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                    input "useBitlya_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
+                                    useBitlya = app."useBitlya_$x"
+                                    if(useBitlya) {
+                                        paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                        if(deviceAtta.toLowerCase() == "switch") {
+                                            input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlOffa_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+                                        if(deviceAtta.toLowerCase() == "lock") {
+                                            input "bControlLocka_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
                                     }
                                 }
                             }
@@ -555,35 +561,38 @@ def pageConfig() {
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb
-                            if(controlDevices) {
-                                deviceAttb = app."deviceAttsb_$x"
-                                cDevIDb = theDeviceb.id
-                                instructb = "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
-                                if(deviceAttb.toLowerCase() == "switch") instructb += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
-                                if(deviceAttb.toLowerCase() == "lock") instructb += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
-                                paragraph "${instructb}"
-                                
-                                if(deviceAttb.toLowerCase() == "switch") {
-                                    input "controlOnb_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    input "controlOffb_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                }
-                                if(deviceAttb.toLowerCase() == "lock") {
-                                    input "controlLockb_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    input "controlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                }
-                                
-                                paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
-                                input "useBitlyb_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
-                                useBitlyb = app."useBitlyb_$x"
-                                if(useBitlyb) {
-                                    paragraph "Be sure to put 'http://' in front of the Bitly address"
+                            deviceAttb = app."deviceAttsb_$x"
+                            
+                            if(controlDevices && deviceAttb) {
+                                if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock") {
+                                    cDevIDb = theDeviceb.id
+                                    instructb = "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
+                                    if(deviceAttb.toLowerCase() == "switch") instructb += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
+                                    if(deviceAttb.toLowerCase() == "lock") instructb += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
+                                    paragraph "${instructb}"
+
                                     if(deviceAttb.toLowerCase() == "switch") {
-                                        input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                        input "bControlOffb_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "controlOnb_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                        input "controlOffb_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
                                     }
                                     if(deviceAttb.toLowerCase() == "lock") {
-                                        input "bControlLockb_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                        input "bControlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "controlLockb_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                        input "controlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    }
+
+                                    paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                    input "useBitlyb_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
+                                    useBitlyb = app."useBitlyb_$x"
+                                    if(useBitlyb) {
+                                        paragraph "Be sure to put 'http://' in front of the Bitly address"
+                                        if(deviceAttb.toLowerCase() == "switch") {
+                                            input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlOffb_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+                                        if(deviceAttb.toLowerCase() == "lock") {
+                                            input "bControlLockb_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
                                     }
                                 }
                             }
@@ -812,9 +821,14 @@ def tileHandler(evt){
         theDevice = app."device_$x"
         theDevicea = app."devicea_$x"
         theDeviceb = app."deviceb_$x"
-        if(theDevice) deviceAtts = app."deviceAtts_$x".toLowerCase()
-        if(theDevicea) deviceAttsa = app."deviceAttsa_$x".toLowerCase()
-        if(theDeviceb) deviceAttsb = app."deviceAttsb_$x".toLowerCase()
+        
+        if(theDevice) deviceAtts = app."deviceAtts_$x"
+        if(deviceAtts) deviceAtts = deviceAtts.toLowerCase()
+        if(theDevicea) deviceAttsa = app."deviceAttsa_$x"
+        if(deviceAttsa) deviceAttsa = deviceAttsa.toLowerCase()
+        if(theDeviceb) deviceAttsb = app."deviceAttsb_$x"
+        if(deviceAttsb) deviceAttsb = deviceAttsb.toLowerCase()
+        
         useColors = app."useColors_$x"
         useColorsa = app."useColorsa_$x"
         useColorsb = app."useColorsb_$x"
