@@ -4,10 +4,9 @@
  *  Design Usage:
  *  This driver formats the Tile Master data to be used with Hubitat's Dashboards.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 02/23/20 - Make default logging false
  *  V2.0.2 - 09/22/19 - Removed 'Font Size', Also added new attribute: lastUpdated, removed several 'state.*'
  *  V2.0.1 - 09/20/19 - Initial release.
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -46,7 +46,7 @@
 
 def setVersion(){
     appName = "TileMasterDriver"
-	version = "v2.0.2" 
+	version = "v2.0.3" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -71,7 +71,7 @@ metadata {
 	}
 	preferences() {    	
         section(""){
-            input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
+            input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
         }
     }
 }
