@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.2 - 02/23/20 - More bug fixes and enhancements
  *  V2.2.1 - 02/22/20 - Bug fixes.
  *  V2.2.0 - 02/22/20 - Locks can now be controlled, bug fixes.
  *  V2.1.9 - 02/22/20 - Multi-Device Control!
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.1"
+	state.version = "v2.2.2"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -88,7 +89,22 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
 			paragraph "Create a tile with multiple devices and customization options."
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Tile")) {
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device and Dashboard Tile")) {}
+        section("Important Information Regarding the Virtual Device:", hideable: true, hidden: true) {
+			paragraph "Tile Master uses an iFrame within the table that creates the Dashboard Tile. This is the magic that makes device control possible without a new window opening up and ruining the whole experience."
+            paragraph "This also has the downside of messing with the virtual device created. While the Dashboard tile isn't effected and continues to update as usual, the Virtual Device itself will not load from the Device page. You will just see a blank (white) screen and the spinning blue thing in the corner. Again, this does not effect the workings of this app or the Dashboard tile. Just the annoyance of not being able to view the device page."
+			paragraph "With that said, there really is no reason to view the device page as there are no options, it's just a holding place for the Dashboard tile. But, if for any reason you do want to view the device page, I've added in a switch to turn the iFrame off."
+            paragraph "What will happen if this is off?<br> - If you click a value in the Sample tile, a new window will open<br> - If you click a value in the Device page, a new window will open<br> - If you click a value in the Dashboard tile, everything should work as usual (no window opening)"
+            paragraph "If you experience anything different, you should turn the iFrame back on and post on the forums. Be sure to mention the issue and what browser you are using."
+
+            input "iFrameOff", "bool", title: "Turn iFrame off?", defaultValue:true, description: "iFrame", submitOnChange:true
+            if(iFrameOff) paragraph "<div style='color: green'>iFrames are turned off, virtual device is now accessible from device menu.</div>"
+            if(!iFrameOff) paragraph "<div style='color: red'>iFrames are turned on, virtual device will not load from device menu.</div>"
+            //if(iFrameOff) runIn(1800,iFrameOffHandler)
+		}
+
+        section() {
             paragraph "Each child app needs a virtual device to store the Tile Master data. Enter a short descriptive name for this device."
 			input "userName", "text", title: "Enter a name for this Tile Device (ie. 'House Temps' will become 'TM - House Temps')", required:true, submitOnChange:true
             paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
@@ -199,7 +215,19 @@ def pageConfig() {
                             input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts
                             deviceAtt = app."deviceAtts_$x"
                             
-                            if(controlDevices && deviceAtt) {
+                            input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
+                            hideAttr = app."hideAttr_$x"
+                            
+                            deviceStatus = theDevice.currentValue("${deviceAtt}")
+                            if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
+
+                            if(state.battTempError == "") {
+                                paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
+                            } else {
+                                if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
+                            }
+                            
+                            if(controlDevices && deviceAtt && !hideAttr) {
                                 //paragraph "deviceAtt: ${deviceAtt}"
                                 if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock") {
                                     cDevID = theDevice.id
@@ -231,17 +259,6 @@ def pageConfig() {
                                         }
                                     }
                                 }
-                            }
-                                                                                                                              
-                            if(!controlDevices) input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
-                            deviceAtts = app."deviceAtts_$x"
-                            deviceStatus = theDevice.currentValue("${deviceAtts}")
-                            if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
-
-                            if(state.battTempError == "") {
-                                paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtts} - ${deviceStatus}"
-                            } else {
-                                if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
                             }
                         }
                         paragraph "<hr>"
@@ -381,9 +398,21 @@ def pageConfig() {
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa
-                            ideviceAtta = app."deviceAttsa_$x"
+                            deviceAtta = app."deviceAttsa_$x"
                             
-                            if(controlDevices && deviceAtta) {
+                            input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
+                            hideAttra = app."hideAttra_$x"
+                            
+                            deviceStatusa = theDevicea.currentValue("${deviceAtta}")
+                            if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
+                            
+                            if(state.battTempError == "") {
+                                paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
+                            } else {
+                                if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
+                            }
+                            
+                            if(controlDevices && deviceAtta && !hideAttra) {
                                 if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock") {
                                     cDevIDa = theDevicea.id
                                     instructa = "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
@@ -416,12 +445,6 @@ def pageConfig() {
                                     }
                                 }
                             }
-                                                                                                                              
-                            if(!controlDevices) input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
-                            deviceAttsa = app."deviceAttsa_$x"
-                            deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
-                            if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
-                            if(theDevicea && deviceAttsa) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAttsa} - ${deviceStatusa}"
                         }
                         paragraph "<hr>"
                         paragraph "Style Attributes - Using default values will save on character counts."
@@ -562,8 +585,19 @@ def pageConfig() {
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb
                             deviceAttb = app."deviceAttsb_$x"
+                                                                                                                              
+                            input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
+                            hideAttrb = app."hideAttrb_$x"
                             
-                            if(controlDevices && deviceAttb) {
+                            deviceStatusb = theDeviceb.currentValue("${deviceAttb}")
+                            if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
+                            if(state.battTempError == "") {
+                                paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
+                            } else {
+                                if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
+                            }
+                            
+                            if(controlDevices && deviceAttb && !hideAttrb) {
                                 if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock") {
                                     cDevIDb = theDeviceb.id
                                     instructb = "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
@@ -596,12 +630,6 @@ def pageConfig() {
                                     }
                                 }
                             }
-                                                                                                                              
-                            if(!controlDevices) input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
-                            deviceAttsb = app."deviceAttsb_$x"
-                            deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
-                            if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
-                            if(theDeviceb && deviceAttsb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttsb} - ${deviceStatusb}"
                         }
                         paragraph "<hr>"
                         paragraph "Style Attributes - Using default values will save on character counts."
@@ -1089,19 +1117,19 @@ def tileHandler(evt){
         
         if(nSections >= "1") {
             theTileMap += "<td $theStyle>"
-            makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts)
+            makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts,hideAttr)
             theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	} 
         if(nSections >= "2") {
             theTileMap += "<td $theStylea>"
-            makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,wordsAFTa,linkAFTa,linkAFTLa,controlOna,controlOffa,deviceStatusa,controlDevicesa,deviceAttsa)
+            makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,wordsAFTa,linkAFTa,linkAFTLa,controlOna,controlOffa,deviceStatusa,controlDevicesa,deviceAttsa,hideAttra)
             theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
         if(nSections == "3") {
             theTileMap += "<td $theStyleb>"
-            makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,wordsAFTb,linkAFTb,linkAFTLb,controlOnb,controlOffb,deviceStatusb,controlDevicesb,deviceAttsb)
+            makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,wordsAFTb,linkAFTb,linkAFTLb,controlOnb,controlOffb,deviceStatusb,controlDevicesb,deviceAttsb,hideAttrb)
             theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
@@ -1151,34 +1179,38 @@ def tileHandler(evt){
     sampleTileHandler()
 }
 
-def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts) {
-    if(logEnable) log.debug "In makeTileLine (${state.version}) - theDevice: ${theDevice} - deviceAtts: ${deviceAtts} - deviceStatus: ${deviceStatus}"
+def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts,hideAttr) {
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - theDevice: ${theDevice} - deviceAtts: ${deviceAtts} - hideAttr: ${hideAttr} - deviceStatus: ${deviceStatus}"
     if(logEnable) log.debug "In makeTileLine (${state.version}) - wordsBEF: ${wordsBEF} - linkBEF: ${linkBEF} - linkBEFL: ${linkBEFL}"
     if(logEnable) log.debug "In makeTileLine (${state.version}) - wordsAFT: ${wordsAFT} - linkAFT: ${linkAFT} - linkAFTL: ${linkAFTL}"
     if(logEnable) log.debug "In makeTileLine (${state.version}) - controlOn: ${controlOn} - controlOff: ${controlOff} - controlDevices: ${controlDevices}"
     newWords2 = ""
     
-    if(controlDevices) { 
-        if(theDevice) {
-            toControlOn = controlOn
-            toControlOff = controlOff
-            if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
-            if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
+    if(!hideAttr) {
+        if(controlDevices && (deviceAtts == "switch" || deviceAtts == "lock")) { 
+            if(theDevice) {
+                toControlOn = controlOn
+                toControlOff = controlOff
+                if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
+                if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
             
-            log.warn "Device status: $cStatus"
-            if(cStatus == "on" || cStatus == "locked") {
-                controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
+                log.warn "Device status: $cStatus"
+                if(cStatus == "on" || cStatus == "locked") {
+                    controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
+                } else {
+                    controlLink = "<a href=${toControlOn} target=a>$deviceStatus</a>"
+                }
+            
+                if(logEnable) log.debug "In makeTileLine ** - controlLink: ${controlLink} - deviceStatus: ${deviceStatus}"
             } else {
-                controlLink = "<a href=${toControlOn} target=a>$deviceStatus</a>"
+                deviceStatus = ""
+                controlLink = ""
             }
-            
-            if(logEnable) log.debug "In makeTileLine ** - controlLink: ${controlLink} - deviceStatus: ${deviceStatus}"
         } else {
-            deviceStatus = ""
-            controlLink = ""
+            controlLink = deviceStatus
         }
     } else {
-        controlLink = deviceStatus
+        controlLink = ""
     }
     
     if(wordsBEF == null) wordsBEF = ""
@@ -1309,8 +1341,6 @@ def makeTile() {
     if(logEnable) log.debug "*************************************** In makeTile - Start ***************************************"
     if(logEnable) log.debug "In makeTile (${state.version}) - howManyLines: ${howManyLines}"
     tileData = "<table width=100%><tr><td>"
-        
-    //if(state.theTile_1) tileData += "<iframe srcdoc='${state.theTile_1}' height='30' width='400' />"
     if(state.theTile_1) tileData += state.theTile_1
     if(state.theTile_2) tileData += state.theTile_2
     if(state.theTile_3) tileData += state.theTile_3
@@ -1320,8 +1350,7 @@ def makeTile() {
     if(state.theTile_7) tileData += state.theTile_7
     if(state.theTile_8) tileData += state.theTile_8
     if(state.theTile_9) tileData += state.theTile_9
-    tileData += "<iframe name=a width=1 height=1/>"
-
+    if(!iFrameOff) tileData += "<iframe name=a width=1 height=1 />"
     tileData += "</td></tr></table>"
     
     if(logEnable) log.debug "In makeTile - tileData: ${tileData}"
@@ -1595,6 +1624,11 @@ def masterListHandler(masterList) {
     } catch (e) {
         if(logEnable) log.debug "In masterListHandler - No Icons found"
     }
+}
+
+def iFrameOffHandler(){
+    log.warn "Tile Master - Turning iFrame back on."
+    device.updateSetting("iFrameOff",[value:"false",type:"bool"])
 }
 
 // ********** Normal Stuff **********
