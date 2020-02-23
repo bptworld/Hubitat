@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.0 - 02/22/20 - Locks can now be controlled, bug fixes.
  *  V2.1.9 - 02/22/20 - Multi-Device Control!
  *  V2.1.8 - 02/19/20 - Changes to text color option, web Links and icon height. Added current Date and Time to wildcard options.
  *  V2.1.7 - 02/16/20 - Status Icons and the ability to change BEF and/or AFT text color based on device value
@@ -50,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.1.9"
+	state.version = "v2.2.0"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -193,21 +194,38 @@ def pageConfig() {
                         if(theDevice) {
                             def allAtts = [:]
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                            if(controlDevices) paragraph "<b>To control Device, attribute 'Switch' must be selected below</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts
                             if(controlDevices) {
+                                deviceAtt = app."deviceAtts_$x"
                                 cDevID = theDevice.id
-                                paragraph "<b>Device ID: ${cDevID} - Type this number in where the Maker API URL says [DEVICE ID]<br>Also, Replace [COMMANDS] with on and off respectively.</b>"
-                                input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
                                 
+                                instruct = "<b>Device ID: ${cDevID} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
+                                if(deviceAtt.toLowerCase() == "switch") instruct += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
+                                if(deviceAtt.toLowerCase() == "lock") instruct += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
+                                paragraph "${instruct}"
+                                
+                                if(deviceAtt.toLowerCase() == "switch") {
+                                    input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                }
+                                if(deviceAtt.toLowerCase() == "lock") {
+                                    input "controlLock_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    input "controlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                }
                                 paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
                                 input "useBitly_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
                                 useBitly = app."useBitly_$x"
                                 if(useBitly) {
                                     paragraph "Be sure to put 'http://' in front of the Bitly address"
-                                    input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                    input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    if(deviceAtt.toLowerCase() == "switch") {
+                                        input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    }
+                                    if(deviceAtt.toLowerCase() == "lock") {
+                                        input "bControlLock_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "bControlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    }
                                 }
                             }
                                                                                                                               
@@ -358,25 +376,42 @@ def pageConfig() {
                         if(theDevicea) {
                             def allAttsa = [:]
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                            if(controlDevices) paragraph "<b>To control Device, attribute 'Switch' must be selected below</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa
                             if(controlDevices) {
+                                deviceAtta = app."deviceAttsa_$x"
                                 cDevIDa = theDevicea.id
-                                paragraph "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]<br>Also, Replace [COMMANDS] with on and off respectively.</b>"
-                                input "controlOna_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                input "controlOffa_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                instructa = "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
+                                if(deviceAtta.toLowerCase() == "switch") instructa += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
+                                if(deviceAtta.toLowerCase() == "lock") instructa += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
+                                paragraph "${instructa}"
+                                
+                                if(deviceAtta.toLowerCase() == "switch") {
+                                    input "controlOna_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    input "controlOffa_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                }
+                                if(deviceAtta.toLowerCase() == "lock") {
+                                    input "controlLocka_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    input "controlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                }
                                 
                                 paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
                                 input "useBitlya_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
                                 useBitlya = app."useBitlya_$x"
                                 if(useBitlya) {
                                     paragraph "Be sure to put 'http://' in front of the Bitly address"
-                                    input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                    input "bControlOffa_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    if(deviceAtta.toLowerCase() == "switch") {
+                                        input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "bControlOffa_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    }
+                                    if(deviceAtta.toLowerCase() == "lock") {
+                                        input "bControlLocka_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "bControlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    }
                                 }
                             }
                                                                                                                               
-                            if(!controlDevices) input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
+                            if(!controlDevices) input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             deviceAttsa = app."deviceAttsa_$x"
                             deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
                             if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
@@ -518,25 +553,42 @@ def pageConfig() {
                         if(theDeviceb) {
                             def allAttsb = [:]
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                            if(controlDevices) paragraph "<b>To control Device, attribute 'Switch' must be selected below</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb
                             if(controlDevices) {
+                                deviceAttb = app."deviceAttsb_$x"
                                 cDevIDb = theDeviceb.id
-                                paragraph "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]<br>Also, Replace [COMMANDS] with on and off respectively.</b>"
-                                input "controlOnb_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                input "controlOffb_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                instructb = "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
+                                if(deviceAttb.toLowerCase() == "switch") instructb += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
+                                if(deviceAttb.toLowerCase() == "lock") instructb += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
+                                paragraph "${instructb}"
+                                
+                                if(deviceAttb.toLowerCase() == "switch") {
+                                    input "controlOnb_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    input "controlOffb_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                }
+                                if(deviceAttb.toLowerCase() == "lock") {
+                                    input "controlLockb_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    input "controlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                }
                                 
                                 paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
                                 input "useBitlyb_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
                                 useBitlyb = app."useBitlyb_$x"
                                 if(useBitlyb) {
                                     paragraph "Be sure to put 'http://' in front of the Bitly address"
-                                    input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                    input "bControlOffb_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    if(deviceAttb.toLowerCase() == "switch") {
+                                        input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "bControlOffb_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    }
+                                    if(deviceAttb.toLowerCase() == "lock") {
+                                        input "bControlLockb_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        input "bControlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                    }
                                 }
                             }
                                                                                                                               
-                            if(!controlDevices) input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
+                            if(!controlDevices) input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             deviceAttsb = app."deviceAttsb_$x"
                             deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
                             if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
@@ -760,9 +812,9 @@ def tileHandler(evt){
         theDevice = app."device_$x"
         theDevicea = app."devicea_$x"
         theDeviceb = app."deviceb_$x"
-        if(theDevice) deviceAtts = app."deviceAtts_$x"
-        if(theDevicea) deviceAttsa = app."deviceAttsa_$x"
-        if(theDeviceb) deviceAttsb = app."deviceAttsb_$x"
+        if(theDevice) deviceAtts = app."deviceAtts_$x".toLowerCase()
+        if(theDevicea) deviceAttsa = app."deviceAttsa_$x".toLowerCase()
+        if(theDeviceb) deviceAttsb = app."deviceAttsb_$x".toLowerCase()
         useColors = app."useColors_$x"
         useColorsa = app."useColorsa_$x"
         useColorsb = app."useColorsb_$x"
@@ -923,10 +975,16 @@ def tileHandler(evt){
         linkBEFL = app."linkBEFL_$x"
         linkAFTL = app."linkAFTL_$x"
         useBitly = app."useBitly_$x"
-        if(!useBitly) controlOn = app."controlOn_$x"
-        if(!useBitly) controlOff = app."controlOff_$x"
-        if(useBitly) controlOn = app."bControlOn_$x"
-        if(useBitly) controlOff = app."bControlOff_$x"
+        
+        if(!useBitly && deviceAtts == "switch") controlOn = app."controlOn_$x"
+        if(!useBitly && deviceAtts == "switch") controlOff = app."controlOff_$x"
+        if(useBitly && deviceAtts == "switch") controlOn = app."bControlOn_$x"
+        if(useBitly && deviceAtts == "switch") controlOff = app."bControlOff_$x"
+        
+        if(!useBitly && deviceAtts == "lock") controlOn = app."controlLock_$x"
+        if(!useBitly && deviceAtts == "lock") controlOff = app."controlUnlock_$x"
+        if(useBitly && deviceAtts == "lock") controlOn = app."bControlLock_$x"
+        if(useBitly && deviceAtts == "lock") controlOff = app."bControlUnlock_$x"
         
         aligna = app."aligna_$x"
         colora = app."colora_$x"
@@ -941,10 +999,16 @@ def tileHandler(evt){
         linkBEFLa = app."linkBEFLa_$x"
         linkAFTLa = app."linkAFTLa_$x"
         useBitlya = app."useBitlya_$x"
-        if(!useBitlya) controlOna = app."controlOna_$x"
-        if(!useBitlya) controlOffa = app."controlOffa_$x"
-        if(useBitlya) controlOna = app."bControlOna_$x"
-        if(useBitlya) controlOffa = app."bControlOffa_$x"
+        
+        if(!useBitlya && deviceAttsa == "switch") controlOna = app."controlOna_$x"
+        if(!useBitlya && deviceAttsa == "switch") controlOffa = app."controlOffa_$x"
+        if(useBitlya && deviceAttsa == "switch") controlOna = app."bControlOna_$x"
+        if(useBitlya && deviceAttsa == "switch") controlOffa = app."bControlOffa_$x"
+        
+        if(!useBitlya && deviceAttsa == "lock") controlOna = app."controlLocka_$x"
+        if(!useBitlya && deviceAttsa == "lock") controlOffa = app."controlUnlocka_$x"
+        if(useBitlya && deviceAttsa == "lock") controlOna = app."bControlLocka_$x"
+        if(useBitlya && deviceAttsa == "lock") controlOffa = app."bControlUnlocka_$x"
         
         alignb = app."alignb_$x"
         colorb = app."colorb_$x"
@@ -960,10 +1024,16 @@ def tileHandler(evt){
         linkAFTLb = app."linkAFTLb_$x"
         cDevBEFidb = app."cDeviceBEFidb_$x"
         useBitlyb = app."useBitlyb_$x"
-        if(!useBitlyb) controlOnb = app."controlOnb_$x"
-        if(!useBitlyb) controlOffb = app."controlOffb_$x"
-        if(useBitlyb) controlOnb = app."bControlOnb_$x"
-        if(useBitlyb) controlOffb = app."bControlOffb_$x"
+        
+        if(!useBitlyb && deviceAttsb == "switch") controlOnb = app."controlOnb_$x"
+        if(!useBitlyb && deviceAttsb == "switch") controlOffb = app."controlOffb_$x"
+        if(useBitlyb && deviceAttsb == "switch") controlOnb = app."bControlOnb_$x"
+        if(useBitlyb && deviceAttsb == "switch") controlOffb = app."bControlOffb_$x"
+        
+        if(!useBitlyb && deviceAttsb == "lock") controlOnb = app."controlLockb_$x"
+        if(!useBitlyb && deviceAttsb == "lock") controlOffb = app."controlUnlockb_$x"
+        if(useBitlyb && deviceAttsb == "lock") controlOnb = app."bControlLockb_$x"
+        if(useBitlyb && deviceAttsb == "lock") controlOffb = app."bControlUnlockb_$x"
         
         theStyle = "style='width:${secWidth}%;"
         if(align) theStyle += "text-align:${align};"
@@ -1005,19 +1075,19 @@ def tileHandler(evt){
         
         if(nSections >= "1") {
             theTileMap += "<td $theStyle>"
-            makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices)
+            makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts)
             theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	} 
         if(nSections >= "2") {
             theTileMap += "<td $theStylea>"
-            makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,wordsAFTa,linkAFTa,linkAFTLa,controlOna,controlOffa,deviceStatusa,controlDevicesa)
+            makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,wordsAFTa,linkAFTa,linkAFTLa,controlOna,controlOffa,deviceStatusa,controlDevicesa,deviceAttsa)
             theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
         if(nSections == "3") {
             theTileMap += "<td $theStyleb>"
-            makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,wordsAFTb,linkAFTb,linkAFTLb,controlOnb,controlOffb,deviceStatusb,controlDevicesb)
+            makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,wordsAFTb,linkAFTb,linkAFTLb,controlOnb,controlOffb,deviceStatusb,controlDevicesb,deviceAttsb)
             theTileMap += "${newWords2}"
             theTileMap += "</td>"
     	}
@@ -1067,8 +1137,8 @@ def tileHandler(evt){
     sampleTileHandler()
 }
 
-def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices) {
-    if(logEnable) log.debug "In makeTileLine (${state.version}) - theDevice: ${theDevice} - deviceStatus: ${deviceStatus}"
+def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts) {
+    if(logEnable) log.debug "In makeTileLine (${state.version}) - theDevice: ${theDevice} - deviceAtts: ${deviceAtts} - deviceStatus: ${deviceStatus}"
     if(logEnable) log.debug "In makeTileLine (${state.version}) - wordsBEF: ${wordsBEF} - linkBEF: ${linkBEF} - linkBEFL: ${linkBEFL}"
     if(logEnable) log.debug "In makeTileLine (${state.version}) - wordsAFT: ${wordsAFT} - linkAFT: ${linkAFT} - linkAFTL: ${linkAFTL}"
     if(logEnable) log.debug "In makeTileLine (${state.version}) - controlOn: ${controlOn} - controlOff: ${controlOff} - controlDevices: ${controlDevices}"
@@ -1078,10 +1148,11 @@ def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,c
         if(theDevice) {
             toControlOn = controlOn
             toControlOff = controlOff
-            cStatus = theDevice.currentValue("switch")
+            if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
+            if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
             
             log.warn "Device status: $cStatus"
-            if(cStatus == "on") {
+            if(cStatus == "on" || cStatus == "locked") {
                 controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
             } else {
                 controlLink = "<a href=${toControlOn} target=a>$deviceStatus</a>"
@@ -1224,7 +1295,8 @@ def makeTile() {
     if(logEnable) log.debug "*************************************** In makeTile - Start ***************************************"
     if(logEnable) log.debug "In makeTile (${state.version}) - howManyLines: ${howManyLines}"
     tileData = "<table width=100%><tr><td>"
-    
+        
+    //if(state.theTile_1) tileData += "<iframe srcdoc='${state.theTile_1}' height='30' width='400' />"
     if(state.theTile_1) tileData += state.theTile_1
     if(state.theTile_2) tileData += state.theTile_2
     if(state.theTile_3) tileData += state.theTile_3
