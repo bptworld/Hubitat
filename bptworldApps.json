@@ -396,7 +396,7 @@
   "RemoteWellnessCheckUpdateNote": "V1.0.1 - 01/16/20 - Added more 'Check' options",
   
   "RoomDirectorParentVersion": "v1.0.0",
-  "RoomDirectorChild1Version": "v1.0.0",
+  "RoomDirectorChild1Version": "v1.0.2",
   "RoomDirectorChild1Name": "",
   "RoomDirectorChild2Version": "",
   "RoomDirectorChild2Name": "",
@@ -410,7 +410,7 @@
   "RoomDirectorChild3RawCode": "",
   "RoomDirectorChild4RawCode": "",
   "RoomDirectorDiscussion": "",
-  "RoomDirectorUpdateNote": "V1.0.0 - 11/17/19 - Initial Release",
+  "RoomDirectorUpdateNote": "V1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings",
   
   "SendIP2IRParentVersion": "v2.0.0",
   "SendIP2IRChild1Version": "v2.0.0",
