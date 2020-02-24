@@ -3,10 +3,9 @@
  *  Design Usage:
  *  Make your rooms smarter by directing them to do what you want, automatically.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -33,6 +32,8 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings
+ *  V1.0.1 - 12/10/19 - Cosmetic typo fix
  *  V1.0.0 - 11/12/19 - Initial release.
  *
  */
@@ -44,7 +45,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion
     state.appName = "RoomDirectorChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -365,9 +366,9 @@ def initialize() {
     if(logEnable) log.debug "In initialize (${state.version}) - triggerMode: ${triggerMode} - triggerMode2: ${triggerMode2}"
     setDefaults()
     
-    def sunriseAndSunset = getSunriseAndSunset()
-    sunriseTime = new Date(sunriseAndSunset.sunrise.getTime()).format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-	sunsetTime  = new Date(sunriseAndSunset.sunset.getTime()).format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    
     if(logEnable) log.debug "In initialize - sunrise: ${sunriseTime} - sunset: ${sunsetTime}"
     
     
@@ -1006,7 +1007,7 @@ def getFormat(type, myText=""){			// Modified from @Stephack Code
 def display() {
     theName = app.label
     if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Device Watchdog - ${theName}")) {
+    section (getFormat("title", "${getImage("logo")}" + " Room Director - ${theName}")) {
 		paragraph getFormat("line")
 	}
 }
