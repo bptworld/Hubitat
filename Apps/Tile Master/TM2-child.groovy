@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.3 - 02/25/20 - Added the ability to copy one line to another
  *  V2.2.2 - 02/23/20 - More bug fixes and enhancements
  *  V2.2.1 - 02/22/20 - Bug fixes.
  *  V2.2.0 - 02/22/20 - Locks can now be controlled, bug fixes.
@@ -53,7 +54,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.2"
+	state.version = "v2.2.3"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -79,7 +80,7 @@ definition(
 
 preferences {
     page name: "pageConfig"
-	page name: "lineOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+	page name: "copyLineHandler", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -101,7 +102,6 @@ def pageConfig() {
             input "iFrameOff", "bool", title: "Turn iFrame off?", defaultValue:true, description: "iFrame", submitOnChange:true
             if(iFrameOff) paragraph "<div style='color: green'>iFrames are turned off, virtual device is now accessible from device menu.</div>"
             if(!iFrameOff) paragraph "<div style='color: red'>iFrames are turned on, virtual device will not load from device menu.</div>"
-            //if(iFrameOff) runIn(1800,iFrameOffHandler)
 		}
 
         section() {
@@ -121,7 +121,13 @@ def pageConfig() {
             section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
                 input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true
                 input "lineToEdit", "number", title: "Which line to edit", width:6, submitOnChange:true
-                if(lineToEdit > howManyLines) {paragraph "<b>Please enter a valid line number.</b>"}
+                if(lineToEdit <= howManyLines) {
+                    if(howManyLines >= 2) {
+                        href "copyLineHandler", title: "Copy one line to another", description: "Click here for options"
+                    }
+                } else {
+                    paragraph "<b>Please enter a valid line number.</b>"
+                }
             }
             if((lineToEdit > 0) && (lineToEdit <= howManyLines)) {
                 x = lineToEdit
@@ -193,11 +199,13 @@ def pageConfig() {
                             input "linkBEF_$x", "text", title: "<b>Text Before contains a link.</b> Enter a friendly name to display on tile.", submitOnChange:true, width:6
                             input "linkBEFL_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
                             paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
+                            linkBEF = app."linkBEF_$x"
                         }               
                         if(wordsAFT) if(wordsAFT.toLowerCase().contains("wlink")) {
                             input "linkAFT_$x", "text", title: "<b>Text After is a link.</b> Please enter a friendly name to display on tile.", submitOnChange:true, width:6
                             input "linkAFTL_$x", "text", title: "Link address, DO NOT include http://. This will be added automaticaly", submitOnChange:true, width:6
                             paragraph "ie. bit.ly/2m0udns<br><small>* It is highly recommended to use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a></small>"
+                            linkAFT = app."linkAFT_$x"
                         }
 
                         if(wordsBEF) {if(wordsBEF.contains("lastAct")) state.lastActiv = "yes"}
@@ -235,7 +243,7 @@ def pageConfig() {
                                     if(deviceAtt.toLowerCase() == "switch") instruct += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
                                     if(deviceAtt.toLowerCase() == "lock") instruct += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
                                     paragraph "${instruct}"
-                                
+ 
                                     if(deviceAtt.toLowerCase() == "switch") {
                                         input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
                                         input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
@@ -799,13 +807,63 @@ def pageConfig() {
 	}
 }
 
+def copyLineHandler() {
+    dynamicPage(name: "copyLineHandler", title: "", install:false, uninstall:false) {
+		display()
+        
+        theMessage = ""
+        
+        section() {
+            paragraph "<b>Copy one tile line to another tile line!</b><br>This will overwrite all settings on the receiving line with the settings of the 'from' line."
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Copy Options")) {
+            theRange = "(1..$howManyLines)"
+            input "fromLine", "number", title: "<b>From</b> Line Number", range: theRange, submitOnChange:true, width:6
+            input "toLine", "number", title: "<b>To</b> Line Number", range: theRange, submitOnChange:true, width:6
+            
+            if(fromLine && toLine) {
+                input "copyLine", "bool", defaultValue: "false", title: "Copy Now", description: "Copy Now", submitOnChange: true
+                if(copyLine) doTheCopy()
+            }
+            paragraph "${theMessage}"
+        }
+    }
+}
+
+def doTheCopy() {
+    if(logEnable) log.warn "In doTheCopy (${state.version})"
+    //log.warn "${settings}"
+    
+    fromThisLine = "_${fromLine}"
+    toThisLine = "_${toLine}"
+    
+    settings.each { theOption ->
+        name = theOption.key
+        value = theOption.value
+
+        if(name.contains("${fromThisLine}")) { 
+            nameValue = theOption.value
+            newName = name.replace("${fromThisLine}", "${toThisLine}")
+            app?.updateSetting("${newName}", nameValue)
+            if(logEnable) log.warn "In copyLineSettings - newName: ${newName} - nameValue: ${nameValue}"
+        }
+    }
+
+    app?.updateSetting("copyLine",[value:"false",type:"bool"])
+    app?.updateSetting("fromLine",[value:"",type:"number"])
+    app?.updateSetting("toLine",[value:"",type:"number"])
+    if(logEnable) log.warn "In doTheCopy - Finished"
+    theMessage = "<b>Settings have been copied. Hit 'Next' to continue</b>"
+    return theMessage
+}
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
 }
 
 def updated() {	
-    if(logEnable) log.debug "Updated with settings: ${settings} (${state.version})"
+    if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
 	initialize()
