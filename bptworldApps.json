@@ -532,7 +532,7 @@
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
   "TileMaster2ParentVersion": "v2.0.9",
-  "TileMaster2Child1Version": "v2.2.2",
+  "TileMaster2Child1Version": "v2.2.3",
   "TileMaster2Child1Name": "",
   "TileMaster2Child2Version": "",
   "TileMaster2Child2Name": "",
@@ -546,7 +546,7 @@
   "TileMaster2Child3RawCode": "",
   "TileMaster2Child4RawCode": "",
   "TileMaster2Discussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMaster2UpdateNote": "V2.2.2 - 02/23/20 - More bug fixes and enhancements",
+  "TileMaster2UpdateNote": "V2.2.3 - 02/25/20 - Added the ability to copy one line to another",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
