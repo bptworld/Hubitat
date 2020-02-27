@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.4 - 02/26/20 - Added support for Tile to Tile copying
  *  V2.2.3 - 02/25/20 - Added the ability to copy one line to another
  *  V2.2.2 - 02/23/20 - More bug fixes and enhancements
  *  V2.2.1 - 02/22/20 - Bug fixes.
@@ -54,7 +55,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.3"
+	state.version = "v2.2.4"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -120,14 +121,10 @@ def pageConfig() {
             catch (e) { }
             section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
                 input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true
-                input "lineToEdit", "number", title: "Which line to edit", width:6, submitOnChange:true
-                if(lineToEdit <= howManyLines) {
-                    if(howManyLines >= 2) {
-                        href "copyLineHandler", title: "Copy one line to another", description: "Click here for options"
-                    }
-                } else {
-                    paragraph "<b>Please enter a valid line number.</b>"
-                }
+                theRange = "(1..$howManyLines)"
+                input "lineToEdit", "number", title: "Which line to edit", range:theRange, width:6, submitOnChange:true
+                
+                href "copyLineHandler", title: "Tile Copy Options", description: "Click here for options"
             }
             if((lineToEdit > 0) && (lineToEdit <= howManyLines)) {
                 x = lineToEdit
@@ -811,28 +808,42 @@ def copyLineHandler() {
     dynamicPage(name: "copyLineHandler", title: "", install:false, uninstall:false) {
 		display()
         
-        theMessage = ""
+        state.theMessage = ""
         
-        section() {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
             paragraph "<b>Copy one tile line to another tile line!</b><br>This will overwrite all settings on the receiving line with the settings of the 'from' line."
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Copy Options")) {
+        section() {
             theRange = "(1..$howManyLines)"
             input "fromLine", "number", title: "<b>From</b> Line Number", range: theRange, submitOnChange:true, width:6
             input "toLine", "number", title: "<b>To</b> Line Number", range: theRange, submitOnChange:true, width:6
             
             if(fromLine && toLine) {
-                input "copyLine", "bool", defaultValue: "false", title: "Copy Now", description: "Copy Now", submitOnChange: true
-                if(copyLine) doTheCopy()
+                input "copyLine", "bool", defaultValue: "false", title: "Copy Line Now", description: "Copy Line Now", submitOnChange: true
+                if(copyLine) doTheLineCopy()
             }
-            paragraph "${theMessage}"
+            paragraph "${state.theMessage}"          
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {
+            paragraph "<b>Copy another tile to this tile!</b><br>This will overwrite all settings on this tile with the settings of the 'from' tile."
+            paragraph "When the copy switch is turned on:<br> - It will only take a few seconds<br> - When complete the switch will turn off<br> - The app number will be blank<br> - At this point you can press 'Next'"
+            paragraph "<b>Note:</b> Devices will not be carried over to the new tile. This may cause errors in the log but most are harmless and can be ignored. IE. If you used %lastAct% in the child app, the device associated with it won't carry over, so it will cause an error until a new device is added."
+        }
+        section() {
+            input "fromTile", "number", title: "Tile App Number to Copy <b>From</b>", submitOnChange:true, width:6
+            
+            if(fromTile) {
+                input "copyTile", "bool", defaultValue: "false", title: "Copy Tile Now", description: "Copy Tile Now", submitOnChange: true
+                if(copyTile) requestTileCopy()
+            }
+            paragraph "${state.theMessage}"
         }
     }
 }
 
-def doTheCopy() {
-    if(logEnable) log.warn "In doTheCopy (${state.version})"
-    //log.warn "${settings}"
+def doTheLineCopy() {
+    if(logEnable) log.info "In doTheLineCopy (${state.version})"
     
     fromThisLine = "_${fromLine}"
     toThisLine = "_${toLine}"
@@ -845,16 +856,53 @@ def doTheCopy() {
             nameValue = theOption.value
             newName = name.replace("${fromThisLine}", "${toThisLine}")
             app?.updateSetting("${newName}", nameValue)
-            if(logEnable) log.warn "In copyLineSettings - newName: ${newName} - nameValue: ${nameValue}"
+            if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue}"
         }
     }
 
+    if(logEnable) log.info "In doTheCopy - Finished"
+    state.theMessage = "<b>Line Settings have been copied. Hit 'Next' to continue</b>"
     app?.updateSetting("copyLine",[value:"false",type:"bool"])
     app?.updateSetting("fromLine",[value:"",type:"number"])
     app?.updateSetting("toLine",[value:"",type:"number"])
-    if(logEnable) log.warn "In doTheCopy - Finished"
-    theMessage = "<b>Settings have been copied. Hit 'Next' to continue</b>"
-    return theMessage
+}
+
+def requestTileCopy() {             // this is sent to the parent app
+    if(logEnable) log.info "In requestTileCopy (${state.version})"
+    toTile = app.id
+    parent.getTileSettings(fromTile,toTile)
+}
+
+def sendChildSettings() {           // this is then requested from the parent app
+    if(logEnable) log.info "In sendChildSettings (${state.version})"   
+    childAppSettings = settings
+}
+
+def doTheTileCopy(newSettings) {    // and finally the parent app send the settings!
+    if(logEnable) log.info "In doTheTileCopy (${state.version})"
+    if(copyTile) {
+        if(logEnable) log.info "In doTheTileCopy - Received: ${newSettings}"
+        
+        newSettings.each { theOption ->
+            name = theOption.key
+            value = theOption.value
+            if(name == "tileDevice" || name == "userName" || name == "copyTile" || name == "fromTile" || name == "logEnable") {
+                if(logEnable) log.info "In doTheTileCopy - name: ${name}, so skipping"
+            } else {
+                if(name.contains("device_") || name.contains("devicea_") ||name.contains("deviceb_")) {
+                    if(logEnable) log.info "In doTheTileCopy - Name is a device, so skipping"
+                } else {
+                    app?.updateSetting(name, value)
+                }
+                if(logEnable) log.info "In doTheTileCopy - name: ${name} - value: ${value}"
+            }
+        }
+
+        if(logEnable) log.info "In doTheTileCopy - Finished"
+        state.theMessage = "<b>Tile Settings have been copied. Hit 'Next' to continue</b>"
+        app?.updateSetting("copyTile",[value:"false",type:"bool"])
+        app?.updateSetting("fromTile",[value:"",type:"number"])
+    }
 }
 
 def installed() {
@@ -1252,7 +1300,7 @@ def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,c
                 if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
                 if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
             
-                log.warn "Device status: $cStatus"
+                //log.warn "Device status: $cStatus"
                 if(cStatus == "on" || cStatus == "locked") {
                     controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
                 } else {
@@ -1682,11 +1730,6 @@ def masterListHandler(masterList) {
     } catch (e) {
         if(logEnable) log.debug "In masterListHandler - No Icons found"
     }
-}
-
-def iFrameOffHandler(){
-    log.warn "Tile Master - Turning iFrame back on."
-    device.updateSetting("iFrameOff",[value:"false",type:"bool"])
 }
 
 // ********** Normal Stuff **********
