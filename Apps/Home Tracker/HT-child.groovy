@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  V2.3.1 - 02/27/20 - Changes to flash when message is delayed
  *  V2.3.0 - 02/10/20 - More code changes to home tracking
  *  V2.2.9 - 02/10/20 - Minor tweaks to who's home tracking
  *  V2.2.8 - 01/14/20 - Tweaks to see who's home for announcements
@@ -55,7 +56,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.3.0"
+	state.version = "v2.3.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -177,6 +178,7 @@ def speechOptions(){
                 input "delayHome", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
             }
             input "flashOnDep", "bool", defaultValue: false, title: "Flash light(s) when someone leaves", description: "Flash on Departure", submitOnChange: true
+            paragraph "<small>* Can't Flash if Departure Message is set to delayed.</small>"
             if(flashOnDep) {
                 input "switchesDep", "capability.switch", title: "Flash these lights", multiple: true
 		        input "numFlashesDep", "number", title: "Number of times (default: 2)", required: false, width: 6
@@ -495,7 +497,7 @@ def presenceSensorHandler(evt){
                     }                   
                     if(departedDelayed) {
                         if(logEnable) log.debug "In whosAwayHandler - Will announce departure after a 2 minutes wait"
-                        if(flashOnDep) runIn(120, flashLights)
+                        //if(flashOnDep) runIn(120, flashLights)
                         addNameToPresenceMap()
                         runIn(120, messageDeparted)
                     }
