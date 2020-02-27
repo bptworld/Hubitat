@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.0 - 02/26/20 - Added support for Tile to Tile copying
  *  V2.0.9 - 02/16/20 - Added Custom Icons!
  *  V2.0.8 - 02/12/20 - Cosmetic changes
  *  V2.0.7 - 02/12/20 - Added default color codes
@@ -51,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.0.9"
+	state.version = "v2.1.0"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -344,6 +345,27 @@ def installCheck(){
   	else{
     	log.info "Parent Installed OK"
   	}
+}
+
+def getTileSettings(fromTile,toTile) {
+    if(logEnable) log.debug "In getTileSettings - fromTile: ${fromTile}"
+    // Get the settings from 'other' child
+    childApps.each { child ->
+        if(logEnable) log.debug "In getTileSettings - Checking Child: ${child.id} vs fromTile: ${fromTile}"
+        if(child.id == fromTile) {
+            if(logEnable) log.debug "In getTileSettings - MATCH! (${fromTile})"
+            theSettings = child.sendChildSettings()
+            if(logEnable) log.debug "In getTileSettings - theSettings: (${theSettings})"
+        }
+	} 
+    // Send the settings to 'new' child
+    childApps.each { child ->
+        if(logEnable) log.debug "In getTileSettings - Checking Child: ${child.id} vs toTile: ${toTile}"
+        if(child.id == toTile) {
+            if(logEnable) log.debug "In getTileSettings - MATCH! (${toTile})"
+		    child.doTheTileCopy(theSettings)
+        }
+	} 
 }
 
 def getImage(type) {					// Modified from @Stephack Code
