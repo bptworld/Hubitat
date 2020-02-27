@@ -531,8 +531,8 @@
   "TheFlasherDiscussion": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
-  "TileMaster2ParentVersion": "v2.0.9",
-  "TileMaster2Child1Version": "v2.2.3",
+  "TileMaster2ParentVersion": "v2.1.0",
+  "TileMaster2Child1Version": "v2.2.4",
   "TileMaster2Child1Name": "",
   "TileMaster2Child2Version": "",
   "TileMaster2Child2Name": "",
@@ -546,7 +546,7 @@
   "TileMaster2Child3RawCode": "",
   "TileMaster2Child4RawCode": "",
   "TileMaster2Discussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMaster2UpdateNote": "V2.2.3 - 02/25/20 - Added the ability to copy one line to another",
+  "TileMaster2UpdateNote": "V2.2.4 - 02/26/20 - Added support for Tile to Tile copying",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
