@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.5 - 02/27/20 - Attempt to fix attributes showing No Data
  *  V2.2.4 - 02/26/20 - Added support for Tile to Tile copying
  *  V2.2.3 - 02/25/20 - Added the ability to copy one line to another
  *  V2.2.2 - 02/23/20 - More bug fixes and enhancements
@@ -55,7 +56,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.4"
+	state.version = "v2.2.5"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -957,11 +958,8 @@ def tileHandler(evt){
         theDeviceb = app."deviceb_$x"
         
         if(theDevice) deviceAtts = app."deviceAtts_$x"
-        if(deviceAtts) deviceAtts = deviceAtts.toLowerCase()
         if(theDevicea) deviceAttsa = app."deviceAttsa_$x"
-        if(deviceAttsa) deviceAttsa = deviceAttsa.toLowerCase()
         if(theDeviceb) deviceAttsb = app."deviceAttsb_$x"
-        if(deviceAttsb) deviceAttsb = deviceAttsb.toLowerCase()
         
         useColors = app."useColors_$x"
         useColorsa = app."useColorsa_$x"
@@ -1043,7 +1041,7 @@ def tileHandler(evt){
 	    if(nSections >= "1") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 1</b>"
 		    if(theDevice) {
-			    deviceStatus = theDevice.currentValue("${deviceAtts}")
+			    deviceStatus = theDevice.currentValue("${deviceAtt}")
                 if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
                 if(!valueOrCell) {
                     getStatusColors(deviceStatus, deviceAtts, useColors, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3)
