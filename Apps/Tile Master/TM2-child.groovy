@@ -33,7 +33,8 @@
  *
  *  Changes:
  *
- *  V2.2.5 - 02/27/20 - Attempt to fix attributes showing No Data
+ *  V2.2.6 - 02/28/20 - More work on att values and a few other adjustments
+ *  V2.2.5 - 02/27/20 - Attempt attributes showing No Data
  *  V2.2.4 - 02/26/20 - Added support for Tile to Tile copying
  *  V2.2.3 - 02/25/20 - Added the ability to copy one line to another
  *  V2.2.2 - 02/23/20 - More bug fixes and enhancements
@@ -56,7 +57,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.5"
+	state.version = "v2.2.6"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -216,7 +217,7 @@ def pageConfig() {
 
                         if(theDevice) {
                             def allAtts = [:]
-                            allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                            allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts
                             deviceAtt = app."deviceAtts_$x"
@@ -225,7 +226,7 @@ def pageConfig() {
                             hideAttr = app."hideAttr_$x"
                             
                             deviceStatus = theDevice.currentValue("${deviceAtt}")
-                            if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
+                            if(deviceStatus == null) deviceStatus = "No Data"
 
                             if(state.battTempError == "") {
                                 paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
@@ -401,7 +402,7 @@ def pageConfig() {
 
                         if(theDevicea) {
                             def allAttsa = [:]
-                            allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                            allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa
                             deviceAtta = app."deviceAttsa_$x"
@@ -410,7 +411,7 @@ def pageConfig() {
                             hideAttra = app."hideAttra_$x"
                             
                             deviceStatusa = theDevicea.currentValue("${deviceAtta}")
-                            if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
+                            if(deviceStatusa == null) deviceStatusa = "No Data"
                             
                             if(state.battTempError == "") {
                                 paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
@@ -587,7 +588,7 @@ def pageConfig() {
 
                         if(theDeviceb) {
                             def allAttsb = [:]
-                            allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                            allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb
                             deviceAttb = app."deviceAttsb_$x"
@@ -596,7 +597,7 @@ def pageConfig() {
                             hideAttrb = app."hideAttrb_$x"
                             
                             deviceStatusb = theDeviceb.currentValue("${deviceAttb}")
-                            if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
+                            if(deviceStatusb == null) deviceStatusb = "No Data"
                             if(state.battTempError == "") {
                                 paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                             } else {
@@ -750,6 +751,8 @@ def pageConfig() {
                         ["f2":"dd MMM, yyy - h:mm:ss a"],
                         ["f3":"MMM dd - h:mm:ss a (12 hour)"],
                         ["f4":"dd MMM - h:mm:ss a (12 hour)"],
+                        ["f3a":"MMM dd - h:mm a (12 hour)"],
+                        ["f4a":"dd MMM - h:mm a (12 hour)"],
                         ["f5":"MMM dd - HH:mm (24 hour)"],
                         ["f6":"dd MMM - HH:mm (24 hour)"],
                         ["f7":"h:mm:ss a (12 hour)"],
@@ -1042,7 +1045,7 @@ def tileHandler(evt){
             if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 1</b>"
 		    if(theDevice) {
 			    deviceStatus = theDevice.currentValue("${deviceAtt}")
-                if(deviceStatus == null || deviceStatus == "") deviceStatus = "No Data"
+                if(deviceStatus == null) deviceStatus = "No Data"
                 if(!valueOrCell) {
                     getStatusColors(deviceStatus, deviceAtts, useColors, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3)
                     def (deviceStatus1,wordsBEF1,wordsAFT1) = theStatusCol.split(",")
@@ -1064,7 +1067,7 @@ def tileHandler(evt){
             if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 2</b>"
 		    if(theDevicea) {
 			    deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
-			    if(deviceStatusa == null || deviceStatusa == "") deviceStatusa = "No Data"
+			    if(deviceStatusa == null) deviceStatusa = "No Data"
                 if(!valueOrCella) {
                     getStatusColors(deviceStatusa, deviceAttsa, useColorsa, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a)
                     def (deviceStatus1a,wordsBEF1a,wordsAFT1a) = theStatusCol.split(",")
@@ -1086,7 +1089,7 @@ def tileHandler(evt){
             if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 3</b>"
 		    if(theDeviceb) {
 			    deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
-			    if(deviceStatusb == null || deviceStatusb == "") deviceStatusb = "No Data"
+			    if(deviceStatusb == null) deviceStatusb = "No Data"
                 if(!valueOrCellb) {
                     getStatusColors(deviceStatusb, deviceAttsb, useColorsb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
@@ -1223,19 +1226,19 @@ def tileHandler(evt){
             theTileMap += "<td $theStyle>"
             makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,controlOn,controlOff,deviceStatus,controlDevices,deviceAtts,hideAttr)
             theTileMap += "${newWords2}"
-            theTileMap += "</td>"
+            //theTileMap += "</td>"
     	} 
         if(nSections >= "2") {
             theTileMap += "<td $theStylea>"
             makeTileLine(theDevicea,wordsBEFa,linkBEFa,linkBEFLa,wordsAFTa,linkAFTa,linkAFTLa,controlOna,controlOffa,deviceStatusa,controlDevicesa,deviceAttsa,hideAttra)
             theTileMap += "${newWords2}"
-            theTileMap += "</td>"
+            //theTileMap += "</td>"
     	}
         if(nSections == "3") {
             theTileMap += "<td $theStyleb>"
             makeTileLine(theDeviceb,wordsBEFb,linkBEFb,linkBEFLb,wordsAFTb,linkAFTb,linkAFTLb,controlOnb,controlOffb,deviceStatusb,controlDevicesb,deviceAttsb,hideAttrb)
             theTileMap += "${newWords2}"
-            theTileMap += "</td>"
+            //theTileMap += "</td>"
     	}
     
     	theTileMap += "</tr></table>"
@@ -1340,6 +1343,8 @@ def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,c
             if(dateTimeFormat == "f2") dFormat = "dd MMM, yyy - h:mm:ss a"
             if(dateTimeFormat == "f3") dFormat = "MMM dd - h:mm:ss a"
             if(dateTimeFormat == "f4") dFormat = "dd MMM - h:mm:ss a"
+            if(dateTimeFormat == "f3a") dFormat = "MMM dd - h:mm a"
+            if(dateTimeFormat == "f4a") dFormat = "dd MMM - h:mm a"
             if(dateTimeFormat == "f5") dFormat = "MMM dd - HH:mm"
             if(dateTimeFormat == "f6") dFormat = "dd MMM - HH:mm"
             if(dateTimeFormat == "f7") dFormat = "h:mm:ss a"
@@ -1397,6 +1402,7 @@ def makeTileLine(theDevice,wordsBEF,linkBEF,linkBEFL,wordsAFT,linkAFT,linkAFTL,c
 
 def sampleTileHandler(evt){
 	if(logEnable) log.debug "In sampleTileHandler (${state.version})"
+
 	section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
         paragraph "For testing purposes only"
         input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true, width: 6
@@ -1404,32 +1410,32 @@ def sampleTileHandler(evt){
         
         makeTile()
         paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${tileData}</td></tr></table>"
-        
+
         try {
             totalLength = 45
-            if(state.theTile_1) totalLength = totalLength + state.theTileLength_1
-            if(state.theTile_2) totalLength = totalLength + state.theTileLength_2
-            if(state.theTile_3) totalLength = totalLength + state.theTileLength_3
-            if(state.theTile_4) totalLength = totalLength + state.theTileLength_4
-            if(state.theTile_5) totalLength = totalLength + state.theTileLength_5
-            if(state.theTile_6) totalLength = totalLength + state.theTileLength_6
-            if(state.theTile_7) totalLength = totalLength + state.theTileLength_7
-            if(state.theTile_8) totalLength = totalLength + state.theTileLength_8
-            if(state.theTile_9) totalLength = totalLength + state.theTileLength_9
+            if(state.theTile_1 && 1 <= howManyLines) totalLength = totalLength + state.theTileLength_1
+            if(state.theTile_2 && 2 <= howManyLines) totalLength = totalLength + state.theTileLength_2
+            if(state.theTile_3 && 3 <= howManyLines) totalLength = totalLength + state.theTileLength_3
+            if(state.theTile_4 && 4 <= howManyLines) totalLength = totalLength + state.theTileLength_4
+            if(state.theTile_5 && 5 <= howManyLines) totalLength = totalLength + state.theTileLength_5
+            if(state.theTile_6 && 6 <= howManyLines) totalLength = totalLength + state.theTileLength_6
+            if(state.theTile_7 && 7 <= howManyLines) totalLength = totalLength + state.theTileLength_7
+            if(state.theTile_8 && 8 <= howManyLines) totalLength = totalLength + state.theTileLength_8
+            if(state.theTile_9 && 9 <= howManyLines) totalLength = totalLength + state.theTileLength_9
         } catch(e) {
             log.error "Tile Master - Something went wrong. ${e}"
         }
 
         parag = "Characters - "
-        if(state.theTile_1) parag += "Line 1: ${state.theTileLength_1} - "
-        if(state.theTile_2) parag += "Line 2: ${state.theTileLength_2} - "
-        if(state.theTile_3) parag += "Line 3: ${state.theTileLength_3} - "
-        if(state.theTile_4) parag += "Line 4: ${state.theTileLength_4} - "
-        if(state.theTile_5) parag += "Line 5: ${state.theTileLength_5} - "
-        if(state.theTile_6) parag += "Line 6: ${state.theTileLength_6} - "
-        if(state.theTile_7) parag += "Line 7: ${state.theTileLength_7} - "
-        if(state.theTile_8) parag += "Line 8: ${state.theTileLength_8} - "
-        if(state.theTile_9) parag += "Line 9: ${state.theTileLength_9} - "
+        if(state.theTile_1 && 1 <= howManyLines) parag += "Line 1: ${state.theTileLength_1} - "
+        if(state.theTile_2 && 2 <= howManyLines) parag += "Line 2: ${state.theTileLength_2} - "
+        if(state.theTile_3 && 3 <= howManyLines) parag += "Line 3: ${state.theTileLength_3} - "
+        if(state.theTile_4 && 4 <= howManyLines) parag += "Line 4: ${state.theTileLength_4} - "
+        if(state.theTile_5 && 5 <= howManyLines) parag += "Line 5: ${state.theTileLength_5} - "
+        if(state.theTile_6 && 6 <= howManyLines) parag += "Line 6: ${state.theTileLength_6} - "
+        if(state.theTile_7 && 7 <= howManyLines) parag += "Line 7: ${state.theTileLength_7} - "
+        if(state.theTile_8 && 8 <= howManyLines) parag += "Line 8: ${state.theTileLength_8} - "
+        if(state.theTile_9 && 9 <= howManyLines) parag += "Line 9: ${state.theTileLength_9} - "
         if(logEnable) log.debug "${parag}"
         paragraph "<hr>"
         paragraph "${parag}<br>* This is only an estimate. Actual character count can be found in the tile device."
@@ -1445,15 +1451,15 @@ def makeTile() {
     if(logEnable) log.debug "*************************************** In makeTile - Start ***************************************"
     if(logEnable) log.debug "In makeTile (${state.version}) - howManyLines: ${howManyLines}"
     tileData = "<table width=100%><tr><td>"
-    if(state.theTile_1) tileData += state.theTile_1
-    if(state.theTile_2) tileData += state.theTile_2
-    if(state.theTile_3) tileData += state.theTile_3
-    if(state.theTile_4) tileData += state.theTile_4
-    if(state.theTile_5) tileData += state.theTile_5
-    if(state.theTile_6) tileData += state.theTile_6
-    if(state.theTile_7) tileData += state.theTile_7
-    if(state.theTile_8) tileData += state.theTile_8
-    if(state.theTile_9) tileData += state.theTile_9
+    if(state.theTile_1 && 1 <= howManyLines) tileData += state.theTile_1
+    if(state.theTile_2 && 2 <= howManyLines) tileData += state.theTile_2
+    if(state.theTile_3 && 3 <= howManyLines) tileData += state.theTile_3
+    if(state.theTile_4 && 4 <= howManyLines) tileData += state.theTile_4
+    if(state.theTile_5 && 5 <= howManyLines) tileData += state.theTile_5
+    if(state.theTile_6 && 6 <= howManyLines) tileData += state.theTile_6
+    if(state.theTile_7 && 7 <= howManyLines) tileData += state.theTile_7
+    if(state.theTile_8 && 8 <= howManyLines) tileData += state.theTile_8
+    if(state.theTile_9 && 9 <= howManyLines) tileData += state.theTile_9
     if(!iFrameOff) tileData += "<iframe name=a width=1 height=1 />"
     tileData += "</td></tr></table>"
     
