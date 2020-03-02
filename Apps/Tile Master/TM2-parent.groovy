@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.1 - 03/02/20 - Removed status color options from parent app
  *  V2.1.0 - 02/26/20 - Added support for Tile to Tile copying
  *  V2.0.9 - 02/16/20 - Added Custom Icons!
  *  V2.0.8 - 02/12/20 - Cosmetic changes
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.1.0"
+	state.version = "v2.1.1"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -78,6 +79,7 @@ definition(
 preferences {
     page name: "mainPage", title: "", install: true, uninstall: true
     page name: "iconOptions", title: "", install: false, uninstall: true, nextPage: "mainPage"
+    page name: "colorOptions", title: "", install: false, uninstall: true, nextPage: "mainPage"
 } 
 
 def installed() {
@@ -110,7 +112,7 @@ def mainPage() {
 				paragraph "Create a tile with multiple devices and customization options."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-                paragraph "Be sure to complete the 'Color and Level Options' section and hit 'done' BEFORE creating any child devices."
+                paragraph "Be sure to complete the 'Global Icon Options' section and hit 'done' is you want to use Icons with your devices."
 				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
@@ -131,7 +133,7 @@ def mainPage() {
                 input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
  			}
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" Device Value Color and Icon Config")) {}
+            section(getFormat("header-green", "${getImage("Blank")}"+" Global Icon Config")) {}
             section("Icon Options:", hideable: true, hidden: false) {
                 if(iconName || iconURL) {
                     href "iconOptions", title:"${getImage("optionsGreen")} Select Icons", description:"Click here for Options"
@@ -139,47 +141,8 @@ def mainPage() {
                     href "iconOptions", title:"${getImage("optionsRed")} Select Icons", description:"Click here for Options"
                 }
             }
-			section("Color and Level Options:", hideable: true, hidden: false) {
-                paragraph "<b>Please be sure to fill in each value (even if you don't plan on using it) and then hit 'Done' BEFORE creating any child apps.</b>"
-				paragraph "Enter in the colors you would like assigned to each value.<br>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White"
-				input "colorOn", "text", title: "<span style='color: ${colorOn};font-size: 25px'>on</span>", submitOnChange: true, width: 6, defaultValue: "red"
-                input "colorOff", "text", title: "<span style='color: ${colorOff};font-size: 25px'>off</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                
-                input "colorOpen", "text", title: "<span style='color: ${colorOpen};font-size: 25px'>open</span>", submitOnChange: true, width: 6, defaultValue: "red"
-                input "colorClosed", "text", title: "<span style='color: ${colorClosed};font-size: 25px'>closed</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                
-                input "colorActive", "text", title: "<span style='color: ${colorActive};font-size: 25px'>active</span>", submitOnChange: true, width: 6, defaultValue: "red"
-                input "colorInactive", "text", title: "<span style='color: ${colorInactive};font-size: 25px'>inactive</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                
-                input "colorLocked", "text", title: "<span style='color: ${colorLocked};font-size: 25px'>locked</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                input "colorUnlocked", "text", title: "<span style='color: ${colorUnlocked};font-size: 25px'>unlocked</span>", submitOnChange: true, width: 6, defaultValue: "red"
-                
-                input "colorWet", "text", title: "<span style='color: ${colorWet};font-size: 25px'>wet</span>", submitOnChange: true, width: 6, defaultValue: "red"
-                input "colorDry", "text", title: "<span style='color: ${colorDry};font-size: 25px'>dry</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                
-                input "colorPresent", "text", title: "<span style='color: ${colorPresent};font-size: 25px'>present</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                input "colorNotPresent", "text", title: "<span style='color: ${colorNotPresent};font-size: 25px'>not present</span>", submitOnChange: true, width: 6, defaultValue: "red"
-
-                input "colorClear", "text", title: "<span style='color: ${colorClear};font-size: 25px'>clear</span>", submitOnChange: true, width: 6, defaultValue: "green"
-                input "colorDetected", "text", title: "<span style='color: ${colorDetected};font-size: 25px'>detected</span>", submitOnChange: true, width: 6, defaultValue: "red"
-                
-                paragraph "<b>Temperature Options</b>"
-                input "tempLow", "text", title: "Temp <= LOW", submitOnChange: true, width: 6, defaultValue: "40"
-                input "tempHigh", "text", title: "Temp >= HIGH", submitOnChange: true, width: 6, defaultValue: "80"
-                input "colorTempLow", "text", title: "<span style='color: ${colorTempLow};font-size: 25px'>Temp <= ${tempLow}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                input "colorTemp", "text", title: "<span style='color: ${colorTemp};font-size: 25px'>Temp Between</span>", submitOnChange: true, width: 4, defaultValue: "green"
-                input "colorTempHigh", "text", title: "<span style='color: ${colorTempHigh};font-size: 25px'>Temp >= ${tempHigh}</span>", submitOnChange: true, width: 4, defaultValue: "red"
-                
-                paragraph "<b>Battery Level Options</b>"
-                input "battLow", "text", title: "Battery <= LOW", submitOnChange: true, width: 6, defaultValue: "40"
-                input "battHigh", "text", title: "Battery >= HIGH", submitOnChange: true, width: 6, defaultValue: "80"
-                input "colorBattLow", "text", title: "<span style='color: ${colorBattLow};font-size: 25px'>Battery <= ${battLow}</span>", submitOnChange: true, width: 4, defaultValue: "red"
-                input "colorBatt", "text", title: "<span style='color: ${colorBatt};font-size: 25px'>Battery Between</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                input "colorBattHigh", "text", title: "<span style='color: ${colorBattHigh};font-size: 25px'>Battery >= ${battHigh}</span>", submitOnChange: true, width: 4, defaultValue: "green"  
-            }
-			display2()
-		}
-	}
+        }
+    }
 }
 
 def iconOptions() {
