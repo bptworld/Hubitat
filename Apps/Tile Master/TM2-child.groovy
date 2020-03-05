@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.2.8 - 03/05/20 - Bug fixes
  *  V2.2.7 - 03/02/20 - Lots of cosmetic changes
  *                    - iFrame now gets added to character count when activated
  *                    - Added more Global Variables, dropping character count way down
@@ -62,7 +63,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.7"
+	state.version = "v2.2.8"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -99,20 +100,20 @@ def pageConfig() {
 			paragraph "Create a tile with multiple devices and customization options."
 		}
 
-        section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device and Dashboard Tile")) {}
         if(lineToEdit == null) lineToEdit = 1
         if(lineToEdit == 1) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device and Dashboard Tile")) {}
             section("Important Information Regarding the Virtual Device:", hideable: true, hidden: true) {
-			    paragraph "Tile Master uses an iFrame within the table that creates the Dashboard Tile. This is the magic that makes device control possible without a new window opening up and ruining the whole experience."
+                paragraph "Tile Master uses an iFrame within the table that creates the Dashboard Tile. This is the magic that makes device control possible without a new window opening up and ruining the whole experience."
                 paragraph "This also has the downside of messing with the virtual device created. While the Dashboard tile isn't effected and continues to update as usual, the Virtual Device itself will not load from the Device page. You will just see a blank (white) screen and the spinning blue thing in the corner. Again, this does not effect the workings of this app or the Dashboard tile. Just the annoyance of not being able to view the device page."
-			    paragraph "With that said, there really is no reason to view the device page as there are no options, it's just a holding place for the Dashboard tile. But, if for any reason you do want to view the device page, I've added in a switch to turn the iFrame off."
+                paragraph "With that said, there really is no reason to view the device page as there are no options, it's just a holding place for the Dashboard tile. But, if for any reason you do want to view the device page, I've added in a switch to turn the iFrame off."
                 paragraph "What will happen if this is off?<br> - If you click a value in the Sample tile, a new window will open<br> - If you click a value in the Device page, a new window will open<br> - If you click a value in the Dashboard tile, everything should work as usual (no window opening)"
                 paragraph "If you experience anything different, you should turn the iFrame back on and post on the forums. Be sure to mention the issue and what browser you are using."
 
                 input "iFrameOff", "bool", title: "Turn iFrame off?", defaultValue:true, description: "iFrame", submitOnChange:true
                 if(iFrameOff) paragraph "<div style='color: green'>iFrames are turned off, virtual device is now accessible from device menu.</div>"
                 if(!iFrameOff) paragraph "<div style='color: red'>iFrames are turned on, virtual device will not load from device menu.</div>"
-		    }
+            }
 
             section() {
                 paragraph "Each child app needs a virtual device to store the Tile Master data. Enter a short descriptive name for this device."
@@ -123,10 +124,6 @@ def pageConfig() {
                 paragraph "${statusMessage}"
                 input "tileDevice", "capability.actuator", title: "Vitual Device created to send the data to:", required:true, multiple:false
             } 
-        } else {
-            section() {
-                paragraph "Virtual Device and Dashboard Tile Options are only available in Line 1"
-            }
         }
 
         state.appInstalled = app.getInstallationState()
@@ -135,15 +132,14 @@ def pageConfig() {
             catch (e) { }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
-                input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true
+                if(lineToEdit == 1) { input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true }
                 theRange = "(1..$howManyLines)"
                 input "lineToEdit", "number", title: "Which line to edit", range:theRange, width:6, submitOnChange:true
                 
                 href "copyLineHandler", title: "Tile Copy Options", description: "Click here for options"
             }
-            
-            section(getFormat("header-green", "${getImage("Blank")}"+" Global Style Attributes")) {
-                if(lineToEdit == 1) {
+            if(lineToEdit == 1) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Global Style Attributes")) {
                     paragraph "Each line can can have up to 3 sections, each section can have different Style Attributes (Font Size, Text Color, Italic, Bold and Decoration). All of this adds to the Character Count. To combat this, you can choose to use Global Style Attributes. All lines and sections will start with this basic set of Attributes. Each Attribute can still be overwritten by selecting the Attribute as you move through the app."
                     paragraph "* Using Default values will save the most on character count. Defaults are set within the Dashboard."
                     input "align_G", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
@@ -152,8 +148,6 @@ def pageConfig() {
                     input "italic_G", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:4
                     input "bold_G", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:4
                     input "decoration_G", "enum", title: "Decoration (None = Default)", required: true, multiple: false, options: ["None","overline","line-through","underline","underline overline"], defaultValue: "None", submitOnChange: true, width: 6
-                } else {
-                    paragraph "Global Style Attributes are only available in Line 1"
                 }
             }
             
@@ -161,8 +155,8 @@ def pageConfig() {
                 x = lineToEdit
                 state.lastActiv = "no"
 
-                section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Table Options")) {   
-                    if(!secGlobal || lineToEdit == 1) {
+                if(!secGlobal || lineToEdit == 1) {
+                    section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Table Options")) {   
                         input "nSections_$x", "enum", title: "Number of Sections", required: false, multiple: false, options: ["1","2","3"], submitOnChange: true
                         nSection = app."nSections_$x"            
                         if(nSection == "1") {
@@ -176,25 +170,13 @@ def pageConfig() {
                             input "secWidthb_$x", "number", title: "Section 3 Percent of Total Width (1 - 100)", description: "1-100", required:false, submitOnChange: true, width:4
                         }
                     
-                        if(nSection == "1") {
-                            secWidth = app."secWidth_$x"
-                            if(secWidth == null) {secWidth = 100}
-                            tableLength = secWidth
-                        } else if(nSection == "2") {
-                            secWidth = app."secWidth_$x"
-                            secWidtha = app."secWidtha_$x"
-                            if(secWidth == null) {secWidth = 50}
-                            if(secWidtha == null) {secWidtha = 50}
-                            tableLength = secWidth + secWidtha
-                        } else if(nSection == "3") {
-                            secWidth = app."secWidth_$x"
-                            secWidtha = app."secWidtha_$x"
-                            secWidthb = app."secWidthb_$x"
-                            if(secWidth == null) {secWidth = 35}
-                            if(secWidtha == null) {secWidtha = 30}
-                            if(secWidthb == null) {secWidthb = 35}
-                            tableLength = secWidth + secWidtha + secWidthb
-                        }
+                        secWidth = app."secWidth_$x"
+                        secWidtha = app."secWidtha_$x"
+                        secWidthb = app."secWidthb_$x"
+                        if(secWidth == null) {secWidth = 0}
+                        if(secWidtha == null) {secWidtha = 0}
+                        if(secWidthb == null) {secWidthb = 0}
+                        tableLength = secWidth + secWidtha + secWidthb
 
                         if(tableLength == 100) {
                             paragraph "Table Width: <font color='green'>${tableLength}</font><br><small>* Total table width must equal 100</small>"
@@ -203,13 +185,13 @@ def pageConfig() {
                         }
                         if(lineToEdit == 1) {
                             input "secGlobal", "bool", defaultValue: "false", title: "Makes this configuration Global", description: "configuration", submitOnChange: true
-                            if(secGlobal) { state.globalSections = app."nSections_$x" }
+                            if(secGlobal) { state.globalSections = nSection }
                         }
-                    } else {
-                        paragraph "Global Table Configuration are only available in Line 1"
-                    }   
+                    }  
                 }
 
+                if(state.appInstalled == 'COMPLETE') {tileHandler("top")}
+                
                 section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Device Control")) {
                     input "controlDevices_$x", "bool", title: "Enable Device Control? (Requires Maker API)", defaultValue:false, description: "Control Device", submitOnChange:true
                     controlDevices = app."controlDevices_$x"
@@ -270,7 +252,7 @@ def pageConfig() {
                             deviceStatus = theDevice.currentValue("${deviceAtt}")
                             if(deviceStatus == null) deviceStatus = "No Data"
 
-                            if(state.numError == "") {
+                            if(state.numError == null || state.numError == "") {
                                 paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
                             } else {
                                 if(state.numError) paragraph "<b>ERROR: ${state.numError}</b>"
@@ -338,6 +320,8 @@ def pageConfig() {
 		                        input "color1Value_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
                                 input "color2Name_$x", "text", title: "<span style='color: ${color2}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Value_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
+                                color1 = app."color1Value_$x"
+                                color2 = app."color2Value_$x"
                                 paragraph "<hr>"
                             
                                 input "valueOrCell_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
@@ -347,11 +331,13 @@ def pageConfig() {
                             
                             if(textORnumber) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLow", "text", title: "Number <= LOW", submitOnChange: true, width: 6, defaultValue: "40"
-                                input "numHigh", "text", title: "Number >= HIGH", submitOnChange: true, width: 6, defaultValue: "80"
-                                input "colorNumLow", "text", title: "<span style='color: ${colorNumLow};font-size: 25px'>Temp <= ${tempLow}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                                input "colorNum", "text", title: "<span style='color: ${colorNum};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
-                                input "colorNumHigh", "text", title: "<span style='color: ${colorNumHigh};font-size: 25px'>Number >= ${numHigh}</span>", submitOnChange: true, width: 4, defaultValue: "red"
+                                input "numLow_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHigh_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                if(numLow_$x == null) numLow_$x = 0
+                                if(numHigh_$x == null) numHigh_$x = 0
+                                input "colorNumLow_$x", "text", title: "<span style='color: ${colorNumLow};font-size: 25px'>Number <= ${numLow}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
+                                input "colorNum_$x", "text", title: "<span style='color: ${colorNum};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
+                                input "colorNumHigh_$x", "text", title: "<span style='color: ${colorNumHigh};font-size: 25px'>Number >= ${numHigh}</span>", submitOnChange: true, width: 4, defaultValue: "red"
                             }
                         }
 
@@ -482,10 +468,10 @@ def pageConfig() {
                             deviceStatusa = theDevicea.currentValue("${deviceAtta}")
                             if(deviceStatusa == null) deviceStatusa = "No Data"
                             
-                            if(state.battTempError == "") {
+                            if(state.numError == null || state.numError == "") {
                                 paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
                             } else {
-                                if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
+                                if(state.numError) paragraph "<b>ERROR: ${state.numError}</b>"
                             }
                             
                             if(controlDevices && deviceAtta && !hideAttra) {
@@ -546,10 +532,12 @@ def pageConfig() {
                                 paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
                                 paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
                                 
-                                input "color1Namea_$x", "text", title: "<span style='color: ${color1}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+                                input "color1Namea_$x", "text", title: "<span style='color: ${color1a}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
 		                        input "color1Valuea_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
-                                input "color2Namea_$x", "text", title: "<span style='color: ${color2}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "color2Namea_$x", "text", title: "<span style='color: ${color2a}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Valuea_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
+                                color1a = app."color1Valuea_$x"
+                                color2a = app."color2Valuea_$x"
                                 paragraph "<hr>"
                                 input "valueOrCella_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
                                 input "useColorsBEFa_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
@@ -558,11 +546,13 @@ def pageConfig() {
                             
                             if(textORnumbera) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLowa", "text", title: "Number <= LOW", submitOnChange: true, width: 6, defaultValue: "40"
-                                input "numHigha", "text", title: "Number >= HIGH", submitOnChange: true, width: 6, defaultValue: "80"
-                                input "colorNumLowa", "text", title: "<span style='color: ${colorNumLowa};font-size: 25px'>Temp <= ${tempLowa}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                                input "colorNuma", "text", title: "<span style='color: ${colorNuma};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
-                                input "colorNumHigha", "text", title: "<span style='color: ${colorNumHigha};font-size: 25px'>Number >= ${numHigha}</span>", submitOnChange: true, width: 4, defaultValue: "red"
+                                input "numLowa_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHigha_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                if(numLowa_$x == null) numLowa_$x = 0
+                                if(numHigha_$x == null) numHigha_$x = 0
+                                input "colorNumLowa_$x", "text", title: "<span style='color: ${colorNumLowa};font-size: 25px'>Number <= ${numLowa}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
+                                input "colorNuma_$x", "text", title: "<span style='color: ${colorNuma};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
+                                input "colorNumHigha_$x", "text", title: "<span style='color: ${colorNumHigha};font-size: 25px'>Number >= ${numHigha}</span>", submitOnChange: true, width: 4, defaultValue: "red"
                             }
                         }
 
@@ -693,10 +683,10 @@ def pageConfig() {
                             
                             deviceStatusb = theDeviceb.currentValue("${deviceAttb}")
                             if(deviceStatusb == null) deviceStatusb = "No Data"
-                            if(state.battTempError == "") {
+                            if(state.numError == null || state.numError == "") {
                                 paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                             } else {
-                                if(state.battTempError) paragraph "<b>ERROR: ${state.battTempError}</b>"
+                                if(state.numError) paragraph "<b>ERROR: ${state.numError}</b>"
                             }
                             
                             if(controlDevices && deviceAttb && !hideAttrb) {
@@ -757,10 +747,12 @@ def pageConfig() {
                                 paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
                                 paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
                                 
-                                input "color1Nameb_$x", "text", title: "<span style='color: ${color1}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+                                input "color1Nameb_$x", "text", title: "<span style='color: ${color1b}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
 		                        input "color1Valueb_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
-                                input "color2Nameb_$x", "text", title: "<span style='color: ${color2}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "color2Nameb_$x", "text", title: "<span style='color: ${color2b}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Valueb_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
+                                color1b = app."color1Valueb_$x"
+                                color2b = app."color2Valueb_$x"
                                 paragraph "<hr>"
                                 input "valueOrCellb_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
                                 input "useColorsBEFb_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
@@ -769,11 +761,13 @@ def pageConfig() {
                             
                             if(textORnumberb) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLowb", "text", title: "Number <= LOW", submitOnChange: true, width: 6, defaultValue: "40"
-                                input "numHighb", "text", title: "Number >= HIGH", submitOnChange: true, width: 6, defaultValue: "80"
-                                input "colorNumLowb", "text", title: "<span style='color: ${colorNumLowb};font-size: 25px'>Temp <= ${tempLowb}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                                input "colorNumb", "text", title: "<span style='color: ${colorNumb};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
-                                input "colorNumHighb", "text", title: "<span style='color: ${colorNumHighb};font-size: 25px'>Number >= ${numHighb}</span>", submitOnChange: true, width: 4, defaultValue: "red"
+                                input "numLowb_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHighb_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                if(numLowb_$x == null) numLowb_$x = 0
+                                if(numHighb_$x == null) numHighb_$x = 0
+                                input "colorNumLowb_$x", "text", title: "<span style='color: ${colorNumLowb};font-size: 25px'>Number <= ${numLowb}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
+                                input "colorNumb_$x", "text", title: "<span style='color: ${colorNumb};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
+                                input "colorNumHighb_$x", "text", title: "<span style='color: ${colorNumHighb};font-size: 25px'>Number >= ${numHighb}</span>", submitOnChange: true, width: 4, defaultValue: "red"
                             }                          
                         }
 
@@ -920,7 +914,7 @@ def pageConfig() {
                 paragraph "<b>At this point, please press 'Done' to save the app. Then reopen it from the menu to complete the setup. This is required to retrieve the Icons and Colors from the parent app (if needed). Thanks.</b>"
             }
         }
-        if(state.appInstalled == 'COMPLETE') {tileHandler()}
+        if(state.appInstalled == 'COMPLETE') {tileHandler("bottom")}
         section() {
             input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true
 		}
@@ -936,6 +930,7 @@ def copyLineHandler() {
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
             paragraph "<b>Copy one tile line to another tile line!</b><br>This will overwrite all settings on the receiving line with the settings of the 'from' line."
+            paragraph "<b>Note:</b> Devices will not be carried over to the new line. This may cause errors in the log but most are harmless and can be ignored. IE. If you used %lastAct% in the line, the device associated with it won't carry over, so it will cause an error until a new device is added."
         }
         section() {
             theRange = "(1..$howManyLines)"
@@ -1073,87 +1068,87 @@ def tileHandler(evt){
     if(logEnable) log.debug "*************************************** In tileHandler - Start ***************************************"
 	if(logEnable) log.debug "In tileHandler (${state.version})"
     
-    for(x=1;x <= howManyLines;x++) {
-        if(logEnable) log.debug "<b>**********  Starting Line $x  **********</b>"
-        nSections = app."nSections_$x"
-        theDevice = app."device_$x"
-        theDevicea = app."devicea_$x"
-        theDeviceb = app."deviceb_$x"
+    for(y=1;y <= howManyLines;y++) {
+        if(logEnable) log.debug "<b>**********  Starting Line $y  **********</b>"
+        nSections = app."nSections_$y"
+        theDevice = app."device_$y"
+        theDevicea = app."devicea_$y"
+        theDeviceb = app."deviceb_$y"
         
-        if(theDevice) deviceAtts = app."deviceAtts_$x"
-        if(theDevicea) deviceAttsa = app."deviceAttsa_$x"
-        if(theDeviceb) deviceAttsb = app."deviceAttsb_$x"
+        if(theDevice) deviceAtts = app."deviceAtts_$y"
+        if(theDevicea) deviceAttsa = app."deviceAttsa_$y"
+        if(theDeviceb) deviceAttsb = app."deviceAttsb_$y"
         
-        useColors = app."useColors_$x"
-        useColorsa = app."useColorsa_$x"
-        useColorsb = app."useColorsb_$x"
+        useColors = app."useColors_$y"
+        useColorsa = app."useColorsa_$y"
+        useColorsb = app."useColorsb_$y"
         
-        textORnumber = app."textORnumber_$x"
-        textORnumbera = app."textORnumbera_$x"
-        textORnumberb = app."textORnumberb_$x"
+        textORnumber = app."textORnumber_$y"
+        textORnumbera = app."textORnumbera_$y"
+        textORnumberb = app."textORnumberb_$y"
         
-        color1Name = app."color1Name_$x"
-        color1Namea = app."color1Namea_$x"
-        color1Nameb = app."color1Nameb_$x"
-        color1Value = app."color1Value_$x"
-        color1Valuea = app."color1Valuea_$x"
-        color1Valueb = app."color1Valueb_$x"
+        color1Name = app."color1Name_$y"
+        color1Namea = app."color1Namea_$y"
+        color1Nameb = app."color1Nameb_$y"
+        color1Value = app."color1Value_$y"
+        color1Valuea = app."color1Valuea_$y"
+        color1Valueb = app."color1Valueb_$y"
         
-        color2Name = app."color2Name_$x"
-        color2Namea = app."color2Namea_$x"
-        color2Nameb = app."color2Nameb_$x"
-        color2Value = app."color2Value_$x"
-        color2Valuea = app."color2Valuea_$x"
-        color2Valueb = app."color2Valueb_$x"
+        color2Name = app."color2Name_$y"
+        color2Namea = app."color2Namea_$y"
+        color2Nameb = app."color2Nameb_$y"
+        color2Value = app."color2Value_$y"
+        color2Valuea = app."color2Valuea_$y"
+        color2Valueb = app."color2Valueb_$y"
         
-        numLow = app."numLow_$x"
-        numLowa = app."numLowa_$x"
-        numLowb = app."numLowb_$x"
-        numHigh = app."numHigh_$x"
-        numHigha = app."numHigha_$x"
-        numHighb = app."numHighb_$x"
+        numLow = app."numLow_$y"
+        numLowa = app."numLowa_$y"
+        numLowb = app."numLowb_$y"
+        numHigh = app."numHigh_$y"
+        numHigha = app."numHigha_$y"
+        numHighb = app."numHighb_$y"
         
-        colorNumLow = app."colorNumLow_$x"
-        colorNumLowa = app."colorNumLowa_$x"
-        colorNumLowb = app."colorNumLowb_$x"
+        colorNumLow = app."colorNumLow_$y"
+        colorNumLowa = app."colorNumLowa_$y"
+        colorNumLowb = app."colorNumLowb_$y"
         
-        colorNum = app."colorNum_$x"
-        colorNuma = app."colorNuma_$x"
-        colorNumb = app."colorNumb_$x"
+        colorNum = app."colorNum_$y"
+        colorNuma = app."colorNuma_$y"
+        colorNumb = app."colorNumb_$y"
         
-        colorNumHigh = app."colorNumHigh_$x"
-        colorNumHigha = app."colorNumHigha_$x"
-        colorNumHighb = app."colorNumHighb_$x"
+        colorNumHigh = app."colorNumHigh_$y"
+        colorNumHigha = app."colorNumHigha_$y"
+        colorNumHighb = app."colorNumHighb_$y"
         
-        valueOrCell = app."valueOrCell_$x"
-        valueOrCella = app."valueOrCella_$x"
-        valueOrCellb = app."valueOrCellb_$x"
-        useColorsBEF = app."useColorsBEF_$x"
-        useColorsBEFa = app."useColorsBEFa_$x"
-        useColorsBEFb = app."useColorsBEFb_$x"
-        useColorsAFT = app."useColorsAFT_$x"
-        useColorsAFTa = app."useColorsAFTa_$x"
-        useColorsAFTb = app."useColorsAFTb_$x"
-        wordsBEF = app."wordsBEF_$x"
-        wordsBEFa = app."wordsBEFa_$x"
-        wordsBEFb = app."wordsBEFb_$x"
-        wordsAFT = app."wordsAFT_$x"
-        wordsAFTa = app."wordsAFTa_$x"
-        wordsAFTb = app."wordsAFTb_$x"
-        useIcons = app."useIcons_$x"
-        useIconsa = app."useIconsa_$x"
-        useIconsb = app."useIconsb_$x"
-        if(useIcons) iconSize = app."theSize_$x"
-        if(useIconsa) iconSizea = app."theSizea_$x"
-        if(useIconsb) iconSizeb = app."theSizeb_$x"
-        controlDevices = app."controlDevices_$x"
-        controlDevicesa = app."controlDevices_$x"
-        controlDevicesb = app."controlDevices_$x"
+        valueOrCell = app."valueOrCell_$y"
+        valueOrCella = app."valueOrCella_$y"
+        valueOrCellb = app."valueOrCellb_$y"
+        useColorsBEF = app."useColorsBEF_$y"
+        useColorsBEFa = app."useColorsBEFa_$y"
+        useColorsBEFb = app."useColorsBEFb_$y"
+        useColorsAFT = app."useColorsAFT_$y"
+        useColorsAFTa = app."useColorsAFTa_$y"
+        useColorsAFTb = app."useColorsAFTb_$y"
+        wordsBEF = app."wordsBEF_$y"
+        wordsBEFa = app."wordsBEFa_$y"
+        wordsBEFb = app."wordsBEFb_$y"
+        wordsAFT = app."wordsAFT_$y"
+        wordsAFTa = app."wordsAFTa_$y"
+        wordsAFTb = app."wordsAFTb_$y"
+        useIcons = app."useIcons_$y"
+        useIconsa = app."useIconsa_$y"
+        useIconsb = app."useIconsb_$y"
+        if(useIcons) iconSize = app."theSize_$y"
+        if(useIconsa) iconSizea = app."theSizea_$y"
+        if(useIconsb) iconSizeb = app."theSizeb_$y"
+        controlDevices = app."controlDevices_$y"
+        controlDevicesa = app."controlDevices_$y"
+        controlDevicesb = app."controlDevices_$y"
         
         if(useIcons) {
-            uwi1 = app."useWhichIcon1_$x"
-            uwi2 = app."useWhichIcon2_$x"
-            uwi3 = app."useWhichIcon3_$x"
+            uwi1 = app."useWhichIcon1_$y"
+            uwi2 = app."useWhichIcon2_$y"
+            uwi3 = app."useWhichIcon3_$y"
 
             if(uwi1) {oneSplit = uwi1.split(" - ")}     
             if(uwi2) {twoSplit = uwi2.split(" - ")}
@@ -1167,9 +1162,9 @@ def tileHandler(evt){
             if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
         }
         if(useIconsa) {
-            uwi1a = app."useWhichIcon1a_$x"
-            uwi2a = app."useWhichIcon2a_$x"
-            uwi3a = app."useWhichIcon3a_$x"
+            uwi1a = app."useWhichIcon1a_$y"
+            uwi2a = app."useWhichIcon2a_$y"
+            uwi3a = app."useWhichIcon3a_$y"
 
             if(uwi1a) {oneSplita = uwi1a.split(" - ")}     
             if(uwi2a) {twoSplita = uwi2a.split(" - ")}
@@ -1183,9 +1178,9 @@ def tileHandler(evt){
             if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
         }
         if(useIconsb) {
-            uwi1b = app."useWhichIcon1b_$x"
-            uwi2b = app."useWhichIcon2b_$x"
-            uwi3b = app."useWhichIcon3b_$x"
+            uwi1b = app."useWhichIcon1b_$y"
+            uwi2b = app."useWhichIcon2b_$y"
+            uwi3b = app."useWhichIcon3b_$y"
 
             if(uwi1b) {oneSplitb = uwi1b.split(" - ")}     
             if(uwi2b) {twoSplitb = uwi2b.split(" - ")}
@@ -1200,7 +1195,7 @@ def tileHandler(evt){
         }
         
 	    if(nSections >= "1") {
-            if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 1</b>"
+            if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 1</b>"
 		    if(theDevice) {
 			    deviceStatus = theDevice.currentValue("${deviceAtts}")
                 if(deviceStatus == null) deviceStatus = "No Data"
@@ -1216,13 +1211,13 @@ def tileHandler(evt){
                     cellColor = theCellColor
                 }
             } else {
-                if(logEnable) log.debug "In tileHander Line: ${x}-1 - No device found - theDevice: ${theDevice}"
+                if(logEnable) log.debug "In tileHander Line: ${y}-1 - No device found - theDevice: ${theDevice}"
                 deviceStatus = ""
             }
 	    }
 
 	    if(nSections >= "2") {
-            if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 2</b>"
+            if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 2</b>"
 		    if(theDevicea) {
 			    deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
 			    if(deviceStatusa == null) deviceStatusa = "No Data"
@@ -1238,13 +1233,13 @@ def tileHandler(evt){
                     cellColora = theCellColor
                 }
 		    } else {
-                if(logEnable) log.debug "In tileHander Line: ${x}-2 - No device found - theDevicea: ${theDevicea}"
+                if(logEnable) log.debug "In tileHander Line: ${y}-2 - No device found - theDevicea: ${theDevicea}"
                 deviceStatusa = ""
             }
 	    }
         
 	    if(nSections == "3") {
-            if(logEnable) log.debug "<b>In tileHandler - Line: ${x} - Section: 3</b>"
+            if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 3</b>"
 		    if(theDeviceb) {
 			    deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
 			    if(deviceStatusb == null) deviceStatusb = "No Data"
@@ -1260,13 +1255,13 @@ def tileHandler(evt){
                     cellColorb = theCellColor
                 }
 		    } else {
-                if(logEnable) log.debug "In tileHander Line: ${x}-3 - No device found - theDeviceb: ${theDeviceb}"
+                if(logEnable) log.debug "In tileHander Line: ${y}-3 - No device found - theDeviceb: ${theDeviceb}"
                 deviceStatusb = ""
             }
 	    }
 	
 // ***** Make the table for line x	*****
-        if(logEnable) log.debug "<b>In tileHander - Making the table for line ${x}</b>"
+        if(logEnable) log.debug "<b>In tileHander - Making the table for line ${y}</b>"
         theTileMap = ""
         
         align_G = app."align_G"
@@ -1276,212 +1271,241 @@ def tileHandler(evt){
         bold_G = app."bold_G"
         decoration_G = app."decoration_G"
         
-        overrideGlobal = app."overrideGlobal_$x"
-        overrideGlobala = app."overrideGlobala_$x"
-        overrideGlobalb = app."overrideGlobalb_$x"
+        styleGlobal = app."overrideGlobal_$y"
+        styleGlobala = app."overrideGlobala_$y"
+        styleGlobalb = app."overrideGlobalb_$y"
 
-        align = app."align_$x"
-        color = app."color_$x"
-        fontSize = app."fontSize_$x"
-        italic = app."italic_$x"
-        bold = app."bold_$x"
-        decoration = app."decoration_$x"
-        secWidth = app."secWidth_$x"
-        hideAttr = app."hideAttr_$x"
-        linkBEF = app."linkBEF_$x"
-        linkAFT = app."linkAFT_$x"
-        linkBEFL = app."linkBEFL_$x"
-        linkAFTL = app."linkAFTL_$x"
-        useBitly = app."useBitly_$x"
+        align = app."align_$y"
+        color = app."color_$y"
+        fontSize = app."fontSize_$y"
+        italic = app."italic_$y"
+        bold = app."bold_$y"
+        decoration = app."decoration_$y"
+        hideAttr = app."hideAttr_$y"
+        linkBEF = app."linkBEF_$y"
+        linkAFT = app."linkAFT_$y"
+        linkBEFL = app."linkBEFL_$y"
+        linkAFTL = app."linkAFTL_$y"
+        useBitly = app."useBitly_$y"
         
-        if(!useBitly && deviceAtts == "switch") controlOn = app."controlOn_$x"
-        if(!useBitly && deviceAtts == "switch") controlOff = app."controlOff_$x"
-        if(useBitly && deviceAtts == "switch") controlOn = app."bControlOn_$x"
-        if(useBitly && deviceAtts == "switch") controlOff = app."bControlOff_$x"
+        if(!useBitly && deviceAtts == "switch") controlOn = app."controlOn_$y"
+        if(!useBitly && deviceAtts == "switch") controlOff = app."controlOff_$y"
+        if(useBitly && deviceAtts == "switch") controlOn = app."bControlOn_$y"
+        if(useBitly && deviceAtts == "switch") controlOff = app."bControlOff_$y"
         
-        if(!useBitly && deviceAtts == "lock") controlOn = app."controlLock_$x"
-        if(!useBitly && deviceAtts == "lock") controlOff = app."controlUnlock_$x"
-        if(useBitly && deviceAtts == "lock") controlOn = app."bControlLock_$x"
-        if(useBitly && deviceAtts == "lock") controlOff = app."bControlUnlock_$x"
+        if(!useBitly && deviceAtts == "lock") controlOn = app."controlLock_$y"
+        if(!useBitly && deviceAtts == "lock") controlOff = app."controlUnlock_$y"
+        if(useBitly && deviceAtts == "lock") controlOn = app."bControlLock_$y"
+        if(useBitly && deviceAtts == "lock") controlOff = app."bControlUnlock_$y"
         
-        aligna = app."aligna_$x"
-        colora = app."colora_$x"
-        fontSizea = app."fontSizea_$x"
-        italica = app."italica_$x"
-        bolda = app."bolda_$x"
-        decorationa = app."decorationa_$x"
-        secWidtha = app."secWidtha_$x"
-        hideAttra = app."hideAttra_$x"
-        linkBEFa = app."linkBEFa_$x"
-        linkAFTa = app."linkAFTa_$x"
-        linkBEFLa = app."linkBEFLa_$x"
-        linkAFTLa = app."linkAFTLa_$x"
-        useBitlya = app."useBitlya_$x"
+        aligna = app."aligna_$y"
+        colora = app."colora_$y"
+        fontSizea = app."fontSizea_$y"
+        italica = app."italica_$y"
+        bolda = app."bolda_$y"
+        decorationa = app."decorationa_$y"
+        hideAttra = app."hideAttra_$y"
+        linkBEFa = app."linkBEFa_$y"
+        linkAFTa = app."linkAFTa_$y"
+        linkBEFLa = app."linkBEFLa_$y"
+        linkAFTLa = app."linkAFTLa_$y"
+        useBitlya = app."useBitlya_$y"
         
-        if(!useBitlya && deviceAttsa == "switch") controlOna = app."controlOna_$x"
-        if(!useBitlya && deviceAttsa == "switch") controlOffa = app."controlOffa_$x"
-        if(useBitlya && deviceAttsa == "switch") controlOna = app."bControlOna_$x"
-        if(useBitlya && deviceAttsa == "switch") controlOffa = app."bControlOffa_$x"
+        if(!useBitlya && deviceAttsa == "switch") controlOna = app."controlOna_$y"
+        if(!useBitlya && deviceAttsa == "switch") controlOffa = app."controlOffa_$y"
+        if(useBitlya && deviceAttsa == "switch") controlOna = app."bControlOna_$y"
+        if(useBitlya && deviceAttsa == "switch") controlOffa = app."bControlOffa_$y"
         
-        if(!useBitlya && deviceAttsa == "lock") controlOna = app."controlLocka_$x"
-        if(!useBitlya && deviceAttsa == "lock") controlOffa = app."controlUnlocka_$x"
-        if(useBitlya && deviceAttsa == "lock") controlOna = app."bControlLocka_$x"
-        if(useBitlya && deviceAttsa == "lock") controlOffa = app."bControlUnlocka_$x"
+        if(!useBitlya && deviceAttsa == "lock") controlOna = app."controlLocka_$y"
+        if(!useBitlya && deviceAttsa == "lock") controlOffa = app."controlUnlocka_$y"
+        if(useBitlya && deviceAttsa == "lock") controlOna = app."bControlLocka_$y"
+        if(useBitlya && deviceAttsa == "lock") controlOffa = app."bControlUnlocka_$y"
         
-        alignb = app."alignb_$x"
-        colorb = app."colorb_$x"
-        fontSizeb = app."fontSizeb_$x"
-        italicb = app."italicb_$x"
-        boldb = app."boldb_$x"
-        decorationb = app."decorationb_$x"
-        secWidthb = app."secWidthb_$x"
-        hideAttrb = app."hideAttrb_$x"
-        linkBEFb = app."linkBEFb_$x"
-        linkAFTb = app."linkAFTb_$x"
-        linkBEFLb = app."linkBEFLb_$x"
-        linkAFTLb = app."linkAFTLb_$x"
-        cDevBEFidb = app."cDeviceBEFidb_$x"
-        useBitlyb = app."useBitlyb_$x"
+        alignb = app."alignb_$y"
+        colorb = app."colorb_$y"
+        fontSizeb = app."fontSizeb_$y"
+        italicb = app."italicb_$y"
+        boldb = app."boldb_$y"
+        decorationb = app."decorationb_$y"
+        hideAttrb = app."hideAttrb_$y"
+        linkBEFb = app."linkBEFb_$y"
+        linkAFTb = app."linkAFTb_$y"
+        linkBEFLb = app."linkBEFLb_$y"
+        linkAFTLb = app."linkAFTLb_$y"
+        cDevBEFidb = app."cDeviceBEFidb_$y"
+        useBitlyb = app."useBitlyb_$y"
         
-        if(!useBitlyb && deviceAttsb == "switch") controlOnb = app."controlOnb_$x"
-        if(!useBitlyb && deviceAttsb == "switch") controlOffb = app."controlOffb_$x"
-        if(useBitlyb && deviceAttsb == "switch") controlOnb = app."bControlOnb_$x"
-        if(useBitlyb && deviceAttsb == "switch") controlOffb = app."bControlOffb_$x"
+        if(!useBitlyb && deviceAttsb == "switch") controlOnb = app."controlOnb_$y"
+        if(!useBitlyb && deviceAttsb == "switch") controlOffb = app."controlOffb_$y"
+        if(useBitlyb && deviceAttsb == "switch") controlOnb = app."bControlOnb_$y"
+        if(useBitlyb && deviceAttsb == "switch") controlOffb = app."bControlOffb_$y"
         
-        if(!useBitlyb && deviceAttsb == "lock") controlOnb = app."controlLockb_$x"
-        if(!useBitlyb && deviceAttsb == "lock") controlOffb = app."controlUnlockb_$x"
-        if(useBitlyb && deviceAttsb == "lock") controlOnb = app."bControlLockb_$x"
-        if(useBitlyb && deviceAttsb == "lock") controlOffb = app."bControlUnlockb_$x"
+        if(!useBitlyb && deviceAttsb == "lock") controlOnb = app."controlLockb_$y"
+        if(!useBitlyb && deviceAttsb == "lock") controlOffb = app."controlUnlockb_$y"
+        if(useBitlyb && deviceAttsb == "lock") controlOnb = app."bControlLockb_$y"
+        if(useBitlyb && deviceAttsb == "lock") controlOffb = app."bControlUnlockb_$y"
         
-        state.theGlobalStyle = "style='"
-        if(align_G) state.theGlobalStyle += "text-align:${align_G};"
-        if(color_G != "Default") state.theGlobalStyle += "color:${color_G};"
-        if(fontSize_G != 0) state.theGlobalStyle += "font-size:${fontSize_G}px;"
-        if(italic_G) state.theGlobalStyle += "font-style:italic;"
-        if(bold_G) state.theGlobalStyle += "font-weight:bold;"
-        if(decoration_G != "None") state.theGlobalStyle += "text-decoration:${decoration_G};"
+        theGlobalStyle = ""
+        if(align_G) theGlobalStyle += "text-align:${align_G};"
+        if(color_G != "Default") theGlobalStyle += "color:${color_G};"
+        if(fontSize_G != 0) theGlobalStyle += "font-size:${fontSize_G}px;"
+        if(italic_G) theGlobalStyle += "font-style:italic;"
+        if(bold_G) theGlobalStyle += "font-weight:bold;"
+        if(decoration_G != "None") theGlobalStyle += "text-decoration:${decoration_G};"
+        if(logEnable) log.debug "In tileHander - theGlobalStyle: ${stheGlobalStyle}"
         
-        state.theGlobalStyle += "'"
-        if(logEnable) log.debug "In tileHander - theGlobalStyle: ${state.theGlobalStyle}"
+        sec1Style = ""
+        if(align) sec1Style += "text-align:${align};"
+        if(color != "Default") sec1Style += "color:${color};"
+        if(fontSize != 0) sec1Style += "font-size:${fontSize}px;"
+        if(italic) sec1Style += "font-style:italic;"
+        if(bold) sec1Style += "font-weight:bold;"
+        if(decoration != "None") sec1Style += "text-decoration:${decoration};"
+        if(logEnable) log.debug "In tileHander - sec1Style: ${sec1Style}"
         
-        if(secGlobal && x == 1) theStyle = "style='width:${secWidth}%;"
-        if(secGlobal && x != 1) theStyle = "'"
+        sec2Style = ""
+        if(aligna) sec2Style += "text-align:${aligna};"
+        if(colora != "Default") sec2Style += "color:${colora};"
+        if(fontSizea != 0) sec2Style += "font-size:${fontSizea}px;"
+        if(italica) sec2Style += "font-style:italic;"
+        if(bolda) sec2Style += "font-weight:bold;"
+        if(decorationa != "None") sec2Style += "text-decoration:${decorationa};"
+        if(logEnable) log.debug "In tileHander - sec2Style: ${sec2Style}"
+        
+        sec3Style = ""
+        if(alignb) sec3Style += "text-align:${alignb};"
+        if(colorb != "Default") sec3Style += "color:${colorb};"
+        if(fontSizeb != 0) sec3Style += "font-size:${fontSizeb}px;"
+        if(italicb) sec3Style += "font-style:italic;"
+        if(boldb) sec3Style += "font-weight:bold;"
+        if(decorationb != "None") sec3Style += "text-decoration:${decorationb};"
+        if(logEnable) log.debug "In tileHander - sec3Style: ${sec3Style}"
+        
+        // Looking into adding CSS to place manually in dashboard
+        
+        
+        
+        secWidth = app."secWidth_$y"
+        secWidtha = app."secWidtha_$y"
+        secWidthb = app."secWidthb_$y"
+
+        if(secGlobal && y == 1) theStyle = "style='width:${secWidth}%;"
+        if(secGlobal && y != 1) theStyle = "style='"
+        
         if(!secGlobal) theStyle = "style='width:${secWidth}%;"
-        if(!overrideGlobal) {     
-            if(align) theStyle += "text-align:${align};"
-            if(color != "Default") theStyle += "color:${color};"
-            if(fontSize != 0) theStyle += "font-size:${fontSize}px;"
-            if(italic) theStyle += "font-style:italic;"
-            if(bold) theStyle += "font-weight:bold;"
-            if(decoration != "None") theStyle += "text-decoration:${decoration};"
+        
+        if(!styleGlobal) {     
+            theStyle += "${sec1Style}"
+        } else {
+            theStyle += "${theGlobalStyle}"
         }
         if(valueOrCell) theStyle += "background:${cellColor};"
         
         theStyle += "'"
-        if(logEnable) log.debug "In tileHander - theStyle: ${theStyle}"
+        if(logEnable) log.warn "In tileHander - theStyle: ${theStyle}"
         
-        if(secGlobal && x == 1) theStylea = "style='width:${secWidtha}%;"
-        if(secGlobal && x != 1) theStylea = "'"
+        if(secGlobal && y == 1) theStylea = "style='width:${secWidtha}%;"
+        if(secGlobal && y != 1) theStylea = "style='"
+        
         if(!secGlobal) theStylea = "style='width:${secWidtha}%;"
-        if(!overrideGlobala) {
-            if(aligna) theStylea += "text-align:${aligna};"
-            if(colora != "Default") theStylea += "color:${colora};"
-            if(fontSizea != 0) theStylea += "font-size:${fontSizea}px;"
-            if(italica) theStylea += "font-style:italic;"
-            if(bolda) theStylea += "font-weight:bold;"
-            if(decorationa != "None") theStylea += "text-decoration:${decorationa};"
+        
+        if(!styleGlobala) {
+            theStylea += "${sec2Style}"
+        } else {
+            theStylea += "${theGlobalStyle}"
         }
         if(valueOrCella) theStylea += "background:${cellColora};"
         
         theStylea += "'"
-        if(logEnable) log.debug "In tileHander - theStylea: ${theStylea}"
+        if(logEnable) log.warn "In tileHander - theStylea: ${theStylea}"
         
-        if(secGlobal && x == 1) theStyleb = "style='width:${secWidthb}%;"
-        if(secGlobal && x != 1) theStyleb = "'"
+        if(secGlobal && y == 1) theStyleb = "style='width:${secWidthb}%;"
+        if(secGlobal && y != 1) theStyleb = "style='"
+        
         if(!secGlobal) theStyleb = "style='width:${secWidthb}%;"
-        if(!overrideGlobalb) {
-            if(alignb) theStyleb += "text-align:${alignb};"
-            if(colorb != "Default") theStyleb += "color:${colorb};"
-            if(fontSizeb != 0) theStyleb += "font-size:${fontSizeb}px;"
-            if(italicb) theStyleb += "font-style:italic;"
-            if(boldb) theStyleb += "font-weight:bold;"
-            if(decorationb != "None") theStyleb += "text-decoration:${decorationb};"
+        
+        if(!styleGlobalb) {
+            theStyleb += "${sec3Style}"
+        } else {
+            theStyleb += "${theGlobalStyle}"
         }
         if(valueOrCellb) theStyleb += "background:${cellColorb};"
         
         theStyleb += "'"
-        if(logEnable) log.debug "In tileHander - theStyleb: ${theStyleb}"
+        if(logEnable) log.warn "In tileHander - theStyleb: ${theStyleb}"
         
-        if(x == 1) theTileMap = "<table style='width:100%'><tr>"
-        if(x != 1) theTileMap = "<tr>"
+// ********** Make the lines/table **********
+        if(!secGlobal) {
+            theTileMap = "<table style='width:100%'><tr>"
+        } else {
+            if(y == 1) theTileMap = "<table style='width:100%'><tr>"
+            if(y != 1) theTileMap = "<tr>"
+        }
+            if(nSections >= "1") {
+                theTileMap += "<td $theStyle>"
+                makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, linkAFTL, controlOn, controlOff, deviceStatus, controlDevices, deviceAtts, hideAttr)
+                theTileMap += "${newWords2}"
+            } 
+            if(nSections >= "2") {
+                theTileMap += "<td $theStylea>"
+                makeTileLine(theDevicea, wordsBEFa, linkBEFa, linkBEFLa, wordsAFTa, linkAFTa, linkAFTLa, controlOna, controlOffa, deviceStatusa, controlDevicesa, deviceAttsa, hideAttra)
+                theTileMap += "${newWords2}"
+            }
+            if(nSections == "3") {
+                theTileMap += "<td $theStyleb>"
+                makeTileLine(theDeviceb, wordsBEFb, linkBEFb, linkBEFLb, wordsAFTb, linkAFTb, linkAFTLb, controlOnb, controlOffb, deviceStatusb, controlDevicesb, deviceAttsb, hideAttrb)
+                theTileMap += "${newWords2}"
+            }
         
-        if(nSections >= "1") {
-            theTileMap += "<td $theStyle>"
-            makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, linkAFTL, controlOn, controlOff, deviceStatus, controlDevices, deviceAtts, hideAttr)
-            theTileMap += "${newWords2}"
-            //theTileMap += "</td>"
-    	} 
-        if(nSections >= "2") {
-            theTileMap += "<td $theStylea>"
-            makeTileLine(theDevicea, wordsBEFa, linkBEFa, linkBEFLa, wordsAFTa, linkAFTa, linkAFTLa, controlOna, controlOffa, deviceStatusa, controlDevicesa, deviceAttsa, hideAttra)
-            theTileMap += "${newWords2}"
-            //theTileMap += "</td>"
-    	}
-        if(nSections == "3") {
-            theTileMap += "<td $theStyleb>"
-            makeTileLine(theDeviceb, wordsBEFb, linkBEFb, linkBEFLb, wordsAFTb, linkAFTb, linkAFTLb, controlOnb, controlOffb, deviceStatusb, controlDevicesb, deviceAttsb, hideAttrb)
-            theTileMap += "${newWords2}"
-            //theTileMap += "</td>"
-    	}
-    
-    	if(x < howManyLines) theTileMap += "</tr>"
-        if(x == howManyLines) theTileMap += "</tr></table>"
-    
-        if(x == 1) {
+        if(!secGlobal) {
+            theTileMap += "</table>"
+        } else {
+            if(y < howManyLines) theTileMap += "</tr>"
+            if(y == howManyLines) theTileMap += "</tr></table>"
+        }
+// ********** End Make the lines/table **********
+        
+        if(y == 1) {
             state.theTile_1 = theTileMap
             state.theTileLength_1 = theTileMap.length()
         }
-        if(x == 2) {
+        if(y == 2) {
             state.theTile_2 = theTileMap
             state.theTileLength_2 = theTileMap.length()
         }
-        if(x == 3) {
+        if(y == 3) {
             state.theTile_3 = theTileMap
             state.theTileLength_3 = theTileMap.length()
         }
-        if(x == 4) {
+        if(y == 4) {
             state.theTile_4 = theTileMap
             state.theTileLength_4 = theTileMap.length()
         }
-        if(x == 5) {
+        if(y == 5) {
             state.theTile_5 = theTileMap
             state.theTileLength_5 = theTileMap.length()
         }
-        if(x == 6) {
+        if(y == 6) {
             state.theTile_6 = theTileMap
             state.theTileLength_6 = theTileMap.length()
         }
-        if(x == 7) {
+        if(y == 7) {
             state.theTile_7 = theTileMap
             state.theTileLength_7 = theTileMap.length()
         }
-        if(x == 8) {
+        if(y == 8) {
             state.theTile_8 = theTileMap
             state.theTileLength_8 = theTileMap.length()
         }
-        if(x == 9) {
+        if(y == 9) {
             state.theTile_9 = theTileMap
             state.theTileLength_9 = theTileMap.length()
         }
         
-        if(state.theGlobalStyle) {
-            state.theGlobalLength = state.theGlobalStyle.length()
-        }
-        
-        if(logEnable) log.debug "In tileHandler - Line: ${x} - theTileMap: ${theTileMap}"
+        if(logEnable) log.debug "In tileHandler - Line: ${y} - theTileMap: ${theTileMap}"
         if(logEnable) log.debug "*************************************** In tileHandler - End ***************************************"
     }
-    sampleTileHandler()
+    sampleTileHandler(evt)
 }
 
 def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, linkAFTL, controlOn, controlOff, deviceStatus, controlDevices, deviceAtts, hideAttr) {
@@ -1499,7 +1523,6 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
                 if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
                 if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
             
-                //log.warn "Device status: $cStatus"
                 if(cStatus == "on" || cStatus == "locked") {
                     controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
                 } else {
@@ -1599,70 +1622,106 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
 }
 
 def sampleTileHandler(evt){
-	if(logEnable) log.debug "In sampleTileHandler (${state.version})"
+    if(logEnable) log.debug "In sampleTileHandler (${state.version}) - evt: ${evt}"
 
 	section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
         paragraph "For testing purposes only"
-        input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true, width: 6
-        input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
-        
+        if(evt != "top") {
+            input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true, width: 6
+            input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
+        }
         makeTile()
         paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${tileData}</td></tr></table>"
 
-        try {
-            totalLength = 45
-            if(state.theTile_1 && 1 <= howManyLines) totalLength = totalLength + state.theTileLength_1
-            if(state.theTile_2 && 2 <= howManyLines) totalLength = totalLength + state.theTileLength_2
-            if(state.theTile_3 && 3 <= howManyLines) totalLength = totalLength + state.theTileLength_3
-            if(state.theTile_4 && 4 <= howManyLines) totalLength = totalLength + state.theTileLength_4
-            if(state.theTile_5 && 5 <= howManyLines) totalLength = totalLength + state.theTileLength_5
-            if(state.theTile_6 && 6 <= howManyLines) totalLength = totalLength + state.theTileLength_6
-            if(state.theTile_7 && 7 <= howManyLines) totalLength = totalLength + state.theTileLength_7
-            if(state.theTile_8 && 8 <= howManyLines) totalLength = totalLength + state.theTileLength_8
-            if(state.theTile_9 && 9 <= howManyLines) totalLength = totalLength + state.theTileLength_9
-            if(!iFrameOff) totalLength = totalLength + 34
-            if(state.theGlobalStyle)  totalLength = totalLength + state.theGlobalLength
-        } catch(e) {
-            log.error "Tile Master - Something went wrong. ${e}"
-        }
+        if(evt != "top") {
+            try {
+                totalLength = 45
+                if(state.theTile_1 && 1 <= howManyLines) totalLength = totalLength + state.theTileLength_1
+                if(state.theTile_2 && 2 <= howManyLines) totalLength = totalLength + state.theTileLength_2
+                if(state.theTile_3 && 3 <= howManyLines) totalLength = totalLength + state.theTileLength_3
+                if(state.theTile_4 && 4 <= howManyLines) totalLength = totalLength + state.theTileLength_4
+                if(state.theTile_5 && 5 <= howManyLines) totalLength = totalLength + state.theTileLength_5
+                if(state.theTile_6 && 6 <= howManyLines) totalLength = totalLength + state.theTileLength_6
+                if(state.theTile_7 && 7 <= howManyLines) totalLength = totalLength + state.theTileLength_7
+                if(state.theTile_8 && 8 <= howManyLines) totalLength = totalLength + state.theTileLength_8
+                if(state.theTile_9 && 9 <= howManyLines) totalLength = totalLength + state.theTileLength_9
+                if(!iFrameOff) totalLength = totalLength + 34
+            } catch(e) {
+                log.error "Tile Master - Something went wrong. ${e}"
+            }
 
-        parag = "Characters - "
-        if(state.theTile_1 && 1 <= howManyLines) parag += "Line 1: ${state.theTileLength_1}"
-        if(state.theTile_2 && 2 <= howManyLines) parag += " - Line 2: ${state.theTileLength_2}"
-        if(state.theTile_3 && 3 <= howManyLines) parag += " - Line 3: ${state.theTileLength_3}"
-        if(state.theTile_4 && 4 <= howManyLines) parag += " - Line 4: ${state.theTileLength_4}"
-        if(state.theTile_5 && 5 <= howManyLines) parag += " - Line 5: ${state.theTileLength_5}"
-        if(state.theTile_6 && 6 <= howManyLines) parag += " - Line 6: ${state.theTileLength_6}"
-        if(state.theTile_7 && 7 <= howManyLines) parag += " - Line 7: ${state.theTileLength_7}"
-        if(state.theTile_8 && 8 <= howManyLines) parag += " - Line 8: ${state.theTileLength_8}"
-        if(state.theTile_9 && 9 <= howManyLines) parag += " - Line 9: ${state.theTileLength_9}"
-        if(!iFrameOff) parag += " - iFrame: 34"
-        if(logEnable) log.debug "${parag}"
-        paragraph "<hr>"
-        paragraph "${parag}<br>* This is only an estimate. Actual character count can be found in the tile device."
-		if(totalLength <= 1024) {
-			paragraph "Total Number of Characters: <font color='green'>${totalLength}</font><br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small>"
-		} else {
-			paragraph "Total Number of Characters: <font color='red'>${totalLength}<br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small></font>"
-		}
+            parag = "Characters - "
+            if(state.theTile_1 && 1 <= howManyLines) parag += "Line 1: ${state.theTileLength_1}"
+            if(state.theTile_2 && 2 <= howManyLines) parag += " - Line 2: ${state.theTileLength_2}"
+            if(state.theTile_3 && 3 <= howManyLines) parag += " - Line 3: ${state.theTileLength_3}"
+            if(state.theTile_4 && 4 <= howManyLines) parag += " - Line 4: ${state.theTileLength_4}"
+            if(state.theTile_5 && 5 <= howManyLines) parag += " - Line 5: ${state.theTileLength_5}"
+            if(state.theTile_6 && 6 <= howManyLines) parag += " - Line 6: ${state.theTileLength_6}"
+            if(state.theTile_7 && 7 <= howManyLines) parag += " - Line 7: ${state.theTileLength_7}"
+            if(state.theTile_8 && 8 <= howManyLines) parag += " - Line 8: ${state.theTileLength_8}"
+            if(state.theTile_9 && 9 <= howManyLines) parag += " - Line 9: ${state.theTileLength_9}"
+            if(!iFrameOff) parag += " - iFrame: 34"
+            if(logEnable) log.debug "${parag}"
+            paragraph "<hr>"
+            paragraph "${parag}<br>* This is only an estimate. Actual character count can be found in the tile device."
+            if(totalLength <= 1024) {
+                paragraph "Total Number of Characters: <font color='green'>${totalLength}</font><br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small>"
+            } else {
+                paragraph "Total Number of Characters: <font color='red'>${totalLength}<br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small></font>"
+            }
+        }
 	}
 }
 
 def makeTile() {
     if(logEnable) log.debug "*************************************** In makeTile - Start ***************************************"
     if(logEnable) log.debug "In makeTile (${state.version}) - howManyLines: ${howManyLines}"
-    tileData = "<table width=100%><tr $state.theGlobalStyle><td>"
-    if(state.theTile_1 && 1 <= howManyLines) tileData += state.theTile_1
-    if(state.theTile_2 && 2 <= howManyLines) tileData += state.theTile_2
-    if(state.theTile_3 && 3 <= howManyLines) tileData += state.theTile_3
-    if(state.theTile_4 && 4 <= howManyLines) tileData += state.theTile_4
-    if(state.theTile_5 && 5 <= howManyLines) tileData += state.theTile_5
-    if(state.theTile_6 && 6 <= howManyLines) tileData += state.theTile_6
-    if(state.theTile_7 && 7 <= howManyLines) tileData += state.theTile_7
-    if(state.theTile_8 && 8 <= howManyLines) tileData += state.theTile_8
-    if(state.theTile_9 && 9 <= howManyLines) tileData += state.theTile_9
-    if(!iFrameOff) tileData += "<iframe name=a width=1 height=1 />"
-    tileData += "</td></tr></table>"
+    if(secGlobal) tileData = "<table width=100%><tr><td>"
+    if(!secGlobal) tileData = "<table width=100%>"
+    
+    if(state.theTile_1 && 1 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td >"
+        tileData += state.theTile_1
+    }
+    if(state.theTile_2 && 2 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_2
+    }
+    if(state.theTile_3 && 3 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_3
+    }
+    if(state.theTile_4 && 4 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_4
+    }
+    if(state.theTile_5 && 5 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_5
+    }
+    if(state.theTile_6 && 6 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_6
+    }
+    if(state.theTile_7 && 7 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_7
+    }
+    if(state.theTile_8 && 8 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_8
+    }
+    if(state.theTile_9 && 9 <= howManyLines) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += state.theTile_9
+    }
+    if(!iFrameOff) {
+        if(!secGlobal) tileData += "<tr><td>"
+        tileData += "<iframe name=a width=1 height=1 />"
+    }
+    
+    if(!secGlobal) tileData += "</table>"
+    if(secGlobal) tileData += "</td></tr></table>"
     
     if(logEnable) log.debug "In makeTile - tileData: ${tileData}"
     if(tileDevice) {
@@ -1706,7 +1765,7 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
             }
             state.numError = ""
         } catch (e) {
-            state.numError = "Please be sure to complete the 'Color and Level Options' section in the parent app when using Temperature and/or Battery options."
+            state.numError = "Something went wrong with status colors (number)"
             if(logEnable) log.debug "${state.numError}"
         }
     }
@@ -1720,6 +1779,7 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
                 if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
         }
+        
         if(color2Name) {
             if(deviceStatus.toLowerCase() == color2Name.toLowerCase()) {
                 if(useColors) deviceStatus1 = "<span style='color:${color2Value}'>${color2Name}</span>"
@@ -1765,9 +1825,7 @@ def getCellColors(deviceStatus, deviceAtts, textORnumber, color1Name, color1Valu
                 theCellColor = "${color1Value}"
             }
         }
-    }
-    
-    if(!textORnumber) {
+
         if(color2Name) {
             if(deviceStatus.toLowerCase() == color2Name.toLowerCase()) {
                 theCellColor = "${color2Value}"
@@ -1806,8 +1864,8 @@ def masterListHandler(masterList) {
         def sList = newList.split(",")
 
         state.allIcons = []
-        for(x=0;x < sList.size();x++) {
-            def (iconName,iconLink) = sList[x].split(";")
+        for(i=0;x < sList.size();i++) {
+            def (iconName,iconLink) = sList[i].split(";")
             ics = "${iconName} - ${iconLink}"
             state.allIcons << ics
         }
@@ -1821,6 +1879,7 @@ def masterListHandler(masterList) {
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
+    state.numError = ""
 }
 
 def getImage(type) {					// Modified from @Stephack Code
