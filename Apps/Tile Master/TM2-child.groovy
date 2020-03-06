@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.3.1 - 03/06/20 - Fixed icons, now use ANY attribute with icons!
  *  V2.3.0 - 03/05/20 - Alright, this time I got it! Maybe
  *  V2.2.9 - 03/05/20 - Another Bug fix
  *  V2.2.8 - 03/05/20 - Bug fixes
@@ -65,7 +66,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.0"
+	state.version = "v2.3.1"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -311,7 +312,7 @@ def pageConfig() {
                         input "useColors_$x", "bool", title: "Use custom colors on device value", defaultValue: false, description: "Colors", submitOnChange: true
                         uC = app."useColors_$x"
                         if(uC) {
-                            input "textORnumber_$x", "bool", title: "Is device value Text or Numbers (off=text, on=numbers)", defaultValue: false, description: "textORnumber", submitOnChange: true
+                            input "textORnumber_$x", "bool", title: "<b>Is device value Text or Numbers (off=text, on=numbers)</b>", defaultValue: false, description: "textORnumber", submitOnChange: true
                             textORnumber = app."textORnumber_$x"
                             
                             if(!textORnumber) {
@@ -335,17 +336,16 @@ def pageConfig() {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
                                 input "numLow_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
                                 input "numHigh_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
-                                if(numLow_$x == null) numLow_$x = 0
-                                if(numHigh_$x == null) numHigh_$x = 0
-                                input "colorNumLow_$x", "text", title: "<span style='color: ${colorNumLow};font-size: 25px'>Number <= ${numLow}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                                input "colorNum_$x", "text", title: "<span style='color: ${colorNum};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
-                                input "colorNumHigh_$x", "text", title: "<span style='color: ${colorNumHigh};font-size: 25px'>Number >= ${numHigh}</span>", submitOnChange: true, width: 4, defaultValue: "red"
+                                
+                                input "colorNumLow_$x", "text", title: "Number <= ${numLow}", submitOnChange: true, width: 4
+                                input "colorNum_$x", "text", title: "Number Between", submitOnChange: true, width: 4
+                                input "colorNumHigh_$x", "text", title: "Number >= ${numHigh}", submitOnChange: true, width: 4
                             }
                         }
 
                         input "useIcons_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
                         uI = app."useIcons_$x"
-                        if(uI) {
+                        if(uI) {                      
                             if(state.allIcons == null || state.allIcons == "") {
                                 iconWarning = "--------------------------------------------------------------------------------<br>"
                                 iconWarning += "<b>Icons must first be setup in the parent app. Thanks!</b><br>"
@@ -353,58 +353,35 @@ def pageConfig() {
                                 paragraph "${iconWarning}"
                             }
 
-                            paragraph "Only certain attributes can use Icons. Please choose the ONE set you would like to use with this device."
-                            input "attOnOff", "bool", title: "On/Off", defaultValue: false, description: "on/off", submitOnChange: true, width: 4
-                            input "attOpenClosed", "bool", title: "Open/Closed", defaultValue: false, description: "Open/Closed", submitOnChange: true, width: 4
-                            input "attActiveInactive", "bool", title: "Active/Inactive", defaultValue:false, description: "Active/Inactive", submitOnChange:true, width:4
-
-                            input "attLockedUnlocked", "bool", title: "Locked/Unlocked", defaultValue:false, description: "Locked/Unlocked", submitOnChange:true, width:4
-                            input "attWetDry", "bool", title: "Wet/Dry", defaultValue: false, description: "Wet/Dry", submitOnChange: true, width: 4
-                            input "attPresentNotpresent", "bool", title: "Present/Not Present", defaultValue: false, description: "Present/Not Present", submitOnChange:true, width:4
-
-                            input "attClearDetected", "bool", title: "Clear/Detected", defaultValue: false, description: "Clear/Detected", submitOnChange:true, width:4
-                            input "attTemperature", "bool", title: "Temperature", defaultValue: false, description: "Temperature", submitOnChange: true, width: 4
-                            input "attBattery", "bool", title: "Battery", defaultValue: false, description: "Battery", submitOnChange: true, width: 4
-
-                            if(attOnOff) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for On", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Off", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                            input "textORnumber_$x", "bool", title: "<b>Is device value Text or Numbers (off=text, on=numbers)</b>", defaultValue: false, description: "textORnumber", submitOnChange: true
+                            textORnumber = app."textORnumber_$x"
+                            
+                            if(!textORnumber) {
+                                paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
+                                paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
+                                input "icon1Name_$x", "text", title: "Icon 1 Attribute Value<br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+		                        input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Value 1", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "icon2Name_$x", "text", title: "Icon 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Value 2", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                paragraph "<hr>"
                             }
-                            if(attOpenClosed) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Open", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Closed", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attActiveInactive) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Active", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Inactive", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attLockedUnlocked) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Locked", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Unlocked", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attWetDry) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Wet", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Dry", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attPresentNotpresent) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Present", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Not Present", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attClearDetected) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Clear", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Detected", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attTemperature) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Temperature Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon3_$x", "enum", title: "Choose an Icon for Temperature Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Temperature High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attBattery) {
-                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Battery Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon3_$x", "enum", title: "Choose an Icon for Battery Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for Battery High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                            
+                            if(textORnumber) {
+                                input "iconNumLow_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHigh_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                
+                                input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "useWhichIcon3_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "useWhichIcon2_$x", "enum", title: "Choose an Icon for High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                             }
 
+                            icon1N = app."icon1Name_$x"
+                            icon2N = app."icon2Name_$x"
+                            icon3N = app."icon3Name_$x"
+                            if(icon1N == null) icon1N = ""
+                            if(icon2N == null) icon2N = ""
+                            if(icon3N == null) icon3N = ""
+                            
                             uwi1 = app."useWhichIcon1_$x"
                             uwi2 = app."useWhichIcon2_$x"
                             uwi3 = app."useWhichIcon3_$x"
@@ -424,7 +401,7 @@ def pageConfig() {
                             if(iconLink2 == null) {iconLink2 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
                             if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
 
-                            iconTable = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${iconLink1}' height=${thisSize}></td><td><img src='${iconLink3}' height=${thisSize}></td><td>Icon 2:<br><img src='${iconLink2}' height=${thisSize}></td></tr></table>"
+                            iconTable = "<table align=center width=50%><tr><td>${icon1N}<br><img src='${iconLink1}' height=${thisSize}></td><td>${icon3N}<br><img src='${iconLink3}' height=${thisSize}></td><td>${icon2N}<br><img src='${iconLink2}' height=${thisSize}></td></tr></table>"
                             paragraph "${iconTable}"
                         }
                     }
@@ -527,19 +504,17 @@ def pageConfig() {
                         input "useColorsa_$x", "bool", title: "Use custom colors on device value", defaultValue: false, description: "Colors", submitOnChange: true
                         uCa = app."useColorsa_$x"
                         if(uCa) {
-                            input "textORnumbera_$x", "bool", title: "Is device value Text or Numbers (off=text, on=numbers)", defaultValue: false, description: "textORnumber", submitOnChange: true
+                            input "textORnumbera_$x", "bool", title: "<b>Is device value Text or Numbers (off=text, on=numbers)</b>", defaultValue: false, description: "textORnumber", submitOnChange: true
                             textORnumbera = app."textORnumbera_$x"
                             
                             if(!textORnumbera) {
                                 paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
                                 paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
                                 
-                                input "color1Namea_$x", "text", title: "<span style='color: ${color1a}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+                                input "color1Namea_$x", "text", title: "Color 1 Attribute Value<br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
 		                        input "color1Valuea_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
-                                input "color2Namea_$x", "text", title: "<span style='color: ${color2a}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "color2Namea_$x", "text", title: "Color 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Valuea_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
-                                color1a = app."color1Valuea_$x"
-                                color2a = app."color2Valuea_$x"
                                 paragraph "<hr>"
                                 input "valueOrCella_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
                                 input "useColorsBEFa_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
@@ -552,74 +527,51 @@ def pageConfig() {
                                 input "numHigha_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowa_$x == null) numLowa_$x = 0
                                 if(numHigha_$x == null) numHigha_$x = 0
-                                input "colorNumLowa_$x", "text", title: "<span style='color: ${colorNumLowa};font-size: 25px'>Number <= ${numLowa}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                                input "colorNuma_$x", "text", title: "<span style='color: ${colorNuma};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
-                                input "colorNumHigha_$x", "text", title: "<span style='color: ${colorNumHigha};font-size: 25px'>Number >= ${numHigha}</span>", submitOnChange: true, width: 4, defaultValue: "red"
+                                input "colorNumLowa_$x", "text", title: "Number <= ${numLowa}", submitOnChange: true, width: 4
+                                input "colorNuma_$x", "text", title: "Number Between", submitOnChange: true, width: 4
+                                input "colorNumHigha_$x", "text", title: "Number >= ${numHigha}", submitOnChange: true, width: 4
                             }
                         }
 
                         input "useIconsa_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
                         uIa = app."useIconsa_$x"
-                        if(uIa) {
+                        if(uIa) {                      
                             if(state.allIcons == null || state.allIcons == "") {
                                 iconWarning = "--------------------------------------------------------------------------------<br>"
                                 iconWarning += "<b>Icons must first be setup in the parent app. Thanks!</b><br>"
                                 iconWarning += "--------------------------------------------------------------------------------"
                                 paragraph "${iconWarning}"
                             }
+
+                            input "textORnumbera_$x", "bool", title: "<b>Is device value Text or Numbers (off=text, on=numbers)</b>", defaultValue: false, description: "textORnumber", submitOnChange: true
+                            textORnumbera = app."textORnumbera_$x"
                             
-                            paragraph "Only certain attributes can use Icons. Please choose the ONE set you would like to use with this device."
-                            input "attOnOffa", "bool", title: "On/Off", defaultValue: false, description: "on/off", submitOnChange: true, width: 4
-                            input "attOpenCloseda", "bool", title: "Open/Closed", defaultValue: false, description: "Open/Closed", submitOnChange: true, width: 4
-                            input "attActiveInactivea", "bool", title: "Active/Inactive", defaultValue: false, description: "Active/Inactive", submitOnChange: true, width: 4
-
-                            input "attLockedUnlockeda", "bool", title: "Locked/Unlocked", defaultValue: false, description: "Locked/Unlocked", submitOnChange: true, width: 4
-                            input "attWetDrya", "bool", title: "Wet/Dry", defaultValue: false, description: "Wet/Dry", submitOnChange: true, width: 4
-                            input "attPresentNotpresenta", "bool", title: "Present/Not Present", defaultValue: false, description: "Present/Not Present", submitOnChange: true, width: 4
-
-                            input "attClearDetecteda", "bool", title: "Clear/Detected", defaultValue: false, description: "Clear/Detected", submitOnChange: true, width: 4
-                            input "attTemperaturea", "bool", title: "Temperature", defaultValue: false, description: "Temperature", submitOnChange: true, width: 4
-                            input "attBatterya", "bool", title: "Battery", defaultValue: false, description: "Battery", submitOnChange: true, width: 4
-
-                            if(attOnOffa) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for On", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Off", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                            if(!textORnumbera) {
+                                paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
+                                paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
+                                input "icon1Namea_$x", "text", title: "Icon 1 Attribute Value<br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+		                        input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Value 1", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "icon2Namea_$x", "text", title: "Icon 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Value 2", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                paragraph "<hr>"
                             }
-                            if(attOpenCloseda) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Open", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Closed", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attActiveInactivea) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Active", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Inactive", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attLockedUnlockeda) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Locked", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Unlocked", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attWetDrya) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Wet", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Dry", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attPresentNotpresenta) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Present", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Not Present", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attClearDetecteda) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Clear", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Detected", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attTemperaturea) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Temperature Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon3a_$x", "enum", title: "Choose an Icon for Temperature Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Temperature High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attBatterya) {
-                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Battery Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon3a_$x", "enum", title: "Choose an Icon for Battery Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for Battery High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                            
+                            if(textORnumbera) {
+                                input "iconNumLowa_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHigha_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                
+                                input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "useWhichIcon3a_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "useWhichIcon2a_$x", "enum", title: "Choose an Icon for High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                             }
 
+                            icon1Na = app."icon1Namea_$x"
+                            icon2Na = app."icon2Namea_$x"
+                            icon3Na = app."icon3Namea_$x"
+                            if(icon1Na == null) icon1Na = ""
+                            if(icon2Na == null) icon2Na = ""
+                            if(icon3Na == null) icon3Na = ""
+                        
                             uwi1a = app."useWhichIcon1a_$x"
                             uwi2a = app."useWhichIcon2a_$x"
                             uwi3a = app."useWhichIcon3a_$x"
@@ -639,7 +591,7 @@ def pageConfig() {
                             if(iconLink2a == null) {iconLink2a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
                             if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
 
-                            iconTablea = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${iconLink1a}' height=${thisSizea}></td><td><img src='${iconLink3a}' height=${thisSizeb}></td><td>Icon 2:<br><img src='${iconLink2a}' height=${thisSizea}></td></tr></table>"
+                            iconTablea = "<table align=center width=50%><tr><td>${icon1Na}<br><img src='${iconLink1a}' height=${thisSizea}></td><td>${icon3Na}<br><img src='${iconLink3a}' height=${thisSizeb}></td><td>${icon2Na}<br><img src='${iconLink2a}' height=${thisSizea}></td></tr></table>"
                             paragraph "${iconTablea}"
                         }
                     }
@@ -742,7 +694,7 @@ def pageConfig() {
                         input "useColorsb_$x", "bool", title: "Use custom colors on device value", defaultValue: false, description: "Colors", submitOnChange: true
                         uCb = app."useColorsb_$x"
                         if(uCb) {
-                            input "textORnumberb_$x", "bool", title: "Is device value Text or Numbers (off=text, on=numbers)", defaultValue: false, description: "textORnumber", submitOnChange: true
+                            input "textORnumberb_$x", "bool", title: "<b>Is device value Text or Numbers (off=text, on=numbers)</b>", defaultValue: false, description: "textORnumber", submitOnChange: true
                             textORnumberb = app."textORnumberb_$x"
                             
                             if(!textORnumberb) {
@@ -774,67 +726,44 @@ def pageConfig() {
                         }
 
                         input "useIconsb_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
-                        uIb = app."useIconsb_$x"
-                        if(uIb) {
+                        uI = app."useIconsb_$x"
+                        if(uIb) {                      
                             if(state.allIcons == null || state.allIcons == "") {
                                 iconWarning = "--------------------------------------------------------------------------------<br>"
                                 iconWarning += "<b>Icons must first be setup in the parent app. Thanks!</b><br>"
                                 iconWarning += "--------------------------------------------------------------------------------"
                                 paragraph "${iconWarning}"
                             }
+
+                            input "textORnumberb_$x", "bool", title: "<b>Is device value Text or Numbers (off=text, on=numbers)</b>", defaultValue: false, description: "textORnumber", submitOnChange: true
+                            textORnumberb = app."textORnumberb_$x"
                             
-                            paragraph "Only certain attributes can use Icons. Please choose the ONE set you would like to use with this device."
-                            input "attOnOffb", "bool", title: "On/Off", defaultValue: false, description: "on/off", submitOnChange: true, width: 4
-                            input "attOpenClosedb", "bool", title: "Open/Closed", defaultValue: false, description: "Open/Closed", submitOnChange: true, width: 4
-                            input "attActiveInactiveb", "bool", title: "Active/Inactive", defaultValue: false, description: "Active/Inactive", submitOnChange: true, width: 4
-
-                            input "attLockedUnlockedb", "bool", title: "Locked/Unlocked", defaultValue: false, description: "Locked/Unlocked", submitOnChange: true, width: 4
-                            input "attWetDryb", "bool", title: "Wet/Dry", defaultValue: false, description: "Wet/Dry", submitOnChange: true, width: 4
-                            input "attPresentNotpresentb", "bool", title: "Present/Not Present", defaultValue: false, description: "Present/Not Present", submitOnChange: true, width: 4
-
-                            input "attClearDetectedb", "bool", title: "Clear/Detected", defaultValue: false, description: "Clear/Detected", submitOnChange: true, width: 4
-                            input "attTemperatureb", "bool", title: "Temperature", defaultValue: false, description: "Temperature", submitOnChange: true, width: 4
-                            input "attBatteryb", "bool", title: "Battery", defaultValue: false, description: "Battery", submitOnChange: true, width: 4
-
-                            if(attOnOffb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for On", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Off", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                            if(!textORnumberb) {
+                                paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
+                                paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
+                                input "icon1Nameb_$x", "text", title: "Icon 1 Attribute Value<br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+		                        input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Value 1", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "icon2Nameb_$x", "text", title: "Icon 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Value 2", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                paragraph "<hr>"
                             }
-                            if(attOpenClosedb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Open", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Closed", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attActiveInactiveb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Active", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Inactive", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attLockedUnlockedb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Locked", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Unlocked", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attWetDryb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Wet", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Dry", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attPresentNotpresentb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Present", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Not Present", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attClearDetectedb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Clear", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Detected", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attTemperatureb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Temperature Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon3b_$x", "enum", title: "Choose an Icon for Temperature Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Temperature High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                            }
-                            if(attBatteryb) {
-                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Battery Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon3b_$x", "enum", title: "Choose an Icon for Battery Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
-                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for Battery High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                            
+                            if(textORnumberb) {
+                                input "iconNumLowb_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHighb_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                
+                                input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "useWhichIcon3b_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
+                                input "useWhichIcon2b_$x", "enum", title: "Choose an Icon for High", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                             }
 
+                            icon1Nb = app."icon1Nameb_$x"
+                            icon2Nb = app."icon2Nameb_$x"
+                            icon3Nb = app."icon3Nameb_$x"
+                            if(icon1Nb == null) icon1Nb = ""
+                            if(icon2Nb == null) icon2Nb = ""
+                            if(icon3Nb == null) icon3Nb = ""
+                        
                             uwi1b = app."useWhichIcon1b_$x"
                             uwi2b = app."useWhichIcon2b_$x"
                             uwi3b = app."useWhichIcon3b_$x"
@@ -854,12 +783,13 @@ def pageConfig() {
                             if(iconLink2b == null) {iconLink2b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/logo.png"}
                             if(iconLink3b == null) {iconLink3b = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
 
-                            iconTableb = "<table align=center width=50%><tr><td>Icon 1:<br><img src='${iconLink1b}' height=${thisSizeb}></td><td><img src='${iconLink3b}' height=${thisSizeb}></td><td>Icon 2:<br><img src='${iconLink2b}' height=${thisSizeb}></td></tr></table>"
+                            iconTableb = "<table align=center width=50%><tr><td>${icon1Nb}<br><img src='${iconLink1b}' height=${thisSizeb}></td><td>${icon3Nb}<br><img src='${iconLink3b}' height=${thisSizeb}></td><td>${icon2Nb}<br><img src='${iconLink2b}' height=${thisSizeb}></td></tr></table>"
                             paragraph "${iconTableb}"
                         }
                     }
                 }
             }
+    
             if(state.lastActiv == "yes") {
                 section(getFormat("header-green", "${getImage("Blank")}"+" Last Activity Formatting")) {
                     input "dateTimeFormat", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
@@ -876,6 +806,7 @@ def pageConfig() {
                     ]
                 }
             }
+    
             section(getFormat("header-green", "${getImage("Blank")}"+" Current Date / Time Formatting")) {
                 if(wordsBEF && wordsBEF.contains("%currDate%") || 
                    wordsAFT && wordsAFT.contains("%currDate%") ||
@@ -909,6 +840,7 @@ def pageConfig() {
                 }
             }
         }
+
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: true}
         if(state.appInstalled != 'COMPLETE') {
             section() {
@@ -916,6 +848,7 @@ def pageConfig() {
                 paragraph "<b>At this point, please press 'Done' to save the app. Then reopen it from the menu to complete the setup. This is required to retrieve the Icons and Colors from the parent app (if needed). Thanks.</b>"
             }
         }
+
         if(state.appInstalled == 'COMPLETE') {tileHandler("bottom")}
         section() {
             input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true
@@ -1151,6 +1084,12 @@ def tileHandler(evt){
         controlDevicesb = app."controlDevices_$y"
         
         if(useIcons) {
+            icon1Name = app."icon1Name_$y"
+            icon2Name = app."icon2Name_$y"
+            icon3Name = app."icon3Name_$y"
+            iconNumLow = app."iconNumLow_$x"
+            iconNumHigh = app."iconNumHigh_$x"
+            
             uwi1 = app."useWhichIcon1_$y"
             uwi2 = app."useWhichIcon2_$y"
             uwi3 = app."useWhichIcon3_$y"
@@ -1167,6 +1106,12 @@ def tileHandler(evt){
             if(iconLink3 == null) {iconLink3 = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
         }
         if(useIconsa) {
+            icon1Namea = app."icon1Namea_$y"
+            icon2Namea = app."icon2Namea_$y"
+            icon3Namea = app."icon3Namea_$y"
+            iconNumLowa = app."iconNumLowa_$x"
+            iconNumHigha = app."iconNumHigha_$x"
+            
             uwi1a = app."useWhichIcon1a_$y"
             uwi2a = app."useWhichIcon2a_$y"
             uwi3a = app."useWhichIcon3a_$y"
@@ -1183,6 +1128,12 @@ def tileHandler(evt){
             if(iconLink3a == null) {iconLink3a = "https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/blank.png"}
         }
         if(useIconsb) {
+            icon1Nameb = app."icon1Nameb_$y"
+            icon2Nameb = app."icon2Nameb_$y"
+            icon3Nameb = app."icon3Nameb_$y"
+            iconNumLowb = app."iconNumLowb_$x"
+            iconNumHighb = app."iconNumHighb_$x"
+            
             uwi1b = app."useWhichIcon1b_$y"
             uwi2b = app."useWhichIcon2b_$y"
             uwi3b = app."useWhichIcon3b_$y"
@@ -1204,8 +1155,8 @@ def tileHandler(evt){
 		    if(theDevice) {
 			    deviceStatus = theDevice.currentValue("${deviceAtts}")
                 if(deviceStatus == null) deviceStatus = "No Data"
-                if(!valueOrCell) {
-                    getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow, numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3)
+                if(!valueOrCell || useIcons) {
+                    getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow, numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, iconNumLow, iconNumHigh)
                     def (deviceStatus1,wordsBEF1,wordsAFT1) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - deviceStatus1: ${deviceStatus1} - wordsBEF1: ${wordsBEF1} - wordsAFT1: ${wordsAFT1}"
                     if(deviceStatus1 != "null") deviceStatus = deviceStatus1
@@ -1226,8 +1177,8 @@ def tileHandler(evt){
 		    if(theDevicea) {
 			    deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
 			    if(deviceStatusa == null) deviceStatusa = "No Data"
-                if(!valueOrCella) {
-                    getStatusColors(theDevicea, deviceStatusa, deviceAttsa, useColorsa, textORnumbera, color1Namea, color1Valuea, color2Namea, color2Valuea, numLowa, numHigha, colorNumLowa, colorNuma, colorNumHigha, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a)
+                if(!valueOrCella || useIconsa) {
+                    getStatusColors(theDevicea, deviceStatusa, deviceAttsa, useColorsa, textORnumbera, color1Namea, color1Valuea, color2Namea, color2Valuea, numLowa, numHigha, colorNumLowa, colorNuma, colorNumHigha, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a, icon1Namea, iconNumLowa, iconNumHigha)
                     def (deviceStatus1a,wordsBEF1a,wordsAFT1a) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - a - deviceStatus1a: ${deviceStatus1a} - wordsBEF1a: ${wordsBEF1a} - wordsAFT1a: ${wordsAFT1a}"
                     if(deviceStatus1a != "null") deviceStatusa = deviceStatus1a
@@ -1248,8 +1199,8 @@ def tileHandler(evt){
 		    if(theDeviceb) {
 			    deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
 			    if(deviceStatusb == null) deviceStatusb = "No Data"
-                if(!valueOrCellb) {
-                    getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b)
+                if(!valueOrCellb || useIconsb) {
+                    getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, iconNumLowb, iconNumHighb)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - b - deviceStatus1b: ${deviceStatus1b} - wordsBEF1b: ${wordsBEF1b} - wordsAFT1b: ${wordsAFT1b}"
                     if(deviceStatus1b != "null") deviceStatusb = deviceStatus1b
@@ -1407,7 +1358,7 @@ def tileHandler(evt){
         if(valueOrCell) theStyle += "background:${cellColor};"
         
         theStyle += "'"
-        if(logEnable) log.warn "In tileHander - theStyle: ${theStyle}"
+        if(logEnable) log.debug "In tileHander - theStyle: ${theStyle}"
         
         if(secGlobal && y == 1) theStylea = "style='width:${secWidtha}%;"
         if(secGlobal && y != 1) theStylea = "style='"
@@ -1422,7 +1373,7 @@ def tileHandler(evt){
         if(valueOrCella) theStylea += "background:${cellColora};"
         
         theStylea += "'"
-        if(logEnable) log.warn "In tileHander - theStylea: ${theStylea}"
+        if(logEnable) log.debug "In tileHander - theStylea: ${theStylea}"
         
         if(secGlobal && y == 1) theStyleb = "style='width:${secWidthb}%;"
         if(secGlobal && y != 1) theStyleb = "style='"
@@ -1437,10 +1388,10 @@ def tileHandler(evt){
         if(valueOrCellb) theStyleb += "background:${cellColorb};"
         
         theStyleb += "'"
-        if(logEnable) log.warn "In tileHander - theStyleb: ${theStyleb}"
+        if(logEnable) log.debug "In tileHander - theStyleb: ${theStyleb}"
         
 // ********** Make the lines/table **********
-        log.warn "Start Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
+        log.debug "Start Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
         
         if(!secGlobal) {
             theTileMap = "<table style='width:100%'><tr>"
@@ -1471,7 +1422,7 @@ def tileHandler(evt){
             if(y == howManyLines) theTileMap += "</tr></table>"
         }
         
-        log.warn "End Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
+        log.debug "End Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
 // ********** End Make the lines/table **********
         
         if(y == 1) {
@@ -1741,7 +1692,7 @@ def makeTile() {
     return tileData
 }
 
-def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow,numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcon, iconSize, iconLink1, iconLink2, iconLink3) {
+def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow,numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcon, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, iconNumLow, iconNumHigh) {
     if(logEnable) log.debug "*************************************** In getStatusColors - Start ***************************************"
     if(logEnable) log.debug "In getStatusColors (${state.version}) - Received - theDevice: ${theDevice} - deviceStatus: ${deviceStatus} - deviceAtts: ${deviceAtts} - useColors: ${useColors} - textORnumber: ${textORnumber} - color1Name: ${color1Name} - color1Value: ${color1Value} - color2Name: ${color2Name} - color2Value: ${color2Value} - useColorsBEF: ${useColorsBEF} - useColorsAFT: ${useColorsAFT} - wordsBEF: ${wordsBEF} - wordsAFT: ${wordsAFT} - useIcon: ${useIcon} - iconSize: ${iconSize}"
     
@@ -1749,8 +1700,9 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
     deviceStatus1 = null
     wordsBEF1 = null
     wordsAFT1 = null
+    state.numError = ""
     
-    if(textORnumber) {
+    if(textORnumber && useColors) {
         try {
             numLow = numLow.toInteger()
             numHigh = numHigh.toInteger()
@@ -1774,18 +1726,17 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
             }
             state.numError = ""
         } catch (e) {
-            state.numError = "Something went wrong with status colors (number)"
+            state.numError = "Something went wrong with status number colors (useColors)"
             if(logEnable) log.debug "${state.numError}"
         }
     }
     
-    if(!textORnumber) {
+    if(!textORnumber && useColors) {
         if(color1Name) {
             if(deviceStatus.toLowerCase() == color1Name.toLowerCase()) {
                 if(useColors) deviceStatus1 = "<span style='color:${color1Value}'>${color1Name}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${color1Value}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${color1Value}'>${wordsAFT}</span>"
-                if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
         }
         
@@ -1794,11 +1745,43 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
                 if(useColors) deviceStatus1 = "<span style='color:${color2Value}'>${color2Name}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${color2Value}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${color2Value}'>${wordsAFT}</span>"
+            }
+        }
+    }
+    
+    if(textORnumber && useIcon) {
+        try {
+            iconNumLow = iconNumLow.toInteger()
+            iconNumHigh = iconNumHigh.toInteger()
+            if(deviceStatus <= iconNumLow) {
+                if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
+            }
+            if(deviceStatus > iconNumLow && deviceStatus < iconNumHigh) {
+                if(useIcon) deviceStatus1 = "<img src='${iconLink3}' style='height:${iconSize}px'>"
+            }
+            if(deviceStatus >= iconNumHigh) {
+                if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
+            }
+            state.numError = ""
+        } catch (e) {
+            state.numError = "Something went wrong with status number colors (useIcon)"
+            if(logEnable) log.debug "${state.numError}"
+        }
+    }
+  
+    if(!textORnumber && useIcon) {
+        if(icon1Name && iconLink1) {
+            if(deviceStatus.toLowerCase() == icon1Name.toLowerCase()) {
+                if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
+            }
+        }
+        if(icon2Name && iconLink2) {
+            if(deviceStatus.toLowerCase() == icon2Name.toLowerCase()) {
                 if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
             }
         }
     }
-  
+    
     if(deviceStatus1 == null) deviceStatus1 = deviceStatus
     if(wordsBEF1 == null) wordsBEF1 = wordsBEF
     if(wordsAFT1 == null) wordsAFT1 = wordsAFT
@@ -1813,6 +1796,7 @@ def getCellColors(deviceStatus, deviceAtts, textORnumber, color1Name, color1Valu
     if(logEnable) log.debug "*************************************** In getCellColors - Start ***************************************"
     if(logEnable) log.debug "In getCellColors (${state.version}) - Received: ${deviceAtts} - ${deviceStatus}"
     theCellColor = null
+    state.numError = ""
     
     if(textORnumber) {
         try {
