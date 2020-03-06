@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.3.0 - 03/05/20 - Alright, this time I got it! Maybe
  *  V2.2.9 - 03/05/20 - Another Bug fix
  *  V2.2.8 - 03/05/20 - Bug fixes
  *  V2.2.7 - 03/02/20 - Lots of cosmetic changes
@@ -64,7 +65,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.2.9"
+	state.version = "v2.3.0"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -1071,7 +1072,10 @@ def tileHandler(evt){
     
     for(y=1;y <= howManyLines;y++) {
         if(logEnable) log.debug "<b>**********  Starting Line $y  **********</b>"
-        nSections = app."nSections_$y"
+        if(!secGlobal) nSections = app."nSections_$y"
+           
+        if(secGlobal && y == 1) nSections = app."nSections_$y"
+        
         theDevice = app."device_$y"
         theDevicea = app."devicea_$y"
         theDeviceb = app."deviceb_$y"
@@ -1436,6 +1440,8 @@ def tileHandler(evt){
         if(logEnable) log.warn "In tileHander - theStyleb: ${theStyleb}"
         
 // ********** Make the lines/table **********
+        log.warn "Start Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
+        
         if(!secGlobal) {
             theTileMap = "<table style='width:100%'><tr>"
         } else {
@@ -1464,6 +1470,8 @@ def tileHandler(evt){
             if(y < howManyLines) theTileMap += "</tr>"
             if(y == howManyLines) theTileMap += "</tr></table>"
         }
+        
+        log.warn "End Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
 // ********** End Make the lines/table **********
         
         if(y == 1) {
