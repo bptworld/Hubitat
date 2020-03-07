@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.3.2 - 03/07/20 - Missed two lines of code that displayed in the log, heads exploded.
  *  V2.3.1 - 03/06/20 - Fixed icons, now use ANY attribute with icons!
  *  V2.3.0 - 03/05/20 - Alright, this time I got it! Maybe
  *  V2.2.9 - 03/05/20 - Another Bug fix
@@ -66,7 +67,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.1"
+	state.version = "v2.3.2"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -1391,7 +1392,7 @@ def tileHandler(evt){
         if(logEnable) log.debug "In tileHander - theStyleb: ${theStyleb}"
         
 // ********** Make the lines/table **********
-        log.debug "Start Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
+        if(logEnable) log.debug "Start Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
         
         if(!secGlobal) {
             theTileMap = "<table style='width:100%'><tr>"
@@ -1422,7 +1423,7 @@ def tileHandler(evt){
             if(y == howManyLines) theTileMap += "</tr></table>"
         }
         
-        log.debug "End Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
+        if(logEnable) log.debug "End Make the Lines/Table - line: ${y} - secGlobal: ${secGlobal} - theTileMap: ${theTileMap} - nSections: ${nSections}"
 // ********** End Make the lines/table **********
         
         if(y == 1) {
