@@ -112,7 +112,7 @@ def mainPage() {
 				paragraph "Create a tile with multiple devices and customization options."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-                paragraph "Be sure to complete the 'Global Icon Options' section and hit 'done' is you want to use Icons with your devices."
+                paragraph "Be sure to complete the 'Global Icon Options' section and hit 'done' if you want to use Icons with your devices."
 				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
