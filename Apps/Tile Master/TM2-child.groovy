@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.3.3 - 03/09/20 - Lots of behind the scenes work. Some bug fixes
  *  V2.3.2 - 03/07/20 - Missed two lines of code that displayed in the log, heads exploded.
  *  V2.3.1 - 03/06/20 - Fixed icons, now use ANY attribute with icons!
  *  V2.3.0 - 03/05/20 - Alright, this time I got it! Maybe
@@ -67,7 +68,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.2"
+	state.version = "v2.3.3"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -136,7 +137,10 @@ def pageConfig() {
             catch (e) { }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
-                if(lineToEdit == 1) { input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true }
+                if(lineToEdit == 1) { 
+                    input "howManyLines", "number", title: "How many lines on Tile (range: 1-9)", range: '1..9', width:6, submitOnChange:true
+                    removeExtraLines()
+                }
                 theRange = "(1..$howManyLines)"
                 input "lineToEdit", "number", title: "Which line to edit", range:theRange, width:6, submitOnChange:true
                 
@@ -691,12 +695,11 @@ def pageConfig() {
                                 paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
                                 paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
                                 
-                                input "color1Nameb_$x", "text", title: "<span style='color: ${color1b}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+                                input "color1Nameb_$x", "text", title: "Color 1 Attribute Value<br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
 		                        input "color1Valueb_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
-                                input "color2Nameb_$x", "text", title: "<span style='color: ${color2b}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "color2Nameb_$x", "text", title: "Color 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Valueb_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
-                                color1b = app."color1Valueb_$x"
-                                color2b = app."color2Valueb_$x"
+                                
                                 paragraph "<hr>"
                                 input "valueOrCellb_$x", "bool", title: "Change the color of the device value or entire cell (off = value, on = cell)", defaultValue: false, description: "Colors", submitOnChange: true
                                 input "useColorsBEFb_$x", "bool", title: "Use custom colors on 'Text BEFORE Device Status'", defaultValue: false, description: "Colors", submitOnChange: true, width: 6
@@ -716,7 +719,7 @@ def pageConfig() {
                         }
 
                         input "useIconsb_$x", "bool", title: "Use custom icons instead of device value", defaultValue: false, description: "Icons", submitOnChange: true
-                        uI = app."useIconsb_$x"
+                        uIb = app."useIconsb_$x"
                         if(uIb) {                      
                             if(state.allIcons == null || state.allIcons == "") {
                                 iconWarning = "--------------------------------------------------------------------------------<br>"
@@ -850,7 +853,7 @@ def pageConfig() {
 def copyLineHandler() {
     dynamicPage(name: "copyLineHandler", title: "", install:false, uninstall:false) {
 		display()
-        
+        //log.info "Settings: ${settings}"
         state.theMessage = ""
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
@@ -886,21 +889,46 @@ def copyLineHandler() {
     }
 }
 
+def insertLine() {
+    if(logEnable) log.info "In insertLine (${state.version})"
+    
+    log.info "Settings: ${settings}"
+}
+
 def doTheLineCopy() {
     if(logEnable) log.info "In doTheLineCopy (${state.version})"
     
-    fromThisLine = "_${fromLine}"
-    toThisLine = "_${toLine}"
+    fromThisLine = "${fromLine}"
+    toThisLine = "${toLine}"
     
     settings.each { theOption ->
         name = theOption.key
-        value = theOption.value
 
-        if(name.contains("${fromThisLine}")) { 
+        if(name.contains("_${fromThisLine}")) { 
+            newName = name.replace("_${fromThisLine}", "_${toThisLine}")
             nameValue = theOption.value
-            newName = name.replace("${fromThisLine}", "${toThisLine}")
-            app?.updateSetting("${newName}", nameValue)
-            if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue}"
+
+            if(name.contains("${fromThisLine}")) { 
+                nameValue = theOption.value
+                newName = name.replace("${fromThisLine}", "${toThisLine}")
+                app?.updateSetting("${newName}", nameValue)
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue}"
+            }
+            
+/*
+            if(name.contains("italic") || name.contains("bold") || name.contains("controlDevices") || name.contains("hideAttr") || name.contains("useBitly") || name.contains("useColors") || name.contains("textORnumber") || name.contains("valueOrCell") || name.contains("useColorsBEF") || name.contains("useColorsAFT")) { 
+                app?.updateSetting("${newName}",[value:"${nameValue}",type:"bool"])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: bool"
+            } else if(name.contains("device") || name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3")){
+                app?.updateSetting("${newName}",[value:"${nameValue}",type:"enum"])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: string"
+          //} else if(name.contains("deviceAtts")){
+                
+            } else {
+                app?.updateSetting("${newName}", nameValue)
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - *"
+            }
+*/                      
         }
     }
 
@@ -909,6 +937,71 @@ def doTheLineCopy() {
     app?.updateSetting("copyLine",[value:"false",type:"bool"])
     app?.updateSetting("fromLine",[value:"",type:"number"])
     app?.updateSetting("toLine",[value:"",type:"number"])
+}
+
+def removeExtraLines() {
+    if(logEnable) log.info "In removeExtraLines (${state.version})"
+    
+    if(howManyLines) {
+        hml = howManyLines + 1
+        for(d=hml;d <= 9;d++) {
+            app.removeSetting("nSections_$d"); app.removeSetting("secWidth_$d"); app.removeSetting("secWidtha_$d"); app.removeSetting("secWidthb_$d")
+            app.removeSetting("controlDevices_$d")
+
+            app.removeSetting("wordsBEF_$d"); app.removeSetting("wordsBEFa_$d"); app.removeSetting("wordsBEFb_$d")
+            app.removeSetting("wordsAFT_$d"); app.removeSetting("wordsAFTa_$d"); app.removeSetting("wordsAFTb_$d")
+
+            app.removeSetting("device_$d"); app.removeSetting("devicea_$d"); app.removeSetting("deviceb_$d")
+            app.removeSetting("deviceAtts_$d"); app.removeSetting("deviceAttsa_$d"); app.removeSetting("deviceAttsb_$d")
+            app.removeSetting("hideAttr_$d"); app.removeSetting("hideAttra_$d"); app.removeSetting("hideAttrb_$d")
+            app.removeSetting("controlOn_$d"); app.removeSetting("controlOna_$d"); app.removeSetting("controlOnb_$d")
+            app.removeSetting("controlOff_$d"); app.removeSetting("controlOffa_$d"); app.removeSetting("controlOffb_$d")
+            app.removeSetting("controlLock_$d"); app.removeSetting("controlLocka_$d"); app.removeSetting("controlLockb_$d")
+            app.removeSetting("controlUnlock_$d"); app.removeSetting("controlUnlocka_$d"); app.removeSetting("controlUnlockb_$d")
+            app.removeSetting("useBitly_$d"); app.removeSetting("useBitlya_$d"); app.removeSetting("useBitlyb_$d")
+            app.removeSetting("bControlOn_$d"); app.removeSetting("bControlOna_$d"); app.removeSetting("bControlOnb_$d")
+            app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOffb_$d")
+            app.removeSetting("bControlLock_$d"); app.removeSetting("bControlLocka_$d"); app.removeSetting("bControlLockb_$d")
+            app.removeSetting("bControlUnLock_$d"); app.removeSetting("bControlUnLocka_$d"); app.removeSetting("bControlUnLockb_$d")
+
+            app.removeSetting("overrideGlobal_$d"); app.removeSetting("overrideGlobala_$d"); app.removeSetting("overrideGlobalb_$d")        
+            app.removeSetting("align_$d"); app.removeSetting("aligna_$d"); app.removeSetting("alignb_$d")        
+            app.removeSetting("color_$d"); app.removeSetting("colora_$d"); app.removeSetting("colorb_$d")      
+            app.removeSetting("fontSize_$d"); app.removeSetting("fontSizea_$d"); app.removeSetting("fontSizeb_$d")
+            app.removeSetting("italic_$d"); app.removeSetting("italica_$d"); app.removeSetting("italicb_$d")
+            app.removeSetting("bold_$d"); app.removeSetting("bolda_$d"); app.removeSetting("boldb_$d")
+            app.removeSetting("decoration_$d"); app.removeSetting("decorationa_$d"); app.removeSetting("decorationb_$d")
+
+            app.removeSetting("useColors_$d"); app.removeSetting("useColorsa_$d"); app.removeSetting("useColorsb_$d")
+            app.removeSetting("textORnumber_$d"); app.removeSetting("textORnumbera_$d"); app.removeSetting("textORnumberb_$d")
+
+            app.removeSetting("color1Name_$d"); app.removeSetting("color1Namea_$d"); app.removeSetting("color1Nameb_$d")
+            app.removeSetting("color1Value_$d"); app.removeSetting("color1Valuea_$d"); app.removeSetting("color1Valueb_$d")
+            app.removeSetting("color2Name_$d"); app.removeSetting("color2Namea_$d"); app.removeSetting("color2Nameb_$d")
+            app.removeSetting("color2Value_$d"); app.removeSetting("color2Valuea_$d"); app.removeSetting("color2Valueb_$d")
+
+            app.removeSetting("valueOrCell_$d"); app.removeSetting("valueOrCella_$d"); app.removeSetting("valueOrCellb_$d")
+
+            app.removeSetting("useColorsBEF_$d"); app.removeSetting("useColorsBEFa_$d"); app.removeSetting("useColorsBEFb_$d")
+            app.removeSetting("useColorsAFT_$d"); app.removeSetting("useColorsAFTa_$d"); app.removeSetting("useColorsAFTb_$d")
+            app.removeSetting("numLow_$d"); app.removeSetting("numLowa_$d"); app.removeSetting("numLowb_$d")
+            app.removeSetting("numHigh_$d"); app.removeSetting("numHigha_$d"); app.removeSetting("numHighb_$d")
+            app.removeSetting("colorNumLow_$d"); app.removeSetting("colorNumLowa_$d"); app.removeSetting("colorNumLowb_$d")
+            app.removeSetting("colorNumHigh_$d"); app.removeSetting("colorNumHigha_$d"); app.removeSetting("colorNumHighb_$d")
+
+            app.removeSetting("useIcons_$d"); app.removeSetting("useIconsa_$d"); app.removeSetting("useIconsb_$d")
+            app.removeSetting("icon1Name_$d"); app.removeSetting("icon1Namea_$d"); app.removeSetting("icon1Nameb_$d")
+            app.removeSetting("useWhichIcon1_$d"); app.removeSetting("useWhichIcon1a_$d"); app.removeSetting("useWhichIcon1b_$d")
+            app.removeSetting("icon2Name_$d"); app.removeSetting("icon2Namea_$d"); app.removeSetting("icon2Nameb_$d")
+            app.removeSetting("useWhichIcon2_$d"); app.removeSetting("useWhichIcon2a_$d"); app.removeSetting("useWhichIcon2b_$d")
+            app.removeSetting("iconNumLow_$d"); app.removeSetting("iconNumLowa_$d"); app.removeSetting("iconNumLowb_$d")
+            app.removeSetting("iconNumHigh_$d"); app.removeSetting("iconNumHigha_$d"); app.removeSetting("iconNumHighb_$d")
+            app.removeSetting("useWhichIcon1_$d"); app.removeSetting("useWhichIcon1a_$d"); app.removeSetting("useWhichIcon1b_$d")
+            app.removeSetting("useWhichIcon2_$d"); app.removeSetting("useWhichIcon2a_$d"); app.removeSetting("useWhichIcon2b_$d")
+            app.removeSetting("useWhichIcon3_$d"); app.removeSetting("useWhichIcon3a_$d"); app.removeSetting("useWhichIcon3b_$d")
+            app.removeSetting("theSize_$d"); app.removeSetting("theSizea_$d"); app.removeSetting("theSizeb_$d")
+        }
+    }
 }
 
 def requestTileCopy() {             // this is sent to the parent app
@@ -1143,10 +1236,10 @@ def tileHandler(evt){
 	    if(nSections >= "1") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 1</b>"
 		    if(theDevice) {
-			    deviceStatus = theDevice.currentValue("${deviceAtts}")
+			    if(deviceAtts) deviceStatus = theDevice.currentValue("${deviceAtts}")
                 if(deviceStatus == null) deviceStatus = "No Data"
                 if(!valueOrCell || useIcons) {
-                    getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow, numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, iconNumLow, iconNumHigh)
+                    getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow, numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, icon2Name,iconNumLow, iconNumHigh)
                     def (deviceStatus1,wordsBEF1,wordsAFT1) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - deviceStatus1: ${deviceStatus1} - wordsBEF1: ${wordsBEF1} - wordsAFT1: ${wordsAFT1}"
                     if(deviceStatus1 != "null") deviceStatus = deviceStatus1
@@ -1165,10 +1258,10 @@ def tileHandler(evt){
 	    if(nSections >= "2") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 2</b>"
 		    if(theDevicea) {
-			    deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
+			    if(deviceAttsa) deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
 			    if(deviceStatusa == null) deviceStatusa = "No Data"
                 if(!valueOrCella || useIconsa) {
-                    getStatusColors(theDevicea, deviceStatusa, deviceAttsa, useColorsa, textORnumbera, color1Namea, color1Valuea, color2Namea, color2Valuea, numLowa, numHigha, colorNumLowa, colorNuma, colorNumHigha, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a, icon1Namea, iconNumLowa, iconNumHigha)
+                    getStatusColors(theDevicea, deviceStatusa, deviceAttsa, useColorsa, textORnumbera, color1Namea, color1Valuea, color2Namea, color2Valuea, numLowa, numHigha, colorNumLowa, colorNuma, colorNumHigha, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a, icon1Namea, icon2Namea,iconNumLowa, iconNumHigha)
                     def (deviceStatus1a,wordsBEF1a,wordsAFT1a) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - a - deviceStatus1a: ${deviceStatus1a} - wordsBEF1a: ${wordsBEF1a} - wordsAFT1a: ${wordsAFT1a}"
                     if(deviceStatus1a != "null") deviceStatusa = deviceStatus1a
@@ -1187,10 +1280,10 @@ def tileHandler(evt){
 	    if(nSections == "3") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 3</b>"
 		    if(theDeviceb) {
-			    deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
+			    if(deviceAttsb) deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
 			    if(deviceStatusb == null) deviceStatusb = "No Data"
                 if(!valueOrCellb || useIconsb) {
-                    getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, iconNumLowb, iconNumHighb)
+                    getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, icon2Nameb, iconNumLowb, iconNumHighb)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - b - deviceStatus1b: ${deviceStatus1b} - wordsBEF1b: ${wordsBEF1b} - wordsAFT1b: ${wordsAFT1b}"
                     if(deviceStatus1b != "null") deviceStatusb = deviceStatus1b
@@ -1475,10 +1568,12 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
             
                 if(cStatus == "on" || cStatus == "locked") {
                     controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
-                    //parent.controlDeviceHandler(toControlOff)
+                    //toControlOff2 = 504
+                    //controlLink = "<a href='parent.controlDeviceHandler(${toControlOff2})' target=a>$deviceStatus</a>"
                 } else {
                     controlLink = "<a href=${toControlOn} target=a>$deviceStatus</a>"
-                    //parent.controlDeviceHandler(toControlOn)
+                    //toControlOn2 = 504
+                    //controlLink = "<a href='parent.controlDeviceHandler(${toControlOn2})' target=a>$deviceStatus</a>"
                 }
             
                 if(logEnable) log.debug "In makeTileLine ** - controlLink: ${controlLink} - deviceStatus: ${deviceStatus}"
@@ -1684,9 +1779,9 @@ def makeTile() {
     return tileData
 }
 
-def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow,numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcon, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, iconNumLow, iconNumHigh) {
+def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow,numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, icon2Name, iconNumLow, iconNumHigh) {
     if(logEnable) log.debug "*************************************** In getStatusColors - Start ***************************************"
-    if(logEnable) log.debug "In getStatusColors (${state.version}) - Received - theDevice: ${theDevice} - deviceStatus: ${deviceStatus} - deviceAtts: ${deviceAtts} - useColors: ${useColors} - textORnumber: ${textORnumber} - color1Name: ${color1Name} - color1Value: ${color1Value} - color2Name: ${color2Name} - color2Value: ${color2Value} - useColorsBEF: ${useColorsBEF} - useColorsAFT: ${useColorsAFT} - wordsBEF: ${wordsBEF} - wordsAFT: ${wordsAFT} - useIcon: ${useIcon} - iconSize: ${iconSize}"
+    if(logEnable) log.debug "In getStatusColors (${state.version}) - Received - theDevice: ${theDevice} - deviceStatus: ${deviceStatus} - deviceAtts: ${deviceAtts} - useColors: ${useColors} - textORnumber: ${textORnumber} - color1Name: ${color1Name} - color1Value: ${color1Value} - color2Name: ${color2Name} - color2Value: ${color2Value} - useColorsBEF: ${useColorsBEF} - useColorsAFT: ${useColorsAFT} - wordsBEF: ${wordsBEF} - wordsAFT: ${wordsAFT} - useIcons: ${useIcons} - iconSize: ${iconSize} - iconLink1: ${iconLink1} - iconLink2: ${iconLink2} - iconLink3: ${iconLink3} - icon1Name: ${icon1Name} - icon2Name: ${icon2Name} - iconNumLow: ${iconNumLow} - iconNumHigh: ${iconNumHigh}"
     
     if(iconSize == null) iconSize = 30
     deviceStatus1 = null
@@ -1741,18 +1836,18 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
         }
     }
     
-    if(textORnumber && useIcon) {
+    if(textORnumber && useIcons) {
         try {
             iconNumLow = iconNumLow.toInteger()
             iconNumHigh = iconNumHigh.toInteger()
             if(deviceStatus <= iconNumLow) {
-                if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
+                deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
             if(deviceStatus > iconNumLow && deviceStatus < iconNumHigh) {
-                if(useIcon) deviceStatus1 = "<img src='${iconLink3}' style='height:${iconSize}px'>"
+                deviceStatus1 = "<img src='${iconLink3}' style='height:${iconSize}px'>"
             }
             if(deviceStatus >= iconNumHigh) {
-                if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
+                deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
             }
             state.numError = ""
         } catch (e) {
@@ -1761,15 +1856,15 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
         }
     }
   
-    if(!textORnumber && useIcon) {
+    if(!textORnumber && useIcons) {
         if(icon1Name && iconLink1) {
             if(deviceStatus.toLowerCase() == icon1Name.toLowerCase()) {
-                if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
+                deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
         }
         if(icon2Name && iconLink2) {
             if(deviceStatus.toLowerCase() == icon2Name.toLowerCase()) {
-                if(useIcon) deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
+                deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
             }
         }
     }
