@@ -33,6 +33,12 @@
  *
  *  Changes:
  *
+ *  V2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
+ *                    - No more editing the Maker URL, it is now created for you
+ *                    - If number of lines is reduced, a cleanup happens to remove all of the leftover settings
+ *                    - Line copy now brings over the Device and Attribute
+ *                    - Tile copy now bring over the Device
+ *                    - Found and fixed a few bugs too!
  *  V2.3.3 - 03/09/20 - Lots of behind the scenes work. Some bug fixes
  *  V2.3.2 - 03/07/20 - Missed two lines of code that displayed in the log, heads exploded.
  *  V2.3.1 - 03/06/20 - Fixed icons, now use ANY attribute with icons!
@@ -68,7 +74,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.3"
+	state.version = "v2.3.4"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -95,6 +101,7 @@ definition(
 preferences {
     page name: "pageConfig"
 	page name: "copyLineHandler", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    //page name: "copyLineHandler"
 }
 
 def pageConfig() {
@@ -143,9 +150,34 @@ def pageConfig() {
                 }
                 theRange = "(1..$howManyLines)"
                 input "lineToEdit", "number", title: "Which line to edit", range:theRange, width:6, submitOnChange:true
-                
-                href "copyLineHandler", title: "Tile Copy Options", description: "Click here for options"
+            
+                if(state.copyToLine == null) state.copyToLine = false
+                if(logEnable) log.debug "Checking for copied line - state.copyToLine: ${state.copyToLine} - lineToEdit: ${lineToEdit} - copyToNumber: ${state.copyToNumber}"
+
+                if(state.copyToLine) {        //  ******** To complete copy **********
+                    String lTE = lineToEdit
+                    String cTN = state.copyToNumber
+                    if(lTE == cTN) {
+                        if(logEnable) log.debug "TRUE - state.copyToLine: ${state.copyToLine} - lineToEdit: ${lineToEdit} - copyToNumber: ${state.copyToNumber}"
+                        paragraph "<b>******************************************************************************</b>"
+                        input "getNewSettings", "bool", defaultValue: "false", title: "<b>Flip this switch to import the new line settings</b>", description: "New Settings", submitOnChange:true
+                        paragraph "<b>******************************************************************************</b>"
+                        if(getNewSettings) {
+                            state.copyToLine = false
+                            app?.updateSetting("getNewSettings",[value:"false",type:"bool"])
+                            paragraph "<b>Thank you! This section will be removed with the next page refresh.<br>There is no need to flip the switch again.</b>"
+                        }
+                    } else {
+                        if(logEnable) log.debug "FALSE - state.copyToLine: ${state.copyToLine} - lineToEdit: ${lineToEdit} - copyToNumber: ${state.copyToNumber}"
+                        paragraph "<b>******************************************************************************</b>"
+                        paragraph "<b>    Please go to line ${state.copyToNumber} to complete the line copy.</b>"
+                        paragraph "<b>******************************************************************************</b>"
+                    }
+                } else {
+                    href "copyLineHandler", title: "Tile Copy Options", description: "Click here for options"
+                }
             }
+ 
             if(lineToEdit == 1) {
                 section(getFormat("header-green", "${getImage("Blank")}"+" Global Style Attributes")) {
                     paragraph "Each line can can have up to 3 sections, each section can have different Style Attributes (Font Size, Text Color, Italic, Bold and Decoration). All of this adds to the Character Count. To combat this, you can choose to use Global Style Attributes. All lines and sections will start with this basic set of Attributes. Each Attribute can still be overwritten by selecting the Attribute as you move through the app."
@@ -158,7 +190,7 @@ def pageConfig() {
                     input "decoration_G", "enum", title: "Decoration (None = Default)", required: true, multiple: false, options: ["None","overline","line-through","underline","underline overline"], defaultValue: "None", submitOnChange: true, width: 6
                 }
             }
-            
+
             if((lineToEdit > 0) && (lineToEdit <= howManyLines)) {
                 x = lineToEdit
                 state.lastActiv = "no"
@@ -197,8 +229,6 @@ def pageConfig() {
                         }
                     }  
                 }
-
-                if(state.appInstalled == 'COMPLETE') {tileHandler("top")}
                 
                 section(getFormat("header-green", "${getImage("Blank")}"+" Line $x - Device Control")) {
                     input "controlDevices_$x", "bool", title: "Enable Device Control? (Requires Maker API)", defaultValue:false, description: "Control Device", submitOnChange:true
@@ -244,53 +274,67 @@ def pageConfig() {
 
                         paragraph "<hr>"
                         input "device_$x", "capability.*", title: "Device", required:false, multiple:false, submitOnChange:true
-
+                        
                         theDevice = app."device_$x"
 
                         if(theDevice) {
                             def allAtts = [:]
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
-                            input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts
+                            input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts, defaultValue:state.theAtts_$x
                             deviceAtt = app."deviceAtts_$x"
                             
                             input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttr = app."hideAttr_$x"
                             
-                            deviceStatus = theDevice.currentValue("${deviceAtt}")
+                            try{ deviceStatus = theDevice.currentValue("${deviceAtt}") }
+                            catch (e) {}
                             if(deviceStatus == null) deviceStatus = "No Data"
 
-                            if(theDevice && deviceAtt) paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
-                            
                             if(controlDevices && deviceAtt && !hideAttr) {
-                                //paragraph "deviceAtt: ${deviceAtt}"
                                 if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock") {
                                     cDevID = theDevice.id
-                                    instruct = "<b>Device ID: ${cDevID} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
-                                    if(deviceAtt.toLowerCase() == "switch") instruct += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
-                                    if(deviceAtt.toLowerCase() == "lock") instruct += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
-                                    paragraph "${instruct}"
- 
-                                    if(deviceAtt.toLowerCase() == "switch") {
-                                        input "controlOn_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                        input "controlOff_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    //cDevCom = theDevice.getSupportedCommands()
+                                    paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
+                                    if(parent.hubIP && parent.makerID && parent.accessToken) {
+                                        if(deviceAtt.toLowerCase() == "switch") {
+                                            controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
+                                            controlOff = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
+                                            input "controlOn_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOn"], submitOnChange:true
+                                            input "controlOff_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOff"], submitOnChange:true
+                                        }
+                                        if(deviceAtt.toLowerCase() == "lock") {
+                                            controlLock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
+                                            controlUnlock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
+                                            input "controlLock_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLock"], submitOnChange:true
+                                            input "controlUnlock_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlock"], submitOnChange:true
+                                        }
                                     }
-                                    if(deviceAtt.toLowerCase() == "lock") {
-                                        input "controlLock_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                        input "controlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    }
-                                    paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                    
+                                    paragraph "To save on character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>."
                                     input "useBitly_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
                                     useBitly = app."useBitly_$x"
                                     if(useBitly) {
+                                        paragraph "--------------------------------------------------------------------"
+                                        paragraph "Please use the URLs provided with Bitly."
+                                        if(controlOn) paragraph "On - ${controlOn}"
+                                        if(controlOff) paragraph "Off - ${controlOff}"
+                                        if(controlLock) paragraph "Lock - ${controlLock}"
+                                        if(controlUnlock) paragraph "Unlock - ${controlUnlock}"
+                                        paragraph "--------------------------------------------------------------------"
+                                        
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
                                         if(deviceAtt.toLowerCase() == "switch") {
-                                            input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                            input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
+                                            controlOff = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
+                                            input "controlOn_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOn"], submitOnChange:true
+                                            input "controlOff_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOff"], submitOnChange:true
                                         }
                                         if(deviceAtt.toLowerCase() == "lock") {
-                                            input "bControlLock_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
-                                            input "bControlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            controlLock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
+                                            controlUnlock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
+                                            input "controlLock_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLock"], submitOnChange:true
+                                            input "controlUnlock_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlock"], submitOnChange:true
                                         }
                                     }
                                 }
@@ -439,38 +483,48 @@ def pageConfig() {
                             def allAttsa = [:]
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
-                            input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa
+                            input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa, defaultValue:state.theAttsa_$x
                             deviceAtta = app."deviceAttsa_$x"
                             
                             input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttra = app."hideAttra_$x"
                             
-                            deviceStatusa = theDevicea.currentValue("${deviceAtta}")
+                            try{ deviceStatusa = theDevicea.currentValue("${deviceAtta}") }
+                            catch (e) {}
                             if(deviceStatusa == null) deviceStatusa = "No Data"
-                            
-                            if(theDevicea && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
-                            
+                                               
                             if(controlDevices && deviceAtta && !hideAttra) {
                                 if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock") {
                                     cDevIDa = theDevicea.id
-                                    instructa = "<b>Device ID: ${cDevIDa} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
-                                    if(deviceAtta.toLowerCase() == "switch") instructa += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
-                                    if(deviceAtta.toLowerCase() == "lock") instructa += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
-                                    paragraph "${instructa}"
-
-                                    if(deviceAtta.toLowerCase() == "switch") {
-                                        input "controlOna_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                        input "controlOffa_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    //cDevComa = theDevicea.getSupportedCommands()
+                                    paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
+                                    if(parent.hubIP && parent.makerID && parent.accessToken) {
+                                        if(deviceAtta.toLowerCase() == "switch") {
+                                            controlOna = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/on?access_token=${parent.accessToken}"
+                                            controlOffa = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/off?access_token=${parent.accessToken}"
+                                            input "controlOna_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOna"], submitOnChange:true
+                                            input "controlOffa_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOffa"], submitOnChange:true
+                                        }
+                                        if(deviceAtta.toLowerCase() == "lock") {
+                                            controlLocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/lock?access_token=${parent.accessToken}"
+                                            controlUnlocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/unlock?access_token=${parent.accessToken}"
+                                            input "controlLocka_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLocka"], submitOnChange:true
+                                            input "controlUnlocka_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlocka"], submitOnChange:true
+                                        }
                                     }
-                                    if(deviceAtta.toLowerCase() == "lock") {
-                                        input "controlLocka_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                        input "controlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    }
-
-                                    paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                    
+                                    paragraph "To save on character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>."
                                     input "useBitlya_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
                                     useBitlya = app."useBitlya_$x"
                                     if(useBitlya) {
+                                        paragraph "--------------------------------------------------------------------"
+                                        paragraph "Please use the URLs provided with Bitly."
+                                        if(controlOna) paragraph "On - ${controlOna}"
+                                        if(controlOffa) paragraph "Off - ${controlOffa}"
+                                        if(controlLocka) paragraph "Lock - ${controlLocka}"
+                                        if(controlUnlocka) paragraph "Unlock - ${controlUnlocka}"
+                                        paragraph "--------------------------------------------------------------------"
+                                        
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
                                         if(deviceAtta.toLowerCase() == "switch") {
                                             input "bControlOna_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
@@ -626,38 +680,48 @@ def pageConfig() {
                             def allAttsb = [:]
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
                             if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
-                            input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb
+                            input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb, defaultValue:state.theAttsb_$x
                             deviceAttb = app."deviceAttsb_$x"
                                                                                                                               
                             input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttrb = app."hideAttrb_$x"
                             
-                            deviceStatusb = theDeviceb.currentValue("${deviceAttb}")
+                            try { deviceStatusb = theDeviceb.currentValue("${deviceAttb}") }
+                            catch (e) {}
                             if(deviceStatusb == null) deviceStatusb = "No Data"
-                            
-                            if(theDeviceb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
-                            
+ 
                             if(controlDevices && deviceAttb && !hideAttrb) {
                                 if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock") {
                                     cDevIDb = theDeviceb.id
-                                    instructb = "<b>Device ID: ${cDevIDb} - Type this number in where the Maker API URL says [DEVICE ID]</b><br>"
-                                    if(deviceAttb.toLowerCase() == "switch") instructb += "<b>Also, Replace [COMMANDS] with on and off respectively.</b><br>"
-                                    if(deviceAttb.toLowerCase() == "lock") instructb += "<b>Also, Replace [COMMANDS] with lock and unlock respectively.</b><br>"
-                                    paragraph "${instructb}"
-
-                                    if(deviceAttb.toLowerCase() == "switch") {
-                                        input "controlOnb_$x", "text", title: "Control <b>On</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                        input "controlOffb_$x", "text", title: "Control <b>Off</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
+                                    //cDevComb = theDeviceb.getSupportedCommands()
+                                    paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
+                                    if(parent.hubIP && parent.makerID && parent.accessToken) {
+                                        if(deviceAttb.toLowerCase() == "switch") {
+                                            controlOnb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
+                                            controlOffb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
+                                            input "controlOnb_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOnb"], submitOnChange:true
+                                            input "controlOffb_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOffb"], submitOnChange:true
+                                        }
+                                        if(deviceAttb.toLowerCase() == "lock") {
+                                            controlLockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/lock?access_token=${parent.accessToken}"
+                                            controlUnlockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/unlock?access_token=${parent.accessToken}"
+                                            input "controlLockb_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLockb"], submitOnChange:true
+                                            input "controlUnlockb_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlockb"], submitOnChange:true
+                                        }
                                     }
-                                    if(deviceAttb.toLowerCase() == "lock") {
-                                        input "controlLockb_$x", "text", title: "Control <b>Lock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                        input "controlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Maker API", required:true, multiple:false, submitOnChange:true
-                                    }
-
-                                    paragraph "To save on the all important character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>. Be sure to use the URLs created above with Bitly."
+                                    
+                                    paragraph "To save on character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>."
                                     input "useBitlyb_$x", "bool", title: "Use Bitly", defaultValue: false, description: "bitly", submitOnChange: true
                                     useBitlyb = app."useBitlyb_$x"
                                     if(useBitlyb) {
+                                        paragraph "--------------------------------------------------------------------"
+                                        paragraph "Please use the URLs provided with Bitly."
+                                        if(controlOnb) paragraph "On - http://${controlOnb}"
+                                        if(controlOffb) paragraph "Off - http://${controlOffb}"
+                                        if(controlLockb) paragraph "Lock - http://${controlLockb}"
+                                        if(controlUnlockb) paragraph "Unlock - http://${controlUnlockb}"
+                                        paragraph "--------------------------------------------------------------------"
+                                        
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
                                         if(deviceAttb.toLowerCase() == "switch") {
                                             input "bControlOnb_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
@@ -834,18 +898,20 @@ def pageConfig() {
             }
         }
 
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: true}
-        if(state.appInstalled != 'COMPLETE') {
-            section() {
-                paragraph "<hr>"
-                paragraph "<b>At this point, please press 'Done' to save the app. Then reopen it from the menu to complete the setup. This is required to retrieve the Icons and Colors from the parent app (if needed). Thanks.</b>"
+        if(lineToEdit == 1) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: true}
+            if(state.appInstalled != 'COMPLETE') {
+                section() {
+                    paragraph "<hr>"
+                    paragraph "<b>At this point, please press 'Done' to save the app. Then reopen it from the menu to complete the setup. This is required to retrieve the Icons and Colors from the parent app (if needed). Thanks.</b>"
+                }
             }
         }
 
         if(state.appInstalled == 'COMPLETE') {tileHandler("bottom")}
         section() {
-            input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true
-		}
+           input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true
+        }
 		display2()
 	}
 }
@@ -853,7 +919,6 @@ def pageConfig() {
 def copyLineHandler() {
     dynamicPage(name: "copyLineHandler", title: "", install:false, uninstall:false) {
 		display()
-        //log.info "Settings: ${settings}"
         state.theMessage = ""
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Line Options")) {
@@ -875,7 +940,7 @@ def copyLineHandler() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {
             paragraph "<b>Copy another tile to this tile!</b><br>This will overwrite all settings on this tile with the settings of the 'from' tile."
             paragraph "When the copy switch is turned on:<br> - It will only take a few seconds<br> - When complete the switch will turn off<br> - The app number will be blank<br> - At this point you can press 'Next'"
-            paragraph "<b>Note:</b> Devices will not be carried over to the new tile. This may cause errors in the log but most are harmless and can be ignored. IE. If you used %lastAct% in the child app, the device associated with it won't carry over, so it will cause an error until a new device is added."
+            paragraph "<b>Note:</b> Devices will be carried over to the new tile but the attribute will have to be re-selected. This may cause errors in the log, just remember to go into each line and make sure the device attribute is set to the correct attribute."
         }
         section() {
             input "fromTile", "number", title: "Tile App Number to Copy <b>From</b>", submitOnChange:true, width:6
@@ -898,41 +963,59 @@ def insertLine() {
 def doTheLineCopy() {
     if(logEnable) log.info "In doTheLineCopy (${state.version})"
     
-    fromThisLine = "${fromLine}"
+    c = "${fromLine}"
     toThisLine = "${toLine}"
     
     settings.each { theOption ->
         name = theOption.key
-
-        if(name.contains("_${fromThisLine}")) { 
-            newName = name.replace("_${fromThisLine}", "_${toThisLine}")
+        
+        if(name.contains("_${c}")) { 
+            newName = name.replace("_${c}", "_${toThisLine}")
             nameValue = theOption.value
 
-            if(name.contains("${fromThisLine}")) { 
-                nameValue = theOption.value
-                newName = name.replace("${fromThisLine}", "${toThisLine}")
-                app?.updateSetting("${newName}", nameValue)
-                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue}"
-            }
-            
-/*
             if(name.contains("italic") || name.contains("bold") || name.contains("controlDevices") || name.contains("hideAttr") || name.contains("useBitly") || name.contains("useColors") || name.contains("textORnumber") || name.contains("valueOrCell") || name.contains("useColorsBEF") || name.contains("useColorsAFT")) { 
-                app?.updateSetting("${newName}",[value:"${nameValue}",type:"bool"])
+                app.updateSetting("${newName}",[type:"bool",value:nameValue])
                 if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: bool"
-            } else if(name.contains("device") || name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3")){
-                app?.updateSetting("${newName}",[value:"${nameValue}",type:"enum"])
-                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: string"
-          //} else if(name.contains("deviceAtts")){
-                
+            } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align")) {
+                app.updateSetting("${newName}",[type:"enum",value:nameValue])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: enum"                 
+            } else if(name.contains("device_") && !name.contains("tileDevice")) {
+                theDev = app."device_$c"
+                nameId = theDev.id   
+                app.updateSetting("${newName}",[type:"capability",value:[nameId]])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: capability"  
+            } else if(name.contains("devicea_") && !name.contains("tileDevice")) {
+                theDeva = app."devicea_$c"
+                nameIda = theDeva.id   
+                app.updateSetting("${newName}",[type:"capability",value:[nameIda]])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValuea} - type: capabilitya"  
+            } else if(name.contains("deviceb_") && !name.contains("tileDevice")) {
+                theDevb = app."deviceb_$c"
+                nameIdb = theDevb.id   
+                app.updateSetting("${newName}",[type:"capability",value:[nameIdb]])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValueb} - type: capabilityb"  
+            } else if(name.contains("deviceAtts_")) {
+                state.theAtts_$c = app."deviceAtts_$c"
+                app.updateSetting("${newName}",[type:"enum",value:state.theAtts_$c])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${state.theAtts_$c} - type: Atts enum  ***"
+            } else if(name.contains("deviceAttsa_")) {
+                state.theAttsa_$c = app."deviceAttsa_$c"
+                app.updateSetting("${newName}",[type:"enum",value:state.theAttsa_$c])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${state.theAttsa_$c} - type: Attsa enum  ***"
+            } else if(name.contains("deviceAttsb_")) {
+                state.theAttsb_$c = app."deviceAttsb_$c"
+                app.updateSetting("${newName}",[type:"enum",value:state.theAttsb_$c])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${state.theAttsb_$c} - type: Attsb enum  ***"
             } else {
-                app?.updateSetting("${newName}", nameValue)
-                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - *"
-            }
-*/                      
+                app.updateSetting("${newName}",[type:"text",value:nameValue])
+                if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: text"
+            }     
         }
     }
-
-    if(logEnable) log.info "In doTheCopy - Finished"
+    
+    state.copyToLine = true
+    state.copyToNumber = "${toLine}"
+    if(logEnable) log.info "In doTheCopy - Finished (${state.copyToLine})"
     state.theMessage = "<b>Line Settings have been copied. Hit 'Next' to continue</b>"
     app?.updateSetting("copyLine",[value:"false",type:"bool"])
     app?.updateSetting("fromLine",[value:"",type:"number"])
@@ -1022,16 +1105,44 @@ def doTheTileCopy(newSettings) {    // and finally the parent app send the setti
         
         newSettings.each { theOption ->
             name = theOption.key
-            value = theOption.value
+            nameValue = theOption.value
             if(name == "tileDevice" || name == "userName" || name == "copyTile" || name == "fromTile" || name == "logEnable") {
                 if(logEnable) log.info "In doTheTileCopy - name: ${name}, so skipping"
             } else {
-                if(name.contains("device_") || name.contains("devicea_") ||name.contains("deviceb_")) {
-                    if(logEnable) log.info "In doTheTileCopy - Name is a device, so skipping"
+                if(name.contains("italic") || name.contains("bold") || name.contains("controlDevices") || name.contains("hideAttr") || name.contains("useBitly") || name.contains("useColors") || name.contains("textORnumber") || name.contains("valueOrCell") || name.contains("useColorsBEF") || name.contains("useColorsAFT") || name.contains("secGlobal") || name.contains("overrideGlobal")) { 
+                    app.updateSetting("${name}",[type:"bool",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: bool"
+                } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align")) {
+                    app.updateSetting("${name}",[type:"enum",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: enum"
+                } else if(name.contains("howManyLines") || name.contains("secWidth")) {
+                    app.updateSetting("${name}",[type:"number",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: number"
+                } else if(name.contains("device_") && !name.contains("tileDevice")) {
+                    nameId = nameValue.id   
+                    app.updateSetting("${name}",[type:"capability",value:[nameId]])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - nameId: ${nameId} - type: capability"  
+                } else if(name.contains("devicea_") && !name.contains("tileDevice")) {
+                    nameIda = nameValue.id   
+                    app.updateSetting("${name}",[type:"capability",value:[nameId]])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - nameId: ${nameId} - type: capabilitya"  
+                } else if(name.contains("deviceb_") && !name.contains("tileDevice")) {
+                    nameIdb = nameValue.id   
+                    app.updateSetting("${name}",[type:"capability",value:[nameId]])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - nameId: ${nameId} - type: capabilityb"  
+                } else if(name.contains("deviceAtts_")) {
+                    app.updateSetting("${name}",[type:"enum",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: Atts enum  ***"
+                } else if(name.contains("deviceAttsa_")) {
+                    app.updateSetting("${name}",[type:"enum",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: Attsa enum  ***"
+                } else if(name.contains("deviceAttsb_")) {
+                    app.updateSetting("${name}",[type:"enum",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: Attsb enum  ***"
                 } else {
-                    app?.updateSetting(name, value)
-                }
-                if(logEnable) log.info "In doTheTileCopy - name: ${name} - value: ${value}"
+                    app.updateSetting("${name}",[type:"text",value:nameValue])
+                    if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: text"
+                }     
             }
         }
 
@@ -1057,17 +1168,17 @@ def updated() {
 def initialize() {
     setDefaults()
     
-    for(x=1;x <= howManyLines;x++) {
-        theDev = app."device_$x"
-        theAtt = app."deviceAtts_$x"
+    for(z=1;z <= howManyLines;z++) {
+        theDev = app."device_$z"
+        theAtt = app."deviceAtts_$z"
         if(theDev) subscribe(theDev, theAtt, tileHandler)
         
-        theDeva = app."devicea_$x"
-        theAtta = app."deviceAttsa_$x"
+        theDeva = app."devicea_$z"
+        theAtta = app."deviceAttsa_$z"
         if(theDeva) subscribe(theDeva, theAtta, tileHandler)
         
-        theDevb = app."deviceb_$x"
-        theAttb = app."deviceAttsb_$x"
+        theDevb = app."deviceb_$z"
+        theAttb = app."deviceAttsb_$z"
         if(theDevb) subscribe(theDevb, theAttb, tileHandler)
     }
       
@@ -1170,8 +1281,8 @@ def tileHandler(evt){
             icon1Name = app."icon1Name_$y"
             icon2Name = app."icon2Name_$y"
             icon3Name = app."icon3Name_$y"
-            iconNumLow = app."iconNumLow_$x"
-            iconNumHigh = app."iconNumHigh_$x"
+            iconNumLow = app."iconNumLow_$y"
+            iconNumHigh = app."iconNumHigh_$y"
             
             uwi1 = app."useWhichIcon1_$y"
             uwi2 = app."useWhichIcon2_$y"
@@ -1192,8 +1303,8 @@ def tileHandler(evt){
             icon1Namea = app."icon1Namea_$y"
             icon2Namea = app."icon2Namea_$y"
             icon3Namea = app."icon3Namea_$y"
-            iconNumLowa = app."iconNumLowa_$x"
-            iconNumHigha = app."iconNumHigha_$x"
+            iconNumLowa = app."iconNumLowa_$y"
+            iconNumHigha = app."iconNumHigha_$y"
             
             uwi1a = app."useWhichIcon1a_$y"
             uwi2a = app."useWhichIcon2a_$y"
@@ -1214,8 +1325,8 @@ def tileHandler(evt){
             icon1Nameb = app."icon1Nameb_$y"
             icon2Nameb = app."icon2Nameb_$y"
             icon3Nameb = app."icon3Nameb_$y"
-            iconNumLowb = app."iconNumLowb_$x"
-            iconNumHighb = app."iconNumHighb_$x"
+            iconNumLowb = app."iconNumLowb_$y"
+            iconNumHighb = app."iconNumHighb_$y"
             
             uwi1b = app."useWhichIcon1b_$y"
             uwi2b = app."useWhichIcon2b_$y"
@@ -1236,7 +1347,9 @@ def tileHandler(evt){
 	    if(nSections >= "1") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 1</b>"
 		    if(theDevice) {
-			    if(deviceAtts) deviceStatus = theDevice.currentValue("${deviceAtts}")
+                if(logEnable) log.debug "*********** theDevice: ${theDevice} - deviceAtts: ${deviceAtts} ***********"
+                try{ if(deviceAtts) deviceStatus = theDevice.currentValue("${deviceAtts}") }
+                catch (e) {}
                 if(deviceStatus == null) deviceStatus = "No Data"
                 if(!valueOrCell || useIcons) {
                     getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber, color1Name, color1Value, color2Name, color2Value, numLow, numHigh, colorNumLow, colorNum, colorNumHigh, useColorsBEF, useColorsAFT, wordsBEF, wordsAFT, useIcons, iconSize, iconLink1, iconLink2, iconLink3, icon1Name, icon2Name,iconNumLow, iconNumHigh)
@@ -1258,7 +1371,8 @@ def tileHandler(evt){
 	    if(nSections >= "2") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 2</b>"
 		    if(theDevicea) {
-			    if(deviceAttsa) deviceStatusa = theDevicea.currentValue("${deviceAttsa}")
+                try{ if(deviceAttsa) deviceStatusa = theDevicea.currentValue("${deviceAttsa}") }
+                catch (e) {}
 			    if(deviceStatusa == null) deviceStatusa = "No Data"
                 if(!valueOrCella || useIconsa) {
                     getStatusColors(theDevicea, deviceStatusa, deviceAttsa, useColorsa, textORnumbera, color1Namea, color1Valuea, color2Namea, color2Valuea, numLowa, numHigha, colorNumLowa, colorNuma, colorNumHigha, useColorsBEFa, useColorsAFTa, wordsBEFa, wordsAFTa, useIconsa, iconSizea, iconLink1a, iconLink2a, iconLink3a, icon1Namea, icon2Namea,iconNumLowa, iconNumHigha)
@@ -1280,7 +1394,8 @@ def tileHandler(evt){
 	    if(nSections == "3") {
             if(logEnable) log.debug "<b>In tileHandler - Line: ${y} - Section: 3</b>"
 		    if(theDeviceb) {
-			    if(deviceAttsb) deviceStatusb = theDeviceb.currentValue("${deviceAttsb}")
+                try{ if(deviceAttsb) deviceStatusb = theDeviceb.currentValue("${deviceAttsb}") }
+                catch (e) {}
 			    if(deviceStatusb == null) deviceStatusb = "No Data"
                 if(!valueOrCellb || useIconsb) {
                     getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, icon2Nameb, iconNumLowb, iconNumHighb)
@@ -1561,19 +1676,13 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
     if(!hideAttr) {
         if(controlDevices && (deviceAtts == "switch" || deviceAtts == "lock")) { 
             if(theDevice) {
-                toControlOn = controlOn
-                toControlOff = controlOff
                 if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
                 if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
             
                 if(cStatus == "on" || cStatus == "locked") {
-                    controlLink = "<a href=${toControlOff} target=a>$deviceStatus</a>"
-                    //toControlOff2 = 504
-                    //controlLink = "<a href='parent.controlDeviceHandler(${toControlOff2})' target=a>$deviceStatus</a>"
+                    controlLink = "<a href=${controlOff} target=a>$deviceStatus</a>"
                 } else {
-                    controlLink = "<a href=${toControlOn} target=a>$deviceStatus</a>"
-                    //toControlOn2 = 504
-                    //controlLink = "<a href='parent.controlDeviceHandler(${toControlOn2})' target=a>$deviceStatus</a>"
+                    controlLink = "<a href=${controlOn} target=a>$deviceStatus</a>"
                 }
             
                 if(logEnable) log.debug "In makeTileLine ** - controlLink: ${controlLink} - deviceStatus: ${deviceStatus}"
@@ -1669,52 +1778,54 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
 }
 
 def sampleTileHandler(evt){
-    if(logEnable) log.debug "In sampleTileHandler (${state.version}) - evt: ${evt}"
+    if(!state.copyToLine) {
+        if(logEnable) log.debug "In sampleTileHandler (${state.version}) - evt: ${evt}"
 
-	section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
-        paragraph "For testing purposes only"
-        if(evt != "top") {
-            input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true, width: 6
-            input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
-        }
-        makeTile()
-        paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${tileData}</td></tr></table>"
-
-        if(evt != "top") {
-            try {
-                totalLength = 45
-                if(state.theTile_1 && 1 <= howManyLines) totalLength = totalLength + state.theTileLength_1
-                if(state.theTile_2 && 2 <= howManyLines) totalLength = totalLength + state.theTileLength_2
-                if(state.theTile_3 && 3 <= howManyLines) totalLength = totalLength + state.theTileLength_3
-                if(state.theTile_4 && 4 <= howManyLines) totalLength = totalLength + state.theTileLength_4
-                if(state.theTile_5 && 5 <= howManyLines) totalLength = totalLength + state.theTileLength_5
-                if(state.theTile_6 && 6 <= howManyLines) totalLength = totalLength + state.theTileLength_6
-                if(state.theTile_7 && 7 <= howManyLines) totalLength = totalLength + state.theTileLength_7
-                if(state.theTile_8 && 8 <= howManyLines) totalLength = totalLength + state.theTileLength_8
-                if(state.theTile_9 && 9 <= howManyLines) totalLength = totalLength + state.theTileLength_9
-                if(!iFrameOff) totalLength = totalLength + 34
-            } catch(e) {
-                log.error "Tile Master - Something went wrong. ${e}"
+        section(getFormat("header-green", "${getImage("Blank")}"+" Sample Tile")) {
+            paragraph "For testing purposes only"
+            if(evt != "top") {
+                input "bgColor", "text", title: "Background Color (ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White)", required: false, submitOnChange: true, width: 6
+                input "tableWidth", "number", title: "Table Width (1 - 900)", description: "1-900", required: false, defaultValue: "300", submitOnChange: true, width: 6
             }
+            makeTile()
+            paragraph "<table style='width:${tableWidth}px;background-color:${bgColor};border:1px solid grey'><tr><td>${tileData}</td></tr></table>"
 
-            parag = "Characters - "
-            if(state.theTile_1 && 1 <= howManyLines) parag += "Line 1: ${state.theTileLength_1}"
-            if(state.theTile_2 && 2 <= howManyLines) parag += " - Line 2: ${state.theTileLength_2}"
-            if(state.theTile_3 && 3 <= howManyLines) parag += " - Line 3: ${state.theTileLength_3}"
-            if(state.theTile_4 && 4 <= howManyLines) parag += " - Line 4: ${state.theTileLength_4}"
-            if(state.theTile_5 && 5 <= howManyLines) parag += " - Line 5: ${state.theTileLength_5}"
-            if(state.theTile_6 && 6 <= howManyLines) parag += " - Line 6: ${state.theTileLength_6}"
-            if(state.theTile_7 && 7 <= howManyLines) parag += " - Line 7: ${state.theTileLength_7}"
-            if(state.theTile_8 && 8 <= howManyLines) parag += " - Line 8: ${state.theTileLength_8}"
-            if(state.theTile_9 && 9 <= howManyLines) parag += " - Line 9: ${state.theTileLength_9}"
-            if(!iFrameOff) parag += " - iFrame: 34"
-            if(logEnable) log.debug "${parag}"
-            paragraph "<hr>"
-            paragraph "${parag}<br>* This is only an estimate. Actual character count can be found in the tile device."
-            if(totalLength <= 1024) {
-                paragraph "Total Number of Characters: <font color='green'>${totalLength}</font><br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small>"
-            } else {
-                paragraph "Total Number of Characters: <font color='red'>${totalLength}<br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small></font>"
+            if(evt != "top") {
+                try {
+                    totalLength = 45
+                    if(state.theTile_1 && 1 <= howManyLines) totalLength = totalLength + state.theTileLength_1
+                    if(state.theTile_2 && 2 <= howManyLines) totalLength = totalLength + state.theTileLength_2
+                    if(state.theTile_3 && 3 <= howManyLines) totalLength = totalLength + state.theTileLength_3
+                    if(state.theTile_4 && 4 <= howManyLines) totalLength = totalLength + state.theTileLength_4
+                    if(state.theTile_5 && 5 <= howManyLines) totalLength = totalLength + state.theTileLength_5
+                    if(state.theTile_6 && 6 <= howManyLines) totalLength = totalLength + state.theTileLength_6
+                    if(state.theTile_7 && 7 <= howManyLines) totalLength = totalLength + state.theTileLength_7
+                    if(state.theTile_8 && 8 <= howManyLines) totalLength = totalLength + state.theTileLength_8
+                    if(state.theTile_9 && 9 <= howManyLines) totalLength = totalLength + state.theTileLength_9
+                    if(!iFrameOff) totalLength = totalLength + 34
+                } catch(e) {
+                    log.error "Tile Master - Something went wrong. ${e}"
+                }
+
+                parag = "Characters - "
+                if(state.theTile_1 && 1 <= howManyLines) parag += "Line 1: ${state.theTileLength_1}"
+                if(state.theTile_2 && 2 <= howManyLines) parag += " - Line 2: ${state.theTileLength_2}"
+                if(state.theTile_3 && 3 <= howManyLines) parag += " - Line 3: ${state.theTileLength_3}"
+                if(state.theTile_4 && 4 <= howManyLines) parag += " - Line 4: ${state.theTileLength_4}"
+                if(state.theTile_5 && 5 <= howManyLines) parag += " - Line 5: ${state.theTileLength_5}"
+                if(state.theTile_6 && 6 <= howManyLines) parag += " - Line 6: ${state.theTileLength_6}"
+                if(state.theTile_7 && 7 <= howManyLines) parag += " - Line 7: ${state.theTileLength_7}"
+                if(state.theTile_8 && 8 <= howManyLines) parag += " - Line 8: ${state.theTileLength_8}"
+                if(state.theTile_9 && 9 <= howManyLines) parag += " - Line 9: ${state.theTileLength_9}"
+                if(!iFrameOff) parag += " - iFrame: 34"
+                if(logEnable) log.debug "${parag}"
+                paragraph "<hr>"
+                paragraph "${parag}<br>* This is only an estimate. Actual character count can be found in the tile device."
+                if(totalLength <= 1024) {
+                    paragraph "Total Number of Characters: <font color='green'>${totalLength}</font><br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small>"
+                } else {
+                    paragraph "Total Number of Characters: <font color='red'>${totalLength}<br><small>* Must stay under 1024 to display on Dashboard.<br>* Count includes all html characters needed to format the tile.</small></font>"
+                }
             }
         }
 	}
