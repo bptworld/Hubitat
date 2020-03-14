@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.2 - 03/14/20 - Added Maker API setup to parent app
  *  V2.1.1 - 03/02/20 - Removed status color options from parent app
  *  V2.1.0 - 02/26/20 - Added support for Tile to Tile copying
  *  V2.0.9 - 02/16/20 - Added Custom Icons!
@@ -53,7 +54,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.1.1"
+	state.version = "v2.1.2"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -79,7 +80,7 @@ definition(
 preferences {
     page name: "mainPage", title: "", install: true, uninstall: true
     page name: "iconOptions", title: "", install: false, uninstall: true, nextPage: "mainPage"
-    page name: "colorOptions", title: "", install: false, uninstall: true, nextPage: "mainPage"
+    page name: "urlOptions", title: "", install: false, uninstall: true, nextPage: "mainPage"
 } 
 
 def installed() {
@@ -112,7 +113,7 @@ def mainPage() {
 				paragraph "Create a tile with multiple devices and customization options."
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-                paragraph "Be sure to complete the 'Global Icon Options' section and hit 'done' if you want to use Icons with your devices."
+                paragraph "If you want to use Icons with your devices - Complete the 'Select Icons' section below<br>If you want to be able to control devices - Complete the 'Maker API' section below"
 				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
 			}
             // ** App Watchdog Code **
@@ -133,17 +134,40 @@ def mainPage() {
                 input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
  			}
 
-            section(getFormat("header-green", "${getImage("Blank")}"+" Global Icon Config")) {}
-            section("Icon Options:", hideable: true, hidden: false) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Global Config")) {
                 if(iconName || iconURL) {
                     href "iconOptions", title:"${getImage("optionsGreen")} Select Icons", description:"Click here for Options"
                 } else {
                     href "iconOptions", title:"${getImage("optionsRed")} Select Icons", description:"Click here for Options"
                 }
+
+                if(hubIP && makerID && accessToken) {
+                    href "urlOptions", title:"${getImage("optionsGreen")} Maker API Setup", description:"Click here for Options"
+                } else {
+                    href "urlOptions", title:"${getImage("optionsRed")} Maker API Setup", description:"Click here for Options"
+                }
             }
         }
     }
 }
+
+// ********** Start - URL Options **********
+
+def urlOptions() {
+    dynamicPage(name: "urlOptions", title: "", install:false, uninstall:false) {
+        display()
+    
+        section(getFormat("header-green", "${getImage("Blank")}"+" Maker API Config")) {
+            input "hubIP", "text", title: "Hub IP Address <small>(ie. 192.168.86.81)</small>", submitOnChange:true
+            input "makerID", "text", title: "Maker API App Number<br><small>(ie. 104)</small>", width:6, submitOnChange:true
+            input "accessToken", "password", title: "Maker API Access Token<br><small>(ie. kajdkfj-3kd8-dkjf-akdjkdf)</small>", width:6, submitOnChange:true
+        }
+    }
+}
+
+// ********** End - URL Options **********
+
+// ********** Start - Icon Options **********
 
 def iconOptions() {
     dynamicPage(name: "iconOptions", title: "", install:false, uninstall:false) {
@@ -278,6 +302,8 @@ def delAllIcons() {
     state.deleteAllIcons = false
 }
 
+// ********** End - Icon Options **********
+
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
@@ -310,7 +336,7 @@ def installCheck(){
   	}
 }
 
-def getTileSettings(fromTile,toTile) {
+def getTileSettings(fromTile,toTile) {        // copy from tile to tile
     if(logEnable) log.debug "In getTileSettings - fromTile: ${fromTile}"
     // Get the settings from 'other' child
     childApps.each { child ->
