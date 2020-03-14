@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.3.5 - 03/14/20 - Fixed Bitly url selection
  *  V2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
  *                    - No more editing the Maker URL, it is now created for you
  *                    - If number of lines is reduced, a cleanup happens to remove all of the leftover settings
@@ -74,7 +75,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.4"
+	state.version = "v2.3.5"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -101,7 +102,6 @@ definition(
 preferences {
     page name: "pageConfig"
 	page name: "copyLineHandler", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    //page name: "copyLineHandler"
 }
 
 def pageConfig() {
@@ -325,16 +325,12 @@ def pageConfig() {
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
                                         if(deviceAtt.toLowerCase() == "switch") {
-                                            controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
-                                            controlOff = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
-                                            input "controlOn_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOn"], submitOnChange:true
-                                            input "controlOff_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOff"], submitOnChange:true
+                                            input "bControlOn_$x", "text", title: "Control <b>On</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlOff_$x", "text", title: "Control <b>Off</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
                                         if(deviceAtt.toLowerCase() == "lock") {
-                                            controlLock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
-                                            controlUnlock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
-                                            input "controlLock_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLock"], submitOnChange:true
-                                            input "controlUnlock_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlock"], submitOnChange:true
+                                            input "bControlLock_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
                                     }
                                 }
