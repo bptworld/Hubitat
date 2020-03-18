@@ -4,7 +4,7 @@
  *  Design Usage:
  *  This driver formats Speech data to be displayed on Hubitat's Dashboards and also acts as a proxy speaker to 'Follow Me'.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.1 - 03/18/20 - Fixed message priority features
  *  V2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)
  *  ---
  *  V1.0.0 - 01/27/19 - Initial release
@@ -42,7 +43,7 @@ import groovy.json.*
     
 def setVersion(){
     appName = "FollowMeDriver"
-	version = "v2.1.0" 
+	version = "v2.1.1" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -124,48 +125,48 @@ def playAnnouncement(String message, volume=null, restoreVolume=null) {
     if(logEnable) log.debug "In playAnnouncement"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, 'N:X', volume, restoreVolume)
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def playAnnouncement(String message, String title, volume=null, restoreVolume=null) {
     if(logEnable) log.debug "In playAnnouncement"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, 'N:X', volume, restoreVolume, title)
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def playAnnouncementAll(String message, title=null) {
     if(logEnable) log.debug "In playAnnouncementAll"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncementAll', state.speechReceivedFULL, 'N:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def deviceNotification(message) {
     if(logEnable) log.debug "In deviceNotification"
 	speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('deviceNotification', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def playText(message) {
     if(logEnable) log.debug "In playText"
 	speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playText', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def playTextAndRestore(message) {
     if(logEnable) log.debug "In playTextAndRestore"
 	//state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def playTrack(message) {
     if(logEnable) log.debug "In playTrack"
     theMessage = composeMessageMap('playTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def playTrackAndRestore(message) {
@@ -173,45 +174,45 @@ def playTrackAndRestore(message) {
 	//NB - Maybe shouldn't strip the URL encoding, as this is supposed to be a URL
 	state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playTrackAndRestore', state.speechReceivedFULL, 'X:0')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def restoreTrack(message) {
     if(logEnable) log.debug "In restoreTrack"
     theMessage = composeMessageMap('restoreTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def resumeTrack(message) {
     if(logEnable) log.debug "In resumeTrack"
     theMessage = composeMessageMap('resumeTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def setTrack(message) {
     if(logEnable) log.debug "In setTrack"
     theMessage = composeMessageMap('setTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def setVolume(volume) {
     if(logEnable) log.debug "In setVolume"
     theMessage = composeMessageMap('setVolume', '', 'X:X', volume, null, null)
-    sendEvent(name: "latestMessage", value: theMessage)   
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)   
 }
 
 def setVolumeSpeakAndRestore(volume, message, restoreVolume) {
     if(logEnable) log.debug "In setVolumeSpeakAndRestore"
 	speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, 'N:X', volume, restoreVolume)
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def setVolumeAndSpeak(volume, message) {
     if(logEnable) log.debug "In setVolumeAndSpeak"
 	speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, 'N:X', volume)
-    sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
 def speak(message) {    
@@ -221,10 +222,10 @@ def speak(message) {
 	speechReceivedFULL = lastSpoken.replace("%20"," ").replace("%5B","[").replace("%5D","]")   
     theMessage = composeMessageMap('speak', speechReceivedFULL, priority)
     if(logEnable) log.debug "In speak - theMessage: ${theMessage}"
-    sendEvent(name: "latestMessage", value: theMessage)
-    //sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    //sendEvent(name: "latestMessage", value: theMessage)
+    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
     latestMessageDate()
-    populateMap(lastSpoken)
+    populateMap(priority,lastSpoken)
 }
 
 def priorityHandler(message) { 
@@ -243,23 +244,15 @@ def priorityHandler(message) {
     return [priority,lastSpoken]   
 }
 
-def populateMap(speech) {
+def populateMap(priority,speech) {
 	if(logEnable) log.debug "In populateMap - Received new Speech! ${speech}"
     speechReceived = speech.take(70)
-    
-	if(speechReceived.contains("]")) {
-		def (priority, msgA) = speechReceived.split(']')
-		priority = priority.drop(1)
-		speech = msgA
-	} else{
-		speech = speechReceived
-        priority = "X:X"
-	}
 	
     try {
         def thePriority = priority.split(":")
         priorityValue = thePriority[0]
         priorityVoice = thePriority[1]
+        if(logEnable) log.debug "In populateMap - priorityValue: ${priorityValue} - priorityVoice: ${priorityVoice}"
     } catch (e) {
         log.warn "Follow Me Driver - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
         if(logEnable) log.error "In populateMap - ${e}"
@@ -268,11 +261,13 @@ def populateMap(speech) {
     }
     
 	if((priorityValue.toUpperCase().contains("L")) || (priorityValue.toUpperCase().contains("N")) || (priorityValue.toUpperCase().contains("H"))) {
-		if(priorityValue.toUpperCase().contains("L")) { lastSpoken = "<font color='yellow'>${speech}</font>" }
+		if(priorityValue.toUpperCase().contains("L")) { lastSpoken = "<span style='color:yellow'>${speech}</span>" }
 		if(priorityValue.toUpperCase().contains("N")) { lastSpoken = "${speech}" }
-		if(priorityValue.toUpperCase().contains("H")) { lastSpoken = "<font color='red'>${speech}</font>" }
+		if(priorityValue.toUpperCase().contains("H")) { lastSpoken = "<span style='color:red'>${speech}</span>" }
+        if(logEnable) log.debug "In populateMap - Contains(L,N,H) - lastSpoken: ${lastSpoken}"
 	} else {
 		lastSpoken = "${speech}"
+        if(logEnable) log.debug "In populateMap - Does NOT Contain(L,N,H) - lastSpoken: ${lastSpoken}"
 	}
 	
     if(logEnable) log.debug "In populateMap - lastSpoken: ${lastSpoken}"
@@ -359,8 +354,8 @@ def clearSpeechData(){
 	if(logEnable) log.debug "Follow Me Driver - clearing the data"
     state.list1 = []
 	
-	state.speakerMap  = [:]
-	state.speakerMapS  = [:]
+	state.speakerMap = [:]
+	state.speakerMapS = [:]
 	state.sMap1S = [:]
 	state.sMap2S = [:]
 	state.sMap3S = [:]
