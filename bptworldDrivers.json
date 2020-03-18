@@ -24,10 +24,10 @@
   "DeviceWatchdogTileDiscussion": "",
   "DeviceWatchdogTileUpdateNote": "V1.0.6 - 11/26/19 - Minor changes",
   
-  "FollowMeDriverVersion": "v2.0.3",
+  "FollowMeDriverVersion": "v2.1.1",
   "FollowMeDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy",
   "FollowMeDriverDiscussion": "",
-  "FollowMeDriverUpdateNote": "V2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)",
+  "FollowMeDriverUpdateNote": "V2.1.1 - 03/18/20 - Fixed message priority features",
   
   "HomeTrackerDriverVersion": "v1.2.0",
   "HomeTrackerDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy",
