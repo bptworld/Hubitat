@@ -33,6 +33,9 @@
  *
  *  Changes:
  *
+ *  V2.3.6 - 03/22/20 - Changed custom number color wording
+ *                    - Fixed device value not showing after selecting attribute
+ *                    - Added selection for IP or Cloud for device control
  *  V2.3.5 - 03/14/20 - Fixed Bitly url selection
  *  V2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
  *                    - No more editing the Maker URL, it is now created for you
@@ -40,32 +43,6 @@
  *                    - Line copy now brings over the Device and Attribute
  *                    - Tile copy now bring over the Device
  *                    - Found and fixed a few bugs too!
- *  V2.3.3 - 03/09/20 - Lots of behind the scenes work. Some bug fixes
- *  V2.3.2 - 03/07/20 - Missed two lines of code that displayed in the log, heads exploded.
- *  V2.3.1 - 03/06/20 - Fixed icons, now use ANY attribute with icons!
- *  V2.3.0 - 03/05/20 - Alright, this time I got it! Maybe
- *  V2.2.9 - 03/05/20 - Another Bug fix
- *  V2.2.8 - 03/05/20 - Bug fixes
- *  V2.2.7 - 03/02/20 - Lots of cosmetic changes
- *                    - iFrame now gets added to character count when activated
- *                    - Added more Global Variables, dropping character count way down
- *                    - All status color options are now entered directly into the child app
- *                    - ANY attribute can now have status colors
- *  V2.2.6 - 02/28/20 - More work on att values and a few other adjustments
- *  V2.2.5 - 02/27/20 - Attempt attributes showing No Data
- *  V2.2.4 - 02/26/20 - Added support for Tile to Tile copying
- *  V2.2.3 - 02/25/20 - Added the ability to copy one line to another
- *  V2.2.2 - 02/23/20 - More bug fixes and enhancements
- *  V2.2.1 - 02/22/20 - Bug fixes.
- *  V2.2.0 - 02/22/20 - Locks can now be controlled, bug fixes.
- *  V2.1.9 - 02/22/20 - Multi-Device Control!
- *  V2.1.8 - 02/19/20 - Changes to text color option, web Links and icon height. Added current Date and Time to wildcard options.
- *  V2.1.7 - 02/16/20 - Status Icons and the ability to change BEF and/or AFT text color based on device value
- *  V2.1.6 - 02/11/20 - BIG changes - Streamlined code, reduced by over 1000 lines! (Wow!)
- *            - Each child app will now automatically create the Tile Device if needed
- *            - Each Tile can now have 9 lines, built for anyones needs! (remember, you still can only have 1024 characters)
- *            - Added Text Decoration, Bold and Italic to each line options
- *            - Each section can change color based on Device Value
  *  ---
  *  V1.0.0 - 02/16/19 - Initially started working on this concept.
  *
@@ -75,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.5"
+	state.version = "v2.3.6"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -290,22 +267,35 @@ def pageConfig() {
                             try{ deviceStatus = theDevice.currentValue("${deviceAtt}") }
                             catch (e) {}
                             if(deviceStatus == null) deviceStatus = "No Data"
-
+                            if(deviceStatus && deviceAtt) paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
+                            
                             if(controlDevices && deviceAtt && !hideAttr) {
                                 if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock") {
                                     cDevID = theDevice.id
                                     //cDevCom = theDevice.getSupportedCommands()
-                                    paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         if(deviceAtt.toLowerCase() == "switch") {
-                                            controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
-                                            controlOff = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
+                                            input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            ipORcloud = app."ipORcloud_$x"
+                                            if(!ipORcloud) {
+                                                controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
+                                                controlOff = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlOn = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
+                                                controlOff = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
+                                            }
                                             input "controlOn_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOn"], submitOnChange:true
                                             input "controlOff_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOff"], submitOnChange:true
                                         }
                                         if(deviceAtt.toLowerCase() == "lock") {
-                                            controlLock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
-                                            controlUnlock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
+                                            input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            if(!ipORcloud) {
+                                                controlLock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
+                                                controlUnlock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlLock = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
+                                                controlUnlock = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
+                                            }
                                             input "controlLock_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLock"], submitOnChange:true
                                             input "controlUnlock_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlock"], submitOnChange:true
                                         }
@@ -377,10 +367,12 @@ def pageConfig() {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
                                 input "numLow_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
                                 input "numHigh_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                if(numLow_$x == null) numLow_$x = 0
+                                if(numHigh_$x == null) numHigh_$x = 0
                                 
-                                input "colorNumLow_$x", "text", title: "Number <= ${numLow}", submitOnChange: true, width: 4
-                                input "colorNum_$x", "text", title: "Number Between", submitOnChange: true, width: 4
-                                input "colorNumHigh_$x", "text", title: "Number >= ${numHigh}", submitOnChange: true, width: 4
+                                input "colorNumLow_$x", "text", title: "Choose a Color for Low", submitOnChange: true, width: 4
+                                input "colorNum_$x", "text", title: "Choose a Color for Between", submitOnChange: true, width: 4
+                                input "colorNumHigh_$x", "text", title: "Choose a Color for High", submitOnChange: true, width: 4
                             }
                         }
 
@@ -488,22 +480,35 @@ def pageConfig() {
                             try{ deviceStatusa = theDevicea.currentValue("${deviceAtta}") }
                             catch (e) {}
                             if(deviceStatusa == null) deviceStatusa = "No Data"
-                                               
+                            if(deviceStatusa && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
+                            
                             if(controlDevices && deviceAtta && !hideAttra) {
                                 if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock") {
                                     cDevIDa = theDevicea.id
                                     //cDevComa = theDevicea.getSupportedCommands()
-                                    paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         if(deviceAtta.toLowerCase() == "switch") {
-                                            controlOna = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/on?access_token=${parent.accessToken}"
-                                            controlOffa = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/off?access_token=${parent.accessToken}"
+                                            input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            ipORclouda = app."ipORclouda_$x"
+                                            if(!ipORclouda) {
+                                                controlOna = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/on?access_token=${parent.accessToken}"
+                                                controlOffa = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/off?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlOna = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/on?access_token=${parent.accessToken}"
+                                                controlOffa = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/off?access_token=${parent.accessToken}"
+                                            }
                                             input "controlOna_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOna"], submitOnChange:true
                                             input "controlOffa_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOffa"], submitOnChange:true
                                         }
                                         if(deviceAtta.toLowerCase() == "lock") {
-                                            controlLocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/lock?access_token=${parent.accessToken}"
-                                            controlUnlocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/unlock?access_token=${parent.accessToken}"
+                                            input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            if(!ipORclouda) {
+                                                controlLocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/lock?access_token=${parent.accessToken}"
+                                                controlUnlocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/unlock?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlLocka = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/lock?access_token=${parent.accessToken}"
+                                                controlUnlocka = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/unlock?access_token=${parent.accessToken}"
+                                            }
                                             input "controlLocka_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLocka"], submitOnChange:true
                                             input "controlUnlocka_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlocka"], submitOnChange:true
                                         }
@@ -574,9 +579,10 @@ def pageConfig() {
                                 input "numHigha_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowa_$x == null) numLowa_$x = 0
                                 if(numHigha_$x == null) numHigha_$x = 0
-                                input "colorNumLowa_$x", "text", title: "Number <= ${numLowa}", submitOnChange: true, width: 4
-                                input "colorNuma_$x", "text", title: "Number Between", submitOnChange: true, width: 4
-                                input "colorNumHigha_$x", "text", title: "Number >= ${numHigha}", submitOnChange: true, width: 4
+                                
+                                input "colorNumLowa_$x", "text", title: "Choose a Color for Low", submitOnChange: true, width: 4
+                                input "colorNuma_$x", "text", title: "Choose a Color for Between", submitOnChange: true, width: 4
+                                input "colorNumHigha_$x", "text", title: "Choose a Color for High", submitOnChange: true, width: 4
                             }
                         }
 
@@ -685,22 +691,35 @@ def pageConfig() {
                             try { deviceStatusb = theDeviceb.currentValue("${deviceAttb}") }
                             catch (e) {}
                             if(deviceStatusb == null) deviceStatusb = "No Data"
- 
+                            if(deviceStatusb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
+                            
                             if(controlDevices && deviceAttb && !hideAttrb) {
                                 if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock") {
                                     cDevIDb = theDeviceb.id
                                     //cDevComb = theDeviceb.getSupportedCommands()
-                                    paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         if(deviceAttb.toLowerCase() == "switch") {
-                                            controlOnb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
-                                            controlOffb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
+                                            input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            ipORcloudb = app."ipORcloudb_$x"
+                                            if(!ipORcloudb) {
+                                                controlOnb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
+                                                controlOffb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlOnb = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
+                                                controlOffb = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
+                                            }
                                             input "controlOnb_$x", "enum", title: "Select the ON Maker URL", multiple:false, options: ["$controlOnb"], submitOnChange:true
                                             input "controlOffb_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOffb"], submitOnChange:true
                                         }
                                         if(deviceAttb.toLowerCase() == "lock") {
-                                            controlLockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/lock?access_token=${parent.accessToken}"
-                                            controlUnlockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/unlock?access_token=${parent.accessToken}"
+                                            input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            if(!ipORcloudb) {
+                                                controlLockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/lock?access_token=${parent.accessToken}"
+                                                controlUnlockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/unlock?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlLockb = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/lock?access_token=${parent.accessToken}"
+                                                controlUnlockb = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDb}/unlock?access_token=${parent.accessToken}"
+                                            }
                                             input "controlLockb_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLockb"], submitOnChange:true
                                             input "controlUnlockb_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlockb"], submitOnChange:true
                                         }
@@ -772,9 +791,10 @@ def pageConfig() {
                                 input "numHighb_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowb_$x == null) numLowb_$x = 0
                                 if(numHighb_$x == null) numHighb_$x = 0
-                                input "colorNumLowb_$x", "text", title: "<span style='color: ${colorNumLowb};font-size: 25px'>Number <= ${numLowb}</span>", submitOnChange: true, width: 4, defaultValue: "blue"
-                                input "colorNumb_$x", "text", title: "<span style='color: ${colorNumb};font-size: 25px'>Number Between</span>", submitOnChange: true, width: 4, defaultValue: ""
-                                input "colorNumHighb_$x", "text", title: "<span style='color: ${colorNumHighb};font-size: 25px'>Number >= ${numHighb}</span>", submitOnChange: true, width: 4, defaultValue: "red"
+                                
+                                input "colorNumLowb_$x", "text", title: "Choose a Color for Low", submitOnChange: true, width: 4
+                                input "colorNumb_$x", "text", title: "Choose a Color for Between", submitOnChange: true, width: 4
+                                input "colorNumHighb_$x", "text", title: "Choose a Color for High", submitOnChange: true, width: 4
                             }                          
                         }
 
@@ -972,7 +992,7 @@ def doTheLineCopy() {
             if(name.contains("italic") || name.contains("bold") || name.contains("controlDevices") || name.contains("hideAttr") || name.contains("useBitly") || name.contains("useColors") || name.contains("textORnumber") || name.contains("valueOrCell") || name.contains("useColorsBEF") || name.contains("useColorsAFT")) { 
                 app.updateSetting("${newName}",[type:"bool",value:nameValue])
                 if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: bool"
-            } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align")) {
+            } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align") || name.contains("ipORcloud")) {
                 app.updateSetting("${newName}",[type:"enum",value:nameValue])
                 if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: enum"                 
             } else if(name.contains("device_") && !name.contains("tileDevice")) {
