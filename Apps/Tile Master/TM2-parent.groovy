@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V2.1.3 - 03/15/20 - Added option field - cloudToken
  *  V2.1.2 - 03/14/20 - Added Maker API setup to parent app
  *  V2.1.1 - 03/02/20 - Removed status color options from parent app
  *  V2.1.0 - 02/26/20 - Added support for Tile to Tile copying
@@ -54,7 +55,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.1.2"
+	state.version = "v2.1.3"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -158,7 +159,9 @@ def urlOptions() {
         display()
     
         section(getFormat("header-green", "${getImage("Blank")}"+" Maker API Config")) {
-            input "hubIP", "text", title: "Hub IP Address <small>(ie. 192.168.86.81)</small>", submitOnChange:true
+            input "hubIP", "text", title: "Hub IP Address<br><small>(ie. 192.168.86.81)</small>", submitOnChange:true
+            input "cloudToken", "password", title: "Hub Cloud Token (optional)<br><small>(ie. found after the /api/ kdj3-dj3-dkfjj3-kdjfak4-akdjdke55)</small>", submitOnChange:true
+
             input "makerID", "text", title: "Maker API App Number<br><small>(ie. 104)</small>", width:6, submitOnChange:true
             input "accessToken", "password", title: "Maker API Access Token<br><small>(ie. kajdkfj-3kd8-dkjf-akdjkdf)</small>", width:6, submitOnChange:true
         }
