@@ -33,9 +33,8 @@
  *
  *  Changes:
  *
- *  V2.3.6 - 03/22/20 - Changed custom number color wording
- *                    - Fixed device value not showing after selecting attribute
- *                    - Added selection for IP or Cloud for device control
+ *  V2.3.7 - 03/23/20 - Attempt to fix working with RM variables
+ *  V2.3.6 - 03/22/20 - Changed custom number color wording. Fixed device value not showing after selecting attribute. Added selection for IP or Cloud for device control
  *  V2.3.5 - 03/14/20 - Fixed Bitly url selection
  *  V2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
  *                    - No more editing the Maker URL, it is now created for you
@@ -52,7 +51,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.6"
+	state.version = "v2.3.7"
    
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -350,9 +349,9 @@ def pageConfig() {
                                 paragraph "Assign colors to your attributes. Each Attribute Value must be exact. If unsure of the attribute names, visit the device in question and toggle it to see the two values."
                                 paragraph "<small>COMMON PAIRS: Active-Inactive, Clear-Detected, Locked-Unlocked, On-Off, Open-Closed, Present-Not Present, Wet-Dry</small>"
 
-                                input "color1Name_$x", "text", title: "<span style='color: ${color1}'>Color 1 Attribute Value</span><br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
+                                input "color1Name_$x", "text", title: "Color 1 Attribute Value<br><small>ie. On, Open, ect.</small>", submitOnChange: true, width: 6
 		                        input "color1Value_$x", "text", title: "Color 1<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6
-                                input "color2Name_$x", "text", title: "<span style='color: ${color2}'>Color 2 Attribute Value</span><br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
+                                input "color2Name_$x", "text", title: "Color 2 Attribute Value<br><small>ie. Off, Closed, etc.</small>", submitOnChange: true, width: 6
                                 input "color2Value_$x", "text", title: "Color 2<br><small>ie. Black, Blue, Brown, Green, Orange, Red, Yellow, White</small>", submitOnChange: true, width: 6 
                                 color1 = app."color1Value_$x"
                                 color2 = app."color2Value_$x"
@@ -365,8 +364,8 @@ def pageConfig() {
                             
                             if(textORnumber) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLow_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "numHigh_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "numLow_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHigh_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLow_$x == null) numLow_$x = 0
                                 if(numHigh_$x == null) numHigh_$x = 0
                                 
@@ -400,8 +399,8 @@ def pageConfig() {
                             }
                             
                             if(textORnumber) {
-                                input "iconNumLow_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "iconNumHigh_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "iconNumLow_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHigh_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 
                                 input "useWhichIcon1_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                                 input "useWhichIcon3_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
@@ -575,8 +574,8 @@ def pageConfig() {
                             
                             if(textORnumbera) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLowa_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "numHigha_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "numLowa_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHigha_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowa_$x == null) numLowa_$x = 0
                                 if(numHigha_$x == null) numHigha_$x = 0
                                 
@@ -610,8 +609,8 @@ def pageConfig() {
                             }
                             
                             if(textORnumbera) {
-                                input "iconNumLowa_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "iconNumHigha_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "iconNumLowa_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHigha_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 
                                 input "useWhichIcon1a_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                                 input "useWhichIcon3a_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
@@ -787,8 +786,8 @@ def pageConfig() {
                             
                             if(textORnumberb) {
                                 paragraph "Number attributes are based on Low, Inbetween and High values. Select the colors to display based on your setpoints."
-                                input "numLowb_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "numHighb_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "numLowb_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "numHighb_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 if(numLowb_$x == null) numLowb_$x = 0
                                 if(numHighb_$x == null) numHighb_$x = 0
                                 
@@ -822,8 +821,8 @@ def pageConfig() {
                             }
                             
                             if(textORnumberb) {
-                                input "iconNumLowb_$x", "text", title: "Number <= LOW", submitOnChange: true, width: 6
-                                input "iconNumHighb_$x", "text", title: "Number >= HIGH", submitOnChange: true, width: 6
+                                input "iconNumLowb_$x", "number", title: "Number <= LOW", submitOnChange: true, width: 6
+                                input "iconNumHighb_$x", "number", title: "Number >= HIGH", submitOnChange: true, width: 6
                                 
                                 input "useWhichIcon1b_$x", "enum", title: "Choose an Icon for Low", required:false, multiple:false, submitOnChange:true, options:state.allIcons
                                 input "useWhichIcon3b_$x", "enum", title: "Choose an Icon for Between", required:false, multiple:false, submitOnChange:true, options:state.allIcons
@@ -1920,19 +1919,21 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
         try {
             numLow = numLow.toInteger()
             numHigh = numHigh.toInteger()
-            if(deviceStatus <= numLow) {
+            dStatus = deviceStatus.toInteger()
+            
+            if(dStatus <= numLow) {
                 if(useColors) deviceStatus1 = "<span style='color:${colorNumLow}'>${deviceStatus}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${colorNumLow}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${colorNumLow}'>${wordsAFT}</span>"
                 if(useIcon) deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
-            if(deviceStatus > numLow && deviceStatus < numHigh) {
+            if(dStatus > numLow && dStatus < numHigh) {
                 if(useColors) deviceStatus1 = "<span style='color:${colorNum}'>${deviceStatus}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${colorNum}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${colorNum}'>${wordsAFT}</span>"
                 if(useIcon) deviceStatus1 = "<img src='${iconLink3}' style='height:${iconSize}px'>"
             }
-            if(deviceStatus >= numHigh) {
+            if(dStatus >= numHigh) {
                 if(useColors) deviceStatus1 = "<span style='color:${colorNumHigh}'>${deviceStatus}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${colorNumHigh}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${colorNumHigh}'>${wordsAFT}</span>"
@@ -1967,13 +1968,15 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
         try {
             iconNumLow = iconNumLow.toInteger()
             iconNumHigh = iconNumHigh.toInteger()
-            if(deviceStatus <= iconNumLow) {
+            dStatus = deviceStatus.toInteger()
+            
+            if(dStatus <= iconNumLow) {
                 deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
-            if(deviceStatus > iconNumLow && deviceStatus < iconNumHigh) {
+            if(dStatus > iconNumLow && dStatus < iconNumHigh) {
                 deviceStatus1 = "<img src='${iconLink3}' style='height:${iconSize}px'>"
             }
-            if(deviceStatus >= iconNumHigh) {
+            if(dStatus >= iconNumHigh) {
                 deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
             }
             state.numError = ""
@@ -2016,9 +2019,11 @@ def getCellColors(deviceStatus, deviceAtts, textORnumber, color1Name, color1Valu
         try {
             numLow = numLow.toInteger()
             numHigh = numHigh.toInteger()
-            if(deviceStatus <= numLow) theCellColor = "${colorNumLow}"
-            if(deviceStatus > numLow && deviceStatus < numHigh) theCellColor = "${colorNum}"
-            if(deviceStatus >= numHigh) theCellColor = "${colorNumHigh}"
+            dStatus = deviceStatus.toInteger()
+            
+            if(dStatus <= numLow) theCellColor = "${colorNumLow}"
+            if(dStatus > numLow && dStatus < numHigh) theCellColor = "${colorNum}"
+            if(dStatus >= numHigh) theCellColor = "${colorNumHigh}"
             state.numError = ""
         } catch (e) {
             state.numError = "Something went wrong with status cell colors (number)"
