@@ -158,7 +158,7 @@
   "DeviceSequencerUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "DeviceWatchdogParentVersion": "v2.0.0",
-  "DeviceWatchdogChild1Version": "v2.0.3",
+  "DeviceWatchdogChild1Version": "v2.0.4",
   "DeviceWatchdogChild1Name": "",
   "DeviceWatchdogChild2Version": "",
   "DeviceWatchdogChild2Name": "",
@@ -172,7 +172,7 @@
   "DeviceWatchdogChild3RawCode": "",
   "DeviceWatchdogChild4RawCode": "",
   "DeviceWatchdogDiscussion": "https://community.hubitat.com/t/release-device-watchdog/7692",
-  "DeviceWatchdogUpdateNote": "V2.0.3 - 01/07/20 - Fixed status of button devices (status report)",
+  "DeviceWatchdogUpdateNote": "V2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, everyone needs to re-select devices",
   
   "FollowMeParentVersion": "v2.0.1",
   "FollowMeChild1Version": "v2.1.1",
