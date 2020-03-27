@@ -19,6 +19,12 @@ metadata {
 		command "stop"
 		command "getversion"
 		
+		attribute "battery", "number"
+        	attribute "checkInterval", "number"
+       	 	attribute "switch", "string"
+        	attribute "windowShade", "string"
+        	attribute "level", "number"
+		
 		fingerprint profileID: "0104", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
 		fingerprint profileId: "0104", deviceId: "0202", inClusters: "0000, 0003, 0006, 0008, 0102, 0020, 0001", outClusters: "0019", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
 		//fingerprint endpointID: "01, C4", profileId: "0104, C25D", deviceId: "0202", inClusters: "0000, 0003, 0006, 0008, 0102, 0020, 0001", outClusters: "0019", manufacturer: "AXIS", model: "Gear", deviceJoinName: "AXIS Gear"
