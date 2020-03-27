@@ -37,7 +37,8 @@ metadata {
 		//Updated 2018-11-01 - added in configure reporting for refresh button, close when press on partial shade icon, update handler to parse between 0-254 as a percentage
 		//Updated 2019-06-03 - modified to use Window Covering Cluster Commands and versioning tile and backwards compatibility (firmware and app), fingerprinting enabled
 		//Updated 2019-08-09 - minor changes and improvements, onoff state reporting fixed
-        //Updated 2019-11-11 - minor changes
+        	//Updated 2019-11-11 - minor changes
+		//Updated 2020-03-26 - Added attributes
 	}
     
     preferences() {    	
