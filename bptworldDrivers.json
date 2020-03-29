@@ -75,7 +75,7 @@
   "SimpleDatesDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
   
   "SimpleKitchenTimerDriverVersion": "v1.0.0",
-  "SimpleKitchenTimerDriverRawCode": "",
+  "SimpleKitchenTimerDriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-driver.groovy",
   "SimpleKitchenTimerDriverDiscussion": "",
   "SimpleKitchenTimerDriverUpdateNote": "V1.0.0 - 03/29/20 - Initial release",
   
