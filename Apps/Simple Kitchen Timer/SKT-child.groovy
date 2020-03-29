@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 03/29/20 - Added switch control to Finished options, added timer name options, added Tile character count to Maint section
  *  V1.0.0 - 03/29/20 - Initial release.
  *
  */
@@ -45,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleKitchenTimerChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -74,6 +75,7 @@ preferences {
     page name: "notificationOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "messageOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "flashOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page name: "deviceOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -109,10 +111,15 @@ def pageConfig() {
         } 
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Timers")) {
-            paragraph "Each Timer Device can have up to 3 different timers built in."
-            input name: "timer1", type: "number", title: "<b>Timer 1:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>"
-            input name: "timer2", type: "number", title: "<b>Timer 2:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>"
-            input name: "timer3", type: "number", title: "<b>Timer 3:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>" 
+            paragraph "Each Timer Device can have up to 3 different timers built in. Each timer can display the length or a short name. Remember to watch your character count!"
+            input name: "timer1", type: "number", title: "<b>Timer 1:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>", width:6
+            input name: "timer1n", type: "text", title: "<b>Timer 1:</b><br>Enter a SHORT name for the timer<br><small>Optional</small>", width:6
+            
+            input name: "timer2", type: "number", title: "<b>Timer 2:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>", width:6
+            input name: "timer2n", type: "text", title: "<b>Timer 2:</b><br>Enter a SHORT name for the timer<br><small>Optional</small>", width:6
+            
+            input name: "timer3", type: "number", title: "<b>Timer 3:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>", width:6
+            input name: "timer3n", type: "text", title: "<b>Timer 3:</b><br>Enter a SHORT name for the timer<br><small>Optional</small>", width:6
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {
@@ -123,7 +130,7 @@ def pageConfig() {
             input "countColor4", "text", title: "Countdown Color when Finished (0)", required: true, defaultValue: "red", width:6
         }
 
-		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Options, Options, Options")) {
             if(randomMessage10 && randomMessage0) {
                 href "messageOptions", title:"${getImage("checkMarkGreen")} Message Options", description:"Click here to setup Messaging options"
             } else {
@@ -141,10 +148,21 @@ def pageConfig() {
             } else {
                 href "flashOptions", title:"Select Flash Lights options here", description:"Click here for Options"
             }
+            
+            if(deviceOn || deviceOff) {
+                href "deviceOptions", title:"${getImage("checkMarkGreen")} Select Device options here", description:"Click here for Options"
+            } else {
+                href "deviceOptions", title:"Select Device options here", description:"Click here for Options"
+            }
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
+            state.tileCount = tileDevice.currentValue('tileCount')
+            paragraph "<hr>"
+            paragraph "<b>To check Character cound:</b><br>- Toggle the logEnable switch above<br>- Then click the button below"
+            input "sendData", "button", title: "Update"
+            paragraph "<b>Tile character count: ${state.tileCount}</b><br><small>* Max character count is 1024</small>"
 		}
 		display2()
 	}
@@ -222,6 +240,16 @@ def flashOptions(){
     }
 }
 
+def deviceOptions(){
+    dynamicPage(name: "deviceOptions", title: "Device Options", install: false, uninstall:false){  
+        section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
+            input "deviceOn", "capability.switch", title: "Select Device(s) to turn ON when timer is finished", multiple: true, required: false
+            input "deviceOff", "capability.switch", title: "Select Device(s) to turn OFF when timer is finished", multiple: true, required: false
+        }
+    }
+}
+
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -262,6 +290,8 @@ def startHandler(evt) {
     if(status == "finished") {
         if(logEnable) log.debug "In startHandler - status: ${status}"
         messageHandler(randomMessage0)
+        if(deviceOn) deviceOnHandler()
+        if(deviceOff) deviceOffHandler()
         if(flash) flashLights()
     }
 }
@@ -358,6 +388,22 @@ def pushNow(theMsg){
    	sendPushMessage.deviceNotification(theMessage)
 }
 
+def deviceOnHandler() {
+    if(logEnable) log.debug "In deviceOnHandler (${state.version})"
+    
+    deviceOn.each { it ->
+        it.on()
+    }
+}
+
+def deviceOffHandler() {
+    if(logEnable) log.debug "In deviceOffHandler (${state.version})"
+    
+    deviceOff.each { it ->
+        it.off()
+    }
+}
+
 private flashLights() {    // Code modified from ST documents
     if(logEnable) log.debug "In flashLights (${state.version})"
     
@@ -401,8 +447,8 @@ private flashLights() {    // Code modified from ST documents
 def sendDataToDriver() {
     if(logEnable) log.debug "In sendDataToDriver (${state.version})"
     cDevID = tileDevice.id
-    theData = "${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
-    if(logEnable) log.debug "In sendDataToDriver - Sending: ${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
+    theData = "${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
+    if(logEnable) log.debug "In sendDataToDriver - Sending: ${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
     tileDevice.sendDataToDriver(theData)
 }
 
@@ -420,6 +466,15 @@ def createChildDevice() {
         statusMessage = "<b>Device Name (SKT - ${userName}) already exists.</b>"
     }
     return statusMessage
+}
+
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
+    if(state.whichButton == "sendData"){
+        if(logEnable) log.debug "In testButtonHandler - Sending data"
+        sendDataToDriver()
+    }
 }
 
 // ********** Normal Stuff **********
@@ -460,4 +515,4 @@ def display2(){
 		paragraph getFormat("line")
 		paragraph "<div style='color:#1A77C9;text-align:center'>Simple Kitchen Timer - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
 	}       
-} 
+}
