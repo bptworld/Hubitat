@@ -90,6 +90,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simpl
 <b>Simple Irrigation</b> - For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features multiple timers, notifications and restrictions.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-irrigation/14420" target="_blank">Go Here</a>
 <br><br>
+<b>Simple Kitchen Timer</b> - Create a simple kitchen timer with controls for use with Dashboards.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-simple-kitchen-timer-with-controls-for-use-with-dashboards/37021" target="_blank">Go Here</a>
+<br><br>
 <b>Snapshot</b> - Monitor lights, devices and sensors. Easily see their status right on your dashboard.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-snapshot/12042" target="_blank">Go Here</a>
 <br><br>
