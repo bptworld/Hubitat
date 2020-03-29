@@ -37,13 +37,14 @@
  *
  *  Changes:
  *
+ * v1.0.1 - 03/29/20 - Added code for naming timers
  * v1.0.0 - 03/29/20 - Initial release
  *
  */
 
 def setVersion(){
     appName = "SimpleKitchenTimerDriver"
-	version = "v1.0.0" 
+	version = "v1.0.1" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -207,9 +208,21 @@ def makeTile01(timeLeft) {
     setTimer2 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a5?access_token=${state.accessToken}"
     setTimer3 = "http://${state.hubIP}/apps/api/${state.makerID}/devices/${state.cDevID}/a6?access_token=${state.accessToken}"
     
-    theTimer1 = device.currentValue('setTimer1')
-    theTimer2 = device.currentValue('setTimer2')
-    theTimer3 = device.currentValue('setTimer3')
+    if(state.timer1n != "null") {
+        theTimer1 = state.timer1n
+    } else {
+        theTimer1 = device.currentValue('setTimer1')
+    }
+    if(state.timer2n != "null") {
+        theTimer2 = state.timer2n
+    } else {
+        theTimer2 = device.currentValue('setTimer2')
+    }
+    if(state.timer3n != "null") {
+        theTimer3 = state.timer3n
+    } else {
+        theTimer3 = device.currentValue('setTimer3')
+    }
     
     if(theTimer2 == null) theTimer2 = "-"
     if(theTimer3 == null) theTimer3 = "-"
@@ -225,16 +238,16 @@ def makeTile01(timeLeft) {
    
     if(state.iFrameOff == "false") {
         if(theTimer1 == null) {
-            theTile += "<tr><td colspan=3 align=left><span style='color:red'><small>Please press RESET</small></span>"
+            theTile += "<tr><td colspan=3 align=left><small>Please press RESET</small>"
             theTile += "<tr><td colspan=3><iframe name=a width=1 height=1 />"
         } else {
             theTile += "<tr><td colspan=3><iframe name=a width=1 height=1 />"
         }
     } else {
         if(theTimer1 == null) {
-            theTile += "<tr><td colspan=3 align=left><span style='color:red'><small>Please press RESET - iFrame is off</small></span>"
+            theTile += "<tr><td colspan=3 align=left><small>Please press RESET - iFrame is off</small>"
         } else {
-            theTile += "<tr><td colspan=3 align=left><span style='color:red'><small>iFrame is off</small></span>"
+            theTile += "<tr><td colspan=3 align=left><small>iFrame is off</small>"
         }
     }
     theTile += "</table>"
@@ -247,12 +260,15 @@ def makeTile01(timeLeft) {
 
 def sendDataToDriver(theData) {
     if(logEnable) log.debug "In sendDataToDriver - Received: ${theData}"
-    def (hubIP,makerID,accessToken,cDevID,timer1,timer2,timer3,iFrameOff,countFontSize,countColor1,countColor2,countColor3,countColor4) = theData.split(":")
+    def (hubIP,makerID,accessToken,cDevID,timer1,timer2,timer3,timer1n,timer2n,timer3n,iFrameOff,countFontSize,countColor1,countColor2,countColor3,countColor4) = theData.split(":")
 
     state.hubIP = hubIP
     state.makerID = makerID
     state.accessToken = accessToken
     state.cDevID = cDevID
+    state.timer1n = timer1n
+    state.timer2n = timer2n
+    state.timer3n = timer3n
     if(iFrameOff == "false") state.iFrameOff = "false"
     if(iFrameOff == "true") state.iFrameOff = "true"
     state.countFontSize = countFontSize
@@ -266,4 +282,5 @@ def sendDataToDriver(theData) {
     sendEvent(name: "setTimer3", value: timer3, displayed: true)
     
     reset()
-}  
+}
+
