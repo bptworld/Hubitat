@@ -2,7 +2,7 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Watchdog Tile, Follow Me Driver, Home Tracker, Hub Watchdog, IP2IR Telnet, Life360 Container, Life360 User, Log Watchdog, Pollen Forecaster, Send to Hub with CATT Driver, Simple Dates Driver, Snapshot Driver, Tile Master Driver, Welcome Home Driver",
+  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Watchdog Tile, Follow Me Driver, Home Tracker, Hub Watchdog, IP2IR Telnet, Life360 Container, Life360 User, Log Watchdog, Pollen Forecaster, Send to Hub with CATT Driver, Simple Dates Driver, Simple Kitchen Timer Driver, Snapshot Driver, Tile Master Driver, Welcome Home Driver",
   
   "AppWatchdog2DriverVersion": "v2.0.5",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
@@ -73,6 +73,11 @@
   "SimpleDatesDriverRawCode": "",
   "SimpleDatesDriverDiscussion": "",
   "SimpleDatesDriverUpdateNote": "V2.0.0 - 08/28/19 - Device Watchdog compatible",
+  
+  "SimpleKitchenTimerDriverVersion": "v1.0.0",
+  "SimpleKitchenTimerDriverRawCode": "",
+  "SimpleKitchenTimerDriverDiscussion": "",
+  "SimpleKitchenTimerDriverUpdateNote": "V1.0.0 - 03/29/20 - Initial release",
   
   "SnapshotDriverVersion": "v1.1.0",
   "SnapshotDriverRawCode": "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy",
