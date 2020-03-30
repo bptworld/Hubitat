@@ -566,7 +566,7 @@
   "TileMaster2UpdateNote": "V2.3.7 - 03/23/20 - Attempt to fix working with RM variables",
   
   "WebPingerParentVersion": "v2.0.0",
-  "WebPingerChild1Version": "v2.0.2",
+  "WebPingerChild1Version": "v2.0.4",
   "WebPingerChild1Name": "",
   "WebPingerChild2Version": "",
   "WebPingerChild2Name": "",
@@ -580,6 +580,6 @@
   "WebPingerChild3RawCode": "",
   "WebPingerChild4RawCode": "",
   "WebPingerDiscussion": "https://community.hubitat.com/t/release-web-pinger/8347",
-  "WebPingerUpdateNote": "V2.0.2 - 12/03/19 - Added more time options. Cosmetic changes",
+  "WebPingerUpdateNote": "V2.0.4 - 12/09/19 - Fixed a bug",
   
 }
