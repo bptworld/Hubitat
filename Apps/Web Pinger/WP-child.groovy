@@ -8,7 +8,7 @@
  *
  *  Thanks to Jason Botello for the original 2016 'SmartPing' code that I based this app off of.
  *  
- *  This App is free.  If you like and use this app, please be sure to give a mention it on the Hubitat!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -36,6 +36,8 @@
  *
  *  Changes:
  *
+ *  V2.0.4 - 12/09/19 - Fixed a bug 
+ *  V2.0.3 - 12/04/19 - Added more logging
  *  V2.0.2 - 12/03/19 - Added more time options. Cosmetic changes
  *  V2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -50,9 +52,9 @@
 
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "WebPingerChildVersion"
-	state.version = "v2.0.2"
+	state.version = "v2.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -180,19 +182,19 @@ def poll() {
                 		if (state.downHost == "true") {
             				if(switches) turnOffHandler()
                             if(switches2) turnOnHandler()
-                    		if(logEnable) log.debug "Successful response from ${state.website}"
+                    		if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}"
                 		} else {
 							if(switches) turnOffHandler()
                             if(switches2) turnOnHandler()
-                    		if(logEnable) log.debug "Successful response from ${state.website}"
+                    		if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}"
                 		}
-            		} else {
+            		} else { 
             			if (state.downHost == "false") {
                 			if (state.pollVerify == "false") {
         						runIn(60*threshold, pollVerify)
             					state.pollVerify = "true"
             				}
-                			if(logEnable) log.debug "Request failed to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
+                			if(logEnable) log.debug "Request failed (${resp.status}) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
                 		} else {
                 			if(logEnable) log.debug "pollVerify already called"
                 		}
@@ -204,7 +206,7 @@ def poll() {
         				runIn(60*threshold, pollVerify)
             			state.pollVerify = "true"
             		}
-            		if(logEnable) log.debug "Request failed to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
+            		if(logEnable) log.debug "Request failed (NO status code) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
         		} else {
            			if(logEnable) log.debug "pollVerify already called"
         		}
@@ -232,13 +234,13 @@ def pollVerify() {
                 	state.pollVerify = "false"
                 	if(switches) turnOffHandler()
                     if(switches2) turnOnHandler()
-                	if(logEnable) log.debug "Successful response from ${state.website}, false alarm avoided"
+                	if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}, false alarm avoided"
             	} else {
             		state.downHost = "true"
                 	state.pollVerify = "false"
             		if(switches) turnOnHandler()
                     if(switches2) turnOffHandler()
-                	if(logEnable) log.debug "Request failed to ${state.website}"
+                	if(logEnable) log.debug "Request failed (${resp.status}) to ${state.website}"
             	}
         	}
     	} catch (e) {
@@ -283,7 +285,7 @@ def turnOffHandler() {
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
-            switches.on
+            switches.on()
         }
     }
     
@@ -295,7 +297,7 @@ def turnOffHandler() {
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
-            switches2.on
+            switches2.on()
         }
     }
 }
