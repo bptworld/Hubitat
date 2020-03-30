@@ -44,7 +44,7 @@ import hubitat.helper.RMUtils
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "HubWatchdogExaminerChildVersion"
+    state.appName = "HubWatchdogExaminerChild2Version"
 	state.version = "v1.0.2"
     
     try {
