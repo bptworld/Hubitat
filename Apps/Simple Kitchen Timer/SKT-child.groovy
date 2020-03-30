@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 03/29/20 - Bug hunting
  *  V1.0.1 - 03/29/20 - Added switch control to Finished options, added timer name options, added Tile character count to Maint section
  *  V1.0.0 - 03/29/20 - Initial release.
  *
@@ -46,7 +47,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleKitchenTimerChildVersion"
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -158,7 +159,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
-            state.tileCount = tileDevice.currentValue('tileCount')
+            try { state.tileCount = tileDevice.currentValue('tileCount') } catch (e) {state.tileCount = "0"}
             paragraph "<hr>"
             paragraph "<b>To check Character cound:</b><br>- Toggle the logEnable switch above<br>- Then click the button below"
             input "sendData", "button", title: "Update"
