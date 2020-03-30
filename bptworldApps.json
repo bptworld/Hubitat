@@ -481,7 +481,7 @@
   "SimpleIrrigationUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "SimpleKitchenTimerParentVersion": "v1.0.0",
-  "SimpleKitchenTimerChild1Version": "v1.0.0",
+  "SimpleKitchenTimerChild1Version": "v1.0.2",
   "SimpleKitchenTimerChild1Name": "",
   "SimpleKitchenTimerChild2Version": "",
   "SimpleKitchenTimerChild2Name": "",
@@ -495,7 +495,7 @@
   "SimpleKitchenTimerChild3RawCode": "",
   "SimpleKitchenTimerChild4RawCode": "",
   "SimpleKitchenTimerDiscussion": "https://community.hubitat.com",
-  "SimpleKitchenTimerUpdateNote": "V1.0.0 - 03/29/20 - Initial release",
+  "SimpleKitchenTimerUpdateNote": "V1.0.2 - 03/29/20 - Bug hunting",
   
   "SimpleRemindersParentVersion": "v1.0.0",
   "SimpleRemindersChild1Version": "v1.0.4",
