@@ -399,9 +399,10 @@ private initialize() {
 		// create controller device and set name to the label used here
 		def dni = "${new Date().getTime()}"
         if(logEnable) log.debug "label: ${app.label} - dni: ${dni}"
-		addChildDevice("hubitat", "Gentle Wake Up Controller", dni, null, ["label": app.label])
+		addChildDevice("smartthings", "Gentle Wake Up Controller", dni, null, ["label": app.label])
 		state.controllerDni = dni
 	}
+    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def appHandler(evt) {
