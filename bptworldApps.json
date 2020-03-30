@@ -209,7 +209,7 @@
   "FullyKioskDirectorUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "GentleWakeUpParentVersion": "v2.0.0",
-  "GentleWakeUpChild1Version": "v2.0.0",
+  "GentleWakeUpChild1Version": "v2.0.1",
   "GentleWakeUpChild1Name": "",
   "GentleWakeUpChild2Version": "",
   "GentleWakeUpChild2Name": "",
@@ -223,7 +223,7 @@
   "GentleWakeUpChild3RawCode": "",
   "GentleWakeUpChild4RawCode": "",
   "GentleWakeUpDiscussion": "https://community.hubitat.com/t/port-gentle-wake-up/19971",
-  "GentleWakeUpUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
+  "GentleWakeUpUpdateNote": "V2.0.1 - 01/31/20 - Trying to fix a reported error",
   
   "HomeTrackerParentVersion": "v2.2.3",
   "HomeTrackerChild1Version": "v2.3.1",
