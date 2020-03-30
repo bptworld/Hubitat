@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 01/17/20 - Minor changes
  *  V1.0.1 - 01/16/20 - Added more 'Check' options
  *  V1.0.0 - 01/15/20 - Initial release
  *
@@ -42,12 +43,12 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion
     state.appName = "RemoteWellnessCheckChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.2"
     
     try {
-        if(sendToAWSwitch && awDevice) {
+        if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
-		    awDevice.sendAWinfoMap(awInfo)
+		    parent.awDevice.sendAWinfoMap(awInfo)
             if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
 	    }
     } catch (e) { log.error "In setVersion - ${e}" }
@@ -186,7 +187,7 @@ def scheduleCheck(evt) {
             if(state.timeBetween) {
                 if(state.matchFound) {
 		            def person = person ?: "who ever"
-		            def msg = "Alert! There has been NO activity at ${person}‘s place ${state.timePhrase}"
+                    def msg = "Alert! There has been NO activity at ${person}‘s place in the last ${minsToCheck} minutes!"
 		            if(logEnable) log.debug msg
                     if(isDataDevice) { isDataDevice.on() }
 		            if(sendPushMessage) pushHandler(msg)
@@ -212,7 +213,7 @@ private recentContact() {
     int minCheck = minsToCheck ?: 240
     use( groovy.time.TimeCategory ) {
         lastActivity = minCheck.minutes.ago
-        if(logEnable) log.debug "In recentContact - lastActivity: ${lastActivity}"
+        if(logEnable) log.debug "In recentContact - Go back and check from: ${lastActivity}"
     } 
 	if(contact) {
         contact.each { it ->           
@@ -237,7 +238,7 @@ private recentMotion() {
     int minCheck = minsToCheck ?: 240
     use( groovy.time.TimeCategory ) {
         lastActivity = minCheck.minutes.ago
-        if(logEnable) log.debug "In recentMotion - lastActivity: ${lastActivity}"
+        if(logEnable) log.debug "In recentMotion - Go back and check from: ${lastActivity}"
     } 
 	if(motion) {
         motion.each { it ->           
@@ -262,7 +263,7 @@ private recentSwitch() {
     int minCheck = minsToCheck ?: 240
     use( groovy.time.TimeCategory ) {
         lastActivity = minCheck.minutes.ago
-        if(logEnable) log.debug "In recentSwitch - lastActivity: ${lastActivity}"
+        if(logEnable) log.debug "In recentSwitch - Go back and check from: ${lastActivity}"
     } 
 	if(switches) {
         switches.each { it ->           
