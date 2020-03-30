@@ -549,7 +549,7 @@
   "TheFlasherUpdateNote": "V1.0.4 - 01/12/20 - Add Mode restriction",
   
   "TileMaster2ParentVersion": "v2.1.3",
-  "TileMaster2Child1Version": "v2.3.6",
+  "TileMaster2Child1Version": "v2.3.7",
   "TileMaster2Child1Name": "",
   "TileMaster2Child2Version": "",
   "TileMaster2Child2Name": "",
@@ -563,7 +563,7 @@
   "TileMaster2Child3RawCode": "",
   "TileMaster2Child4RawCode": "",
   "TileMaster2Discussion": "https://community.hubitat.com/t/release-tile-master-create-a-tile-with-multiple-devices-and-customization-options/23140",
-  "TileMaster2UpdateNote": "V2.3.6 - 03/22/20 - Changed custom number color wording. Fixed device value not showing after selecting attribute. Added selection for IP or Cloud for device control",
+  "TileMaster2UpdateNote": "V2.3.7 - 03/23/20 - Attempt to fix working with RM variables",
   
   "WebPingerParentVersion": "v2.0.0",
   "WebPingerChild1Version": "v2.0.2",
