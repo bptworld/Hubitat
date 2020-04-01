@@ -140,7 +140,7 @@
   "DeviceCheckPlusDiscussion": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454",
   "DeviceCheckPlusUpdateNote": "V1.0.8 - 04/01/20 - Added a 'No devices found' message",
  
-  "DeviceSequencerParentVersion": "v2.0.0"
+  "DeviceSequencerParentVersion": "v2.0.0",
   "DeviceSequencerChild1Version": "v2.0.0",
   "DeviceSequencerChild1Name": "",
   "DeviceSequencerChild2Version": "",
