@@ -28,7 +28,7 @@
  *  ****************  L360 with States App  ****************
  *
  *  Design Usage:
- *  Life360 with all States Included
+ *  Life360 with all States included
  *
  *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
@@ -46,25 +46,11 @@
  *
  *  Changes:
  *
+ *  V2.0.3 - 04/01/20 - Added a timeout to get http commands
+ *  V2.0.2 - 01/21/20 - Adjusted app to work with new driver
  *  V2.0.1 - 01/03/20 - Adjusted logging to not show sensitive data
  *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  v1.1.6 - 08/06/19 - Added new attribute, lastUpdated
- *  v1.1.5 - 07/28/19 - Members are now created within a virtual container 'Life360 Members'. Thanks to code by @stephack
- *  V1.1.4 - 07/23/19 - Places list now in alphabetical order.
- *  V1.1.3 - 07/12/19 - 1 min update http calls now use async thanks to cwwilson08
- *  V1.1.2 - 07/10/19 - More changes from cwwilson08
- *  V1.1.1 - 07/09/19 - Minor change to how the places are sent over
- *  V1.1.0 - 07/08/19 - Lists are now sent over to driver automatically, Added Avatar and code cleanup (cwwilson08)
- *  V1.0.9 - 07/07/19 - No more crazy setup thanks to cwwilson08!
- *  V1.0.8 - 07/06/19 - Fixed an issue with multiple circles
- *  V1.0.7 - 07/03/19 - More work done on webhooks and Oauth (cwwilson08)
- *  V1.0.6 - 07/03/19 - More code cleanup
- *  V1.0.5 - 07/02/19 - Updated namespace/author so if something goes wrong people know who to contact.
- *  V1.0.4 - 07/02/19 - Name changed to 'Life360 with States' to avoid confusion.
- *  v1.0.3 - 07/01/19 - Added both Long and Short Instructions.
- *  v1.0.2 - 07/01/19 - More code cleanup. Combined pages and colorized headers. Added importURL. Fixed 'Now Connected' page with
- *                      Hubitat info. Added newClientID up top in app to make it easier when pasting in code.
- *  v1.0.1 - 06/30/19 - Added code to turn logging on and off. Tons of little code changes here and there for Hubitat (bptworld)
+ *  ---
  *  v1.0.0 - 06/30/19 - Initial port of ST app (cwwilson08) (bptworld)
  */
 
@@ -72,9 +58,9 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
+    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion
     state.appName = "Life360withStatesParentVersion"
-	state.version = "v2.0.1"
+	state.version = "v2.0.3"
     
     try {
         if(sendToAWSwitch && awDevice) {
@@ -210,7 +196,7 @@ def listCircles() {
     	    def resultCircles = null
             //if(logEnable) log.debug "AccessToken: ${state.life360AccessToken}"
        
-		    httpGet(uri: urlCircles, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
+		    httpGet(uri: urlCircles, headers: ["Authorization": "Bearer ${state.life360AccessToken}", timeout: 30 ]) {response -> 
     	         resultCircles = response
 		    }
 
@@ -240,7 +226,7 @@ def listCircles() {
      
             def result = null
        
-            httpGet(uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
+            httpGet(uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}", timeout: 30 ]) {response -> 
      	        result = response
             }
 
@@ -271,7 +257,7 @@ def listCircles() {
      
             def result = null
        
-            httpGet(uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response -> 
+            httpGet(uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}", timeout: 30 ]) {response -> 
      	        result = response
             }
 
@@ -320,19 +306,14 @@ def installed() {
 
        	// create the device
         if(member) {
-
           // Modified from @Stephack
-            def container = getChildDevices().find{it.typeName == "Life360 Container"}
-            if(!container) createContainer(member)
-            
-            container = getChildDevices().find{it.typeName == "Life360 Container"}
-            def childDevice = container.childList()
+            def childDevice = childList()
             if(childDevice.find{it.data.vcId == "${member}"}){
                 if(logEnable) log.debug "${member.firstName} already exists...skipping"
             } else {
                 if(logEnable) log.debug "Creating Life360 Device: " + member
                 try{
-                    container.appCreateDevice("${member.firstName}", "Life360 User", "BPTWorld", "${app.id}.${member.id}")
+                    addChildDevice("BPTWorld", "Location Tracker User Driver", "${app.id}.${member.id}", 1234, ["name": "Life360 - ${member.firstName}", isComponent: false])
                 }
                 catch (e) {
                     log.error "Child device creation failed with error = ${e}"
@@ -412,27 +393,21 @@ def updated() {
     settings.users.each {memberId->
     	def externalId = "${app.id}.${memberId}"
         
-      // Modified from @Stephack  
-        def container = getChildDevices().find{it.typeName == "Life360 Container"}
-        if(!container) createContainer(member)
-      // end mod
-        
 		// find the appropriate child device based on my app id and the device network id
-        container = getChildDevices().find{it.typeName == "Life360 Container"}
-		def deviceWrapper = container.getChildDevice("${externalId}")
+		def deviceWrapper = getChildDevice("${externalId}")
         
         if (!deviceWrapper) { // device isn't there - so we need to create
     
     		member = state.members.find{it.id==memberId}
             
           // Modified from @Stephack  
-            def childDevice = container.childList()
+            def childDevice = childList()
             if(childDevice.find{it.data.vcId == "${member}"}){
                 if(logEnable) log.debug "${member.firstName} already exists...skipping"
             } else {
                 if(logEnable) log.debug "Creating Life360 Device: " + member
                 try{
-                    container.appCreateDevice("${member.firstName}", "Life360 User", "BPTWorld", "${app.id}.${member.id}")
+                    addChildDevice("BPTWorld", "Location Tracker User Driver", "${app.id}.${member.id}", 1234, ["name": "Life360 - ${member.firstName}", isComponent: false])
                 }
                 catch (e) {
                     log.error "Child device creation failed with error = ${e}"
@@ -454,8 +429,7 @@ def updated() {
     }
 
 	// Now remove any existing devices that represent users that are no longer selected
-    def container = getChildDevices().find{it.typeName == "Life360 Container"}
-    def childDevices = container.childList()
+    def childDevices = childList()
     
     if(logEnable) log.debug "Child Devices: ${childDevices}"
     
@@ -466,17 +440,10 @@ def updated() {
         //if(logEnable) log.debug "Child Member Id = ${childMemberId}"
         //if(logEnable) log.debug "Settings.users = ${settings.users}"
         if (!settings.users.find{it==childMemberId}) {
-            container.deleteChildDevice(childDevice.deviceNetworkId)
+            deleteChildDevice(childDevice.deviceNetworkId)
             def member = state.members.find {it.id==memberId}
             if (member) state.members.remove(member)
         }
-    }
-    childDevices = container.childList()
-    memberSize = childDevices.size()
-    if(logEnable) log.debug "MemberSize: ${memberSize}"
-    if(memberSize == 0) {
-        if(logEnable) log.debug "Life360 Container has 0 devices - Removing Container"
-        deleteChildDevice(container.deviceNetworkId)
     }
 }
 
@@ -611,7 +578,7 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def placeEventHandler() {
-	//if(logEnable) log.debug "Life360 placeEventHandler: params=$params"
+	if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
     //if(logEnable) log.debug "Life360 placeEventHandler: settings.place=$settings.place"
     
     def circleId = params?.circleId
@@ -624,10 +591,8 @@ def placeEventHandler() {
 		def presenceState = (direction=="in")
 		def externalId = "${app.id}.${userId}"
         
-        def container = getChildDevices().find{it.typeName == "Life360 Container"}
-        
 		// find the appropriate child device based on my app id and the device network id
-		def deviceWrapper = container.getChildDevice("${externalId}")
+		def deviceWrapper = getChildDevice("${externalId}")
 
 		// invoke the generatePresenceEvent method on the child device
 		if (deviceWrapper) {
@@ -655,7 +620,7 @@ def updateMembers(){
 }
 
 def sendCmd(url, result){ 
-    def requestParams = [ uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}"]  ]
+    def requestParams = [ uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}"], timeout: 10 ]
     asynchttpGet("cmdHandler", requestParams)
 }
 
@@ -683,9 +648,7 @@ def cmdHandler(resp, data) {
 
 	// find the appropriate child device based on my app id and the device network id
 
-    def container = getChildDevices().find{it.typeName == "Life360 Container"}
-
-    def deviceWrapper = container.getChildDevice("${externalId}") 
+    def deviceWrapper = getChildDevice("${externalId}") 
     def address1
     def address2
     def speed
@@ -775,18 +738,10 @@ def cmdHandler(resp, data) {
     }
 }
 
-def createContainer(member){                // Modified from @Stephack
-    def container = getChildDevices().find{it.typeName == "Life360 Container"}
-    if(!container){
-        if(logEnable) log.debug "Creating Life360 Container - (${state.version})"
-        try {
-            container = addChildDevice("BPTWorld", "Life360 Container", "Life360-${app.id}", null, [name: "Life360-Members", label: "Life360 Members", completedSetup: true]) 
-        } catch (e) {
-            log.error "Container device creation failed with error = ${e}"
-        }
-        //createVchild(container, member)
-    }
-    //else {createVchild(container, member)}
+def childList() {
+	def children = getChildDevices()
+    if(logEnable) log.debug "In childList - children: ${children}"
+	return children
 }
 
 // ********** Normal Stuff **********
