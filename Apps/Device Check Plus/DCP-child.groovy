@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  V1.0.6 - 01/26/20 - Found typo, added flash lights to actions
+ *  V1.0.7 - 01/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
+ *  V1.0.6 - 01/27/20 - Found typo, added flash lights to actions
  *  V1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
  *  V1.0.4 - 12/07/19 - Fixed some minor bugs
  *  V1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
@@ -51,7 +52,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.6"
+	state.version = "v1.0.7"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -100,13 +101,13 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this child app", required: false, submitOnChange: true}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {
-            if(onDemandSwitch || days || modeName || thermostats || powerEvent || useTime) {
+            if(onDemandSwitch || days || modeName || thermostats || powerEvent || humidityEvent || tempEvent || useTime) {
                 href "triggerOptions", title:"${getImage("optionsGreen")} Select Trigger", description:"Click here for Options"
             } else {
                 href "triggerOptions", title:"${getImage("optionsRed")} Select Trigger", description:"Click here for Options"
             }
             
-            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked || switchesToTurnOn || switchesToTurnOff) {
+            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked || switchesToTurnOn || switchesToTurnOff || switchesToFlash) {
                 href "checkConfig", title:"${getImage("optionsGreen")} Select Actions", description:"Click here for Options"
             } else {
                 href "checkConfig", title:"${getImage("optionsRed")} Select Actions", description:"Click here for Options"
@@ -159,7 +160,17 @@ def triggerOptions() {
             if(triggerType1 == "xOnDemand") {
                 section() {
                     paragraph "<b>Run 'Device Check' anytime this switch is turned on.</b> Recommended to create a 'virtual switch' with 'Enable auto off' set to '1s'"
-                    input "onDemandSwitch", "capability.switch", title: "Check On Demand Switch", required:false
+                    input "createDevice", "bool", title: "Create Device needed for On Demand?", defaultValue: false, submitOnChange: true
+                    if(createDevice) {
+                        input "userName", "text", title: "Enter a name for this Device (ie. 'Kitchen' will become 'DCP - Kitchen')", required:true, submitOnChange:true
+                        paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                        if(userName) createChildDevice()
+                        if(statusMessage == null) statusMessage = "Waiting on status message..."
+                        paragraph "${statusMessage}"
+                        input "onDemandSwitch", "capability.switch", title: "On Demand Switch just created for you", required:true
+                    } else {
+                        input "onDemandSwitch", "capability.switch", title: "On Demand Switch", required:false
+                    }
                 }  
             }
             
@@ -279,6 +290,11 @@ def checkConfig() {
 			    input "contactsClosed", "capability.contactSensor", title: "Contact Sensors that should be CLOSED", multiple:true, required:false
 			    input "locksLocked", "capability.lock", title: "Door Locks that should be LOCKED", multiple:true, required:false
 			    input "locksUnlocked", "capability.lock", title: "Door Locks that should be UNLOCKED", multiple:true, required:false
+                
+                input "tryToFix", "bool", title: "Should DCP try to 'fix' the devices for you?<br><small>* Only for Switches and Door Locks.</small>", submitOnChange: true
+                if(tryToFix) {
+                    paragraph "With this option:<br> - When triggered, DCP will run and try to 'fix' the devices selected.<br> - After a 5 second wait, it will run a second time, again trying to 'fix' the devices.<br> - Then on the third time, If any devices are still found to be in the wrong state, it will activate the notification options for the devices."
+                }
 		    }
         }
         
@@ -388,9 +404,17 @@ def updated() {
 	initialize()
 }
 
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(delete) {
+	delete.each {deleteChildDevice(it.deviceNetworkId)}
+}
+
 def initialize() {
     setDefaults()
-	if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", deviceStateHandler)
+	if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", checkDeviceHandler)
     if(triggerType1 == "xDay" && days) schedule(timeToRun, deviceStateHandler)
     if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
     if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
@@ -415,70 +439,118 @@ def initialize() {
     if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
-def deviceStateHandler(evt) {
-    if(logEnable) log.debug "In deviceStateHandler (${state.version})"
+def checkDeviceHandler(evt) {
+    if(logEnable) log.debug "In checkDeviceHandler (${state.version})"
     state.wrongSwitchesMSG = ""
-    state.wrongContactsMSG = ""
     state.wrongLocksMSG = ""
+    maxCheck = 3
+    if(evt != "1" && evt != "2" && evt != "3") {
+        x = 1
+    } else {
+        x = evt.toInteger()
+    }
+    
+    if(!tryToFix) { x=maxCheck }
+    somethingWrong = false
+    if(logEnable) log.info "Pass: ${x} - evt: ${evt}"
+    
+    if(switchesOn) {
+        switchesOn.each { sOn -> 
+            switchName = sOn.displayName
+            switchStatus = sOn.currentValue('switch')
+            if(logEnable) log.debug "In checkDeviceHandler - Switch On - CHECKING - ${switchName} - ${switchStatus}"
+            if(switchStatus == "off") {
+                if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
+                if(x < maxCheck && tryToFix) {
+                    sOn.on()
+                    somethingWrong = true
+                    if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is in the wrong state, will try to fix."
+                }
+            } else {
+                if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is good!"
+            }
+        }
+    }
+    
+    if(switchesOff) {
+        switchesOff.each { sOff -> 
+            switchName = sOff.displayName
+            switchStatus = sOff.currentValue('switch')
+            if(logEnable) log.debug "In checkDeviceHandler - Switch Off - ${switchName} - ${switchStatus}"
+            if(switchStatus == "on") {
+                if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
+                if(x < maxCheck && tryToFix) {
+                    sOn.off()
+                    somethingWrong = true
+                    if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is in the wrong state, will try to fix."
+                }
+            } else {
+                if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is good!"
+            }
+        }
+    }
+    
+    if(locksUnlocked) {
+        locksUnlocked.each { lUnlocked ->
+            def lockName = lUnlocked.displayName
+            def lockStatus = lUnlocked.currentValue('lock')
+            if(logEnable) log.debug "In checkDeviceHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
+            if(lockStatus == "locked") {
+                if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
+                if(x <= maxCheck && tryToFix) {
+                    lUnlocked.unlock()
+                    somethingWrong = true
+                    if(logEnable) log.debug "In checkDeviceHandler - Lock: ${lockName} is in the wrong state, will try to fix."
+                }
+            }
+        }
+    }
+    
+    if(locksLocked) {
+        locksLocked.each { lLocked ->
+            def lockName = lLocked.displayName
+            def lockStatus = lLocked.currentValue('lock')
+            if(logEnable) log.debug "In checkDeviceHandler - Locks Locked - ${lockName} - ${lockStatus}"
+            if(lockStatus == "unlocked") {
+                if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
+                if(x <= maxCheck && tryToFix) {
+                    lLocked.lock()
+                    somethingWrong = true
+                    if(logEnable) log.debug "In checkDeviceHandler - Lock: ${lockName} is in the wrong state, will try to fix."
+                }
+            }
+        }
+    }
+    
+    if(somethingWrong && x < maxCheck) {
+        if(logEnable) log.debug "In checkDeviceHandler - Device was in wrong state.  Please wait..."
+        x=x+1
+        runIn(5,checkDeviceHandler, [data:"${x}"])
+    } else {
+        x = null
+        checkContactHandler()
+    }
+}
 
-// Start Switch
-	if(switchesOn || switchesOff) {
-		if(switchesOn) {
-			switchesOn.each { sOn -> 
-				def switchName = sOn.displayName
-				def switchStatus = sOn.currentValue('switch')
-				if(logEnable) log.debug "In deviceStateHandler - Switch On - ${switchName} - ${switchStatus}"
-				if(switchStatus == "off") state.wrongSwitchesMSG += "${switchName}, "
-			}
-		}
-		if(switchesOff) {
-			switchesOff.each { sOff -> 
-				def switchName = sOff.displayName
-				def switchStatus = sOff.currentValue('switch')
-				if(logEnable) log.debug "In deviceStateHandler - Switch Off - ${switchName} - ${switchStatus}"
-				if(switchStatus == "on") state.wrongSwitchesMSG += "${switchName}, "
-			}
+def checkContactHandler() {
+    if(logEnable) log.debug "In checkContactHandler (${state.version})"
+    state.wrongContactsMSG = ""
+
+    if(contactsOpen) {
+		contactsOpen.each { cOpen ->
+			def contactName = cOpen.displayName
+			def contactStatus = cOpen.currentValue('contact')
+			if(logEnable) log.debug "In checkContactHandler - Contact Open - ${contactName} - ${contactStatus}"
+            if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
 		}
 	}
-	
-// Start Contacts
-	if(contactsOpen || contactsClosed) {
-		if(contactsOpen) {
-			contactsOpen.each { cOpen ->
-				def contactName = cOpen.displayName
-				def contactStatus = cOpen.currentValue('contact')
-				if(logEnable) log.debug "In deviceStateHandler - Contact Open - ${contactName} - ${contactStatus}"
-                if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
-			}
-		}
-		if(contactsClosed) {
-			contactsClosed.each { cClosed ->
-				def contactName = cClosed.displayName
-				def contactStatus = cClosed.currentValue('contact')
-				if(logEnable) log.debug "In deviceStateHandler - Contact Closed - ${contactName} - ${contactStatus}"
-				if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
-			}
-		}
-	}
-		
-// Start Locks
-	if(locksUnlocked || locksLocked) {
-		if(locksUnlocked) {
-			locksUnlocked.each { lUnlocked ->
-				def lockName = lUnlocked.displayName
-				def lockStatus = lUnlocked.currentValue('lock')
-				if(logEnable) log.debug "In deviceStateHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
-				if(lockStatus == "locked") state.wrongLocksMSG += "${lockName}, "
-			}
-		}
-		if(locksLocked) {
-			locksLocked.each { lLocked ->
-				def lockName = lLocked.displayName
-				def lockStatus = lLocked.currentValue('lock')
-				if(logEnable) log.debug "In deviceStateHandler - Locks Locked - ${lockName} - ${lockStatus}"
-				if(lockStatus == "unlocked") state.wrongLocksMSG += "${lockName}, "
-			}
-		}
+	if(contactsClosed) {
+		contactsClosed.each { cClosed ->
+			def contactName = cClosed.displayName
+			def contactStatus = cClosed.currentValue('contact')
+			if(logEnable) log.debug "In checkContactHandler - Contact Closed - ${contactName} - ${contactStatus}"
+			if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
+        }
 	}
     
 // Is there Data
@@ -1019,6 +1091,22 @@ private flashLights() {    // Modified from ST documents
 			}
 		}
 	}
+}
+
+def createChildDevice() {    
+    if(logEnable) log.debug "In createChildDevice (${state.version})"
+    statusMessage = ""
+    if(!getChildDevice("DCP - " + userName)) {
+        if(logEnable) log.debug "In createChildDevice - Child device not found - Creating device Device Check Plus - ${userName}"
+        try {
+            addChildDevice("BPTWorld", "Device Check Plus Driver", "DCP - " + userName, 1234, ["name": "DCP - ${userName}", isComponent: false])
+            if(logEnable) log.debug "In createChildDevice - Child device has been created! (SKT - ${userName})"
+            statusMessage = "<b>Device has been been created. (DCP - ${userName})</b>"
+        } catch (e) { if(logEnable) log.debug "Device Check Plus unable to create device - ${e}" }
+    } else {
+        statusMessage = "<b>Device Name (DCP - ${userName}) already exists.</b>"
+    }
+    return statusMessage
 }
 
 // ********** Normal Stuff **********
