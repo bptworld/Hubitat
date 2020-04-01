@@ -3,7 +3,7 @@
  *  Design Usage:
  *  Never miss a message again. Send messages to your occupied room speakers when home or by push when away. Automatically!
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  V2.1.2 - 04/01/20 - Fixed priority volume
  *  V2.1.1 - 12/02/19 - Speech queue is now optional
  *  V2.1.0 - 11/13/19 - Major rewrite - More possibilities!
  *  ---
@@ -45,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "FollowMe2ChildVersion"
-	state.version = "v2.1.1"   
+	state.version = "v2.1.2"   
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
             awInfo = "${state.appName}:${state.version}"
@@ -147,9 +148,8 @@ def pageConfig() {
                     paragraph "<b>Speaker type is an Other Device.</b>"
                 }
                 paragraph "<hr>"
-                paragraph "<b>If the command sent doesn't have the ability to set the volume, this app can do it.</b>"
-                input "volSpeech", "number", title: "Speaker volume for speech (if not automatic)", description: "0-100", required:true, width:6
-                input "theAfterVolume", "bool", title: "Adjust sound to previous setting after speech (if not automatic)", required:true, defaultValue:false, width:6
+                paragraph "<b>If the command sent doesn't have the ability to set the volume, this app will try to do it. It will also return the volume to the previous state after the speech.</b>"
+                input "volSpeech", "number", title: "Speaker volume for speech (if not automatic)", description: "0-100", required:true
           		paragraph "<hr>"
                 paragraph "<b>Quiet Time Options</b>"
                 input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
@@ -718,7 +718,6 @@ def letsTalk(msg) {
                                 afterVolume(it)                               
                             } else {		        
                                 if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
-                                def prevVolume = it.currentValue("volume")
                                 beforeVolume(it)
                                 it.speak(message.message)
                                 pauseExecution(theDuration)
@@ -749,15 +748,23 @@ def playSound(it) {
 }
 
 def beforeVolume(it) {
-    if(logEnable) log.debug "In beforeVolume"
-    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+    if(logEnable) log.debug "In beforeVolume (${state.version})"
+    state.prevVolume = it.currentValue("volume")
+    if(it.hasCommand('setVolume')) {
+        it.setVolume(state.volume)
+        if(logEnable) log.debug "In beforeVolume - Setting volume to ${state.volume}"
+    } else {
+        if(logEnable) log.debug "In beforeVolume - Volume was not changed"
+    }
 }
     
 def afterVolume(it) {
-    if(logEnable) log.debug "In afterVolume"
-    if(theAfterVolume) {
-        def prevVolume = it.currentValue("volume")
-        if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(prevVolume)
+    if(logEnable) log.debug "In afterVolume (${state.version})"
+    if(it.hasCommand('setVolume')) {
+        it.setVolume(state.prevVolume)
+        if(logEnable) log.debug "In afterVolume - Setting volume to ${state.prevVolume}"
+    } else {
+        if(logEnable) log.debug "In afterVolume - Volume was not changed"
     }
 }
 
@@ -827,7 +834,6 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
     if(lastSpoken == ".") lastSpoken = ""
     if(priorityVoice == "0") {
         if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priorityVoice: ${priorityVoice}, so skipping"
-        state.volume = volSpeech
 		state.voiceSelected = voiceNorm
         def tts = textToSpeech(lastSpoken,state.voiceSelected)
 	    def uriMessage = "${tts.get('uri')}"
@@ -837,97 +843,97 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
 	    def tts = textToSpeech(lastSpoken,state.voiceSelected)
 	    def uriMessage = "${tts.get('uri')}"
         try {
-        if(it.hasCommand('playTrack')) {
-            state.sound = ""
-            if(priorityVoice.contains("X")) {
+            if(it.hasCommand('playTrack')) {
                 state.sound = ""
-                state.sLength = s1Length * 1000
-            } else
-	        if(priorityVoice.contains("1")) {
-                if(sound1) {
-                    state.sound = sound1
-                    state.sLength = s1Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 1 not defined"
-                }
-            } else
-	        if(priorityVoice.contains("2")) {
-                if(sound2) {
-                    state.sound = sound2
-                    state.sLength = s2Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 2 not defined"
-                }
-            } else
-	        if(priorityVoice.contains("3")) {
-                if(sound3) {
-                    state.sound = sound3
-                    state.sLength = s3Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 3 not defined"
-                }
-            } else
-            if(priorityVoice.contains("4")) {
-                if(sound4) {
-                    state.sound = sound4
-                    state.sLength = s4Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 4 not defined"
-                }
-            } else
-            if(priorityVoice.contains("5")) {
-                if(sound5) {
-                    state.sound = sound5
-                    state.sLength = s5Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 5 not defined"
-                }
-            } else
-            if(priorityVoice.contains("6")) {
-                if(sound6) {
-                    state.sound = sound6
-                    state.sLength = s6Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 6 not defined"
-                }
-            } else
-            if(priorityVoice.contains("7")) {
-                if(sound7) {
-                    state.sound = sound7
-                    state.sLength = s7Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 7 not defined"
-                }
-            } else
-            if(priorityVoice.contains("8")) {
-                if(sound8) {
-                    state.sound = sound8
-                    state.sLength = s8Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 8 not defined"
-                }
-            } else
-            if(priorityVoice.contains("9")) {
-                if(sound9) {
-                    state.sound = sound9
-                    state.sLength = s9Length * 1000
-                } else {
-                    if(logEnable) log.debug "${app.label} - Sound 9 not defined"
-                }
-            } else
-            if(priorityVoice.contains("0")) {
-                if(sound0) {
+                if(priorityVoice.contains("X")) {
                     state.sound = ""
-                    state.sLength = s0Length * 1000
-                } else { 
-                    if(logEnable) log.debug "${app.label} - Sound 0 not defined"
+                    state.sLength = s1Length * 1000
+                } else
+	            if(priorityVoice.contains("1")) {
+                    if(sound1) {
+                        state.sound = sound1
+                        state.sLength = s1Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 1 not defined"
+                    }
+                } else
+	            if(priorityVoice.contains("2")) {
+                    if(sound2) {
+                        state.sound = sound2
+                        state.sLength = s2Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 2 not defined"
+                    }
+                } else
+	            if(priorityVoice.contains("3")) {
+                    if(sound3) {
+                        state.sound = sound3
+                        state.sLength = s3Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 3 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("4")) {
+                    if(sound4) {
+                        state.sound = sound4
+                        state.sLength = s4Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 4 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("5")) {
+                    if(sound5) {
+                        state.sound = sound5
+                        state.sLength = s5Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 5 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("6")) {
+                    if(sound6) {
+                        state.sound = sound6
+                        state.sLength = s6Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 6 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("7")) {
+                    if(sound7) {
+                        state.sound = sound7
+                        state.sLength = s7Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 7 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("8")) {
+                    if(sound8) {
+                        state.sound = sound8
+                        state.sLength = s8Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 8 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("9")) {
+                    if(sound9) {
+                        state.sound = sound9
+                        state.sLength = s9Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 9 not defined"
+                    }
+                } else
+                if(priorityVoice.contains("0")) {
+                    if(sound0) {
+                        state.sound = ""
+                        state.sLength = s0Length * 1000
+                    } else { 
+                        if(logEnable) log.debug "${app.label} - Sound 0 not defined"
+                    }
                 }
+            } else { 
+                if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
             }
-        } else { 
-            if(logEnable) log.debug "Follow Me - ${speaker} doesn't support playTrack"
-        }
         } catch (e) {
-            log.warn "Follow Me - priorityVoicesHandler - Something went wrong!"
+            //log.warn "Follow Me - priorityVoicesHandler - Something went wrong!"
             state.sound = ""
             state.sLength = 1000
         }
