@@ -54,7 +54,7 @@ def update() {
 }
 
 metadata {
-	definition (name: "Device Check Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Device Check Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-driver.groovy") {
         capability "Switch"
 
         attribute "switch", "string"
