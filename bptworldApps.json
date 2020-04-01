@@ -175,7 +175,7 @@
   "DeviceWatchdogUpdateNote": "V2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, everyone needs to re-select devices",
   
   "FollowMeParentVersion": "v2.0.1",
-  "FollowMeChild1Version": "v2.1.1",
+  "FollowMeChild1Version": "v2.1.2",
   "FollowMeChild1Name": "",
   "FollowMeChild2Version": "",
   "FollowMeChild2Name": "",
@@ -189,7 +189,7 @@
   "FollowMeChild3RawCode": "",
   "FollowMeChild4RawCode": "",
   "FollowMeDiscussion": "https://community.hubitat.com/t/release-follow-me/12139",
-  "FollowMeUpdateNote": "V2.1.1 - 12/02/19 - Speech queue is now optional",
+  "FollowMeUpdateNote": "V2.1.2 - 04/01/20 - Fixed priority volume",
   
   "FullyKioskDirectorParentVersion": "v2.0.0",
   "FullyKioskDirectorChild1Version": "v2.0.0",
