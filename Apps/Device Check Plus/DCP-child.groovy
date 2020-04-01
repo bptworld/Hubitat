@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  V1.0.7 - 01/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
+ *  V1.0.8 - 04/01/20 - Added a 'No devices found' message
+ *  V1.0.7 - 03/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
  *  V1.0.6 - 01/27/20 - Found typo, added flash lights to actions
  *  V1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
  *  V1.0.4 - 12/07/19 - Fixed some minor bugs
@@ -52,7 +53,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.7"
+	state.version = "v1.0.8"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -316,7 +317,7 @@ def checkConfig() {
 def notificationOptions() {
     dynamicPage(name: "notificationOptions", title: "", install:false, uninstall:false) {
         display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Devices Found Notification Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange:true, required:false, multiple:false
 			paragraph "<hr>"
             paragraph "Receive device notifications with voice and push options. Each of the following messages will only be spoken if necessary."
@@ -350,6 +351,18 @@ def notificationOptions() {
 				listMapPost = ""
     			valuesPost.each { itemPost -> listMapPost += "${itemPost}<br>" }
 				paragraph "${listMapPost}"
+			}
+        }
+        section(getFormat("header-green", "${getImage("Blank")}"+" No Devices found Notification Options")) {
+            paragraph "Receive notifications with voice and push options. This will only notify if there are no devices in the wrong state."
+			
+			input "noDeviceMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required:true, submitOnChange:true
+			input "oNoList", "bool", defaultValue:false, title: "Show a list view of the random pre messages?", description: "List View", submitOnChange:true
+			if(oNoList) {
+				def valuesNo = "${noDeviceMsg}".split(";")
+				listMapNo = ""
+    			valuesNo.each { itemNo -> listMapNo += "${itemNo}<br>" }
+				paragraph "${listMapNo}"
 			}
         }
     }
@@ -558,13 +571,13 @@ def checkContactHandler() {
         if(isDataDevice) { isDataDevice.on() }
         state.isData = "yes"
         deviceTriggeredHandler()
-        messageHandler()
     }
     if((state.wrongSwitchesMSG == "") && (state.wrongContactsMSG == "") && (state.wrongLocksMSG == "")) {
         if(isDataDevice) { isDataDevice.off() }
         state.isData = "no"
         deviceNotTriggeredHandler()
     }
+    messageHandler()
 }
     
 def deviceTriggeredHandler() {
@@ -761,14 +774,12 @@ def letsTalk() {
                 if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                 if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                 it.speak(theMsg)
-                pauseExecution(theDuration)
+                pauseExecution(duration)
                 if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
                 if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
             }
         }
 	    if(logEnable) log.debug "In letsTalk - Finished speaking"  
-	    log.info "${app.label} - ${theMsg}"
-        if(sendPushMessage) pushNow(theMsg)
 	} else {
 	    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	}
@@ -989,9 +1000,20 @@ def setPointHandler(evt) {
 
 def messageHandler() {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
-    if(state.isData == "yes") {
-	    state.theMsg = ""
+    state.theMsg = ""
     
+    if(state.isData == "no") {
+	    def valuesNo = "${noDeviceMsg}".split(";")
+	    vSizeNo = valuesNo.size()
+		countNo = vSizeNo.toInteger()
+    	def randomKeyNo = new Random().nextInt(countNo)
+		state.noMsg = valuesNo[randomKeyNo]
+		if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizeNo}, randomKey: ${randomKeyNo}, noMsg: ${state.noMsg}"
+        
+        state.theMsg = "${state.noMsg}"
+    }
+      
+    if(state.isData == "yes") {
 	    def valuesPre = "${preMsg}".split(";")
 	    vSizePre = valuesPre.size()
 		countPre = vSizePre.toInteger()
@@ -1015,20 +1037,21 @@ def messageHandler() {
         if(state.setPointMSG && speakDevice) { state.theMsg += " ${state.setPointMSG.substring(0, state.setPointMSG.length() - 2)}." }
     
 	    state.theMsg += " ${state.postMsgR}"
-	    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
-        
+    }
+    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+ 
+    if(state.theMsg) {
         letsTalk()
-    } else {
-		if(logEnable) log.debug "In messageHandler - No message needed"
+        if(sendPushMessage) pushHandler()
     }
 }
 
-def pushHandler(){
+def pushHandler() {
 	if(logEnable) log.debug "In pushNow (${state.version})"
-	theMessage = "${app.label} - ${state.msg}"
-	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
+	theMessage = "${app.label} - ${state.theMsg}"
+	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
-	state.msg = ""
+	state.theMsg = ""
 }
 
 def getTimeDiff() {
