@@ -2,7 +2,7 @@
   "GitHubAuthor": "BPTWorld",
   "GitHubMainURL": "https://github.com/bptworld/Hubitat",
   "PaypalLink": "https://paypal.me/bptworld",
-  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Check Plus Driver, Device Watchdog Tile, Follow Me Driver, Home Tracker, Hub Watchdog, IP2IR Telnet, Life360 Container, Life360 User, Log Watchdog, Pollen Forecaster, Send to Hub with CATT Driver, Simple Dates Driver, Simple Kitchen Timer Driver, Snapshot Driver, Tile Master Driver, Welcome Home Driver",
+  "Drivers": "App Watchdog 2 Driver, Abacus Counting Tile, AsthmaForecaster Driver, Device Check Plus Driver, Device Watchdog Tile, Follow Me Driver, Home Tracker, Hub Watchdog, IP2IR Telnet, Life360 Container, Location Tracker User, Log Watchdog, Pollen Forecaster, Send to Hub with CATT Driver, Simple Dates Driver, Simple Kitchen Timer Driver, Snapshot Driver, Tile Master Driver, Welcome Home Driver",
   
   "AppWatchdog2DriverVersion": "v2.0.5",
   "AppWatchdog2DriverRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Apps%20Watchdog%202/AW2-driver.groovy",
@@ -54,10 +54,10 @@
   "Life360ContainerDiscussion": "",
   "Life360ContainerUpdateNote": "v1.0.3 - 01/03/2020 - Adjustment for AW2",
   
-  "Life360UserVersion": "v1.2.1",
-  "Life360UserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
-  "Life360UserDiscussion": "",
-  "Life360UserUpdateNote": "v1.2.1 - 01/28/20 - Added Line Height to avatar tile",
+  "LocationTrackerUserVersion": "v1.0.0",
+  "LocationTrackerUserRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
+  "LocationTrackerUserDiscussion": "",
+  "LocationTrackerUpdateNote": "V1.0.0 - 01/18/20 - Initial release",
   
   "LogWatchdogVersion": "v1.0.7",
   "LogWatchdogRawCode": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",
