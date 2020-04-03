@@ -1,17 +1,23 @@
 /**
- *  Copyright 2015 SmartThings
+ *  ****************  Location Tracker User Driver  ****************
  *
- *  name: "Life360 User", namespace: "tmleafs", author: "tmleafs"
+ *  Design Usage:
+ *  This driver stores the user data to be used with Location Tracker.
  *
- *	BTRIAL DISTANCE AND SLEEP PATCH 29-12-2017
- *	Updated Code to handle distance from, and sleep functionality
+ *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
- *	TMLEAFS REFRESH PATCH 06-12-2016 V1.1
- *	Updated Code to match Smartthings updates 12-05-2017 V1.2
- *	Added Null Return on refresh to fix WebCoRE error 12-05-2017 V1.2
- *	Added updateMember function that pulls all usefull information Life360 provides for webCoRE use V2.0
- *	Changed attribute types added Battery & Power Source capability 
+ *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
+ *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
  *
+ *  Paypal at: https://paypal.me/bptworld
+ * 
+ *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+ *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+ *  the community grow. Have FUN with it!
+ * 
+ * ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
  *
@@ -21,35 +27,27 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
- *  Life360-User
+ * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  Author: jeff
- *  Date: 2013-08-15
+ *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *
- * ---- End of Original Header ----
+ *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  *
- *  v1.2.1 - 01/28/20 - Added Line Height to avatar tile
- *  v1.2.0 - 01/05/20 - Made some changes based on @Berthoven suggestion. Thanks!
- *  v1.1.9 - 01/04/20 - Modified how/when Tile gets updated
- *  v1.1.8 - 01/03/20 - Fix for App Watchdog 2
- *  v1.1.7 - 11/03/19 - Minor changes
- *  v1.1.6 - 09/20/19 - Small changes to tile code, rewrite of the History Log code
- *  v1.1.5 - 09/16/19 - Updated 'free' tile to show more data points
- *  v1.1.4 - 08/29/19 - App Watchdog Compatible
- *  v1.1.3 - 08/06/19 - Added new attribute, lastUpdated
- *  V1.1.2 - 07/28/19 - Squashed a bug
- *  V1.1.1 - 07/19/19 - Place is now clickable on the status tile.
- *  V1.1.0 - 07/17/19 - Added map link to attributes
- *  --
- *  V1.0.0 - 06/30/19 - Initial port of driver for Hubitat (bptworld)
+ * ------------------------------------------------------------------------------------------------------------------------------
+ *
+ *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
+ *
+ *  Changes:
+ *
+ *  V1.0.0 - 01/18/20 - Initial release
  */
- 
+
 import java.text.SimpleDateFormat
 
 def setVersion(){
-    appName = "Life360User"
-	version = "v1.2.1" 
-    dwInfo = "${appName}:${version}"
+    appName = "LocationTrackerDriver"
+	state.version = "v1.0.0" 
+    dwInfo = "${appName}:${state.version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
 
@@ -58,8 +56,83 @@ def updateVersion() {
     setVersion()
 }
 
+metadata {
+	definition (name: "Location Tracker User Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+        capability "Actuator"
+        
+        // **** Life360 ****
+	    capability "Presence Sensor"
+	    capability "Sensor"
+        capability "Refresh"
+        capability "Battery"
+        capability "Power Source"
+
+        attribute "address1", "String"
+        attribute "avatar", "string"
+        attribute "avatarHtml", "string"
+  	    attribute "battery", "number"
+   	    attribute "charge", "boolean" //boolean
+	    attribute "distanceMetric", "Number"
+   	    attribute "distanceKm", "Number"
+	    attribute "distanceMiles", "Number"
+	    attribute "history", "string"
+       	attribute "inTransit", "String" //boolean
+   	    attribute "isDriving", "String" //boolean
+        attribute "lastLogMessage", "string"
+        attribute "lastMap", "string"
+        attribute "lastUpdated", "string"
+   	    attribute "latitude", "number"
+   	    attribute "longitude", "number"
+        attribute "numOfCharacters", "number"
+        attribute "savedPlaces", "map"
+   	    attribute "since", "number"
+   	    attribute "speedMetric", "number"
+        attribute "speedMiles", "number"
+        attribute "speedKm", "number"
+        attribute "status", "string"
+        attribute "statusTile1", "string"
+   	    attribute "wifiState", "boolean" //boolean
+        
+        // extra attributes for Location Tracker
+        //attribute "address1", "string"
+        attribute "activity", "string"
+        //attribute "battery", "number"
+        attribute "currentCity", "string"
+        attribute "currentState", "string"
+        attribute "currentpostalCode", "string"
+        attribute "lastUpdateDate", "string"
+        attribute "lastUpdateTime", "string"
+		//attribute "latitude", "number"
+        //attribute "longitude", "number"
+        attribute "locAlt", "number"
+        attribute "locSpd", "number"
+        attribute "mapURL", "string"
+        //attribute "wifiState", "string"
+        
+        // **** Life360 ****
+	    command "refresh"
+        command "setBattery",["number","boolean"]
+        command "sendHistory", ["string"]
+        command "sendTheMap", ["string"]
+        command "historyClearData"
+        
+        // **** Location Tracker ****
+        //command "sendTheMap", ["string"]
+        command "deviceLoc", ["string"]
+        command "deviceOther", ["string"]
+        
+        attribute "dwDriverInfo", "string"
+        command "updateVersion"
+	}
+}
+           
 preferences {
-	input title:"<b>Life360 User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
+	input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
+    
+    input "apiKey", "text", title: "API Key from Google Maps (Places)", required: false
+    input "consumerKey", "text", title: "Consumer Key from MapQuest (Places)", required: false
+    input "threshold", "number", title: "Min minutes between checks (Places)", required: false, defaultValue: 2
+        
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarLineHeight", "text", title: "Avatar Line Height", required: true, defaultValue: "1.5"
@@ -70,67 +143,14 @@ preferences {
     input "historyHourType", "bool", title: "Time Selection for History Tile (Off for 24h, On for 12h)", required: false, defaultValue: false
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
 } 
- 
-metadata {
-	definition (name: "Life360 User", namespace: "BPTWorld", author: "Bryan Turcotte", importURL: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy") {
-        capability "Actuator"
-	    capability "Presence Sensor"
-	    capability "Sensor"
-        capability "Refresh"
-	    capability "Sleep Sensor"
-        capability "Battery"
-        capability "Power Source"
-
-	    attribute "distanceMetric", "Number"
-   	    attribute "distanceKm", "Number"
-	    attribute "distanceMiles", "Number"
-        attribute "address1Prev", "String"
-	    attribute "address1", "String"
-  	    attribute "address2", "String"
-  	    attribute "battery", "number"
-   	    attribute "charge", "boolean" //boolean
-   	    attribute "lastCheckin", "number"
-       	attribute "inTransit", "String" //boolean
-   	    attribute "isDriving", "String" //boolean
-   	    attribute "latitude", "number"
-   	    attribute "longitude", "number"
-   	    attribute "since", "number"
-   	    attribute "speedMetric", "number"
-        attribute "speedMiles", "number"
-        attribute "speedKm", "number"
-   	    attribute "wifiState", "boolean" //boolean
-        attribute "savedPlaces", "map"
-        attribute "avatar", "string"
-        attribute "avatarHtml", "string"
-        attribute "life360Tile1", "string"
-        attribute "history", "string"
-        attribute "status", "string"
-        attribute "lastMap", "string"
-        attribute "lastUpdated", "string"
-        attribute "numOfCharacters", "number"
-        attribute "lastLogMessage", "string"
-        
-	    command "refresh"
-	    command "asleep"
-        command "awake"
-        command "toggleSleeping"
-        command "setBattery",["number","boolean"]
-        command "sendHistory", ["string"]
-        command "sendTheMap", ["string"]
-        command "historyClearData"
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
-	}
-}
-
+      
 def sendTheMap(theMap) {
     lastMap = "${theMap}" 
     sendEvent(name: "lastMap", value: lastMap, displayed: true)
 }
     
-def sendLife360Tile1() {
-    if(logEnable) log.debug "in Life360 User - Making the Avatar Tile"
+def sendStatusTile1() {
+    if(logEnable) log.debug "In sendStatusTile1 - Making the Avatar Tile"
     def avat = device.currentValue('avatar')
     def add1 = device.currentValue('address1')
     def bLevel = device.currentValue('battery')
@@ -182,15 +202,15 @@ def sendLife360Tile1() {
 	if(tileDevice1Count <= 1000) {
 		if(logEnable) log.debug "tileMap - has ${tileDevice1Count} Characters<br>${tileMap}"
 	} else {
-		log.warn "Life360 - Too many characters to display on Dashboard (${tileDevice1Count})"
+		log.warn "In sendStatusTile1 - Too many characters to display on Dashboard (${tileDevice1Count})"
 	}
-	sendEvent(name: "life360Tile1", value: tileMap, displayed: true)
+	sendEvent(name: "statusTile1", value: tileMap, displayed: true)
 }
 
 def sendHistory(msgValue) {
     if(logEnable) log.trace "In sendHistory - nameValue: ${msgValue}"
 
-    if(msgValue == "No Data") {
+    if(msgValue.contains("No Data")) {
        if(logEnable) log.trace "In sendHistory - Nothing to report (No Data)"
     } else {   
         try {
@@ -206,7 +226,7 @@ def sendHistory(msgValue) {
             String result = state.list.join(";")
             logCharCount = result.length()
 	        if(logCharCount <= 1000) {
-	            if(logEnable) log.debug "Life360 User Driver - ${logCharCount} Characters"
+	            if(logEnable) log.debug "In sendHistory - ${logCharCount} Characters"
 	        } else {
 	            logTop10 = "Too many characters to display on Dashboard - ${logCharCount}"
 	        }
@@ -231,19 +251,19 @@ def sendHistory(msgValue) {
             sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
         }
         catch(e1) {
-            log.warn "Life360 User - sendHistory - Something went wrong<br>${e1}"        
+            log.warn "In sendHistory - Something went wrong<br>${e1}"        
         }
     }
-    sendLife360Tile1()
+    sendStatusTile1()
 }
 
-def installed(){
-    log.info "Life360 User Installed"
+def installed() {
+    log.info "Location Tracker User Driver Installed"
     historyClearData()
 }
 
 def updated() {
-    log.info "Life360 User has been Updated"
+    log.info "Location Tracker User Driver has been Updated"
 }
 
 def getDateTime() {
@@ -253,8 +273,8 @@ def getDateTime() {
     return newDate
 }
 
-def historyClearData(){
-	if(logEnable) log.debug "Life360 User Driver - Clearing the data"
+def historyClearData() {
+	if(logEnable) log.debug "In historyClearData - Clearing the data"
     msgValue = "-"
     logCharCount = "0"
     state.list1 = []	
@@ -264,32 +284,148 @@ def historyClearData(){
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
 }	
 
+// *********************************************************
+// **********  Start of Location Tracker - Places **********
+// *********************************************************
+
+// **** Location Tracker - Places ****
+def deviceLoc(date, time, latitude, longitude, locSpd, locAlt) {
+    if(logEnable) log.debug "In deviceLoc - date: ${date}, time: ${time}, Lat: ${latitude}, Lng: ${longitude}, locSpd: ${locSpd}, locAlt: ${locAlt}"
+    sendEvent(name: "lastUpdateDate", value: date)
+    sendEvent(name: "lastUpdateTime", value: time)
+    sendEvent(name: "latitude", value: latitude)
+    sendEvent(name: "longitude", value: longitude)
+    sendEvent(name: "locSpd", value: locSpd)
+    sendEvent(name: "locAlt", value: locAlt)
+    
+    getLocation(latitude, longitude)
+}
+
+// **** Location Tracker - Places ****
+def deviceOther(battery, wifi) {
+    if(logEnable) log.debug "In deviceOther - Batt: ${battery}, wifi: ${wifi}"
+    sendEvent(name: "battery", value: battery)
+    //sendEvent(name: "wifiState", value: wifi)
+    sendEvent(name: "activity", value: activity)
+    //sendEvent(name: "mapURL", value: mapURL)
+}
+
+// **** Location Tracker - Places ****
+def getLocation(latitude, longitude) {
+	if(logEnable) log.debug "In getLocation (${state.version})"
+    if(state.timeMin == null) state.timeMin = 5
+    getTimeDiff()
+    
+    // http://www.mapquestapi.com/geocoding/v1/reverse?key=KEY&location=30.333472,-81.470448&includeRoadMetadata=true&includeNearestIntersection=true
+
+    if(consumerKey) {
+        if(state.timeMin >= threshold) {
+            theUrl = "https://www.mapquestapi.com/geocoding/v1/reverse?key=${consumerKey}&location=${latitude},${longitude}&includeRoadMetadata=true&includeNearestIntersection=true"
+            def params = [uri: "${theUrl}", contentType: "application/json"]
+
+		    httpGet(params) { response ->
+			    theResults = response.data
+                //if(logEnable) log.debug "In getLocation - response: ${response.data}"
+                
+                address1 = theResults.results.locations.street.toString()
+                currentCity = theResults.results.locations.adminArea5.toString()
+                currentState = theResults.results.locations.adminArea3.toString()
+                currentpostalCode = theResults.results.locations.postalCode.toString()
+                
+                address1 = "${address1}".replace("[","").replace("]","")
+                currentCity = "${currentCity}".replace("[","").replace("]","")
+                currentState = "${currentState}".replace("[","").replace("]","")
+                currentpostalCode = "${currentpostalCode}".replace("[","").replace("]","")
+                
+                currentStateZip = "${currentState} ${currentpostalCode}"
+                currentCountry = "-"
+                
+                if(logEnable) log.debug "In getLocation - street: ${address1} - City: ${currentCity} - State: ${currentState} - postalCode: ${currentpostalCode}"
+                sendEvent(name: "address1", value: address1, isStateChange: true)
+                sendEvent(name: "currentCity", value: currentCity)
+                sendEvent(name: "currentStateZip", value: currentStateZip)
+                sendEvent(name: "currentCountry", value: currentCountry)
+                def lastRan = new Date()
+                long unxSince = lastRan.getTime()
+                state.unxSince = unxSince/1000
+            }
+        } else {
+            if(logEnable) log.debug "In getLocation - Can't check for current stats - Under the ${threshold} min threshold."
+        }
+    }
+    
+    if(apiKey) {
+        if(state.timeMin >= threshold) {
+            theUrl = "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&result_type=street_address&key=${apiKey}"
+            
+            def params = [uri: "${theUrl}", contentType: "application/json"]
+
+		    httpGet(params) { response ->
+			    theResults = response.data
+                //if(logEnable) log.debug "In getLocation - response: ${response.data}"
+                
+                formatted_address = theResults.results.formatted_address.toString()
+                
+                formatted_address = "${formatted_address}".replace("[","").replace("]","")
+                
+                def currentAddress = formatted_address.split(",")
+                if(logEnable) log.debug "In getLocation  - 0: ${currentAddress[0]} - 1: ${currentAddress[1]} - 2: ${currentAddress[2]} - 3: ${currentAddress[3]}"
+                if(logEnable) log.debug "In getLocation  - street: ${currentAddress[0]} - City: ${currentAddress[1]} - State Zip: ${currentAddress[2]} - Country: ${currentAddress[3]}"
+                
+                sendEvent(name: "address1", value: currentAddress[0], isStateChange: true)
+                sendEvent(name: "currentCity", value: currentAddress[1])
+                sendEvent(name: "currentStateZip", value: currentAddress[2])
+                sendEvent(name: "currentCountry", value: currentAddress[3])
+                def lastRan = new Date()
+                long unxSince = lastRan.getTime()
+                state.unxSince = unxSince/1000
+            }
+        } else {
+            if(logEnable) log.debug "In getLocation - Can't check for current stats - Under the ${threshold} min threshold."
+        }
+    }
+}
+
+// **** Location Tracker - Places ****
+def getTimeDiff() {
+    try {
+        if(logEnable) log.debug "In getTimeDiff (${state.version})"
+   	    def now = new Date()
+        long unxNow = now.getTime()
+        unxNow = unxNow/1000
+        int unxSince = state.unxSince      
+        long timeDiff = Math.abs(unxNow-unxSince)
+        if(logEnable) log.debug "In getTimeDiff - since: ${unxSince}, Now: ${unxNow}, Diff: ${timeDiff}"   
+	    state.timeMin = (((timeDiff % 86400 ) % 3600 ) / 60).toInteger()   
+        if(logEnable) log.debug "In getTimeDiff - Time Diff: ${state.timeMin} mins"
+    } catch (e) {
+        if(logEnable) log.warn "In getTimeDiff - Something went wrong - setting Time Diff to 5 min so it will run - ERROR: ${e}"
+    }
+}
+
+// *********************************************************
+// ***********  End of Location Tracker - Places ***********
+// *********************************************************
+
+// *********************************************************
+// ******************  Start of Life360  *******************
+// *********************************************************
+
 def generatePresenceEvent(boolean present, homeDistance) {
-	if(logEnable) log.debug "Life360 generatePresenceEvent (present = $present, homeDistance = $homeDistance)"
-	def presence = formatValue(present)
+	if(logEnable) log.debug "In generatePresenceEvent - present: $present - homeDistance: $homeDistance"
+    def presence = formatValue(present)
 	def linkText = getLinkText(device)
 	def descriptionText = formatDescriptionText(linkText, present)
 	def handlerName = getState(present)
-	def sleeping = (presence == 'not present') ? 'not sleeping' : device.currentValue('sleeping')
-	
-	if (sleeping != device.currentValue('sleeping')) {
-	    sendEvent( name: "sleeping", value: sleeping, descriptionText: sleeping == 'sleeping' ? 'Sleeping' : 'Awake' )
-    }
-	
-    def display = presence + (presence == 'present' ? ', ' + sleeping : '')
-    if (display != device.currentValue('display')) {
-	    sendEvent( name: "display", value: display,  )
-    }
 	
 	def results = [
 		name: "presence",
 		value: presence,
-		unit: null,
 		linkText: linkText,
 		descriptionText: descriptionText,
 		handlerName: handlerName,
 	]
-	if(logEnable) log.debug "Generating Event: ${results}"
+	if(logEnable) log.debug "In generatePresenceEvent - Generating Event: ${results}"
 	sendEvent (results)
 	
     if(units == "Kilometers" || units == null || units == ""){
@@ -331,75 +467,68 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	    state.update = false
     }
     
-    sendLife360Tile1()
+    sendStatusTile1()
 }
 
-private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated){
+// **** Life360 ****
+private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated) {
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
-    if(address1 != device.currentValue('address1')){
-        sendEvent( name: "address1Prev", value: device.currentValue('address1') )
-        sendEvent( name: "address1", value: address1, isStateChange: true, displayed: true )
-        sendEvent( name: "since", value: since )
+    if(address1 != device.currentValue('address1')) {
+        sendEvent(name: "address1", value: address1, isStateChange: true)
+        sendEvent(name: "since", value: since)
+        
+        if(address1 == "home" || address1 == "Home") { 
+            sendEvent(name: "presence", value: "present", isStateChange: true)
+        } else {
+            sendEvent(name: "presence", value: "not present", isStateChange: true)
+        }
 	}
-    if(address2 != device.currentValue('address2')){
-        sendEvent( name: "address2", value: address2 )   
-	}
-	if(battery != device.currentValue('battery'))
-        sendEvent( name: "battery", value: battery )
-    if(charge != device.currentValue('charge'))
-   	    sendEvent( name: "charge", value: charge )
 
-    def curcheckin = device.currentValue('lastCheckin').toString()
-    if(endTimestamp != curcheckin)
-        sendEvent( name: "lastCheckin", value: endTimestamp )
-    if(inTransit != device.currentValue('inTransit'))
-       	sendEvent( name: "inTransit", value: inTransit )
+    if(battery != device.currentValue('battery')) { sendEvent(name: "battery", value: battery) }    
+    if(charge != device.currentValue('charge')) { sendEvent(name: "charge", value: charge) }
+ 
+    if(inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
 
-	def curDriving = device.currentValue('isDriving')
-    //if(logEnable) log.debug "Current Driving Status = $curDriving - New Driving Status = $isDriving"
-    if(isDriving != device.currentValue('isDriving')){
-	//if(logEnable) log.debug "If was different, isDriving = $isDriving"
-        sendEvent( name: "isDriving", value: isDriving )
-    }
+	def curDriving = device.currentValue('isDriving') 
+    if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
+
     def curlat = device.currentValue('latitude').toString()
-    def curlong = device.currentValue('longitude').toString()
     latitude = latitude.toString()
+    if(latitude != curlat) { sendEvent(name: "latitude", value: latitude) }
+    
+    def curlong = device.currentValue('longitude').toString()
     longitude = longitude.toString()
-    if(latitude != curlat)
-        sendEvent( name: "latitude", value: latitude )
-    if(longitude != curlong)
-       	sendEvent( name: "longitude", value: longitude )
-    if(speedMetric != device.currentValue('speedMetric'))
-        sendEvent( name: "speedMetric", value: speedMetric )
-    if(speedMiles != device.currentValue('speedMiles'))
-        sendEvent( name: "speedMiles", value: speedMiles )
-    if(speedKm != device.currentValue('speedKm'))
-        sendEvent( name: "speedKm", value: speedKm )
-    if(wifiState != device.currentValue('wifiState'))
-        sendEvent( name: "wifiState", value: wifiState )
+    if(longitude != curlong) { sendEvent(name: "longitude", value: longitude) }
+    
+    if(speedMetric != device.currentValue('speedMetric')) { sendEvent(name: "speedMetric", value: speedMetric) }
+    
+    if(speedMiles != device.currentValue('speedMiles')) { sendEvent(name: "speedMiles", value: speedMiles) }
+    
+    if(speedKm != device.currentValue('speedKm')) { sendEvent(name: "speedKm", value: speedKm) }
+    
+    if(wifiState != device.currentValue('wifiState')) { sendEvent(name: "wifiState", value: wifiState) }
+    
     setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
 
-    sendEvent( name: "savedPlaces", value: xplaces )
+    sendEvent(name: "savedPlaces", value: xplaces)
     
-    sendEvent( name: "avatar", value: avatar )
-    sendEvent( name: "avatarHtml", value: avatarHtml )
+    sendEvent(name: "avatar", value: avatar)
+    
+    sendEvent(name: "avatarHtml", value: avatarHtml)
 
-    sendEvent( name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a") )
-
-    sendLife360Tile1()
+    sendEvent(name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a"))
+    
+    sendStatusTile1()
 }
 
-def setMemberId (String memberId) {
+// **** Life360 ****
+def setMemberId(String memberId) {
    if(logEnable) log.debug "MemberId = ${memberId}"
    state.life360MemberId = memberId
 }
 
-def getMemberId () {
-	if(logEnable) log.debug "MemberId = ${state.life360MemberId}"
-    return(state.life360MemberId)
-}
-
+// **** Life360 ****
 private String formatValue(boolean present) {
 	if (present)
 	return "present"
@@ -407,6 +536,7 @@ private String formatValue(boolean present) {
 	return "not present"
 }
 
+// **** Life360 ****
 private formatDescriptionText(String linkText, boolean present) {
 	if (present)
 		return "Life360 User $linkText has arrived"
@@ -414,6 +544,13 @@ private formatDescriptionText(String linkText, boolean present) {
 	return "Life360 User $linkText has left"
 }
 
+// **** Life360 ****
+def getMemberId() {
+	if(logEnable) log.debug "MemberId = ${state.life360MemberId}"
+    return(state.life360MemberId)
+}
+
+// **** Life360 ****
 private getState(boolean present) {
 	if (present)
 		return "arrived"
@@ -421,46 +558,28 @@ private getState(boolean present) {
 	return "left"
 }
 
-private toggleSleeping(sleeping = null) {
-	sleeping = sleeping ?: (device.currentValue('sleeping') == 'not sleeping' ? 'sleeping' : 'not sleeping')
-	def presence = device.currentValue('presence');
-	
-	if (presence != 'not present') {
-		if (sleeping != device.currentValue('sleeping')) {
-			sendEvent( name: "sleeping", value: sleeping,  descriptionText: sleeping == 'sleeping' ? 'Sleeping' : 'Awake' )
-		}
-		
-		def display = presence + (presence == 'present' ? ', ' + sleeping : '')
-		if (display != device.currentValue('display')) {
-			sendEvent( name: "display", value: display )
-		}
-	}
-}
-
-def asleep() {
-	toggleSleeping('sleeping')
-}
-
-def awake() {
-	toggleSleeping('not sleeping')
-}
-
+// **** Life360 ****
 def refresh() {
 	parent.refresh()
-return null
+    return null
 }
 
-def setBattery(int percent, boolean charging, charge){
-	if(percent != device.currentValue("battery"))
-		sendEvent(name: "battery", value: percent);
+// **** Life360 ****
+def setBattery(int percent, boolean charging, charge) {
+    if(percent != device.currentValue("battery")) { sendEvent(name: "battery", value: percent) }
     
-def ps = device.currentValue("powerSource") == "BTRY" ? "false" : "true"
-if(charge != ps)
-		sendEvent(name: "powerSource", value: (charging ? "DC":"BTRY"));
+    def ps = device.currentValue("powerSource") == "BTRY" ? "false" : "true"
+    if(charge != ps) { sendEvent(name: "powerSource", value: (charging ? "DC":"BTRY")) }
 }
 
+// **** Life360 ****
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {
 	def formatter = new java.text.SimpleDateFormat(format)
 	formatter.setTimeZone(location.timeZone)
 	return formatter.format(time)
 }
+
+// *********************************************************
+// *******************  End of Life360  ********************
+// *********************************************************
+
