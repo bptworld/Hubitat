@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.3 - 04/04/20 - Fixed push, fixed issue with 'unexpected error' with Notification page, added wildcard for timer name in message.
  *  V1.0.2 - 03/29/20 - Bug hunting
  *  V1.0.1 - 03/29/20 - Added switch control to Finished options, added timer name options, added Tile character count to Maint section
  *  V1.0.0 - 03/29/20 - Initial release.
@@ -47,7 +48,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "SimpleKitchenTimerChildVersion"
-	state.version = "v1.0.2"
+	state.version = "v1.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -161,7 +162,7 @@ def pageConfig() {
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
             try { state.tileCount = tileDevice.currentValue('tileCount') } catch (e) {state.tileCount = "0"}
             paragraph "<hr>"
-            paragraph "<b>To check Character cound:</b><br>- Toggle the logEnable switch above<br>- Then click the button below"
+            paragraph "<b>To check Character count:</b><br>- Toggle the logEnable switch above<br>- Then click the button below"
             input "sendData", "button", title: "Update"
             paragraph "<b>Tile character count: ${state.tileCount}</b><br><small>* Max character count is 1024</small>"
 		}
@@ -170,7 +171,7 @@ def pageConfig() {
 }
 
 def notificationOptions() {
-    dynamicPage(name: "speechOptions", title: "Notification Options", install: false, uninstall:false){
+    dynamicPage(name: "notificationOptions", title: "Notification Options", install: false, uninstall:false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
            paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
            input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
@@ -207,8 +208,9 @@ def notificationOptions() {
 def messageOptions(){
     dynamicPage(name: "messageOptions", title: "Message Options", install: false, uninstall:false){    
         section(getFormat("header-green", "${getImage("Blank")}"+" Messaging Options")) {
-	        input "randomMessage10", "text", title: "Random Message to be spoken at 10 seconds - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
-			input "rm10List", "bool", defaultValue: true, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
+            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Name associcated with the Timer"
+	        input "randomMessage10", "text", title: "Random Message to be spoken at 10 seconds - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
+			input "rm10List", "bool", defaultValue: false, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
 			if(rm10List) {
 				def rm10 = "${randomMessage10}".split(";")
 				rm10a = ""
@@ -216,8 +218,8 @@ def messageOptions(){
 				paragraph "${rm10a}"
             }
             
-            input "randomMessage0", "text", title: "Random Message to be spoken when Finished - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
-			input "rm0List", "bool", defaultValue: true, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
+            input "randomMessage0", "text", title: "Random Message to be spoken when Finished - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
+			input "rm0List", "bool", defaultValue: false, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
 			if(rm0List) {
 				def rm0 = "${randomMessage0}".split(";")
 				rm0a = ""
@@ -377,6 +379,13 @@ def messageHandler(msg) {
     count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
 	msg = values[randomKey]
+    
+    if(msg.contains("%name%")) {
+        def currentTimer = tileDevice.currentValue("currentTimer")
+        if(logEnable) log.debug "In messageHandler - currentTimer: ${currentTimer}"
+        msg = msg.replace('%name%', "${currentTimer}" )
+    }
+    
 	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, msg: ${msg}"
         
     letsTalk(msg)
