@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ * v1.0.2 - 04/04/20 - Added currentTimer attribute
  * v1.0.1 - 03/29/20 - Added code for naming timers
  * v1.0.0 - 03/29/20 - Initial release
  *
@@ -44,7 +45,7 @@
 
 def setVersion(){
     appName = "SimpleKitchenTimerDriver"
-	version = "v1.0.1" 
+	version = "v1.0.2" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
 }
@@ -62,7 +63,7 @@ metadata {
         command "a6", [[name:"setTimer3", description: "Shortcut to comamnd - setTimer3"]]
         
         attribute "switch", "string"
-        attribute "timer", "number"
+        attribute "currentTimer", "string"
         attribute "timeLeft", "number"
         attribute "tile01", "string"
         attribute "tileCount", "number"
@@ -177,6 +178,12 @@ def setTimer1() {
     timeLeft = device.currentValue('setTimer1')
     state.theTimer = timeLeft
     sendEvent(name: "timeLeft", value: "${timeLeft}", displayed: true)
+    if(state.timer1n != "null") {
+        theTimer1 = state.timer1n
+    } else {
+        theTimer1 = device.currentValue('setTimer1')
+    }
+    sendEvent(name: "currentTimer", value: "${theTimer1}", displayed: true)
     reset()
 }
 
@@ -185,6 +192,12 @@ def setTimer2() {
     timeLeft = device.currentValue('setTimer2')
     state.theTimer = timeLeft
     sendEvent(name: "timeLeft", value: "${timeLeft}", displayed: true)
+    if(state.timer2n != "null") {
+        theTimer2 = state.timer2n
+    } else {
+        theTimer2 = device.currentValue('setTimer2')
+    }
+    sendEvent(name: "currentTimer", value: "${theTimer2}", displayed: true)
     reset()
 }
 
@@ -193,6 +206,12 @@ def setTimer3() {
     timeLeft = device.currentValue('setTimer3')
     state.theTimer = timeLeft
     sendEvent(name: "timeLeft", value: "${timeLeft}", displayed: true)
+    if(state.timer3n != "null") {
+        theTimer3 = state.timer3n
+    } else {
+        theTimer3 = device.currentValue('setTimer3')
+    }
+    sendEvent(name: "currentTimer", value: "${theTimer3}", displayed: true)
     reset()
 }
 
