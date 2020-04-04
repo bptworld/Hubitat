@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.9 - 04/04/20 - Fixed a typo
  *  V1.0.8 - 04/01/20 - Added a 'No devices found' message
  *  V1.0.7 - 03/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
  *  V1.0.6 - 01/27/20 - Found typo, added flash lights to actions
@@ -53,7 +54,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.8"
+	state.version = "v1.0.9"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -428,7 +429,7 @@ private removeChildDevices(delete) {
 def initialize() {
     setDefaults()
 	if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", checkDeviceHandler)
-    if(triggerType1 == "xDay" && days) schedule(timeToRun, deviceStateHandler)
+    if(triggerType1 == "xDay" && days) schedule(timeToRun, checkDeviceHandler)
     if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
     if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
     if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
@@ -824,7 +825,7 @@ def modeHandler(evt) {
 		    }
         }
         if(state.matchFound) {
-            deviceStateHandler()
+            checkDeviceHandler()
         } else {
             if(logEnable) log.debug "In modeHandler - No Match Found"
         }
@@ -870,7 +871,7 @@ def thermostatHandler(evt) {
             }
 		}
         if(state.thermFound) {
-            deviceStateHandler()
+            checkDeviceHandler()
         } else {
             if(logEnable) log.debug "In thermostatHandler - No Match Found"
         }
@@ -890,7 +891,7 @@ def thermostatModeHandler(evt) {
             }
 		}
         if(state.thermModeFound) {
-            deviceStateHandler()
+            checkDeviceHandler()
         } else {
             if(logEnable) log.debug "In thermostatModeHandler - No Match Found"
         }
