@@ -481,7 +481,7 @@
   "SimpleIrrigationUpdateNote": "V2.0.0 - 08/18/19 - App Watchdog 2 compatible",
   
   "SimpleKitchenTimerParentVersion": "v1.0.0",
-  "SimpleKitchenTimerChild1Version": "v1.0.2",
+  "SimpleKitchenTimerChild1Version": "v1.0.3",
   "SimpleKitchenTimerChild1Name": "",
   "SimpleKitchenTimerChild2Version": "",
   "SimpleKitchenTimerChild2Name": "",
@@ -495,7 +495,7 @@
   "SimpleKitchenTimerChild3RawCode": "",
   "SimpleKitchenTimerChild4RawCode": "",
   "SimpleKitchenTimerDiscussion": "https://community.hubitat.com",
-  "SimpleKitchenTimerUpdateNote": "V1.0.2 - 03/29/20 - Bug hunting",
+  "SimpleKitchenTimerUpdateNote": "V1.0.3 - 04/04/20 - Fixed push, fixed issue with 'unexpected error' with Notification page, added wildcard for timer name in message.",
   
   "SimpleRemindersParentVersion": "v1.0.0",
   "SimpleRemindersChild1Version": "v1.0.4",
