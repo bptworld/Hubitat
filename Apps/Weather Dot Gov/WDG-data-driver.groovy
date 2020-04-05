@@ -1,8 +1,8 @@
 /**
- *  ****************  Weather Gov Data Driver  ****************
+ *  ****************  Weather Dot Gov Data Driver  ****************
  *
  *  Design Usage:
- *  This driver formats the Weather Gov data to be used with Hubitat.
+ *  This driver formats the Weather.gov data to be used with Hubitat.
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  *  
@@ -41,7 +41,7 @@
  */
 
 def setVersion(){
-    appName = "WeatherGovDriver"
+    appName = "WeatherDotGovDataDriver"
 	version = "v1.0.0" 
     dwInfo = "${appName}:${version}"
     sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
@@ -53,7 +53,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Weather Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Weather Dot Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
    		capability "Actuator"
         capability "Sensor"
         capability "Temperature Measurement"
