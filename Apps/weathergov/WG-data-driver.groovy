@@ -1,5 +1,5 @@
 /**
- *  ****************  Weather Gov Driver  ****************
+ *  ****************  Weather Gov Data Driver  ****************
  *
  *  Design Usage:
  *  This driver formats the Weather Gov data to be used with Hubitat.
@@ -53,7 +53,7 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Weather Gov Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Weather Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
    		capability "Actuator"
         capability "Sensor"
         capability "Temperature Measurement"
@@ -109,7 +109,7 @@ metadata {
 	}
 	preferences() {    	
         section(){
-			input name: "about", type: "paragraph", title: "<b>Weather Info from Weather.gov</b><br>The Latitude & Longitude are automaticaly set to your hubs location. Only change if you would like a different location.", description: ""
+			input name: "about", type: "paragraph", title: "<b>Weather Data from Weather.gov</b><br>The Latitude & Longitude are automaticaly set to your hubs location. Only change if you would like a different location.", description: ""
             input name:"lat", type:"text", title: "Latitude", require: true, defaultValue: "${location.latitude}"
 			input name:"lng", type:"text", title: "Longitude", require: true, defaultValue: "${location.longitude}"
             input name:"station", type:"text", title: "Station ID"
@@ -583,3 +583,4 @@ private direction(unit) {
     theUnit = direction
     return theUnit
 }
+
