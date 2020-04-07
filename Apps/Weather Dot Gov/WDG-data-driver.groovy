@@ -2,7 +2,7 @@
  *  ****************  Weather Dot Gov Data Driver  ****************
  *
  *  Design Usage:
- *  This driver formats the Weather.gov data to be used with Hubitat.
+ *  Making the Weather.gov data usable with Hubitat.
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  *  
@@ -53,16 +53,23 @@ def updateVersion() {
 }
 
 metadata {
-	definition (name: "Weather Dot Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Weather Dot Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy") {
    		capability "Actuator"
         capability "Sensor"
         capability "Temperature Measurement"
         capability "Relative Humidity Measurement"
 
+        command "dataOptions"
         command "getPointsData"
-        command "getWeatherWeeklyData"
+        command "getWeeklyData"
         command "getWeatherData"
+        //command "getWeatherRadarData"
 		
+        attribute "lat", "string"
+        attribute "lng", "string"
+        attribute "station", "string"
+        attribute "unitFormat", "string"
+        
     	attribute "office", "string"
 		attribute "gridX", "string"
         attribute "gridY", "string"
@@ -104,19 +111,26 @@ metadata {
         attribute "windChill", "number"
         attribute "heatIndex", "number"
         
+        attribute "radar", "string"
+        
         attribute "dwDriverInfo", "string"
         command "updateVersion"
 	}
 	preferences() {    	
         section(){
-			input name: "about", type: "paragraph", title: "<b>Weather Data from Weather.gov</b><br>The Latitude & Longitude are automaticaly set to your hubs location. Only change if you would like a different location.", description: ""
-            input name:"lat", type:"text", title: "Latitude", require: true, defaultValue: "${location.latitude}"
-			input name:"lng", type:"text", title: "Longitude", require: true, defaultValue: "${location.longitude}"
-            input name:"station", type:"text", title: "Station ID"
-            input name:"unitFormat", type:"enum", title: "Unit Format", required: true, options: ["Imperial", "Metric"]
+			input name: "about", type: "paragraph", title: "<b>Weather Data from Weather.gov</b><br>This driver holds the raw data for use with dashboards", description: ""
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
         }
     }
+}
+
+def dataOptions(data) {
+    if(logEnable) log.debug "In dataOptions"
+    def (lat,lng,station,unitFormat) = data.split(':')
+    sendEvent(name: "lat", value: lat)
+    sendEvent(name: "lng", value: lng)
+    sendEvent(name: "station", value: station)
+    sendEvent(name: "unitFormat", value: unitFormat)
 }
 
 def getPointsData() {
@@ -125,7 +139,9 @@ def getPointsData() {
     sendEvent(name: "responseStatus", value: "Getting Points Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
 
-	pointsURL = "https://api.weather.gov/points/${lat},${lng}"
+    lat1 = device.currentValue('lat')
+    lng1 = device.currentValue('lng')
+	pointsURL = "https://api.weather.gov/points/${lat1},${lng1}"
 	if(logEnable) log.debug "pointsURL: ${pointsURL}"
 	def requestParams =
 		[
@@ -165,8 +181,8 @@ def getPointsData() {
     }
 }
 
-def getWeatherWeeklyData() {
-    if(logEnable) log.debug "In getWeatherWeeklyData"
+def getWeeklyData() {
+    if(logEnable) log.debug "In getWeeklyData"
 	currentDate = new Date()
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
@@ -177,6 +193,7 @@ def getWeatherWeeklyData() {
     
 	forecastURL = "https://api.weather.gov/gridpoints/${office}/${gridX},${gridY}/forecast"
 	if(logEnable) log.debug "forecastURL: ${forecastURL}"
+    log.info "forecastURL: ${forecastURL}"
 	def requestParams =
 		[
 			uri: forecastURL,
@@ -186,7 +203,7 @@ def getWeatherWeeklyData() {
 		]
     try {
         httpGet(requestParams) { response ->
-            if(logEnable) log.info "In getWeatherWeeklyData - response: ${response.status}"
+            if(logEnable) log.info "In getWeeklyData - response: ${response.status}"
             
             if(response.status == 200) {
                 for(x=0;x<14;x++) {
@@ -206,7 +223,7 @@ def getWeatherWeeklyData() {
                     sendEvent(name: "zforecast_$y", value: forcast)
                 }
             } else {
-            if(logEnable) log.debug "In getWeatherWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
+            if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
         }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
@@ -222,14 +239,15 @@ def getWeatherWeeklyData() {
     }
 }
 
-
 def getWeatherData() {
     if(logEnable) log.debug "In getWeatherData"
 
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
-    forecastURL = "https://api.weather.gov/stations/${station}/observations/latest"
+    unitFormat1 = device.currentValue('unitFormat')
+    station1 = device.currentValue('station')
+    forecastURL = "https://api.weather.gov/stations/${station1}/observations/latest"
     
 	if(logEnable) log.debug "forecastURL: ${forecastURL}"
 	def requestParams =
@@ -260,7 +278,7 @@ def getWeatherData() {
                 if(!xtemperature) {
                     temperature = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         cTOf(xtemperature)
                         temperature = theUnit
                     } else {
@@ -276,7 +294,7 @@ def getWeatherData() {
                 if(!xdewpoint) {
                     temperature = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         cTOf(xdewpoint)
                         dewpoint = theUnit
                     } else {
@@ -303,7 +321,7 @@ def getWeatherData() {
                 if(!xwindSpeed) {
                     windSpeed = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         kphTOmph(xwindSpeed)
                         windSpeed = theUnit
                     } else {
@@ -319,7 +337,7 @@ def getWeatherData() {
                 if(!xwindGust) {
                     windGust = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         kphTOmph(xwindGust)
                         windGust = theUnit
                     } else {
@@ -335,7 +353,7 @@ def getWeatherData() {
                 if(!xbarometricPressure) {
                     barometricPressure = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         mbTOinhg(xbarometricPressure)
                         barometricPressure = theUnit
                     } else {
@@ -351,7 +369,7 @@ def getWeatherData() {
                 if(!xseaLevelPressure) {
                     seaLevelPressure = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         mbTOinhg(xseaLevelPressure)
                         seaLevelPressure = theUnit
                     } else {
@@ -367,7 +385,7 @@ def getWeatherData() {
                 if(!xvisibility) {
                     visibility = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         mTOft(xvisibility)
                         visibility = theUnit
                     } else {
@@ -383,7 +401,7 @@ def getWeatherData() {
                 if(!xmaxTemperatureLast24Hours) {
                     maxTemperatureLast24Hours = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         cTOf(xmaxTemperatureLast24Hours)
                         maxTemperatureLast24Hours = theUnit
                     } else {
@@ -399,7 +417,7 @@ def getWeatherData() {
                 if(!xminTemperatureLast24Hours) {
                     minTemperatureLast24Hours = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         cTOf(xminTemperatureLast24Hours)
                         minTemperatureLast24Hours = theUnit
                     } else {
@@ -415,7 +433,7 @@ def getWeatherData() {
                 if(!xprecipitationLastHour) {
                     precipitationLastHour = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         inTOmm(xprecipitationLastHour)
                         precipitationLastHour = theUnit
                     } else {
@@ -431,7 +449,7 @@ def getWeatherData() {
                 if(!xprecipitationLast3Hours) {
                     precipitationLast3Hours = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         inTOmm(xprecipitationLast3Hours)
                         precipitationLast3Hours = theUnit
                     } else {
@@ -447,7 +465,7 @@ def getWeatherData() {
                 if(!xprecipitationLast6Hours) {
                     precipitationLast6Hours = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         inTOmm(xprecipitationLast6Hours)
                         precipitationLast6Hours = theUnit
                     } else {
@@ -474,7 +492,7 @@ def getWeatherData() {
                 if(!xwindChill) {
                     windChill = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         cTOf(xwindChill)
                         windChill = theUnit
                     } else {
@@ -490,7 +508,7 @@ def getWeatherData() {
                 if(!xheatIndex) {
                     heatIndex = "No Data"
                 } else {
-                    if(unitFormat == "Imperial") {
+                    if(unitFormat1 == "Imperial") {
                         cTOf(xheatIndex)
                         heatIndex = theUnit
                     } else {
@@ -517,6 +535,48 @@ def getWeatherData() {
     }
 }
 
+
+def getWeatherRadarData() {
+    if(logEnable) log.debug "In getWeatherRadarData"
+	currentDate = new Date()
+    sendEvent(name: "responseStatus", value: "Getting Weather Data...")
+    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
+    
+    station1 = device.currentValue('station')
+	forecastURL = "https://api.weather.gov/stations/radar/${station1}"
+	if(logEnable) log.debug "forecastURL: ${forecastURL}"
+	def requestParams =
+		[
+			uri: forecastURL,
+            requestContentType: "application/json",
+			contentType: "application/json",
+            timeout: 30,
+		]
+    try {
+        httpGet(requestParams) { response ->
+            if(logEnable) log.info "In getWeatherRadarData - response: ${response.status}"
+            
+            if(response.status == 200) {
+                def radar = response.data.properties.precipitationLast3Hours.value
+                sendEvent(name: "radar", value: radar)
+            } else {
+            if(logEnable) log.debug "In getWeatherRadarData - Bad Request - ${response.status} - Something went wrong, please try again."
+        }
+            currentDate = new Date()
+            sendEvent(name: "responseStatus", value: response.status)
+            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
+        }
+    } catch (e) {
+        log.error e
+        theError = "${e}"
+        def reason = theError.split(':')
+        currentDate = new Date()
+        sendEvent(name: "responseStatus", value: reason[1])
+        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
+    }
+}
+  
+    
 private cTOf(unit) {
     // Celsius to Fahrenheit
 	unitI = unit.toFloat()
@@ -583,4 +643,3 @@ private direction(unit) {
     theUnit = direction
     return theUnit
 }
-
