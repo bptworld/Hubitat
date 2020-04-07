@@ -1,13 +1,13 @@
 {
 	"packageName": "Weather Dot Gov",
-	"packageId": "b285dc8e-a493-4289-89b8-3606ae81cc01",
+	"packageId": "b285dc8e-0000-4289-89b8-3606ae81cc01",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"version": "1.5",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
-			"id" : "bf7d70fb-1fa9-436f-9cfc-fb8520cda22a",
+			"id" : "bf7d70fb-0000-436f-9cfc-fb8520cda22a",
 			"name": "Weather Dot Gov Parent",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-parent.groovy",
 			"required": true,
@@ -17,7 +17,7 @@
 	],
 	"drivers" : [
 		{
-			"id": "163f6821-e8a7-48fc-8e66-cd787cfe54eb",
+			"id": "163f6821-0000-48fc-8e66-cd787cfe54eb",
 			"name": "Weather Dot Gov Data Driver",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy",
 			"required": true,
