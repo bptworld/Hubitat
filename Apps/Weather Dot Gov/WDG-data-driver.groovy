@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  V1.0.0 - 04/03/20 - Initial release
+ *  V1.0.0 - 04/07/20 - Initial release
  */
 
 def setVersion(){
@@ -190,6 +190,8 @@ def getWeeklyData() {
     office = device.currentValue('office')
     gridX = device.currentValue('gridX')
     gridY = device.currentValue('gridY')
+    
+    if(gridX == null || girdY == null) getPointsData()
     
 	forecastURL = "https://api.weather.gov/gridpoints/${office}/${gridX},${gridY}/forecast"
 	if(logEnable) log.debug "forecastURL: ${forecastURL}"
