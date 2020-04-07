@@ -22,6 +22,6 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy",
 			"required": true,
 			"version": "1.0.0"
-		},
+		}
 	]
 }
