@@ -5,9 +5,9 @@
    "packages": [
    	{
    		"name": "Weather Dot Gov",
-   		"category": "Convenience",
+   		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/packageManifest.json",
    		"description": "Making the Weather.gov data usable with Hubitat."
    	}
-   ]
+   }
 }
