@@ -3,10 +3,6 @@
     {
       "developer": "BPTWorld",
       "jsonURL": "https://raw.githubusercontent.com/bptworld/Hubitat/master/AppWatchDog.json"
-    },
-    {
-      "developer": "Aaron Ward",
-      "jsonURL": "https://raw.githubusercontent.com/PrayerfulDrop/Hubitat/master/AppWatchDog.json"
     }
   ]
 }
