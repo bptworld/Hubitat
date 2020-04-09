@@ -1,0 +1,30 @@
+{
+	"packageName": "Device Sequencer",
+	"packageId": "e2c02b14-f0df-403d-87e9-99abcd079516",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "addb4010-1e41-4fd2-a84f-e9d9de86e514,
+			"name": "Device Sequencer Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "16fa3362-93e7-473a-a503-fcd31cee4949",
+			"name": "Device Sequencer Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		}
+	],
+	"drivers" : [
+	]
+}
