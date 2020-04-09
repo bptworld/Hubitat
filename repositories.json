@@ -9,6 +9,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
    		"description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine."
    	},
+      {
+   		"name": "BI Control",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
+   		"description": "Designed to work locally with Blue Iris security software."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
