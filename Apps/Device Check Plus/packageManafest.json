@@ -1,0 +1,38 @@
+{
+	"packageName": "Device Check Plus",
+	"packageId": "1abfab13-9772-4b41-bd4c-95031d87bae6",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "21d1e256-35ff-46be-8417-8ed6a8757281",
+			"name": "Device Check Plus Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.1"
+		},
+		{
+			"id" : "3ed06dd7-4da0-4a57-b2eb-da3c755ddbd3",
+			"name": "Device Check Plus Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.9"
+		}
+	],
+	"drivers" : [
+		{
+			"id": "106f8418-8ce4-4ddb-a1c1-522d36837503",
+			"name": "Device Check Plus Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-driver.groovy",
+			"required": true,
+			"version": "1.0.0"
+		}
+	]
+}
