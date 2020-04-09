@@ -12,7 +12,7 @@
       {
    		"name": "BI Control",
    		"category": "Security",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/packageManifest.json",
    		"description": "Designed to work locally with Blue Iris security software."
    	},
    	{
