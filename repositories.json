@@ -30,13 +30,13 @@
       {
    		"name": "Device Check Plus",
    		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManafest.json",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManifest.json",
    		"description": "Check selected devices, then warn you what's not in the right state."
    	},
       {
    		"name": "Device Sequencer",
    		"category": "Control",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManafest.json",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManifest.json",
    		"description": "Turn on/off several devices in a row, with a user defined pause in between each."
    	},
    	{
