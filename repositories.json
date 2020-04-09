@@ -21,6 +21,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/packageManifest.json",
    		"description": "Take control of a Chromecast device using CATT."
    	},
+      {
+   		"name": "Chromecast Helper",
+   		"category": "Intergrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/packageManifest.json",
+   		"description": "Simple way to help keep your Goolge/Nest devices alive."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
