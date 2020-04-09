@@ -39,6 +39,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManifest.json",
    		"description": "Turn on/off several devices in a row, with a user defined pause in between each."
    	},
+      {
+   		"name": "Device Watchdog",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/packageManifest.json",
+   		"description": "Keep an eye on your devices and see how long it's been since they checked in."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
