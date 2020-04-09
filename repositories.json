@@ -27,6 +27,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/packageManifest.json",
    		"description": "Simple way to help keep your Goolge/Nest devices alive."
    	},
+      {
+   		"name": "Device Check Plus",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManafest.json",
+   		"description": "Check selected devices, then warn you what's not in the right state."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
