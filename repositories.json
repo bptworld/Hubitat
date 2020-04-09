@@ -3,6 +3,12 @@
    "gitHubUrl": "https://github.com/bptworld/Hubitat",
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
+      {
+   		"name": "At Home Simulator",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
+   		"description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
