@@ -1,13 +1,13 @@
 {
 	"packageName": "BI Control",
-	"packageId": "a73cd810-6a50-40d5-b403-eb0ff3310c05",
+	"packageId": "9ca73b40-7673-4f39-9469-969876f2e0ad",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
-			"id" : "d21333a8-fffc-45d2-91f0-1fa7af0d7ba9",
+			"id" : "4a0a86a3-c305-4066-b568-162cfe545a12",
 			"name": "BI Control Parent",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Parent.groovy",
@@ -16,7 +16,7 @@
 			"version": "2.0.0"
 		},
 		{
-			"id" : "344c2335-904d-40a9-8962-847a7bf2a451",
+			"id" : "5d8fb8c5-dd09-4a74-a09d-2d744e727a0d",
 			"name": "BI Control Child",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Child.groovy",
