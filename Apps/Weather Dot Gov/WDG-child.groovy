@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 04/08/20 - Fixed typo
  *  V1.0.0 - 04/07/20 - Initial release.
  *
  */
@@ -45,7 +46,7 @@ def setVersion(){
 	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
     // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
     state.appName = "WeatherDotGovChildVersion"
-	state.version = "v1.0.0"
+	state.version = "v1.0.1"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -334,7 +335,6 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
-    getPointsData()
     getCurrentData()
     getWeeklyData()
 	initialize()
