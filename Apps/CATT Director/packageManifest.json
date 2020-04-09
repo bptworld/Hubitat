@@ -1,0 +1,30 @@
+{
+	"packageName": "CATT Director",
+	"packageId": "5d2d8118-6d6a-4fc0-92b8-379bccd855d4",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "801d2cca-7c7f-470a-a438-fd3c16768018",
+			"name": "CATT Director Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/CATTD-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "62820520-e7ac-453d-9d37-39366e313814",
+			"name": "CATT Director Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/CATTD-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.1"
+		}
+	],
+	"drivers" : [	
+	]
+}
