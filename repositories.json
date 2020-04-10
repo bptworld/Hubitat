@@ -57,6 +57,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/packageManifest.json",
    		"description": "Take control of a Fully Kiosk device! * Requires additional driver, instructions within app."
    	},
+      {
+   		"name": "Home Tracker",
+   		"category": "Notifications",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/packageManifest.json",
+   		"description": "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!"
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
