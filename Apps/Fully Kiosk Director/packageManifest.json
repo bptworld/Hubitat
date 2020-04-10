@@ -1,0 +1,30 @@
+{
+	"packageName": "Fully Kiosk Director",
+	"packageId": "a88923f1-71e3-46d9-b06f-1dd8057ce0d3",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "af3b13d2-dcb9-4049-a941-4320a606911e",
+			"name": "Fully Kiosk Director",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/FKC-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "5c2eb4cf-1728-4c60-b7c1-aebd6458fdee",
+			"name": "Fully Kiosk Director",
+			"namespace": "Follow Me",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/FKC-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		}
+	],
+	"drivers" : [
+	]
+}
