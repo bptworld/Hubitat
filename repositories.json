@@ -69,6 +69,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/packageManifest.json",
    		"description": "Simple way to monitor if your hub is slowing down or not."
    	},
+      {
+   		"name": "Tile Master",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
+   		"description": "Create a tile with multiple devices and customization options."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
