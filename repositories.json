@@ -45,6 +45,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/packageManifest.json",
    		"description": "Keep an eye on your devices and see how long it's been since they checked in."
    	},
+      {
+   		"name": "Follow Me",
+   		"category": "Notifications",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/packageManifest.json",
+   		"description": "Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!"
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
