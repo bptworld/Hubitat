@@ -1,0 +1,38 @@
+{
+	"packageName": "Home Tracker",
+	"packageId": "325d4829-e0fc-4ec8-9df2-098382c5e86e",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "0f7e671f-27e6-4644-a131-b6b9694562be",
+			"name": "Home Tracker Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.2.3"
+		},
+		{
+			"id" : "4666824f-8eed-482d-ad7c-33b85ee5a31d",
+			"name": "Home Tracker Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.3.1"
+		}
+	],
+	"drivers" : [
+		{
+			"id": "100bfc85-3607-4be9-96db-23e21fc840e2",
+			"name": "Home Tracker Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-driver.groovy",
+			"required": true,
+			"version": "1.2.0"
+		}
+	]
+}
