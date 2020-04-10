@@ -73,7 +73,7 @@
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
-   		"description": "Create a tile with multiple devices and customization options."
+   		"description": "Create a tile with multiple devices with control."
    	},
    	{
    		"name": "Weather Dot Gov",
