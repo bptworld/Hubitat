@@ -63,6 +63,12 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/packageManifest.json",
    		"description": "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!"
    	},
+      {
+   		"name": "Hub Watchdog",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/packageManifest.json",
+   		"description": "Simple way to monitor if your hub is slowing down or not."
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
