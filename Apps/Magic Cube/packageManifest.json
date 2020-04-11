@@ -1,0 +1,30 @@
+{
+	"packageName": "Magic Cube",
+	"packageId": "42a23260-65c4-4c5c-9a86-2c23d95d86fb",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "3fe7903d-280e-46f4-8720-2f621c59093e",
+			"name": "Magic Cube Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "e90b111f-6c45-42f5-a74f-0f65e65d3ec2",
+			"name": "Magic Cube Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/MC-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.1"
+		}
+	],
+	"drivers" : [	
+	]
+}
