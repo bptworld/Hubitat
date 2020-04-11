@@ -82,6 +82,12 @@
    		"description": "Connect Life360 to Hubitat including ALL states."
    	},
       {
+   		"name": "Lighting Effects",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/packageManifest.json",
+   		"description": "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
