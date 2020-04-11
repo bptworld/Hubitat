@@ -76,6 +76,12 @@
    		"description": "Track your Life360 users. Works with the Life360 with States app."
    	},
       {
+   		"name": "Life360 with States",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
+   		"description": "Connect Life360 to Hubitat including ALL states."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
