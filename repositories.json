@@ -70,6 +70,12 @@
    		"description": "Simple way to monitor if your hub is slowing down or not."
    	},
       {
+   		"name": "Life360 Tracker",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/packageManifest.json",
+   		"description": "Track your Life360 users. Works with the Life360 with States app."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
