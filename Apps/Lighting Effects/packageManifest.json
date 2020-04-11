@@ -1,0 +1,30 @@
+{
+	"packageName": "Lighting Effects",
+	"packageId": "977f1560-8bc3-4929-952b-4d82759629b8",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "e53bf0af-1171-4d8a-b1f7-c4cebea99f80",
+			"name": "Lighting Effects Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "433a1244-ca80-4da6-bdf0-7d77f4c4dc25",
+			"name": "Lighting Effects Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		}
+	],
+	"drivers" : [	
+	]
+}
