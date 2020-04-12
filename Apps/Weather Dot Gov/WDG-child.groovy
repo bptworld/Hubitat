@@ -37,13 +37,14 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 04/12/20 - Fixed Forecast from exceding the 1024 limit
  *  V1.0.1 - 04/08/20 - Fixed typo
  *  V1.0.0 - 04/07/20 - Initial release.
  *
  */
 
 def setVersion(){
-	state.version = "v1.0.1"
+	state.version = "v1.0.2"
 }
 
 definition(
@@ -500,10 +501,11 @@ def getWeeklyData(evt) {
         if(logEnable) log.debug "In weeklytTileOptions - Sending 'weeklyTable' to tile device (${tileDevice})"
         tileDevice.weeklyData(weeklyTable_$x)
     }
-    tileDevice.forecastData1(forecastTable1)
-    tileDevice.forecastData2(forecastTable2)
-    tileDevice.forecastData3(forecastTable3)
-    tileDevice.forecastData4(forecastTable4)
+    
+    tileDevice.forecastData1(forecastTable1.take(1020))
+    tileDevice.forecastData2(forecastTable2.take(1020))
+    tileDevice.forecastData3(forecastTable3.take(1020))
+    tileDevice.forecastData4(forecastTable4.take(1020))
 }
 
 def createDataChildDevice() {    
