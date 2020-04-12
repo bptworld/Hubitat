@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 04/12/20 - Fixed Forecast from exceding the 1024 limit
+ *  V1.0.2 - 04/12/20 - Fixed Forecast from exceeding the 1024 limit
  *  V1.0.1 - 04/08/20 - Fixed typo
  *  V1.0.0 - 04/07/20 - Initial release.
  *
