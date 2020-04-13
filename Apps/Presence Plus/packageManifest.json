@@ -1,0 +1,38 @@
+{
+	"packageName": "Presence Plus",
+	"packageId": "2b33f8b1-a5a4-4222-b38e-03ebad56e752",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "4b7f1e52-407b-4ae9-a5dd-3f817815c3c8",
+			"name": "Presence Plus Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+		},
+		{
+			"id" : "c08ab732-c67f-4887-8b17-45cacaecdd8d",
+			"name": "Presence Plus Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.1"
+		}
+	],
+	"drivers" : [
+		{
+			"id": "5dcb2461-acf2-4168-8609-d60729e5ccf0",
+			"name": "Presence Plus Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-driver.groovy",
+			"required": true,
+			"version": "1.0.0"
+		}
+	]
+}
