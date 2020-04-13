@@ -37,20 +37,9 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 04/13/20 - Fixed Wind speed, precipitation calculations
  *  V1.0.0 - 04/07/20 - Initial release
  */
-
-def setVersion(){
-    appName = "WeatherDotGovDataDriver"
-	version = "v1.0.0" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
-}
 
 metadata {
 	definition (name: "Weather Dot Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy") {
@@ -112,9 +101,6 @@ metadata {
         attribute "heatIndex", "number"
         
         attribute "radar", "string"
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
 	}
 	preferences() {    	
         section(){
@@ -324,7 +310,7 @@ def getWeatherData() {
                     windSpeed = "No Data"
                 } else {
                     if(unitFormat1 == "Imperial") {
-                        kphTOmph(xwindSpeed)
+                        mpsTOmph(xwindSpeed)
                         windSpeed = theUnit
                     } else {
                         unitI = xwindSpeed.toFloat()
@@ -436,7 +422,7 @@ def getWeatherData() {
                     precipitationLastHour = "No Data"
                 } else {
                     if(unitFormat1 == "Imperial") {
-                        inTOmm(xprecipitationLastHour)
+                        mmTOin(xprecipitationLastHour)
                         precipitationLastHour = theUnit
                     } else {
                         unitI = xprecipitationLastHour.toFloat()
@@ -452,7 +438,7 @@ def getWeatherData() {
                     precipitationLast3Hours = "No Data"
                 } else {
                     if(unitFormat1 == "Imperial") {
-                        inTOmm(xprecipitationLast3Hours)
+                        mmTOin(xprecipitationLast3Hours)
                         precipitationLast3Hours = theUnit
                     } else {
                         unitI = xpxprecipitationLast3Hours.toFloat()
@@ -468,7 +454,7 @@ def getWeatherData() {
                     precipitationLast6Hours = "No Data"
                 } else {
                     if(unitFormat1 == "Imperial") {
-                        inTOmm(xprecipitationLast6Hours)
+                        mmTOin(xprecipitationLast6Hours)
                         precipitationLast6Hours = theUnit
                     } else {
                         unitI = xpxprecipitationLast6Hours.toFloat()
@@ -604,6 +590,13 @@ private kphTOmph(unit){
     // KPH to MPH     
     unitI = unit.toFloat()           
     theUnit = (unitI * 0.621371).round(2)
+	return theUnit              
+}
+
+private mpsTOmph(unit){
+    // MPS to MPH     
+    unitI = unit.toFloat()           
+    theUnit = (unitI * 2.23694).round(2)
 	return theUnit              
 }
 
