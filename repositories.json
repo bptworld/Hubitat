@@ -94,6 +94,12 @@
    		"description": "Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake."
    	},
       {
+   		"name": "One at a Time",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/packageManifest.json",
+   		"description": "Designed to allow only one switch, in a group of switches, to be on at a time."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
