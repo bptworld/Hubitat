@@ -100,6 +100,12 @@
    		"description": "Designed to allow only one switch, in a group of switches, to be on at a time."
    	},
       {
+   		"name": "Presence Plus",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/packageManifest.json",
+   		"description": "Creates a combined presence device that can be used with Life360 Tracker, Google Assistant, Rule Machine and More!"
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
