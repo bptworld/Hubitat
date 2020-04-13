@@ -1,0 +1,30 @@
+{
+	"packageName": "Room Director",
+	"packageId": "b9970e22-c014-4ec4-b9ea-3ea86cb2cf7f",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "95decf3b-7e1e-4304-9fbc-e1460f357cf0",
+			"name": "Room Director Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/RD-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+		},
+		{
+			"id" : "e739f103-b9df-4330-9f0f-ae54d6e51a2c",
+			"name": "Room Director Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/RD-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.2"
+		}
+	],
+	"drivers" : [	
+	]
+}
