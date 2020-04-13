@@ -37,20 +37,9 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 04/12/20 - Added 5th tile to forecast data
  *  V1.0.0 - 04/07/20 - Initial release
  */
-
-def setVersion(){
-    appName = "WeatherDotGovTileDriver"
-	version = "v1.0.0" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
-}
 
 metadata {
 	definition (name: "Weather Dot Gov Tile Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-tile-driver.groovy") {
@@ -62,6 +51,7 @@ metadata {
         command "forecastData2"
         command "forecastData3"
         command "forecastData4"
+        command "forecastData5"
 		
     	attribute "currentDataTile", "string"
         attribute "weeklyDataTile01", "string"
@@ -82,9 +72,7 @@ metadata {
         attribute "forecastTable2", "string"
         attribute "forecastTable3", "string"
         attribute "forecastTable4", "string"
- 
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
+        attribute "forecastTable5", "string"
 	}
 	preferences() {    	
         section(){
@@ -139,3 +127,7 @@ def forecastData4(stuff) {
     sendEvent(name: "forecastTable4", value: stuff)   
 }
 
+def forecastData5(stuff) {
+    if(logEnable) log.debug "In forecastData5"
+    sendEvent(name: "forecastTable5", value: stuff)   
+}
