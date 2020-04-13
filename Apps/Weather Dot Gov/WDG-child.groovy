@@ -256,6 +256,7 @@ def forecastTileOptions() {
             paragraph "Time to setup the Forecast Tile for use with Dashboards!"
             paragraph "Daily data is only available in Imperial. Data is automaticaly updated every 3 hours."
             input "smallTileF", "bool", title: "Make the print smaller on tile", description: "", submitOnChange:true
+            if(smallTileF) input "sF", "number", title: "Font Size", defaultValue:15, submitOnChange:true
             paragraph "<hr>"
             input "updateTileF", "bool", title: "Manually Update Tiles", description: "", submitOnChange:true
             if(updateTileF) {
@@ -265,6 +266,7 @@ def forecastTileOptions() {
                 fTile2 = tileDevice.currentValue('forecastTable2')
                 fTile3 = tileDevice.currentValue('forecastTable3')
                 fTile4 = tileDevice.currentValue('forecastTable4')
+                fTile5 = tileDevice.currentValue('forecastTable5')
                                
                 app?.updateSetting("updateTileF",[value:"false",type:"bool"])
             }
@@ -272,6 +274,7 @@ def forecastTileOptions() {
             if(fTile2) fSize2 = fTile2.size()
             if(fTile3) fSize3 = fTile3.size()
             if(fTile4) fSize4 = fTile4.size()
+            if(fTile5) fSize5 = fTile5.size()
             
             paragraph "<hr>"
             if(fTile1) {
@@ -286,6 +289,9 @@ def forecastTileOptions() {
                 paragraph "<hr>"
                 paragraph "${fTile4}"
                 paragraph "Tile Count: ${fSize4}"
+                paragraph "<hr>"
+                paragraph "${fTile5}"
+                paragraph "Tile Count: ${fSize5}"
             } else {
                 paragraph "Please flip the 'Manually Update Tiles' switch"
             }
@@ -477,35 +483,59 @@ def getWeeklyData(evt) {
         weeklyTable_$x += "<tr><td width=90 align=center><span style='font-weight:bold'>${wTemp1}</span></td></tr>"
         weeklyTable_$x += "</table>"
         
-        if(x == 0) forecastTable1 =  "<table width=100% align=left>"
-        if(smallTileF) { if(x >= 0 && x <= 3) forecastTable1 += "<tr><td align=left><small><b>${wName}</b> - ${wDetailedForecast}</small></td></tr>" }
-        if(!smallTileF) { if(x >= 0 && x <= 3) forecastTable1 += "<tr><td align=left><b>${wName}</b> - ${wDetailedForecast}</td></tr>" }
-        if(x == 3) forecastTable1 += "</table>"
-        
-        if(x == 4) forecastTable2 =  "<table width=100% align=left>"
-        if(smallTileF) { if(x >= 4 && x <= 7) forecastTable2 += "<tr><td align=left><small><b>${wName}</b> - ${wDetailedForecast}</small></td></tr>" }
-        if(!smallTileF) { if(x >= 4 && x <= 7) forecastTable2 += "<tr><td align=left><b>${wName}</b> - ${wDetailedForecast}</td></tr>" }
-        if(x == 7) forecastTable2 += "</table>"
-        
-        if(x == 8) forecastTable3 =  "<table width=100% align=left>"
-        if(smallTileF) { if(x >= 8 && x <= 11) forecastTable3 += "<tr><td align=left><small><b>${wName}</b> - ${wDetailedForecast}</small></td></tr>" }
-        if(!smallTileF) { if(x >= 8 && x <= 11) forecastTable3 += "<tr><td align=left><b>${wName}</b> - ${wDetailedForecast}</td></tr>" }
-            
-        if(x == 11) forecastTable3 += "</table>"
-        
-        if(x == 12) forecastTable4 =  "<table width=100% align=left>"
-        if(smallTileF) { if(x >= 12 && x <= 13) forecastTable4 += "<tr><td align=left><small><b>${wName}</b> - ${wDetailedForecast}</small></td></tr>" }
-        if(!smallTileF) { if(x >= 12 && x <= 13) forecastTable4 += "<tr><td align=left><b>${wName}</b> - ${wDetailedForecast}</td></tr>" }
-        if(x == 13) forecastTable4 += "</table>"
-        
         if(logEnable) log.debug "In weeklytTileOptions - Sending 'weeklyTable' to tile device (${tileDevice})"
         tileDevice.weeklyData(weeklyTable_$x)
+        
+        if(x == 0) forecastTable1 =  "<table width=100% align=left>"
+        if(smallTileF) { if(x >= 0 && x <= 2) forecastTable1 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
+        if(!smallTileF) { if(x >= 0 && x <= 2) forecastTable1 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
+        
+        if(x == 3) forecastTable2 =  "<table width=100% align=left>"
+        if(smallTileF) { if(x >= 3 && x <= 5) forecastTable2 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
+        if(!smallTileF) { if(x >= 3 && x <= 5) forecastTable2 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
+        
+        if(x == 6) forecastTable3 =  "<table width=100% align=left>"
+        if(smallTileF) { if(x >= 6 && x <= 8) forecastTable3 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
+        if(!smallTileF) { if(x >= 6 && x <= 8) forecastTable3 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }    
+        
+        if(x == 9) forecastTable4 =  "<table width=100% align=left>"
+        if(smallTileF) { if(x >= 9 && x <= 11) forecastTable4 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
+        if(!smallTileF) { if(x >= 9 && x <= 11) forecastTable4 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
+        
+        if(x == 12) forecastTable5 =  "<table width=100% align=left>"
+        if(smallTileF) { if(x >= 12 && x <= 13) forecastTable5 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
+        if(!smallTileF) { if(x >= 12 && x <= 13) forecastTable5 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
     }
     
-    tileDevice.forecastData1(forecastTable1.take(1020))
-    tileDevice.forecastData2(forecastTable2.take(1020))
-    tileDevice.forecastData3(forecastTable3.take(1020))
-    tileDevice.forecastData4(forecastTable4.take(1020))
+    if(forecastTable1) {
+        forecastTable1a =  forecastTable1.take(1015)
+        forecastTable1a += "</table>"
+        tileDevice.forecastData1(forecastTable1a)       
+    }
+    
+    if(forecastTable2) {
+        forecastTable2a =  forecastTable2.take(1015)
+        forecastTable2a += "</table>"
+        tileDevice.forecastData2(forecastTable2a)       
+    }
+    
+    if(forecastTable3) {
+        forecastTable3a =  forecastTable3.take(1015)
+        forecastTable3a += "</table>"
+        tileDevice.forecastData3(forecastTable3a)       
+    }
+    
+    if(forecastTable4) {
+        forecastTable4a =  forecastTable4.take(1015)
+        forecastTable4a += "</table>"
+        tileDevice.forecastData4(forecastTable4a)       
+    }
+    
+    if(forecastTable5) {
+        forecastTable5a =  forecastTable5.take(1015)
+        forecastTable5a += "</table>"
+        tileDevice.forecastData5(forecastTable5a)       
+    }
 }
 
 def createDataChildDevice() {    
