@@ -112,6 +112,12 @@
    		"description": "Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time."
    	},
       {
+   		"name": "Room Director",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/packageManifest.json",
+   		"description": "Make your rooms smarter by directing them to do what you want, automaticaly."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
