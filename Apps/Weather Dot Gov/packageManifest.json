@@ -32,7 +32,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy",
 			"required": true,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		},
 		{
 			"id": "cdba29b5-e871-44a0-87c2-9aad1f340763",
