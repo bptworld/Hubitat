@@ -106,6 +106,12 @@
    		"description": "Creates a combined presence device that can be used with Life360 Tracker, Google Assistant, Rule Machine and More!"
    	},
       {
+   		"name": "Remote Wellness Check",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/packageManifest.json",
+   		"description": "Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
