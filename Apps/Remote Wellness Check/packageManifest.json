@@ -1,0 +1,30 @@
+{
+	"packageName": "Remote Wellness Check",
+	"packageId": "7a92d930-7f04-48b6-af9a-5ac5f797db49",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "066f5317-ca1d-46c0-b1bb-7199395c2935",
+			"name": "Remote Wellness Check Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/RWC-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+		},
+		{
+			"id" : "b7543e4f-069c-4648-bb23-a2aac9395e36",
+			"name": "Remote Wellness Check Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/RWC-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.2"
+		}
+	],
+	"drivers" : [	
+	]
+}
