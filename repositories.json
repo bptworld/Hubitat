@@ -118,6 +118,12 @@
    		"description": "Make your rooms smarter by directing them to do what you want, automaticaly."
    	},
       {
+   		"name": "Send IP2IR",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/packageManifest.json",
+   		"description": "This app is designed to send commands to an iTach IP2IR device."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
