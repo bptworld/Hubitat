@@ -60,12 +60,6 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-magic
 <b>Marine Weather</b> (Driver) - This driver formats the Marine Weather - Storm Glass data to be used with Hubitat.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-marine-weather/13826" target="_blank">Go Here</a>
 <br><br>
-<b>Motion Controlled Scene Lighting</b> - Automate your lights based on Motion and Current Mode, utilizing Hubitat 'Scenes'.<br>
-Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-motion-controlled-scene-lighting/7419" target="_blank">Go Here</a>
-<br><br>
-<b>Notifier Plus</b> - Notifications based on date/day, time and more. A perfect way to get reminders or create a wakeup alarm.<br>
-Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-notifier/10859" target="_blank">Go Here</a>
-<br><br>
 <b>One at a Time</b> - Designed to allow only one switch, in a group of switches, to be on at a time.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-at-a-time/7063" target="_blank">Go Here</a>
 <br><br>
