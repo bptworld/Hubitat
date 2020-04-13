@@ -40,7 +40,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-tile-driver.groovy",
 			"required": true,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		}
 	]
 }
