@@ -1,0 +1,30 @@
+{
+	"packageName": "One at a Time",
+	"packageId": "4d5b202c-ee43-467b-ae50-d4ba2ce0e970",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"version": "1.0.0",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "814a307e-f6c6-4e8e-8810-3f65675a318e",
+			"name": "One at a Time Parent",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "97f38e5f-3280-44a3-a41c-f74d31584b6d",
+			"name": "One at a Time Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		}
+	],
+	"drivers" : [	
+	]
+}
