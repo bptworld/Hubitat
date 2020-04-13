@@ -39,22 +39,11 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 04/12/20 - Added last updated date/time to StatusTile1, other small adjustments
  *  V1.0.0 - 01/18/20 - Initial release
  */
 
 import java.text.SimpleDateFormat
-
-def setVersion(){
-    appName = "LocationTrackerDriver"
-	state.version = "v1.0.0" 
-    dwInfo = "${appName}:${state.version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
-}
 
 metadata {
 	definition (name: "Location Tracker User Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
@@ -120,14 +109,11 @@ metadata {
         //command "sendTheMap", ["string"]
         command "deviceLoc", ["string"]
         command "deviceOther", ["string"]
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
 	}
 }
            
 preferences {
-	input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
+	input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh. Items with (Places) are optional and only needed when the NEW Location Tracker app is released", type:"paragraph", element:"paragraph"
     
     input "apiKey", "text", title: "API Key from Google Maps (Places)", required: false
     input "consumerKey", "text", title: "Consumer Key from MapQuest (Places)", required: false
@@ -135,7 +121,6 @@ preferences {
         
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
-    input "avatarLineHeight", "text", title: "Avatar Line Height", required: true, defaultValue: "1.5"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
 
     input "numOfLines", "number", title: "How many lines to display on History Tile (from 1 to 10 only)", required:true, defaultValue: 5
@@ -184,19 +169,25 @@ def sendStatusTile1() {
             new Date( 0 ) + sEpoch.seconds
         }
     }
+    lUpdated = device.currentValue('lastUpdated')
+    sFont = avatarFontSize.toInteger() / 1.25
     SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("E hh:mm a")
     String dateSince = DATE_FORMAT.format(theDate)
 
     theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue('latitude')},${device.currentValue('longitude')}"
     
-	tileMap = "<table width='100%' valign='top'>"
-    tileMap += "<tr><td width='25%'><img src='${avat}' height='${avatarSize}%'></td>"
-    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px;line-height:${avatarLineHeight}'>At: <a href='${theMap}' target='_blank'>${add1}</a><br>"
+	tileMap = "<table width='100%'>"
+    tileMap += "<tr><td width='25%' align=center><img src='${avat}' height='${avatarSize}%'>"
+    tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>"
+    tileMap += "At: <a href='${theMap}' target='_blank'>${add1}</a><br>"
     tileMap += "Since: ${dateSince}<br>${device.currentValue('status')}<br>"
+    
     if(units == "Kilometers") tileMap += "${binTransita} - ${bSpeedKm} KMH<br>"
     if(units == "Miles") tileMap += "${binTransita} - ${bSpeedMiles} MPH<br>"
-    tileMap += "Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}</p></td>"
-    tileMap += "</tr></table>"
+    
+    tileMap += "Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}<br></p>"
+    tileMap += "<p style='width:100%;text-align:right;font-size:${sFont}px'>${lUpdated}</p>"
+    tileMap += "</table>"
     
 	tileDevice1Count = tileMap.length()
 	if(tileDevice1Count <= 1000) {
@@ -312,7 +303,7 @@ def deviceOther(battery, wifi) {
 
 // **** Location Tracker - Places ****
 def getLocation(latitude, longitude) {
-	if(logEnable) log.debug "In getLocation (${state.version})"
+	if(logEnable) log.debug "In getLocation"
     if(state.timeMin == null) state.timeMin = 5
     getTimeDiff()
     
@@ -389,7 +380,7 @@ def getLocation(latitude, longitude) {
 // **** Location Tracker - Places ****
 def getTimeDiff() {
     try {
-        if(logEnable) log.debug "In getTimeDiff (${state.version})"
+        if(logEnable) log.debug "In getTimeDiff"
    	    def now = new Date()
         long unxNow = now.getTime()
         unxNow = unxNow/1000
