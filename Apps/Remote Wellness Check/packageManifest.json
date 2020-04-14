@@ -1,9 +1,7 @@
 {
 	"packageName": "Remote Wellness Check",
-	"packageId": "7a92d930-7f04-48b6-af9a-5ac5f797db49",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
