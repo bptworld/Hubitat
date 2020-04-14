@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "814a307e-f6c6-4e8e-8810-3f65675a318e",
-			"name": "One at a Time Parent",
+			"name": "One at a Time",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Parent.groovy",
 			"required": true,
