@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "95decf3b-7e1e-4304-9fbc-e1460f357cf0",
-			"name": "Room Director Parent",
+			"name": "Room Director",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/RD-parent.groovy",
 			"required": true,
