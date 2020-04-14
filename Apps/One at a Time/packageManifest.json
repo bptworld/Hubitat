@@ -1,9 +1,7 @@
 {
 	"packageName": "One at a Time",
-	"packageId": "4d5b202c-ee43-467b-ae50-d4ba2ce0e970",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
