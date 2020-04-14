@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "4a0a86a3-c305-4066-b568-162cfe545a12",
-			"name": "BI Control Parent",
+			"name": "BI Control",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Parent.groovy",
 			"required": true,
