@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "a8c467f1-7742-4033-b802-df0228611aa5",
-			"name": "Tile Master Parent",
+			"name": "Tile Master",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM2-parent.groovy",
 			"required": true,
