@@ -1,9 +1,7 @@
 {
 	"packageName": "Life360 Tracker",
-	"packageId": "a63aba74-4fd9-4b41-b0ce-931d9ee5696e",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
