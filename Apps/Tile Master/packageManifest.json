@@ -1,9 +1,7 @@
 {
 	"packageName": "Tile Master",
-	"packageId": "754be8d3-eb3b-4741-80dd-04ac143d6fd4",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
