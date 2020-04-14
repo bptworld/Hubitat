@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "21d1e256-35ff-46be-8417-8ed6a8757281",
-			"name": "Device Check Plus Parent",
+			"name": "Device Check Plus",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-parent.groovy",
 			"required": true,
