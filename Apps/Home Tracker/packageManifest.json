@@ -1,9 +1,7 @@
 {
 	"packageName": "Home Tracker",
-	"packageId": "325d4829-e0fc-4ec8-9df2-098382c5e86e",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
