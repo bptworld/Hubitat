@@ -1,9 +1,7 @@
 {
 	"packageName": "Chromecast Helper",
-	"packageId": "227d827f-be75-48a5-888b-3765ddfe6609",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
