@@ -1,9 +1,7 @@
 {
 	"packageName": "Weather Dot Gov",
-	"packageId": "417fd241-13ae-4230-9ed2-074b75111ff8",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
