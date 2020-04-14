@@ -1,9 +1,7 @@
 {
 	"packageName": "BI Control",
-	"packageId": "9ca73b40-7673-4f39-9469-969876f2e0ad",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
