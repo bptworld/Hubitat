@@ -1,9 +1,7 @@
 {
 	"packageName": "CATT Director",
-	"packageId": "5d2d8118-6d6a-4fc0-92b8-379bccd855d4",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
