@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "0f7e671f-27e6-4644-a131-b6b9694562be",
-			"name": "Home Tracker Parent",
+			"name": "Home Tracker",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
 			"required": true,
