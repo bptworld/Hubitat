@@ -1,9 +1,7 @@
 {
 	"packageName": "Follow Me",
-	"packageId": "27acd7cc-6dd7-419d-9dc3-26ca206153f4",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
