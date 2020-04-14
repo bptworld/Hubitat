@@ -1,9 +1,7 @@
 {
 	"packageName": "Device Sequencer",
-	"packageId": "e2c02b14-f0df-403d-87e9-99abcd079516",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
