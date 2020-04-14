@@ -1,9 +1,7 @@
 {
 	"packageName": "Device Watchdog",
-	"packageId": "8dd23d5b-46d5-4516-9946-ddde96cc64ba",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
