@@ -1,9 +1,7 @@
 {
 	"packageName": "Presence Plus",
-	"packageId": "2b33f8b1-a5a4-4222-b38e-03ebad56e752",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
