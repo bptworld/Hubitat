@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "e32eb83d-a6e0-402e-9199-360507a75810",
-			"name": "Follow Me Parent",
+			"name": "Follow Me",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-parent.groovy",
 			"required": true,
