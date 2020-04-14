@@ -1,9 +1,7 @@
 {
 	"packageName": "Device Check Plus",
-	"packageId": "1abfab13-9772-4b41-bd4c-95031d87bae6",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
