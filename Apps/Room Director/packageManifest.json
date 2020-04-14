@@ -1,9 +1,7 @@
 {
 	"packageName": "Room Director",
-	"packageId": "b9970e22-c014-4ec4-b9ea-3ea86cb2cf7f",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
