@@ -1,9 +1,7 @@
 {
 	"packageName": "Send IP2IR",
-	"packageId": "5f896099-58c3-44e3-99d3-49480a82ec7e",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
