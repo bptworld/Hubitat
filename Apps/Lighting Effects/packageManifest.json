@@ -1,9 +1,7 @@
 {
 	"packageName": "Lighting Effects",
-	"packageId": "977f1560-8bc3-4929-952b-4d82759629b8",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
