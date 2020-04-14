@@ -1,9 +1,7 @@
 {
 	"packageName": "At Home Simulator",
-	"packageId": "a73cd810-6a50-40d5-b403-eb0ff3310c05",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
