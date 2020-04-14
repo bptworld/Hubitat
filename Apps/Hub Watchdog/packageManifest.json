@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "31e209fc-8b8c-4cc0-ac62-68127ac2ecb8",
-			"name": "Hub Watchdog Parent",
+			"name": "Hub Watchdog",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-parent.groovy",
 			"required": true,
