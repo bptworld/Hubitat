@@ -1,9 +1,7 @@
 {
 	"packageName": "Hub Watchdog",
-	"packageId": "cbcf38ca-cae0-44ac-9a8e-07d04c74a143",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"version": "1.0.0",
 	"dateReleased": "2020-04-07",
 	"apps" : [
 		{
