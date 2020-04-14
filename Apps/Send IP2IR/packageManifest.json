@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "a230faf3-34dd-40f9-b72b-b9d7bb2bdf8d",
-			"name": "Send IP2IR Parent",
+			"name": "Send IP2IR",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Parent.groovy",
 			"required": true,
