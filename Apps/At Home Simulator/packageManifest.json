@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "d21333a8-fffc-45d2-91f0-1fa7af0d7ba9",
-			"name": "At Home Simulator Parent",
+			"name": "At Home Simulator",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-parent.groovy",
 			"required": true,
