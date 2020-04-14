@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "4b7f1e52-407b-4ae9-a5dd-3f817815c3c8",
-			"name": "Presence Plus Parent",
+			"name": "Presence Plus",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-parent.groovy",
 			"required": true,
