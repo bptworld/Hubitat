@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "5d3ba06b-e58d-403c-b3fb-17a239ed2f4c",
-			"name": "Weather Dot Gov Parent",
+			"name": "Weather Dot Gov",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-parent.groovy",
 			"required": true,
