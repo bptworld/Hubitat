@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "066f5317-ca1d-46c0-b1bb-7199395c2935",
-			"name": "Remote Wellness Check Parent",
+			"name": "Remote Wellness Check",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/RWC-parent.groovy",
 			"required": true,
