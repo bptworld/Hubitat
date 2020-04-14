@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "801d2cca-7c7f-470a-a438-fd3c16768018",
-			"name": "CATT Director Parent",
+			"name": "CATT Director",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/CATTD-parent.groovy",
 			"required": true,
