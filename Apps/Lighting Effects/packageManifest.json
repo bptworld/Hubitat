@@ -8,7 +8,7 @@
 	"apps" : [
 		{
 			"id" : "e53bf0af-1171-4d8a-b1f7-c4cebea99f80",
-			"name": "Lighting Effects Parent",
+			"name": "Lighting Effects",
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/LE%20Parent.groovy",
 			"required": true,
