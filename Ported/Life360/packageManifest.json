@@ -22,14 +22,6 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
 			"required": true,
 			"version": "1.0.1"
-		},
-    {
-			"id": "ff87e313-aaf8-4b8a-b034-bff302a96312",
-			"name": "Life360 Container",
-			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-container-driver.groovy",
-			"required": true,
-			"version": "2.0.3"
 		}
 	]
 }
