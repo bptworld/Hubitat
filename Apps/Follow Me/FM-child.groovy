@@ -550,6 +550,7 @@ def letsTalkQueue(evt) {
 def processQueue() {
 	if(logEnable) log.debug "In processQueue (${state.version})"
 	state.playingTTS = true
+	if(state.TTSQueue.size() >= maxQueued) clearTheQueue()
 	if(state.TTSQueue.size() == 0) {
 		state.playingTTS = false
         if(logEnable) log.info "In processQueue - size: ${state.TTSQueue.size()} - playingTTS: ${state.playingTTS} - Finished Playing"
