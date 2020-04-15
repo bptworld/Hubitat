@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  V2.1.3 - 04/15/20 - Adjustments to speaker queue
  *  V2.1.2 - 04/01/20 - Fixed priority volume
  *  V2.1.1 - 12/02/19 - Speech queue is now optional
  *  V2.1.0 - 11/13/19 - Major rewrite - More possibilities!
@@ -43,17 +44,7 @@
 import groovy.json.*
     
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "FollowMe2ChildVersion"
-	state.version = "v2.1.2"   
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "v2.1.3"   
 }
 
 definition(
@@ -388,8 +379,6 @@ def initialize() {
 	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
 	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
 	if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def presenceSensorHandler1(evt){
@@ -544,48 +533,35 @@ def initializeSpeaker() {
 	if(gInitRepeat) repeat = gInitRepeat * 60
 	if(gInitRepeat) runIn(repeat,initializeSpeaker)
 }
-				
+
+// **********  Start code modified from @djgutheinz  **********
 def letsTalkQueue(evt) {
     theText = evt.value
     if(useQueue) {
         if(logEnable) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
-    
-        // Start modified from @djgutheinz
-        if(state.TTSQueue == null || state.TTSQueue == "") state.TTSQueue = []
 	    state.TTSQueue << [theText]
-    
-        queueSize = state.TTSQueue.size()
-    
-        if(logEnable) log.debug "In letsTalkQueue - theText: ${theText} - queueSize: ${queueSize}"
-	    if(queueSize == 1) { 
-            if(logEnable) log.debug "In letsTalkQueue - queueSize: ${queueSize} - Going to Lets Talk"        
-            letsTalkUsingQueue()
-        } else if(queueSize > 1 && queueSize <= maxQueued) {
-            if(logEnable) log.debug "In letsTalkQueue - queueSize: ${queueSize} - Queuing the message"  
-           log.info "Follow Me - Speaker in use, queing the message. (Queue Size: ${queueSize})"
-        } else if(queueSize > maxQueued) {
-            clearTheQueue()
-        }
-        // End modified from @djgutheinz
+	    if(state.playingTTS == false) { runInMillis(500, processQueue) }
     } else {
         if(logEnable) log.debug "In letsTalkQueue (${state.version}) - Queue not activated, going to letsTalk"
         letsTalk(theText)
     }
 }
 
-def letsTalkUsingQueue() {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Checking the queue"
-    // Start modified from @djgutheinz
-	queueSize = state.TTSQueue.size()
-	if(queueSize == 0) {
-        if(logEnable) log.debug "In letsTalkQueue - Finished - queueSize: ${queueSize}"
-        if(logEnable) log.debug "**********  Follow Me (${state.version}) - Finished Speaking  **********"
-    } else {
-        def nextTTS = state.TTSQueue[0]
-        // End modified from @djgutheinz
-        letsTalk(nextTTS)
-    }
+def processQueue() {
+	if(logEnable) log.debug "In processQueue (${state.version})"
+	state.playingTTS = true
+	if(state.TTSQueue.size() == 0) {
+		state.playingTTS = false
+        if(logEnable) log.info "In processQueue - size: ${state.TTSQueue.size()} - playingTTS: ${state.playingTTS} - Finished Playing"
+		return
+	}
+	def nextTTS = state.TTSQueue[0]
+    if(logEnable) log.info "In processQueue - size: ${state.TTSQueue.size()} - playingTTS: ${state.playingTTS} - Playing Next: ${nextTTS}"
+    state.TTSQueue.remove(0)
+	letsTalk(nextTTS)
+    runIn(1,processQueue)
 }
+// **********  End code modified from @djgutheinz  **********
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk - msg: ${msg}"
@@ -618,7 +594,7 @@ def letsTalk(msg) {
             
             theMessage = message.message
             try {
-                duration = Math.max(Math.round(theMessage.length()/12),2)+3
+                duration = textToSpeech(theText).duration + 3
             } catch (e) {
 		        duration = 10
 			}
@@ -726,12 +702,9 @@ def letsTalk(msg) {
                             break; 
                 }
             }
-            
             speakerStatus = "${app.label}:${state.sZone}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
-            if(useQueue) state.TTSQueue.remove(0)
 			if(logEnable) log.debug "In letsTalk - Ready for next message"
-            if(useQueue) letsTalkUsingQueue()
         } else {
 		    if(logEnable) log.debug "In letsTalk (${state.version}) - Messages not allowed at this time"
 	    }
@@ -1162,7 +1135,8 @@ def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
 	if(logEnable == null) {logEnable = false}
 	if(messagePriority == null) {messagePriority = false}
-    if(state.playingTTS == null || state.playingTTS == "") {state.playingTTS = false}
+    state.playingTTS = false
+	state.TTSQueue = []
 	if(state.sZone == null) {state.sZone = false}
 	if(state.IH1 == null) {state.IH1 = "blank"}
 	if(state.IH2 == null) {state.IH2 = "blank"}
