@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 04/16/20 - Fixed pause duration error
  *  V1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings
  *  V1.0.1 - 12/10/19 - Cosmetic typo fix
  *  V1.0.0 - 11/12/19 - Initial release.
@@ -42,18 +43,7 @@ import groovy.json.*
 import hubitat.helper.RMUtils
     
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion
-    state.appName = "RoomDirectorChildVersion"
-	state.version = "v1.0.2"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "1.0.3"
 }
 
 definition(
@@ -114,7 +104,7 @@ def pageConfig() {
 			}
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Room Vacant Options")) {
-            input "timeDelayed", "number", title: "How long should the lights stay off if room is vacant (in minutes)", required: false
+            input "timeDelayed", "number", title: "How long should the lights stay on if room is vacant (in minutes)", required: false
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
             paragraph "If this device is On, no Room Director events will happen."
@@ -386,7 +376,6 @@ def initialize() {
     if(sunRestriction) scheduleWithOffset(sunsetTime, sunsetOffsetValue, sunsetOffsetDir, "sunsetHandler")
     if(sunRestriction) scheduleWithOffset(sunriseTime, sunriseOffsetValue, sunriseOffsetDir, "sunriseHandler")
     
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
     if(logEnable) log.debug "In initialize - Finished initialize"
 }
 
@@ -808,7 +797,7 @@ def letsTalk(theMessage) {
         if(state.timeBetween == true) {
 		    theMsg = theMessage
             speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
-            state.speechDuration2 = speechDuration * 1000
+            speechDuration2 = speechDuration * 1000
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
     	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
             state.speakers.each { it ->
@@ -831,7 +820,7 @@ def letsTalk(theMessage) {
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
                     if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
                     it.speak(theMsg)
-                    pauseExecution(theDuration)
+                    pauseExecution(speechDuration2)
                     if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
                     if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
                 }
@@ -1016,6 +1005,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Room Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Room Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a>${state.version}</div>"
 	}       
 }  
