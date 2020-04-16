@@ -1,0 +1,28 @@
+{
+	"packageName": "Simpe Irrigation",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "7114c11b-e44a-4bec-9ecf-2c2ad87e32bf",
+			"name": "Simpe Irrigation",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		},
+		{
+			"id" : "66dd229c-2128-4ac8-ad71-29053cd46c31",
+			"name": "Simpe Irrigation Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "2.0.0"
+		}
+	],
+	"drivers" : [	
+	]
+}
