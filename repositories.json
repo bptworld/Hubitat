@@ -148,6 +148,12 @@
    		"description": "Create a simple kitchen timer with controls for use with Dashboards"
    	},
       {
+   		"name": "Simple Reminders",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/packageManifest.json",
+   		"description": "Setup Simple Reminders through out the day."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
