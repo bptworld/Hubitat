@@ -124,6 +124,12 @@
    		"description": "This app is designed to send commands to an iTach IP2IR device."
    	},
       {
+   		"name": "Simple Device Timer",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/packageManifest.json",
+   		"description": "Simple Device Timer with safety checks, reminders, multiple timers and restrictions."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
