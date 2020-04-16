@@ -170,6 +170,12 @@
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/packageManifest.json",
    		"description": "Making the Weather.gov data usable with Hubitat."
+   	},
+      {
+   		"name": "Web Pinger",
+   		"category": "Security",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/packageManifest.json",
+   		"description": "Monitor a website and trigger automations if not found or if your internet goes down."
    	}
    ]
 }
