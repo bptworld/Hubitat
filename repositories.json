@@ -154,6 +154,12 @@
    		"description": "Setup Simple Reminders through out the day."
    	},
       {
+   		"name": "The Flasher",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/packageManifest.json",
+   		"description": "Flash your lights based on several triggers!"
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
