@@ -1,0 +1,28 @@
+{
+	"packageName": "Simpe Reminders",
+	"minimumHEVersion": "2.1.9",
+	"author": "BPTWorld",
+	"dateReleased": "2020-04-07",
+	"apps" : [
+		{
+			"id" : "f8d05799-375e-43aa-b047-8ae68f8c0415",
+			"name": "Simpe Reminders",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/SR-parent.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.0"
+		},
+		{
+			"id" : "6f51012e-a555-4aa2-a61a-3be2bb6189c8",
+			"name": "Simpe Reminders Child",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/SR-child.groovy",
+			"required": true,
+			"oauth": false,
+			"version": "1.0.4"
+		}
+	],
+	"drivers" : [	
+	]
+}
