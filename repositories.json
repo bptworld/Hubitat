@@ -136,6 +136,12 @@
    		"description": "Simple Device Timer with safety checks, reminders, multiple timers and restrictions."
    	},
       {
+   		"name": "Simple Irrigation",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/packageManifest.json",
+   		"description": "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions."
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
