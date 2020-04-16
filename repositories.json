@@ -142,6 +142,12 @@
    		"description": "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions."
    	},
       {
+   		"name": "Simple Kitchen Timer",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/packageManifest.json",
+   		"description": "Create a simple kitchen timer with controls for use with Dashboards"
+   	},
+      {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
