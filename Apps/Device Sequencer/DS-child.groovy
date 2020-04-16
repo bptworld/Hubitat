@@ -4,10 +4,9 @@
  *  Design Usage:
  *  Turn on/off several devices in a row, with a user defined pause in between each.
  *
- *  Copyright 2018-2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
  *
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -46,20 +45,7 @@
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "DeviceSequencerChildVersion"
-	state.version = "v2.0.0"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.0.0"
 }
 
 definition(
@@ -68,7 +54,7 @@ definition(
     author: "Bryan Turcotte",
     description: "Turn on/off several devices in a row, with a user defined pause in between each.",
     category: "",
-	parent: "BPTWorld:Device Sequencer",
+	//parent: "BPTWorld:Device Sequencer",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -87,10 +73,22 @@ def pageConfig() {
 			paragraph "* Select as many devices from each group as needed.<br>* All devices selected will turn on/off with the Control Switch.<br>* When executed, group 1 will run first, then group 2, group 3, group 4 and group 5.<br>* Each group can have a different pause between devices AND a different pause between groups."	
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Define Switch Groups")) {
-			paragraph "<b>Group 1</b>"
-			input "g1Switches", "capability.switch", title: "Group 1 - Switches to control", required: true, multiple: true, submitOnChange: true
-			if(g1Switches) input "timeToPause1", "number", title: "Group 1 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
-			if(g1Switches) input "timeToPause1a", "number", title: "<b>*</b> Extra Time to pause between Group 1 and 2 (in seconds)", required: true, defaultValue: 0
+            for(x=1;x < maxGroups;x++) {
+                paragraph "<b>Group $x</b>"
+                input "g1Switches_$x", "capability.switch", title: "Devices to control", required: false, multiple: true, submitOnChange: true
+                input "modes", "mode", title: "Change Mode to", multiple: false, required: false, submitOnChange: true
+                input "hsm", "enum", title: "Set HSM", multiple: false, options:
+                    ['armAway','armHome','disarm','armRules','disarmRules','disarmAll','armAll','cancelAlerts'],
+                    required: false, submitOnChange: true
+                
+                if(g1Switches) input "timeToPause1", "number", title: "Time to pause between devices (in seconds)", required: true, defaultValue: 1
+                if(g1Switches) input "timeToPause1a", "number", title: "<b>*</b> Extra Time to pause between actions(in seconds)", required: true, defaultValue: 0
+                
+                
+            }
+
+            
+            
 			paragraph "<b>Group 2</b>"
 			input "g2Switches", "capability.switch", title: "Group 2 - Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g2Switches) input "timeToPause2", "number", title: "Group 2 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
@@ -135,8 +133,6 @@ def initialize() {
 }
 
 def deviceOnHandler(evt) {
-	if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 	if(g1Switches) { 
 		int delay1 = timeToPause1 * 1000
    		g1Switches.each { device ->
@@ -185,12 +181,9 @@ def deviceOnHandler(evt) {
 			pauseExecution(delay5)
     	}
 	}
-	}
 }
 
 def deviceOffHandler(evt) {
-	if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
 	if(g1Switches) { 
 		int delay1 = timeToPause1 * 1000
    		g1Switches.each { device ->
@@ -239,7 +232,6 @@ def deviceOffHandler(evt) {
 			pauseExecution(delay5)
     	}
 	}
-	}
 }
 
 // ***** Normal Stuff *****
@@ -258,9 +250,6 @@ def getFormat(type, myText=""){								// Modified from @Stephack Code
 def display() {
 	section() {
 		paragraph getFormat("line")
-		input "pauseApp", "bool", title: "Pause App", required: true, submitOnChange: true, defaultValue: false
-		if(pauseApp) {paragraph "<font color='red'>App is Paused</font>"}
-		if(!pauseApp) {paragraph "App is not Paused"}
 	}
 }
 
@@ -268,6 +257,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Sequencer - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Sequencer - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }         
