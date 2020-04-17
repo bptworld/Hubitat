@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 04/17/20 - More adjustments for alerts
  *  1.0.2 - 04/17/20 - Added alerts
  *  1.0.1 - 04/13/20 - Fixed Wind speed, precipitation calculations
  *  1.0.0 - 04/07/20 - Initial release
@@ -616,11 +617,21 @@ def getAlertData() {
                 
                 def alertSeverity = response.data.features[0].properties.severity
                 if(alertSeverity == null) alertSeverity = "No Data"
-                sendEvent(name: "alertSeverity", value: alertSeverity)
+                beforeSeverity = device.currentValue('alertSeverity')
+                if(alertSeverity == beforeSeverity) {
+                    sendEvent(name: "alertSeverity", value: alertSeverity)
+                } else {
+                    sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
+                }
                 
                 def alertCertainty = response.data.features[0].properties.certainty
                 if(alertCertainty == null) alertCertainty = "No Data"
-                sendEvent(name: "alertCertainty", value: alertCertainty)
+                beforeCertainty = device.currentValue('alertCertainty')
+                if(alertCertainty == beforeCertainty) {
+                    sendEvent(name: "alertCertainty", value: alertCertainty)
+                } else {
+                    sendEvent(name: "alertCertainty", value: alertCertainty, isStateChange: true)
+                }
                 
                 def alertUrgency = response.data.features[0].properties.urgency
                 if(alertUrgency == null) alertUrgency = "No Data"
@@ -640,9 +651,7 @@ def getAlertData() {
                 
                 def alertInstruction = response.data.features[0].properties.instruction
                 if(alertInstruction == null) alertInstruction = "No Data"
-                sendEvent(name: "alertInstruction", value: alertInstruction)
-                
-                
+                sendEvent(name: "alertInstruction", value: alertInstruction)                
             } else {
             if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
         }
