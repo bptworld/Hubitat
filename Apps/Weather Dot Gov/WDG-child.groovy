@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 04/17/20 - Started adding notifications to Alerts
  *  1.0.3 - 04/17/20 - Added Alerts
  *  1.0.2 - 04/12/20 - Fixed Forecast from exceeding the 1024 limit
  *  1.0.1 - 04/08/20 - Fixed typo
@@ -45,7 +46,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -118,7 +119,7 @@ def pageConfig() {
             } else {
                 href "forecastTileOptions", title:"${getImage("optionsRed")} Create Forecast Weather Tile", description:"Click here for Options"
             }
-            if(updateTimeA) {
+            if(useNotify) {
                 href "alertTileOptions", title:"${getImage("optionsGreen")} Create Alert Weather Tile", description:"Click here for Options"
             } else {
                 href "alertTileOptions", title:"${getImage("optionsRed")} Create Alert Weather Tile", description:"Click here for Options"
@@ -305,10 +306,44 @@ def forecastTileOptions() {
 def alertTileOptions() {
     dynamicPage(name: "alertTileOptions", title: "", install:false, uninstall:false) {
         display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Tile Options")) {
-            paragraph "*** Lots more to do with this, Options, Notifications, etc. ***"
-            paragraph "<hr>"
+        section() {
+            paragraph "<b>Lots of testing needed!  Thanks</b>"
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
+        }
+		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Tile Options")) {           
+            input "useNotify", "bool", title: "Use Notifications", description: "", defaultValue:false, submitOnChange:true
+        }
+        if(useNotify) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Alert Tile Options")) {
+                input "notifyOnUrgency", "enum", title: "Get notification based on Urgency", options: ["any", "immediate", "expected", "future", "past"], defaultValue:"any", multiple:true, submitOnChange:true
+                input "notifyOnSeverity", "enum", title: "Get notification based on Severity", options: ["any", "extreme", "severe", "moderate", "minor"], defaultValue:"any", multiple:true, submitOnChange:true
+                input "notifyOn", "bool", title: "and/or (off = 'and', on = 'or')", description: "", defaultValue:false, submitOnChange:true
+                if(!notifyOn) {
+                    nOn = "and"
+                } else {
+                    nOn = "or"
+                }
+                paragraph "Notifications will be sent when Urgency is ${notifyOnUrgency} ${nOn} Severity is ${notifyOnSeverity}"
+            }   
+            section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
+                input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
+    	    }
+            if(sendPushMessage) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
+                    
+                    input "notifyMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "oList", "bool", defaultValue:false, title: "Show a list view of the random messages?", description: "List View", submitOnChange:true
+                    if(oList) {
+                        def values = "${notifyMsg}".split(";")
+                        listMap = ""
+                        values.each { item -> listMap += "${item}<br>" }
+                        paragraph "${listMap}"
+                    }
+    	        }
+            }
+        }
+     
+        section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {    
             input "alertFontSize", "number", title: "Font Size", defaultValue:15, submitOnChange:true
             paragraph "<small>Note: This automatically updates once an hour</small>"
             paragraph "<hr>"
@@ -360,6 +395,9 @@ def initialize() {
     
     runEvery3Hours(getWeeklyData)
     runEvery1Hour(getAlertData)
+    
+    if(useNotify) subscribe(dataDevice, "alertSeverity", alertNotifications)
+    if(useNotify) subscribe(dataDevice, "alertUrgency", alertNotifications)
 }
 
 def uninstalled() {
@@ -571,41 +609,100 @@ def getAlertData(evt) {
     titleFontSize = alertFontSize + 2
     statusFontSize = alertFontSize - 2
     
-    alertTable1 =  "<table width=100% align=center>"
-    alertTable1 += "<tr><td width=100>"
-    alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>${alertTitle}</span><br>"
-    alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type:${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
-    
-    alertTable1 += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><hr>"
-    alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription}"
-    alertTable1 += "<hr>"
-    
-    aTableSize = alertTable1.size()
-    if(aTableSize <= 700) {  
-        alertInstruction1 = alertInstruction.take(300)
+    if(alertHeadline != "No Data") {
+        alertTable1 =  "<table width=100% align=center>"
+        alertTable1 += "<tr><td width=100>"
+
+        alertTable1 += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><br>"
+        alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
+
+        aTableSize = alertTable1.size()
+        charLefta = 970 - aTableSize
+        alertDescription1 = alertDescription.take(charLefta)
+
+        alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription1}"
+        alertTable1 += "<hr>"
+
+        bTableSize = alertTable1.size()
+        charLeftb = 970 - aTableSize
+        alertInstruction1 = alertInstruction.take(charLeftb)
         alertTable1 += "${alertInstruction1}"
-    } else if(aTableSize <= 750) {  
-        alertInstruction1 = alertInstruction.take(250)
-        alertTable1 += "${alertInstruction1}"
-    } else if(aTableSize <= 800) {  
-        alertInstruction1 = alertInstruction.take(200)
-        alertTable1 += "${alertInstruction1}"
-    } else if(aTableSize <= 850) {  
-        alertInstruction1 = alertInstruction.take(150)
-        alertTable1 += "${alertInstruction1}"
-    } else if(aTableSize <= 900) {  
-        alertInstruction1 = alertInstruction.take(100)
-        alertTable1 += "${alertInstruction1}"
-    } else if(aTableSize <= 950) {  
-        alertInstruction1 = alertInstruction.take(50)
-        alertTable1 += "${alertInstruction1}"
+
+        alertTable1 += "</span></tr></table>"
+    } else {
+        alertTable1 =  "<table width=100% align=center>"
+        alertTable1 += "<tr><td width=100>"
+        alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>${alertTitle}</span><br>"
+        alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>No alerts</span><br>"
+        alertTable1 += "</span></tr></table>"
     }
-    
-    alertTable1 += "</span></tr></table>"
     
     tileDevice.alertData1(alertTable1)
 } 
+
+def alertNotifications(evt) {
+    if(logEnable) log.debug "In alertNotifications (${state.version}) ***"
+    notifyNow = false
+    urgencyNow = false
+    severityNow = false
     
+    // Urgency (immediate, expected, future, past, unknown)
+    // Severity (extreme, severe, moderate, minor, unknown)
+    // Certainty (observed, likely, possible, unlikely, unknown)
+    
+    checkSeverity = dataDevice.currentValue('alertSeverity')
+    checkCertainty = dataDevice.currentValue('alertCertainty')
+    checkUrgency = dataDevice.currentValue('alertUrgency')
+    
+    notifyOnUrgency.each { ita ->
+        if(logEnable) log.debug "In alertNotifications - Urgency - ${checkUrgency} vs ${ita}"
+        if(checkUrgency.toLowerCase() == ita || ita == 'all') {
+            urgencyNow = true
+        }
+    }
+           
+    notifyOnSeverity.each { itb ->
+        if(logEnable) log.debug "In alertNotifications - Severity - ${checkSeverity} vs ${itb}"
+        if(checkSeverity.toLowerCase() == itb || itb == 'all') {
+            severityNow = true
+        }
+    }
+           
+    if(!useNotify) {    // and
+        if(urgencyNow && severityNow) notifyNow = true
+    } else {            // or
+        if(urgencyNow || severityNow) notifyNow = true
+    }
+    
+    if(logEnable) log.debug "In alertNotifications - severityNow: ${severityNow} - urgencyNow: ${urgencyNow} - notifyNow: ${notifyNow}"
+    if(notifyNow) {
+        messageHandler()
+        if(sendPushMessage) pushHandler()
+    }
+}
+ 
+def messageHandler() {
+	if(logEnable) log.debug "In messageHandler (${state.version})"
+    state.theMsg = ""
+    
+	def values = "${notifyMsg}".split(";")
+	vSize = values.size()
+    count = vSize.toInteger()
+    def randomKey = new Random().nextInt(count)
+	state.theMsg = values[randomKey]
+	if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSize}, randomKey: ${randomKey}, noMsg: ${state.theMsg}"
+}
+
+def pushHandler() {
+	if(logEnable) log.debug "In pushNow (${state.version})"
+	theMessage = "${app.label} - ${state.theMsg}"
+	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
+   	sendPushMessage.deviceNotification(theMessage)
+	state.theMsg = ""
+}
+
+
+
     
 def createDataChildDevice() {    
     if(logEnable) log.debug "In createDataChildDevice (${state.version})"
@@ -673,6 +770,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Weather Dot Gov - @BPTWorld<br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Weather Dot Gov - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }
