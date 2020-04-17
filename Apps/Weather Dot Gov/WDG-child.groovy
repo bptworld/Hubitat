@@ -37,14 +37,15 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 04/12/20 - Fixed Forecast from exceeding the 1024 limit
- *  V1.0.1 - 04/08/20 - Fixed typo
- *  V1.0.0 - 04/07/20 - Initial release.
+ *  1.0.3 - 04/17/20 - Added Alerts
+ *  1.0.2 - 04/12/20 - Fixed Forecast from exceeding the 1024 limit
+ *  1.0.1 - 04/08/20 - Fixed typo
+ *  1.0.0 - 04/07/20 - Initial release.
  *
  */
 
 def setVersion(){
-	state.version = "v1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -254,9 +255,10 @@ def forecastTileOptions() {
         display()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Forecast Tile Options")) {
             paragraph "Time to setup the Forecast Tile for use with Dashboards!"
-            paragraph "Daily data is only available in Imperial. Data is automaticaly updated every 3 hours."
+            paragraph "Daily data is only available in Imperial."
             input "smallTileF", "bool", title: "Make the print smaller on tile", description: "", submitOnChange:true
             if(smallTileF) input "sF", "number", title: "Font Size", defaultValue:15, submitOnChange:true
+            paragraph "<small>Note: This automatically updates every 3 hours</small>"
             paragraph "<hr>"
             input "updateTileF", "bool", title: "Manually Update Tiles", description: "", submitOnChange:true
             if(updateTileF) {
@@ -304,20 +306,30 @@ def alertTileOptions() {
     dynamicPage(name: "alertTileOptions", title: "", install:false, uninstall:false) {
         display()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Tile Options")) {
-            paragraph "<hr>"
-            paragraph "<b>Coming soon</b>"
+            paragraph "*** Lots more to do with this, Options, Notifications, etc. ***"
             paragraph "<hr>"
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
-            //paragraph "Note: Although you have the option on the main page between Imperial or Metric. Forecast data is only available in Imperial."
+            input "alertFontSize", "number", title: "Font Size", defaultValue:15, submitOnChange:true
+            paragraph "<small>Note: This automatically updates once an hour</small>"
             paragraph "<hr>"
             input "updateTileA", "bool", title: "Manually Update Tiles", description: "", submitOnChange:true
             if(updateTileA) {
-                //getWeeklyData()
-                //pauseExecution(1000)
-                //tile1 = tileDevice.currentValue('weeklyDataTile01')
-                               
+                getAlertData()
+                pauseExecution(1000)
+                tile1 = tileDevice.currentValue('alertTile1')
+                              
                 app?.updateSetting("updateTileA",[value:"false",type:"bool"])
             }
+            if(tile1) fTile1 = tile1.size()
+            
+            paragraph "<hr>"
+            if(tile1) {
+                paragraph "${tile1}"
+                paragraph "Tile Count: ${fTile1}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
         }
     }
 }
@@ -347,6 +359,7 @@ def initialize() {
     if(updateTimeC == "3_Hour") runEvery3Hours(getCurrentData)
     
     runEvery3Hours(getWeeklyData)
+    runEvery1Hour(getAlertData)
 }
 
 def uninstalled() {
@@ -486,7 +499,7 @@ def getWeeklyData(evt) {
         if(logEnable) log.debug "In weeklytTileOptions - Sending 'weeklyTable' to tile device (${tileDevice})"
         tileDevice.weeklyData(weeklyTable_$x)
         
-        if(x == 0) forecastTable1 =  "<table width=100% align=left>"
+        if(x == 0) forecastTable1 =  "<table width=100% style='text-align:left'>"
         if(smallTileF) { if(x >= 0 && x <= 2) forecastTable1 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
         if(!smallTileF) { if(x >= 0 && x <= 2) forecastTable1 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
         
@@ -538,6 +551,62 @@ def getWeeklyData(evt) {
     }
 }
 
+def getAlertData(evt) {
+    if(logEnable) log.debug "In getAlertData (${state.version})"
+    dataDevice.getAlertData()
+    pauseExecution(1000)
+    
+    alertTitle = dataDevice.currentValue('alertTitle')
+    alertStatus = dataDevice.currentValue('alertStatus')
+    alertMessageType = dataDevice.currentValue('alertMessageType')
+    alertCategory = dataDevice.currentValue('alertCategory')
+    alertSeverity = dataDevice.currentValue('alertSeverity')
+    alertCertainty = dataDevice.currentValue('alertCertainty')
+    alertUrgency = dataDevice.currentValue('alertUrgency')
+    alertEvent = dataDevice.currentValue('alertEvent')
+    alertHeadline = dataDevice.currentValue('alertHeadline')
+    alertDescription = dataDevice.currentValue('alertDescription')
+    alertInstruction = dataDevice.currentValue('alertInstruction')
+    
+    titleFontSize = alertFontSize + 2
+    statusFontSize = alertFontSize - 2
+    
+    alertTable1 =  "<table width=100% align=center>"
+    alertTable1 += "<tr><td width=100>"
+    alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>${alertTitle}</span><br>"
+    alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type:${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
+    
+    alertTable1 += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><hr>"
+    alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription}"
+    alertTable1 += "<hr>"
+    
+    aTableSize = alertTable1.size()
+    if(aTableSize <= 700) {  
+        alertInstruction1 = alertInstruction.take(300)
+        alertTable1 += "${alertInstruction1}"
+    } else if(aTableSize <= 750) {  
+        alertInstruction1 = alertInstruction.take(250)
+        alertTable1 += "${alertInstruction1}"
+    } else if(aTableSize <= 800) {  
+        alertInstruction1 = alertInstruction.take(200)
+        alertTable1 += "${alertInstruction1}"
+    } else if(aTableSize <= 850) {  
+        alertInstruction1 = alertInstruction.take(150)
+        alertTable1 += "${alertInstruction1}"
+    } else if(aTableSize <= 900) {  
+        alertInstruction1 = alertInstruction.take(100)
+        alertTable1 += "${alertInstruction1}"
+    } else if(aTableSize <= 950) {  
+        alertInstruction1 = alertInstruction.take(50)
+        alertTable1 += "${alertInstruction1}"
+    }
+    
+    alertTable1 += "</span></tr></table>"
+    
+    tileDevice.alertData1(alertTable1)
+} 
+    
+    
 def createDataChildDevice() {    
     if(logEnable) log.debug "In createDataChildDevice (${state.version})"
     statusMessageD = ""
