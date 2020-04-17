@@ -37,8 +37,9 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 04/12/20 - Added 5th tile to forecast data
- *  V1.0.0 - 04/07/20 - Initial release
+ *  1.0.2 - 04/17/20 - Added alerts
+ *  1.0.1 - 04/12/20 - Added 5th tile to forecast data
+ *  1.0.0 - 04/07/20 - Initial release
  */
 
 metadata {
@@ -52,6 +53,7 @@ metadata {
         command "forecastData3"
         command "forecastData4"
         command "forecastData5"
+        command "alertData1"
 		
     	attribute "currentDataTile", "string"
         attribute "weeklyDataTile01", "string"
@@ -73,6 +75,7 @@ metadata {
         attribute "forecastTable3", "string"
         attribute "forecastTable4", "string"
         attribute "forecastTable5", "string"
+        attribute "alertTile1", "string"
 	}
 	preferences() {    	
         section(){
@@ -130,4 +133,9 @@ def forecastData4(stuff) {
 def forecastData5(stuff) {
     if(logEnable) log.debug "In forecastData5"
     sendEvent(name: "forecastTable5", value: stuff)   
+}
+
+def alertData1(stuff) {
+    if(logEnable) log.debug "In alertData1"
+    sendEvent(name: "alertTile1", value: stuff)   
 }
