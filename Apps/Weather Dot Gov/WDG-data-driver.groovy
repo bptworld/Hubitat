@@ -37,8 +37,9 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 04/13/20 - Fixed Wind speed, precipitation calculations
- *  V1.0.0 - 04/07/20 - Initial release
+ *  1.0.2 - 04/17/20 - Added alerts
+ *  1.0.1 - 04/13/20 - Fixed Wind speed, precipitation calculations
+ *  1.0.0 - 04/07/20 - Initial release
  */
 
 metadata {
@@ -52,6 +53,7 @@ metadata {
         command "getPointsData"
         command "getWeeklyData"
         command "getWeatherData"
+        command "getAlertData"
         //command "getWeatherRadarData"
 		
         attribute "lat", "string"
@@ -59,9 +61,15 @@ metadata {
         attribute "station", "string"
         attribute "unitFormat", "string"
         
-    	attribute "office", "string"
-		attribute "gridX", "string"
-        attribute "gridY", "string"
+    	attribute "pointsOffice", "string"
+        attribute "pointsForecastZone", "string"
+        attribute "pointsCounty", "string"        
+        attribute "pointsFireWeatherZone", "string"
+        attribute "pointsTimeZone", "string"
+        attribute "pointsRadarStation", "string" 
+		attribute "pointsGridX", "string"
+        attribute "pointsGridY", "string"
+ 
         attribute "responseStatus", "string"
         attribute "lastUpdated", "string"
         
@@ -100,6 +108,18 @@ metadata {
         attribute "windChill", "number"
         attribute "heatIndex", "number"
         
+        attribute "alertTitle", "string"
+        attribute "alertStatus", "string"
+        attribute "alertMessageType", "string"
+        attribute "alertCategory", "string"
+        attribute "alertSeverity", "string"
+        attribute "alertCertainty", "string"
+        attribute "alertUrgency", "string"
+        attribute "alertEvent", "string"
+        attribute "alertHeadline", "string"
+        attribute "alertDescription", "string"
+        attribute "alertInstruction", "string"
+        
         attribute "radar", "string"
 	}
 	preferences() {    	
@@ -128,7 +148,7 @@ def getPointsData() {
     lat1 = device.currentValue('lat')
     lng1 = device.currentValue('lng')
 	pointsURL = "https://api.weather.gov/points/${lat1},${lng1}"
-	if(logEnable) log.debug "pointsURL: ${pointsURL}"
+	if(logEnable) log.debug "In getPointsData - pointsURL: ${pointsURL}"
 	def requestParams =
 		[
 			uri: pointsURL,
@@ -141,15 +161,47 @@ def getPointsData() {
             if(logEnable) log.info "In getPointsData - response: ${response.status}"
             
             if(response.status == 200) {	
-                def office = response.data.properties.cwa
-                log.info "Office: ${office}"
-                sendEvent(name: "office", value: office)
+                def pointsOffice = response.data.properties.cwa
+                if(logEnable) log.info "pointsOffice: ${pointsOffice}"
+                sendEvent(name: "pointsOffice", value: pointsOffice)
+                
+                def pointsForecastZone1 = response.data.properties.forecastZone
+                //ie. https://api.weather.gov/zones/forecast/MAZ005
+                int fSize = pointsForecastZone1.size()
+                fZone = fSize - 6
+                def pointsForecastZone = pointsForecastZone1.drop(fZone)
+                if(logEnable) log.info "pointsForecastZone: ${pointsForecastZone}"
+                sendEvent(name: "pointsForecastZone", value: pointsForecastZone)
+                
+                def pointsCounty1 = response.data.properties.county              
+                //ie. https://api.weather.gov/zones/county/MAC017
+                int cSize = pointsCounty1.size()
+                cZone = cSize - 6
+                def pointsCounty = pointsCounty1.drop(cZone)            
+                if(logEnable) log.info "pointsCounty: ${pointsCounty}"
+                sendEvent(name: "pointsCounty", value: pointsCounty)
+                
+                def pointsFireWeatherZone1 = response.data.properties.fireWeatherZone              
+                //ie. https://api.weather.gov/zones/fire/MAZ005
+                int fwSize = pointsFireWeatherZone1.size()
+                fwZone = fwSize - 6
+                def pointsFireWeatherZone = pointsFireWeatherZone1.drop(fwZone)               
+                if(logEnable) log.info "pointsFireWeatherZone: ${pointsFireWeatherZone}"
+                sendEvent(name: "pointsFireWeatherZone", value: pointsFireWeatherZone)
+                
+                def pointsTimeZone = response.data.properties.timeZone
+                if(logEnable) log.info "pointsTimeZone: ${pointsTimeZone}"
+                sendEvent(name: "pointsTimeZone", value: pointsTimeZone)
 
-                def gridX = response.data.properties.gridX
-                sendEvent(name: "gridX", value: gridX)
+                def pointsRadarStation = response.data.properties.radarStation
+                if(logEnable) log.info "pointsRadarStation: ${pointsRadarStation}"
+                sendEvent(name: "pointsRadarStation", value: pointsRadarStation)
+                
+                def pointsGridX = response.data.properties.gridX
+                sendEvent(name: "pointsGridX", value: pointsGridX)
 
-                def gridY = response.data.properties.gridY
-                sendEvent(name: "gridY", value: gridY)
+                def pointsGridY = response.data.properties.gridY
+                sendEvent(name: "pointsGridY", value: pointsGridY)
             } else {
                 if(logEnable) log.debug "In getPointsData - Bad Request - ${response.status} - Something went wrong, please try again."
             }
@@ -173,14 +225,14 @@ def getWeeklyData() {
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
 
-    office = device.currentValue('office')
-    gridX = device.currentValue('gridX')
-    gridY = device.currentValue('gridY')
+    gridOffice = device.currentValue('pointsOffice')
+    pointsGridX = device.currentValue('pointsGridX')
+    pointsGridY = device.currentValue('pointsGridY')
     
-    if(gridX == null || girdY == null) getPointsData()
+    if(pointsGridX == null || pointsGridY == null) getPointsData()
     
-	forecastURL = "https://api.weather.gov/gridpoints/${office}/${gridX},${gridY}/forecast"
-	if(logEnable) log.debug "forecastURL: ${forecastURL}"
+	forecastURL = "https://api.weather.gov/gridpoints/${gridOffice}/${pointsGridX},${pointsGridY}/forecast"
+	if(logEnable) log.debug "In getWeeklyData - forecastURL: ${forecastURL}"
     log.info "forecastURL: ${forecastURL}"
 	def requestParams =
 		[
@@ -237,7 +289,7 @@ def getWeatherData() {
     station1 = device.currentValue('station')
     forecastURL = "https://api.weather.gov/stations/${station1}/observations/latest"
     
-	if(logEnable) log.debug "forecastURL: ${forecastURL}"
+	if(logEnable) log.debug "In getWeatherData - forecastURL: ${forecastURL}"
 	def requestParams =
 		[
 			uri: forecastURL,
@@ -256,12 +308,10 @@ def getWeatherData() {
                 def icona = response.data.properties.icon
                 def icon = icona.replace("https://", "")
                 sendEvent(name: "icon", value: icon)
-                
-                
+                                
                 def timestamp = response.data.properties.timestamp
                 sendEvent(name: "timestamp", value: timestamp)
-                
-                
+                                
                 def xtemperature = response.data.properties.temperature.value
                 if(!xtemperature) {
                     temperature = "No Data"
@@ -524,6 +574,93 @@ def getWeatherData() {
 }
 
 
+def getAlertData() {
+    if(logEnable) log.debug "In getAlertData"
+	currentDate = new Date()
+    sendEvent(name: "responseStatus", value: "Getting Alert Data...")
+    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
+    
+    zone = device.currentValue('pointsForecastZone')
+    
+    alertURL = "https://api.weather.gov/alerts?active=true&status=actual&zone=${zone}&urgency=expected"
+
+    
+	if(logEnable) log.debug "In getAlertData - alertURL: ${alertURL}"
+	def requestParams =
+		[
+			uri: alertURL,
+            requestContentType: "application/json",
+			contentType: "application/json",
+            timeout: 30,
+		]
+    try {
+        httpGet(requestParams) { response ->
+            if(logEnable) log.info "In getAlertData - response: ${response.status}"
+            
+            if(response.status == 200) {
+                def alertTitle = response.data.title
+                if(alertTitle == null) alertTitle = "No Data"
+                sendEvent(name: "alertTitle", value: alertTitle)
+                
+                def alertStatus = response.data.features[0].properties.status
+                if(alertStatus == null) alertStatus = "No Data"
+                sendEvent(name: "alertStatus", value: alertStatus)
+                
+                def alertMessageType = response.data.features[0].properties.messageType
+                if(alertMessageType == null) alertMessageType = "No Data"
+                sendEvent(name: "alertMessageType", value: alertMessageType)
+                
+                def alertCategory = response.data.features[0].properties.category
+                if(alertCategory == null) alertCategory = "No Data"
+                sendEvent(name: "alertCategory", value: alertCategory)
+                
+                def alertSeverity = response.data.features[0].properties.severity
+                if(alertSeverity == null) alertSeverity = "No Data"
+                sendEvent(name: "alertSeverity", value: alertSeverity)
+                
+                def alertCertainty = response.data.features[0].properties.certainty
+                if(alertCertainty == null) alertCertainty = "No Data"
+                sendEvent(name: "alertCertainty", value: alertCertainty)
+                
+                def alertUrgency = response.data.features[0].properties.urgency
+                if(alertUrgency == null) alertUrgency = "No Data"
+                sendEvent(name: "alertUrgency", value: alertUrgency)
+                
+                def alertEvent = response.data.features[0].properties.event
+                if(alertEvent == null) alertEvent = "No Data"
+                sendEvent(name: "alertEvent", value: alertEvent)
+                
+                def alertHeadline = response.data.features[0].properties.headline
+                if(alertHeadline == null) alertHeadline = "No Data"
+                sendEvent(name: "alertHeadline", value: alertHeadline)
+                
+                def alertDescription = response.data.features[0].properties.description
+                if(alertDescription == null) alertDescription = "No Data"
+                sendEvent(name: "alertDescription", value: alertDescription)
+                
+                def alertInstruction = response.data.features[0].properties.instruction
+                if(alertInstruction == null) alertInstruction = "No Data"
+                sendEvent(name: "alertInstruction", value: alertInstruction)
+                
+                
+            } else {
+            if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
+        }
+            currentDate = new Date()
+            sendEvent(name: "responseStatus", value: response.status)
+            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
+        }
+    } catch (e) {
+        log.error e
+        theError = "${e}"
+        def reason = theError.split(':')
+        currentDate = new Date()
+        sendEvent(name: "responseStatus", value: reason[1])
+        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
+    }
+}
+
+
 def getWeatherRadarData() {
     if(logEnable) log.debug "In getWeatherRadarData"
 	currentDate = new Date()
@@ -532,7 +669,7 @@ def getWeatherRadarData() {
     
     station1 = device.currentValue('station')
 	forecastURL = "https://api.weather.gov/stations/radar/${station1}"
-	if(logEnable) log.debug "forecastURL: ${forecastURL}"
+	if(logEnable) log.debug "In getWeatherRadarData - forecastURL: ${forecastURL}"
 	def requestParams =
 		[
 			uri: forecastURL,
