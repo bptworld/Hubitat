@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.6"
+			"version": "1.0.7"
 		}
 	],
 	"drivers" : [
