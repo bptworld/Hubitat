@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Monitor a website and trigger automations if not found or if your internet goes down.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *
  *  Thanks to Jason Botello for the original 2016 'SmartPing' code that I based this app off of.
  *  
@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  V2.0.5 - 04/18/20 - Adjustments
  *  V2.0.4 - 12/09/19 - Fixed a bug 
  *  V2.0.3 - 12/04/19 - Added more logging
  *  V2.0.2 - 12/03/19 - Added more time options. Cosmetic changes
@@ -51,18 +52,7 @@
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "WebPingerChildVersion"
-	state.version = "v2.0.4"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "v2.0.5"
 }
 
 definition(
@@ -141,7 +131,6 @@ def initialize() {
 		state.pollVerify = "false"
 		runIn(5, poll)
     }
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def validateURL() {
@@ -208,6 +197,8 @@ def poll() {
             		}
             		if(logEnable) log.debug "Request failed (NO status code) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
         		} else {
+                    if(switches) turnOnHandler()
+                    if(switches2) turnOffHandler()
            			if(logEnable) log.debug "pollVerify already called"
         		}
     		}
@@ -344,6 +335,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Web Pinger - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Web Pinger - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 } 
