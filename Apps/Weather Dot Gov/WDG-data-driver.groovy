@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 04/18/20 - Fixed typo with alert description
  *  1.0.4 - 04/17/20 - More adjustments
  *  1.0.3 - 04/17/20 - More adjustments for alerts
  *  1.0.2 - 04/17/20 - Added alerts
@@ -208,6 +209,7 @@ def getPointsData() {
                 sendEvent(name: "pointsGridY", value: pointsGridY)
             } else {
                 if(logEnable) log.debug "In getPointsData - Bad Request - ${response.status} - Something went wrong, please try again."
+                runOnce(1,getPointsData)
             }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
@@ -267,8 +269,9 @@ def getWeeklyData() {
                     sendEvent(name: "zforecast_$y", value: forcast)
                 }
             } else {
-            if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
-        }
+                if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
+                runOnce(1,getWeeklyData)
+            }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
@@ -562,6 +565,7 @@ def getWeatherData() {
                 sendEvent(name: "heatIndex", value: heatIndex)    
             } else {
                 if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again."
+                runOnce(1,getWeatherData)
             }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
@@ -650,9 +654,8 @@ def getAlertData() {
                 
                 def alertDescription = response.data.features[0].properties.description
                 if(alertDescription == null) alertDescription = "No Data"
-                
                 beforeDescription = device.currentValue('alertDescription')
-                if(alertDescription == beforeCertainty) {
+                if(alertDescription == beforeDescription) {
                     sendEvent(name: "alertDescription", value: alertDescription)
                 } else {
                     sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
@@ -662,8 +665,9 @@ def getAlertData() {
                 if(alertInstruction == null) alertInstruction = "No Data"
                 sendEvent(name: "alertInstruction", value: alertInstruction)                
             } else {
-            if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
-        }
+                if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
+                runOnce(1,getAlertData)
+            }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
@@ -703,8 +707,9 @@ def getWeatherRadarData() {
                 def radar = response.data.properties.precipitationLast3Hours.value
                 sendEvent(name: "radar", value: radar)
             } else {
-            if(logEnable) log.debug "In getWeatherRadarData - Bad Request - ${response.status} - Something went wrong, please try again."
-        }
+                if(logEnable) log.debug "In getWeatherRadarData - Bad Request - ${response.status} - Something went wrong, please try again."
+                runOnce(1,getWeatherRadarData)
+            }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
