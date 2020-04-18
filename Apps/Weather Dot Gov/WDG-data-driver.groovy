@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 04/18/20 - Fixed another issue with Alerts
  *  1.0.5 - 04/18/20 - Fixed typo with alert description
  *  1.0.4 - 04/17/20 - More adjustments
  *  1.0.3 - 04/17/20 - More adjustments for alerts
@@ -606,63 +607,96 @@ def getAlertData() {
             if(logEnable) log.info "In getAlertData - response: ${response.status}"
             
             if(response.status == 200) {
-                def alertTitle = response.data.title
-                if(alertTitle == null) alertTitle = "No Data"
+                try{ def alertTitle = response.data.title } catch(e) {
+                    alertTitle = "No Data"
+                }
                 sendEvent(name: "alertTitle", value: alertTitle)
                 
-                def alertStatus = response.data.features[0].properties.status
-                if(alertStatus == null) alertStatus = "No Data"
+                try{ def alertStatus = response.data.features[0].properties.status } catch(e) {
+                    alertStatus = "No Data"
+                }
                 sendEvent(name: "alertStatus", value: alertStatus)
                 
-                def alertMessageType = response.data.features[0].properties.messageType
-                if(alertMessageType == null) alertMessageType = "No Data"
+                try{ def alertMessageType = response.data.features[0].properties.messageType } catch(e) {
+                    alertMessageType = "No Data"
+                }
                 sendEvent(name: "alertMessageType", value: alertMessageType)
                 
-                def alertCategory = response.data.features[0].properties.category
-                if(alertCategory == null) alertCategory = "No Data"
+                try{ def alertCategory = response.data.features[0].properties.category } catch(e) {
+                    alertCategory = "No Data"
+                }
                 sendEvent(name: "alertCategory", value: alertCategory)
                 
-                def alertSeverity = response.data.features[0].properties.severity
-                if(alertSeverity == null) alertSeverity = "No Data"
-                beforeSeverity = device.currentValue('alertSeverity')
-                if(alertSeverity == beforeSeverity) {
-                    sendEvent(name: "alertSeverity", value: alertSeverity)
-                } else {
-                    sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
+                try{ def alertSeverity = response.data.features[0].properties.severity
+                    beforeSeverity = device.currentValue('alertSeverity')
+                    if(alertSeverity == beforeSeverity) {
+                        sendEvent(name: "alertSeverity", value: alertSeverity)
+                    } else {
+                        sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
+                    }
+                } catch(e) {
+                    alertSeverity = "No Data"
+                    beforeSeverity = device.currentValue('alertSeverity')
+                    if(alertSeverity == beforeSeverity) {
+                        sendEvent(name: "alertSeverity", value: alertSeverity)
+                    } else {
+                        sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
+                    }
                 }
                 
-                def alertCertainty = response.data.features[0].properties.certainty
-                if(alertCertainty == null) alertCertainty = "No Data"
-                beforeCertainty = device.currentValue('alertCertainty')
-                if(alertCertainty == beforeCertainty) {
-                    sendEvent(name: "alertCertainty", value: alertCertainty)
-                } else {
-                    sendEvent(name: "alertCertainty", value: alertCertainty, isStateChange: true)
+                try{ def alertCertainty = response.data.features[0].properties.certainty
+                    beforeCertainty = device.currentValue('alertCertainty')
+                    if(alertCertainty == beforeCertainty) {
+                        sendEvent(name: "alertCertainty", value: alertCertainty)
+                    } else {
+                        sendEvent(name: "alertCertainty", value: alertCertainty, isStateChange: true)
+                    }
+                } catch(e) {
+                    alertCertainty = "No Data"
+                    beforeCertainty = device.currentValue('alertCertainty')
+                    if(alertCertainty == beforeCertainty) {
+                        sendEvent(name: "alertCertainty", value: alertCertainty)
+                    } else {
+                        sendEvent(name: "alertCertainty", value: alertCertainty, isStateChange: true)
+                    }
                 }
                 
-                def alertUrgency = response.data.features[0].properties.urgency
-                if(alertUrgency == null) alertUrgency = "No Data"
+                try { def alertUrgency = response.data.features[0].properties.urgency } catch(e) {
+                    alertUrgency = "No Data"
+                }
                 sendEvent(name: "alertUrgency", value: alertUrgency)
                 
-                def alertEvent = response.data.features[0].properties.event
-                if(alertEvent == null) alertEvent = "No Data"
+                try { def alertEvent = response.data.features[0].properties.event } catch(e) {
+                    alertEvent = "No Data"
+                }
                 sendEvent(name: "alertEvent", value: alertEvent)
                 
-                def alertHeadline = response.data.features[0].properties.headline
-                if(alertHeadline == null) alertHeadline = "No Data"
+                try { def alertHeadline = response.data.features[0].properties.headline } catch(e) {
+                    alertHeadline = "No Data"
+                }
                 sendEvent(name: "alertHeadline", value: alertHeadline)
                 
-                def alertDescription = response.data.features[0].properties.description
-                if(alertDescription == null) alertDescription = "No Data"
-                beforeDescription = device.currentValue('alertDescription')
-                if(alertDescription == beforeDescription) {
-                    sendEvent(name: "alertDescription", value: alertDescription)
-                } else {
-                    sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
+                try { def alertDescription = response.data.features[0].properties.description
+                     if(alertDescription == null) alertDescription = "No Data"
+                     beforeDescription = device.currentValue('alertDescription')
+                     if(alertDescription == beforeDescription) {
+                         sendEvent(name: "alertDescription", value: alertDescription)
+                     } else {
+                         sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
+                     }
+                } catch(e) {
+                    alertDescription = "No Data"
+                    beforeDescription = device.currentValue('alertDescription')
+                    if(alertDescription == beforeDescription) {
+                        sendEvent(name: "alertDescription", value: alertDescription)
+                    } else {
+                        sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
+                    }
                 }
                 
-                def alertInstruction = response.data.features[0].properties.instruction
-                if(alertInstruction == null) alertInstruction = "No Data"
+                try { def alertInstruction = response.data.features[0].properties.instruction } catch(e) {
+                    alertInstruction = "No Data"
+                }
                 sendEvent(name: "alertInstruction", value: alertInstruction)                
             } else {
                 if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
