@@ -3,10 +3,9 @@
  *  Design Usage:
  *  Take control of a Chromecast device using CATT.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -33,25 +32,15 @@
  *
  *  Changes:
  *
- *  V2.0.1 - 09/09/19 - Fixed typo
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.0 - 08/17/19 - Initial release.
+ *  2.0.2 - 04/18/20 - Adjustments
+ *  2.0.1 - 09/09/19 - Fixed typo
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.0 - 08/17/19 - Initial release.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "CATTDirectorChildVersion"
-	state.version = "v2.0.1"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.0.2"
 }
 
 definition(
@@ -445,8 +434,6 @@ def initialize() {
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
 	if(timeToRun) schedule(timeToRun, startTimeHandler)
     if(timeToStop) schedule(timeToStop, stopTimeHandler)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def contactSensorHandler(evt) {
@@ -455,7 +442,7 @@ def contactSensorHandler(evt) {
 	if(state.contactStatus == "open") {
 		if(logEnable) log.debug "In contactSensorHandler - open"
 		firstHandler()
-        if(triggerAutoEnd != "0") runIn(triggerAutoEnd, stopTimeHandler)
+        if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
 	} else {
 		if(logEnable) log.debug "In contactSensorHandler - closed"
         runIn(triggerDelayEnd, stopTimeHandler)
@@ -468,7 +455,7 @@ def motionSensorHandler(evt) {
 	if(state.motionStatus == "active") {
 		if(logEnable) log.debug "In motionSensorHandler - active"
 		firstHandler()
-        if(triggerAutoEnd != "0") runIn(triggerAutoEnd, stopTimeHandler)
+        if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
 	} else {
 		if(logEnable) log.debug "In motionSensorHandler - Not active"
 		runIn(triggerDelayEnd, stopTimeHandler)
@@ -883,6 +870,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>CATT Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>CATT Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }  
