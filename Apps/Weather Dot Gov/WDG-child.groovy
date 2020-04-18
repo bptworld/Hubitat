@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 04/18/20 - Added a switch to know when an alert is active or not
  *  1.0.7 - 04/18/20 - More modifications
  *  1.0.6 - 04/18/20 - Push alerts working correctly, message wildcards added
  *  1.0.5 - 04/17/20 - Move work on Alerts, added a bunch of code traps
@@ -49,7 +50,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -327,6 +328,7 @@ def alertTileOptions() {
                     nOn = "or"
                 }
                 paragraph "Notifications will be sent when Urgency is ${notifyOnUrgency} ${nOn} Severity is ${notifyOnSeverity}"
+                paragraph "Note: The data device will also turn on/off basedon whether there is an active notification or not."
                 paragraph "<hr>"
                 paragraph "Notifications can be also be sent anytime the Alert Description changes. Useful if you want to receive updates after the initial alert."
                 input "notifyOnDesc", "bool", title: "Get notification when Description is updated", defaultValue:false, submitOnChange:true
@@ -664,11 +666,13 @@ def getAlertData(evt) {
         }
 
         alertTable1 += "</span></tr></table>"
+        dataDevice.switch(on)
     } else {
         alertTable1 =  "<table width=100% align=center>"
         alertTable1 += "<tr><td width=100>"
         alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>No alerts</span><br>"
         alertTable1 += "</span></tr></table>"
+        dataDevice.switch(off)
     }
     
     tileDevice.alertData1(alertTable1)
