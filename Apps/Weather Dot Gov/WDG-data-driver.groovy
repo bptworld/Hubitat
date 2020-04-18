@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 04/18/20 - Added switch capability
  *  1.0.6 - 04/18/20 - Fixed another issue with Alerts
  *  1.0.5 - 04/18/20 - Fixed typo with alert description
  *  1.0.4 - 04/17/20 - More adjustments
@@ -48,6 +49,7 @@
 
 metadata {
 	definition (name: "Weather Dot Gov Data Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy") {
+        capability "Switch"
    		capability "Actuator"
         capability "Sensor"
         capability "Temperature Measurement"
@@ -60,6 +62,8 @@ metadata {
         command "getAlertData"
         //command "getWeatherRadarData"
 		
+        attribute "switch", "string"
+        
         attribute "lat", "string"
         attribute "lng", "string"
         attribute "station", "string"
@@ -123,6 +127,7 @@ metadata {
         attribute "alertHeadline", "string"
         attribute "alertDescription", "string"
         attribute "alertInstruction", "string"
+        attribute "alertInstruction", "string"
         
         attribute "radar", "string"
 	}
@@ -133,6 +138,18 @@ metadata {
         }
     }
 }
+
+def on() {
+    if(logEnable) log.info "In on - Turning Switch On"
+    device.on
+    sendEvent(name: "switch", value: "on", displayed: true)
+}
+
+def off() {
+    if(logEnable) log.info "In off - Turning Switch Off"
+    device.off
+    sendEvent(name: "switch", value: "off", displayed: true)
+} 
 
 def dataOptions(data) {
     if(logEnable) log.debug "In dataOptions"
