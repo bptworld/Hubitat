@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 04/18/20 - More modifications
  *  1.0.6 - 04/18/20 - Push alerts working correctly, message wildcards added
  *  1.0.5 - 04/17/20 - Move work on Alerts, added a bunch of code traps
  *  1.0.4 - 04/17/20 - Started adding notifications to Alerts
@@ -48,7 +49,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -420,13 +421,13 @@ def initializeAlerts() {
       
     if(alertUrgency) {
         if(alertUrgency.toLowerCase() == "future") {
-            runEvery1Hours(getAlertData)
+            runEvery1Hour(getAlertData)
         } else if(alertUrgency.toLowerCase() == "expected") {
             runEvery30Minutes(getAlertData)
         } else if(alertUrgency.toLowerCase() == "immediate") {
             runEvery5Minutes(getAlertData)
         } else {
-            runEvery3Hour(getAlertData)
+            runEvery3Hours(getAlertData)
         }
     }
 }
