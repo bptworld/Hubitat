@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 04/18/20 - Push alerts working correctly, message wildcards added
  *  1.0.5 - 04/17/20 - Move work on Alerts, added a bunch of code traps
  *  1.0.4 - 04/17/20 - Started adding notifications to Alerts
  *  1.0.3 - 04/17/20 - Added Alerts
@@ -47,7 +48,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -308,7 +309,6 @@ def alertTileOptions() {
     dynamicPage(name: "alertTileOptions", title: "", install:false, uninstall:false) {
         display()
         section() {
-            paragraph "<b>Lots of testing needed!  Thanks</b>"
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Options")) {           
@@ -336,8 +336,13 @@ def alertTileOptions() {
     	    }
             if(sendPushMessage) {
                 section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
-                    paragraph "<b>Wildcards</b>:<br> %urgency% - Urgency value<br> %severity% - Severity value<br> %desc% - Full Description"
-                    input "notifyMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    wildTable =  "<table width=100%><tr><td colspan=2 width=100%><b>Wildcards</b>:"
+                    wildTable += "<tr><td width=50%> %urgency% - Urgency value<br> %severity% - Severity value<br> %desc% - Alert Description"
+                    wildTable += "<td width=50%> %inst% - Alert Instructions<br> %lbreak% - Line Break<br>"
+                    wildTable += "</table>"
+                    
+                    paragraph "${wildTable}"
+                    input "notifyMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)", required:false, defaultValue:"Weather Alert - %urgency%-%severity%%lbreak%%lbreak%%desc%%lbreak%%lbreak%%inst%", submitOnChange:true
                     input "oList", "bool", defaultValue:false, title: "Show a list view of the random messages?", description: "List View", submitOnChange:true
                     if(oList) {
                         def values = "${notifyMsg}".split(";")
@@ -724,12 +729,14 @@ def messageHandler() {
     theCertainty = dataDevice.currentValue('alertCertainty')
     theUrgency = dataDevice.currentValue('alertUrgency')
     theDescription = dataDevice.currentValue('alertDescription')
-    
+    theInstruction = dataDevice.currentValue('alertInstruction')
     
     if(theMessage.contains("%severity%")) {theMessage = theMessage.replace('%severity%', theSeverity)}
     if(theMessage.contains("%certainty%")) {theMessage = theMessage.replace('%certainty%', theCertainty)}
     if(theMessage.contains("%urgency%")) {theMessage = theMessage.replace('%urgency%', theUrgency)}
     if(theMessage.contains("%desc%")) {theMessage = theMessage.replace('%desc%', theDescription)}
+    if(theMessage.contains("%inst%")) {theMessage = theMessage.replace('%inst%', theInstruction)}
+    if(theMessage.contains("%lbreak%")) {theMessage = theMessage.replace('%lbreak%', '\n')}
     
     state.theMsg = theMessage
 	if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSize}, randomKey: ${randomKey}, noMsg: ${state.theMsg}"
