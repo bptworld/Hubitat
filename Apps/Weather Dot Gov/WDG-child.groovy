@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 04/17/20 - Move work on Alerts, added a bunch of code traps
  *  1.0.4 - 04/17/20 - Started adding notifications to Alerts
  *  1.0.3 - 04/17/20 - Added Alerts
  *  1.0.2 - 04/12/20 - Fixed Forecast from exceeding the 1024 limit
@@ -46,7 +47,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -310,11 +311,12 @@ def alertTileOptions() {
             paragraph "<b>Lots of testing needed!  Thanks</b>"
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Tile Options")) {           
+		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Options")) {           
             input "useNotify", "bool", title: "Use Notifications", description: "", defaultValue:false, submitOnChange:true
         }
         if(useNotify) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Alert Tile Options")) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
+                paragraph "Notifications can be sent anytime the Urgency and/or Severity changes."
                 input "notifyOnUrgency", "enum", title: "Get notification based on Urgency", options: ["any", "immediate", "expected", "future", "past"], defaultValue:"any", multiple:true, submitOnChange:true
                 input "notifyOnSeverity", "enum", title: "Get notification based on Severity", options: ["any", "extreme", "severe", "moderate", "minor"], defaultValue:"any", multiple:true, submitOnChange:true
                 input "notifyOn", "bool", title: "and/or (off = 'and', on = 'or')", description: "", defaultValue:false, submitOnChange:true
@@ -324,13 +326,17 @@ def alertTileOptions() {
                     nOn = "or"
                 }
                 paragraph "Notifications will be sent when Urgency is ${notifyOnUrgency} ${nOn} Severity is ${notifyOnSeverity}"
+                paragraph "<hr>"
+                paragraph "Notifications can be also be sent anytime the Alert Description changes. Useful if you want to receive updates after the initial alert."
+                input "notifyOnDesc", "bool", title: "Get notification when Description is updated", defaultValue:false, submitOnChange:true
+   
             }   
             section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
                 input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
     	    }
             if(sendPushMessage) {
                 section(getFormat("header-green", "${getImage("Blank")}"+" Message Options")) {
-                    
+                    paragraph "<b>Wildcards</b>:<br> %urgency% - Urgency value<br> %severity% - Severity value<br> %desc% - Full Description"
                     input "notifyMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                     input "oList", "bool", defaultValue:false, title: "Show a list view of the random messages?", description: "List View", submitOnChange:true
                     if(oList) {
@@ -394,10 +400,30 @@ def initialize() {
     if(updateTimeC == "3_Hour") runEvery3Hours(getCurrentData)
     
     runEvery3Hours(getWeeklyData)
-    runEvery1Hour(getAlertData)
     
+    if(useNotify) initializeAlerts() 
     if(useNotify) subscribe(dataDevice, "alertSeverity", alertNotifications)
     if(useNotify) subscribe(dataDevice, "alertUrgency", alertNotifications)
+    if(useNotify) subscribe(dataDevice, "alertDescription", alertNotifications)
+}
+
+def initializeAlerts() {
+    if(logEnable) log.debug "In initializeAlerts (${state.version})"
+    // Urgency (immediate, expected, future, past, unknown)
+    
+    alertUrgency = dataDevice.currentValue('alertUrgency')
+      
+    if(alertUrgency) {
+        if(alertUrgency.toLowerCase() == "future") {
+            runEvery1Hours(getAlertData)
+        } else if(alertUrgency.toLowerCase() == "expected") {
+            runEvery30Minutes(getAlertData)
+        } else if(alertUrgency.toLowerCase() == "immediate") {
+            runEvery5Minutes(getAlertData)
+        } else {
+            runEvery3Hour(getAlertData)
+        }
+    }
 }
 
 def uninstalled() {
@@ -609,35 +635,38 @@ def getAlertData(evt) {
     titleFontSize = alertFontSize + 2
     statusFontSize = alertFontSize - 2
     
-    if(alertHeadline != "No Data") {
+    if(alertDescription && alertDescription != "No Data") {
         alertTable1 =  "<table width=100% align=center>"
         alertTable1 += "<tr><td width=100>"
 
         alertTable1 += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><br>"
         alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
 
-        aTableSize = alertTable1.size()
-        charLefta = 970 - aTableSize
-        alertDescription1 = alertDescription.take(charLefta)
+        if(alertDescription) {
+            aTableSize = alertTable1.size()
+            charLefta = 970 - aTableSize
+            alertDescription1 = alertDescription.take(charLefta)
 
-        alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription1}"
+            alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription1}"
+        }
         alertTable1 += "<hr>"
-
-        bTableSize = alertTable1.size()
-        charLeftb = 970 - aTableSize
-        alertInstruction1 = alertInstruction.take(charLeftb)
-        alertTable1 += "${alertInstruction1}"
+        if(alertInstruction) {
+            bTableSize = alertTable1.size()
+            charLeftb = 970 - aTableSize
+            alertInstruction1 = alertInstruction.take(charLeftb)
+            alertTable1 += "${alertInstruction1}"
+        }
 
         alertTable1 += "</span></tr></table>"
     } else {
         alertTable1 =  "<table width=100% align=center>"
         alertTable1 += "<tr><td width=100>"
-        alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>${alertTitle}</span><br>"
-        alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>No alerts</span><br>"
+        alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>No alerts</span><br>"
         alertTable1 += "</span></tr></table>"
     }
     
     tileDevice.alertData1(alertTable1)
+    initializeAlerts()
 } 
 
 def alertNotifications(evt) {
@@ -689,7 +718,20 @@ def messageHandler() {
 	vSize = values.size()
     count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
-	state.theMsg = values[randomKey]
+	theMessage = values[randomKey]
+    
+    theSeverity = dataDevice.currentValue('alertSeverity')
+    theCertainty = dataDevice.currentValue('alertCertainty')
+    theUrgency = dataDevice.currentValue('alertUrgency')
+    theDescription = dataDevice.currentValue('alertDescription')
+    
+    
+    if(theMessage.contains("%severity%")) {theMessage = theMessage.replace('%severity%', theSeverity)}
+    if(theMessage.contains("%certainty%")) {theMessage = theMessage.replace('%certainty%', theCertainty)}
+    if(theMessage.contains("%urgency%")) {theMessage = theMessage.replace('%urgency%', theUrgency)}
+    if(theMessage.contains("%desc%")) {theMessage = theMessage.replace('%desc%', theDescription)}
+    
+    state.theMsg = theMessage
 	if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSize}, randomKey: ${randomKey}, noMsg: ${state.theMsg}"
 }
 
