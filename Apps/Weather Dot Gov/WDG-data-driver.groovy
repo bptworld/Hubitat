@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 04/17/20 - More adjustments
  *  1.0.3 - 04/17/20 - More adjustments for alerts
  *  1.0.2 - 04/17/20 - Added alerts
  *  1.0.1 - 04/13/20 - Fixed Wind speed, precipitation calculations
@@ -138,6 +139,8 @@ def dataOptions(data) {
     sendEvent(name: "lng", value: lng)
     sendEvent(name: "station", value: station)
     sendEvent(name: "unitFormat", value: unitFormat)
+    pauseExecution(1000)
+    getPointsData()
 }
 
 def getPointsData() {
@@ -647,7 +650,13 @@ def getAlertData() {
                 
                 def alertDescription = response.data.features[0].properties.description
                 if(alertDescription == null) alertDescription = "No Data"
-                sendEvent(name: "alertDescription", value: alertDescription)
+                
+                beforeDescription = device.currentValue('alertDescription')
+                if(alertDescription == beforeCertainty) {
+                    sendEvent(name: "alertDescription", value: alertDescription)
+                } else {
+                    sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
+                }
                 
                 def alertInstruction = response.data.features[0].properties.instruction
                 if(alertInstruction == null) alertInstruction = "No Data"
