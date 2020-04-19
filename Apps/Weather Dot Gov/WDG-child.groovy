@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 04/19/20 - Lots of adjustments
  *  1.0.8 - 04/18/20 - Added a switch to know when an alert is active or not
  *  1.0.7 - 04/18/20 - More modifications
  *  1.0.6 - 04/18/20 - Push alerts working correctly, message wildcards added
@@ -50,7 +51,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -312,6 +313,7 @@ def alertTileOptions() {
         display()
         section() {
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
+            paragraph "Alerts are based on Urgency and checked every 3 hours unless:<br> - Urgency is <i>future</i>, check every 1 hour<br> - Urgency is <i>expected</i>, check every 30 minutes<br> - Urgency is <i>immediate</i>, check every 5 minutes" 
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Options")) {           
             input "useNotify", "bool", title: "Use Notifications", description: "", defaultValue:false, submitOnChange:true
@@ -328,7 +330,7 @@ def alertTileOptions() {
                     nOn = "or"
                 }
                 paragraph "Notifications will be sent when Urgency is ${notifyOnUrgency} ${nOn} Severity is ${notifyOnSeverity}"
-                paragraph "Note: The data device will also turn on/off basedon whether there is an active notification or not."
+                paragraph "Note: The data device will also turn on/off based on whether there is an active notification or not."
                 paragraph "<hr>"
                 paragraph "Notifications can be also be sent anytime the Alert Description changes. Useful if you want to receive updates after the initial alert."
                 input "notifyOnDesc", "bool", title: "Get notification when Description is updated", defaultValue:false, submitOnChange:true
@@ -359,14 +361,12 @@ def alertTileOptions() {
      
         section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {    
             input "alertFontSize", "number", title: "Font Size", defaultValue:15, submitOnChange:true
-            paragraph "<small>Note: This automatically updates once an hour</small>"
             paragraph "<hr>"
             input "updateTileA", "bool", title: "Manually Update Tiles", description: "", submitOnChange:true
             if(updateTileA) {
                 getAlertData()
                 pauseExecution(1000)
-                tile1 = tileDevice.currentValue('alertTile1')
-                              
+                tile1 = tileDevice.currentValue('alertTile1')                             
                 app?.updateSetting("updateTileA",[value:"false",type:"bool"])
             }
             if(tile1) fTile1 = tile1.size()
@@ -643,10 +643,9 @@ def getAlertData(evt) {
     titleFontSize = alertFontSize + 2
     statusFontSize = alertFontSize - 2
     
-    if(alertDescription && alertDescription != "No Data") {
+    if(alertDescription != "No Data") {
         alertTable1 =  "<table width=100% align=center>"
         alertTable1 += "<tr><td width=100>"
-
         alertTable1 += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><br>"
         alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
 
@@ -654,7 +653,6 @@ def getAlertData(evt) {
             aTableSize = alertTable1.size()
             charLefta = 970 - aTableSize
             alertDescription1 = alertDescription.take(charLefta)
-
             alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription1}"
         }
         alertTable1 += "<hr>"
@@ -664,15 +662,14 @@ def getAlertData(evt) {
             alertInstruction1 = alertInstruction.take(charLeftb)
             alertTable1 += "${alertInstruction1}"
         }
-
         alertTable1 += "</span></tr></table>"
-        dataDevice.switch(on)
+        dataDevice.on()
     } else {
         alertTable1 =  "<table width=100% align=center>"
         alertTable1 += "<tr><td width=100>"
         alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>No alerts</span><br>"
         alertTable1 += "</span></tr></table>"
-        dataDevice.switch(off)
+        dataDevice.off()
     }
     
     tileDevice.alertData1(alertTable1)
@@ -690,7 +687,6 @@ def alertNotifications(evt) {
     // Certainty (observed, likely, possible, unlikely, unknown)
     
     checkSeverity = dataDevice.currentValue('alertSeverity')
-    checkCertainty = dataDevice.currentValue('alertCertainty')
     checkUrgency = dataDevice.currentValue('alertUrgency')
     
     notifyOnUrgency.each { ita ->
