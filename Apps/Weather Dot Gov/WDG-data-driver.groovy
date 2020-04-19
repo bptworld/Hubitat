@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 04/19/20 - Tweaking things
  *  1.0.7 - 04/18/20 - Added switch capability
  *  1.0.6 - 04/18/20 - Fixed another issue with Alerts
  *  1.0.5 - 04/18/20 - Fixed typo with alert description
@@ -55,12 +56,13 @@ metadata {
         capability "Temperature Measurement"
         capability "Relative Humidity Measurement"
 
+        command "switch"
         command "dataOptions"
         command "getPointsData"
         command "getWeeklyData"
         command "getWeatherData"
         command "getAlertData"
-        //command "getWeatherRadarData"
+        //command "getRadarData"
 		
         attribute "switch", "string"
         
@@ -624,97 +626,79 @@ def getAlertData() {
             if(logEnable) log.info "In getAlertData - response: ${response.status}"
             
             if(response.status == 200) {
-                try{ def alertTitle = response.data.title } catch(e) {
-                    alertTitle = "No Data"
-                }
-                sendEvent(name: "alertTitle", value: alertTitle)
+                try { 
+                    def alertTitle = response.data.title
+                    if(alertTitle == null) alertTitle = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertTitle: ${alertTitle}"
+                    sendEvent(name: "alertTitle", value: alertTitle)
+                              
+                    def alertStatus = response.data.features.properties.status
+                    if(alertStatus == null) alertStatus = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertStatus: ${alertStatus}"
+                    sendEvent(name: "alertStatus", value: alertStatus)
+                                
+                    def alertMessageType = response.data.features.properties.messageType
+                    if(alertMessageType == null) alertMessageType = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertMessageType: ${alertMessageType}"
+                    sendEvent(name: "alertMessageType", value: alertMessageType)
+                              
+                    def alertCategory = response.data.features.properties.category
+                    if(alertCategory == null) alertCategory = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertCategory: ${alertCategory}"
+                    sendEvent(name: "alertCategory", value: alertCategory)                
                 
-                try{ def alertStatus = response.data.features[0].properties.status } catch(e) {
-                    alertStatus = "No Data"
-                }
-                sendEvent(name: "alertStatus", value: alertStatus)
-                
-                try{ def alertMessageType = response.data.features[0].properties.messageType } catch(e) {
-                    alertMessageType = "No Data"
-                }
-                sendEvent(name: "alertMessageType", value: alertMessageType)
-                
-                try{ def alertCategory = response.data.features[0].properties.category } catch(e) {
-                    alertCategory = "No Data"
-                }
-                sendEvent(name: "alertCategory", value: alertCategory)
-                
-                try{ def alertSeverity = response.data.features[0].properties.severity
+                    def alertSeverity = response.data.features.properties.severity
+                    if(alertSeverity == null) alertSeverity = "No Data"
                     beforeSeverity = device.currentValue('alertSeverity')
+                    if(logEnable) log.info "In getAlertData - alertSeverity: ${alertSeverity}"
                     if(alertSeverity == beforeSeverity) {
                         sendEvent(name: "alertSeverity", value: alertSeverity)
                     } else {
                         sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
                     }
-                } catch(e) {
-                    alertSeverity = "No Data"
-                    beforeSeverity = device.currentValue('alertSeverity')
-                    if(alertSeverity == beforeSeverity) {
-                        sendEvent(name: "alertSeverity", value: alertSeverity)
+                               
+                    def alertCertainty = response.data.features.properties.certainty
+                    if(alertCertainty == null) alertCertainty = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertCertainty: ${alertCertainty}"
+                    sendEvent(name: "alertCertainty", value: alertCertainty)
+                                               
+                    def alertUrgency = response.data.features.properties.urgency
+                    if(alertUrgency == null) alertUrgency = "No Data"
+                    beforeUrgency = device.currentValue('alertUrgency')
+                    if(logEnable) log.info "In getAlertData - alertUrgency: ${alertUrgency}"
+                    if(alertUrgency == beforeUrgency) {
+                        sendEvent(name: "alertUrgency", value: alertUrgency)
                     } else {
-                        sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
+                        sendEvent(name: "alertUrgency", value: alertUrgency, isStateChange: true)
                     }
-                }
-                
-                try{ def alertCertainty = response.data.features[0].properties.certainty
-                    beforeCertainty = device.currentValue('alertCertainty')
-                    if(alertCertainty == beforeCertainty) {
-                        sendEvent(name: "alertCertainty", value: alertCertainty)
-                    } else {
-                        sendEvent(name: "alertCertainty", value: alertCertainty, isStateChange: true)
-                    }
-                } catch(e) {
-                    alertCertainty = "No Data"
-                    beforeCertainty = device.currentValue('alertCertainty')
-                    if(alertCertainty == beforeCertainty) {
-                        sendEvent(name: "alertCertainty", value: alertCertainty)
-                    } else {
-                        sendEvent(name: "alertCertainty", value: alertCertainty, isStateChange: true)
-                    }
-                }
-                
-                try { def alertUrgency = response.data.features[0].properties.urgency } catch(e) {
-                    alertUrgency = "No Data"
-                }
-                sendEvent(name: "alertUrgency", value: alertUrgency)
-                
-                try { def alertEvent = response.data.features[0].properties.event } catch(e) {
-                    alertEvent = "No Data"
-                }
-                sendEvent(name: "alertEvent", value: alertEvent)
-                
-                try { def alertHeadline = response.data.features[0].properties.headline } catch(e) {
-                    alertHeadline = "No Data"
-                }
-                sendEvent(name: "alertHeadline", value: alertHeadline)
-                
-                try { def alertDescription = response.data.features[0].properties.description
-                     if(alertDescription == null) alertDescription = "No Data"
-                     beforeDescription = device.currentValue('alertDescription')
-                     if(alertDescription == beforeDescription) {
-                         sendEvent(name: "alertDescription", value: alertDescription)
-                     } else {
-                         sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
-                     }
-                } catch(e) {
-                    alertDescription = "No Data"
+                               
+                    def alertEvent = response.data.features.properties.event
+                    if(alertEvent == null) alertEvent = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertEvent: ${alertEvent}"
+                    sendEvent(name: "alertEvent", value: alertEvent)
+                               
+                    def alertHeadline = response.data.features.properties.headline
+                    if(alertHeadline == null) alertHeadline = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertHeadline: ${alertHeadline}"
+                    sendEvent(name: "alertHeadline", value: alertHeadline)
+                                
+                    def alertDescription = response.data.features.properties.description
+                    if(alertDescription == null) alertDescription = "No Data"
                     beforeDescription = device.currentValue('alertDescription')
+                    if(logEnable) log.info "In getAlertData - alertDescription: ${alertDescription}"
                     if(alertDescription == beforeDescription) {
                         sendEvent(name: "alertDescription", value: alertDescription)
                     } else {
                         sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
                     }
-                }
-                
-                try { def alertInstruction = response.data.features[0].properties.instruction } catch(e) {
-                    alertInstruction = "No Data"
-                }
-                sendEvent(name: "alertInstruction", value: alertInstruction)                
+                                  
+                    def alertInstruction = response.data.features.properties.instruction
+                    if(alertInstruction == null) alertInstruction = "No Data"
+                    if(logEnable) log.info "In getAlertData - alertInstruction: ${alertInstruction}"
+                    sendEvent(name: "alertInstruction", value: alertInstruction) 
+                } catch (e) {
+                    if(logEnable) log.error "In getAlertData - ${e}"
+                }                             
             } else {
                 if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getAlertData)
@@ -734,15 +718,15 @@ def getAlertData() {
 }
 
 
-def getWeatherRadarData() {
-    if(logEnable) log.debug "In getWeatherRadarData"
+def getRadarData() {
+    if(logEnable) log.debug "In getRadarData"
 	currentDate = new Date()
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
     station1 = device.currentValue('station')
 	forecastURL = "https://api.weather.gov/stations/radar/${station1}"
-	if(logEnable) log.debug "In getWeatherRadarData - forecastURL: ${forecastURL}"
+	if(logEnable) log.debug "In getRadarData - forecastURL: ${forecastURL}"
 	def requestParams =
 		[
 			uri: forecastURL,
@@ -752,14 +736,14 @@ def getWeatherRadarData() {
 		]
     try {
         httpGet(requestParams) { response ->
-            if(logEnable) log.info "In getWeatherRadarData - response: ${response.status}"
+            if(logEnable) log.info "In getRadarData - response: ${response.status}"
             
             if(response.status == 200) {
                 def radar = response.data.properties.precipitationLast3Hours.value
                 sendEvent(name: "radar", value: radar)
             } else {
-                if(logEnable) log.debug "In getWeatherRadarData - Bad Request - ${response.status} - Something went wrong, please try again."
-                runOnce(1,getWeatherRadarData)
+                if(logEnable) log.debug "In getRadarData - Bad Request - ${response.status} - Something went wrong, please try again."
+                runOnce(1,getRadarData)
             }
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
