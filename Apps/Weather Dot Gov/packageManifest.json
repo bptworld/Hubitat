@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.9"
+			"version": "1.1.0"
 		}
 	],
 	"drivers" : [
@@ -30,7 +30,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-data-driver.groovy",
 			"required": true,
-			"version": "1.0.8"
+			"version": "1.0.9"
 		},
 		{
 			"id": "cdba29b5-e871-44a0-87c2-9aad1f340763",
@@ -38,7 +38,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-tile-driver.groovy",
 			"required": true,
-			"version": "1.0.2"
+			"version": "1.0.3"
 		}
 	]
 }
