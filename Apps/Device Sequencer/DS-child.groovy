@@ -54,7 +54,7 @@ definition(
     author: "Bryan Turcotte",
     description: "Turn on/off several devices in a row, with a user defined pause in between each.",
     category: "",
-	//parent: "BPTWorld:Device Sequencer",
+	parent: "BPTWorld:Device Sequencer",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
