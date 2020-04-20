@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 04/20/20 - Added Asthma and Pollen forecasts, adjustments to Alerts
  *  1.0.9 - 04/19/20 - Lots of adjustments
  *  1.0.8 - 04/18/20 - Added a switch to know when an alert is active or not
  *  1.0.7 - 04/18/20 - More modifications
@@ -51,7 +52,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -73,6 +74,7 @@ preferences {
     page(name: "dailyTileOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "forecastTileOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "alertTileOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "pollenOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -102,10 +104,11 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Location Options")) {
             input "lat", "text", title: "Latitude", require: true, defaultValue: "${location.latitude}", width:6
 			input "lng", "text", title: "Longitude", require: true, defaultValue: "${location.longitude}", width:6
+            input "zipCode", "text", title: "Zip Code", required: true, defaultValue: "${location.zipCode}"
             paragraph "Station ID can be found be visitng the <a href='http://weather.gov' target='_blank'>Weather.gov</a> homepage and putting in your zipcode or City, ST to find the ID (ie. KASH)"
-            input "station", "text", title: "Station ID (UPPERCASE)", submitOnChange:true
-            input "unitFormat", "enum", title: "Unit Format", required: true, options: ["Imperial", "Metric"], submitOnChange:true
-            if(lat && lng && station && unitFormat) sendDataOptions()
+            input "station", "text", title: "Station ID (UPPERCASE)", submitOnChange:true, width:6
+            input "unitFormat", "enum", title: "Unit Format", required: true, options: ["Imperial", "Metric"], submitOnChange:true, width:6
+            if(lat && lng && station && zipCode && unitFormat) sendDataOptions()
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Create Some Dashboard Tiles")) {
@@ -128,6 +131,11 @@ def pageConfig() {
                 href "alertTileOptions", title:"${getImage("optionsGreen")} Create Alert Weather Tile", description:"Click here for Options"
             } else {
                 href "alertTileOptions", title:"${getImage("optionsRed")} Create Alert Weather Tile", description:"Click here for Options"
+            }
+            if(fontSizeIndex) {
+                href "pollenOptions", title:"${getImage("optionsGreen")} Asthma and Pollen Tile", description:"Click here for Options"
+            } else {
+                href "pollenOptions", title:"${getImage("optionsRed")} Asthma and Pollen Tile", description:"Click here for Options"
             }
         }
         
@@ -313,7 +321,7 @@ def alertTileOptions() {
         display()
         section() {
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
-            paragraph "Alerts are based on Urgency and checked every 3 hours unless:<br> - Urgency is <i>future</i>, check every 1 hour<br> - Urgency is <i>expected</i>, check every 30 minutes<br> - Urgency is <i>immediate</i>, check every 5 minutes" 
+            paragraph "Alerts are based on Urgency and checked every 3 hours unless:<br> - Urgency is <i>expected</i>, check every 1 hour<br> - Urgency is <i>immediate</i>, check every 15 minutes" 
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Options")) {           
             input "useNotify", "bool", title: "Use Notifications", description: "", defaultValue:false, submitOnChange:true
@@ -383,6 +391,70 @@ def alertTileOptions() {
     }
 }
 
+def pollenOptions() {
+    dynamicPage(name: "pollenOptions", title: "", install:false, uninstall:false) {
+        display()
+        section() {
+            paragraph "Time to setup the Asthma and Pollen Tile for use with Dashboards!"
+            paragraph "Data is collected from asthmaforecast.com and pollen.com" 
+        }
+		section(getFormat("header-green", "${getImage("Blank")}"+" Forecast Options")) {           
+		    input "fontSizeIndex", "text", title: "Font Size-Index Line (ie. 7.6 - Medium-High)", required: true, defaultValue:"15", submitOnChange:true
+		    input "fontSizeTriggers", "text", title: "Font Size-Triggers Line (ie. Juniper, Poplar, Alder)", required: true, defaultValue:"15", submitOnChange:true
+            paragraph "<hr>"
+            input "updateTileP", "bool", title: "Manually Update Tiles", description: "", submitOnChange:true
+            if(updateTileP) {
+                getAsthmaData()
+                getPollenData()
+                pauseExecution(1000)
+                asthmaYesterdayTile = tileDevice.currentValue('asthmaYesterdayTile')
+                asthmaTodayTile = tileDevice.currentValue('asthmaTodayTile')
+                asthmaTomorrowTile = tileDevice.currentValue('asthmaTomorrowTile')
+                
+                pollenYesterdayTile = tileDevice.currentValue('pollenYesterdayTile')
+                pollenTodayTile = tileDevice.currentValue('pollenTodayTile')
+                pollenTomorrowTile = tileDevice.currentValue('pollenTomorrowTile')
+                
+                app?.updateSetting("updateTileP",[value:"false",type:"bool"])
+            }
+            if(asthmaYesterdayTile) aTile1 = asthmaYesterdayTile.size()
+            if(asthmaTodayTile) aTile2 = asthmaTodayTile.size()
+            if(asthmaTomorrowTile) aTile3 = asthmaTomorrowTile.size()
+            
+            if(pollenYesterdayTile) pTile1 = pollenYesterdayTile.size()
+            if(pollenTodayTile) pTile2 = pollenTodayTile.size()
+            if(pollenTomorrowTile) pTile3 = pollenTomorrowTile.size()
+            
+            asthmaTable =  "<table width=100% align=center>"
+            asthmaTable += "<tr><td align=center>${asthmaYesterdayTile}"
+            asthmaTable += "<td align=center>${asthmaTodayTile}"
+            asthmaTable += "<td align=center>${asthmaTomorrowTile}"
+            asthmaTable += "<tr><td>Tile Count: ${aTile1}"
+            asthmaTable += "<td>Tile Count: ${aTile2}"
+            asthmaTable += "<td>Tile Count: ${aTile3}"
+            asthmaTable += "</table>"
+            
+            pollenTable =  "<table width=100% align=center>"
+            pollenTable += "<tr><td align=center>${pollenYesterdayTile}"
+            pollenTable += "<td align=center>${pollenTodayTile}"
+            pollenTable += "<td align=center>${pollenTomorrowTile}"
+            pollenTable += "<tr><td>Tile Count: ${pTile1}"
+            pollenTable += "<td>Tile Count: ${pTile2}"
+            pollenTable += "<td>Tile Count: ${pTile3}"
+            pollenTable += "</table>"
+                    
+            paragraph "<hr>"
+            if(asthmaYesterdayTile) {
+                paragraph "${asthmaTable}"
+                paragraph "${pollenTable}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
+        }
+    }
+}
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -423,11 +495,11 @@ def initializeAlerts() {
       
     if(alertUrgency) {
         if(alertUrgency.toLowerCase() == "future") {
-            runEvery1Hour(getAlertData)
+            runEvery3Hours(getAlertData)
         } else if(alertUrgency.toLowerCase() == "expected") {
-            runEvery30Minutes(getAlertData)
+            runEvery1Hour(getAlertData)
         } else if(alertUrgency.toLowerCase() == "immediate") {
-            runEvery5Minutes(getAlertData)
+            runEvery15Minutes(getAlertData)
         } else {
             runEvery3Hours(getAlertData)
         }
@@ -445,7 +517,7 @@ private removeChildDevices(delete) {
 def sendDataOptions() {
     if(logEnable) log.debug "In sendDataOptions (${state.version})"
     
-    theOptions = "${lat}:${lng}:${station}:${unitFormat}"
+    theOptions = "${lat}:${lng}:${station}:${zipCode}:${unitFormat}"
     dataDevice.dataOptions(theOptions)
 }
 
@@ -716,6 +788,87 @@ def alertNotifications(evt) {
     }
 }
  
+def getAsthmaData() {
+    if(logEnable) log.debug "In getAsthmaData (${state.version})"
+    dataDevice.getAsthmaData()
+    pauseExecution(1000)
+    
+    asthmaIndexToday = dataDevice.currentValue('asthmaIndexToday')
+    asthmaCategoryToday = dataDevice.currentValue('asthmaCategoryToday')
+    asthmaTriggersToday = dataDevice.currentValue('asthmaTriggersToday')
+    asthmaIndexTomorrow = dataDevice.currentValue('asthmaIndexTomorrow')
+    asthmaCategoryTomorrow = dataDevice.currentValue('asthmaCategoryTomorrow')
+    asthmaTriggersTomorrow = dataDevice.currentValue('asthmaTriggersTomorrow')   
+    asthmaIndexYesterday = dataDevice.currentValue('asthmaIndexYesterday')
+    asthmaCategoryYesterday = dataDevice.currentValue('asthmaCategoryYesterday')
+    asthmaTriggersYesterday = dataDevice.currentValue('asthmaTriggersYesterday')
+    
+	if(logEnable) log.debug "In asthmaYesterdayTileMap"
+	asthmaDataYesterday =  "<table width=100% align=center>"
+	asthmaDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Asthma Forecast Yesterday<br>${zipCode}</div>"
+	asthmaDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${asthmaIndexYesterday} - ${asthmaCategoryYesterday}</div>"
+	asthmaDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${asthmaTriggersYesterday}</div>"
+	asthmaDataYesterday += "</table>"
+	tileDevice.asthmaYesterdayData(asthmaDataYesterday)
+
+	if(logEnable) log.debug "In asthmaTodayTileMap"
+	asthmaDataToday =  "<table width=100% align=center>"
+	asthmaDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Asthma Forecast Today<br>${zipCode}</div>"
+	asthmaDataToday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${asthmaIndexToday} - ${asthmaCategoryToday}</div>"
+	asthmaDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${asthmaTriggersToday}</div>"
+	asthmaDataToday += "</table>"
+	tileDevice.asthmaTodayData(asthmaDataToday)
+
+	if(logEnable) log.debug "In asthmaTomorrowTileMap"
+	asthmaDataTomorrow =  "<table width=100% align=center>"
+	asthmaDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Asthma Forecast Tomorrow<br>${zipCode}</div>"
+	asthmaDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${asthmaIndexTomorrow} - ${asthmaCategoryTomorrow}</div>"
+	//asthmaDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${asthmaTriggersTomorrow}</div>"
+	asthmaDataTomorrow += "</table>"
+	tileDevice.asthmaTomorrowData(asthmaDataTomorrow)   
+}
+
+
+def getPollenData() {
+    if(logEnable) log.debug "In getPollenData (${state.version})"
+    dataDevice.getPollenData()
+    pauseExecution(1000)
+    
+    pollenIndexToday = dataDevice.currentValue('pollenIndexToday')
+    pollenCategoryToday = dataDevice.currentValue('pollenCategoryToday')
+    pollenTriggersToday = dataDevice.currentValue('pollenTriggersToday')
+    pollenIndexTomorrow = dataDevice.currentValue('pollenIndexTomorrow')
+    pollenCategoryTomorrow = dataDevice.currentValue('pollenCategoryTomorrow')
+    pollenTriggersTomorrow = dataDevice.currentValue('pollenTriggersTomorrow')   
+    pollenIndexYesterday = dataDevice.currentValue('pollenIndexYesterday')
+    pollenCategoryYesterday = dataDevice.currentValue('pollenCategoryYesterday')
+    pollenTriggersYesterday = dataDevice.currentValue('pollenTriggersYesterday')
+    
+	if(logEnable) log.debug "In pollenYesterdayTileMap"
+	pollenDataYesterday =  "<table width=100% align=center>"
+	pollenDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Pollen Forecast Yesterday<br>${zipCode}</div>"
+	pollenDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${pollenIndexYesterday} - ${pollenCategoryYesterday}</div>"
+	pollenDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${pollenTriggersYesterday}</div>"
+	pollenDataYesterday += "</table>"
+	tileDevice.pollenYesterdayData(pollenDataYesterday)
+
+	if(logEnable) log.debug "In pollenTodayTileMap"
+	pollenDataToday =  "<table width=100% align=center>"
+	pollenDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Pollen Forecast Today<br>${zipCode}</div>"
+	pollenDataToday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${pollenIndexToday} - ${pollenCategoryToday}</div>"
+	pollenDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${pollenTriggersToday}</div>"
+	pollenDataToday += "</table>"
+	tileDevice.pollenTodayData(pollenDataToday)
+
+	if(logEnable) log.debug "In pollenTomorrowTileMap"
+	pollenDataTomorrow =  "<table width=100% align=center>"
+	pollenDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Pollen Forecast Tomorrow<br>${zipCode}</div>"
+	pollenDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${pollenIndexTomorrow} - ${pollenCategoryTomorrow}</div>"
+	pollenDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${pollenTriggersTomorrow}</div>"
+	pollenDataTomorrow += "</table>"
+	tileDevice.pollenTomorrowData(pollenDataTomorrow)   
+}
+
 def messageHandler() {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
     state.theMsg = ""
