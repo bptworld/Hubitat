@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 04/20/20 - Added Asthma and Pollen forecasting
  *  1.0.8 - 04/19/20 - Tweaking things
  *  1.0.7 - 04/18/20 - Added switch capability
  *  1.0.6 - 04/18/20 - Fixed another issue with Alerts
@@ -62,10 +63,11 @@ metadata {
         command "getWeeklyData"
         command "getWeatherData"
         command "getAlertData"
-        //command "getRadarData"
+        //command "getRadarData"       
+        command "getAsthmaData"
+        command "getPollenData"
 		
-        attribute "switch", "string"
-        
+        attribute "switch", "string"     
         attribute "lat", "string"
         attribute "lng", "string"
         attribute "station", "string"
@@ -131,6 +133,29 @@ metadata {
         attribute "alertInstruction", "string"
         attribute "alertInstruction", "string"
         
+        attribute "zipCode", "string"
+        attribute "asthmaIndexYesterday", "number"
+		attribute "asthmaCategoryYesterday", "string"
+		attribute "asthmaTriggersYesterday", "string"
+        attribute "asthmaIndexToday", "number"
+		attribute "asthmaCategoryToday", "string"
+		attribute "asthmaTriggersToday", "string"
+		attribute "asthmaIndexTomorrow", "number"
+		attribute "asthmaCategoryTomorrow", "string"
+		attribute "asthmaTriggersTomorrow", "string"
+		attribute "asthmaLocation", "string"
+        
+        attribute "pollenIndexYesterday", "number"
+		attribute "pollenCategoryYesterday", "string"
+		attribute "pollenTriggersYesterday", "string"
+        attribute "pollenIndexToday", "number"
+		attribute "pollenCategoryToday", "string"
+		attribute "pollenTriggersToday", "string"
+		attribute "pollenIndexTomorrow", "number"
+		attribute "pollenCategoryTomorrow", "string"
+		attribute "pollenTriggersTomorrow", "string"
+		attribute "pollenLocation", "string"
+        
         attribute "radar", "string"
 	}
 	preferences() {    	
@@ -154,11 +179,12 @@ def off() {
 } 
 
 def dataOptions(data) {
-    if(logEnable) log.debug "In dataOptions"
-    def (lat,lng,station,unitFormat) = data.split(':')
+    if(logEnable) log.debug "In dataOptions - ${data}"
+    def (lat,lng,station,zipCode,unitFormat) = data.split(':')
     sendEvent(name: "lat", value: lat)
     sendEvent(name: "lng", value: lng)
     sendEvent(name: "station", value: station)
+    sendEvent(name: "zipCode", value: zipCode)
     sendEvent(name: "unitFormat", value: unitFormat)
     pauseExecution(1000)
     getPointsData()
@@ -610,8 +636,10 @@ def getAlertData() {
     
     zone = device.currentValue('pointsForecastZone')
     
-    alertURL = "https://api.weather.gov/alerts?active=true&status=actual&zone=${zone}&urgency=expected"
-
+    // For testing purposes
+    //zone = "MNZ078"
+    
+    alertURL = "https://api.weather.gov/alerts?active=true&status=actual&zone=${zone}"
     
 	if(logEnable) log.debug "In getAlertData - alertURL: ${alertURL}"
 	def requestParams =
@@ -627,78 +655,93 @@ def getAlertData() {
             
             if(response.status == 200) {
                 try { 
-                    def alertTitle = response.data.title
-                    if(alertTitle == null) alertTitle = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertTitle: ${alertTitle}"
-                    sendEvent(name: "alertTitle", value: alertTitle)
-                              
-                    def alertStatus = response.data.features.properties.status
-                    if(alertStatus == null) alertStatus = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertStatus: ${alertStatus}"
-                    sendEvent(name: "alertStatus", value: alertStatus)
-                                
-                    def alertMessageType = response.data.features.properties.messageType
-                    if(alertMessageType == null) alertMessageType = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertMessageType: ${alertMessageType}"
-                    sendEvent(name: "alertMessageType", value: alertMessageType)
-                              
-                    def alertCategory = response.data.features.properties.category
-                    if(alertCategory == null) alertCategory = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertCategory: ${alertCategory}"
-                    sendEvent(name: "alertCategory", value: alertCategory)                
-                
-                    def alertSeverity = response.data.features.properties.severity
-                    if(alertSeverity == null) alertSeverity = "No Data"
-                    beforeSeverity = device.currentValue('alertSeverity')
-                    if(logEnable) log.info "In getAlertData - alertSeverity: ${alertSeverity}"
-                    if(alertSeverity == beforeSeverity) {
-                        sendEvent(name: "alertSeverity", value: alertSeverity)
-                    } else {
-                        sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
-                    }
-                               
-                    def alertCertainty = response.data.features.properties.certainty
-                    if(alertCertainty == null) alertCertainty = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertCertainty: ${alertCertainty}"
-                    sendEvent(name: "alertCertainty", value: alertCertainty)
-                                               
-                    def alertUrgency = response.data.features.properties.urgency
-                    if(alertUrgency == null) alertUrgency = "No Data"
-                    beforeUrgency = device.currentValue('alertUrgency')
-                    if(logEnable) log.info "In getAlertData - alertUrgency: ${alertUrgency}"
-                    if(alertUrgency == beforeUrgency) {
-                        sendEvent(name: "alertUrgency", value: alertUrgency)
-                    } else {
-                        sendEvent(name: "alertUrgency", value: alertUrgency, isStateChange: true)
-                    }
-                               
-                    def alertEvent = response.data.features.properties.event
-                    if(alertEvent == null) alertEvent = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertEvent: ${alertEvent}"
-                    sendEvent(name: "alertEvent", value: alertEvent)
-                               
-                    def alertHeadline = response.data.features.properties.headline
-                    if(alertHeadline == null) alertHeadline = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertHeadline: ${alertHeadline}"
-                    sendEvent(name: "alertHeadline", value: alertHeadline)
-                                
-                    def alertDescription = response.data.features.properties.description
-                    if(alertDescription == null) alertDescription = "No Data"
-                    beforeDescription = device.currentValue('alertDescription')
-                    if(logEnable) log.info "In getAlertData - alertDescription: ${alertDescription}"
-                    if(alertDescription == beforeDescription) {
-                        sendEvent(name: "alertDescription", value: alertDescription)
-                    } else {
-                        sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
-                    }
-                                  
-                    def alertInstruction = response.data.features.properties.instruction
-                    if(alertInstruction == null) alertInstruction = "No Data"
-                    if(logEnable) log.info "In getAlertData - alertInstruction: ${alertInstruction}"
-                    sendEvent(name: "alertInstruction", value: alertInstruction) 
+                    if(logEnable) log.debug "In getAlertData - Start collecting data from website"
+                    alertTitle = response.data.title          
+                    alertStatus = response.data.features[0].properties.status           
+                    alertMessageType = response.data.features[0].properties.messageType         
+                    alertCategory = response.data.features[0].properties.category
+                    alertSeverity = response.data.features[0].properties.severity          
+                    alertCertainty = response.data.features[0].properties.certainty                        
+                    alertUrgency = response.data.features[0].properties.urgency         
+                    alertEvent = response.data.features[0].properties.event        
+                    alertHeadline = response.data.features[0].properties.headline            
+                    alertDescription = response.data.features[0].properties.description             
+                    alertInstruction = response.data.features[0].properties.instruction
+                    if(logEnable) log.debug "In getAlertData - Finished collecting data from website"
+                    //if(logEnable) log.debug "In getAlertData - RAW DATA - $alertTitle, $alertStatus, $alertMessageType, $alertCategory, $alertSeverity, $alertCertainty, $alertUrgency, $alertEvent, $alertHeadline, $alertDescription, $alertInstruction"
                 } catch (e) {
                     if(logEnable) log.error "In getAlertData - ${e}"
-                }                             
+                    alertTitle = "No Data"
+                    alertStatus = "No Data"
+                    alertMessageType = "No Data"
+                    alertCategory = "No Data"
+                    alertSeverity = "No Data"
+                    alertCertainty = "No Data"
+                    alertUrgency = "No Data"
+                    alertEvent = "No Data"
+                    alertHeadline = "No Data"
+                    alertDescription = "No Data"
+                    alertInstruction = "No Data"
+                }
+                
+                if(alertTitle == null) alertTitle = "No Data"
+                if(logEnable) log.info "In getAlertData - alertTitle: ${alertTitle}"
+                sendEvent(name: "alertTitle", value: alertTitle)
+                
+                if(alertStatus == null) alertStatus = "No Data"
+                if(logEnable) log.info "In getAlertData - alertStatus: ${alertStatus}"
+                sendEvent(name: "alertStatus", value: alertStatus)
+                
+                if(alertMessageType == null) alertMessageType = "No Data"
+                if(logEnable) log.info "In getAlertData - alertMessageType: ${alertMessageType}"
+                sendEvent(name: "alertMessageType", value: alertMessageType)
+                
+                if(alertCategory == null) alertCategory = "No Data"
+                if(logEnable) log.info "In getAlertData - alertCategory: ${alertCategory}"
+                sendEvent(name: "alertCategory", value: alertCategory) 
+                
+                if(alertSeverity == null) alertSeverity = "No Data"
+                beforeSeverity = device.currentValue('alertSeverity')
+                if(logEnable) log.info "In getAlertData - alertSeverity: ${alertSeverity}"
+                if(alertSeverity == beforeSeverity) {
+                    sendEvent(name: "alertSeverity", value: alertSeverity)
+                } else {
+                    sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
+                }
+                
+                if(alertCertainty == null) alertCertainty = "No Data"
+                if(logEnable) log.info "In getAlertData - alertCertainty: ${alertCertainty}"
+                sendEvent(name: "alertCertainty", value: alertCertainty)
+                
+                if(alertUrgency == null) alertUrgency = "No Data"
+                beforeUrgency = device.currentValue('alertUrgency')
+                if(logEnable) log.info "In getAlertData - alertUrgency: ${alertUrgency}"
+                if(alertUrgency == beforeUrgency) {
+                    sendEvent(name: "alertUrgency", value: alertUrgency)
+                } else {
+                    sendEvent(name: "alertUrgency", value: alertUrgency, isStateChange: true)
+                }
+                
+                if(alertEvent == null) alertEvent = "No Data"
+                if(logEnable) log.info "In getAlertData - alertEvent: ${alertEvent}"
+                sendEvent(name: "alertEvent", value: alertEvent)
+                
+                if(alertHeadline == null) alertHeadline = "No Data"
+                if(logEnable) log.info "In getAlertData - alertHeadline: ${alertHeadline}"
+                sendEvent(name: "alertHeadline", value: alertHeadline)
+                
+                if(alertDescription == null) alertDescription = "No Data"
+                beforeDescription = device.currentValue('alertDescription')
+                if(logEnable) log.info "In getAlertData - alertDescription: ${alertDescription}"
+                if(alertDescription == beforeDescription) {
+                    sendEvent(name: "alertDescription", value: alertDescription)
+                } else {
+                    sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
+                }
+                
+                if(alertInstruction == null) alertInstruction = "No Data"
+                if(logEnable) log.info "In getAlertData - alertInstruction: ${alertInstruction}"
+                sendEvent(name: "alertInstruction", value: alertInstruction)            
             } else {
                 if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getAlertData)
@@ -833,3 +876,203 @@ private direction(unit) {
     theUnit = direction
     return theUnit
 }
+
+
+// ********** Start Asthma **********
+def getAsthmaData() {            // Heavily modified from ST - jschlackman
+	if(logEnable) log.debug "In getAsthmaData"
+	zipCode = device.currentValue('zipCode')
+    
+    if(logEnable) log.debug "getAsthmaData - Getting asthma data for ZIP: ${zipCode}"
+	
+	def params = [
+		uri: 'https://www.asthmaforecast.com/api/forecast/current/asthma/',
+		path: zipCode,
+		headers: [Referer:'https://www.asthmaforecast.com'],
+        timeout: 30
+	]
+
+	try {
+		httpGet(params) {resp ->
+			resp.data.Location.periods.each {period ->
+				if(period.Type == 'Yesterday') {
+					def catName = ""
+					def indexNum = period.Index.toFloat()
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					def triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					
+					sendEvent(name: "indexYesterday", value: period.Index, displayed: true)
+					sendEvent(name: "categoryYesterday", value: catName, displayed: true)
+					sendEvent(name: "triggersYesterday", value: triggersList, displayed: true)
+				}
+				
+				if(period.Type == 'Today') {
+					def catName = ""
+					def indexNum = period.Index.toFloat()
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					def triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					
+					sendEvent(name: "indexToday", value: period.Index, displayed: true)
+					sendEvent(name: "categoryToday", value: catName, displayed: true)
+					sendEvent(name: "triggersToday", value: triggersList, displayed: true)
+				}
+				
+				if(period.Type == 'Tomorrow') {
+					def catName = ""
+					def indexNum = period.Index.toFloat()
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					def triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					
+					sendEvent(name: "indexTomorrow", value: period.Index, displayed: true)
+					sendEvent(name: "categoryTomorrow", value: catName, displayed: true)
+					//sendEvent(name: "triggersTomorrow", value: triggersList, displayed: true)
+				}
+				location = resp.data.Location.DisplayLocation
+				sendEvent(name: "location", value: location, displayed: true)
+			}
+		}
+	}
+	catch (SocketTimeoutException e) {
+		if(logEnable) log.debug "In getAsthmaData - Connection to asthmaforecast.com API timed out."
+		sendEvent(name: "asthmaLocation", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+	catch (e) {
+		if(logEnable) log.debug "In getAsthmaData - Could not retrieve asthma data: $e"
+		sendEvent(name: "asthmaLocation", value: "Could not retrieve data from API", displayed: true)
+	}
+}
+// ********** End Asthma **********
+
+// ********** Start Pollen **********
+def getPollenData() {            // Heavily modified from ST - jschlackman
+	if(logEnable) log.debug "In getPollenData"
+	zipCode = device.currentValue('zipCode')
+	
+	if(logEnable) log.debug "getPollenData - Getting pollen data for ZIP: ${zipCode}"
+
+	def params = [
+		uri: 'https://www.pollen.com/api/forecast/current/pollen/',
+		path: zipCode,
+		headers: [Referer:'https://www.pollen.com'],
+        timeout: 30
+	]
+
+	try {
+		httpGet(params) {resp ->
+			resp.data.Location.periods.each {period ->
+				if(period.Type == 'Yesterday') {
+					def indexNum = period.Index.toFloat()
+					def catName = ""
+					def triggersList = ""
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					
+					sendEvent(name: "pollenIndexYesterday", value: period.Index, displayed: true)
+					sendEvent(name: "pollenCategoryYesterday", value: catName, displayed: true)
+					sendEvent(name: "pollenTriggersYesterday", value: triggersList, displayed: true)
+				}
+				
+				if(period.Type == 'Today') {
+					def indexNum = period.Index.toFloat()
+					def catName = ""
+					def triggersList = ""
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					
+					sendEvent(name: "pollenIndexToday", value: period.Index, displayed: true)
+					sendEvent(name: "pollenCategoryToday", value: catName, displayed: true)
+					sendEvent(name: "pollenTriggersToday", value: triggersList, displayed: true)
+				}
+				
+				if(period.Type == 'Tomorrow') {
+                    def indexNum = period.Index.toFloat()
+					def catName = ""
+					def triggersList = ""
+					
+					// Set the category according to index thresholds
+					if (indexNum < 2.5) {catName = "Low"}
+					else if (indexNum < 4.9) {catName = "Low-Medium"}
+					else if (indexNum < 7.3) {catName = "Medium"}
+					else if (indexNum < 9.7) {catName = "Medium-High"}
+					else if (indexNum < 12) {catName = "High"}
+					else {catName = "Unknown"}
+					
+					// Build the list of allergen triggers
+					triggersList = period.Triggers.inject([]) { result, entry ->
+						result << "${entry.Name}"
+					}.join(", ")
+					
+					sendEvent(name: "pollenIndexTomorrow", value: period.Index, displayed: true)
+					sendEvent(name: "pollenCategoryTomorrow", value: catName, displayed: true)
+					sendEvent(name: "pollenTriggersTomorrow", value: triggersList, displayed: true)
+				}
+				location = resp.data.Location.DisplayLocation
+				sendEvent(name: "location", value: location, displayed: true)
+			}
+		}
+	}
+	catch (SocketTimeoutException e) {
+		if(logEnable) log.debug "Connection to Pollen.com API timed out."
+		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+	catch (e) {
+		if(logEnable) log.debug "Could not retrieve pollen data: $e"
+		sendEvent(name: "location", value: "Could not retrieve data from API", displayed: true)
+	}
+}
+// ********** End Pollen **********
