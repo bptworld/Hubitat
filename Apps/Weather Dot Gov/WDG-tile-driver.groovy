@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 04/19/20 - Added Asthma and Pollen Forecasts
  *  1.0.2 - 04/17/20 - Added alerts
  *  1.0.1 - 04/12/20 - Added 5th tile to forecast data
  *  1.0.0 - 04/07/20 - Initial release
@@ -54,6 +55,13 @@ metadata {
         command "forecastData4"
         command "forecastData5"
         command "alertData1"
+        
+        command "asthmaYesterdayData"
+        command "asthmaTodayData"
+        command "asthmaTomorrowData"        
+        command "pollenYesterdayData"
+        command "pollenTodayData"
+        command "pollenTomorrowData"
 		
     	attribute "currentDataTile", "string"
         attribute "weeklyDataTile01", "string"
@@ -76,6 +84,13 @@ metadata {
         attribute "forecastTable4", "string"
         attribute "forecastTable5", "string"
         attribute "alertTile1", "string"
+        
+        attribute "asthmaYesterdayTile", "string"
+		attribute "asthmaTodayTile", "string"
+		attribute "asthmaTomorrowTile", "string"        
+        attribute "pollenYesterdayTile", "string"
+		attribute "pollenTodayTile", "string"
+		attribute "pollenTomorrowTile", "string"
 	}
 	preferences() {    	
         section(){
@@ -138,4 +153,34 @@ def forecastData5(stuff) {
 def alertData1(stuff) {
     if(logEnable) log.debug "In alertData1"
     sendEvent(name: "alertTile1", value: stuff)   
+}
+
+def asthmaYesterdayData(stuff) {
+    if(logEnable) log.debug "In asthmaYesterdayData"
+    sendEvent(name: "asthmaYesterdayTile", value: stuff)   
+}
+
+def asthmaTodayData(stuff) {
+    if(logEnable) log.debug "In asthmaTodayData"
+    sendEvent(name: "asthmaTodayTile", value: stuff)   
+}
+
+def asthmaTomorrowData(stuff) {
+    if(logEnable) log.debug "In asthmaTomorrowData"
+    sendEvent(name: "asthmaTomorrowTile", value: stuff)   
+}
+
+def pollenYesterdayData(stuff) {
+    if(logEnable) log.debug "In pollenYesterdayData"
+    sendEvent(name: "pollenYesterdayTile", value: stuff)   
+}
+
+def pollenTodayData(stuff) {
+    if(logEnable) log.debug "In pollenTodayData"
+    sendEvent(name: "pollenTodayTile", value: stuff)   
+}
+
+def pollenTomorrowData(stuff) {
+    if(logEnable) log.debug "In pollenTomorrowData"
+    sendEvent(name: "pollenTomorrowTile", value: stuff)   
 }
