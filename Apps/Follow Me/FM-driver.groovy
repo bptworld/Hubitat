@@ -33,25 +33,14 @@
  *
  *  Changes:
  *
- *  V2.1.1 - 03/18/20 - Fixed message priority features
- *  V2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)
+ *  2.1.2 - 04/21/20 - Code cleanup, Added optional Text formatting, modified whatDidISay list code by @alan564923 (thank you!)
+ *  2.1.1 - 03/18/20 - Fixed message priority features
+ *  2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)
  *  ---
- *  V1.0.0 - 01/27/19 - Initial release
+ *  1.0.0 - 01/27/19 - Initial release
  */
 
 import groovy.json.*
-    
-def setVersion(){
-    appName = "FollowMeDriver"
-	version = "v2.1.1" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
-}
 
 metadata {
 	definition (name: "Follow Me Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy") {
@@ -84,6 +73,7 @@ metadata {
         command "sendQueue", ["string", "string", "string"]
 		
     	attribute "whatDidISay", "string"
+        attribute "whatDidISayCount", "string"
 		attribute "latestMessage", "string"
         attribute "latestMessageDateTime", "string"
 		attribute "speakerStatus1", "string"
@@ -96,15 +86,13 @@ metadata {
         attribute "queue3", "string"
         attribute "queue4", "string"
         attribute "queue5", "string"
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
 	}
 	preferences() {    	
         section(){
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "15")
-			input("numOfLines", "number", title: "How many lines to display (from 1 to 10 only)", required:true, defaultValue: 5)
-			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
+            input("fontFamily", "text", title: "Font Family (optional)<br>ie. Lucida Sans Typewriter", required: false)
+			input("numOfLines", "number", title: "How many lines to display<br>(from 1 to 10 only)", required:true, defaultValue: 5)
+			input("hourType", "bool", title: "Time Selection<br>(Off for 24h, On for 12h)", required: false, defaultValue: false)
 			input("clearData", "bool", title: "Reset All Data", required: false, defaultValue: false)
 			input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
@@ -246,7 +234,7 @@ def priorityHandler(message) {
 
 def populateMap(priority,speech) {
 	if(logEnable) log.debug "In populateMap - Received new Speech! ${speech}"
-    speechReceived = speech.take(70)
+    speechReceived = speech.take(80)
 	
     try {
         def thePriority = priority.split(":")
@@ -284,29 +272,29 @@ def populateMap(priority,speech) {
         } else {
             listSize1 = 0
         }
-            
-        if(listSize1 > 10) state.list1.removeAt(10)
 
+        int intNumOfLines = numOfLines
+        if (listSize1 > intNumOfLines) state.list1.removeAt(intNumOfLines)
         String result1 = state.list1.join(";")
-        def lines1 = result1.split(";")
-    
-        if(logEnable) log.debug "In makeList - All - listSize1: ${listSize1}"
-        theData1 = "<table><tr><td align='left'><div style='font-size:${fontSize}px'>"
-        if(listSize1 >= 1) theData1 += "${lines1[0]}<br>"
-        if(listSize1 >= 2) theData1 += "${lines1[1]}<br>"
-        if(listSize1 >= 3) theData1 += "${lines1[2]}<br>"
-        if(listSize1 >= 4) theData1 += "${lines1[3]}<br>"
-        if(listSize1 >= 5) theData1 += "${lines1[4]}<br>"
-        if(listSize1 >= 6) theData1 += "${lines1[5]}<br>"
-        if(listSize1 >= 7) theData1 += "${lines1[6]}<br>"
-        if(listSize1 >= 8) theData1 += "${lines1[7]}<br>"
-        if(listSize1 >= 9) theData1 += "${lines1[8]}<br>"
-        if(listSize1 >= 10) theData1 += "${lines1[9]}<br>"
-        theData1 += "</div></td></tr></table>"
-            
+        def lines1     = result1.split(";")
+
+        if(logEnable) log.debug "In makeList - All - listSize1: ${listSize1} - intNumOfLines: ${intNumOfLines}"
+
+        theData1 = "<table><tr><td style='text-align:left'>"
+        if(fontFamily) {
+            theData1 += "<div style='font-size:${fontSize}px;font-family:${fontFamily}'>"
+        } else {
+            theData1 += "<div style='font-size:${fontSize}px'>"
+        }
+        for (i=0; i<intNumOfLines && i<listSize1 && theData1.length() < 927;i++)
+        theData1 += "${lines1[i]}<br>"
+        
+        theData1 += "</div></table>"
+        if(logEnable) log.debug "theData1 - ${theData1.replace("<","!")}"       
+                 
         dataCharCount1 = theData1.length()
 	    if(dataCharCount1 <= 1024) {
-	        if(logEnable) log.debug "What did I Say Attribute - dataPoints1 - ${dataCharCount1} Characters"
+	        if(logEnable) log.debug "What did I Say Attribute - theData1 - ${dataCharCount1} Characters"
 	    } else {
             theData1 = "Too many characters to display on Dashboard (${dataCharCount1})"
 	    }
@@ -325,6 +313,7 @@ def installed(){
 
 def updated() {
     log.info "Follow Me Driver has been Updated"
+    cleanUp()
     if (clearData) runIn(2,clearSpeechData)
 }
 
@@ -335,7 +324,7 @@ def initialize() {
 def getDateTime() {
 	def date = new Date()
 	if(hourType == false) newdate=date.format("MM-d HH:mm")
-	if(hourType == true) newdate=date.format("MM-d hh:mm")
+	if(hourType == true) newdate=date.format("MM-d hh:mm a")
     return newdate
 }
 
@@ -354,23 +343,17 @@ def clearSpeechData(){
 	if(logEnable) log.debug "Follow Me Driver - clearing the data"
     state.list1 = []
 	
-	state.speakerMap = [:]
-	state.speakerMapS = [:]
-	state.sMap1S = [:]
-	state.sMap2S = [:]
-	state.sMap3S = [:]
-	state.sMap4S = [:]
-	state.sMap1S = "Waiting for Data"
-	state.sMap2S = "Waiting for Data"
-	state.sMap3S = "Waiting for Data"
-	state.sMap4S = "Waiting for Data"
-	sendEvent(name: "speakerStatus1", value: state.sMap1S)
-	sendEvent(name: "speakerStatus2", value: state.sMap2S)
-	sendEvent(name: "speakerStatus3", value: state.sMap3S)
-	sendEvent(name: "speakerStatus4", value: state.sMap4S)
+	sMap1S = "Waiting for Data"
+	sMap2S = "Waiting for Data"
+	sMap3S = "Waiting for Data"
+	sMap4S = "Waiting for Data"
+	sendEvent(name: "speakerStatus1", value: sMap1S)
+	sendEvent(name: "speakerStatus2", value: sMap2S)
+	sendEvent(name: "speakerStatus3", value: sMap3S)
+	sendEvent(name: "speakerStatus4", value: sMap4S)
 	
-	state.speechTop = "Waiting for Data..."
-	sendEvent(name: "whatDidISay", value: state.speechTop)
+	speechTop = "Waiting for Data..."
+	sendEvent(name: "whatDidISay", value: speechTop)
 	if (clearData) runIn(2,clearDataOff)
 }	
 
@@ -378,51 +361,62 @@ def sendFollowMeSpeaker(status) {
 //	if(logEnable) log.debug "In sendFollowMeSpeaker - Received new speaker status - ${status}"
 	def (sName, sStatus) = status.split(':')
 //	if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
-	if(state.speakerMap == null) state.speakerMap = [:]
+	if(state.speakerMap == null) state.speakcounterMap = [:]
 	state.speakerMap.put(sName, sStatus)
-	state.speakerMapS = [:]
-	state.sMap1S = [:]
-	state.sMap2S = [:]
-	state.sMap3S = [:]
-	state.sMap4S = [:]
-	state.speakerMapS = state.speakerMap.sort { a, b -> a.key <=> b.key }
-	state.count = 0
-	state.sMap1S = "<table width='100%'>"
-	state.sMap2S = "<table width='100%'>"
-	state.sMap3S = "<table width='100%'>"
-	state.sMap4S = "<table width='100%'>"
-	state.speakerMapS.each { it -> 
+	speakerMapS = [:]
+	sMap1S = [:]
+	sMap2S = [:]
+	sMap3S = [:]
+	sMap4S = [:]
+	speakerMapS = state.speakerMap.sort { a, b -> a.key <=> b.key }
+	count = 0
+	sMap1S = "<table width='100%'>"
+	sMap2S = "<table width='100%'>"
+	sMap3S = "<table width='100%'>"
+	sMap4S = "<table width='100%'>"
+	speakerMapS.each { it -> 
 		status = it.value
-		state.count = state.count + 1
-//		if(logEnable) log.debug "In sendFollowMeSpeaker - Building Speaker Table with ${it.key} count: ${state.count}"
-		if((state.count >= 1) && (state.count <= 5)) {
-			if(status == "true") state.sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") state.sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") state.sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
+		count = count + 1
+//		if(logEnable) log.debug "In sendFollowMeSpeaker - Building Speaker Table with ${it.key} count: ${count}"
+		if((count >= 1) && (count <= 5)) {
+			if(status == "true") sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
+			if(status == "false") sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
+			if(status == "speaking") sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
 		}
-		if((state.count >= 6) && (state.count <= 10)) {
-			if(status == "true") state.sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") state.sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") state.sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
+		if((count >= 6) && (count <= 10)) {
+			if(status == "true") sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
+			if(status == "false") sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
+			if(status == "speaking") sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
 		}
-		if((state.count >= 11) && (state.count <= 15)) {
-			if(status == "true") state.sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") state.sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") state.sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
+		if((count >= 11) && (count <= 15)) {
+			if(status == "true") sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
+			if(status == "false") sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
+			if(status == "speaking") sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
 		}
-		if((state.count >= 16) && (state.count <= 20)) {
-			if(status == "true") state.sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") state.sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") state.sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
+		if((count >= 16) && (count <= 20)) {
+			if(status == "true") sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
+			if(status == "false") sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
+			if(status == "speaking") sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
 		}
 	}
-	state.sMap1S += "</table>"
-	state.sMap2S += "</table>"
-	state.sMap3S += "</table>"
-	state.sMap4S += "</table>"
+	sMap1S += "</table>"
+	sMap2S += "</table>"
+	sMap3S += "</table>"
+	sMap4S += "</table>"
 	
-	sendEvent(name: "speakerStatus1", value: state.sMap1S)
-	sendEvent(name: "speakerStatus2", value: state.sMap2S)
-	sendEvent(name: "speakerStatus3", value: state.sMap3S)
-	sendEvent(name: "speakerStatus4", value: state.sMap4S)
+	sendEvent(name: "speakerStatus1", value: sMap1S)
+	sendEvent(name: "speakerStatus2", value: sMap2S)
+	sendEvent(name: "speakerStatus3", value: sMap3S)
+	sendEvent(name: "speakerStatus4", value: sMap4S)
+}
+
+private cleanUp() {
+    // Cleaning up the driver from previous versions
+    state.remove("sMap1S")
+    state.remove("sMap2S")
+    state.remove("sMap3S")
+    state.remove("sMap4S")
+    state.remove("speechTop")
+    state.remove("speakerMapS")
+    state.remove("count")
 }
