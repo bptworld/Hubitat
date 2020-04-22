@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 04/22/20 - Changed up the error checking
  *  1.0.9 - 04/20/20 - Added Asthma and Pollen forecasting
  *  1.0.8 - 04/19/20 - Tweaking things
  *  1.0.7 - 04/18/20 - Added switch capability
@@ -160,7 +161,7 @@ metadata {
 	}
 	preferences() {    	
         section(){
-			input name: "about", type: "paragraph", title: "<b>Weather Data from Weather.gov</b><br>This driver holds the raw data for use with dashboards", description: ""
+			input name: "about", type: "paragraph", title: "<b>Weather Data from Weather.gov</b><br>This driver holds the raw data for use with the app", description: ""
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
         }
     }
@@ -261,8 +262,15 @@ def getPointsData() {
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
-    } catch (e) {
-        log.error e
+    } 
+    
+    catch (SocketTimeoutException e) {
+		log.warn "Weather Dot Gov - Connection to weather.gov API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+    
+    catch (e) {
+        log.warn "In getPointsData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
         currentDate = new Date()
@@ -322,8 +330,15 @@ def getWeeklyData() {
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
-    } catch (e) {
-        log.error e
+    } 
+    
+    catch (SocketTimeoutException e) {
+		log.warn "Weather Dot Gov - Connection to weather.gov API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+    
+    catch (e) {
+        log.warn "In getWeeklyData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
         currentDate = new Date()
@@ -617,8 +632,15 @@ def getWeatherData() {
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
-    } catch (e) {
-        log.error e
+    } 
+    
+    catch (SocketTimeoutException e) {
+		log.warn "Weather Dot Gov - Connection to weather.gov API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+    
+    catch (e) {
+        log.warn "In getWeatherData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
         currentDate = new Date()
@@ -667,10 +689,10 @@ def getAlertData() {
                     alertHeadline = response.data.features[0].properties.headline            
                     alertDescription = response.data.features[0].properties.description             
                     alertInstruction = response.data.features[0].properties.instruction
-                    if(logEnable) log.debug "In getAlertData - Finished collecting data from website"
+                    
                     //if(logEnable) log.debug "In getAlertData - RAW DATA - $alertTitle, $alertStatus, $alertMessageType, $alertCategory, $alertSeverity, $alertCertainty, $alertUrgency, $alertEvent, $alertHeadline, $alertDescription, $alertInstruction"
                 } catch (e) {
-                    if(logEnable) log.error "In getAlertData - ${e}"
+                    //if(logEnable) log.error "In getAlertData - ${e}"
                     alertTitle = "No Data"
                     alertStatus = "No Data"
                     alertMessageType = "No Data"
@@ -684,6 +706,7 @@ def getAlertData() {
                     alertInstruction = "No Data"
                 }
                 
+                if(logEnable) log.debug "In getAlertData - Finished collecting data from website"
                 if(alertTitle == null) alertTitle = "No Data"
                 if(logEnable) log.info "In getAlertData - alertTitle: ${alertTitle}"
                 sendEvent(name: "alertTitle", value: alertTitle)
@@ -750,8 +773,15 @@ def getAlertData() {
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
-    } catch (e) {
-        log.error e
+    } 
+    
+    catch (SocketTimeoutException e) {
+		log.warn "Weather Dot Gov - Connection to weather.gov API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+    
+    catch (e) {
+        log.warn "In getAlertData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
         currentDate = new Date()
@@ -792,8 +822,15 @@ def getRadarData() {
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
-    } catch (e) {
-        log.error e
+    } 
+    
+    catch (SocketTimeoutException e) {
+		log.warn "Weather Dot Gov - Connection to weather.gov API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+	}
+    
+    catch (e) {
+        log.warn "In getRadarData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
         currentDate = new Date()
@@ -883,7 +920,7 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 	if(logEnable) log.debug "In getAsthmaData"
 	zipCode = device.currentValue('zipCode')
     
-    if(logEnable) log.debug "getAsthmaData - Getting asthma data for ZIP: ${zipCode}"
+    if(logEnable) log.debug "In getAsthmaData - Getting asthma data for ZIP: ${zipCode}"
 	
 	def params = [
 		uri: 'https://www.asthmaforecast.com/api/forecast/current/asthma/',
@@ -896,6 +933,7 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 		httpGet(params) {resp ->
 			resp.data.Location.periods.each {period ->
 				if(period.Type == 'Yesterday') {
+                    if(logEnable) log.debug "In getAsthmaData - Getting data for Yesterday"
 					def catName = ""
 					def indexNum = period.Index.toFloat()
 					
@@ -918,6 +956,7 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 				}
 				
 				if(period.Type == 'Today') {
+                    if(logEnable) log.debug "In getAsthmaData - Getting data for Today"
 					def catName = ""
 					def indexNum = period.Index.toFloat()
 					
@@ -940,6 +979,7 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 				}
 				
 				if(period.Type == 'Tomorrow') {
+                    if(logEnable) log.debug "In getAsthmaData - Getting data for Tomorrow"
 					def catName = ""
 					def indexNum = period.Index.toFloat()
 					
@@ -966,11 +1006,11 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 		}
 	}
 	catch (SocketTimeoutException e) {
-		if(logEnable) log.debug "In getAsthmaData - Connection to asthmaforecast.com API timed out."
+		log.warn "In getAsthmaData - Connection to asthmaforecast.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
 		sendEvent(name: "asthmaLocation", value: "Connection timed out while retrieving data from API", displayed: true)
 	}
 	catch (e) {
-		if(logEnable) log.debug "In getAsthmaData - Could not retrieve asthma data: $e"
+		log.warn "In getAsthmaData - Could not retrieve asthma data. This is NOT an issue with this app, the website is simply busy. Try again later."
 		sendEvent(name: "asthmaLocation", value: "Could not retrieve data from API", displayed: true)
 	}
 }
@@ -981,7 +1021,7 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 	if(logEnable) log.debug "In getPollenData"
 	zipCode = device.currentValue('zipCode')
 	
-	if(logEnable) log.debug "getPollenData - Getting pollen data for ZIP: ${zipCode}"
+	if(logEnable) log.debug "In getPollenData - Getting pollen data for ZIP: ${zipCode}"
 
 	def params = [
 		uri: 'https://www.pollen.com/api/forecast/current/pollen/',
@@ -994,6 +1034,7 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 		httpGet(params) {resp ->
 			resp.data.Location.periods.each {period ->
 				if(period.Type == 'Yesterday') {
+                    if(logEnable) log.debug "In getPollenData - Getting data for Yesterday"
 					def indexNum = period.Index.toFloat()
 					def catName = ""
 					def triggersList = ""
@@ -1017,6 +1058,7 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 				}
 				
 				if(period.Type == 'Today') {
+                    if(logEnable) log.debug "In getPollenData - Getting data for Today"
 					def indexNum = period.Index.toFloat()
 					def catName = ""
 					def triggersList = ""
@@ -1040,6 +1082,7 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 				}
 				
 				if(period.Type == 'Tomorrow') {
+                    if(logEnable) log.debug "In getPollenData - Getting data for Tomorrow"
                     def indexNum = period.Index.toFloat()
 					def catName = ""
 					def triggersList = ""
@@ -1067,11 +1110,11 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 		}
 	}
 	catch (SocketTimeoutException e) {
-		if(logEnable) log.debug "Connection to Pollen.com API timed out."
+		log.warn "Weather Dot Gov - Connection to Pollen.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
 		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
 	}
 	catch (e) {
-		if(logEnable) log.debug "Could not retrieve pollen data: $e"
+		log.warn "Weather Dot Gov - Could not retrieve pollen data. This is NOT an issue with this app, the website is simply busy. Try again later."
 		sendEvent(name: "location", value: "Could not retrieve data from API", displayed: true)
 	}
 }
