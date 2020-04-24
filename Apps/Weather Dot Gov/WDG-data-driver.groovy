@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  * 1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
  *  1.1.0 - 04/22/20 - Changed up the error checking
  *  1.0.9 - 04/20/20 - Added Asthma and Pollen forecasting
  *  1.0.8 - 04/19/20 - Tweaking things
@@ -926,79 +927,85 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 		uri: 'https://www.asthmaforecast.com/api/forecast/current/asthma/',
 		path: zipCode,
 		headers: [Referer:'https://www.asthmaforecast.com'],
-        timeout: 30
+        timeout: 60
 	]
 
 	try {
 		httpGet(params) {resp ->
-			resp.data.Location.periods.each {period ->
-				if(period.Type == 'Yesterday') {
-                    if(logEnable) log.debug "In getAsthmaData - Getting data for Yesterday"
-					def catName = ""
-					def indexNum = period.Index.toFloat()
+			resp.data.Location.periods.each {asthmaPeriod ->
+				if(asthmaPeriod.Type == 'Yesterday') {
+                    if(logEnable) log.debug "In getAsthmaData - ${zipCode} - Getting data for Yesterday"
+                    def aIndexNum1 = asthmaPeriod.Index.toFloat()
+					def aCatName1 = ""
+					def aTriggersList1 = ""
 					
 					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
+					if (atIndexNum1 < 2.5) {aCatName1 = "Low"}
+					else if (aIndexNum1 < 4.9) {aCatName1 = "Low-Medium"}
+					else if (aIndexNum1 < 7.3) {aCatName1 = "Medium"}
+					else if (aIndexNum1 < 9.7) {aCatName1 = "Medium-High"}
+					else if (aIndexNum1 < 12) {aCatName1 = "High"}
+					else {aCatName1 = "Unknown"}
 					
 					// Build the list of allergen triggers
-					def triggersList = period.Triggers.inject([]) { result, entry ->
+					aTriggersList1 = asthmaPeriod.Triggers.inject([]) { result, entry ->
 						result << "${entry.Name}"
 					}.join(", ")
-					
-					sendEvent(name: "indexYesterday", value: period.Index, displayed: true)
-					sendEvent(name: "categoryYesterday", value: catName, displayed: true)
-					sendEvent(name: "triggersYesterday", value: triggersList, displayed: true)
+                    if(logEnable) log.debug "In getAsthmaData - ${zipCode} - indexYesterday: ${asthmaPeriod.Index} - categoryYesterday: ${aCatName1} - triggersYesterday: ${aTriggersList1}"
+                    
+					sendEvent(name: "indexYesterday", value: asthmaPeriod.Index, displayed: true)
+					sendEvent(name: "categoryYesterday", value: aCatName1, displayed: true)
+					sendEvent(name: "triggersYesterday", value: aTriggersList1, displayed: true)
 				}
 				
-				if(period.Type == 'Today') {
-                    if(logEnable) log.debug "In getAsthmaData - Getting data for Today"
-					def catName = ""
-					def indexNum = period.Index.toFloat()
+				if(asthmaPeriod.Type == 'Today') {
+                    if(logEnable) log.debug "In getAsthmaData - ${zipCode} - Getting data for Today"
+                    def aIndexNum2 = asthmaPeriod.Index.toFloat()
+					def aCatName2 = ""
+					def aTriggersList2 = ""
 					
 					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
+					if (aIndexNum2 < 2.5) {aCatName2 = "Low"}
+					else if (aIndexNum2 < 4.9) {aCatName2 = "Low-Medium"}
+					else if (aIndexNum2 < 7.3) {aCatName2 = "Medium"}
+					else if (aIndexNum2 < 9.7) {aCatName2 = "Medium-High"}
+					else if (aIndexNum2 < 12) {aCatName2 = "High"}
+					else {aCatName2 = "Unknown"}
 					
 					// Build the list of allergen triggers
-					def triggersList = period.Triggers.inject([]) { result, entry ->
+					aTriggersList2 = asthmaPeriod.Triggers.inject([]) { result, entry ->
 						result << "${entry.Name}"
 					}.join(", ")
-					
-					sendEvent(name: "indexToday", value: period.Index, displayed: true)
-					sendEvent(name: "categoryToday", value: catName, displayed: true)
-					sendEvent(name: "triggersToday", value: triggersList, displayed: true)
+					if(logEnable) log.debug "In getAsthmaData - ${zipCode} - indexToday: ${asthmaPeriod.Index} - categoryToday: ${aCatName2} - triggersToday: ${aTriggersList2}"
+                    
+					sendEvent(name: "indexToday", value: asthmaPeriod.Index, displayed: true)
+					sendEvent(name: "categoryToday", value: aCatName2, displayed: true)
+					sendEvent(name: "triggersToday", value: aTriggersList2, displayed: true)
 				}
 				
-				if(period.Type == 'Tomorrow') {
-                    if(logEnable) log.debug "In getAsthmaData - Getting data for Tomorrow"
-					def catName = ""
-					def indexNum = period.Index.toFloat()
+				if(asthmaPeriod.Type == 'Tomorrow') {
+                    if(logEnable) log.debug "In getAsthmaData - ${zipCode} - Getting data for Tomorrow"
+                    def aIndexNum3 = asthmaPeriod.Index.toFloat()
+					def aCatName3 = ""
+					def aTriggersList3 = ""
 					
 					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
+					if (aIndexNum3 < 2.5) {aCatName3 = "Low"}
+					else if (aIndexNum3 < 4.9) {aCatName3 = "Low-Medium"}
+					else if (aIndexNum3 < 7.3) {aCatName3 = "Medium"}
+					else if (aIndexNum3 < 9.7) {aCatName3 = "Medium-High"}
+					else if (aIndexNum3 < 12) {aCatName3 = "High"}
+					else {aCatName3 = "Unknown"}
 					
 					// Build the list of allergen triggers
-					def triggersList = period.Triggers.inject([]) { result, entry ->
+					aTriggersList3 = asthmaPeriod.Triggers.inject([]) { result, entry ->
 						result << "${entry.Name}"
 					}.join(", ")
-					
-					sendEvent(name: "indexTomorrow", value: period.Index, displayed: true)
-					sendEvent(name: "categoryTomorrow", value: catName, displayed: true)
-					//sendEvent(name: "triggersTomorrow", value: triggersList, displayed: true)
+                    if(logEnable) log.debug "In getAsthmaData - ${zipCode} - indexTomorrow: ${asthmaPeriod.Index} - categoryTomorrow: ${aCatName3} - triggersTomorrow: ${aTriggersList3}"
+                    
+					sendEvent(name: "indexTomorrow", value: asthmaPeriod.Index, displayed: true)
+					sendEvent(name: "categoryTomorrow", value: aCatName3, displayed: true)
+					sendEvent(name: "triggersTomorrow", value: aTriggersList3, displayed: true)
 				}
 				location = resp.data.Location.DisplayLocation
 				sendEvent(name: "location", value: location, displayed: true)
@@ -1006,12 +1013,12 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 		}
 	}
 	catch (SocketTimeoutException e) {
-		log.warn "In getAsthmaData - Connection to asthmaforecast.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
-		sendEvent(name: "asthmaLocation", value: "Connection timed out while retrieving data from API", displayed: true)
+		log.warn "In getAsthmaData - ${zipCode} - Connection to asthmaforecast.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "asthmaLocation", value: "${zipCode} - Connection timed out while retrieving data from API", displayed: true)
 	}
 	catch (e) {
-		log.warn "In getAsthmaData - Could not retrieve asthma data. This is NOT an issue with this app, the website is simply busy. Try again later."
-		sendEvent(name: "asthmaLocation", value: "Could not retrieve data from API", displayed: true)
+		log.warn "In getAsthmaData - ${zipCode} - Could not retrieve asthma data. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "asthmaLocation", value: "${zipCode} - Could not retrieve data from API", displayed: true)
 	}
 }
 // ********** End Asthma **********
@@ -1027,82 +1034,85 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 		uri: 'https://www.pollen.com/api/forecast/current/pollen/',
 		path: zipCode,
 		headers: [Referer:'https://www.pollen.com'],
-        timeout: 30
+        timeout: 60
 	]
 
 	try {
 		httpGet(params) {resp ->
-			resp.data.Location.periods.each {period ->
-				if(period.Type == 'Yesterday') {
-                    if(logEnable) log.debug "In getPollenData - Getting data for Yesterday"
-					def indexNum = period.Index.toFloat()
-					def catName = ""
-					def triggersList = ""
+			resp.data.Location.periods.each {pollenPeriod ->
+				if(pollenPeriod.Type == 'Yesterday') {
+                    if(logEnable) log.debug "In getPollenData - ${zipCode} - Getting data for Yesterday"
+					def pIndexNum1 = pollenPeriod.Index.toFloat()
+					def pCatName1 = ""
+					def pTriggersList1 = ""
 					
 					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
+					if (pIndexNum1 < 2.5) {pCatName1 = "Low"}
+					else if (pIndexNum1 < 4.9) {pCatName1 = "Low-Medium"}
+					else if (pIndexNum1 < 7.3) {pCatName1 = "Medium"}
+					else if (pIndexNum1 < 9.7) {pCatName1 = "Medium-High"}
+					else if (pIndexNum1 < 12) {pCatName1 = "High"}
+					else {pCatName1 = "Unknown"}
 					
 					// Build the list of allergen triggers
-					triggersList = period.Triggers.inject([]) { result, entry ->
+					pTriggersList1 = pollenPeriod.Triggers.inject([]) { result, entry ->
 						result << "${entry.Name}"
 					}.join(", ")
-					
-					sendEvent(name: "pollenIndexYesterday", value: period.Index, displayed: true)
-					sendEvent(name: "pollenCategoryYesterday", value: catName, displayed: true)
-					sendEvent(name: "pollenTriggersYesterday", value: triggersList, displayed: true)
+					if(logEnable) log.debug "In getPollenData - ${zipCode} - indexYesterday: ${pollenPeriod.Index} - categoryYesterday: ${pCatName1} - triggersYesterday: ${pTriggersList1}"
+                    
+					sendEvent(name: "pollenIndexYesterday", value: pollenPeriod.Index, displayed: true)
+					sendEvent(name: "pollenCategoryYesterday", value: pCatName1, displayed: true)
+					sendEvent(name: "pollenTriggersYesterday", value: pTriggersList1, displayed: true)
 				}
 				
-				if(period.Type == 'Today') {
-                    if(logEnable) log.debug "In getPollenData - Getting data for Today"
-					def indexNum = period.Index.toFloat()
-					def catName = ""
-					def triggersList = ""
+				if(pollenPeriod.Type == 'Today') {
+                    if(logEnable) log.debug "In getPollenData - ${zipCode} - Getting data for Today"
+					def pIndexNum2 = pollenPeriod.Index.toFloat()
+					def pCatName2 = ""
+					def pTriggersList2 = ""
 					
 					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
+					if (pIndexNum2 < 2.5) {pCatName2 = "Low"}
+					else if (pIndexNum2 < 4.9) {pCatName2 = "Low-Medium"}
+					else if (pIndexNum2 < 7.3) {pCatName2 = "Medium"}
+					else if (pIndexNum2 < 9.7) {pCatName2 = "Medium-High"}
+					else if (pIndexNum2 < 12) {pCatName2 = "High"}
+					else {pCatName2 = "Unknown"}
 					
 					// Build the list of allergen triggers
-					triggersList = period.Triggers.inject([]) { result, entry ->
+					pTriggersList2 = pollenPeriod.Triggers.inject([]) { result, entry ->
 						result << "${entry.Name}"
 					}.join(", ")
-					
-					sendEvent(name: "pollenIndexToday", value: period.Index, displayed: true)
-					sendEvent(name: "pollenCategoryToday", value: catName, displayed: true)
-					sendEvent(name: "pollenTriggersToday", value: triggersList, displayed: true)
+					if(logEnable) log.debug "In getPollenData - ${zipCode} - indexToday: ${pollenPeriod.Index} - categoryToday: ${pCatName2} - triggersToday: ${pTriggersList2}"
+                    
+					sendEvent(name: "pollenIndexToday", value: pollenPeriod.Index, displayed: true)
+					sendEvent(name: "pollenCategoryToday", value: pCatName2, displayed: true)
+					sendEvent(name: "pollenTriggersToday", value: pTriggersList, displayed: true)
 				}
 				
-				if(period.Type == 'Tomorrow') {
-                    if(logEnable) log.debug "In getPollenData - Getting data for Tomorrow"
-                    def indexNum = period.Index.toFloat()
-					def catName = ""
-					def triggersList = ""
+				if(pollenPeriod.Type == 'Tomorrow') {
+                    if(logEnable) log.debug "In getPollenData - ${zipCode} - Getting data for Tomorrow"
+                    def pIndexNum3 = pollenPeriod.Index.toFloat()
+					def pCatName3 = ""
+					def pTriggersList3 = ""
 					
 					// Set the category according to index thresholds
-					if (indexNum < 2.5) {catName = "Low"}
-					else if (indexNum < 4.9) {catName = "Low-Medium"}
-					else if (indexNum < 7.3) {catName = "Medium"}
-					else if (indexNum < 9.7) {catName = "Medium-High"}
-					else if (indexNum < 12) {catName = "High"}
-					else {catName = "Unknown"}
-					
+					if (pIndexNum3 < 2.5) {pCatName3 = "Low"}
+					else if (pIndexNum3 < 4.9) {pCatName3 = "Low-Medium"}
+					else if (pIndexNum3 < 7.3) {pCatName3 = "Medium"}
+					else if (pIndexNum3 < 9.7) {pCatName3 = "Medium-High"}
+					else if (pIndexNum3 < 12) {pCatName3 = "High"}
+					else {pCatName3 = "Unknown"}
+                    
 					// Build the list of allergen triggers
-					triggersList = period.Triggers.inject([]) { result, entry ->
+					pTriggersList3 = pollenPeriod.Triggers.inject([]) { result, entry ->
 						result << "${entry.Name}"
 					}.join(", ")
+                    if(logEnable) log.debug "In getPollenData - ${zipCode} - indexTomorrow: ${pollenPeriod.Index} - categoryTomorrow: ${pCatName3} - triggersTomorrow: ${pTriggersList3}"
 					
-					sendEvent(name: "pollenIndexTomorrow", value: period.Index, displayed: true)
-					sendEvent(name: "pollenCategoryTomorrow", value: catName, displayed: true)
-					sendEvent(name: "pollenTriggersTomorrow", value: triggersList, displayed: true)
+					sendEvent(name: "pollenIndexTomorrow", value: pollenPeriod.Index, displayed: true)
+					sendEvent(name: "pollenCategoryTomorrow", value: pCatName3, displayed: true)
+					sendEvent(name: "pollenTriggersTomorrow", value: pTriggersList3, displayed: true)
 				}
 				location = resp.data.Location.DisplayLocation
 				sendEvent(name: "location", value: location, displayed: true)
@@ -1110,12 +1120,12 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 		}
 	}
 	catch (SocketTimeoutException e) {
-		log.warn "Weather Dot Gov - Connection to Pollen.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
-		sendEvent(name: "location", value: "Connection timed out while retrieving data from API", displayed: true)
+		log.warn "Weather Dot Gov - ${zipCode} - Connection to Pollen.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "${zipCode} - Connection timed out while retrieving data from API", displayed: true)
 	}
 	catch (e) {
-		log.warn "Weather Dot Gov - Could not retrieve pollen data. This is NOT an issue with this app, the website is simply busy. Try again later."
-		sendEvent(name: "location", value: "Could not retrieve data from API", displayed: true)
+		log.warn "Weather Dot Gov - ${zipCode} - Could not retrieve pollen data. This is NOT an issue with this app, the website is simply busy. Try again later."
+		sendEvent(name: "location", value: "${zipCode} - Could not retrieve data from API", displayed: true)
 	}
 }
 // ********** End Pollen **********
