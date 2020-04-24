@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 04/24/20 - Adjustments to Asthma and Pollen handlers
  *  1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
  *  1.1.0 - 04/22/20 - Changed up the error checking
  *  1.0.9 - 04/20/20 - Added Asthma and Pollen forecasting
@@ -953,9 +954,9 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 					}.join(", ")
                     if(logEnable) log.debug "In getAsthmaData - ${zipCode} - indexYesterday: ${asthmaPeriod.Index} - categoryYesterday: ${aCatName1} - triggersYesterday: ${aTriggersList1}"
                     
-					sendEvent(name: "indexYesterday", value: asthmaPeriod.Index, displayed: true)
-					sendEvent(name: "categoryYesterday", value: aCatName1, displayed: true)
-					sendEvent(name: "triggersYesterday", value: aTriggersList1, displayed: true)
+					sendEvent(name: "asthmaIndexYesterday", value: asthmaPeriod.Index, displayed: true)
+					sendEvent(name: "asthmaCategoryYesterday", value: aCatName1, displayed: true)
+					sendEvent(name: "asthmaTriggersYesterday", value: aTriggersList1, displayed: true)
 				}
 				
 				if(asthmaPeriod.Type == 'Today') {
@@ -978,9 +979,9 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 					}.join(", ")
 					if(logEnable) log.debug "In getAsthmaData - ${zipCode} - indexToday: ${asthmaPeriod.Index} - categoryToday: ${aCatName2} - triggersToday: ${aTriggersList2}"
                     
-					sendEvent(name: "indexToday", value: asthmaPeriod.Index, displayed: true)
-					sendEvent(name: "categoryToday", value: aCatName2, displayed: true)
-					sendEvent(name: "triggersToday", value: aTriggersList2, displayed: true)
+					sendEvent(name: "asthmaIndexToday", value: asthmaPeriod.Index, displayed: true)
+					sendEvent(name: "asthmaCategoryToday", value: aCatName2, displayed: true)
+					sendEvent(name: "asthmaTriggersToday", value: aTriggersList2, displayed: true)
 				}
 				
 				if(asthmaPeriod.Type == 'Tomorrow') {
@@ -1003,12 +1004,12 @@ def getAsthmaData() {            // Heavily modified from ST - jschlackman
 					}.join(", ")
                     if(logEnable) log.debug "In getAsthmaData - ${zipCode} - indexTomorrow: ${asthmaPeriod.Index} - categoryTomorrow: ${aCatName3} - triggersTomorrow: ${aTriggersList3}"
                     
-					sendEvent(name: "indexTomorrow", value: asthmaPeriod.Index, displayed: true)
-					sendEvent(name: "categoryTomorrow", value: aCatName3, displayed: true)
-					sendEvent(name: "triggersTomorrow", value: aTriggersList3, displayed: true)
+					sendEvent(name: "asthmaIndexTomorrow", value: asthmaPeriod.Index, displayed: true)
+					sendEvent(name: "asthmaCategoryTomorrow", value: aCatName3, displayed: true)
+					sendEvent(name: "asthmaTriggersTomorrow", value: aTriggersList3, displayed: true)
 				}
 				location = resp.data.Location.DisplayLocation
-				sendEvent(name: "location", value: location, displayed: true)
+                sendEvent(name: "asthmaLocation", value: "${zipCode}", displayed: true)
 			}
 		}
 	}
@@ -1115,17 +1116,17 @@ def getPollenData() {            // Heavily modified from ST - jschlackman
 					sendEvent(name: "pollenTriggersTomorrow", value: pTriggersList3, displayed: true)
 				}
 				location = resp.data.Location.DisplayLocation
-				sendEvent(name: "location", value: location, displayed: true)
+				sendEvent(name: "pollenLocation", value: "${zipCode}", displayed: true)
 			}
 		}
 	}
 	catch (SocketTimeoutException e) {
 		log.warn "Weather Dot Gov - ${zipCode} - Connection to Pollen.com API timed out. This is NOT an issue with this app, the website is simply busy. Try again later."
-		sendEvent(name: "location", value: "${zipCode} - Connection timed out while retrieving data from API", displayed: true)
+		sendEvent(name: "pollenLocation", value: "${zipCode} - Connection timed out while retrieving data from API", displayed: true)
 	}
 	catch (e) {
 		log.warn "Weather Dot Gov - ${zipCode} - Could not retrieve pollen data. This is NOT an issue with this app, the website is simply busy. Try again later."
-		sendEvent(name: "location", value: "${zipCode} - Could not retrieve data from API", displayed: true)
+		sendEvent(name: "pollenLocation", value: "${zipCode} - Could not retrieve data from API", displayed: true)
 	}
 }
 // ********** End Pollen **********
