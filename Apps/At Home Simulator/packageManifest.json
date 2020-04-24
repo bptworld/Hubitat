@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-at-home-simulator/8697",
 	"apps" : [
 		{
 			"id" : "d21333a8-fffc-45d2-91f0-1fa7af0d7ba9",
