@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 04/24/20 - Adjustments Asthma and Pollen forecasts
  *  1.1.0 - 04/20/20 - Added Asthma and Pollen forecasts, adjustments to Alerts
  *  1.0.9 - 04/19/20 - Lots of adjustments
  *  1.0.8 - 04/18/20 - Added a switch to know when an alert is active or not
@@ -52,7 +53,7 @@
  */
 
 def setVersion(){
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
