@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  * 1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
+ *  1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
  *  1.1.0 - 04/22/20 - Changed up the error checking
  *  1.0.9 - 04/20/20 - Added Asthma and Pollen forecasting
  *  1.0.8 - 04/19/20 - Tweaking things
