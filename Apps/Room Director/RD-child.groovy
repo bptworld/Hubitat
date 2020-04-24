@@ -32,10 +32,11 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 04/24/20 - Fixed lights not respecting new motion after warning
  *  1.0.3 - 04/16/20 - Fixed pause duration error
- *  V1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings
- *  V1.0.1 - 12/10/19 - Cosmetic typo fix
- *  V1.0.0 - 11/12/19 - Initial release.
+ *  1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings
+ *  1.0.1 - 12/10/19 - Cosmetic typo fix
+ *  1.0.0 - 11/12/19 - Initial release.
  *
  */
 
@@ -43,7 +44,7 @@ import groovy.json.*
 import hubitat.helper.RMUtils
     
 def setVersion(){
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -565,7 +566,7 @@ def roomWarningHandler() {
         
         if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
         runIn(30, lightsHandler)
-        runIn(repeatTime, lightsHandler)
+
     }
 }
 
@@ -584,7 +585,8 @@ def lightsHandler() {
             unSwitchesOn.each { it ->
                 it.on()
             }
-        }  
+        }
+        runIn(repeatTime, lightsHandler)
     }
 }
 
@@ -1005,6 +1007,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Room Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Room Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }  
