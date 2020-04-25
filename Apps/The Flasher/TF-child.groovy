@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Flash your lights based on several triggers!
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -36,28 +36,17 @@
  *
  *  Changes:
  *
- *  V1.0.4 - 01/12/20 - Add Mode restriction
- *  V1.0.3 - 01/10/20 - Fixed setup error
- *  V1.0.2 - 01/09/20 - Added color to Flash options
- *  V1.0.1 - 01/08/20 - Added button as a trigger
- *  V1.0.0 - 01/01/20 - Initial release
+ *  1.0.5 - 01/12/20 - Added moisture trigger, days restriction
+ *  1.0.4 - 01/12/20 - Add Mode restriction
+ *  1.0.3 - 01/10/20 - Fixed setup error
+ *  1.0.2 - 01/09/20 - Added color to Flash options
+ *  1.0.1 - 01/08/20 - Added button as a trigger
+ *  1.0.0 - 01/01/20 - Initial release
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "TheFlasherChildVersion"
-	state.version = "v1.0.4"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { //log.error "In setVersion - ${e}"
-    }
+	state.version = "1.0.5"
 }
 
 definition(
@@ -117,12 +106,17 @@ def pageConfig() {
                 input "switchValue", "bool", defaultValue: false, title: "Flash when Off or On (off = Off, On = On)", description: "Options"
             }
             
-            input "timeToRun", "time", title: "Time", required: false
+            input "myWater", "capability.waterSensor", title: "Water Sensor(s)", required: false, multiple: true, submitOnChange: true
+            if(myWater) {
+                input "waterValue", "bool", defaultValue: false, title: "Flash when Wet or Dry (off = Wet, On = Dry)", description: "Options"
+            }
+            
+            input "timeToRun", "time", title: "Flash at a Certain Time", required: false
 	    }
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
 		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-		    input "numFlashes", "number", title: "Number of times (default: 2)", required: false, width: 6
-            input "delay", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+		    input "numFlashes", "number", title: "Number of times<br>", required: false, width: 6
+            input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", required: false, width: 6
             if(theSwitch) {
                 if(theSwitch.hasCommand('setColor')) {
                     input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
@@ -134,6 +128,13 @@ def pageConfig() {
                     ]
                 }
             }
+            //if(numFlashes == 99) {
+            //    if(mySwitch) {
+            //        paragraph "<b>Flashing will continue until the switch choosen above is turned off or 99 times is reached.</b>"
+            //    } else {
+            //        paragraph "<b>Choosing 99 flashes requires the Switch option to be choosen above.</b>"
+            //    }
+            //}
 	    }
         section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions")) {
             paragraph "Allow flashing between what times"
@@ -141,10 +142,12 @@ def pageConfig() {
         	input "toTime", "time", title: "To", required:false, width: 6
             
             input "myMode", "mode", title: "Allow flashing when in this Mode", multiple:true, submitOnChange:true
+            
+            input "days", "enum", title: "Only flash on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "Enable extra logging"
+            input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "ogging", submitOnChange:true
 		}
 		display2()
 	}
@@ -170,6 +173,7 @@ def subscribe() {
 	if(motion) subscribe(motion, "motion", motionHandler)
     if(myPresence) subscribe(myPresence, "presence", presenceHandler)
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
+    if(myWater) subscribe(myWater, "water", moistureHandler)
     if(timeToRun) schedule(timeToRun, timeHandler)
 }
 
@@ -214,6 +218,12 @@ def switchHandler(evt) {
 	if(evt.value == "off" && !switchValue) flashLights()
 }
 
+def moistureHandler(evt) {
+	if(logEnable) log.debug "In moistureHandler - Water: $evt.value"
+	if(evt.value == "dry" && waterValue) flashLights()
+	if(evt.value == "wet" && !waterValue) flashLights()
+}
+
 def timeHandler(evt) {
 	if(logEnable) log.debug "In timeHandler - Time: -"
 	flashLights()
@@ -252,88 +262,91 @@ private flashLights() {    // Modified from ST documents
     if(logEnable) log.debug "In flashLights (${state.version})"
     checkTime()
     checkMode()
+    dayOfTheWeekHandler()
     
     if(state.timeBetween) {
         if(state.modeMatch) {
-	        def doFlash = true
-	        def delay = delay ?: 500
-	        def numFlashes = numFlashes ?: 2
+            if(state.daysMatch) {
+                def doFlash = true
+                def delay = delay ?: 1500
+                def numFlashes = numFlashes ?: 2
 
-	        if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
-	        if(state.lastActivated) {
-		        def elapsed = now() - state.lastActivated
-		        def sequenceTime = (numFlashes + 1) * (delay)
-		        doFlash = elapsed > sequenceTime
-		        if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
-	        }
+                if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
+                if(state.lastActivated) {
+                    def elapsed = now() - state.lastActivated
+                    def sequenceTime = (numFlashes + 1) * (delay)
+                    doFlash = elapsed > sequenceTime
+                    if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
+                }
 
-	        if(doFlash) {
-	        	if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
-	        	state.lastActivated = now()
-	        	if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
-            
-                if(theSwitch.hasCommand('setColor')) {
-                    oldSwitchState = theSwitch.currentValue("switch")
-                    oldHueColor = theSwitch.currentValue("hue")
-                    oldSaturation = theSwitch.currentValue("saturation")
-                    oldLevel = theSwitch.currentValue("level")
-                    state.oldValue = [switch: "${oldSwitchState}", hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
-                    if(logEnable) log.debug "In flashLights - setColor - value: $state.oldValue"
-                    setLevelandColorHandler()
+                if(doFlash) {
+                    if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
+                    state.lastActivated = now()
+                    if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
+
+                    if(theSwitch.hasCommand('setColor')) {
+                        oldSwitchState = theSwitch.currentValue("switch")
+                        oldHueColor = theSwitch.currentValue("hue")
+                        oldSaturation = theSwitch.currentValue("saturation")
+                        oldLevel = theSwitch.currentValue("level")
+                        state.oldValue = [switch: "${oldSwitchState}", hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+                        if(logEnable) log.debug "In flashLights - setColor - value: $state.oldValue"
+                        setLevelandColorHandler()
+                    }
+
+                    def initialActionOn = (oldSwitch != "on")
+
+                    numFlashes.times {
+                        if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
+                        theSwitch.eachWithIndex {s, i ->
+                            if(initialActionOn) {
+                                pauseExecution(delay)
+
+                                if(s.hasCommand('setColor')) {
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+                                    s.setColor(state.value)
+                                } else {
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+                                    s.on()
+                                } 
+                            } else {
+                                pauseExecution(delay)
+                                s.off()
+                            }
+                        }
+                        if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
+                        theSwitch.eachWithIndex {s, i ->
+                            if(initialActionOn) {
+                                pauseExecution(delay)
+                                s.off()
+                            } else {
+                                pauseExecution(delay)
+                                if(s.hasCommand('setColor')) {
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
+                                    s.setColor(state.value)
+                                } else {
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+                                    s.on()
+                                }
+                            }
+                        }
+                    }
+
+                    theValue = state.oldValue
+                    if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
+                    if(theSwitch.hasCommand('setColor')) {
+                        theSwitch.setColor(theValue)
+                        if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - value: $theValue"
+                    }
+                    if(oldSwitchState == "on") {
+                        theSwitch.on()
+                    } else {
+                        theSwitch.off()
+                    }
                 }
-            
-                def initialActionOn = (oldSwitch != "on")
-                
-	        	numFlashes.times {
-	    	    	if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
-		        	theSwitch.eachWithIndex {s, i ->
-			        	if(initialActionOn) {
-                            pauseExecution(delay)
-                        
-                            if(s.hasCommand('setColor')) {
-            	                if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
-            	                s.setColor(state.value)
-        	                } else {
-            	                if(logEnable) log.debug "In flashLights - $s.displayName, on()"
-            	                s.on()
-        	                } 
-			    	    }
-			    	    else {
-                            pauseExecution(delay)
-			    	    	s.off()
-			    	    }
-			        }
-			        if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
-			        theSwitch.eachWithIndex {s, i ->
-			        	if(initialActionOn) {
-                            pauseExecution(delay)
-				        	s.off()
-				        }
-			        	else {
-                           pauseExecution(delay)
-				        	if(s.hasCommand('setColor')) {
-            	                if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
-            	                s.setColor(state.value)
-        	                } else {
-            	                if(logEnable) log.debug "In flashLights - $s.displayName, on()"
-            	                s.on()
-        	                }
-				        }
-			        }
-		        }
-            
-                theValue = state.oldValue
-                if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
-                if(theSwitch.hasCommand('setColor')) {
-                    theSwitch.setColor(theValue)
-                    if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - value: $theValue"
-                }
-                if(oldSwitchState == "on") {
-                    theSwitch.on()
-                } else {
-                    theSwitch.off()
-                }
-	        }
+            } else {
+                if(logEnable) log.debug "In flashLights - Days does not match, can't flash lights."
+            }    
         } else {
             if(logEnable) log.debug "In flashLights - Mode does not match, can't flash lights."
         }
@@ -392,6 +405,32 @@ def setLevelandColorHandler() {
     if(logEnable) log.debug "In setLevelandColorHandler - value: ${state.value}"
 }
 
+def dayOfTheWeekHandler() {
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+    if(days) {
+	    Calendar date = Calendar.getInstance()
+	    int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
+	    if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
+	    if(dayOfTheWeek == 2) state.dotWeek = "Monday"
+	    if(dayOfTheWeek == 3) state.dotWeek = "Tuesday"
+	    if(dayOfTheWeek == 4) state.dotWeek = "Wednesday"
+	    if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
+	    if(dayOfTheWeek == 6) state.dotWeek = "Friday"
+	    if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
+
+	    if(days.contains(state.dotWeek)) {
+	    	if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+		    state.daysMatch = true
+	    } else {
+	    	if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+		    state.daysMatch = false
+	    }
+    } else {
+        state.daysMatch = true
+    }
+	if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
@@ -426,6 +465,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>The Flasher - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>The Flasher - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }
