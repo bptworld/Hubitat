@@ -33,33 +33,23 @@
  *
  *  Changes:
  *
- *  V2.3.7 - 03/23/20 - Attempt to fix working with RM variables
- *  V2.3.6 - 03/22/20 - Changed custom number color wording. Fixed device value not showing after selecting attribute. Added selection for IP or Cloud for device control
- *  V2.3.5 - 03/14/20 - Fixed Bitly url selection
- *  V2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
+ *  2.3.8 - 04/16/20 - Cosmetic changes
+ *  2.3.7 - 03/23/20 - Attempt to fix working with RM variables
+ *  2.3.6 - 03/22/20 - Changed custom number color wording. Fixed device value not showing after selecting attribute. Added selection for IP or Cloud for device control
+ *  2.3.5 - 03/14/20 - Fixed Bitly url selection
+ *  2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
  *                    - No more editing the Maker URL, it is now created for you
  *                    - If number of lines is reduced, a cleanup happens to remove all of the leftover settings
  *                    - Line copy now brings over the Device and Attribute
  *                    - Tile copy now bring over the Device
  *                    - Found and fixed a few bugs too!
  *  ---
- *  V1.0.0 - 02/16/19 - Initially started working on this concept.
+ *  1.0.0 - 02/16/19 - Initially started working on this concept.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "TileMaster2ChildVersion"
-	state.version = "v2.3.7"
-   
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.3.8"
 }
 
 definition(
@@ -91,7 +81,7 @@ def pageConfig() {
         if(lineToEdit == null) lineToEdit = 1
         if(lineToEdit == 1) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device and Dashboard Tile")) {}
-            section("Important Information Regarding the Virtual Device:", hideable: true, hidden: true) {
+            section("Important Information Regarding the Virtual Device:<br><b>Please be sure to CLICK HERE and READ this section!</b>", hideable: true, hidden: true) {
                 paragraph "Tile Master uses an iFrame within the table that creates the Dashboard Tile. This is the magic that makes device control possible without a new window opening up and ruining the whole experience."
                 paragraph "This also has the downside of messing with the virtual device created. While the Dashboard tile isn't effected and continues to update as usual, the Virtual Device itself will not load from the Device page. You will just see a blank (white) screen and the spinning blue thing in the corner. Again, this does not effect the workings of this app or the Dashboard tile. Just the annoyance of not being able to view the device page."
                 paragraph "With that said, there really is no reason to view the device page as there are no options, it's just a holding place for the Dashboard tile. But, if for any reason you do want to view the device page, I've added in a switch to turn the iFrame off."
@@ -110,7 +100,7 @@ def pageConfig() {
                 if(userName) createChildDevice()
                 if(statusMessage == null) statusMessage = "Waiting on status message..."
                 paragraph "${statusMessage}"
-                input "tileDevice", "capability.actuator", title: "Vitual Device created to send the data to:", required:true, multiple:false
+                input "tileDevice", "capability.actuator", title: "Virtual Device created to send the data to:", required:true, multiple:false
             } 
         }
 
@@ -1196,8 +1186,6 @@ def initialize() {
         theAttb = app."deviceAttsb_$z"
         if(theDevb) subscribe(theDevb, theAttb, tileHandler)
     }
-      
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def uninstalled() {
@@ -2054,7 +2042,7 @@ def createChildDevice() {
     if(logEnable) log.debug "In createChildDevice (${state.version})"
     statusMessage = ""
     if(!getChildDevice("TM - " + userName)) {
-        if(logEnable) log.debug "In createChildDevice - Child device not found - Creating device Location Tracker - ${userName}"
+        if(logEnable) log.debug "In createChildDevice - Child device not found - Creating device Tile Master - ${userName}"
         try {
             addChildDevice("BPTWorld", "Tile Master Driver", "TM - " + userName, 1234, ["name": "TM - ${userName}", isComponent: false])
             if(logEnable) log.debug "In createChildDevice - Child device has been created! (TM - ${userName})"
@@ -2124,6 +2112,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Tile Master 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Tile Master 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }
