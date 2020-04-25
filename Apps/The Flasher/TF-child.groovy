@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *  1.0.5 - 01/12/20 - Added moisture trigger, days restriction
+ *  1.0.5 - 04/25/20 - Added moisture trigger, days restriction
  *  1.0.4 - 01/12/20 - Add Mode restriction
  *  1.0.3 - 01/10/20 - Fixed setup error
  *  1.0.2 - 01/09/20 - Added color to Flash options
