@@ -179,33 +179,36 @@ def getRawData(evt){
 
 def styleHandler(data){
     //if(logEnable) log.debug "In styleHandler (${state.version})"
-    if(data.contains(" - Zwav")) {
-        strippedData = data.replace(" - Zwav","")
-        def (dataZw1, dataZw2) = strippedData.split(" - ")
-        colorData = "<span style='color:${colorZwav}'>${dataZw1}</span> - ${dataZw2}"
-        //if(logEnable) log.debug "In styleHandler (${state.version}) - Zwav - colorData: ${colorData}"
-        return colorData
-    }
-    if(data.contains(" - Zigb")) {
-        strippedData = data.replace(" - Zigb","")
-        def (dataZb1, dataZb2) = strippedData.split(" - ")
-        colorData = "<span style='color:${colorZigb}'>${dataZb1}</span> - ${dataZb2}"
-        //if(logEnable) log.debug "In styleHandler (${state.version}) - ZigB - colorData: ${colorData}"
-        return colorData
-    }
-    if(data.contains(" - Virt")) {
-        strippedData = data.replace(" - Virt","")
-        def (dataV1, dataV2) = strippedData.split(" - ")
-        colorData = "<span style='color:${colorVirt}'>${dataV1}</span> - ${dataV2}"
-        //if(logEnable) log.debug "In styleHandler (${state.version}) - Virt - colorData: ${colorData}"
-        return colorData
-    }
-    if(data.contains(" - Other")) {
-        strippedData = data.replace(" - Other","")
-        def (dataO1, dataO2) = strippedData.split(" - ")
-        colorData = "<span style='color:${colorVirt}'>${dataO1}</span> - ${dataO2}"
-        //if(logEnable) log.debug "In styleHandler (${state.version}) - Virt - colorData: ${colorData}"
-        return colorData
+    def colorData = ""
+    if(data!=null) {
+        if(data.contains(" - Zwav")) {
+            strippedData = data.replace(" - Zwav","")
+            def (dataZw1, dataZw2) = strippedData.split(" - ")
+            colorData = "<span style='color:${colorZwav}'>${dataZw1}</span> - ${dataZw2}"
+            //if(logEnable) log.debug "In styleHandler (${state.version}) - Zwav - colorData: ${colorData}"
+            return colorData
+        }
+        if(data.contains(" - Zigb")) {
+            strippedData = data.replace(" - Zigb","")
+            def (dataZb1, dataZb2) = strippedData.split(" - ")
+            colorData = "<span style='color:${colorZigb}'>${dataZb1}</span> - ${dataZb2}"
+            //if(logEnable) log.debug "In styleHandler (${state.version}) - ZigB - colorData: ${colorData}"
+            return colorData
+        }
+        if(data.contains(" - Virt")) {
+            strippedData = data.replace(" - Virt","")
+            def (dataV1, dataV2) = strippedData.split(" - ")
+            colorData = "<span style='color:${colorVirt}'>${dataV1}</span> - ${dataV2}"
+            //if(logEnable) log.debug "In styleHandler (${state.version}) - Virt - colorData: ${colorData}"
+            return colorData
+        }
+        if(data.contains(" - Other")) {
+            strippedData = data.replace(" - Other","")
+            def (dataO1, dataO2) = strippedData.split(" - ")
+            colorData = "<span style='color:${colorVirt}'>${dataO1}</span> - ${dataO2}"
+            //if(logEnable) log.debug "In styleHandler (${state.version}) - Virt - colorData: ${colorData}"
+            return colorData
+        }
     }
 }
 
@@ -221,6 +224,7 @@ def reportRawOptions(){
             
             try {
                 String result1 = state.deviceData.join(",")
+                
                 def data = result1.split(",")
                 dataS = data.sort { a, b -> b <=> a }
                 if(dataS) {
@@ -232,265 +236,96 @@ def reportRawOptions(){
                 dataSize1 = 0
             }
             
-            if(logEnable) log.debug "In reportOptions - dataSize1: ${dataSize1} - dataS: ${dataS}"
+            // Tables
+            theDataPoints1 = ""
+            theDataPoints2 = ""
+            theDataPoints3 = ""
+            theDataPoints4 = ""
+            theDataPoints5 = ""
+            theDataPoints6 = ""
             
-            if(dataSize1 >= 1) { styleHandler(dataS[0]); theDataPoints1 = "${colorData}<br>" }
-            if(dataSize1 >= 2) { styleHandler(dataS[1]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 3) { styleHandler(dataS[2]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 4) { styleHandler(dataS[3]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 5) { styleHandler(dataS[4]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 6) { styleHandler(dataS[5]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 7) { styleHandler(dataS[6]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 8) { styleHandler(dataS[7]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 9) { styleHandler(dataS[8]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 10) { styleHandler(dataS[9]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 11) { styleHandler(dataS[10]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 12) { styleHandler(dataS[11]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 13) { styleHandler(dataS[12]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 14) { styleHandler(dataS[13]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 15) { styleHandler(dataS[14]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 16) { styleHandler(dataS[15]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 17) { styleHandler(dataS[16]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 18) { styleHandler(dataS[17]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 19) { styleHandler(dataS[18]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 20) { styleHandler(dataS[19]); theDataPoints1 += "${colorData}<br>" }   
-            if(dataSize1 >= 21) { styleHandler(dataS[20]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 22) { styleHandler(dataS[21]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 23) { styleHandler(dataS[22]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 24) { styleHandler(dataS[23]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 25) { styleHandler(dataS[24]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 26) { styleHandler(dataS[25]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 27) { styleHandler(dataS[26]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 28) { styleHandler(dataS[27]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 29) { styleHandler(dataS[28]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 30) { styleHandler(dataS[29]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 31) { styleHandler(dataS[30]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 32) { styleHandler(dataS[31]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 33) { styleHandler(dataS[32]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 34) { styleHandler(dataS[33]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 35) { styleHandler(dataS[34]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 36) { styleHandler(dataS[35]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 37) { styleHandler(dataS[36]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 38) { styleHandler(dataS[37]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 39) { styleHandler(dataS[38]); theDataPoints1 += "${colorData}<br>" }
-            if(dataSize1 >= 40) { styleHandler(dataS[39]); theDataPoints1 += "${colorData}<br>" }
+            for(int i in 1..dataSize1) {
+                
+                if(i>=1 && i<=40) { theDataPoints1 += "${styleHandler(dataS[i-1])}<br>" }
+                if(i>=41 && i<=80) { theDataPoints2 += "${styleHandler(dataS[i-1])}<br>" }
+                if(i>=81 && i<=120) { theDataPoints3 += "${styleHandler(dataS[i-1])}<br>" }
+                if(i>=121 && i<=160) { theDataPoints4 += "${styleHandler(dataS[i-1])}<br>" }
+                if(i>=161 && i<=200) { theDataPoints5 += "${styleHandler(dataS[i-1])}<br>" }
+                if(i>=201 && i<=240) { theDataPoints6 += "${styleHandler(dataS[i-1])}<br>" }
             
-            if(dataSize1 >= 41) { styleHandler(dataS[40]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 42) { styleHandler(dataS[41]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 43) { styleHandler(dataS[42]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 44) { styleHandler(dataS[43]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 45) { styleHandler(dataS[44]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 46) { styleHandler(dataS[45]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 47) { styleHandler(dataS[46]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 48) { styleHandler(dataS[47]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 49) { styleHandler(dataS[48]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 50) { styleHandler(dataS[49]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 51) { styleHandler(dataS[50]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 52) { styleHandler(dataS[51]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 53) { styleHandler(dataS[52]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 54) { styleHandler(dataS[53]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 55) { styleHandler(dataS[54]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 56) { styleHandler(dataS[55]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 57) { styleHandler(dataS[56]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 58) { styleHandler(dataS[57]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 59) { styleHandler(dataS[58]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 60) { styleHandler(dataS[59]); theDataPoints2 += "${colorData}<br>" }            
-            if(dataSize1 >= 61) { styleHandler(dataS[60]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 62) { styleHandler(dataS[61]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 63) { styleHandler(dataS[62]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 64) { styleHandler(dataS[63]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 65) { styleHandler(dataS[64]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 66) { styleHandler(dataS[65]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 67) { styleHandler(dataS[66]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 68) { styleHandler(dataS[67]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 69) { styleHandler(dataS[68]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 70) { styleHandler(dataS[69]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 71) { styleHandler(dataS[60]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 72) { styleHandler(dataS[71]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 73) { styleHandler(dataS[72]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 74) { styleHandler(dataS[73]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 75) { styleHandler(dataS[74]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 76) { styleHandler(dataS[75]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 77) { styleHandler(dataS[76]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 78) { styleHandler(dataS[77]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 79) { styleHandler(dataS[78]); theDataPoints2 += "${colorData}<br>" }
-            if(dataSize1 >= 80) { styleHandler(dataS[79]); theDataPoints2 += "${colorData}<br>" }
+            }
             
-            if(dataSize1 >= 81) { styleHandler(dataS[80]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 82) { styleHandler(dataS[81]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 83) { styleHandler(dataS[82]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 84) { styleHandler(dataS[83]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 85) { styleHandler(dataS[84]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 86) { styleHandler(dataS[85]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 87) { styleHandler(dataS[86]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 88) { styleHandler(dataS[87]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 89) { styleHandler(dataS[88]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 90) { styleHandler(dataS[89]); theDataPoints3 += "${colorData}<br>" } 
-            if(dataSize1 >= 91) { styleHandler(dataS[90]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 92) { styleHandler(dataS[91]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 93) { styleHandler(dataS[92]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 94) { styleHandler(dataS[93]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 95) { styleHandler(dataS[94]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 96) { styleHandler(dataS[95]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 97) { styleHandler(dataS[96]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 98) { styleHandler(dataS[97]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 99) { styleHandler(dataS[98]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 100) { styleHandler(dataS[99]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 101) { styleHandler(dataS[100]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 102) { styleHandler(dataS[101]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 103) { styleHandler(dataS[102]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 104) { styleHandler(dataS[103]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 105) { styleHandler(dataS[104]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 106) { styleHandler(dataS[105]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 107) { styleHandler(dataS[106]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 108) { styleHandler(dataS[107]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 109) { styleHandler(dataS[108]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 110) { styleHandler(dataS[109]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 111) { styleHandler(dataS[110]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 112) { styleHandler(dataS[111]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 113) { styleHandler(dataS[112]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 114) { styleHandler(dataS[113]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 115) { styleHandler(dataS[114]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 116) { styleHandler(dataS[115]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 117) { styleHandler(dataS[116]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 118) { styleHandler(dataS[117]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 119) { styleHandler(dataS[118]); theDataPoints3 += "${colorData}<br>" }
-            if(dataSize1 >= 120) { styleHandler(dataS[119]); theDataPoints3 += "${colorData}<br>" }
-            
-            if(dataSize1 >= 121) { styleHandler(dataS[110]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 122) { styleHandler(dataS[121]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 123) { styleHandler(dataS[122]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 124) { styleHandler(dataS[123]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 125) { styleHandler(dataS[124]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 126) { styleHandler(dataS[125]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 127) { styleHandler(dataS[126]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 128) { styleHandler(dataS[127]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 129) { styleHandler(dataS[128]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 130) { styleHandler(dataS[129]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 131) { styleHandler(dataS[130]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 132) { styleHandler(dataS[131]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 133) { styleHandler(dataS[132]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 134) { styleHandler(dataS[133]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 135) { styleHandler(dataS[134]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 136) { styleHandler(dataS[135]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 137) { styleHandler(dataS[136]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 138) { styleHandler(dataS[137]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 139) { styleHandler(dataS[138]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 140) { styleHandler(dataS[139]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 141) { styleHandler(dataS[140]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 142) { styleHandler(dataS[141]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 143) { styleHandler(dataS[142]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 144) { styleHandler(dataS[143]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 145) { styleHandler(dataS[144]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 146) { styleHandler(dataS[145]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 147) { styleHandler(dataS[146]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 148) { styleHandler(dataS[147]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 149) { styleHandler(dataS[148]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 150) { styleHandler(dataS[149]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 151) { styleHandler(dataS[150]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 152) { styleHandler(dataS[151]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 153) { styleHandler(dataS[152]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 154) { styleHandler(dataS[153]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 155) { styleHandler(dataS[154]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 156) { styleHandler(dataS[155]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 157) { styleHandler(dataS[156]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 158) { styleHandler(dataS[157]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 159) { styleHandler(dataS[158]); theDataPoints4 += "${colorData}<br>" }
-            if(dataSize1 >= 160) { styleHandler(dataS[159]); theDataPoints4 += "${colorData}<br>" }
-            
-            if(dataSize1 >= 161) { styleHandler(dataS[160]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 162) { styleHandler(dataS[161]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 163) { styleHandler(dataS[162]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 164) { styleHandler(dataS[163]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 165) { styleHandler(dataS[164]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 166) { styleHandler(dataS[165]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 167) { styleHandler(dataS[166]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 168) { styleHandler(dataS[167]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 169) { styleHandler(dataS[168]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 170) { styleHandler(dataS[169]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 171) { styleHandler(dataS[170]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 172) { styleHandler(dataS[171]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 173) { styleHandler(dataS[172]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 174) { styleHandler(dataS[173]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 175) { styleHandler(dataS[174]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 176) { styleHandler(dataS[175]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 177) { styleHandler(dataS[176]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 178) { styleHandler(dataS[177]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 179) { styleHandler(dataS[178]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 180) { styleHandler(dataS[179]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 181) { styleHandler(dataS[180]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 182) { styleHandler(dataS[181]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 183) { styleHandler(dataS[182]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 184) { styleHandler(dataS[183]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 185) { styleHandler(dataS[184]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 186) { styleHandler(dataS[185]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 187) { styleHandler(dataS[186]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 188) { styleHandler(dataS[187]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 189) { styleHandler(dataS[188]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 190) { styleHandler(dataS[189]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 191) { styleHandler(dataS[190]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 192) { styleHandler(dataS[191]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 193) { styleHandler(dataS[192]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 194) { styleHandler(dataS[193]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 195) { styleHandler(dataS[194]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 196) { styleHandler(dataS[195]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 197) { styleHandler(dataS[196]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 198) { styleHandler(dataS[197]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 199) { styleHandler(dataS[198]); theDataPoints5 += "${colorData}<br>" }
-            if(dataSize1 >= 200) { styleHandler(dataS[199]); theDataPoints5 += "${colorData}<br>" }
-            
-            if(dataSize1 >= 201) { styleHandler(dataS[200]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 202) { styleHandler(dataS[201]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 203) { styleHandler(dataS[202]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 204) { styleHandler(dataS[203]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 205) { styleHandler(dataS[204]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 206) { styleHandler(dataS[205]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 207) { styleHandler(dataS[206]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 208) { styleHandler(dataS[207]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 209) { styleHandler(dataS[208]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 210) { styleHandler(dataS[209]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 211) { styleHandler(dataS[210]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 212) { styleHandler(dataS[211]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 213) { styleHandler(dataS[212]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 214) { styleHandler(dataS[213]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 215) { styleHandler(dataS[214]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 216) { styleHandler(dataS[215]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 217) { styleHandler(dataS[216]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 218) { styleHandler(dataS[217]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 219) { styleHandler(dataS[218]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 220) { styleHandler(dataS[219]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 221) { styleHandler(dataS[220]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 222) { styleHandler(dataS[221]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 223) { styleHandler(dataS[222]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 224) { styleHandler(dataS[223]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 225) { styleHandler(dataS[224]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 226) { styleHandler(dataS[225]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 227) { styleHandler(dataS[226]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 228) { styleHandler(dataS[227]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 229) { styleHandler(dataS[228]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 230) { styleHandler(dataS[229]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 231) { styleHandler(dataS[230]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 232) { styleHandler(dataS[231]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 233) { styleHandler(dataS[232]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 234) { styleHandler(dataS[233]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 235) { styleHandler(dataS[234]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 236) { styleHandler(dataS[235]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 237) { styleHandler(dataS[236]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 238) { styleHandler(dataS[237]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 239) { styleHandler(dataS[238]); theDataPoints6 += "${colorData}<br>" }
-            if(dataSize1 >= 240) { styleHandler(dataS[239]); theDataPoints6 += "${colorData}<br>" }
+            if(theDataPoints1 == "") theDataPoints1 = "No Data"
+            if(theDataPoints2 == "") theDataPoints2 = "No Data"
+            if(theDataPoints3 == "") theDataPoints3 = "No Data"
+            if(theDataPoints4 == "") theDataPoints4 = "No Data"
+            if(theDataPoints5 == "") theDataPoints5 = "No Data"
+            if(theDataPoints6 == "") theDataPoints6 = "No Data"
             
             
-            if(theDataPoints1 == null) theDataPoints1 = "No Data"
-            if(theDataPoints2 == null) theDataPoints2 = "No Data"
-            if(theDataPoints3 == null) theDataPoints3 = "No Data"
-            if(theDataPoints4 == null) theDataPoints4 = "No Data"
-            if(theDataPoints5 == null) theDataPoints5 = "No Data"
-            if(theDataPoints6 == null) theDataPoints6 = "No Data"
+            // Graph
+            imgGraphLabelsVirt = ""
+            imgGraphLabelsZigb  = ""
+            imgGraphLabelsZwav = ""
+            imgGraphLabelsOther = ""
+            imgGraphDataVirt = ""
+            imgGraphDataZigb = ""
+            imgGraphDataZwav= ""
+            imgGraphDataOther = ""
             
-            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='4'><b>Raw Data</b></a></td></tr>"
+            for(int i in dataSize1..1) {
+                graphPoint = dataS[i-1].split(" - ")
+
+                if(graphPoint!=null) {
+                    graphPoint1Clean = graphPoint[1].trim()
+                    if(graphPoint1Clean.contains("span")) {
+                        
+                        // Could be improve. The driver need to deliver the info without format.
+                        
+                        pos = graphPoint1Clean.indexOf("'>")
+                        if(pos>=0){
+                           pos2 = graphPoint1Clean.indexOf("<",pos+1)
+                           if(pos2>=0 && pos1<pos2) {
+                              graphPoint1Clean = graphPoint1Clean.substring(pos+2,pos2)
+                           }
+                        }
+                    }   
+
+                    switch(graphPoint[2].trim()) { 
+                        case 'Zwav': 
+                            imgGraphLabelsZwav += "'${graphPoint[0].trim()}',"  
+                            imgGraphDataZwav += "${graphPoint1Clean},"
+                            break
+                        case 'Virt': 
+                            imgGraphLabelsVirt += "'${graphPoint[0].trim()}',"  
+                            imgGraphDataVirt += "${graphPoint1Clean},"
+                            break
+                        case 'Zigb': 
+                            imgGraphLabelsZigb += "'${graphPoint[0].trim()}',"  
+                            imgGraphDataZigb += "${graphPoint1Clean},"
+                            break
+                        case 'Other': 
+                            imgGraphLabelsOther += "'${graphPoint[0].trim()}',"  
+                            imgGraphDataOther += "${graphPoint1Clean},"
+                            break
+                    }
+                } 
+                
+            }
+            
+            imgGrapHtmlZwav="<img width=\"100%\" src=\"https://quickchart.io/chart?c={type:'line', data:{labels:["+ imgGraphLabelsZwav +"], datasets:[{label:'Zwav', data: ["+imgGraphDataZwav+"], fill:false,borderColor:'"+colorZwav+"', pointBackgroundColor:'"+colorZwav+"', pointRadius:1}]}}\">"
+            imgGrapHtmlVirt="<img width=\"100%\" src=\"https://quickchart.io/chart?c={type:'line', data:{labels:["+ imgGraphLabelsVirt +"], datasets:[{label:'Virt', data: ["+imgGraphDataVirt+"], fill:false,borderColor:'"+colorVirt+"', pointBackgroundColor:'"+colorVirt+"', pointRadius:1}]}}\">"
+            imgGrapHtmlZigb="<img width=\"100%\" src=\"https://quickchart.io/chart?c={type:'line', data:{labels:["+ imgGraphLabelsZigb +"], datasets:[{label:'Zigb', data: ["+imgGraphDataZigb+"], fill:false,borderColor:'"+colorZigb+"', pointBackgroundColor:'"+colorZigb+"', pointRadius:1}]}}\">"
+            imgGrapHtmlOther="<img width=\"100%\" src=\"https://quickchart.io/chart?c={type:'line', data:{labels:["+ imgGraphLabelsOther +"], datasets:[{label:'Other', data: ["+imgGraphDataOther+"], fill:false,borderColor:'"+colorOther+"', pointBackgroundColor:'"+colorOther+"', pointRadius:1}]}}\">"
+            
+            report1="<table width='100%' align='center' border='1'>"
+            report1+="<tr><td colspan='4'><b>Raw Data</b></a></td></tr>"
+            if(imgGraphDataZwav!="") report1+="<tr><td colspan='4'><b>" + imgGrapHtmlZwav + "</b></a></td></tr>"
+            if(imgGraphDataVirt!="") report1+="<tr><td colspan='4'><b>" + imgGrapHtmlVirt + "</b></a></td></tr>"
+            if(imgGraphDataZigb!="") report1+="<tr><td colspan='4'><b>" + imgGrapHtmlZigb + "</b></a></td></tr>"
+            if(imgGraphDataOther!="") report1+="<tr><td colspan='4'><b>" + imgGrapHtmlOther + "</b></a></td></tr>"
+            
             report1+= "<tr><td width='33%'>${theDataPoints1}</td><td width='33%'>${theDataPoints2}</td><td width='33%'>${theDataPoints3}</td></tr></table>"
-            
             report2 = "<table width='100%' align='center' border='1'><tr><td colspan='4'><b>Raw Data</b></a></td></tr>"
             report2+= "<tr><td width='33%'>${theDataPoints4}</td><td width='33%'>${theDataPoints5}</td><td width='33%'>${theDataPoints6}</td></tr></table>"
             
