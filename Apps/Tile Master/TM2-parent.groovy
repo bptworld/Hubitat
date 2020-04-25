@@ -33,37 +33,27 @@
  *
  *  Changes:
  *
- *  V2.1.3 - 03/15/20 - Added option field - cloudToken
- *  V2.1.2 - 03/14/20 - Added Maker API setup to parent app
- *  V2.1.1 - 03/02/20 - Removed status color options from parent app
- *  V2.1.0 - 02/26/20 - Added support for Tile to Tile copying
- *  V2.0.9 - 02/16/20 - Added Custom Icons!
- *  V2.0.8 - 02/12/20 - Cosmetic changes
- *  V2.0.7 - 02/12/20 - Added default color codes
- *  V2.0.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
- *  V2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!
- *  V2.0.4 - 09/27/19 - Fixed missing motion color options
- *  V2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
- *  V2.0.2 - 09/21/19 - Added device value color options
- *  V2.0.1 - 09/20/19 - Initial release.
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.0 - 02/16/19 - Initially started working on this concept but never released.
+ *  2.1.4 - 04/25/20 - Cosmetic changes
+ *  2.1.3 - 03/15/20 - Added option field - cloudToken
+ *  2.1.2 - 03/14/20 - Added Maker API setup to parent app
+ *  2.1.1 - 03/02/20 - Removed status color options from parent app
+ *  2.1.0 - 02/26/20 - Added support for Tile to Tile copying
+ *  2.0.9 - 02/16/20 - Added Custom Icons!
+ *  2.0.8 - 02/12/20 - Cosmetic changes
+ *  2.0.7 - 02/12/20 - Added default color codes
+ *  2.0.6 - 02/05/20 - Support Smoke/CO decectors (clear-detected) by @LostJen. Thanks!
+ *  2.0.5 - 11/04/19 - Fixed some typo's in the color options, thanks scubamikejax904!
+ *  2.0.4 - 09/27/19 - Fixed missing motion color options
+ *  2.0.3 - 09/22/19 - Added color options for Temperature and Battery Levels
+ *  2.0.2 - 09/21/19 - Added device value color options
+ *  2.0.1 - 09/20/19 - Initial release.
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.0 - 02/16/19 - Initially started working on this concept but never released.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "TileMaster2ParentVersion"
-	state.version = "v2.1.3"
-    
-    try {
-        if(sendToAWSwitch && awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.1.4"
 }
 
 definition(
@@ -100,7 +90,6 @@ def initialize() {
     childApps.each {child ->
     	log.info "Child app: ${child.label}"
     }
-    if(awDevice) schedule("0 0 3 ? * * *", setVersion)
     sendIconList()
 }
 
@@ -113,28 +102,7 @@ def mainPage() {
 				paragraph "<b>Information</b>"
 				paragraph "Create a tile with multiple devices and customization options."
 			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-                paragraph "If you want to use Icons with your devices - Complete the 'Select Icons' section below<br>If you want to be able to control devices - Complete the 'Maker API' section below"
-				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
-			}
-            // ** App Watchdog Code **
-            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
-				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
-                paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
-                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
-			}
-            if(sendToAWSwitch) {
-                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
-                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
-			        if(sendToAWSwitch && awDevice) setVersion()
-                }
-            }
-            // ** End App Watchdog Code **
-			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-       			label title: "Enter a name for parent app (optional)", required: false
-                input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
- 			}
-
+            
             section(getFormat("header-green", "${getImage("Blank")}"+" Global Config")) {
                 if(iconName || iconURL) {
                     href "iconOptions", title:"${getImage("optionsGreen")} Select Icons", description:"Click here for Options"
@@ -147,6 +115,16 @@ def mainPage() {
                 } else {
                     href "urlOptions", title:"${getImage("optionsRed")} Maker API Setup", description:"Click here for Options"
                 }
+            }
+            
+			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+                paragraph "If you want to use Icons with your devices - Complete the 'Select Icons' section below<br>If you want to be able to control devices - Complete the 'Maker API' section below"
+				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
+			}
+            
+			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+                input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
             }
         }
     }
@@ -388,6 +366,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Tile Master 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Tile Master 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }
