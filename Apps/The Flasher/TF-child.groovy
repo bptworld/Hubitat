@@ -116,7 +116,7 @@ def pageConfig() {
 	    }
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
 		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-            paragraph "<b>Note:</b> If you light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+            paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
 		    input "numFlashes", "number", title: "Number of times<br>", required: false, width: 6
             input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
             if(theSwitch) {
