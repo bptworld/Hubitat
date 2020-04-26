@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Simple way to monitor if your hub is slowing down or not.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -33,19 +33,17 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 12/04/19 - Chasing a gremlin
- *  V1.0.1 - 09/30/19 - Lots of little changes
- *  V1.0.0 - 09/29/19 - Initial release.
+ *  1.0.3 - 04/25/20 - Major rewrite by axornet, including addition of Graphs! Thank you.
+ *  1.0.2 - 12/04/19 - Chasing a gremlin
+ *  1.0.1 - 09/30/19 - Lots of little changes
+ *  1.0.0 - 09/29/19 - Initial release.
  *
  */
 
 import hubitat.helper.RMUtils
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "HubWatchdogExaminerChild2Version"
-	state.version = "v1.0.2"
+	state.version = "1.0.3"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
