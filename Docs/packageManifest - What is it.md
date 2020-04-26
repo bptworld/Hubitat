@@ -6,4 +6,3 @@ For use with Hubitat Package Manager
 - There is no need for you to do anything with this file.
 
 Thanks
-@BPTWorld
