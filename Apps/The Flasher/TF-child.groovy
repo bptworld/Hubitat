@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 04/26/20 - Changes to flash handler
  *  1.0.6 - 04/25/20 - Cosmetic changes to flash options, set min and max to flash rate
  *  1.0.5 - 04/25/20 - Added moisture trigger, days restriction
  *  1.0.4 - 01/12/20 - Add Mode restriction
@@ -47,7 +48,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -287,16 +288,17 @@ private flashLights() {    // Modified from ST documents
                     if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
 
                     if(theSwitch.hasCommand('setColor')) {
-                        oldSwitchState = theSwitch.currentValue("switch")
+                        state.oldSwitchState = theSwitch.currentValue("switch")
                         oldHueColor = theSwitch.currentValue("hue")
                         oldSaturation = theSwitch.currentValue("saturation")
-                        oldLevel = theSwitch.currentValue("level")
-                        state.oldValue = [switch: "${oldSwitchState}", hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
-                        if(logEnable) log.debug "In flashLights - setColor - value: $state.oldValue"
+                        oldLevel = theSwitch.currentValue("level")                        
+                        state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+                        
+                        if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
                         setLevelandColorHandler()
                     }
 
-                    def initialActionOn = (oldSwitch != "on")
+                    def initialActionOn = (state.oldSwitchState != "on")
 
                     numFlashes.times {
                         if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
@@ -334,13 +336,12 @@ private flashLights() {    // Modified from ST documents
                         }
                     }
 
-                    theValue = state.oldValue
                     if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
                     if(theSwitch.hasCommand('setColor')) {
-                        theSwitch.setColor(theValue)
-                        if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - value: $theValue"
+                        theSwitch.setColor(state.oldValue)
+                        if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
                     }
-                    if(oldSwitchState == "on") {
+                    if(state.oldSwitchState == "on") {
                         theSwitch.on()
                     } else {
                         theSwitch.off()
@@ -402,8 +403,7 @@ def setLevelandColorHandler() {
             hueColor = 100
             break;
     }
-    
-	state.value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    state.value = [hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
     if(logEnable) log.debug "In setLevelandColorHandler - value: ${state.value}"
 }
 
