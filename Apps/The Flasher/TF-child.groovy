@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 04/25/20 - Cosmetic changes to flash options, set min and max to flash rate
  *  1.0.5 - 04/25/20 - Added moisture trigger, days restriction
  *  1.0.4 - 01/12/20 - Add Mode restriction
  *  1.0.3 - 01/10/20 - Fixed setup error
@@ -46,7 +47,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -115,8 +116,9 @@ def pageConfig() {
 	    }
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
 		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+            paragraph "<b>Note:</b> If you light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
 		    input "numFlashes", "number", title: "Number of times<br>", required: false, width: 6
-            input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", required: false, width: 6
+            input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
             if(theSwitch) {
                 if(theSwitch.hasCommand('setColor')) {
                     input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
