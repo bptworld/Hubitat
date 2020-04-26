@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 04/26/20 - Small change to flash handler
  *  1.0.7 - 04/26/20 - Changes to flash handler
  *  1.0.6 - 04/25/20 - Cosmetic changes to flash options, set min and max to flash rate
  *  1.0.5 - 04/25/20 - Added moisture trigger, days restriction
@@ -48,7 +49,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -150,7 +151,7 @@ def pageConfig() {
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "ogging", submitOnChange:true
+            input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "Logging", submitOnChange:true
 		}
 		display2()
 	}
@@ -287,8 +288,9 @@ private flashLights() {    // Modified from ST documents
                     state.lastActivated = now()
                     if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: $state.lastActivated"
 
+                    state.oldSwitchState = theSwitch.currentValue("switch")
+                    
                     if(theSwitch.hasCommand('setColor')) {
-                        state.oldSwitchState = theSwitch.currentValue("switch")
                         oldHueColor = theSwitch.currentValue("hue")
                         oldSaturation = theSwitch.currentValue("saturation")
                         oldLevel = theSwitch.currentValue("level")                        
@@ -310,11 +312,12 @@ private flashLights() {    // Modified from ST documents
                                     if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
                                     s.setColor(state.value)
                                 } else {
-                                    if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, on"
                                     s.on()
                                 } 
                             } else {
                                 pauseExecution(delay)
+                                if(logEnable) log.debug "In flashLights - $s.displayName, off"
                                 s.off()
                             }
                         }
@@ -322,6 +325,7 @@ private flashLights() {    // Modified from ST documents
                         theSwitch.eachWithIndex {s, i ->
                             if(initialActionOn) {
                                 pauseExecution(delay)
+                                if(logEnable) log.debug "In flashLights - $s.displayName, off"
                                 s.off()
                             } else {
                                 pauseExecution(delay)
@@ -329,7 +333,7 @@ private flashLights() {    // Modified from ST documents
                                     if(logEnable) log.debug "In flashLights - $s.displayName, setColor($state.value)"
                                     s.setColor(state.value)
                                 } else {
-                                    if(logEnable) log.debug "In flashLights - $s.displayName, on()"
+                                    if(logEnable) log.debug "In flashLights - $s.displayName, on"
                                     s.on()
                                 }
                             }
@@ -360,7 +364,7 @@ private flashLights() {    // Modified from ST documents
 }
 
 def setLevelandColorHandler() {
-    if(logEnable) log.debug "In setLevelandColorHandler - (${state.version}) - fColor: ${fColor}"
+    if(logEnable) log.debug "In setLevelandColorHandler (${state.version}) - fColor: ${fColor}"
     def hueColor = 0
     def saturation = 100
 	int onLevel = 99
