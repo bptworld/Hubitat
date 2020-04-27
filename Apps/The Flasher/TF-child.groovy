@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 04/27/20 - Added indefinite flashing with Control Switch
  *  1.0.8 - 04/26/20 - Small change to flash handler
  *  1.0.7 - 04/26/20 - Changes to flash handler
  *  1.0.6 - 04/25/20 - Cosmetic changes to flash options, set min and max to flash rate
@@ -49,7 +50,7 @@
  */
 
 def setVersion(){
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -119,7 +120,7 @@ def pageConfig() {
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
 		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
             paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
-		    input "numFlashes", "number", title: "Number of times<br>", required: false, width: 6
+		    input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
             input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
             if(theSwitch) {
                 if(theSwitch.hasCommand('setColor')) {
@@ -132,13 +133,12 @@ def pageConfig() {
                     ]
                 }
             }
-            //if(numFlashes == 99) {
-            //    if(mySwitch) {
-            //        paragraph "<b>Flashing will continue until the switch choosen above is turned off or 99 times is reached.</b>"
-            //    } else {
-            //        paragraph "<b>Choosing 99 flashes requires the Switch option to be choosen above.</b>"
-            //    }
-            //}
+            if(numFlashes == 0) {
+                input "controlSwitch", "capability.switch", title: "Control Switch", multiple:false, submitOnChange:true
+                paragraph "<b>Flashing will continue until the Control Switch is turned off.</b>"
+            } else {
+                app.removeSetting("controlSwitch")
+            }
 	    }
         section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions")) {
             paragraph "Allow flashing between what times"
@@ -261,7 +261,7 @@ def checkMode() {
     if(logEnable) log.debug "In checkMode - modeMatch: ${state.modeMatch}"
 }
 
-private flashLights() {    // Modified from ST documents
+def flashLights() {    // Modified from ST documents
     if(logEnable) log.debug "******************* Start - The Flasher *******************"
     if(logEnable) log.debug "In flashLights (${state.version})"
     checkTime()
@@ -290,14 +290,19 @@ private flashLights() {    // Modified from ST documents
 
                     state.oldSwitchState = theSwitch.currentValue("switch")
                     
-                    if(theSwitch.hasCommand('setColor')) {
-                        oldHueColor = theSwitch.currentValue("hue")
-                        oldSaturation = theSwitch.currentValue("saturation")
-                        oldLevel = theSwitch.currentValue("level")                        
-                        state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+                    if(logEnable) log.debug "In flashLights - Is switchSave: $state.switchSaved"
+                    if(!state.switchSaved) {
+                        if(controlSwitch) {controlSwitch.on()}
                         
-                        if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
-                        setLevelandColorHandler()
+                        if(theSwitch.hasCommand('setColor')) {
+                            oldHueColor = theSwitch.currentValue("hue")
+                            oldSaturation = theSwitch.currentValue("saturation")
+                            oldLevel = theSwitch.currentValue("level")                        
+                            state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+
+                            if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
+                            setLevelandColorHandler()
+                        }
                     }
 
                     def initialActionOn = (state.oldSwitchState != "on")
@@ -340,15 +345,25 @@ private flashLights() {    // Modified from ST documents
                         }
                     }
 
-                    if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
-                    if(theSwitch.hasCommand('setColor')) {
-                        theSwitch.setColor(state.oldValue)
-                        if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
+                    if(controlSwitch) {
+                        cStat = controlSwitch.currentValue('switch')
+                        if(logEnable) log.debug "In flashLights - Checking controlSwitch: $controlSwitch - status: $cStat"
                     }
-                    if(state.oldSwitchState == "on") {
-                        theSwitch.on()
+                    if(controlSwitch && cStat == "on") {
+                        state.switchSaved = true
+                        runIn(1,flashLights)
                     } else {
-                        theSwitch.off()
+                        if(logEnable) log.debug "In flashLights - Resetting switch - Working on: $theSwitch"
+                        if(theSwitch.hasCommand('setColor')) {
+                            theSwitch.setColor(state.oldValue)
+                            if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
+                        }
+                        if(state.oldSwitchState == "on") {
+                            theSwitch.on()
+                        } else {
+                            theSwitch.off()
+                        }
+                        state.switchSaved = false
                     }
                 }
             } else {
@@ -441,6 +456,7 @@ def dayOfTheWeekHandler() {
 
 def setDefaults(){
 	if(settings.logEnable == null){settings.logEnable = false}
+    state.switchSaved = false
 }
 
 def getImage(type) {					// Modified from @Stephack Code
