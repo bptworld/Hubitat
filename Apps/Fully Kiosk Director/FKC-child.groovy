@@ -3,10 +3,9 @@
  *  Design Usage:
  *  Take control of a Fully Kiosk device!
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -33,28 +32,17 @@
  *
  *  Changes:
  *
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.3 - 06/08/19 - Added Time Delay to triggers
- *  V1.0.2 - 05/20/19 - Added Time to triggers
- *  V1.0.1 - 05/08/19 - Fixed an issue with loadStartURL, added a delay between commands
- *  V1.0.0 - 05/07/19 - Initial release.
+ *  2.0.1 - 04/27/20 - Cosmetic changes
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.3 - 06/08/19 - Added Time Delay to triggers
+ *  1.0.2 - 05/20/19 - Added Time to triggers
+ *  1.0.1 - 05/08/19 - Fixed an issue with loadStartURL, added a delay between commands
+ *  1.0.0 - 05/07/19 - Initial release.
  *
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "FullyKioskDirectorChildVersion"
-	state.version = "v2.0.0"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.0.1"
 }
 
 definition(
@@ -179,8 +167,6 @@ def initialize() {
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
 	if(timeToRun) schedule(timeToRun, timeHandler)
 	if(timeDelay) runIn(timeDelay,timeDelayHandler)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def contactSensorHandler(evt) {
@@ -451,6 +437,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Fully Kiosk Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Fully Kiosk Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }  
