@@ -36,37 +36,27 @@
  *
  *  Changes:
  *
- *  V2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
- *  V2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.9 - 05/08/19 - Fixed a typo
- *  V1.0.8 - 05/04/19 - Fixed 'pause'
- *  V1.0.7 - 04/15/19 - Code cleanup
- *  V1.0.6 - 02/14/19 - If manual recording (camera trigger) doesn't work - add '//' to line 471 and remove them from line 472 and try again.
- *  V1.0.5 - 01/15/19 - Updated footer with update check and links
- *  V1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
+ *  2.0.2 - 04/27/20 - Cosmetic changes
+ *  2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
+ *  2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.9 - 05/08/19 - Fixed a typo
+ *  1.0.8 - 05/04/19 - Fixed 'pause'
+ *  1.0.7 - 04/15/19 - Code cleanup
+ *  1.0.6 - 02/14/19 - If manual recording (camera trigger) doesn't work - add '//' to line 471 and remove them from line 472 and try again.
+ *  1.0.5 - 01/15/19 - Updated footer with update check and links
+ *  1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
  *						support for Blue Iris schedules.
- *  V1.0.3 - 11/25/18 - Added PTZ camera controls.
- *  V1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
+ *  1.0.3 - 11/25/18 - Added PTZ camera controls.
+ *  1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
  *						to start or stop manual recording on camera from a Switch.
- *  V1.0.1 - 11/03/18 - Changed into Parent/Child app. BI Control now works with Modes and Switches to change Profiles.
- *  V1.0.0 - 11/03/18 - Hubitat Port of ST app 'Blue Iris Profiles based on Modes' - 2016 (@jpark40)
+ *  1.0.1 - 11/03/18 - Changed into Parent/Child app. BI Control now works with Modes and Switches to change Profiles.
+ *  1.0.0 - 11/03/18 - Hubitat Port of ST app 'Blue Iris Profiles based on Modes' - 2016 (@jpark40)
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "BIControlChildVersion"
-	state.version = "v2.0.2"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.0.2"
 }
 
 definition(
@@ -265,8 +255,6 @@ def initialize() {
 	if(triggerMode == "Camera_Snapshot"){subscribe(switches, "switch", cameraSnapshotHandler)}
 	if(triggerMode == "Camera_Trigger"){subscribe(switches, "switch", cameraTriggerHandler)}
 	if(triggerMode == "Camera_PTZ"){subscribe(switches, "switch", cameraPTZHandler)}
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def profileModeChangeHandler(evt) {
@@ -601,6 +589,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }   
