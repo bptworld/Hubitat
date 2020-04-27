@@ -37,32 +37,22 @@
  *
  *  Changes:
  *
- *  V1.0.9 - 04/04/20 - Fixed a typo
- *  V1.0.8 - 04/01/20 - Added a 'No devices found' message
- *  V1.0.7 - 03/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
- *  V1.0.6 - 01/27/20 - Found typo, added flash lights to actions
- *  V1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
- *  V1.0.4 - 12/07/19 - Fixed some minor bugs
- *  V1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
- *  V1.0.2 - 10/16/19 - More cosmetic changes, added Device Time in State trigger
- *  V1.0.1 - 10/13/19 - Cosmetic changes. 
- *  V1.0.0 - 10/13/19 - Initial release.
+ *  1.1.0 - 04/27/20 - Cosmetic changes
+ *  1.0.9 - 04/04/20 - Fixed a typo
+ *  1.0.8 - 04/01/20 - Added a 'No devices found' message
+ *  1.0.7 - 03/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
+ *  1.0.6 - 01/27/20 - Found typo, added flash lights to actions
+ *  1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
+ *  1.0.4 - 12/07/19 - Fixed some minor bugs
+ *  1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
+ *  1.0.2 - 10/16/19 - More cosmetic changes, added Device Time in State trigger
+ *  1.0.1 - 10/13/19 - Cosmetic changes. 
+ *  1.0.0 - 10/13/19 - Initial release.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "DeviceCheckPlusChildVersion"
-	state.version = "v1.0.9"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "1.1.0"
 }
 
 definition(
@@ -449,8 +439,6 @@ def initialize() {
         if(locksLocked) subscribe(locksLocked, "lock", checkTimeInState)
         if(locksUnlocked) subscribe(locksUnlocked, "lock", checkTimeInState)
     }
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def checkDeviceHandler(evt) {
@@ -1169,6 +1157,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Check Plus - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Check Plus - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }
