@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 04/27/20 - Added two new attributes, todaysHigh and todaysLow
  *  1.1.2 - 04/24/20 - Adjustments to Asthma and Pollen handlers
  *  1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
  *  1.1.0 - 04/22/20 - Changed up the error checking
@@ -102,6 +103,8 @@ metadata {
         attribute "zforecast_12", "string"
         attribute "zforecast_13", "string"
         attribute "zforecast_14", "string"
+        attribute "todaysHigh", "number"
+        attribute "todaysLow", "number"
         
         attribute "textDescription", "string"
         attribute "icon", "string"
@@ -323,6 +326,8 @@ def getWeeklyData() {
                     def forcast = "${number}:${name}:${temperature}:${temperatureUnit}:${temperatureTrend}:${windSpeed}:${windDirection}:${icon}:${shortForecast}:${detailedForecast}"
                     y = x+1
                     sendEvent(name: "zforecast_$y", value: forcast)
+                    if(x == 0) sendEvent(name: "todaysHigh", value: temperature)
+                    if(x == 1) sendEvent(name: "todaysLow", value: temperature)
                 }
             } else {
                 if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
