@@ -4,12 +4,11 @@
  *  Design Usage:
  *  This app is designed to work locally with Blue Iris security software.
  *
- *  Copyright 2018 Bryan Turcotte (@bptworld)
+ *  Copyright 2018-2020 Bryan Turcotte (@bptworld)
  *
  *  Thanks to (@jpark40) for the original 'Blue Iris Profiles based on Modes' code that I based this app off of.
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -36,33 +35,21 @@
  *
  *  Changes:
  *
- *  V2.0.0 - 08/18/19 - Now App Watchdog 2 compliant
- *  V1.0.3 - 01/15/19 - Updated footer with update check and links
- *  V1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
+ *  2.0.1 - 04/27/20 - Cosmetic changes
+ *  2.0.0 - 08/18/19 - Now App Watchdog 2 compliant
+ *  1.0.3 - 01/15/19 - Updated footer with update check and links
+ *  1.0.4 - 12/30/18 - Updated to my new color theme. Applied pull request from the-other-andrew - Added Mode mappings and switch
  *						support for Blue Iris schedules.
- *  V1.0.3 - 11/25/18 - Added PTZ camera controls.
- *  V1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
+ *  1.0.3 - 11/25/18 - Added PTZ camera controls.
+ *  1.0.2 - 11/05/18 - Added in the ability to move a camera to a Preset. Also added the ability to take a camera snapshot and
  *						to start or stop manual recording on camera from a Switch.
- *  V1.0.1 - 11/03/18 - Changed into Parent/Child app. BI Control now works with Modes and Switches to change Profiles.
- *  V1.0.0 - 11/03/18 - Hubitat Port of ST app 'Blue Iris Profiles based on Modes' - 2016 (@jpark40)
+ *  1.0.1 - 11/03/18 - Changed into Parent/Child app. BI Control now works with Modes and Switches to change Profiles.
+ *  1.0.0 - 11/03/18 - Hubitat Port of ST app 'Blue Iris Profiles based on Modes' - 2016 (@jpark40)
  *
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog 2 compliant
-	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "BIControlParentVersion"
-	state.version = "v2.0.0"
-    
-    try {
-        if(sendToAWSwitch && awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "v2.0.1"
 }
 
 definition(
@@ -96,7 +83,6 @@ def initialize() {
     childApps.each {child ->
     log.info "Child app: ${child.label}"
     }
-    
 }
 
 def mainPage() {
@@ -118,19 +104,7 @@ def mainPage() {
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "BI Control Child", namespace: "BPTWorld", title: "<b>Add a new 'BI Control' child</b>", multiple: true)
   			}
-            // ** App Watchdog Code **
-            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
-				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
-                paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
-                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
-			}
-            if(sendToAWSwitch) {
-                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
-                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
-			        if(sendToAWSwitch && awDevice) setVersion()
-                }
-            }
-            // ** End App Watchdog Code **
+            
    			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
@@ -179,6 +153,6 @@ def display(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>BI Control - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }         
