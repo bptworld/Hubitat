@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 04/27/20 - Cosmetic changes
  *  2.0.2 - 04/18/20 - Adjustments
  *  2.0.1 - 09/09/19 - Fixed typo
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -40,7 +41,7 @@
  */
 
 def setVersion(){
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -870,6 +871,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>CATT Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>CATT Director - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }  
