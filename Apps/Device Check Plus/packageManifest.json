@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.1"
+			"version": "1.0.2"
 		},
 		{
 			"id" : "3ed06dd7-4da0-4a57-b2eb-da3c755ddbd3",
@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/DCP-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.9"
+			"version": "1.1.0"
 		}
 	],
 	"drivers" : [
