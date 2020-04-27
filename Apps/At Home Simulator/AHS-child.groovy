@@ -4,10 +4,9 @@
  *  Design Usage:
  *	Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -34,38 +33,16 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.2 - 04/15/19 - Code cleanup
- *  V1.0.1 - 01/22/19 - Added more randomness to Random section.
- *  V1.0.0 - 01/19/19 - Officially out of beta! (hopefully)
- *  V0.0.9 - 01/19/19 - More testing, more bug fixing.
- *  V0.0.8 - 01/19/19 - More bug fixes and better logging.
- *  V0.0.7 - 01/18/19 - Made some code changes and fixed some of the wording. Hopefully it makes more sense.
- *  V0.0.6 - 01/18/19 - Finally got the control switch to turn off the simulation.
- *  V0.0.5 - 01/16/19 - Startup now has a random delay. Pause button and Enable/Disable switch should now work.
- *  V0.0.4 - 01/16/19 - Changed the delay between groups to be a random time within a user selected range.
- *  V0.0.3 - 01/15/19 - Updated footer with update check and links
- *  V0.0.2 - 01/14/19 - Added update information to custom footer. Used code from @Stephack as example, thank you.  
- *  V0.0.1 - 01/14/19 - Initial Beta Release
+ *  
+ *  2.0.1 - 04/27/20 - Cosmetic changes
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  --
+ *  1.0.0 - 01/14/19 - Initial Beta Release
  *
  */
 
 def setVersion(){
-    // *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "AtHomeSimulatorChildVersion"
-	state.version = "v2.0.0"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.0.1"
 }
 
 definition(
@@ -564,6 +541,6 @@ def display2() {
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>At Home Simulator - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>At Home Simulator - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}
 }
