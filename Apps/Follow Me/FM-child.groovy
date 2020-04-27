@@ -32,19 +32,20 @@
  *
  *  Changes:
  *
- *  V2.1.3 - 04/15/20 - Adjustments to speaker queue
- *  V2.1.2 - 04/01/20 - Fixed priority volume
- *  V2.1.1 - 12/02/19 - Speech queue is now optional
- *  V2.1.0 - 11/13/19 - Major rewrite - More possibilities!
+ *  2.1.4 - 04/27/20 - Cosmetic changes
+ *  2.1.3 - 04/15/20 - Adjustments to speaker queue
+ *  2.1.2 - 04/01/20 - Fixed priority volume
+ *  2.1.1 - 12/02/19 - Speech queue is now optional
+ *  2.1.0 - 11/13/19 - Major rewrite - More possibilities!
  *  ---
- *  V1.0.0 - 03/17/19 - Initial release.
+ *  1.0.0 - 03/17/19 - Initial release.
  *
  */
 
 import groovy.json.*
     
 def setVersion(){
-	state.version = "v2.1.3"   
+	state.version = "2.1.4"   
 }
 
 definition(
@@ -550,7 +551,7 @@ def letsTalkQueue(evt) {
 def processQueue() {
 	if(logEnable) log.debug "In processQueue (${state.version})"
 	state.playingTTS = true
-	if(state.TTSQueue.size() >= maxQueued) clearTheQueue()
+    if(state.TTSQueue.size() >= maxQueued) clearTheQueue()
 	if(state.TTSQueue.size() == 0) {
 		state.playingTTS = false
         if(logEnable) log.info "In processQueue - size: ${state.TTSQueue.size()} - playingTTS: ${state.playingTTS} - Finished Playing"
@@ -1176,6 +1177,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Follow Me - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Follow Me - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }  
