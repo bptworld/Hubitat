@@ -34,18 +34,19 @@
  *
  *  Changes:
  *
- *  V2.3.1 - 02/27/20 - Changes to flash when message is delayed
- *  V2.3.0 - 02/10/20 - More code changes to home tracking
- *  V2.2.9 - 02/10/20 - Minor tweaks to who's home tracking
- *  V2.2.8 - 01/14/20 - Tweaks to see who's home for announcements
- *  V2.2.7 - 01/11/20 - Trying to fix a problem with nameCount
- *  V2.2.6 - 01/11/20 - Delayed Welcome Home is now optional
- *  V2.2.5 - 01/11/20 - Lots of tweaks
- *  V2.2.4 - 01/10/20 - Working on locks code
- *  V2.2.3 - 01/09/20 - More changes
- *  V2.2.2 - 12/31/19 - Added flashing lights Notification options, Happy New Year!
- *  V2.2.1 - 12/28/19 - Bug fixes
- *  V2.2.0 - 12/17/19 - All New code!
+ *  2.3.2 - 04/27/20 - Cosmetic changes
+ *  2.3.1 - 02/27/20 - Changes to flash when message is delayed
+ *  2.3.0 - 02/10/20 - More code changes to home tracking
+ *  2.2.9 - 02/10/20 - Minor tweaks to who's home tracking
+ *  2.2.8 - 01/14/20 - Tweaks to see who's home for announcements
+ *  2.2.7 - 01/11/20 - Trying to fix a problem with nameCount
+ *  2.2.6 - 01/11/20 - Delayed Welcome Home is now optional
+ *  2.2.5 - 01/11/20 - Lots of tweaks
+ *  2.2.4 - 01/10/20 - Working on locks code
+ *  2.2.3 - 01/09/20 - More changes
+ *  2.2.2 - 12/31/19 - Added flashing lights Notification options, Happy New Year!
+ *  2.2.1 - 12/28/19 - Bug fixes
+ *  2.2.0 - 12/17/19 - All New code!
  *
  */
 
@@ -53,19 +54,7 @@ import groovy.time.TimeCategory
 import hubitat.helper.RMUtils
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "HomeTrackerChildVersion"
-	state.version = "v2.3.1"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { //log.error "In setVersion - ${e}"
-    }
+	state.version = "2.3.2"
 }
 
 definition(
@@ -409,8 +398,6 @@ def initialize() {
 	    if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
 	    if(triggerMode == "Motion_Sensor"){subscribe(motionSensor, "motion", motionSensorHandler)}
     }
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
     
     // setup initial values
     presenceSensorHandler()
@@ -1006,6 +993,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Home Tracker 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Home Tracker 2 - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }
