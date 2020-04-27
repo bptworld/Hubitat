@@ -34,18 +34,19 @@
  *
  *  Changes:
  *
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.5 - 04/16/19 - Fixed some code 
- *  V1.0.4 - 04/15/19 - Code cleanup
- *  V1.0.3 - 03/12/19 - Fixed pause
- *  V1.0.2 - 01/15/19 - Updated footer with update check and links
- *  V1.0.1 - 01/12/19 - Made the Control switch stand out more.
- *  V1.0.0 - 01/12/19 - Initial Release
+ *  2.0.1 - 04/27/20 - Cosmetic changes
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.5 - 04/16/19 - Fixed some code 
+ *  1.0.4 - 04/15/19 - Code cleanup
+ *  1.0.3 - 03/12/19 - Fixed pause
+ *  1.0.2 - 01/15/19 - Updated footer with update check and links
+ *  1.0.1 - 01/12/19 - Made the Control switch stand out more.
+ *  1.0.0 - 01/12/19 - Initial Release
  *
  */
 
 def setVersion(){
-	state.version = "2.0.0"
+	state.version = "2.0.1"
 }
 
 definition(
