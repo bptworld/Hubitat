@@ -4,10 +4,9 @@
  *  Design Usage:
  *  Simple way to monitor if your hub is slowing down or not.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -34,32 +33,22 @@
  *
  *  Changes:
  *
- *  V1.0.7 - 09/26/19 - Added a 'push all' option
- *  V1.0.6 - 09/26/19 - Holds up to 80 data points, added color coding
- *  V1.0.5 - 09/25/19 - Added a failsafe, test has to fail 3 times before notification is sent. Other small adjustments
- *  V1.0.4 - 09/25/19 - Here comes the reports!
- *  V1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
- *  V1.0.2 - 09/24/19 - Added Run time options
- *  V1.0.1 - 09/24/19 - Added Data device options
- *  V1.0.0 - 09/24/19 - Initial release.
+ *  1.0.8 - 04/27/20 - Cosmetic changes
+ *  1.0.7 - 09/26/19 - Added a 'push all' option
+ *  1.0.6 - 09/26/19 - Holds up to 80 data points, added color coding
+ *  1.0.5 - 09/25/19 - Added a failsafe, test has to fail 3 times before notification is sent. Other small adjustments
+ *  1.0.4 - 09/25/19 - Here comes the reports!
+ *  1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
+ *  1.0.2 - 09/24/19 - Added Run time options
+ *  1.0.1 - 09/24/19 - Added Data device options
+ *  1.0.0 - 09/24/19 - Initial release.
  *
  */
 
 import hubitat.helper.RMUtils
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "HubWatchdogChildVersion"
-	state.version = "v1.0.7"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "1.0.8"
 }
 
 definition(
@@ -220,8 +209,6 @@ def initialize() {
     if(triggerMode == "30_Min") runEvery30Minutes(testingDevice)
 	if(triggerMode == "1_Hour") runEvery1Hour(testingDevice)
     if(triggerMode == "3_Hour") runEvery3Hours(testingDevice)
-
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def testingDevice() {  
@@ -390,6 +377,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Hub Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Hub Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }
