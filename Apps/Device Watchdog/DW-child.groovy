@@ -34,29 +34,19 @@
  *
  *  Changes:
  *
- *  V2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, *** everyone needs to re-select devices ***
- *  V2.0.3 - 01/07/20 - Fixed status of button devices (status report)
- *  V2.0.2 - 11/26/19 - Cosmetic changes
- *  V2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  2.0.5 - 04/27/20 - Cosmetic changes
+ *  2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, *** everyone needs to re-select devices ***
+ *  2.0.3 - 01/07/20 - Fixed status of button devices (status report)
+ *  2.0.2 - 11/26/19 - Cosmetic changes
+ *  2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  ---
- *  V1.0.0 - 12/21/18 - Initial release.
+ *  1.0.0 - 12/21/18 - Initial release.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "DeviceWatchdogChildVersion"
-	state.version = "v2.0.4"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "2.0.5"
 }
 
 definition(
@@ -249,8 +239,6 @@ def initialize() {
 		if(timeToRun) schedule(timeToRun, activityHandler)
 	}
 	if(runReportSwitch) subscribe(runReportSwitch, "switch", activityHandler)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def watchdogMapHandler(evt) {
@@ -774,6 +762,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
 	}       
 }
