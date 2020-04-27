@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 04/27/20 - Cosmetic changes
  *  1.0.3 - 04/25/20 - Major rewrite by axornet, including addition of Graphs! Thank you.
  *  1.0.2 - 12/04/19 - Chasing a gremlin
  *  1.0.1 - 09/30/19 - Lots of little changes
@@ -43,7 +44,7 @@
 import hubitat.helper.RMUtils
 
 def setVersion(){
-	state.version = "1.0.3"
+	state.version = "1.0.4"
     
     try {
         if(parent.sendToAWSwitch && parent.awDevice) {
@@ -400,6 +401,6 @@ def display2(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Hub Watchdog Examiner - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Hub Watchdog Examiner - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }
