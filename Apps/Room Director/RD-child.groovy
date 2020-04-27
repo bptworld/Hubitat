@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 04/27/20 - Chasing a gremlin
  *  1.0.4 - 04/24/20 - Fixed lights not respecting new motion after warning
  *  1.0.3 - 04/16/20 - Fixed pause duration error
  *  1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings
@@ -44,7 +45,7 @@ import groovy.json.*
 import hubitat.helper.RMUtils
     
 def setVersion(){
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -586,7 +587,7 @@ def lightsHandler() {
                 it.on()
             }
         }
-        runIn(repeatTime, lightsHandler)
+        runOnce(repeatTime, lightsHandler)
     }
 }
 
