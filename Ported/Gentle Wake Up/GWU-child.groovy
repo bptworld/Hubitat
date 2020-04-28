@@ -42,13 +42,14 @@
  *
  *  Changes:
  *
- *  V2.0.1 - 01/31/20 - Trying to fix a reported error
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  v1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to partent/child.
- *  v1.0.3 - 08/02/19 - Whoops, found a bug! 
- *  v1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
- *  v1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
- *  v1.0.0 - 07/31/19 - Initial port of ST app - Tons of fixes and adjustments to make it compatible with Hubitat...
+ *  2.0.2 - 04/27/20 - Cosmetic changes
+ *  2.0.1 - 01/31/20 - Trying to fix a reported error
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.4 - 08/08/19 - Added optional 'Gradually change the temperature', converted app to partent/child.
+ *  1.0.3 - 08/02/19 - Whoops, found a bug! 
+ *  1.0.2 - 08/01/19 - Added code for 'Repeat X times', gave the app some color!
+ *  1.0.1 - 08/01/19 - More code changes, did some testing...all seems to work!
+ *  1.0.0 - 07/31/19 - Initial port of ST app - Tons of fixes and adjustments to make it compatible with Hubitat...
  *        - Fix date format
  *        - Removed calls for contact info and phonebook
  *        - Fixed push to work with Hubitat
@@ -61,19 +62,8 @@
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "GentleWakeUpChildVersion"
-	state.version = "v2.0.1"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-            schedule("0 0 3 ? * * *", setVersion)
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+    state.name = "Gentle Wake Up"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -100,7 +90,8 @@ preferences {
 
 def rootPage() {
 	dynamicPage(name: "rootPage", title: "", install: true, uninstall: true) {
-        section(getFormat("header-green", "${getImage("Blank")}"+" Gentle Wake Up Has A Controller")) {                                       
+        display()
+        section(getFormat("header-green", "${getImage("Blank")}"+" Gentle Wake Up As A Controller")) {                                       
             href(title: "Learn how to control Gentle Wake Up", page: "controllerExplanationPage", description: null)
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" What to dim")) {
@@ -128,6 +119,7 @@ def rootPage() {
                 input(name: "logEnable", type: "bool", defaultValue: "false", submitOnChange: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 			}
 		}
+        display2()
 	}
 }
 
@@ -402,7 +394,6 @@ private initialize() {
 		addChildDevice("smartthings", "Gentle Wake Up Controller", dni, null, ["label": app.label])
 		state.controllerDni = dni
 	}
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def appHandler(evt) {
@@ -1362,27 +1353,61 @@ def hasEndLevel() {
 
 // ********** Normal Stuff **********
 
-def getImage(type) {							// Modified Code from @Stephack
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){					// Modified Code from @Stephack
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    setVersion()
+    getHeaderAndFooter()
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Gentle Wake Up Port - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
 }
