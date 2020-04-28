@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		},
 		{
 			"id" : "c08ab732-c67f-4887-8b17-45cacaecdd8d",
@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.1"
+			"version": "1.0.2"
 		}
 	],
 	"drivers" : [
