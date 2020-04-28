@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		},
 		{
 			"id" : "aa24dff0-9a3e-41c6-a6c4-adf244ceece2",
@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/WDG-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.1.1"
+			"version": "1.1.2"
 		}
 	],
 	"drivers" : [
