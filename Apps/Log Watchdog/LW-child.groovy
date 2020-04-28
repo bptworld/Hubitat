@@ -4,10 +4,9 @@
  *  Design Usage:
  *  Keep an eye on what's important in the log.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,28 +37,20 @@
  *
  *  Changes:
  *
- *  V2.0.5 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
- *  V2.0.4 - 09/05/19 - More code changes... this is a beta app ;)
- *  V2.0.3 - 09/04/19 - Fixed some typos
- *  V2.0.2 - 09/03/19 - Added 'does not contain' keywords
- *  V2.0.1 - 09/02/19 - Evolving fast, lots of changes
- *  V2.0.0 - 08/31/19 - Initial release.
+ *  2.0.7 - 04/27/20 - Cosmetic changes
+ *  2.0.6 - 11/24/19 - Code enhancements
+ *  2.0.5 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
+ *  2.0.4 - 09/05/19 - More code changes... this is a beta app ;)
+ *  2.0.3 - 09/04/19 - Fixed some typos
+ *  2.0.2 - 09/03/19 - Added 'does not contain' keywords
+ *  2.0.1 - 09/02/19 - Evolving fast, lots of changes
+ *  2.0.0 - 08/31/19 - Initial release.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion or AppWatchdogDriverVersion
-    state.appName = "LogWatchdogChildVersion"
-	state.version = "v2.0.5"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+    state.name = "Log Watchdog"
+	state.version = "2.0.7"
 }
 
 definition(
@@ -77,18 +68,18 @@ definition(
 
 preferences {
     page(name: "pageConfig")
-    page name: "pageKeySet01", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page name: "pageKeySet", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
-    dynamicPage(name: "", title: "<h2 style='color:#1A77C9;font-weight: bold'>Log Watchdog</h2>", install: true, uninstall: true, refreshInterval:0) {
+    dynamicPage(name: "", title: "", install: true, uninstall: true) {
 		display() 
-        section("Instructions:", hideable: true, hidden: true) {
+        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Keep an eye on what's important in the log."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Keyset Options")) {
-            href "pageKeySet01", title: "Keyset Setup", description: "Click here to setup Keywords."
+            href "pageKeySet", title: "Keyset Setup", description: "Click here to setup Keywords."
             if(state.if01) paragraph "Keyset: ${state.if01}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
@@ -96,13 +87,22 @@ def pageConfig() {
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false
             
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Watchdog Device")) {
-			input "lwdDevice", "capability.actuator", title: "Select Log Watchdog Device", required: true
+        section(getFormat("header-green", "${getImage("Blank")}"+" Watchdog Device - Required")) {
+			input "lwdDevice", "capability.actuator", title: "Select Log Watchdog Device", required: false
             paragraph "<small>* Virtual Device must use the Log Watchdog Driver</small>"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
+            paragraph "<hr>"
+            input "testPrimaryKeyword", "button", title: "Test Pri Keyword 1"
+            
+            input "testSecondaryKeyword1", "button", title: "Test Sec Keyword 1", width: 3
+            input "tesSecondarytKeyword2", "button", title: "Test Sec Keyword 2", width: 3
+            input "testSecondaryKeyword3", "button", title: "Test Sec Keyword 3", width: 3
+            input "testSecondaryKeyword4", "button", title: "Test Sec Keyword 4", width: 3
+            paragraph "<hr>"
+            
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
             try {
@@ -125,43 +125,43 @@ def pageConfig() {
 	}
 }
 
-def pageKeySet01(){
-    dynamicPage(name: "pageKeySet01", title: "Keyset 01 Options", install: false, uninstall:false){
+def pageKeySet(){
+    dynamicPage(name: "pageKeySet", title: "Keyset 01 Options", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
             input "option1", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
             
             if(option1 == "Keywords") {
                 keySetType1 = "K"
 			    paragraph "<b>Primary Check</b> - Select keyword or phrase"
-                input "keyword11", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
+                input "keyword1", "text", title: "Primary Keyword 1",  required: false, submitOnChange: "true"
             } else if(option1 == "Logging Level") {
                 keySetType1 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
-                input "keyword11", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
+                input "keyword1", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
             }
             paragraph "<b>AND</b>"   
             paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword11", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword12", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword13", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword14", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            input "sKeyword1", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "sKeyword2", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
+            input "sKeyword3", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
+            input "sKeyword4", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
             paragraph "<b>BUT DOES NOT CONTAIN</b>"   
             paragraph "<b>Third Check</b> - Select up to 2 keywords"
-            input "nKeyword11", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "nKeyword12", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword1", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword2", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
             paragraph "<hr>"
-            if(!keyword11) keyword11 = "-"
-            if(!sKeyword11) sKeyword11 = "-"
-            if(!sKeyword12) sKeyword12 = "-"
-            if(!sKeyword13) sKeyword13 = "-"
-            if(!sKeyword14) sKeyword14 = "-"
-            if(!nKeyword11) nKeyword11 = "-"
-            if(!nKeyword12) nKeyword12 = "-"
+            if(!keyword1) keyword1 = "-"
+            if(!sKeyword1) sKeyword1 = "-"
+            if(!sKeyword2) sKeyword2 = "-"
+            if(!sKeyword3) sKeyword3 = "-"
+            if(!sKeyword4) sKeyword4 = "-"
+            if(!nKeyword1) nKeyword1 = "-"
+            if(!nKeyword2) nKeyword2 = "-"
             
-            state.if01 = "<b>(${keySetType1}) if (${keyword11}) and (${sKeyword11} or ${sKeyword12} or ${sKeyword13} or ${sKeyword14}) but not (${nKeyword11} or ${nKeyword12})</b>"
+            state.if01 = "<b>(${keySetType1}) - if (${keyword1}) and (${sKeyword1} or ${sKeyword2} or ${sKeyword3} or ${sKeyword4}) but not (${nKeyword1} or ${nKeyword2})</b>"
             paragraph "<b>Complete Check</b><br>${state.if01}"
 
-            state.theData01 = "keySet01;${keySetType1};${keyword11};${sKeyword11};${sKeyword12};${sKeyword13};${sKeyword14};${nKeyword11};${nKeyword12}"
+            state.theData01 = "KeySet;${keySetType1};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
         }
     }
 }
@@ -181,7 +181,6 @@ def updated() {
 def initialize() {
     setDefaults()
     subscribe(lwdDevice, "lastLogMessage", theNotifyStuff)
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 	
 def countWords(stuff) {
@@ -222,6 +221,21 @@ def appButtonHandler(buttonPressed) {
     if(state.whichButton == "closeConnection"){
         lwdDevice.close()
     }
+    if(state.whichButton == "testPrimaryKeyword"){
+        log.info "Log Watchdog - Testing Primary Keyword1: ${keyword1}"
+    }
+    if(state.whichButton == "testSecondaryKeyword1"){
+        log.info "Log Watchdog - Testing Secondary Keyword1: ${sKeyword1}"
+    }
+    if(state.whichButton == "testSecondaryKeyword2"){
+        log.info "Log Watchdog - Testing Secondary Keyword2: ${sKeyword2}"
+    }
+    if(state.whichButton == "testSecondaryKeyword3"){
+        log.info "Log Watchdog - Testing Secondary Keyword3: ${sKeyword3}"
+    }
+    if(state.whichButton == "testSecondaryKeyword4"){
+        log.info "Log Watchdog - Testing Secondary Keyword4: ${sKeyword4}"
+    }
 }
 
 // ********** Normal Stuff **********
@@ -234,24 +248,58 @@ def setDefaults(){
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+    if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
+    if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
+    if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
+    if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
-    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
-	if(type == "title") return "<div style='color:blue;font-weight: bold'>${myText}</div>"
+    if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
+    if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-	section() {
+    setVersion()
+    getHeaderAndFooter()
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Log Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
 }
