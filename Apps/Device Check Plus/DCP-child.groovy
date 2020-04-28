@@ -52,6 +52,7 @@
  */
 
 def setVersion(){
+    state.name = "Device Check Plus"
 	state.version = "1.1.0"
 }
 
@@ -1139,24 +1140,51 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
+    setVersion()
+    getHeaderAndFooter()
     theName = app.label
     if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Device Check Plus - ${theName}")) {
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Check Plus - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
 }
