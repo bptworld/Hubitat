@@ -39,16 +39,18 @@
  *
  * Changes:
  *
- * V2.0.1 - 04/12/20 - Major changes
+ *  2.0.2 - 04/27/20 - Cosmetic changes
+ *  2.0.1 - 04/12/20 - Major changes
  * ---
- * V1.0.0 - 10/01/18 - Initial release. This is where it all started for me. By looking at other people work and piecing things 
+ *  1.0.0 - 10/01/18 - Initial release. This is where it all started for me. By looking at other people work and piecing things 
  * together. Learning by example! Next up was Googling everything I could find, reading, trying... reading more, trying again.
  * Before long, BPTWorld apps was born. Didn't know you were going to get a history lesson today, did you! lol.
  *
  */
 
 def setVersion(){
-	state.version = "v2.0.1"
+    state.name = "Lighting Effects"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -235,13 +237,13 @@ def changeHandler(evt) {            // Modified code from ST - Kristopher Kubick
                 	colors = colorSelection
 					if(logEnable) log.debug "In changeHandler - Colors: ${colors}"
 				
-                	def offLights = lights.findAll { light -> light.currentSwitch == "off"}
+                	def offLights = lights.findAll { light -> light.currentSwitch == "off" }
                 	if(logEnable) log.debug "In changeHandler - offLights: ${offLights}"
                 
-                	def onLights = lights.findAll { light -> light.currentSwitch == "on"}
+                	def onLights = lights.findAll { light -> light.currentSwitch == "on" }
                 	if(logEnable) log.debug "In changeHandler - onLights: ${onLights}"
-    	    		def numberon = onLights.size();
-					def numcolors = colors.size();
+    	    		def numberon = onLights.size()
+					def numcolors = colors.size()
         			
 					if(logEnable) log.debug "In changeHandler - pattern = ${pattern}"
                     if (pattern == 'randomize') {
@@ -256,7 +258,7 @@ def changeHandler(evt) {            // Modified code from ST - Kristopher Kubick
             			}
                 	} else if (pattern == 'cycle') {
                        	if (onLights.size() > 0) {
-							if (state.colorOffset >= numcolors ) {
+							if (state.colorOffset >= numcolors) {
             					state.colorOffset = 0
             				}
 							if (seperate == 'combined') {
@@ -275,7 +277,7 @@ def changeHandler(evt) {            // Modified code from ST - Kristopher Kubick
             }
 			if(logEnable) log.debug "In changeHandler - slTime: ${slTime}"
         	runIn(slTime, changeHandler)
-	} else if(switches.currentValue("switch") == "off"){
+	} else if(switches.currentValue("switch") == "off") {
 		lights.off()
 		unschedule()
 	}
@@ -298,8 +300,8 @@ def slowChangeHandler(evt) {        // Modified code from ST - Kristopher Kubick
                 
                 	def onLights = lights.findAll { light -> light.currentSwitch == "on"}
                 	if(logEnable) log.debug "In slowChangeHandler - onLights: ${onLights}"
-    	    		def numberon = onLights.size();
-					def numcolors = colors.size();
+    	    		def numberon = onLights.size()
+					def numcolors = colors.size()
         			
 					if(logEnable) log.debug "In slowChangeHandler - pattern: ${pattern}"
                     if (pattern == 'randomize') {
@@ -485,24 +487,51 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
+    setVersion()
+    getHeaderAndFooter()
     theName = app.label
     if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Lighting Effects - ${theName}")) {
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Lighting Effects - @BPTWorld<br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
-}  
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
+}
