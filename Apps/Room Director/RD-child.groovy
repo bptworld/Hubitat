@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 04/28/20 - Added a Switch option to Notifications
  *  1.0.6 - 04/27/20 - Cosmetic changes
  *  1.0.5 - 04/27/20 - Chasing a gremlin
  *  1.0.4 - 04/24/20 - Fixed lights not respecting new motion after warning
@@ -47,7 +48,7 @@ import hubitat.helper.RMUtils
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -279,50 +280,84 @@ def offConfig() {
 
 def speechOptions(){
     dynamicPage(name: "speechOptions", title: "Notification Options", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
-           paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
+        section() {
+            paragraph "Room Director offers many options to warn you before the lights go out. Choose as many options as you like."
+            paragraph "<hr>"
+            input "useSpeech", "bool", defaultValue:false, title: "<b>Use Speech?</b>", description: "Speech", submitOnChange:true
         }
-        if(!speakerProxy) {
-            if(speakerMP || speakerSS) {
-		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
-                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
-		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
-                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
-    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
+        if(useSpeech) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
+                paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
+                input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
+                input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
+                input(name: "speakerProxy", type: "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy")
+            }
+            if(!speakerProxy) {
+                if(speakerMP || speakerSS) {
+                    section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
+                        paragraph "NOTE: Not all speakers can use volume controls.", width:8
+                        paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
+                        input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
+                        input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
+                        input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
+                        if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
+                        if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
+                    }
                 }
-		    }
-		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-                input "fromTime", "time", title: "From", required:false, width: 6
-        	    input "toTime", "time", title: "To", required:false, width: 6
-		    }
-        } else {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
-		        paragraph "Speaker proxy in use (Smaht!)."
+                section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
+                    input "fromTime", "time", title: "From", required:false, width: 6
+                    input "toTime", "time", title: "To", required:false, width: 6
+                }
+            } else {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
+                    paragraph "Speaker proxy in use (Smaht!)."
+                }
             }
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
-            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
+        section() {
+            paragraph "<hr>"
+            input "usePush", "bool", defaultValue:false, title: "<b>Use Push?</b>", description: "Push", submitOnChange:true
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Message")) {
-            input "omessage", "text", title: "Random <b>Warning message</b> to be spoken before turning lights off - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
-		    input "oMsgList", "bool", defaultValue:true, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
-			if(oMsgList) {
-				 def ovalues = "${omessage}".split(";")
-				 olistMap = ""
-    			 ovalues.each { item -> olistMap += "${item}<br>"}
-				 paragraph "${olistMap}"
+        if(usePush) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
+                input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
             }
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
-            paragraph "<b>Run a Rule Machine Rule before turning lights off</b>"
-            def rules = RMUtils.getRuleList()
-            input "rMachine", "enum", title: "Select which rules to run", options: rules, multiple: true
+        
+        if(useSpeech || usePush) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Message")) {
+                input "omessage", "text", title: "Random <b>Warning message</b> to be spoken and/or pushed before turning lights off - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
+                input "oMsgList", "bool", defaultValue:true, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
+                if(oMsgList) {
+                    def ovalues = "${omessage}".split(";")
+                    olistMap = ""
+                    ovalues.each { item -> olistMap += "${item}<br>"}
+                    paragraph "${olistMap}"
+                }
+            }
+        }
+        
+        section() {
+            paragraph "<hr>"
+            input "useRule", "bool", defaultValue:false, title: "<b>Use Rule Machine?</b>", description: "Rule", submitOnChange:true
+        }
+        if(useRule) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
+                paragraph "<b>Run a Rule Machine Rule before turning lights off</b>"
+                def rules = RMUtils.getRuleList()
+                input "rMachine", "enum", title: "Select which rules to run", options: rules, multiple: true
+            }
+        }
+        
+        section() {
+            paragraph "<hr>"
+            input "useSwitch", "bool", defaultValue:false, title: "<b>Use Switch?</b>", description: "Switch", submitOnChange:true
+        }
+        if(useSwitch) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Switch Options")) {
+                paragraph "<b>Turn a switch on. Helpful to trigger other events outside of Room Director</b><br><small>Switch will turn on with warning and then off when warning is over.</small>"
+                input "warningSwitches", "capability.switch", title: "Select Switch to turn ON", multiple: true
+            }
         }
     }
 }
@@ -485,6 +520,7 @@ def whatToDo() {
             // Do nothing
         } else {
             if(logEnable) log.debug "In whatToDo - Going to occupancyHandler"
+            if(warningSwitches) warningSwitches.off()
             occupancyHandler()
         }
     }
@@ -564,6 +600,7 @@ def roomWarningHandler() {
             }
         }
         
+        if(warningSwitches) warningSwitches.on()
         if(rMachine) rulesHandler(rMachine)
         if(omessage) messageHandler()
         
@@ -589,6 +626,7 @@ def lightsHandler() {
                 it.on()
             }
         }
+        if(warningSwitches) warningSwitches.off()
         runOnce(repeatTime, lightsHandler)
     }
 }
