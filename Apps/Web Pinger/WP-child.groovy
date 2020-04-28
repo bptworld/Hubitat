@@ -36,23 +36,25 @@
  *
  *  Changes:
  *
- *  V2.0.5 - 04/18/20 - Adjustments
- *  V2.0.4 - 12/09/19 - Fixed a bug 
- *  V2.0.3 - 12/04/19 - Added more logging
- *  V2.0.2 - 12/03/19 - Added more time options. Cosmetic changes
- *  V2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.4 - 04/15/19 - Code cleanup
- *  V1.0.3 - 03/12/19 - Fixed stuff
- *  V1.0.2 - 01/15/19 - Updated footer with update check and links
- *  V1.0.1 - 01/10/19 - Tons of cosmetic changes. Added in Push option, time between polls. Changed it up to turn the switch off
+ *  2.0.6 - 04/27/20 - Cosmetic changes
+ *  2.0.5 - 04/18/20 - Adjustments
+ *  2.0.4 - 12/09/19 - Fixed a bug 
+ *  2.0.3 - 12/04/19 - Added more logging
+ *  2.0.2 - 12/03/19 - Added more time options. Cosmetic changes
+ *  2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.4 - 04/15/19 - Code cleanup
+ *  1.0.3 - 03/12/19 - Fixed stuff
+ *  1.0.2 - 01/15/19 - Updated footer with update check and links
+ *  1.0.1 - 01/10/19 - Tons of cosmetic changes. Added in Push option, time between polls. Changed it up to turn the switch off
  *						if website/internet becomes active again. Added in all the normal stuff - like debug logging
- *  V1.0.0 - 01/09/19 - Hubitat Port of ST app 'SmartPing' - 2016 Jason Botello
+ *  1.0.0 - 01/09/19 - Hubitat Port of ST app 'SmartPing' - 2016 Jason Botello
  *
  */
 
 def setVersion(){
-	state.version = "v2.0.5"
+    state.name = "Web Pinger"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -161,7 +163,8 @@ def validateURL() {
 
 def poll() {
 		def reqParams = [
-            uri: "http://${state.website}"
+            uri: "http://${state.website}",
+            timeout: 30
     	]
     	if (state.validURL == "true") {
     		try {
@@ -210,12 +213,12 @@ def poll() {
 		if(timeToPing == "15") schedule("0 0/15 * * * ?", poll)
 		if(timeToPing == "30") schedule("0 0/30 * * * ?", poll)
 		if(timeToPing == "59") schedule("0 0/59 * * * ?", poll)
-	
 }
 
 def pollVerify() {
 	def reqParams = [
-		uri: "http://${state.website}"
+		uri: "http://${state.website}",
+        timeout: 30
 	]
     	try {
         	httpGet(reqParams) { resp ->
@@ -317,24 +320,51 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
+    setVersion()
+    getHeaderAndFooter()
     theName = app.label
     if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Web Pinger Plus - ${theName}")) {
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Web Pinger - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
-} 
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
+}
