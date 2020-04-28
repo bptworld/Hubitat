@@ -1,8 +1,8 @@
 /**
- *  **************** Simple Kitchen Timer Child App ****************
+ *  **************** Simple Timers Child App ****************
  *
  *  Design Usage:
- *  Create a simple kitchen timer with controls for use with Dashboards
+ *  Setup Simple Reminders through out the day.
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  * 
@@ -37,47 +37,34 @@
  *
  *  Changes:
  *
- *  V1.0.3 - 04/04/20 - Fixed push, fixed issue with 'unexpected error' with Notification page, added wildcard for timer name in message.
- *  V1.0.2 - 03/29/20 - Bug hunting
- *  V1.0.1 - 03/29/20 - Added switch control to Finished options, added timer name options, added Tile character count to Maint section
- *  V1.0.0 - 03/29/20 - Initial release.
+ *  1.0.1 - 04/27/20 - Cosmetic changes
+ *  1.0.0 - 01/29/20 - Initial release.
  *
  */
 
+import groovy.time.TimeCategory
+
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "SimpleKitchenTimerChildVersion"
-	state.version = "v1.0.3"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+	state.version = "1.0.1"
 }
 
 definition(
-    name: "Simple Kitchen Timer Child",
+    name: "Simple Timers Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Create a simple kitchen timer with controls for use with Dashboards",
+    description: "Setup Simple Reminders through out the day.",
     category: "Convenience",
-	parent: "BPTWorld:Simple Kitchen Timer",
+	parent: "BPTWorld:Simple Timers",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-child.groovy",
+	importUrl: "",
 )
 
 preferences {
     page(name: "pageConfig")
-    page name: "notificationOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "messageOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "flashOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "deviceOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
+    page(name: "reminderOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "notificationOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -85,98 +72,37 @@ def pageConfig() {
 		display() 
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-            paragraph "Create a simple kitchen timer with controls for use with Dashboards"
-            paragraph "After installing and setting up this app, be sure to add the new device to Maker API before adding it to any dashboard"
+            paragraph "Setup Simple Reminders through out the day."
 		}
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device and Dashboard Tile")) {}
-        section("Important Information Regarding the Virtual Device:", hideable: true, hidden: true) {
-            paragraph "Simple Kitchen Timer uses an iFrame within the table that creates the Dashboard Tile. This is the magic that makes device control possible without a new window opening up and ruining the whole experience."
-            paragraph "This also has the downside of messing with the virtual device created. While the Dashboard tile isn't effected and continues to update as usual, the Virtual Device itself will not load from the Device page. You will just see a blank (white) screen and the spinning blue thing in the corner. Again, this does not effect the workings of this app or the Dashboard tile. Just the annoyance of not being able to view the device page."
-            paragraph "With that said, there really is no reason to view the device page as there are no options, it's just a holding place for the Dashboard tile. But, if for any reason you do want to view the device page, I've added in a switch to turn the iFrame off."
-            paragraph "What will happen if this is off?<br> - If you click a value in the Sample tile, a new window will open<br> - If you click a value in the Device page, a new window will open<br> - If you click a value in the Dashboard tile, everything should work as usual (no window opening)"
-            paragraph "If you experience anything different, you should turn the iFrame back on and post on the forums. Be sure to mention the issue and what browser you are using."
-
-            input "iFrameOff", "bool", title: "Turn iFrame off?", defaultValue:false, description: "iFrame", submitOnChange:true
-            if(iFrameOff) paragraph "<div style='color: green'>iFrames are turned off, virtual device is now accessible from device menu.</div>"
-            if(!iFrameOff) paragraph "<div style='color: red'>iFrames are turned on, virtual device will not load from device menu.</div>"
-        }
-
-        section() {
-            paragraph "Each child app needs a virtual device to store the Tile Master data. Enter a short descriptive name for this device."
-			input "userName", "text", title: "Enter a name for this Tile Device (ie. 'Kitchen' will become 'SKT - Kitchen')", required:true, submitOnChange:true
-            paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
-            if(userName) createChildDevice()
-            if(statusMessage == null) statusMessage = "Waiting on status message..."
-            paragraph "${statusMessage}"
-            input "tileDevice", "capability.switch", title: "Vitual Device created to send the data to:", required:true, multiple:false
-        } 
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Timers")) {
-            paragraph "Each Timer Device can have up to 3 different timers built in. Each timer can display the length or a short name. Remember to watch your character count!"
-            input name: "timer1", type: "number", title: "<b>Timer 1:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>", width:6
-            input name: "timer1n", type: "text", title: "<b>Timer 1:</b><br>Enter a SHORT name for the timer<br><small>Optional</small>", width:6
-            
-            input name: "timer2", type: "number", title: "<b>Timer 2:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>", width:6
-            input name: "timer2n", type: "text", title: "<b>Timer 2:</b><br>Enter a SHORT name for the timer<br><small>Optional</small>", width:6
-            
-            input name: "timer3", type: "number", title: "<b>Timer 3:</b><br>How many Seconds to set timer<br><small>(ie. 300 = 5 minutes)</small>", width:6
-            input name: "timer3n", type: "text", title: "<b>Timer 3:</b><br>Enter a SHORT name for the timer<br><small>Optional</small>", width:6
-        }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {
-            input "countFontSize", "text", title: "Countdown Font Size", required: true, defaultValue: "40"
-            input "countColor1", "text", title: "Countdown Color when > 10", required: true, defaultValue: "green", width:6
-            input "countColor2", "text", title: "Countdown Color when <= 10", required: true, defaultValue: "blue", width:6
-            input "countColor3", "text", title: "Countdown Color when <= 5", required: true, defaultValue: "orange", width:6
-            input "countColor4", "text", title: "Countdown Color when Finished (0)", required: true, defaultValue: "red", width:6
-        }
-
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options, Options, Options")) {
-            if(randomMessage10 && randomMessage0) {
-                href "messageOptions", title:"${getImage("checkMarkGreen")} Message Options", description:"Click here to setup Messaging options"
+            if(days01) {
+                href "reminderOptions", title:"${getImage("checkMarkGreen")} Select Reminder options here", description:"Click here for Options"
             } else {
-                href "messageOptions", title:"Message Options", description:"Click here to setup Messaging options"
+                href "reminderOptions", title:"Select Reminder options here", description:"Click here for Options"
             }
-            
             if(speakerMP || speakerSS || switchesOn || switchesOff) {
-                href "notificationOptions", title:"${getImage("checkMarkGreen")} Select Notification options here", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("checkMarkGreen")} Select Speech options here", description:"Click here for Options"
             } else {
-                href "notificationOptions", title:"Select Notification options here", description:"Click here for Options"
-            }
-            
-            if(flash) {
-                href "flashOptions", title:"${getImage("checkMarkGreen")} Select Flash Lights options here", description:"Click here for Options"
-            } else {
-                href "flashOptions", title:"Select Flash Lights options here", description:"Click here for Options"
-            }
-            
-            if(deviceOn || deviceOff) {
-                href "deviceOptions", title:"${getImage("checkMarkGreen")} Select Device options here", description:"Click here for Options"
-            } else {
-                href "deviceOptions", title:"Select Device options here", description:"Click here for Options"
+                href "notificationOptions", title:"Select Speech options here", description:"Click here for Options"
             }
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
-            try { state.tileCount = tileDevice.currentValue('tileCount') } catch (e) {state.tileCount = "0"}
-            paragraph "<hr>"
-            paragraph "<b>To check Character count:</b><br>- Toggle the logEnable switch above<br>- Then click the button below"
-            input "sendData", "button", title: "Update"
-            paragraph "<b>Tile character count: ${state.tileCount}</b><br><small>* Max character count is 1024</small>"
 		}
 		display2()
 	}
 }
 
 def notificationOptions() {
-    dynamicPage(name: "notificationOptions", title: "Notification Options", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
-           paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerProxy", "bool", defaultValue: false, title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange: true
+    dynamicPage(name: "notificationOptions", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
+            paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
+           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required:false, multiple:true, submitOnChange:true
+           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required:false, multiple:true, submitOnChange:true
+           paragraph "This app supports speaker proxies like, 'Follow Me'. This allows all speech to be controlled by one app. Follow Me features - Priority Messaging, volume controls, voices, sound files and more!"
+           input "speakerProxy", "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange:true
         }
         if(!speakerProxy) {
             if(speakerMP || speakerSS) {
@@ -196,62 +122,15 @@ def notificationOptions() {
 		    }
         } else {
             section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
-		        paragraph "Speaker proxy in use."
+		        paragraph "Speaker proxy in use"
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
-            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
-        }
+            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
+    	}
+        
     }
 }
-
-def messageOptions(){
-    dynamicPage(name: "messageOptions", title: "Message Options", install: false, uninstall:false){    
-        section(getFormat("header-green", "${getImage("Blank")}"+" Messaging Options")) {
-            paragraph "<u>Optional wildcards:</u><br>%name% - returns the Name associcated with the Timer"
-	        input "randomMessage10", "text", title: "Random Message to be spoken at 10 seconds - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
-			input "rm10List", "bool", defaultValue: false, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
-			if(rm10List) {
-				def rm10 = "${randomMessage10}".split(";")
-				rm10a = ""
-    		    rm10.each { item -> rm10a += "${item}<br>"}
-				paragraph "${rm10a}"
-            }
-            
-            input "randomMessage0", "text", title: "Random Message to be spoken when Finished - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
-			input "rm0List", "bool", defaultValue: false, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
-			if(rm0List) {
-				def rm0 = "${randomMessage0}".split(";")
-				rm0a = ""
-    		    rm0.each { item -> rm0a += "${item}<br>"}
-				paragraph "${rm0a}"
-            }
-        }  
-    }
-}
-
-def flashOptions(){
-    dynamicPage(name: "flashOptions", title: "Flash Lights Options", install: false, uninstall:false){  
-        section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
-            input "flash", "bool", defaultValue: false, title: "Flash light(s) when timer is finished?", description: "Flash", submitOnChange: true
-            if(flash) {
-                input "switchesFlash", "capability.switch", title: "Flash these lights", multiple: true
-		        input "numFlashes", "number", title: "Number of times", required: false, defaultValue: 2, width: 6
-                input "delayFlashes", "number", title: "Milliseconds for lights to be on/off<br><small>(500=.5 sec, 1000=1 sec)</small>", required: false, defaultValue: 1000, width: 6
-            }
-        }
-    }
-}
-
-def deviceOptions(){
-    dynamicPage(name: "deviceOptions", title: "Device Options", install: false, uninstall:false){  
-        section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            input "deviceOn", "capability.switch", title: "Select Device(s) to turn ON when timer is finished", multiple: true, required: false
-            input "deviceOff", "capability.switch", title: "Select Device(s) to turn OFF when timer is finished", multiple: true, required: false
-        }
-    }
-}
-
 
 def installed() {
     log.debug "Installed with settings: ${settings}"
@@ -267,44 +146,18 @@ def updated() {
 def initialize() {
     setVersion()
     setDefaults()
-    subscribe(tileDevice, "isFinished", startHandler)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
-    sendDataToDriver()
 }
 
-def uninstalled() {
-	removeChildDevices(getChildDevices())
-}
 
-private removeChildDevices(delete) {
-	delete.each {deleteChildDevice(it.deviceNetworkId)}
-}
-
-def startHandler(evt) {
-    status = evt.value
-    if(logEnable) log.debug "In startHandler (${state.version}) - status: ${status}"
-    
-    if(status == "at10") {
-        if(logEnable) log.debug "In startHandler - status: ${status}"
-        messageHandler(randomMessage10)
-    }
-    
-    if(status == "finished") {
-        if(logEnable) log.debug "In startHandler - status: ${status}"
-        messageHandler(randomMessage0)
-        if(deviceOn) deviceOnHandler()
-        if(deviceOff) deviceOffHandler()
-        if(flash) flashLights()
-    }
-}
 
 def letsTalk(msg) {
-	if(logEnable) log.debug "In letsTalk (${state.version})"
+	if(logEnable) log.debug "In letsTalk (${state.version}) - Here we go"
 	checkTime()
 	checkVol()
-    if(logEnable) log.debug "In letsTalk - Checking timeBetween: ${state.timeBetween}"
-    if(state.timeBetween) {
+    checkEveryOther()
+    if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween} - thisTime: ${state.thisTime}"
+    if(state.timeBetween && state.daysMatch && state.thisTime == "yes") {
+        if(msg == null || msg == "") msg = state.lastMsg 
         theMsg = msg
         
         def duration = Math.max(Math.round(theMsg.length()/12),2)+3
@@ -339,6 +192,11 @@ def letsTalk(msg) {
             
         if(logEnable) log.debug "In letsTalk - Finished speaking"  
         if(sendPushMessage) pushNow(theMsg)
+        
+        if(state.rControlSwitch) {
+            state.lastMsg = theMsg
+            checkRepeat()
+        }
 	} else {
 		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
 	}
@@ -379,14 +237,9 @@ def messageHandler(msg) {
     count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
 	msg = values[randomKey]
-    
-    if(msg.contains("%name%")) {
-        def currentTimer = tileDevice.currentValue("currentTimer")
-        if(logEnable) log.debug "In messageHandler - currentTimer: ${currentTimer}"
-        msg = msg.replace('%name%', "${currentTimer}" )
-    }
-    
 	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, msg: ${msg}"
+    
+	if(logEnable) log.debug "In messageHandler - theMsg: ${theMsg}"
         
     letsTalk(msg)
 }
@@ -398,24 +251,9 @@ def pushNow(theMsg){
    	sendPushMessage.deviceNotification(theMessage)
 }
 
-def deviceOnHandler() {
-    if(logEnable) log.debug "In deviceOnHandler (${state.version})"
-    
-    deviceOn.each { it ->
-        it.on()
-    }
-}
-
-def deviceOffHandler() {
-    if(logEnable) log.debug "In deviceOffHandler (${state.version})"
-    
-    deviceOff.each { it ->
-        it.off()
-    }
-}
-
-private flashLights() {    // Code modified from ST documents
+private flashLights(switchesFlash,numFlashes,onFor,offFor) {    // Code modified from ST documents
     if(logEnable) log.debug "In flashLights (${state.version})"
+//    setLightPrevious(switchesFlash)
     
 	def doFlash = true
     
@@ -429,62 +267,99 @@ private flashLights() {    // Code modified from ST documents
 
 	if(doFlash) {
 		if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
-		def initialActionOn = switchesFlash.collect{it.currentSwitch != "on"}
-		def delayOn = delayFlashes * 1000
+		state.lastActivated = now()
+		if(logEnable) log.debug "In flashLights - lastActivated set to: ${state.lastActivated}"
+		def initialActionOn = switches.collect{it.currentSwitch != "on"}
+		def delayOn = onFor * 1000
+        def delayOff = offFor * 1000
         
 		numFlashes.times {
 			switchesFlash.eachWithIndex {s, i ->
 				if(initialActionOn[i]) {
-                    if(logEnable) log.debug "In flashLights - 1 - Switching Lights On after $delayOn second(s)"
+                    if(logEnable) log.debug "In flashLights - 1 - Switching Lights On after $offFor second(s)"
 					s.on()
-                    pauseExecution(delayFlashes)
-                    if(logEnable) log.debug "In flashLights - 1 - Switching Lights Off after $delayOn second(s)"
+                    pauseExecution(delayOn)
+                    if(logEnable) log.debug "In flashLights - 1 - Switching Lights Off after $onFor second(s)"
                     s.off()
-                    pauseExecution(delayFlashes)
+                    pauseExecution(delayOff)
 				} else {
-                    if(logEnable) log.debug "In flashLights - 2 - Switching Lights Off after $delayOn second(s)"
+                    if(logEnable) log.debug "In flashLights - 2 - Switching Lights Off after $offFor second(s)"
 					s.off()
-                    pauseExecution(delayFlashes)
-                    if(logEnable) log.debug "In flashLights - 2 - Switching Lights On after $delayOn second(s)"
+                    pauseExecution(delayOff)
+                    if(logEnable) log.debug "In flashLights - 2 - Switching Lights On after $onFor second(s)"
                     s.on()
-                    pauseExecution(delayFlashes)
+                    pauseExecution(delayOn)
 				}
 			}
 		}
 	}
+//    restoreLightOptions(switchesFlash)
 }
 
-def sendDataToDriver() {
-    if(logEnable) log.debug "In sendDataToDriver (${state.version})"
-    cDevID = tileDevice.id
-    theData = "${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
-    if(logEnable) log.debug "In sendDataToDriver - Sending: ${parent.hubIP}:${parent.makerID}:${parent.accessToken}:${cDevID}:${timer1}:${timer2}:${timer3}:${timer1n}:${timer2n}:${timer3n}:${iFrameOff}:${countFontSize}:${countColor1}:${countColor2}:${countColor3}:${countColor4}"
-    tileDevice.sendDataToDriver(theData)
-}
-
-def createChildDevice() {    
-    if(logEnable) log.debug "In createChildDevice (${state.version})"
-    statusMessage = ""
-    if(!getChildDevice("SKT - " + userName)) {
-        if(logEnable) log.debug "In createChildDevice - Child device not found - Creating device Simple Kitchen Timer - ${userName}"
-        try {
-            addChildDevice("BPTWorld", "Simple Kitchen Timer Driver", "SKT - " + userName, 1234, ["name": "SKT - ${userName}", isComponent: false])
-            if(logEnable) log.debug "In createChildDevice - Child device has been created! (SKT - ${userName})"
-            statusMessage = "<b>Device has been been created. (SKT - ${userName})</b>"
-        } catch (e) { if(logEnable) log.debug "Simple Kitchen Timer unable to create device - ${e}" }
-    } else {
-        statusMessage = "<b>Device Name (SKT - ${userName}) already exists.</b>"
+def setLightPrevious(lights) {        // Code modified from Eric Luttmann
+    if(logEnable) log.debug "In setLightPrevious (${state.version})"
+    if(state.lightsPrevious == null) state.lightsPrevious = ""
+    lights.each { it ->
+        if(logEnable) log.debug "In setLightPrevious - Working on $it ($it.id)"
+        if (it.hasCapability("Color Control")) {
+            if(logEnable) log.debug "In setLightPrevious - Save light color values"
+            state.lightsPrevious[it.id] = [
+                "switch": it.currentValue("switch"),
+                "level" : it.currentValue("level"),
+                "hue": it.currentValue("hue"),
+                "saturation": it.currentValue("saturation"),
+            ]
+        } else if (it.hasCapability("Switch Level")) {
+            if(logEnable) log.debug "In setLightPrevious - Save light level"
+            state.lightsPrevious[it.id] = [
+                "switch": it.currentValue("switch"),
+                "level" : it.currentValue("level"),
+            ]
+        } else {
+            if(logEnable) log.debug "In setLightPrevious - Save light switch"
+            state.lightsPrevious[it.id] = [
+                "switch": it.currentValue("switch"),
+            ]
+        }       
+        if(logEnable) log.debug "In setLightPrevious - $it.id - lightsPrevious: $state.lightsPrevious"
     }
-    return statusMessage
 }
 
-def appButtonHandler(buttonPressed) {
-    state.whichButton = buttonPressed
-    if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(state.whichButton == "sendData"){
-        if(logEnable) log.debug "In testButtonHandler - Sending data"
-        sendDataToDriver()
+def restoreLightOptions(lights) {        // Code modified from Eric Luttmann
+    if(logEnable) log.debug "In restoreLightOptions (${state.version})"
+    lights.each {
+        if (it.hasCapability("Color Control")) {
+           def oldColorValue = [hue: state.lightsPrevious[it.id].hue, saturation: state.lightsPrevious[it.id].saturation, level: state.lightsPrevious[it.id].level]
+           if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore oldColorValue: $oldColorValue"
+            it.setColor(oldColorValue) 
+        } else if (it.hasCapability("Switch Level")) {
+            def level = state.lightsPrevious[it.id].level ?: 100
+            if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore level: $level"
+            it.setLevel(level) 
+        }
+
+        def lightSwitch = state.lightsPrevious[it.id].switch ?: "off"
+        if(logEnable) log.debug "In restoreLightOptions - $it.id - Restore switch: $lightSwitch"
+        if (lightSwitch == "on") {
+            it.on()
+        } else {
+            it.off()
+        }
     }
+}
+
+def switchesOnHandler(switchesOn) {
+	switchesOn.each { it ->
+		if(logEnable) log.debug "In switchOnHandler - Turning on ${it}"
+		it.on()
+	}
+}
+
+def switchesOffHandler(switchesOff) {
+	switchesOff.each { it ->
+		if(logEnable) log.debug "In switchOffHandler - Turning off ${it}"
+		it.off()
+	}
 }
 
 // ********** Normal Stuff **********
@@ -495,7 +370,7 @@ def setDefaults(){
     state.numRepeats = 1
 }
 
-def getImage(type) {					// Modified Code from @Stephack
+def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
     if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
     if(type == "checkMarkGreen") return "${loc}checkMarkGreen2.png height=30 width=30>"
@@ -505,24 +380,51 @@ def getImage(type) {					// Modified Code from @Stephack
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified Code from @Stephack   
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
+    setVersion()
+    getHeaderAndFooter()
     theName = app.label
     if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Simple Kitchen Timer - ${theName}")) {
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Simple Kitchen Timer - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
 }
