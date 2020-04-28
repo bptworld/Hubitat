@@ -33,25 +33,16 @@
  *
  *  Changes:
  *
- *  V1.0.2 - 01/17/20 - Minor changes
- *  V1.0.1 - 01/16/20 - Added more 'Check' options
- *  V1.0.0 - 01/15/20 - Initial release
+ *  1.0.3 - 04/27/20 - Cosmetic changes
+ *  1.0.2 - 01/17/20 - Minor changes
+ *  1.0.1 - 01/16/20 - Added more 'Check' options
+ *  1.0.0 - 01/15/20 - Initial release
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Child app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion
-    state.appName = "RemoteWellnessCheckChildVersion"
-	state.version = "v1.0.2"
-    
-    try {
-        if(parent.sendToAWSwitch && parent.awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    parent.awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+    state.name = "Remote Wellness Check"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -169,8 +160,6 @@ def initialize() {
     if(runEvery == "30 Min") runEvery30Minutes(scheduleCheck)
 	if(runEvery == "1 Hour") runEvery1Hour(scheduleCheck)
     if(runEvery == "3 Hours") runEvery3Hours(scheduleCheck)
-    
-    if(parent.awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def scheduleCheck(evt) {
@@ -362,24 +351,51 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
+    setVersion()
+    getHeaderAndFooter()
     theName = app.label
     if(theName == null || theName == "") theName = "New Child App"
-    section (getFormat("title", "${getImage("logo")}" + " Remote Wellness Check - ${theName}")) {
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Remote Wellness Check - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
 }
