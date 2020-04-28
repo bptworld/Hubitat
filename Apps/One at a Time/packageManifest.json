@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.0"
+			"version": "2.0.1"
 		},
 		{
 			"id" : "97f38e5f-3280-44a3-a41c-f74d31584b6d",
@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/OaaT-Child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.0"
+			"version": "2.0.1"
 		}
 	],
 	"drivers" : [	
