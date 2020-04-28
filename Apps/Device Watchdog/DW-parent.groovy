@@ -35,20 +35,8 @@
  *
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.1.0 - 02/24/19 - Cosmetic update.
- *  V1.0.9 - 01/18/19 - Not going to update Parent apps anymore unless there is a change in the Parent app, not just the child.
- *  V1.0.8 - 01/15/19 - Updated footer with update check and links
- *  V1.0.7 - 01/04/19 - Modification by rayzurbock. Report now shows 'battery level isn't reporting' when a device's battery
- *						attribute is null/blank/non-existent. Previously it showed 0.  Also adjusted the output on the Push report.
- *  V1.0.6 - 01/01/19 - Fixed typo in Pushover module.
- *  V1.0.5 - 12/31/18 - Fixed debug logging.
- *  V1.0.4 - 12/30/18 - Updated to my new color theme.
- *  V1.0.3 - 12/30/18 - Added 'app child name' to Pushover reports
- *  V1.0.2 - 12/29/18 - Changed wording on Push notification option to specify Pushover.
- *						Added option to select 'all devices' for Battery Level trigger.
- *						Fixed Pushover to send a 'No devices to report' message instead of a blank message.
- *  V1.0.1 - 12/27/18 - Code cleanup.
- *  V1.0.0 - 12/21/18 - Initial release.
+ *  --
+ *  1.0.0 - 12/21/18 - Initial release.
  *
  */
 
@@ -138,6 +126,6 @@ def display(){
 	setVersion()
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center'>Device Watchdog - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'><img src='https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/pp.png'></a><br>${state.version}</div>"
 	}       
 }         
