@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.0"
+			"version": "2.0.1"
 		},
 		{
 			"id" : "00307375-51c2-4a69-96e0-ae859dcad69e",
@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.5"
+			"version": "2.0.6"
 		}
 	],
 	"drivers" : [	
