@@ -33,23 +33,14 @@
  *
  *  Changes:
  *
- *  V1.0.0 - 01/15/20 - Initial release.
+ *  1.0.1 - 04/27/20 - Cosmetic changes
+ *  1.0.0 - 01/15/20 - Initial release.
  *
  */
 
 def setVersion(){
-	if(logEnable) log.debug "In setVersion - App Watchdog Parent app code"
-    // Must match the exact name used in the json file. ie. AppWatchdogParentVersion, AppWatchdogChildVersion
-    state.appName = "RemoteWellnessCheckParentVersion"
-	state.version = "v1.0.0"
-    
-    try {
-        if(sendToAWSwitch && awDevice) {
-            awInfo = "${state.appName}:${state.version}"
-		    awDevice.sendAWinfoMap(awInfo)
-            if(logEnable) log.debug "In setVersion - Info was sent to App Watchdog"
-	    }
-    } catch (e) { log.error "In setVersion - ${e}" }
+    state.name = "Remote Wellness Check"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -84,33 +75,19 @@ def initialize() {
     childApps.each {child ->
         log.info "Child app: ${child.label}"
     }
-    if(awDevice) schedule("0 0 3 ? * * *", setVersion)
 }
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
-            display()
 			section("Instructions:", hideable: true, hidden: true) {
         		paragraph "Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time."
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
                 app(name: "anyOpenApp", appName: "Remote Wellness Check Child", namespace: "BPTWorld", title: "<b>Add a new 'Remote Wellness Check' child</b>", multiple: true)
 			}
-            // ** App Watchdog Code **
-            section("This app supports App Watchdog 2! Click here for more Information", hideable: true, hidden: true) {
-				paragraph "<b>Information</b><br>See if any compatible app needs an update, all in one place!"
-                paragraph "<b>Requirements</b><br> - Must install the app 'App Watchdog'. Please visit <a href='https://community.hubitat.com/t/release-app-watchdog/9952' target='_blank'>this page</a> for more information.<br> - When you are ready to go, turn on the switch below<br> - Then select 'App Watchdog Data' from the dropdown.<br> - That's it, you will now be notified automaticaly of updates."
-                input(name: "sendToAWSwitch", type: "bool", defaultValue: "false", title: "Use App Watchdog to track this apps version info?", description: "Update App Watchdog", submitOnChange: "true")
-			}
-            if(sendToAWSwitch) {
-                section(getFormat("header-green", "${getImage("Blank")}"+" App Watchdog 2")) {    
-                    if(sendToAWSwitch) input(name: "awDevice", type: "capability.actuator", title: "Please select 'App Watchdog Data' from the dropdown", submitOnChange: true, required: true, multiple: false)
-			        if(sendToAWSwitch && awDevice) setVersion()
-                }
-            }
-            // ** End App Watchdog Code **
+            
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
  			}
@@ -119,10 +96,10 @@ def mainPage() {
 	}
 }
 
-def installCheck(){         
+def installCheck(){   
+    display()
 	state.appInstalled = app.getInstallationState() 
 	if(state.appInstalled != 'COMPLETE'){
-        display()
 		section{paragraph "Please hit 'Done' to install '${app.label}' parent app"}
   	} else {
     	log.info "Parent Installed OK"
@@ -139,23 +116,51 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
-def getFormat(type, myText=""){			// Modified from @Stephack Code   
+def getFormat(type, myText="") {			// Modified from @Stephack Code   
 	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
 def display() {
-    section (getFormat("title", "${getImage("logo")}" + " Remote Wellness Check")) {
-        paragraph "<div style='color:#1A77C9'>Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time.</div>"
+    setVersion()
+    getHeaderAndFooter()
+    theName = app.label
+    if(theName == null || theName == "") theName = "New Child App"
+    section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
+        paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
 	}
 }
 
-def display2(){
-	setVersion()
+def display2() {
 	section() {
 		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center'>Remote Wellness Check - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>Get app update notifications and more with <a href='https://github.com/bptworld/Hubitat/tree/master/Apps/App%20Watchdog' target='_blank'>App Watchdog</a><br>${state.version}</div>"
+		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+        paragraph "${state.footerMessage}"
 	}       
+}
+
+def getHeaderAndFooter() {
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    def params = [
+	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+		requestContentType: "application/json",
+		contentType: "application/json",
+		timeout: 30
+	]
+    
+    try {
+        def result = null
+        httpGet(params) { resp ->
+            state.headerMessage = resp.data.headerMessage
+            state.footerMessage = resp.data.footerMessage
+        }
+        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+    }
+    catch (e) {
+        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    }
 }
