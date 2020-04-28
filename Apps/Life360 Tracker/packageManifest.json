@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/LT-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.0"
+			"version": "2.0.1"
 		},
 		{
 			"id" : "9379e41f-6bd6-4e4c-9688-4a2e3433ae1b",
@@ -20,7 +20,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/LT-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.5"
+			"version": "2.0.6"
 		}
 	],
 	"drivers" : [
