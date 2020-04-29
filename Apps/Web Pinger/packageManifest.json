@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-web-pinger/8347",
 	"apps" : [
 		{
 			"id" : "f0821784-444f-4118-bb5a-d047fdc4772e",
