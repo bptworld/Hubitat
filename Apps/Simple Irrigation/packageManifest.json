@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-simple-irrigation/14420",
 	"apps" : [
 		{
 			"id" : "7114c11b-e44a-4bec-9ecf-2c2ad87e32bf",
