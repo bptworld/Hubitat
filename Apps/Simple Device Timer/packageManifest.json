@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-simple-device-timer/16917",
 	"apps" : [
 		{
 			"id" : "1d18489a-f49a-4b21-a256-251267924c81",
