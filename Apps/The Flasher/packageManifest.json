@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843",
 	"apps" : [
 		{
 			"id" : "37bca8eb-0f08-4d20-924e-9686f57bd8e1",
