@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-one-at-a-time/7063",
 	"apps" : [
 		{
 			"id" : "814a307e-f6c6-4e8e-8810-3f65675a318e",
