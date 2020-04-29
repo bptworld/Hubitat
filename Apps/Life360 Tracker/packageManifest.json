@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-life360-tracker-works-with-the-paid-and-free-versions-of-life360/18276",
 	"apps" : [
 		{
 			"id" : "334451a9-c841-4c90-b2c6-7c8af2e6d477",
