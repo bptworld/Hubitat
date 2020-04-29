@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-weather-dot-gov-gathering-data-from-weather-gov/37456",
 	"apps" : [
 		{
 			"id" : "5d3ba06b-e58d-403c-b3fb-17a239ed2f4c",
