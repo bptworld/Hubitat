@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.2 - 04/29/20 - Check for days match before turning valve off
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  1.0.6 - 06/09/19 - Fixed issue with multiple schedules
@@ -52,7 +53,7 @@
 
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.1"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -172,27 +173,29 @@ def turnValveOn() {
 	}	
 }
 
-def turnValveOff() {
-	state.valveStatus = valveDevice.currentValue("valve")
-	if(logEnable) log.debug "In turnValveOff..."
-	def valveTryOff = 0
-    if(state.valveStatus == "open") {
-		valveTryOff = valveTryOff + 1
-		if(logEnable) log.debug "In turnValveOff - trying to turn off - will check again in 20 seconds"
-		valveDevice.close()
-    	if(valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
-		if(valveTryOff > maxTriesOff) {
-			log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
-			state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
-			if(sendPushMessage) pushHandler()
-		}
-	} else {
-		if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
-		log.warn "${valveDevice} is now ${state.valveStatus}"
-		if(state.canWater == "yes") state.msg = "${valveDevice} is now ${state.valveStatus}"
-		if(state.canWater == "no")  state.msg = "${app.label} didn't pass weather check. ${valveDevice} is now ${state.valveStatus}"
-		if(sendPushMessage) pushHandler()
-	}
+def turnValveOff() {		
+    dayOfTheWeekHandler()
+	if(state.daysMatch == "yes") {
+        if(logEnable) log.debug "In turnValveOff..."
+        state.valveStatus = valveDevice.currentValue("valve")
+        def valveTryOff = 0
+        if(state.valveStatus == "open") {
+            valveTryOff = valveTryOff + 1
+            if(logEnable) log.debug "In turnValveOff - trying to turn off - will check again in 20 seconds"
+            valveDevice.close()
+            if(valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
+            if(valveTryOff > maxTriesOff) {
+                log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
+                state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
+                if(sendPushMessage) pushHandler()
+            }
+        } else {
+            if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
+            log.warn "${valveDevice} is now ${state.valveStatus}"
+            state.msg = "${valveDevice} is now ${state.valveStatus}"
+            if(sendPushMessage) pushHandler()
+        }
+    }
 }
 
 def checkForWeather() {
