@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-simple-reminders-setup-reminders-through-out-the-day/28816",
 	"apps" : [
 		{
 			"id" : "f8d05799-375e-43aa-b047-8ae68f8c0415",
