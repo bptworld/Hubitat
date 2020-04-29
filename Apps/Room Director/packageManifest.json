@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-room-director-smarter-rooms-automatically/27291",
 	"apps" : [
 		{
 			"id" : "95decf3b-7e1e-4304-9fbc-e1460f357cf0",
