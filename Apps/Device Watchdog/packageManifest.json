@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-device-watchdog/7692",
 	"apps" : [
 		{
 			"id" : "0f61e609-7ace-4654-8acd-d62449c0b8b8",
