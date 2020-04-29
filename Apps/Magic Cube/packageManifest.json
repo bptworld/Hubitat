@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-magic-cube/11987",
 	"apps" : [
 		{
 			"id" : "3fe7903d-280e-46f4-8720-2f621c59093e",
