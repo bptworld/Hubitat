@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-lighting-effects/4330",
 	"apps" : [
 		{
 			"id" : "e53bf0af-1171-4d8a-b1f7-c4cebea99f80",
