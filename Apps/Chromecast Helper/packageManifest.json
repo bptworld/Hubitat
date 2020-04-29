@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-chromecast-helper-simple-way-to-help-keep-your-google-nest-devices-alive/19237",
 	"apps" : [
 		{
 			"id" : "2c131bc7-e71c-4e3b-a5f0-686bbf2f2d5c",
