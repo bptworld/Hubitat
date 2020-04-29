@@ -15,8 +15,8 @@
 		},
 		{
 			"id" : "7fc24c2f-0ccb-4b9c-9666-9660862ddcf5",
-			"name": "Device Watchdog Child",
-			"namespace": "Follow Me",
+			"name": "Follow Me Child",
+			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-child.groovy",
 			"required": true,
 			"oauth": false,
