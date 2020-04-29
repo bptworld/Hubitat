@@ -3,6 +3,8 @@
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
+	"documentationLink": "https://github.com/bptworld/Hubitat",
+	"communityLink": "https://community.hubitat.com/t/release-fully-kiosk-director/15310",
 	"apps" : [
 		{
 			"id" : "af3b13d2-dcb9-4049-a941-4320a606911e",
