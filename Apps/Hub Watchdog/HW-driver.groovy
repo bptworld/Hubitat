@@ -4,10 +4,9 @@
  *  Design Usage:
  *  This driver formats data to be displayed on Hubitat's Dashboards.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to give a shout out on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -34,27 +33,20 @@
  *
  *  Changes:
  *
- *  V1.0.8 - 09/30/19 - Lots of little changes
- *  V1.0.7 - 09/29/19 - Added support for 'Examiner' child app
- *  V1.0.6 - 09/28/19 - Fixed the '60' error.
- *  V1.0.5 - 09/26/19 - More color choices, rounded Med to 3
- *  V1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding
- *  V1.0.3 - 09/25/19 - More tweaks
- *  V1.0.2 - 09/25/19 - Attempt to fix a null object error
- *  V1.0.1 - 09/25/19 - Added a lot of data points
- *  V1.0.0 - 09/24/19 - Initial release
+ *  1.0.9 - 04/30/20 - Fixed a bug
+ *  1.0.8 - 09/30/19 - Lots of little changes
+ *  1.0.7 - 09/29/19 - Added support for 'Examiner' child app
+ *  1.0.6 - 09/28/19 - Fixed the '60' error.
+ *  1.0.5 - 09/26/19 - More color choices, rounded Med to 3
+ *  1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding
+ *  1.0.3 - 09/25/19 - More tweaks
+ *  1.0.2 - 09/25/19 - Attempt to fix a null object error
+ *  1.0.1 - 09/25/19 - Added a lot of data points
+ *  1.0.0 - 09/24/19 - Initial release
  */
     
 def setVersion(){
-    appName = "HubWatchdogDriver"
-	version = "v1.0.8" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
+	version = "1.0.9" 
 }
 
 metadata {
@@ -361,7 +353,7 @@ def makeList(theMessage) {
             
             sendEvent(name: "readings1", value: state.readings1, displayed: true)
             
-            sendEvent(name: "list1", value: state.list1, displayed: true)
+            sendEvent(name: "list1", value: state.list1, displayed: true, isStateChange:true)
             sendEvent(name: "listSizeB", value: state.listSizeB, displayed: true)
             sendEvent(name: "listSizeW", value: state.listSizeW, displayed: true)
             
