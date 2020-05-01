@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 05/01/20 - Removed some old code
  *  1.0.9 - 04/30/20 - Fixed a bug
  *  1.0.8 - 09/30/19 - Lots of little changes
  *  1.0.7 - 09/29/19 - Added support for 'Examiner' child app
@@ -46,7 +47,7 @@
  */
     
 def setVersion(){
-	version = "1.0.9" 
+	version = "1.1.0" 
 }
 
 metadata {
@@ -85,9 +86,6 @@ metadata {
         attribute "maximumD", "number"
         attribute "list1", "string"
         attribute "lastUpdated", "string"
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
         
         command "dataPoint1"
         command "on"
