@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 04/30/20 - Fixed a nasty bug
  *  1.0.4 - 04/27/20 - Cosmetic changes
  *  1.0.3 - 04/25/20 - Major rewrite by axornet, including addition of Graphs! Thank you.
  *  1.0.2 - 12/04/19 - Chasing a gremlin
@@ -45,7 +46,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Hub Watchdog Examiner"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -301,8 +302,7 @@ def reportRawOptions(){
                             imgGraphDataOther += "${graphPoint1Clean},"
                             break
                     }
-                } 
-                
+                }   
             }
             
             imgGrapHtmlZwav="<img width=\"100%\" src=\"https://quickchart.io/chart?c={type:'line', data:{labels:["+ imgGraphLabelsZwav +"], datasets:[{label:'Zwav', data: ["+imgGraphDataZwav+"], fill:false,borderColor:'"+colorZwav+"', pointBackgroundColor:'"+colorZwav+"', pointRadius:1}]}}\">"
@@ -343,8 +343,8 @@ def updated() {
 def initialize() {
     setDefaults()
     if(getDevice1) subscribe(getDevice1, "list1", getRawData)
-    if(getDevice1) subscribe(getDevice2, "list2", getRawData)
-    if(getDevice1) subscribe(getDevice3, "list3", getRawData)
+    if(getDevice2) subscribe(getDevice2, "list1", getRawData)
+    if(getDevice3) subscribe(getDevice3, "list1", getRawData)
 }
 
 def appButtonHandler(buttonPressed) {
