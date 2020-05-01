@@ -31,7 +31,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HWE-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.3"
+			"version": "1.0.5"
 		}
 	],
 	"drivers" : [
@@ -41,7 +41,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy",
 			"required": true,
-			"version": "1.0.8"
+			"version": "1.0.9"
 		}
 	]
 }
