@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 05/01/20 - Fixed the error when no data, thanks axornet
  *  1.0.5 - 04/30/20 - Fixed a nasty bug
  *  1.0.4 - 04/27/20 - Cosmetic changes
  *  1.0.3 - 04/25/20 - Major rewrite by axornet, including addition of Graphs! Thank you.
@@ -46,7 +47,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Hub Watchdog Examiner"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -269,7 +270,7 @@ def reportRawOptions(){
             for(int i in dataSize1..1) {
                 graphPoint = dataS[i-1].split(" - ")
 
-                if(graphPoint!=null) {
+                if(graphPoint!=null && graphPoint.size()>=2) {
                     graphPoint1Clean = graphPoint[1].trim()
                     if(graphPoint1Clean.contains("span")) {
                         
