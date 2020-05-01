@@ -100,6 +100,12 @@
    		"description": "Designed to allow only one switch, in a group of switches, to be on at a time."
    	},
       {
+   		"name": "Package Explorer",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Package%20Explorer/packageManifest.json",
+   		"description": "Conveniently explore the apps and drivers available within the Hubitat Package Manager."
+   	},
+      {
    		"name": "Presence Plus",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/packageManifest.json",
