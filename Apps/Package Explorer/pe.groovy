@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 05/02/20 - Minor changes
  *  1.0.0 - 05/01/20 - Initial release.
  *
  */
@@ -52,7 +53,7 @@ import groovy.transform.Field
 
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -79,33 +80,50 @@ def pageConfig() {
     reposToShowHandler()
     
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
-		display() 
-        section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-			paragraph "<b>Notes:</b>"
-    		paragraph "Conveniently explore the apps and drivers available within the Hubitat Package Manager.<br>All credit goes to @dman2306 for his amazing work on HPM."
-		}
-             
-        section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {          
-			input "installedRepositories", "enum", title: "Available Repositories", options:state.reposToShow, multiple:true, required:true, submitOnChange:true
-			if(installedRepositories) performRepositoryRefresh()
+        installCheck()
+		if(state.appInstalled == 'COMPLETE'){          
+            section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+                paragraph "<b>Notes:</b>"
+                paragraph "Conveniently explore the apps and drivers available within the Hubitat Package Manager.<br>All credit goes to @dman2306 for his amazing work on HPM."
+            }
 
-            href "categoryOptions", title:"Category Options", description:"Use Categories to search for an app or driver"
-            href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an app or driver"
+            section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {
+                app.removeSetting("pkgCategory")  // reset pkgCategory
+                app.removeSetting("pkgSearch")  // reset pkgSearch
+                app.removeSetting("pkgSearchNOT")  // reset pkgSearchNOT
+                app.removeSetting("pkgSearchType")  // reset pkgSearchType
+                
+                input "installedRepositories", "enum", title: "Available Repositories", options:state.reposToShow, multiple:true, required:true, submitOnChange:true
+                if(installedRepositories) performRepositoryRefresh()
+
+                href "categoryOptions", title:"Category Options", description:"Use Categories to search for an app or driver"
+                href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an app or driver"
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
+                label title: "Enter a name for this child app", required: false, submitOnChange: true
+                input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
+            }
+            display2()
         }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            label title: "Enter a name for this child app", required: false, submitOnChange: true
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
-		}
-		display2()
 	}
+}
+
+def installCheck(){
+    display()
+	state.appInstalled = app.getInstallationState() 
+	if(state.appInstalled != 'COMPLETE'){
+		section{paragraph "Please hit 'Done' to install '${app.label}' app "}
+  	}
+  	else{
+    	if(logEnable) log.info "App Installed OK"
+  	}
 }
 
 def categoryOptions() {
     dynamicPage(name: "categoryOptions", title: "", install: false, uninstall:false){
         display()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
-            app.removeSetting("pkgSearch")  // wipe out pkgSearch if category is used			
             input "pkgCategory", "enum", title: "Choose a Category To Explore", options:state.categories, required:false, submitOnChange:true, width:6
             if(pkgCategory) {
                 input "sortBy", "bool", title: "Sort packages by Name (off) or by Author (on)", description: "Sorting", defaultValue:false, submitOnChange:true
@@ -125,11 +143,10 @@ def searchOptions() {
     dynamicPage(name: "searchOptions", title: "", install: false, uninstall:false){
         display()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
-            app.removeSetting("pkgCategory")  // wipe out pkgCategory if search is used
             input "pkgSearch", "text", title: "Search ALL Apps for a specific keyword", required:false, submitOnChange:true, width:6
             input "pkgSearchNOT", "text", title: "But does NOT contain keyword (optional)", required:false, submitOnChange:true, width:6         
             if(pkgSearch) {
-                input "pkgSearchType", "enum", title: "In which Field", options:['name','description'], required:true, defaultValue:"name", submitOnChange:true
+                input "pkgSearchType", "enum", title: "In which Field", options:['name','description'], required:true, submitOnChange:true
                 input "sortBy", "bool", title: "Sort packages by Name (off) or by Author (on)", description: "Sorting", defaultValue:false, submitOnChange:true
             }
         }
@@ -144,10 +161,11 @@ def searchOptions() {
 }
 
 def findPackagesByCategory() {
+    if(logEnable) log.debug "In findPackagesByCategory"   
     if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name}
     if(sortBy) allPackages = state.allPackages.sort{ name-> name.author}
                 
-    state.resultsTitle = "<b>Search Results for Category -${pkgCategory}</b>"
+    state.resultsTitle = "<b>Search Results for Category - ${pkgCategory}</b>"
     appsList = ""
     
 	for (pkg in allPackages) {
@@ -167,8 +185,8 @@ def findPackagesByCategory() {
             if(pkg.payPalUrl) {
                 theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
             }
-            if(theLinks != "") theLinks += "|"
-                        
+            if(theLinks != "") theLinks += "|"               
+                
             if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
                         
             if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}</div>"
@@ -192,38 +210,41 @@ def findPackagesBySearch() {
         if(pkgSearchType == "name") { thePkg = pkg.name }
         if(pkgSearchType == "description") { thePkg = pkg.description }
         
-        if(thePkg.toLowerCase().contains("${pkgSearch.toLowerCase()}")) {            
-            if(thePkg.toLowerCase().contains("${pkgSearchNOT.toLowerCase()}")) {
-                if(logEnable) log.debug "In findPackageBySearch - Found Keyword not allowed - Skipping"
-            } else {               
-                if(logEnable) log.info "In findPackageBySearch - MATCHED!"
-                def info = getJSONFile(pkg.location)
-                theLinks = ""
-                if(info.documentationLink) {
-                    theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
-                }
-                if(info.communityLink) {
-                    theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
-                }
-                if(pkg.gitHubUrl) {
-                    theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
-                }
-                if(pkg.payPalUrl) {
-                    theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
-                }
-                if(theLinks != "") theLinks += "|"
-                //log.warn info
+        if(thePkg && pkgSearch) {
+            if(thePkg.toLowerCase().contains("${pkgSearch.toLowerCase()}")) {            
+                if(thePkg.toLowerCase().contains("${pkgSearchNOT.toLowerCase()}")) {
+                    if(logEnable) log.debug "In findPackageBySearch - Found Keyword not allowed - Skipping"
+                } else {               
+                    if(logEnable) log.info "In findPackageBySearch - MATCHED!"
+                    def info = getJSONFile(pkg.location)
+                    theLinks = ""
+                    if(info.documentationLink) {
+                        theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
+                    }
+                    if(info.communityLink) {
+                        theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
+                    }
+                    if(pkg.gitHubUrl) {
+                        theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
+                    }
+                    if(pkg.payPalUrl) {
+                        theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
+                    }
+                    if(theLinks != "") theLinks += "|"
+                    //log.warn info
 
-                if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
+                    if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
 
-                if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - (${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}</div>"
-                theLinks = "" 
+                    if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - (${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}</div>"
+                    theLinks = "" 
+                }
             }
         }
     }
 }
 
 def reposToShowHandler() {        // Code by dman2306
+    if(logEnable) log.debug "In reposToShowHandler"
     def reposToShow = [:]
 	listOfRepositories.repositories.each { r -> reposToShow << ["${r.location}":r.name] }
 	if (state.customRepositories != null)
@@ -236,6 +257,7 @@ def getRepoName(location) {        // Code by dman2306
 }
 
 def performRepositoryRefresh() {        // Code by dman2306
+    if(logEnable) log.debug "In performRepositoryRefresh"
 	allPackages = []
 	categories = []
 
@@ -267,6 +289,7 @@ def performRepositoryRefresh() {        // Code by dman2306
 }
 
 def getJSONFile(uri) {        // Code by dman2306
+    if(logEnable) log.debug "In getJSONFile"
 	try {
 		def fileContents = downloadFile(uri)
 		return new groovy.json.JsonSlurper().parseText(fileContents)
@@ -291,6 +314,7 @@ def initialize() {
 }
 
 def downloadFile(file) {        // Code by dman2306
+    if(logEnable) log.debug "In downloadFile"
 	try {
 		def params = [
 			uri: file,
@@ -312,7 +336,7 @@ def downloadFile(file) {        // Code by dman2306
 }
 
 def updateRepositoryListing() {        // Code by dman2306
-	if(logEnable) log.debug "Refreshing repository list"
+	if(logEnable) log.debug "In updateRepositoryListing - Refreshing repository list"
 	def oldListOfRepositories = listOfRepositories
 	listOfRepositories = getJSONFile(repositoryListing)
 	if (installedRepositories == null) {
@@ -328,6 +352,35 @@ def updateRepositoryListing() {        // Code by dman2306
 		}
 		app.updateSetting("installedRepositories", installedRepositories)
 	}
+}
+
+def getAppList() {    // Thanks to gavincampbell for the code below!
+    if(logEnable) log.debug "In getAppList"
+    def params = [
+    	uri: "http://127.0.0.1:8080/app/list",
+        textParser: true,
+        headers: [
+			Cookie: state.cookie
+		]
+      ]
+    
+	state.result = []
+    try {
+        httpGet(params) { resp ->     
+            def matcherText = resp.data.text.replace("\n","").replace("\r","")
+            def matcher = matcherText.findAll(/(<tr class="app-row" data-app-id="[^<>]+">.*?<\/tr>)/).each {
+                def allFields = it.findAll(/(<td .*?<\/td>)/) // { match,f -> return f } 
+                def id = it.find(/data-app-id="([^"]+)"/) { match,i -> return i.trim() }
+                def title = allFields[0].find(/title="([^"]+)/) { match,t -> return t.trim() }
+                def namespace = allFields[1].find(/>([^"]+)</) { match,ns -> return ns.trim() }
+                state.result += [id:id,title:title,namespace:namespace]
+            }
+        }
+    } catch (e) {
+		log.error "Error retrieving installed apps: ${e}"
+    }
+    //log.warn "result: ${state.result}"
+	//return result
 }
 
 // ********** Normal Stuff **********
