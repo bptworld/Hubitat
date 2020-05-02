@@ -22,7 +22,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/RD-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.7"
+			"version": "1.0.8"
 		}
 	],
 	"drivers" : [	
