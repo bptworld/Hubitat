@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 05/02/20 - More changes to repeat option
  *  1.0.7 - 04/28/20 - Added a Switch option to Notifications
  *  1.0.6 - 04/27/20 - Cosmetic changes
  *  1.0.5 - 04/27/20 - Chasing a gremlin
@@ -45,10 +46,11 @@
 
 import groovy.json.*
 import hubitat.helper.RMUtils
+import groovy.time.TimeCategory
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -273,7 +275,7 @@ def offConfig() {
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Repeat Option")) {
             paragraph "This option is used to repeat turning all devices selected above off/on. Just to make sure nothing was missed."
-			input "repeatTime", "number", title: "Repeat on/off (in seconds)", required: false, defaultValue: 120
+			input "repeatTime", "number", title: "Repeat on/off (in seconds)", required: false, defaultValue: 1
 		}
     }
 }
@@ -627,7 +629,33 @@ def lightsHandler() {
             }
         }
         if(warningSwitches) warningSwitches.off()
-        runOnce(repeatTime, lightsHandler)
+        int repeatTime
+        now = new Date()
+        use( TimeCategory ) {  // repeatTime
+            newTime = now + repeatTime.seconds
+        }
+        //log.info "newTime: ${newTime}"
+        runOnce(newTime, lightsHandler2)
+    }
+}
+
+def lightsHandler2() {
+    state.roStatus = "off"
+    if(roomOverride) state.roStatus = roomOverride.currentValue("switch")
+    
+    if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+    if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
+        if(unSwitchesOff) {
+            unSwitchesOff.each { it ->
+                it.off()
+            }
+        }
+        if(unSwitchesOn) {
+            unSwitchesOn.each { it ->
+                it.on()
+            }
+        }
+        if(warningSwitches) warningSwitches.off()
     }
 }
 
