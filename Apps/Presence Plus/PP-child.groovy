@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 05/05/20 - Added delay before status is updated
  *  1.0.2 - 04/27/20 - Cosmetic changes
  *  1.0.1 - 12/05/19 - Tightening up some code.
  *  1.0.0 - 11/01/19 - Initial release.
@@ -45,7 +46,7 @@
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -97,6 +98,7 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Failsafe Options")) {
             paragraph "Sometimes an arrival or departure can be missed. With this option, Presence Plus will check every X minutes to see who is here based ."
             input "runEvery", "enum", title: "Check every X minutes", description: "runEvery", required:false, submitOnChange:true, options: ["Every 1 Minute", "Every 5 Minutes", "Every 10 Minutes", "Every 15 Minutes", "Every 30 Minutes", "Every 1 Hour", "Every 3 Hours"]
+            input "theDelay", "number", title: "Delay setting arrival/departure status by (seconds)", required:false, submitOnChange:true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
             input "mySensor", "capability.presenceSensor", title: "Select device created to hold the combined presence value", multiple:false, required:false
@@ -144,21 +146,23 @@ def arrSensorHandler(evt) {
     if(ArrTriggerType == null || ArrTriggerType == "") ArrTriggerType = false
     if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType}"	
 
-	def pStatus = false
+    unschedule()
+    int theDelay = theDelay ?: 1
+	state.pStatus = false
     int sCount = 0
     int pCount = 0
     
     if(ArrTriggerType == false) {    // or
-        if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be FALSE for OR handler"
+        //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be FALSE for OR handler"
 	    ArrPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "present") {
-			    pStatus = true	
+			    state.pStatus = true	
             }
 	    }
     }
     
     if(ArrTriggerType == true) {    // and
-        if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be TRUE for AND handler"
+        //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be TRUE for AND handler"
         sCount = ArrPresenceSensors.size()
 	    ArrPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "present") {
@@ -166,16 +170,19 @@ def arrSensorHandler(evt) {
             }
 	    }
         if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${sCount} - presentCount: ${pCount}"
-        if(sCount == pCount) pStatus = true       
+        if(sCount == pCount) state.pStatus = true       
     }
-    statusUpdateHandler(pStatus)
+    if(logEnable) log.debug "In depSensorHandler - Arr - Will set status to ${state.pStatus} after a ${theDelay} second delay"
+    runIn(theDelay, statusUpdateHandler)
 }
 
 def depSensorHandler(evt) {
     if(DepTriggerType == null || DepTriggerType == "") DepTriggerType = false
     if(logEnable) log.debug "In depSensorHandler (${state.version}) - DepTriggerType: ${DepTriggerType}"	
 
-	def pStatus = false
+    unschedule()
+    int theDelay = theDelay ?: 1
+	state.pStatus = false
     int sCount = 0
     int pCount = 0
     
@@ -183,13 +190,13 @@ def depSensorHandler(evt) {
         if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be FALSE for OR handler"
 	    DepPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "not present") {
-			    pStatus = false	
+			    state.pStatus = false	
             }
 	    }
     }
     
     if(DepTriggerType == true) {    // and
-        if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be TRUE for AND handler"
+        //if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be TRUE for AND handler"
         sCount = DepPresenceSensors.size()
 	    DepPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "not present") {
@@ -197,20 +204,21 @@ def depSensorHandler(evt) {
             }
 	    }
         if(logEnable) log.debug "In depSensorHandler - Dep - sensorCount: ${sCount} - notPresentCount: ${pCount}"
-        if(sCount != pCount) pStatus = true       
+        if(sCount != pCount) state.pStatus = true       
     }
-    statusUpdateHandler(pStatus)
+    if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus} after a ${theDelay} second delay"
+    runIn(theDelay, statusUpdateHandler)
 }
 
-def statusUpdateHandler(pStatus) {
-    if(logEnable) log.debug "In statusUpdateHandler (${state.version}) - pStatus: ${pStatus}"
-	if(pStatus == true) {
-        if(logEnable) log.debug "In statusUpdateHandler - Sending ON for Present if needed"
+def statusUpdateHandler() {
+    if(logEnable) log.debug "In statusUpdateHandler (${state.version}) - pStatus: ${state.pStatus}"
+	if(state.pStatus == true) {
         def mySensorStatus = mySensor.currentValue("switch")
+        if(logEnable) log.debug "In statusUpdateHandler - Sending ON for Present if needed (switch is ${mySensorStatus})"
         if(mySensorStatus == "off") mySensor.on()
 	} else {
-        if(logEnable) log.debug "In statusUpdateHandler - Sending OFF for Not Present if needed"
         def mySensorStatus = mySensor.currentValue("switch")
+        if(logEnable) log.debug "In statusUpdateHandler - Sending OFF for Not Present if needed (switch is ${mySensorStatus})"
         if(mySensorStatus == "on") mySensor.off()
 	}
 }
