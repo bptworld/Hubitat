@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 05/05/20 - Added Advanced Arrival section giving users a second set of arrival options
  *  1.0.4 - 05/05/20 - Added number of sensors required to change status
  *  1.0.3 - 05/05/20 - Added delay before status is updated
  *  1.0.2 - 04/27/20 - Cosmetic changes
@@ -47,7 +48,7 @@
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -79,18 +80,37 @@ def pageConfig() {
             paragraph "What ever name you choose for this child app will also be the name of the device automaticaly created."
             paragraph "Also, it's <i>always</i> a good idea to go into the newly created device and set the initial presence state."
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this child app", required:false, submitOnChange:true
             paragraph "Note: What ever name you place in here will also be the name of the device automaticaly created."
             if(app.label) createChildDevice()
         }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Arrival Options")) {
             input "ArrTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
             if(ArrTriggerType) paragraph "<b>using 'AND'</b>"
             if(!ArrTriggerType) paragraph "<b>using 'OR'</b>"
-			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
+			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:true
             if(ArrTriggerType) input "arrNumOfSensors", "number", title: "How many sensors does it take to change status for Arrival (leave blank for All)", required:false, submitOnChange:true 
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Arrival Options")) {
+            paragraph "Advanced Arrival Options give you a second set of arrival Triggers to choose from.<br>ie. if sensor1 = present -> Present 'else' if sensor2 and sensor3 = present -> Present"
+            input "useAdvancedArr", "bool", title: "Used Adanced Arrival Options", description: "Advanced Arrival", required:false, submitOnChange:true
+            if(useAdvancedArr) {
+                input "ArrTriggerType2", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
+                if(ArrTriggerType2) paragraph "<b>using 'AND'</b>"
+                if(!ArrTriggerType2) paragraph "<b>using 'OR'</b>"
+                input "ArrPresenceSensors2", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:true
+                if(ArrTriggerType2) input "arrNumOfSensors2", "number", title: "How many sensors does it take to change status for Arrival (leave blank for All)", required:false, submitOnChange:true 
+            } else {
+                app.removeSetting("ArrTriggerType2")
+                app.removeSetting("ArrPresenceSensors2")
+                app.removeSetting("arrNumOfSensors2")           
+            }
+		}
+ 
         section(getFormat("header-green", "${getImage("Blank")}"+" Departure Options")) {
             input "DepTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
 			if(DepTriggerType) paragraph "<b>using 'AND'</b>"
@@ -98,15 +118,18 @@ def pageConfig() {
             input "DepPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (not present)", multiple:true, required:false
             if(DepTriggerType) input "depNumOfSensors", "number", title: "How many sensors does it take to change status for Departed (leave blank for All)", required:false, submitOnChange:true
 		}
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Failsafe Options")) {
-            paragraph "Sometimes an arrival or departure can be missed. With this option, Presence Plus will check every X minutes to see who is here based ."
+            paragraph "Sometimes an arrival or departure can be missed. With this option, Presence Plus will check every X minutes to see who is here."
             input "runEvery", "enum", title: "Check every X minutes", description: "runEvery", required:false, submitOnChange:true, options: ["Every 1 Minute", "Every 5 Minutes", "Every 10 Minutes", "Every 15 Minutes", "Every 30 Minutes", "Every 1 Hour", "Every 3 Hours"]
             input "theDelay", "number", title: "Delay setting arrival/departure status by (seconds)", required:false, submitOnChange:true
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
             input "mySensor", "capability.presenceSensor", title: "Select device created to hold the combined presence value", multiple:false, required:false
             paragraph "<small>* This device was automaticaly created when you entered in the app name. Look for a device with the same name as this app.</small>"
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             input "logEnable", "bool", title: "Enable Debug Logging", description: "Debugging", defaultValue:true, submitOnChange:true
         }
@@ -134,7 +157,8 @@ def updated() {
 def initialize() {
     setDefaults()
 	subscribe(ArrPresenceSensors, "presence.present", arrSensorHandler)
-    subscribe(DepPresenceSensors, "presence.not present", depSensorHandler)
+    if(ArrPresenceSensors2) subscribe(ArrPresenceSensors2, "presence.present", arrSensorHandler2)
+    if(DepPresenceSensors) subscribe(DepPresenceSensors, "presence.not present", depSensorHandler)
     
     if(runEvery == "Every 1 Minute") runEvery1Minute(arrSensorHandler)
     if(runEvery == "Every 5 Minutes") runEvery5Minutes(arrSensorHandler)
@@ -150,10 +174,17 @@ def arrSensorHandler(evt) {
     if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType}"	
 
     unschedule()
-    asCount = ArrPresenceSensors.size()
     int theDelay = theDelay ?: 1
+    
+    if(ArrPresenceSensors) asCount = ArrPresenceSensors.size()
     int theArrNum = theArrNum ?: asCount
     int pCount = 0
+    
+    if(ArrPresenceSensors2) {
+        asCount2 = ArrPresenceSensors2.size()
+        int theArrNum2 = theArrNum2 ?: asCount2
+        int pCount2 = 0
+    }
     
     if(ArrTriggerType == false) {    // or
         //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be FALSE for OR handler"
@@ -173,6 +204,28 @@ def arrSensorHandler(evt) {
 	    }
         if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
         if(pCount >= theArrNum) state.pStatus = true       
+    }
+    
+    if(useAdvancedArr) {
+        if(ArrTriggerType2 == false) {    // or
+            //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be FALSE for OR handler"
+            ArrPresenceSensors2.each { it ->
+                if(it.currentValue("presence") == "present") {
+                    state.pStatus = true	
+                }
+            }
+        }
+
+        if(ArrTriggerType2 == true) {    // and
+            //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be TRUE for AND handler"
+            ArrPresenceSensors2.each { it ->
+                if(it.currentValue("presence") == "present") {
+                    pCount2 = pCount2 + 1	
+                }
+            }
+            if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
+            if(pCount2 >= theArrNum2) state.pStatus = true       
+        }
     }
     
     if(state.pStatus == true) {
