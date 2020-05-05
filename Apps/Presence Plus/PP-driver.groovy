@@ -4,10 +4,9 @@
  *  Design Usage:
  *  This driver works with the Presence Plus app.
  *
- *  Copyright 2019 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  *  
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums to let
- *  people know that it exists!  Thanks.
+ *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
  *  Remember...I am not a programmer, everything I do takes a lot of time and research (then MORE research)!
  *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
@@ -38,36 +37,20 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 05/05/20 - Minor updates
  *  V1.0.0 - 11/01/19 - Initial release
  */
 
-def setVersion(){
-    appName = "PresencePlusDriver"
-	version = "v1.0.0" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
-}
-
 metadata {
-	definition (name: "Presence Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Presence Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/PP-driver.groovy") {
    		capability "Presence Sensor"
         capability "Switch"
 		
 		command "sync", ["string"]
-		
-		
+
 		attribute "presence", "string"
         attribute "since", "string"
         attribute "switch", "string"
-		
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"	
 	}
 	preferences() {    	
         section(){
@@ -87,8 +70,8 @@ def on() {
     if(logEnable) log.info "In Presence Plus Driver - Turning Switch On"
     device.on
     def now = new Date()
-    sendEvent(name: "switch", value: "on", displayed: true)
-    sendEvent(name: "presence", value: "present", displayed: true)
+    sendEvent(name: "switch", value: "on", isStateChange: true)
+    sendEvent(name: "presence", value: "present", isStateChange: true)
     sendEvent(name: "since", value: now, displayed: true)
 }
 
@@ -96,7 +79,7 @@ def off() {
     if(logEnable) log.info "In Presence Plus Driver - Turning Switch Off"
     device.off
     def now = new Date()
-    sendEvent(name: "switch", value: "off", displayed: true)
-    sendEvent(name: "presence", value: "not present", displayed: true)
+    sendEvent(name: "switch", value: "off", isStateChange: true)
+    sendEvent(name: "presence", value: "not present", isStateChange: true)
     sendEvent(name: "since", value: now, displayed: true)
 }
