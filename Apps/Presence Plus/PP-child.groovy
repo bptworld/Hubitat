@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 05/05/20 - Added number of sensors required to change status
  *  1.0.3 - 05/05/20 - Added delay before status is updated
  *  1.0.2 - 04/27/20 - Cosmetic changes
  *  1.0.1 - 12/05/19 - Tightening up some code.
@@ -46,7 +47,7 @@
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -88,12 +89,14 @@ def pageConfig() {
             if(ArrTriggerType) paragraph "<b>using 'AND'</b>"
             if(!ArrTriggerType) paragraph "<b>using 'OR'</b>"
 			input "ArrPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (present)", multiple:true, required:false
+            if(ArrTriggerType) input "arrNumOfSensors", "number", title: "How many sensors does it take to change status for Arrival (leave blank for All)", required:false, submitOnChange:true 
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Departure Options")) {
             input "DepTriggerType", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
 			if(DepTriggerType) paragraph "<b>using 'AND'</b>"
             if(!DepTriggerType) paragraph "<b>using 'OR'</b>"
             input "DepPresenceSensors", "capability.presenceSensor", title: "Presence Sensors to combine (not present)", multiple:true, required:false
+            if(DepTriggerType) input "depNumOfSensors", "number", title: "How many sensors does it take to change status for Departed (leave blank for All)", required:false, submitOnChange:true
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Failsafe Options")) {
             paragraph "Sometimes an arrival or departure can be missed. With this option, Presence Plus will check every X minutes to see who is here based ."
@@ -147,9 +150,9 @@ def arrSensorHandler(evt) {
     if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType}"	
 
     unschedule()
+    asCount = ArrPresenceSensors.size()
     int theDelay = theDelay ?: 1
-	state.pStatus = false
-    int sCount = 0
+    int theArrNum = theArrNum ?: asCount
     int pCount = 0
     
     if(ArrTriggerType == false) {    // or
@@ -163,17 +166,19 @@ def arrSensorHandler(evt) {
     
     if(ArrTriggerType == true) {    // and
         //if(logEnable) log.debug "In arrSensorHandler - Arr: ${ArrTriggerType} - Should be TRUE for AND handler"
-        sCount = ArrPresenceSensors.size()
 	    ArrPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "present") {
 			    pCount = pCount + 1	
             }
 	    }
-        if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${sCount} - presentCount: ${pCount}"
-        if(sCount == pCount) state.pStatus = true       
+        if(logEnable) log.debug "In arrSensorHandler - Arr - sensorCount: ${asCount} - presentCount: ${pCount} - theArrNum: ${theArrNum}"
+        if(pCount >= theArrNum) state.pStatus = true       
     }
-    if(logEnable) log.debug "In depSensorHandler - Arr - Will set status to ${state.pStatus} after a ${theDelay} second delay"
-    runIn(theDelay, statusUpdateHandler)
+    
+    if(state.pStatus == true) {
+        if(logEnable) log.debug "In depSensorHandler - Arr - Will set status to ${state.pStatus} after a ${theDelay} second delay"
+        runIn(theDelay, statusUpdateHandler)
+    }
 }
 
 def depSensorHandler(evt) {
@@ -181,13 +186,13 @@ def depSensorHandler(evt) {
     if(logEnable) log.debug "In depSensorHandler (${state.version}) - DepTriggerType: ${DepTriggerType}"	
 
     unschedule()
+    dsCount = DepPresenceSensors.size()
     int theDelay = theDelay ?: 1
-	state.pStatus = false
-    int sCount = 0
+    int theDepNum = theDepNum ?: dsCount
     int pCount = 0
     
     if(DepTriggerType == false) {    // or
-        if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be FALSE for OR handler"
+        //if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be FALSE for OR handler"
 	    DepPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "not present") {
 			    state.pStatus = false	
@@ -197,17 +202,19 @@ def depSensorHandler(evt) {
     
     if(DepTriggerType == true) {    // and
         //if(logEnable) log.debug "In depSensorHandler - Dep: ${DepTriggerType} - Should be TRUE for AND handler"
-        sCount = DepPresenceSensors.size()
 	    DepPresenceSensors.each { it ->
 		    if(it.currentValue("presence") == "not present") {
 			    pCount = pCount + 1	
             }
 	    }
-        if(logEnable) log.debug "In depSensorHandler - Dep - sensorCount: ${sCount} - notPresentCount: ${pCount}"
-        if(sCount != pCount) state.pStatus = true       
+        if(logEnable) log.debug "In depSensorHandler - Dep - sensorCount: ${dsCount} - notPresentCount: ${pCount} - theDepNum: ${theDepNum}"
+        if(pCount >= theDepNum) state.pStatus = false       
     }
-    if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus} after a ${theDelay} second delay"
-    runIn(theDelay, statusUpdateHandler)
+    
+    if(state.pStatus == false) {
+        if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus} after a ${theDelay} second delay"
+        runIn(theDelay, statusUpdateHandler)
+    }
 }
 
 def statusUpdateHandler() {
@@ -237,7 +244,8 @@ def createChildDevice() {
 // ********** Normal Stuff **********
 
 def setDefaults(){
-	if(logEnable == null){logEnable = false}
+	if(logEnable == null) logEnable = false
+    if(state.pStatus == null) state.pStatus = false
 }
 
 def getImage(type) {					// Modified from @Stephack Code
