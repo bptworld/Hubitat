@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.6 - 05/07/20 - Added 'Device Refresh' to Activity Handler 
  *  2.0.5 - 04/27/20 - Cosmetic changes
  *  2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, *** everyone needs to re-select devices ***
  *  2.0.3 - 01/07/20 - Fixed status of button devices (status report)
@@ -47,7 +48,7 @@
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -110,9 +111,15 @@ def pageConfig() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Select devices")) {
 				input "devices", "capability.*", title: "Select Device(s)", submitOnChange:true, required:false, multiple:true
             }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Refresh Options")) {
+                paragraph "Device Watchdog will try to do a refresh on a device before setting it to inactive.<br><small>* Note: This does not work on battery operated devices.</small>"
+				input "maxTimeDiff", "number", title: "How many hours 'since activity' before trying refresh", required:true, defaultValue:24, submitOnChange:true
+            }
+            
 			section(getFormat("header-green", "${getImage("Blank")}"+" Activity Options")) {
-				input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required: true, submitOnChange: true
-				input "isDataActivityDevice", "capability.switch", title: "Turn this device on if there is Activity data to report", submitOnChange: true, required: false, multiple: false
+				input "timeAllowed", "number", title: "Number of hours for Devices to be considered inactive", required:true, submitOnChange:true
+				input "isDataActivityDevice", "capability.switch", title: "Turn this device on if there is Activity data to report", submitOnChange:true, required:false, multiple:false
 			}
 			section() {
 				input(name: "badORgood", type: "bool", defaultValue: "false", submitOnChange: true, title: "Inactive or active", description: "On is Active, Off is Inactive.")
@@ -303,9 +310,9 @@ def activityHandler(evt) {
 	clearMaps()
 			if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
 			if(devices) {
-				if(triggerMode == "Activity") mySensorHandler(devices)
-				if(triggerMode == "Battery_Level") myBatteryHandler(devices)
-				if(triggerMode == "Status") myStatusHandler(devices)
+				if(triggerMode == "Activity") mySensorHandler()
+				if(triggerMode == "Battery_Level") myBatteryHandler()
+				if(triggerMode == "Status") myStatusHandler()
 			}
 			
 			if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
@@ -316,7 +323,7 @@ def activityHandler(evt) {
 			if(sendPushMessage) pushNow()
 }	
 
-def myBatteryHandler(devices) {
+def myBatteryHandler() {
 	if(logEnable) log.debug "     - - - - - Start (B) - - - - -     "
     if(logEnable) log.debug "In myBatteryHandler ${state.version}"
 	
@@ -403,7 +410,9 @@ def myBatteryHandler(devices) {
 	if(logEnable) log.debug "     - - - - - End (B) ${myType} - - - - -     "
 }
 
-def mySensorHandler(devices) {
+def mySensorHandler() {
+    refreshDevices()    // Refresh Devices before checking
+    
 	if(logEnable) log.debug "     - - - - - Start (S) - - - - -     "
     if(logEnable) log.debug "In mySensorHandler ${state.version}"
 	devices.each { device ->
@@ -505,7 +514,7 @@ def mySensorHandler(devices) {
 	if(logEnable) log.debug "     - - - - - End (S) ${myType} - - - - -     "
 }
 
-def myStatusHandler(devices) {
+def myStatusHandler() {
 	if(logEnable) log.debug "     - - - - - Start (S) - - - - -     "
     if(logEnable) log.debug "In myStatusHandler ${state.version}"
 	state.statusMap = ""
@@ -579,6 +588,45 @@ def myStatusHandler(devices) {
 	state.statusMap4S += "</table>"
 	state.statusMap5S += "</table>"
 	if(logEnable) log.debug "     - - - - - End (S) - - - - -     "
+}
+
+def refreshDevices() {
+    if(logEnable) log.debug "In refreshDevices (${state.version})"
+    devices.each { it ->
+        if(logEnable) log.debug "---------- ---------- --------- --------- Trying to REFRESH ---------- --------- --------- ---------- ---------"
+        getTimeDiff(it)
+        if(state.timeHrs >= maxTimeDiff) {
+            if(it.hasCommand("refresh")) {
+                it.refresh()
+                if(logEnable) log.debug "In refreshDevices - ${it} attempting update using refresh command"
+            } else if(it.hasCommand("configure")) {
+                it.configure()
+                if(logEnable) log.debug "In refreshDevices - ${it} attempting update using configure command"
+            } else {
+                if(logEnable) log.debug "In refreshDevices - ${it} not updated - No refresh or configure commands available."
+            }
+        } else {
+            if(logEnable) log.debug "In refreshDevices - ${it} not updated - Time since was only ${state.timeHrs} hours."
+        }
+    }
+    if(logEnable) log.debug "---------- ---------- --------- --------- End REFRESH ---------- --------- --------- ---------- ---------"
+    if(logEnable) log.debug "In refreshDevices - Finished refreshing!"
+}
+
+def getTimeDiff(aDevice) { 
+    if(logEnable) log.debug "In getTimeDiff (${state.version}) - working on ${aDevice}"
+	def since = aDevice.getLastActivity()
+    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${since}".replace("+00:00","+0000"))    
+   	def now = new Date()
+    
+    long unxNow = now.getTime()
+    long unxPrev = prev.getTime()
+    unxNow = unxNow/1000
+    unxPrev = unxPrev/1000
+    long timeDiff = Math.abs(unxNow-unxPrev)
+    state.tDiff = timeDiff   
+    state.timeHrs = (timeDiff / 3600).toInteger()   
+    if(logEnable) log.debug "In getTimeDiff - ${aDevice} - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff} - ${state.timeHrs} hrs"
 }
 
 def setupNewStuff() {
@@ -740,6 +788,7 @@ def getImage(type) {					// Modified from @Stephack Code
     if(type == "optionsGreen") return "${loc}options-green.png height=30 width=30>"
     if(type == "optionsRed") return "${loc}options-red.png height=30 width=30>"
     if(type == "instructions") return "${loc}instructions.png height=30 width=30>"
+    if(type == "reports") return "${loc}reports.jpg height=30 width=30>"
     if(type == "logo") return "${loc}logo.png height=60>"
 }
 
@@ -783,8 +832,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
