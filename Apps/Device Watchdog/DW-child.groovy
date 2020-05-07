@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.7 - 05/07/20 - Added a disable switch to the brand new amazing feature 'refresh'.
  *  2.0.6 - 05/07/20 - Added 'Device Refresh' to Activity Handler 
  *  2.0.5 - 04/27/20 - Cosmetic changes
  *  2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, *** everyone needs to re-select devices ***
@@ -48,7 +49,7 @@
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.0.6"
+	state.version = "2.0.7"
 }
 
 definition(
@@ -113,8 +114,11 @@ def pageConfig() {
             }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Refresh Options")) {
-                paragraph "Device Watchdog will try to do a refresh on a device before setting it to inactive.<br><small>* Note: This does not work on battery operated devices.</small>"
-				input "maxTimeDiff", "number", title: "How many hours 'since activity' before trying refresh", required:true, defaultValue:24, submitOnChange:true
+                paragraph "Device Watchdog can try to do a refresh on a device before setting it to inactive. Great for seldom used devices, such as a spare bedroom light switch.<br><small>* Note: This does not work on battery operated devices.</small>"
+                input "useRefresh", "bool", title: "Use Refresh Options", defaultValue:false, submitOnChange:true
+                if(useRefresh) {
+				    input "maxTimeDiff", "number", title: "How many hours 'since activity' before trying refresh", required:true, defaultValue:24, submitOnChange:true
+                }
             }
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" Activity Options")) {
@@ -411,7 +415,7 @@ def myBatteryHandler() {
 }
 
 def mySensorHandler() {
-    refreshDevices()    // Refresh Devices before checking
+    if(useRefresh) refreshDevices()    // Refresh Devices before checking
     
 	if(logEnable) log.debug "     - - - - - Start (S) - - - - -     "
     if(logEnable) log.debug "In mySensorHandler ${state.version}"
