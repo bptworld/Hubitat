@@ -707,10 +707,10 @@ def getAlertData() {
     sendEvent(name: "responseStatus", value: "Getting Alert Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
-    //zone = device.currentValue('pointsForecastZone')
+    zone = device.currentValue('pointsForecastZone')
     
     // For testing purposes
-    zone = "MNZ078"
+    //zone = "MNZ078"
     
     alertURL = "https://api.weather.gov/alerts?active=true&status=actual&zone=${zone}"
     
