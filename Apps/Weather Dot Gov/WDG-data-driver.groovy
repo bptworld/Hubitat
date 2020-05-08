@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 05/07/20 - Added multiple alert data
  *  1.1.3 - 04/27/20 - Added two new attributes, todaysHigh and todaysLow
  *  1.1.2 - 04/24/20 - Adjustments to Asthma and Pollen handlers
  *  1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
@@ -126,18 +127,61 @@ metadata {
         attribute "windChill", "number"
         attribute "heatIndex", "number"
         
+        attribute "alertStatus_0", "string"
+        attribute "alertMessageType_0", "string"
+        attribute "alertCategory_0", "string"
+        attribute "alertSeverity_0", "string"
+        attribute "alertCertainty_0", "string"
+        attribute "alertUrgency_0", "string"
+        attribute "alertEvent_0", "string"
+        attribute "alertHeadline_0", "string"
+        attribute "alertDescription_0", "string"
+        attribute "alertInstruction_0", "string"
+        
         attribute "alertTitle", "string"
-        attribute "alertStatus", "string"
-        attribute "alertMessageType", "string"
-        attribute "alertCategory", "string"
-        attribute "alertSeverity", "string"
-        attribute "alertCertainty", "string"
-        attribute "alertUrgency", "string"
-        attribute "alertEvent", "string"
-        attribute "alertHeadline", "string"
-        attribute "alertDescription", "string"
-        attribute "alertInstruction", "string"
-        attribute "alertInstruction", "string"
+        attribute "alertStatus_1", "string"
+        attribute "alertMessageType_1", "string"
+        attribute "alertCategory_1", "string"
+        attribute "alertSeverity_1", "string"
+        attribute "alertCertainty_1", "string"
+        attribute "alertUrgency_1", "string"
+        attribute "alertEvent_1", "string"
+        attribute "alertHeadline_1", "string"
+        attribute "alertDescription_1", "string"
+        attribute "alertInstruction_1", "string"
+        
+        attribute "alertStatus_2", "string"
+        attribute "alertMessageType_2", "string"
+        attribute "alertCategory_2", "string"
+        attribute "alertSeverity_2", "string"
+        attribute "alertCertainty_2", "string"
+        attribute "alertUrgency_2", "string"
+        attribute "alertEvent_2", "string"
+        attribute "alertHeadline_2", "string"
+        attribute "alertDescription_2", "string"
+        attribute "alertInstruction_2", "string"
+        
+        attribute "alertStatus_3", "string"
+        attribute "alertMessageType_3", "string"
+        attribute "alertCategory_3", "string"
+        attribute "alertSeverity_3", "string"
+        attribute "alertCertainty_3", "string"
+        attribute "alertUrgency_3", "string"
+        attribute "alertEvent_3", "string"
+        attribute "alertHeadline_3", "string"
+        attribute "alertDescription_3", "string"
+        attribute "alertInstruction_3", "string"
+        
+        attribute "alertStatus_4", "string"
+        attribute "alertMessageType_4", "string"
+        attribute "alertCategory_4", "string"
+        attribute "alertSeverity_4", "string"
+        attribute "alertCertainty_4", "string"
+        attribute "alertUrgency_4", "string"
+        attribute "alertEvent_4", "string"
+        attribute "alertHeadline_4", "string"
+        attribute "alertDescription_4", "string"
+        attribute "alertInstruction_4", "string"
         
         attribute "zipCode", "string"
         attribute "asthmaIndexYesterday", "number"
@@ -647,7 +691,7 @@ def getWeatherData() {
 	}
     
     catch (e) {
-        log.warn "In getWeatherData - ${e}"
+        log.warn "In getWeatherData - Please double check your Station ID in the Weather Dot Gov app."
         theError = "${e}"
         def reason = theError.split(':')
         currentDate = new Date()
@@ -663,10 +707,10 @@ def getAlertData() {
     sendEvent(name: "responseStatus", value: "Getting Alert Data...")
     sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
-    zone = device.currentValue('pointsForecastZone')
+    //zone = device.currentValue('pointsForecastZone')
     
     // For testing purposes
-    //zone = "MNZ078"
+    zone = "MNZ078"
     
     alertURL = "https://api.weather.gov/alerts?active=true&status=actual&zone=${zone}"
     
@@ -684,23 +728,84 @@ def getAlertData() {
             
             if(response.status == 200) {
                 try { 
-                    if(logEnable) log.debug "In getAlertData - Start collecting data from website"
-                    alertTitle = response.data.title          
-                    alertStatus = response.data.features[0].properties.status           
-                    alertMessageType = response.data.features[0].properties.messageType         
-                    alertCategory = response.data.features[0].properties.category
-                    alertSeverity = response.data.features[0].properties.severity          
-                    alertCertainty = response.data.features[0].properties.certainty                        
-                    alertUrgency = response.data.features[0].properties.urgency         
-                    alertEvent = response.data.features[0].properties.event        
-                    alertHeadline = response.data.features[0].properties.headline            
-                    alertDescription = response.data.features[0].properties.description             
-                    alertInstruction = response.data.features[0].properties.instruction
-                    
-                    //if(logEnable) log.debug "In getAlertData - RAW DATA - $alertTitle, $alertStatus, $alertMessageType, $alertCategory, $alertSeverity, $alertCertainty, $alertUrgency, $alertEvent, $alertHeadline, $alertDescription, $alertInstruction"
+                    alertTitle = response.data.title
+                    for(x=0;x<5;x++) {
+                        if(logEnable) log.debug "In getAlertData - Start collecting data from website"          
+                        alertStatus = response.data.features[x].properties.status           
+                        alertMessageType = response.data.features[x].properties.messageType         
+                        alertCategory = response.data.features[x].properties.category
+                        alertSeverity = response.data.features[x].properties.severity          
+                        alertCertainty = response.data.features[x].properties.certainty                        
+                        alertUrgency = response.data.features[x].properties.urgency         
+                        alertEvent = response.data.features[x].properties.event        
+                        alertHeadline = response.data.features[x].properties.headline            
+                        alertDescription = response.data.features[x].properties.description             
+                        alertInstruction = response.data.features[x].properties.instruction
+
+                        //if(logEnable) log.debug "In getAlertData - ${x} - RAW DATA - $alertTitle, $alertStatus, $alertMessageType, $alertCategory, $alertSeverity, $alertCertainty, $alertUrgency, $alertEvent, $alertHeadline, $alertDescription, $alertInstruction"
+                                 
+                        if(logEnable) log.debug "In getAlertData - Finished collecting data from website"
+                        if(alertTitle == null) alertTitle = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertTitle: ${alertTitle}"
+                        sendEvent(name: "alertTitle_$x", value: alertTitle)
+
+                        if(alertStatus == null) alertStatus = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertStatus: ${alertStatus}"
+                        sendEvent(name: "alertStatus_$x", value: alertStatus)
+
+                        if(alertMessageType == null) alertMessageType = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertMessageType: ${alertMessageType}"
+                        sendEvent(name: "alertMessageType_$x", value: alertMessageType)
+
+                        if(alertCategory == null) alertCategory = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertCategory: ${alertCategory}"
+                        sendEvent(name: "alertCategory_$x", value: alertCategory) 
+
+                        if(alertSeverity == null) alertSeverity = "No Data"
+                        beforeSeverity = device.currentValue('alertSeverity')
+                        if(logEnable) log.info "In getAlertData - alertSeverity: ${alertSeverity}"
+                        if(alertSeverity == beforeSeverity) {
+                            sendEvent(name: "alertSeverity_$x", value: alertSeverity)
+                        } else {
+                            sendEvent(name: "alertSeverity_$x", value: alertSeverity, isStateChange: true)
+                        }
+
+                        if(alertCertainty == null) alertCertainty = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertCertainty: ${alertCertainty}"
+                        sendEvent(name: "alertCertainty_$x", value: alertCertainty)
+
+                        if(alertUrgency == null) alertUrgency = "No Data"
+                        beforeUrgency = device.currentValue('alertUrgency')
+                        if(logEnable) log.info "In getAlertData - alertUrgency: ${alertUrgency}"
+                        if(alertUrgency == beforeUrgency) {
+                            sendEvent(name: "alertUrgency_$x", value: alertUrgency)
+                        } else {
+                            sendEvent(name: "alertUrgency_$x", value: alertUrgency, isStateChange: true)
+                        }
+
+                        if(alertEvent == null) alertEvent = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertEvent: ${alertEvent}"
+                        sendEvent(name: "alertEvent_$x", value: alertEvent)
+
+                        if(alertHeadline == null) alertHeadline = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertHeadline: ${alertHeadline}"
+                        sendEvent(name: "alertHeadline_$x", value: alertHeadline)
+
+                        if(alertDescription == null) alertDescription = "No Data"
+                        beforeDescription = device.currentValue('alertDescription')
+                        if(logEnable) log.info "In getAlertData - alertDescription: ${alertDescription}"
+                        if(alertDescription == beforeDescription) {
+                            sendEvent(name: "alertDescription_$x", value: alertDescription)
+                        } else {
+                            sendEvent(name: "alertDescription_$x", value: alertDescription, isStateChange: true)
+                        }
+
+                        if(alertInstruction == null) alertInstruction = "No Data"
+                        if(logEnable) log.info "In getAlertData - alertInstruction: ${alertInstruction}"
+                        sendEvent(name: "alertInstruction_$x", value: alertInstruction)            
+                    }
                 } catch (e) {
                     //if(logEnable) log.error "In getAlertData - ${e}"
-                    alertTitle = "No Data"
                     alertStatus = "No Data"
                     alertMessageType = "No Data"
                     alertCategory = "No Data"
@@ -710,72 +815,13 @@ def getAlertData() {
                     alertEvent = "No Data"
                     alertHeadline = "No Data"
                     alertDescription = "No Data"
-                    alertInstruction = "No Data"
+                    alertInstruction = "No Data" 
                 }
-                
-                if(logEnable) log.debug "In getAlertData - Finished collecting data from website"
-                if(alertTitle == null) alertTitle = "No Data"
-                if(logEnable) log.info "In getAlertData - alertTitle: ${alertTitle}"
-                sendEvent(name: "alertTitle", value: alertTitle)
-                
-                if(alertStatus == null) alertStatus = "No Data"
-                if(logEnable) log.info "In getAlertData - alertStatus: ${alertStatus}"
-                sendEvent(name: "alertStatus", value: alertStatus)
-                
-                if(alertMessageType == null) alertMessageType = "No Data"
-                if(logEnable) log.info "In getAlertData - alertMessageType: ${alertMessageType}"
-                sendEvent(name: "alertMessageType", value: alertMessageType)
-                
-                if(alertCategory == null) alertCategory = "No Data"
-                if(logEnable) log.info "In getAlertData - alertCategory: ${alertCategory}"
-                sendEvent(name: "alertCategory", value: alertCategory) 
-                
-                if(alertSeverity == null) alertSeverity = "No Data"
-                beforeSeverity = device.currentValue('alertSeverity')
-                if(logEnable) log.info "In getAlertData - alertSeverity: ${alertSeverity}"
-                if(alertSeverity == beforeSeverity) {
-                    sendEvent(name: "alertSeverity", value: alertSeverity)
-                } else {
-                    sendEvent(name: "alertSeverity", value: alertSeverity, isStateChange: true)
-                }
-                
-                if(alertCertainty == null) alertCertainty = "No Data"
-                if(logEnable) log.info "In getAlertData - alertCertainty: ${alertCertainty}"
-                sendEvent(name: "alertCertainty", value: alertCertainty)
-                
-                if(alertUrgency == null) alertUrgency = "No Data"
-                beforeUrgency = device.currentValue('alertUrgency')
-                if(logEnable) log.info "In getAlertData - alertUrgency: ${alertUrgency}"
-                if(alertUrgency == beforeUrgency) {
-                    sendEvent(name: "alertUrgency", value: alertUrgency)
-                } else {
-                    sendEvent(name: "alertUrgency", value: alertUrgency, isStateChange: true)
-                }
-                
-                if(alertEvent == null) alertEvent = "No Data"
-                if(logEnable) log.info "In getAlertData - alertEvent: ${alertEvent}"
-                sendEvent(name: "alertEvent", value: alertEvent)
-                
-                if(alertHeadline == null) alertHeadline = "No Data"
-                if(logEnable) log.info "In getAlertData - alertHeadline: ${alertHeadline}"
-                sendEvent(name: "alertHeadline", value: alertHeadline)
-                
-                if(alertDescription == null) alertDescription = "No Data"
-                beforeDescription = device.currentValue('alertDescription')
-                if(logEnable) log.info "In getAlertData - alertDescription: ${alertDescription}"
-                if(alertDescription == beforeDescription) {
-                    sendEvent(name: "alertDescription", value: alertDescription)
-                } else {
-                    sendEvent(name: "alertDescription", value: alertDescription, isStateChange: true)
-                }
-                
-                if(alertInstruction == null) alertInstruction = "No Data"
-                if(logEnable) log.info "In getAlertData - alertInstruction: ${alertInstruction}"
-                sendEvent(name: "alertInstruction", value: alertInstruction)            
             } else {
                 if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getAlertData)
             }
+            
             currentDate = new Date()
             sendEvent(name: "responseStatus", value: response.status)
             sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
