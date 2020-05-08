@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 05/07/20 - Added multiple alert data
  *  1.0.3 - 04/19/20 - Added Asthma and Pollen Forecasts
  *  1.0.2 - 04/17/20 - Added alerts
  *  1.0.1 - 04/12/20 - Added 5th tile to forecast data
@@ -54,7 +55,12 @@ metadata {
         command "forecastData3"
         command "forecastData4"
         command "forecastData5"
+        command "alertSummaryData"
         command "alertData1"
+        command "alertData2"
+        command "alertData3"
+        command "alertData4"
+        command "alertData5"
         
         command "asthmaYesterdayData"
         command "asthmaTodayData"
@@ -64,6 +70,7 @@ metadata {
         command "pollenTomorrowData"
 		
     	attribute "currentDataTile", "string"
+        
         attribute "weeklyDataTile01", "string"
         attribute "weeklyDataTile02", "string"
         attribute "weeklyDataTile03", "string"
@@ -78,12 +85,19 @@ metadata {
         attribute "weeklyDataTile12", "string"
         attribute "weeklyDataTile13", "string"
         attribute "weeklyDataTile14", "string"
+        
         attribute "forecastTable1", "string"
         attribute "forecastTable2", "string"
         attribute "forecastTable3", "string"
         attribute "forecastTable4", "string"
         attribute "forecastTable5", "string"
+        
+        attribute "alertSummaryTile", "string"
         attribute "alertTile1", "string"
+        attribute "alertTile2", "string"
+        attribute "alertTile3", "string"
+        attribute "alertTile4", "string"
+        attribute "alertTile5", "string" 
         
         attribute "asthmaYesterdayTile", "string"
 		attribute "asthmaTodayTile", "string"
@@ -150,9 +164,34 @@ def forecastData5(stuff) {
     sendEvent(name: "forecastTable5", value: stuff)   
 }
 
+def alertSummaryData(stuff) {
+    if(logEnable) log.debug "In alertSummaryData"
+    sendEvent(name: "alertSummaryTile", value: stuff)   
+}
+
 def alertData1(stuff) {
     if(logEnable) log.debug "In alertData1"
     sendEvent(name: "alertTile1", value: stuff)   
+}
+
+def alertData2(stuff) {
+    if(logEnable) log.debug "In alertData2"
+    sendEvent(name: "alertTile2", value: stuff)   
+}
+
+def alertData3(stuff) {
+    if(logEnable) log.debug "In alertData3"
+    sendEvent(name: "alertTile3", value: stuff)   
+}
+
+def alertData4(stuff) {
+    if(logEnable) log.debug "In alertData4"
+    sendEvent(name: "alertTile4", value: stuff)   
+}
+
+def alertData5(stuff) {
+    if(logEnable) log.debug "In alertData5"
+    sendEvent(name: "alertTile5", value: stuff)   
 }
 
 def asthmaYesterdayData(stuff) {
