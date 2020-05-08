@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 05/07/20 - Added multiple alert tiles and summary tile
  *  1.1.2 - 04/27/20 - Cosmetic changes
  *  1.1.1 - 04/24/20 - Adjustments Asthma and Pollen forecasts
  *  1.1.0 - 04/20/20 - Added Asthma and Pollen forecasts, adjustments to Alerts
@@ -55,7 +56,7 @@
 
 def setVersion(){
     state.name = "Weather Dot Gov"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -324,7 +325,8 @@ def alertTileOptions() {
         display()
         section() {
             paragraph "Time to setup the Alert Tile for use with Dashboards!"
-            paragraph "Alerts are based on Urgency and checked every 3 hours unless:<br> - Urgency is <i>expected</i>, check every 1 hour<br> - Urgency is <i>immediate</i>, check every 15 minutes" 
+            paragraph "The alerts are checked every hour."
+            //paragraph "Alerts are based on Urgency and checked every 3 hours unless:<br> - Urgency is <i>expected</i>, check every 1 hour<br> - Urgency is <i>immediate</i>, check every 15 minutes" 
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Alert Options")) {           
             input "useNotify", "bool", title: "Use Notifications", description: "", defaultValue:false, submitOnChange:true
@@ -377,15 +379,66 @@ def alertTileOptions() {
             if(updateTileA) {
                 getAlertData()
                 pauseExecution(1000)
-                tile1 = tileDevice.currentValue('alertTile1')                             
+                tile1 = tileDevice.currentValue('alertTile1')
+                tile2 = tileDevice.currentValue('alertTile2')
+                tile3 = tileDevice.currentValue('alertTile3')
+                tile4 = tileDevice.currentValue('alertTile4')
+                tile5 = tileDevice.currentValue('alertTile5')
+                tileSummary = tileDevice.currentValue('alertSummaryTile')
                 app?.updateSetting("updateTileA",[value:"false",type:"bool"])
             }
             if(tile1) fTile1 = tile1.size()
+            if(tile2) fTile2 = tile2.size()
+            if(tile3) fTile3 = tile3.size()
+            if(tile4) fTile4 = tile4.size()
+            if(tile5) fTile5 = tile5.size()
+            if(tileSummary) fTileSummary = tileSummary.size()
             
             paragraph "<hr>"
+            if(tileSummary) {
+                paragraph "<b>Tile Summary</b>"
+                paragraph "${tileSummary}"
+                paragraph "Tile Count: ${fTileSummary}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
             if(tile1) {
+                paragraph "<b>Tile 1</b>"
                 paragraph "${tile1}"
                 paragraph "Tile Count: ${fTile1}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
+            if(tile2) {
+                paragraph "<b>Tile 2</b>"
+                paragraph "${tile2}"
+                paragraph "Tile Count: ${fTile2}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
+            if(tile3) {
+                paragraph "<b>Tile 3</b>"
+                paragraph "${tile3}"
+                paragraph "Tile Count: ${fTile3}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
+            if(tile4) {
+                paragraph "<b>Tile 4</b>"
+                paragraph "${tile4}"
+                paragraph "Tile Count: ${fTile4}"
+            } else {
+                paragraph "Please flip the 'Manually Update Tiles' switch"
+            }
+            paragraph "<hr>"
+            if(tile5) {
+                paragraph "<b>Tile 5</b>"
+                paragraph "${tile5}"
+                paragraph "Tile Count: ${fTile5}"
             } else {
                 paragraph "Please flip the 'Manually Update Tiles' switch"
             }
@@ -493,7 +546,7 @@ def initialize() {
 def initializeAlerts() {
     if(logEnable) log.debug "In initializeAlerts (${state.version})"
     // Urgency (immediate, expected, future, past, unknown)
-    
+/*    
     alertUrgency = dataDevice.currentValue('alertUrgency')
       
     if(alertUrgency) {
@@ -507,6 +560,8 @@ def initializeAlerts() {
             runEvery3Hours(getAlertData)
         }
     }
+*/
+    runEvery1Hour(getAlertData)
 }
 
 def uninstalled() {
@@ -703,51 +758,78 @@ def getAlertData(evt) {
     dataDevice.getAlertData()
     pauseExecution(1000)
     
-    alertTitle = dataDevice.currentValue('alertTitle')
-    alertStatus = dataDevice.currentValue('alertStatus')
-    alertMessageType = dataDevice.currentValue('alertMessageType')
-    alertCategory = dataDevice.currentValue('alertCategory')
-    alertSeverity = dataDevice.currentValue('alertSeverity')
-    alertCertainty = dataDevice.currentValue('alertCertainty')
-    alertUrgency = dataDevice.currentValue('alertUrgency')
-    alertEvent = dataDevice.currentValue('alertEvent')
-    alertHeadline = dataDevice.currentValue('alertHeadline')
-    alertDescription = dataDevice.currentValue('alertDescription')
-    alertInstruction = dataDevice.currentValue('alertInstruction')
+    alertTitle = dataDevice.currentValue("alertTitle")
+    log.info "alertTitle: ${alertTitle}"
     
-    titleFontSize = alertFontSize + 2
-    statusFontSize = alertFontSize - 2
-    
-    if(alertDescription != "No Data") {
-        alertTable1 =  "<table width=100% align=center>"
-        alertTable1 += "<tr><td width=100>"
-        alertTable1 += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><br>"
-        alertTable1 += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
+    for(x=0;x<5;x++) {
+        alertStatus = dataDevice.currentValue("alertStatus_$x")
+        alertMessageType = dataDevice.currentValue("alertMessageType_$x")
+        alertCategory = dataDevice.currentValue("alertCategory_$x")
+        alertSeverity = dataDevice.currentValue("alertSeverity_$x")
+        alertCertainty = dataDevice.currentValue("alertCertainty_$x")
+        alertUrgency = dataDevice.currentValue("alertUrgency_$x")
+        alertEvent = dataDevice.currentValue("alertEvent_$x")
+        alertHeadline = dataDevice.currentValue("alertHeadline_$x")
+        alertDescription = dataDevice.currentValue("alertDescription_$x")
+        alertInstruction = dataDevice.currentValue("alertInstruction_$x")
 
-        if(alertDescription) {
-            aTableSize = alertTable1.size()
-            charLefta = 970 - aTableSize
-            alertDescription1 = alertDescription.take(charLefta)
-            alertTable1 += "<span style='font-size:${alertFontSize}px'>${alertDescription1}"
+        log.info "alertStatus: ${alertStatus} - alertCategory: ${alertCategory}"
+
+        titleFontSize = alertFontSize + 2
+        statusFontSize = alertFontSize - 2
+
+        if(alertDescription != "No Data") {
+            alertTable =  "<table width=100% align=center>"
+            alertTable += "<tr><td width=100%>"
+            alertTable += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><br>"
+            alertTable += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
+
+            alertAnnouncement = "<span style='font-size:${statusFontSize}px'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span>"
+            
+            if(alertDescription) {
+                aTableSize = alertTable.size()
+                charLefta = 980 - aTableSize
+                alertDescription1 = alertDescription.take(charLefta)
+                alertTable += "<span style='font-size:${alertFontSize}px'>${alertDescription1}"
+            }
+            alertTable += "<hr>"
+            if(alertInstruction) {
+                bTableSize = alertTable.size()
+                charLeftb = 980 - bTableSize
+                if(charLeftb > 0) {
+                    alertInstruction1 = alertInstruction.take(charLeftb)
+                    alertTable += "${alertInstruction1}"
+                }
+            }
+            alertTable += "</span></tr></table>"
+            dataDevice.on()
+        } else {
+            alertTable =  "<table width=100% align=center>"
+            alertTable += "<tr><td width=100%>"
+            alertTable += "<span style='font-size:${titleFontSize}px;font-weight:bold'>No alerts</span><br>"
+            alertTable += "</table>"
+            dataDevice.off()
         }
-        alertTable1 += "<hr>"
-        if(alertInstruction) {
-            bTableSize = alertTable1.size()
-            charLeftb = 970 - aTableSize
-            alertInstruction1 = alertInstruction.take(charLeftb)
-            alertTable1 += "${alertInstruction1}"
-        }
-        alertTable1 += "</span></tr></table>"
-        dataDevice.on()
-    } else {
-        alertTable1 =  "<table width=100% align=center>"
-        alertTable1 += "<tr><td width=100>"
-        alertTable1 += "<span style='font-size:${titleFontSize}px;font-weight:bold'>No alerts</span><br>"
-        alertTable1 += "</span></tr></table>"
-        dataDevice.off()
+        if(x == 0) tileDevice.alertData1(alertTable)
+        if(x == 1) tileDevice.alertData2(alertTable)
+        if(x == 2) tileDevice.alertData3(alertTable)
+        if(x == 3) tileDevice.alertData4(alertTable)
+        if(x == 4) tileDevice.alertData5(alertTable)
     }
     
-    tileDevice.alertData1(alertTable1)
+    alertHeadline1 = dataDevice.currentValue("alertHeadline_0")
+    alertHeadline2 = dataDevice.currentValue("alertHeadline_1")
+    alertHeadline3 = dataDevice.currentValue("alertHeadline_2")
+    alertHeadline4 = dataDevice.currentValue("alertHeadline_3")
+    alertHeadline5 = dataDevice.currentValue("alertHeadline_4")
+        
+    alertSummaryTable =  "<table width=100%>"
+    alertSummaryTable += "<tr><td width=100% align='left'>"
+    alertSummaryTable += "<span style='font-size:${alertFontSize}px;text-align:left'>- ${alertHeadline1}<br>- ${alertHeadline2}<br>- ${alertHeadline3}<br>- ${alertHeadline4}<br>- ${alertHeadline5}</span><br>"
+    alertSummaryTable += "</table>"
+        
+    tileDevice.alertSummaryData(alertSummaryTable)
+        
     initializeAlerts()
 } 
 
@@ -998,8 +1080,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
