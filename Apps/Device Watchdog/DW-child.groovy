@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.9 - 05/09/20 - Added more error trapping, added code to make data scroll within tile is needed. All sorting/display is now uses device label.
  *  2.0.8 - 05/09/20 - Major rewrite. Thanks to @arnb for some great suggestions and sample tile code!
  *  2.0.7 - 05/07/20 - Added a disable switch to the brand new amazing feature 'refresh'.
  *  2.0.6 - 05/07/20 - Added 'Device Refresh' to Activity Handler 
@@ -52,7 +53,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.0.8"
+	state.version = "2.0.9"
 }
 
 definition(
@@ -135,7 +136,13 @@ def pageConfig() {
             input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to a run new report at any time", required:false, submitOnChange:true
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification", multiple:true, required:false, submitOnChange:true
 			if(sendPushMessage) input "pushAll", "bool", title: "Only send Push if there is something to actually report", description: "Push", defaultValue:false, submitOnChange:true
-            input "fontSize", "text", title: "Font Size for Reports", required: true, defaultValue: "12", submitOnChange:true
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Table Options")) {
+            paragraph "<b>Font Size:</b> Smaller number, smaller characters. So more data can fit on tile.<br><b>Table Height:</b> Adjust this number to match your tile size. When set correctly, data will scroll within the tile if needed."
+            
+            input "fontSize", "number", title: "Font Size for Reports", required:true, defaultValue:12, submitOnChange:true
+            input "tableHeight", "number", title: "Table Height for Reports", required:true, defaultValue:70, submitOnChange:true  
 		}
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -392,30 +399,30 @@ def myBatteryHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Battery) - - - - -     "
     if(logEnable) log.debug "In myBatteryHandler ${state.version}"
 	
-    def tblhead = "<table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Devices</b><td width=20%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:${tableHeight}px'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Devices</b><td width=20%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
     state.batteryCount = 0
     state.batteryMapPhoneS = ""
     data = false
-    theDevices = batteryDevices.sort { a, b -> a.name <=> b.name }
+    theDevices = batteryDevices.sort { a, b -> a.label <=> b.label }
     
     theDevices.each { it ->
         def cv = it.currentValue("battery")
 		if(cv == null) cv = -999  //RayzurMod
         if(cv <= batteryThreshold && cv > -999) { //RayzurMod
 			if(!batteryBadORgood) {
-                if(logEnable) log.debug "In myBatteryHandler - ${it.name} battery is ${cv} less than ${batteryThreshold} threshold"
+                if(logEnable) log.debug "In myBatteryHandler - ${it.label} battery is ${cv} less than ${batteryThreshold} threshold"
                 data = true
             }
         } else {
 		    if(batteryBadORgood && cv > -999) { //RayzurMod 
-                if(logEnable) log.debug "In myBatteryHandler - ${it.name} battery is ${cv}, over ${batteryThreshold} threshold"
+                if(logEnable) log.debug "In myBatteryHandler - ${it.label} battery is ${cv}, over ${batteryThreshold} threshold"
                 data = true
             } else {
 			    if (cv == -999) { //RayzurMod
-                    if(logEnable) log.debug "In myBatteryHandler - ${it.name} battery hasn't reported in." //RayzurMod
+                    if(logEnable) log.debug "In myBatteryHandler - ${it.label} battery hasn't reported in." //RayzurMod
                     data = true
                 }
             }
@@ -423,15 +430,15 @@ def myBatteryHandler() {
         
         if(data) {
             state.batteryCount = state.batteryCount + 1
-            line = "<tr><td>${it.name}<td>${cv}"
-            batteryMapPhone += "${it.name} - ${cv} \n"
+            line = "<tr><td>${it.label}<td>${cv}"
+            batteryMapPhone += "${it.label} - ${cv} \n"
         
             totalLength = tbl.length() + line.length()
             if(logEnable) log.debug "In myBatteryHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-            if (totalLength < 1015) {
+            if (totalLength < 1009) {
                 tbl += line
             } else {
-                tbl += "</table>"
+                tbl += "</table></div>"
                 if(logEnable) log.debug "${tbl}"
                 if(watchdogTileDevice) {
                     if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
@@ -446,7 +453,7 @@ def myBatteryHandler() {
     }
     
     if (tbl != tblhead) {
-        tbl += "</table>"
+        tbl += "</table></div>"
         if(logEnable) log.debug "${tbl}"
         if(watchdogTileDevice) {
             if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
@@ -473,46 +480,46 @@ def myActivityHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Activity) - - - - -     "
     if(logEnable) log.debug "In myActivityHandler ${state.version}"
     
-    def tblhead = "<table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Device Activity</b><td width=40%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:${tableHeight}px'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Device Activity</b><td width=40%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
 	state.timeSinceCount = 0
 	state.timeSinceMapPhoneS = ""
     data = false
-    theDevices = activityDevices.sort { a, b -> a.name <=> b.name }    
+    theDevices = activityDevices.sort { a, b -> a.label <=> b.label }    
     
     theDevices.each { it ->
         getTimeDiff(it)
 		if(state.since != null) {
-			if(logEnable) log.debug "In myActivityHandler - ${it.name} totalHours: ${state.totalHours} vs timeAllowed: ${timeAllowed}"
+			if(logEnable) log.debug "In myActivityHandler - ${it.label} totalHours: ${state.totalHours} vs timeAllowed: ${timeAllowed}"
   			if(state.totalHours > timeAllowed) {
 				if(!activityBadORgood) {
 					state.timeSinceCount = state.timeSinceCount + 1
-                    if(logEnable) log.debug "In myActivityHandler - ${it.name} hasn't checked in since ${state.theDuration} ago."                   
+                    if(logEnable) log.debug "In myActivityHandler - ${it.label} hasn't checked in since ${state.theDuration} ago."                   
                     data = true
                 }
             } else {
 				if(activityBadORgood) {
-                    if(logEnable) log.debug "In myActivityHandler - ${it.name} last checked in ${state.theDuration} ago."
+                    if(logEnable) log.debug "In myActivityHandler - ${it.label} last checked in ${state.theDuration} ago."
                     data = true
                 }
             }
         } else {
-			log.warn "${app.label} - ${it.name} has no activity. It will not show up in the reports."
+			log.warn "${app.label} - ${it.label} has no activity. It will not show up in the reports."
             data = false
 		} 
         
         if(data) {
-            line = "<tr><td>${it.name}<td>${state.theDuration}"
-            timeSinceMapPhone += "${it.name} - ${state.theDuration} \n"
+            line = "<tr><td>${it.label}<td>${state.theDuration}"
+            timeSinceMapPhone += "${it.label} - ${state.theDuration} \n"
 
             totalLength = tbl.length() + line.length()
             if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-            if (totalLength < 1015) {
+            if (totalLength < 1009) {
                 tbl += line
             } else {
-                tbl += "</table>"
+                tbl += "</table></div>"
                 if(logEnable) log.debug "${tbl}"
                 if(watchdogTileDevice) {
                     if(logEnable) log.debug "In myActivityHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
@@ -527,7 +534,7 @@ def myActivityHandler() {
     }
     
     if (tbl != tblhead) {
-        tbl += "</table>"
+        tbl += "</table></div>"
         if(logEnable) log.debug "${tbl}"
         if(watchdogTileDevice) {
             if(logEnable) log.debug "In myActivityHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
@@ -553,17 +560,17 @@ def myStatusHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Status) - - - - -     "
     if(logEnable) log.debug "In myStatusHandler ${state.version}"
     
-    def tblhead = "<table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status</b><td width=35%><b>Last Activity</b>"
+    def tblhead = "<div style='overflow:auto;height:${tableHeight}px'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status</b><td width=35%><b>Last Activity</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
     state.statusCount = 0
 	state.statusMapPhoneS = ""
-    sortedMap = statusDevices.sort { a, b -> a.name <=> b.name }
+    sortedMap = statusDevices.sort { a, b -> a.label <=> b.label }
     
     sortedMap.each { it ->
         deviceStatus = null
-		if(logEnable) log.debug "In myStatusHandler - Working on: ${it.name}"
+		if(logEnable) log.debug "In myStatusHandler - Working on: ${it.label}"
         if(it.hasAttribute("accelerationSensor")) deviceStatus = it.currentValue("accelerationSensor")
 		if(it.hasAttribute("alarm")) deviceStatus = it.currentValue("alarm")
 		if(it.hasAttribute("battery")) deviceStatus = it.currentValue("battery")
@@ -596,19 +603,19 @@ def myStatusHandler() {
 		def lastActivity = it.getLastActivity()
 		def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
 		
-		if(logEnable) log.debug "In myStatusHandler - device: ${it.name} - myStatus: ${deviceStatus} - last checked: ${newDate}"
+		if(logEnable) log.debug "In myStatusHandler - device: ${it.label} - myStatus: ${deviceStatus} - last checked: ${newDate}"
         
         state.statusCount = state.statusCount + 1
-        line = "<tr><td>${it.name}<td>${deviceStatus}<td>${newDate}"
-        statusMapPhone += "${it.name} \n"
+        line = "<tr><td>${it.label}<td>${deviceStatus}<td>${newDate}"
+        statusMapPhone += "${it.label} \n"
 		statusMapPhone += "${deviceStatus} - ${newDate} \n"
 
         totalLength = tbl.length() + line.length()
         if(logEnable) log.debug "In myStatusHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-        if (totalLength < 1015) {
+        if (totalLength < 1009) {
             tbl += line
         } else {
-            tbl += "</table>"
+            tbl += "</table></div>"
             if(logEnable) log.debug "${tbl}"
             if(watchdogTileDevice) {
                 if(logEnable) log.debug "In myStatusHandler - Sending new Status Watchdog data to Tiles (${tileCount})"
@@ -621,7 +628,7 @@ def myStatusHandler() {
 	}
 	
     if (tbl != tblhead) {
-        tbl += "</table>"
+        tbl += "</table></div>"
         if(logEnable) log.debug "${tbl}"
         if(watchdogTileDevice) {
             if(logEnable) log.debug "In myStatusHandler - Sending new Status Watchdog data to Tiles (${tileCount})"
@@ -668,15 +675,20 @@ def refreshDevices() {
 
 def getTimeDiff(aDevice) { 
     if(logEnable) log.debug "In getTimeDiff (${state.version}) - working on ${aDevice}"
-	state.since = aDevice.getLastActivity()
-    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${state.since}".replace("+00:00","+0000"))    
-   	def now = new Date()
+    try {
+	    state.since = aDevice.getLastActivity()
+        def prev = Date.parse("yyy-MM-dd HH:mm:ss","${state.since}".replace("+00:00","+0000"))   
     
-    use(TimeCategory) {       
-        state.dur = now - prev
-        state.days = state.dur.days
-        state.hours = state.dur.hours
-        state.minutes = state.dur.minutes
+        def now = new Date()
+
+        use(TimeCategory) {       
+            state.dur = now - prev
+            state.days = state.dur.days
+            state.hours = state.dur.hours
+            state.minutes = state.dur.minutes
+        }
+    } catch (e) {
+        log.warn "Device Watchdog - ${aDevice} does not have a Last Activity value, This device will not work with Device Watchdog"
     }
     
     if(!state.days) state.days = 0
