@@ -34,7 +34,8 @@
  *
  *  Changes:
  *
- *  2.1.0 - 05/09/20 - Let's try this again, now using displayName
+ *  2.1.1 - 05/10/20 - Fixed refresh handler code
+ *  2.1.0 - 05/09/20 - Lets try this again, now using displayName
  *  2.0.9 - 05/09/20 - Added more error trapping, added code to make data scroll within tile if needed. All sorting/display now uses device label.
  *  2.0.8 - 05/09/20 - Major rewrite. Thanks to @arnb for some great suggestions and sample tile code!
  *  2.0.7 - 05/07/20 - Added a disable switch to the brand new amazing feature 'refresh'.
@@ -54,7 +55,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.0"
+	state.version = "2.1.1"
 }
 
 definition(
@@ -142,12 +143,12 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Table Options")) {
             paragraph "<b>Font Size:</b> Smaller number, smaller characters. So more data can fit on tile.<br><b>Table Height:</b> Adjust this number to match your tile size. When set correctly, data will scroll within the tile if needed."
             
-            input "fontSize", "number", title: "Font Size for Reports", required:true, defaultValue:12, submitOnChange:true
-            input "tableHeight", "number", title: "Table Height for Reports", required:true, defaultValue:70, submitOnChange:true  
+            input "fontSize", "number", title: "Font Size for Reports", required:false, defaultValue:12, submitOnChange:true
+            input "tableHeight", "number", title: "Table Height for Reports", required:false, defaultValue:70, submitOnChange:true  
 		}
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            label title: "Enter a name for this automation", required:false
+            label title: "Enter a name for Fthis automation", required:false, submitOnChange:true
 			input "logEnable", "bool", title: "Enable Debug Logging", description: "debugging", defaultValue:false, submitOnChange:true
 		}
 		display2()
@@ -234,8 +235,9 @@ def reportHandler() {
         display()
         section() {
         input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status"], required:true, submitOnChange:true
+        //input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Combo-Activity-Battery"], required:true, submitOnChange:true
         }
-		if(reportType == "Battery") {  // Battery
+		if(reportType == "Battery") {
             section() {
                 if(batteryDevices) {
                     batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
@@ -350,6 +352,36 @@ def reportHandler() {
                     paragraph "No devices have been selected for this option."
                 }
 			}
+        }
+        
+        if(reportType == "Combo-Activity-Battery") {
+            section() {
+                if(batteryDevices && activityDevices) {
+                    batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
+                    timeSinceMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
+                        
+                    batteryCount1 = watchdogTileDevice.currentValue("watchdogBatteryCount1")
+                    bc1 = batteryCount1.toInteger()
+
+                    
+                    combo = "<div style='overflow:auto;height:${tableHeight}px'>"
+                    combo += "${batteryMap1}<br>${timeSinceMap1}"
+                    combo += "</div>"
+                    comboCount = combo.length()
+                    
+                    if(comboCount >= 20) {    
+                        paragraph "${combo}<br>Tile Count: ${comboCount}"
+                        paragraph "<hr>"
+                    }
+                        
+                    if(comboCount < 20) {
+                        paragraph "Nothing to report"
+                    }
+                    //paragraph "${state.statusMapGen}"
+                } else {
+                    paragraph "No devices have been selected for this option."
+                }
+            }
 		}
         section() { paragraph getFormat("line") }
 	}
@@ -477,7 +509,7 @@ def myBatteryHandler() {
 }
 
 def myActivityHandler() {
-    if(useRefresh) refreshDevices()    // Refresh Devices before checking    
+    if(useRefresh) refreshDevices(activityDevices)    // Refresh Devices before checking    
 	if(logEnable) log.debug "     - - - - - Start (Activity) - - - - -     "
     if(logEnable) log.debug "In myActivityHandler ${state.version}"
     
@@ -651,12 +683,13 @@ def myStatusHandler() {
 	if(logEnable) log.debug "     - - - - - End (Status) - - - - -     "
 }
 
-def refreshDevices() {
+def refreshDevices(devices) {
     if(logEnable) log.debug "In refreshDevices (${state.version})"
+
     devices.each { it ->
         if(logEnable) log.debug "---------- ---------- --------- --------- Trying to REFRESH ---------- --------- --------- ---------- ---------"
         getTimeDiff(it)
-        if(state.hour >= maxTimeDiff) {
+        if(state.totalHours >= maxTimeDiff) {
             if(it.hasCommand("refresh")) {
                 it.refresh()
                 if(logEnable) log.debug "In refreshDevices - ${it} attempting update using refresh command"
@@ -667,7 +700,7 @@ def refreshDevices() {
                 if(logEnable) log.debug "In refreshDevices - ${it} not updated - No refresh or configure commands available."
             }
         } else {
-            if(logEnable) log.debug "In refreshDevices - ${it} not updated - Time since was only ${state.hour} hours."
+            if(logEnable) log.debug "In refreshDevices - ${it} not updated - Time since was only ${state.totalHours} hours."
         }
     }
     if(logEnable) log.debug "---------- ---------- --------- --------- End REFRESH ---------- --------- --------- ---------- ---------"
