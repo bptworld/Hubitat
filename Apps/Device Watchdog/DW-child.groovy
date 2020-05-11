@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.1.2 - 05/11/20 - Tile scrolling will now auto adjust to tile size!
  *  2.1.1 - 05/10/20 - Fixed refresh handler code
  *  2.1.0 - 05/09/20 - Lets try this again, now using displayName
  *  2.0.9 - 05/09/20 - Added more error trapping, added code to make data scroll within tile if needed. All sorting/display now uses device label.
@@ -55,7 +56,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.1"
+	state.version = "2.1.2"
 }
 
 definition(
@@ -141,10 +142,9 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Table Options")) {
-            paragraph "<b>Font Size:</b> Smaller number, smaller characters. So more data can fit on tile.<br><b>Table Height:</b> Adjust this number to match your tile size. When set correctly, data will scroll within the tile if needed."
+            paragraph "<b>Font Size:</b> Smaller number, smaller characters. So more data can fit on tile."
             
             input "fontSize", "number", title: "Font Size for Reports", required:false, defaultValue:12, submitOnChange:true
-            input "tableHeight", "number", title: "Table Height for Reports", required:false, defaultValue:70, submitOnChange:true  
 		}
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -362,9 +362,8 @@ def reportHandler() {
                         
                     batteryCount1 = watchdogTileDevice.currentValue("watchdogBatteryCount1")
                     bc1 = batteryCount1.toInteger()
-
                     
-                    combo = "<div style='overflow:auto;height:${tableHeight}px'>"
+                    combo = "<div style='overflow:auto;height:90%'>"
                     combo += "${batteryMap1}<br>${timeSinceMap1}"
                     combo += "</div>"
                     comboCount = combo.length()
@@ -432,7 +431,7 @@ def myBatteryHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Battery) - - - - -     "
     if(logEnable) log.debug "In myBatteryHandler ${state.version}"
 	
-    def tblhead = "<div style='overflow:auto;height:${tableHeight}px'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Devices</b><td width=20%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Devices</b><td width=20%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -513,7 +512,7 @@ def myActivityHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Activity) - - - - -     "
     if(logEnable) log.debug "In myActivityHandler ${state.version}"
     
-    def tblhead = "<div style='overflow:auto;height:${tableHeight}px'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Device Activity</b><td width=40%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Device Activity</b><td width=40%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -593,7 +592,7 @@ def myStatusHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Status) - - - - -     "
     if(logEnable) log.debug "In myStatusHandler ${state.version}"
     
-    def tblhead = "<div style='overflow:auto;height:${tableHeight}px'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status</b><td width=35%><b>Last Activity</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status</b><td width=35%><b>Last Activity</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
