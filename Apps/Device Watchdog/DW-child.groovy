@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  2.1.3 - 05/12/20 - Tighting up the code, new combo activity/battery report
+ *  2.1.3 - 05/12/20 - Tightening up the code, new combo activity/battery report
  *  2.1.2 - 05/11/20 - Tile scrolling will now auto adjust to tile size!
  *  2.1.1 - 05/10/20 - Fixed refresh handler code
  *  2.1.0 - 05/09/20 - Lets try this again, now using displayName
