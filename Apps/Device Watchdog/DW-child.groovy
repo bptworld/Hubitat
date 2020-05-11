@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ * * 2.1.3 - 05/12/20 - Tighting up the code, new combo activity/battery report
  *  2.1.2 - 05/11/20 - Tile scrolling will now auto adjust to tile size!
  *  2.1.1 - 05/10/20 - Fixed refresh handler code
  *  2.1.0 - 05/09/20 - Lets try this again, now using displayName
@@ -56,7 +57,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.2"
+	state.version = "2.1.3"
 }
 
 definition(
@@ -234,10 +235,56 @@ def reportHandler() {
         pauseExecution(1000)
         display()
         section() {
-        input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status"], required:true, submitOnChange:true
-        //input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Combo-Activity-Battery"], required:true, submitOnChange:true
+        //input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Status"], required:true, submitOnChange:true
+        input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Combo-Activity-Battery"], required:true, submitOnChange:true
         }
-		if(reportType == "Battery") {
+			
+		if(reportType == "Activity") {
+            section() {
+                if(activityDevices) {
+                    activityMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
+                    activityMap2 = watchdogTileDevice.currentValue("watchdogActivity2")
+                    activityMap3 = watchdogTileDevice.currentValue("watchdogActivity3")
+
+                    activityCount1 = watchdogTileDevice.currentValue("watchdogActivityCount1")
+                    activityCount2 = watchdogTileDevice.currentValue("watchdogActivityCount2")
+                    activityCount3 = watchdogTileDevice.currentValue("watchdogActivityCount3")
+
+                    a1 = activityCount1.toInteger()
+                    a2 = activityCount2.toInteger()
+                    a3 = activityCount3.toInteger()
+
+                    if(logEnable) log.debug "In reportHandler - a1: ${a1} - a2: ${a2} - a3: ${a3}"
+
+                    if(a1 >= 15) {
+                        paragraph "${activityMap1}"
+                        if(a1 <= 1024) paragraph "Tile Count: <span style='color:green'>${a1}</span>"
+                        if(a1 > 1024) paragraph "<span style='color:red'>Tile Count: ${a1}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(a2 >= 15) {
+                        paragraph "${activityMap2}"
+                        if(a2 <= 1024) paragraph "Tile Count: <span style='color:green'>${a2}</span>"
+                        if(a2 > 1024) paragraph "<span style='color:red'>Tile Count: ${a2}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(a3 >= 15) {
+                        paragraph "${activityMap3}"
+                        if(a3 <= 1024) paragraph "Tile Count: <span style='color:green'>${a3}</span>"
+                        if(a3 > 1024) paragraph "<span style='color:red'>Tile Count: ${a3}</span>"
+                    }
+
+                    if(a1 < 15 && a2 < 15 && a3 < 15) {
+                        paragraph "Nothing to report"
+                    }
+                    paragraph "${state.activityMapGen}"
+                } else {
+                    paragraph "No devices have been selected for this option."
+                }
+            }
+		}
+
+        if(reportType == "Battery") {
             section() {
                 if(batteryDevices) {
                     batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
@@ -255,15 +302,21 @@ def reportHandler() {
                     if(logEnable) log.debug "In reportHandler - bc1: ${bc1} - bc2: ${bc2} - bc3: ${bc3}"
 
                     if(bc1 >= 15) {
-                        paragraph "${batteryMap1}<br>Tile Count: ${bc1}"
+                        paragraph "${batteryMap1}"
+                        if(bc1 <= 1024) paragraph "Tile Count: <span style='color:green'>${bc1}</span>"
+                        if(bc1 > 1024) paragraph "<span style='color:red'>Tile Count: ${bc1}</span>"
                         paragraph "<hr>"
                     }
                     if(bc2 >= 15) {
-                        paragraph "${batteryMap2}<br>Tile Count: ${bc2}"
+                        paragraph "${batteryMap2}"
+                        if(bc2 <= 1024) paragraph "Tile Count: <span style='color:green'>${bc2}</span>"
+                        if(bc2 > 1024) paragraph "<span style='color:red'>Tile Count: ${bc2}</span>"
                         paragraph "<hr>"
                     }
                     if(bc3 >= 15) {
-                        paragraph "${batteryMap3}<br>Tile Count: ${bc3}"
+                        paragraph "${batteryMap3}"
+                        if(bc3 <= 1024) paragraph "Tile Count: <span style='color:green'>${bc3}</span>"
+                        if(bc3 > 1024) paragraph "<span style='color:red'>Tile Count: ${bc3}</span>"
                     }
 
                     if(bc1 < 15 && bc2 < 15 && bc3 < 15) {
@@ -275,46 +328,7 @@ def reportHandler() {
                 }
         	}
         }
-			
-		if(reportType == "Activity") {
-            section() {
-                if(activityDevices) {
-                    timeSinceMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
-                    timeSinceMap2 = watchdogTileDevice.currentValue("watchdogActivity2")
-                    timeSinceMap3 = watchdogTileDevice.currentValue("watchdogActivity3")
-
-                    timeSinceCount1 = watchdogTileDevice.currentValue("watchdogActivityCount1")
-                    timeSinceCount2 = watchdogTileDevice.currentValue("watchdogActivityCount2")
-                    timeSinceCount3 = watchdogTileDevice.currentValue("watchdogActivityCount3")
-
-                    ts1 = timeSinceCount1.toInteger()
-                    ts2 = timeSinceCount2.toInteger()
-                    ts3 = timeSinceCount3.toInteger()
-
-                    if(logEnable) log.debug "In reportHandler - ts1: ${ts1} - ts2: ${ts2} - ts3: ${ts3}"
-
-                    if(ts1 >= 15) {
-                        paragraph "${timeSinceMap1}<br>Tile Count: ${ts1}"
-                        paragraph "<hr>"
-                    }
-                    if(ts2 >= 15) {
-                        paragraph "${timeSinceMap2}<br>Tile Count: ${ts2}"
-                        paragraph "<hr>"
-                    }
-                    if(ts3 >= 15) {
-                        paragraph "${timeSinceMap3}<br>Tile Count: ${ts3}"
-                    }
-
-                    if(ts1 < 15 && ts2 < 15 && ts3 < 15) {
-                        paragraph "Nothing to report"
-                    }
-                    paragraph "${state.activityMapGen}"
-                } else {
-                    paragraph "No devices have been selected for this option."
-                }
-            }
-		}
-
+        
 		if(reportType == "Status") {
         	section() {
                 if(statusDevices) {
@@ -326,25 +340,31 @@ def reportHandler() {
                     statusCount2 = watchdogTileDevice.currentValue("watchdogStatusCount2")
                     statusCount3 = watchdogTileDevice.currentValue("watchdogStatusCount3")
 
-                    ts1 = statusCount1.toInteger()
-                    ts2 = statusCount2.toInteger()
-                    ts3 = statusCount3.toInteger()
+                    s1 = statusCount1.toInteger()
+                    s2 = statusCount2.toInteger()
+                    s3 = statusCount3.toInteger()
 
-                    if(logEnable) log.debug "In reportHandler - ts1: ${ts1} - ts2: ${ts2} - ts3: ${ts3}"
+                    if(logEnable) log.debug "In reportHandler - s1: ${s1} - s2: ${s2} - s3: ${s3}"
 
-                    if(ts1 >= 15) {
-                        paragraph "${statusMap1}<br>Tile Count: ${ts1}"
+                    if(s1 >= 15) {
+                        paragraph "${statusMap1}"
+                        if(s1 <= 1024) paragraph "Tile Count: <span style='color:green'>${s1}</span>"
+                        if(s1 > 1024) paragraph "<span style='color:red'>Tile Count: ${s1}</span>"
                         paragraph "<hr>"
                     }
-                    if(ts2 >= 15) {
-                        paragraph "${statusMap2}<br>Tile Count: ${ts2}"
+                    if(s2 >= 15) {
+                        paragraph "${statusMap2}"
+                        if(s2 <= 1024) paragraph "Tile Count: <span style='color:green'>${s2}</span>"
+                        if(s2 > 1024) paragraph "<span style='color:red'>Tile Count: ${s2}</span>"
                         paragraph "<hr>"
                     }
-                    if(ts3 >= 15) {
-                        paragraph "${statusMap3}<br>Tile Count: ${ts3}"
+                    if(s3 >= 15) {
+                        paragraph "${statusMap3}"
+                        if(s3 <= 1024) paragraph "Tile Count: <span style='color:green'>${s3}</span>"
+                        if(s3 > 1024) paragraph "<span style='color:red'>Tile Count: ${s3}</span>"
                     }
 
-                    if(ts1 < 15 && ts2 < 15 && ts3 < 15) {
+                    if(s1 < 15 && s2 < 15 && s3 < 15) {
                         paragraph "Nothing to report"
                     }
                     paragraph "${state.statusMapGen}"
@@ -356,20 +376,37 @@ def reportHandler() {
         
         if(reportType == "Combo-Activity-Battery") {
             section() {
+                paragraph "Remember, this will still have to be under the 1024 character limit on dashboard tiles. So if combining the two reports results in the character count over 1024, it can not be displayed on the dashboard."
                 if(batteryDevices && activityDevices) {
                     batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
-                    timeSinceMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
+                    activityMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
                         
                     batteryCount1 = watchdogTileDevice.currentValue("watchdogBatteryCount1")
                     bc1 = batteryCount1.toInteger()
                     
                     combo = "<div style='overflow:auto;height:90%'>"
-                    combo += "${batteryMap1}<br>${timeSinceMap1}"
+                    combo += "${activityMap1} ${batteryMap1}"
                     combo += "</div>"
-                    comboCount = combo.length()
+                    int comboCount = combo.length()
                     
                     if(comboCount >= 20) {    
-                        paragraph "${combo}<br>Tile Count: ${comboCount}"
+                        paragraph "${combo}"
+                        if(comboCount <= 1024) {
+                            paragraph "Tile Count: <span style='color:green'>${comboCount}</span>"
+                            if(watchdogTileDevice) {
+                                if(logEnable) log.debug "In comboActBatHandler - Sending new Combo Watchdog data to Tiles"
+                                sending = "1::${combo}"
+                                watchdogTileDevice.sendWatchdogComboActBatMap(sending)
+                            }
+                        }
+                        if(comboCount > 1024) {
+                            paragraph "<span style='color:red'>Tile Count: ${comboCount}</span>"
+                            if(watchdogTileDevice) {
+                                if(logEnable) log.debug "In comboActBatHandler - Sending new Combo Watchdog data to Tiles"
+                                sending = "1::Too many characters to display on Dashboard (${comboCount})"
+                                watchdogTileDevice.sendWatchdogComboActBatMap(sending)
+                            }
+                        }
                         paragraph "<hr>"
                     }
                         
@@ -400,8 +437,7 @@ def updated() {
 
 def initialize() {
 	setDefaults()
-	schedule(timeToRun, activityHandler)
-
+	if(timeToRun) schedule(timeToRun, activityHandler)
 	if(runReportSwitch) subscribe(runReportSwitch, "switch.on", activityHandler)
 }
 
@@ -431,7 +467,7 @@ def myBatteryHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Battery) - - - - -     "
     if(logEnable) log.debug "In myBatteryHandler ${state.version}"
 	
-    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Devices</b><td width=20%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Report</b><td width=20%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -512,12 +548,12 @@ def myActivityHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Activity) - - - - -     "
     if(logEnable) log.debug "In myActivityHandler ${state.version}"
     
-    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Device Activity</b><td width=40%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Activity Report</b><td width=40%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
-	state.timeSinceCount = 0
-	state.timeSinceMapPhoneS = ""
+	state.activityCount = 0
+	state.activityMapPhoneS = ""
     data = false
     theDevices = activityDevices.sort { a, b -> a.displayName <=> b.displayName }    
     
@@ -527,7 +563,7 @@ def myActivityHandler() {
 			if(logEnable) log.debug "In myActivityHandler - ${it.displayName} totalHours: ${state.totalHours} vs timeAllowed: ${timeAllowed}"
   			if(state.totalHours > timeAllowed) {
 				if(!activityBadORgood) {
-					state.timeSinceCount = state.timeSinceCount + 1
+					state.activityCount = state.activityCount + 1
                     if(logEnable) log.debug "In myActivityHandler - ${it.displayName} hasn't checked in since ${state.theDuration} ago."                   
                     data = true
                 }
@@ -544,7 +580,7 @@ def myActivityHandler() {
         
         if(data) {
             line = "<tr><td>${it.displayName}<td>${state.theDuration}"
-            timeSinceMapPhone += "${it.displayName} - ${state.theDuration} \n"
+            activityMapPhone += "${it.displayName} - ${state.theDuration} \n"
 
             totalLength = tbl.length() + line.length()
             if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
@@ -583,8 +619,8 @@ def myActivityHandler() {
     
     def rightNow = new Date()
     state.activityMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
-	timeSinceMapPhone += "Report generated: ${rightNow} \n"
-    state.timeSinceMapPhoneS = timeSinceMapPhone
+	activityMapPhone += "Report generated: ${rightNow} \n"
+    state.activityMapPhoneS = activityMapPhone
 	if(logEnable) log.debug "     - - - - - End (Activity) - - - - -     "
 }
 
@@ -592,7 +628,7 @@ def myStatusHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Status) - - - - -     "
     if(logEnable) log.debug "In myStatusHandler ${state.version}"
     
-    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status</b><td width=35%><b>Last Activity</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status Report</b><td width=35%><b>Last Activity</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -677,7 +713,7 @@ def myStatusHandler() {
     
     def rightNow = new Date()
     state.statusMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
-	timeSinceMapPhone += "Report generated: ${rightNow} \n"
+	activityMapPhone += "Report generated: ${rightNow} \n"
     state.statusMapPhoneS = statusMapPhone
 	if(logEnable) log.debug "     - - - - - End (Status) - - - - -     "
 }
@@ -740,19 +776,19 @@ def setupNewStuff() {
 	if(logEnable) log.debug "In setupNewStuff..."
     if(state.batteryMapPhoneS == null) clearMaps()
 	if(state.statusMapPhoneS == null) clearMaps()
-	if(state.timeSinceMapPhoneS == null) clearMaps()
+	if(state.activityMapPhoneS == null) clearMaps()
 }
 	
 def clearMaps() {
     state.batteryMapPhoneS = [:]
 	state.statusMapPhoneS = [:]
-	state.timeSinceMapPhoneS = [:]
+	state.activityMapPhoneS = [:]
 }
 
 def isThereData(){
 	if(logEnable) log.debug "In isThereData..."
-	if(logEnable) log.debug "In isThereData - Activity - ${state.timeSinceCount}"
-	if(state.timeSinceCount >= 1) {
+	if(logEnable) log.debug "In isThereData - Activity - ${state.activityCount}"
+	if(state.activityCount >= 1) {
 		isDataActivityDevice.on()
 	} else {
 			isDataActivityDevice.off()
@@ -774,12 +810,12 @@ def isThereData(){
 }
 
 def pushNow(){
-	if(logEnable) log.debug "In pushNow - Activity - ${state.timeSinceCount}"
-	if(state.timeSinceCount >= 1) {
-		timeSincePhone = "${app.label} \n"
-		timeSincePhone += "${state.timeSinceMapPhoneS}"
-		if(logEnable) log.debug "In pushNow - Sending message: ${timeSincePhone}"
-        sendPushMessage.deviceNotification(timeSincePhone)
+	if(logEnable) log.debug "In pushNow - Activity - ${state.activityCount}"
+	if(state.activityCount >= 1) {
+		activityPhone = "${app.label} \n"
+		activityPhone += "${state.activityMapPhoneS}"
+		if(logEnable) log.debug "In pushNow - Sending message: ${activityPhone}"
+        sendPushMessage.deviceNotification(activityPhone)
 	} else {
 		if(pushAll == true) {
 			if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
