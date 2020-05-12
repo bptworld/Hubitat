@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.1.4 - 05/12/20 - All tiles now scrolls
  *  2.1.3 - 05/11/20 - Added more code traps
  *  2.1.2 - 04/21/20 - Code cleanup, Added optional Text formatting, modified whatDidISay list code by @alan564923 (thank you!)
  *  2.1.1 - 03/18/20 - Fixed message priority features
@@ -80,7 +81,6 @@ metadata {
 		attribute "speakerStatus1", "string"
 		attribute "speakerStatus2", "string"
 		attribute "speakerStatus3", "string"
-		attribute "speakerStatus4", "string"
         
         attribute "queue1", "string"
         attribute "queue2", "string"
@@ -92,7 +92,6 @@ metadata {
         section(){
 			input("fontSize", "text", title: "Font Size", required: true, defaultValue: "15")
             input("fontFamily", "text", title: "Font Family (optional)<br>ie. Lucida Sans Typewriter", required: false)
-			input("numOfLines", "number", title: "How many lines to display<br>(from 1 to 10 only)", required:true, defaultValue: 5)
 			input("hourType", "bool", title: "Time Selection<br>(Off for 24h, On for 12h)", required: false, defaultValue: false)
 			input("clearData", "bool", title: "Reset All Data", required: false, defaultValue: false)
 			input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
@@ -211,7 +210,6 @@ def speak(message) {
 	speechReceivedFULL = lastSpoken.replace("%20"," ").replace("%5B","[").replace("%5D","]")   
     theMessage = composeMessageMap('speak', speechReceivedFULL, priority)
     if(logEnable) log.debug "In speak - theMessage: ${theMessage}"
-    //sendEvent(name: "latestMessage", value: theMessage)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
     latestMessageDate()
     populateMap(priority,lastSpoken)
@@ -274,23 +272,22 @@ def populateMap(priority,speech) {
             listSize1 = 0
         }
 
-        int intNumOfLines = numOfLines
+        int intNumOfLines = 10
         if (listSize1 > intNumOfLines) state.list1.removeAt(intNumOfLines)
         String result1 = state.list1.join(";")
-        def lines1     = result1.split(";")
+        def lines1 = result1.split(";")
 
         if(logEnable) log.debug "In makeList - All - listSize1: ${listSize1} - intNumOfLines: ${intNumOfLines}"
 
-        theData1 = "<table><tr><td style='text-align:left'>"
         if(fontFamily) {
-            theData1 += "<div style='font-size:${fontSize}px;font-family:${fontFamily}'>"
+            theData1 = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px;font-family:${fontFamily}'><tr><td>"
         } else {
-            theData1 += "<div style='font-size:${fontSize}px'>"
+            theData1 = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td>"
         }
         for (i=0; i<intNumOfLines && i<listSize1 && theData1.length() < 927;i++)
         theData1 += "${lines1[i]}<br>"
         
-        theData1 += "</div></table>"
+        theData1 += "</div></table></div>"
         if(logEnable) log.debug "theData1 - ${theData1.replace("<","!")}"       
                  
         dataCharCount1 = theData1.length()
@@ -315,7 +312,7 @@ def installed(){
 def updated() {
     log.info "Follow Me Driver has been Updated"
     cleanUp()
-    if (clearData) runIn(2,clearSpeechData)
+    if(clearData) runIn(2,clearSpeechData)
 }
 
 def initialize() {
@@ -359,58 +356,55 @@ def clearSpeechData(){
 }	
 
 def sendFollowMeSpeaker(status) {
-//	if(logEnable) log.debug "In sendFollowMeSpeaker - Received new speaker status - ${status}"
 	def (sName, sStatus) = status.split(':')
     if(sName == null) sName = "blank"
     if(sStatus == null) sStatus = "not found"
 	if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
 	if(state.speakerMap == null) state.speakcounterMap = [:]
 	state.speakerMap.put(sName, sStatus)
-	speakerMapS = [:]
-	sMap1S = [:]
-	sMap2S = [:]
-	sMap3S = [:]
-	sMap4S = [:]
-	speakerMapS = state.speakerMap.sort { a, b -> a.key <=> b.key }
-	count = 0
-	sMap1S = "<table width='100%'>"
-	sMap2S = "<table width='100%'>"
-	sMap3S = "<table width='100%'>"
-	sMap4S = "<table width='100%'>"
-	speakerMapS.each { it -> 
-		status = it.value
-		count = count + 1
-//		if(logEnable) log.debug "In sendFollowMeSpeaker - Building Speaker Table with ${it.key} count: ${count}"
-		if((count >= 1) && (count <= 5)) {
-			if(status == "true") sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") sMap1S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
-		}
-		if((count >= 6) && (count <= 10)) {
-			if(status == "true") sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") sMap2S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
-		}
-		if((count >= 11) && (count <= 15)) {
-			if(status == "true") sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") sMap3S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
-		}
-		if((count >= 16) && (count <= 20)) {
-			if(status == "true") sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: green;font-size:${fontSize}px;'>Active</div></td></tr>"
-			if(status == "false") sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: red;font-size:${fontSize}px;'>Inactive</div></td></tr>"
-			if(status == "speaking") sMap4S += "<tr><td align='left'><div style='font-size:${fontSize}px'>${it.key}</div></td><td><div style='color: blue;font-size:${fontSize}px;'>Speaking</div></td></tr>"
-		}
-	}
-	sMap1S += "</table>"
-	sMap2S += "</table>"
-	sMap3S += "</table>"
-	sMap4S += "</table>"
 	
-	sendEvent(name: "speakerStatus1", value: sMap1S)
-	sendEvent(name: "speakerStatus2", value: sMap2S)
-	sendEvent(name: "speakerStatus3", value: sMap3S)
-	sendEvent(name: "speakerStatus4", value: sMap4S)
+    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'>"
+    def line = "" 
+    def tbl = tblhead
+    def tileCount = 1
+    theDevices = state.speakerMap.sort { a, b -> a.key <=> b.key }
+    
+    theDevices.each { it ->
+        status = it.value
+
+        if(status == "true") line = "<tr><td>${it.key}<td style='color:green;font-size:${fontSize}px;'>Active"
+        if(status == "false") line = "<tr><td>${it.key}<td style='color:red;font-size:${fontSize}px;'>Inactive"
+        if(status == "speaking") line = "<tr><td>${it.key}<td style='color:blue;font-size:${fontSize}px;'>Speaking"
+
+        totalLength = tbl.length() + line.length()
+        if(logEnable) log.debug "In sendFollowMeSpeaker - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+        if (totalLength < 1009) {
+            tbl += line
+        } else {
+            tbl += "</table></div>"
+            if(logEnable) log.debug "${tbl}"
+            tbl = tblhead + line
+            if(tileCount == 1) sendEvent(name: "speakerStatus1", value: tbl)
+            if(tileCount == 2) sendEvent(name: "speakerStatus2", value: tbl)
+            if(tileCount == 3) sendEvent(name: "speakerStatus3", value: tbl)
+            tileCount = tileCount + 1
+        }
+    }
+    
+    if (tbl != tblhead) {
+        tbl += "</table></div>"
+        if(logEnable) log.debug "${tbl}"
+        if(tileCount == 1) sendEvent(name: "speakerStatus1", value: tbl)
+        if(tileCount == 2) sendEvent(name: "speakerStatus2", value: tbl)
+        if(tileCount == 3) sendEvent(name: "speakerStatus3", value: tbl)
+        tileCount = tileCount + 1
+    }
+    
+    for(x=tileCount;x<4;x++) {
+        if(tileCount == 1) sendEvent(name: "speakerStatus1", value: "No Data")
+        if(tileCount == 2) sendEvent(name: "speakerStatus2", value: "No Data")
+        if(tileCount == 3) sendEvent(name: "speakerStatus3", value: "No Data")
+    }
 }
 
 private cleanUp() {
