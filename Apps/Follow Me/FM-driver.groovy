@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  2.1.4 - 05/12/20 - All tiles now scrolls
+ *  2.1.4 - 05/12/20 - All tiles now scroll
  *  2.1.3 - 05/11/20 - Added more code traps
  *  2.1.2 - 04/21/20 - Code cleanup, Added optional Text formatting, modified whatDidISay list code by @alan564923 (thank you!)
  *  2.1.1 - 03/18/20 - Fixed message priority features
