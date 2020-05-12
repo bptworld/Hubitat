@@ -55,6 +55,7 @@ metadata {
 		command "sendWatchdogActivityMap", ["string"]	
         command "sendWatchdogBatteryMap", ["string"]	
 		command "sendWatchdogStatusMap", ["string"]
+        command "sendWatchdogComboActBatMap", ["string"]
 		
     	attribute "watchdogActivity1", "string"
 		attribute "watchdogActivity2", "string"
@@ -68,6 +69,8 @@ metadata {
 		attribute "watchdogStatus2", "string"
 		attribute "watchdogStatus3", "string"
         
+        attribute "watchdogComboActBat", "string"
+        
         attribute "watchdogActivityCount1", "string"
 		attribute "watchdogActivityCount2", "string"
 		attribute "watchdogActivityCount3", "string"
@@ -79,6 +82,8 @@ metadata {
 		attribute "watchdogStatusCount1", "string"
 		attribute "watchdogStatusCount2", "string"
 		attribute "watchdogStatusCount3", "string"
+        
+        attribute "watchdogComboActBatCount", "string"
 	}
 	preferences() {    	
         section(""){
@@ -157,5 +162,20 @@ def sendWatchdogStatusMap(statusMap) {
     if(whichMap == "3") {
 	    sendEvent(name: "watchdogStatus3", value: theData, displayed: true)
         sendEvent(name: "watchdogStatusCount3", value: statusDeviceCount, displayed: true)
+    }
+}
+
+def sendWatchdogComboActBatMap(comboMap) {
+    if(logEnable) log.debug "In Device Watchdog Tile - Received new Combo data!"
+    def (whichMap, theData) = comboMap.split('::')
+    comboDeviceCount = theData.length()
+	if(comboDeviceCount <= 1024) {
+		if(logEnable) log.debug "comboDevice - has ${comboDeviceCount} Characters"
+	} else {
+		theData = "Too many characters to display on Dashboard (${comboDeviceCount})"
+	}
+    if(whichMap == "1") {
+	    sendEvent(name: "watchdogComboActBat", value: theData, displayed: true)
+        sendEvent(name: "watchdogComboActBatCount", value: comboDeviceCount, displayed: true)
     }
 }
