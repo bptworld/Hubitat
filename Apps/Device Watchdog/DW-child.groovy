@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.1.7 - 05/12/20 - Touch up to reports
  *  2.1.6 - 05/12/20 - Overhaul of the push notification sections and reports
  *  2.1.5 - 05/12/20 - another fix and another fix and another fix
  *  2.1.4 - 05/12/20 - Minor fix for lastUpdated not found
@@ -60,7 +61,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.6"
+	state.version = "2.1.7"
 }
 
 definition(
@@ -265,26 +266,26 @@ def reportHandler() {
 
                     if(logEnable) log.debug "In reportHandler - a1: ${a1} - a2: ${a2} - a3: ${a3}"
 
-                    if(a1 >= 15) {
+                    if(a1 >= 63) {
                         paragraph "${activityMap1}"
                         if(a1 <= 1024) paragraph "Tile Count: <span style='color:green'>${a1}</span>"
                         if(a1 > 1024) paragraph "<span style='color:red'>Tile Count: ${a1}</span>"
                         paragraph "<hr>"
                     }
-                    if(a2 >= 15) {
+                    if(a2 >= 63) {
                         paragraph "${activityMap2}"
                         if(a2 <= 1024) paragraph "Tile Count: <span style='color:green'>${a2}</span>"
                         if(a2 > 1024) paragraph "<span style='color:red'>Tile Count: ${a2}</span>"
                         paragraph "<hr>"
                     }
-                    if(a3 >= 15) {
+                    if(a3 >= 63) {
                         paragraph "${activityMap3}"
                         if(a3 <= 1024) paragraph "Tile Count: <span style='color:green'>${a3}</span>"
                         if(a3 > 1024) paragraph "<span style='color:red'>Tile Count: ${a3}</span>"
                     }
 
-                    if(a1 < 15 && a2 < 15 && a3 < 15) {
-                        paragraph "Nothing to report"
+                    if(a1 < 63 && a2 < 63 && a3 < 63) {
+                        paragraph "<div style='font-size:${fontSize}px'>Activity Report<br>Nothing to report</div>"
                     }
                     paragraph "${state.activityMapGen}"
                 } else {
@@ -312,26 +313,26 @@ def reportHandler() {
 
                     if(logEnable) log.debug "In reportHandler - bc1: ${bc1} - bc2: ${bc2} - bc3: ${bc3}"
 
-                    if(bc1 >= 15) {
+                    if(bc1 >= 59) {
                         paragraph "${batteryMap1}"
                         if(bc1 <= 1024) paragraph "Tile Count: <span style='color:green'>${bc1}</span>"
                         if(bc1 > 1024) paragraph "<span style='color:red'>Tile Count: ${bc1}</span>"
                         paragraph "<hr>"
                     }
-                    if(bc2 >= 15) {
+                    if(bc2 >= 59) {
                         paragraph "${batteryMap2}"
                         if(bc2 <= 1024) paragraph "Tile Count: <span style='color:green'>${bc2}</span>"
                         if(bc2 > 1024) paragraph "<span style='color:red'>Tile Count: ${bc2}</span>"
                         paragraph "<hr>"
                     }
-                    if(bc3 >= 15) {
+                    if(bc3 >= 59) {
                         paragraph "${batteryMap3}"
                         if(bc3 <= 1024) paragraph "Tile Count: <span style='color:green'>${bc3}</span>"
                         if(bc3 > 1024) paragraph "<span style='color:red'>Tile Count: ${bc3}</span>"
                     }
 
-                    if(bc1 < 15 && bc2 < 15 && bc3 < 15) {
-                        paragraph "Nothing to report"
+                    if(bc1 < 59 && bc2 < 59 && bc3 < 59) {
+                        paragraph "<div style='font-size:${fontSize}px'>Battery Report<br>Nothing to report</div>"
                     }
                     paragraph "${state.batteryMapGen}"
                 } else {
@@ -359,26 +360,26 @@ def reportHandler() {
 
                     if(logEnable) log.debug "In reportHandler - s1: ${s1} - s2: ${s2} - s3: ${s3}"
 
-                    if(s1 >= 15) {
+                    if(s1 >= 58) {
                         paragraph "${statusMap1}"
                         if(s1 <= 1024) paragraph "Tile Count: <span style='color:green'>${s1}</span>"
                         if(s1 > 1024) paragraph "<span style='color:red'>Tile Count: ${s1}</span>"
                         paragraph "<hr>"
                     }
-                    if(s2 >= 15) {
+                    if(s2 >= 58) {
                         paragraph "${statusMap2}"
                         if(s2 <= 1024) paragraph "Tile Count: <span style='color:green'>${s2}</span>"
                         if(s2 > 1024) paragraph "<span style='color:red'>Tile Count: ${s2}</span>"
                         paragraph "<hr>"
                     }
-                    if(s3 >= 15) {
+                    if(s3 >= 58) {
                         paragraph "${statusMap3}"
                         if(s3 <= 1024) paragraph "Tile Count: <span style='color:green'>${s3}</span>"
                         if(s3 > 1024) paragraph "<span style='color:red'>Tile Count: ${s3}</span>"
                     }
 
-                    if(s1 < 15 && s2 < 15 && s3 < 15) {
-                        paragraph "Nothing to report"
+                    if(s1 < 58 && s2 < 58 && s3 < 58) {
+                        paragraph "<div style='font-size:${fontSize}px'>Status Report<br>Nothing to report</div>"
                     }
                     paragraph "${state.statusMapGen}"
                 } else {
@@ -388,6 +389,9 @@ def reportHandler() {
         }
         
         if(reportType == "Combo-Activity-Battery") {
+            myActivityHandler()
+            myBatteryHandler()
+            pauseExecution(1000)
             section() {
                 paragraph "Remember, this will still have to be under the 1024 character limit on dashboard tiles. So if combining the two reports results in the character count over 1024, it can not be displayed on the dashboard."
                 if(batteryDevices && activityDevices) {
@@ -398,11 +402,11 @@ def reportHandler() {
                     bc1 = batteryCount1.toInteger()
                     
                     combo = "<div style='overflow:auto;height:90%'>"
-                    combo += "${activityMap1} ${batteryMap1}"
+                    combo += "${activityMap1}<br>${batteryMap1}"
                     combo += "</div>"
                     int comboCount = combo.length()
                     
-                    if(comboCount >= 20) {    
+                    if(comboCount >= 42) {    
                         paragraph "${combo}"
                         if(comboCount <= 1024) {
                             paragraph "Tile Count: <span style='color:green'>${comboCount}</span>"
@@ -423,8 +427,8 @@ def reportHandler() {
                         paragraph "<hr>"
                     }
                         
-                    if(comboCount < 20) {
-                        paragraph "Nothing to report"
+                    if(comboCount < 42) {
+                        paragraph "<div style='font-size:${fontSize}px'>Combo-Activity-Battery Report<br>Nothing to report</div>"
                     }
                     //paragraph "${state.statusMapGen}"
                 } else {
@@ -546,7 +550,7 @@ def myBatteryHandler() {
     }
     
     for(x=tileCount;x<4;x++) {
-        sending = "${x}::No Data"
+        sending = "${x}::<div style='font-size:${fontSize}px'>Battery Report - No Data</div>"
         watchdogTileDevice.sendWatchdogBatteryMap(sending)
     }
     
@@ -628,7 +632,7 @@ def myActivityHandler() {
     }
     
     for(x=tileCount;x<4;x++) {
-        sending = "${x}::No Data"
+        sending = "${x}::<div style='font-size:${fontSize}px'>Activity Report - No Data</div>"
         watchdogTileDevice.sendWatchdogActivityMap(sending)
     }
     
@@ -727,7 +731,7 @@ def myStatusHandler() {
     }
     
     for(x=tileCount;x<4;x++) {
-        sending = "${x}::No Data"
+        sending = "${x}::<div style='font-size:${fontSize}px'>Status Report - No Data</div>"
         watchdogTileDevice.sendWatchdogStatusMap(sending)
     }
     
