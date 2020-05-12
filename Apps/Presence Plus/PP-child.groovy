@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.0.6 - 05/12/20 - Added seperate delays for Arrival and Departure
+ *  1.0.6 - 05/12/20 - Added separate delays for Arrival and Departure
  *  1.0.5 - 05/05/20 - Added Advanced Arrival section giving users a second set of arrival options
  *  1.0.4 - 05/05/20 - Added number of sensors required to change status
  *  1.0.3 - 05/05/20 - Added delay before status is updated
