@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.1.4 - 05/12/20 - Minor fix for lastUpdated not found
  *  2.1.3 - 05/12/20 - Tightening up the code, new combo activity/battery report
  *  2.1.2 - 05/11/20 - Tile scrolling will now auto adjust to tile size!
  *  2.1.1 - 05/10/20 - Fixed refresh handler code
@@ -57,7 +58,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.3"
+	state.version = "2.1.4"
 }
 
 definition(
@@ -669,7 +670,11 @@ def myStatusHandler() {
         }
         
 		def lastActivity = it.getLastActivity()
-		def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
+        if(lastActivity) {
+            def newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
+        } else {
+            def newDate = "No Data"
+        }
 		
 		if(logEnable) log.debug "In myStatusHandler - device: ${it.displayName} - myStatus: ${deviceStatus} - last checked: ${newDate}"
         
