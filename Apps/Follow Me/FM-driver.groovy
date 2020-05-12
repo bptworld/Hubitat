@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.1.3 - 05/11/20 - Added more code traps
  *  2.1.2 - 04/21/20 - Code cleanup, Added optional Text formatting, modified whatDidISay list code by @alan564923 (thank you!)
  *  2.1.1 - 03/18/20 - Fixed message priority features
  *  2.1.0 - 11/14/19 - Name changed to match Follow Me. Major rework. Changes to work with the updated Follow Me (V2.0.5+)
@@ -360,7 +361,9 @@ def clearSpeechData(){
 def sendFollowMeSpeaker(status) {
 //	if(logEnable) log.debug "In sendFollowMeSpeaker - Received new speaker status - ${status}"
 	def (sName, sStatus) = status.split(':')
-//	if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
+    if(sName == null) sName = "blank"
+    if(sStatus == null) sStatus = "not found"
+	if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
 	if(state.speakerMap == null) state.speakcounterMap = [:]
 	state.speakerMap.put(sName, sStatus)
 	speakerMapS = [:]
