@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 05/12/20 - Added seperate delays for Arrival and Departure
  *  1.0.5 - 05/05/20 - Added Advanced Arrival section giving users a second set of arrival options
  *  1.0.4 - 05/05/20 - Added number of sensors required to change status
  *  1.0.3 - 05/05/20 - Added delay before status is updated
@@ -48,7 +49,7 @@
 
 def setVersion(){
     state.name = "Presence Plus"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -122,7 +123,8 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Failsafe Options")) {
             paragraph "Sometimes an arrival or departure can be missed. With this option, Presence Plus will check every X minutes to see who is here."
             input "runEvery", "enum", title: "Check every X minutes", description: "runEvery", required:false, submitOnChange:true, options: ["Every 1 Minute", "Every 5 Minutes", "Every 10 Minutes", "Every 15 Minutes", "Every 30 Minutes", "Every 1 Hour", "Every 3 Hours"]
-            input "theDelay", "number", title: "Delay setting arrival/departure status by (seconds)", required:false, submitOnChange:true
+            input "theDelayArr", "number", title: "Delay setting arrival status by (seconds)", required:false, submitOnChange:true
+            input "theDelayDep", "number", title: "Delay setting departure status by (seconds)", required:false, submitOnChange:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
@@ -174,7 +176,7 @@ def arrSensorHandler(evt) {
     if(logEnable) log.debug "In arrSensorHandler (${state.version}) - ArrTriggerType: ${ArrTriggerType}"	
 
     unschedule()
-    int theDelay = theDelay ?: 1
+    int theDelayArr = theDelayArr ?: 1
     
     if(ArrPresenceSensors) asCount = ArrPresenceSensors.size()
     int theArrNum = theArrNum ?: asCount
@@ -229,8 +231,8 @@ def arrSensorHandler(evt) {
     }
     
     if(state.pStatus == true) {
-        if(logEnable) log.debug "In depSensorHandler - Arr - Will set status to ${state.pStatus} after a ${theDelay} second delay"
-        runIn(theDelay, statusUpdateHandler)
+        if(logEnable) log.debug "In depSensorHandler - Arr - Will set status to ${state.pStatus} after a ${theDelayArr} second delay"
+        runIn(theDelayArr, statusUpdateHandler)
     }
 }
 
@@ -240,7 +242,7 @@ def depSensorHandler(evt) {
 
     unschedule()
     dsCount = DepPresenceSensors.size()
-    int theDelay = theDelay ?: 1
+    int theDelayDep = theDelayDep ?: 1
     int theDepNum = theDepNum ?: dsCount
     int pCount = 0
     
@@ -265,8 +267,8 @@ def depSensorHandler(evt) {
     }
     
     if(state.pStatus == false) {
-        if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus} after a ${theDelay} second delay"
-        runIn(theDelay, statusUpdateHandler)
+        if(logEnable) log.debug "In depSensorHandler - Dep - Will set status to ${state.pStatus} after a ${theDelayDep} second delay"
+        runIn(theDelayDep, statusUpdateHandler)
     }
 }
 
@@ -351,8 +353,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
