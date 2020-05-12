@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.1.6 - 05/12/20 - Overhaul of the push notification sections and reports
  *  2.1.5 - 05/12/20 - another fix and another fix and another fix
  *  2.1.4 - 05/12/20 - Minor fix for lastUpdated not found
  *  2.1.3 - 05/12/20 - Tightening up the code, new combo activity/battery report
@@ -59,7 +60,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.5"
+	state.version = "2.1.6"
 }
 
 definition(
@@ -140,8 +141,15 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
 			input "timeToRun", "time", title: "Check Devices at this time daily", required:false, submitOnChange:true
             input "runReportSwitch", "capability.switch", title: "Turn this switch 'on' to a run new report at any time", required:false, submitOnChange:true
+            paragraph "Push messages will only go out when Time and/or Switch options are choosen and triggered. This way you can view as many manual reports as needed to troubleshoot your system without being flooded with push notifications."
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification", multiple:true, required:false, submitOnChange:true
-			if(sendPushMessage) input "pushAll", "bool", title: "Only send Push if there is something to actually report", description: "Push", defaultValue:false, submitOnChange:true
+            if(sendPushMessage) {
+                input "activityPush", "bool", title: "Send Activity Report", defaultValue:false, submitOnChange:true, width:4
+                input "batteryPush", "bool", title: "Send Battery Report", defaultValue:false, submitOnChange:true, width:4
+                input "statusPush", "bool", title: "Send Status Report", defaultValue:false, submitOnChange:true, width:4
+                
+                input "pushAll", "bool", title: "Only send Push if there is something to actually report", description: "Push", defaultValue:false, submitOnChange:true
+            }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Table Options")) {
@@ -233,15 +241,14 @@ def statusConfig() {
 
 def reportHandler() {
 	dynamicPage(name: "reportHandler", title: "", install:false, uninstall:false) {
-		activityHandler()
-        pauseExecution(1000)
         display()
         section() {
-        //input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Status"], required:true, submitOnChange:true
-        input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Combo-Activity-Battery"], required:true, submitOnChange:true
+            input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Combo-Activity-Battery"], required:true, submitOnChange:true
         }
 			
 		if(reportType == "Activity") {
+            myActivityHandler()
+            pauseExecution(1000)
             section() {
                 if(activityDevices) {
                     activityMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
@@ -287,6 +294,8 @@ def reportHandler() {
 		}
 
         if(reportType == "Battery") {
+            myBatteryHandler()
+            pauseExecution(1000)
             section() {
                 if(batteryDevices) {
                     batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
@@ -332,6 +341,8 @@ def reportHandler() {
         }
         
 		if(reportType == "Status") {
+            myStatusHandler()
+            pauseExecution(1000)
         	section() {
                 if(statusDevices) {
                     statusMap1 = watchdogTileDevice.currentValue("watchdogStatus1")
@@ -475,6 +486,7 @@ def myBatteryHandler() {
     def tileCount = 1
     state.batteryCount = 0
     state.batteryMapPhoneS = ""
+    batteryMapPhone = "Battery Report \n"
     data = false
     theDevices = batteryDevices.sort { a, b -> a.displayName <=> b.displayName }
     
@@ -556,6 +568,7 @@ def myActivityHandler() {
     def tileCount = 1
 	state.activityCount = 0
 	state.activityMapPhoneS = ""
+    activityMapPhone = "Activity Report \n"
     data = false
     theDevices = activityDevices.sort { a, b -> a.displayName <=> b.displayName }    
     
@@ -636,6 +649,7 @@ def myStatusHandler() {
     def tileCount = 1
     state.statusCount = 0
 	state.statusMapPhoneS = ""
+    statusMapPhone = "Status Report \n"
     sortedMap = statusDevices.sort { a, b -> a.displayName <=> b.displayName }
     
     sortedMap.each { it ->
@@ -816,56 +830,57 @@ def isThereData(){
 }
 
 def pushNow(){
-	if(logEnable) log.debug "In pushNow - Activity - ${state.activityCount}"
-	if(state.activityCount >= 1) {
-		activityPhone = "${app.label} \n"
-		activityPhone += "${state.activityMapPhoneS}"
-		if(logEnable) log.debug "In pushNow - Sending message: ${activityPhone}"
-        sendPushMessage.deviceNotification(activityPhone)
-	} else {
-		if(pushAll == true) {
-			if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
-		} else {
-			emptyMapPhone = "${app.label} \n"
-			emptyMapPhone += "Nothing to report."
-			if(logEnable) log.debug "In pushNow - Sending message: ${emptyMapPhone}"
-        	sendPushMessage.deviceNotification(emptyMapPhone)
-		}
-	}
+	if(logEnable) log.debug "In pushNow"
+    if(activityPush) {
+        if(state.activityCount >= 1) {
+            if(logEnable) log.debug "In pushNow - Status - ${state.activityCount}"
+            activityPhone = "${state.activityMapPhoneS}"
+            if(logEnable) log.debug "In pushNow - Sending message: ${activityPhone}"
+            sendPushMessage.deviceNotification(activityPhone)
+        } else {
+            if(pushAll == true) {
+                if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
+            } else {
+                emptyMapPhone = "Nothing to report."
+                if(logEnable) log.debug "In pushNow - Sending message: ${emptyMapPhone}"
+                sendPushMessage.deviceNotification(emptyMapPhone)
+            }
+        }
+    }
     
-	if(state.batteryCount >= 1) {
-		if(logEnable) log.debug "In pushNow - Battery - ${state.batteryCount}"
-		batteryPhone = "${app.label} \n"
-		batteryPhone += "${state.batteryMapPhoneS}"
-		if(logEnable) log.debug "In pushNow - Sending message: ${batteryPhone}"
-		sendPushMessage.deviceNotification(batteryPhone)
-	} else {
-		if(pushAll == true) {
-			if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
-		} else {
-			emptyBatteryPhone = "${app.label} \n"
-			emptyBatteryPhone += "Nothing to report."
-			if(logEnable) log.debug "In pushNow - Sending message: ${emptyBatteryPhone}"
-        	sendPushMessage.deviceNotification(emptyBatteryPhone)
-		}
-	}
+    if(batteryPush) {
+        if(state.batteryCount >= 1) {
+            if(logEnable) log.debug "In pushNow - Battery - ${state.batteryCount}"
+            batteryPhone = "${state.batteryMapPhoneS}"
+            if(logEnable) log.debug "In pushNow - Sending message: ${batteryPhone}"
+            sendPushMessage.deviceNotification(batteryPhone)
+        } else {
+            if(pushAll == true) {
+                if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
+            } else {
+                emptyBatteryPhone = "Nothing to report."
+                if(logEnable) log.debug "In pushNow - Sending message: ${emptyBatteryPhone}"
+                sendPushMessage.deviceNotification(emptyBatteryPhone)
+            }
+        }
+    }
     
-	if(logEnable) log.debug "In pushNow - Status - ${state.statusCount}"
-	if(state.statusCount >= 1) {
-		statusPhone = "${app.label} \n"
-		statusPhone += "${state.statusMapPhoneS}"
-		if(logEnable) log.debug "In pushNow - Sending message: ${statusPhone}"
-		sendPushMessage.deviceNotification(statusPhone)
-	} else {
-		if(pushAll == true) {
-			if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
-		} else {
-			emptyStatusPhone = "${app.label} \n"
-			emptyStatusPhone += "Nothing to report."
-			if(logEnable) log.debug "In pushNow - Sending message: ${emptyStatusPhone}"
-        	sendPushMessage.deviceNotification(emptyStatusPhone)
-		}
-	}	
+    if(statusPush) {
+        if(logEnable) log.debug "In pushNow - Status - ${state.statusCount}"
+        if(state.statusCount >= 1) {
+            statusPhone = "${state.statusMapPhoneS}"
+            if(logEnable) log.debug "In pushNow - Sending message: ${statusPhone}"
+            sendPushMessage.deviceNotification(statusPhone)
+        } else {
+            if(pushAll == true) {
+                if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
+            } else {
+                emptyStatusPhone = "Nothing to report."
+                if(logEnable) log.debug "In pushNow - Sending message: ${emptyStatusPhone}"
+                sendPushMessage.deviceNotification(emptyStatusPhone)
+            }
+        }	
+    }
 }
 
 def createDataChildDevice() {    
