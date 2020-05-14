@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.1.8 - 05/14/20 - Added color coding to status reports
  *  2.1.7 - 05/12/20 - Touch up to reports
  *  2.1.6 - 05/12/20 - Overhaul of the push notification sections and reports
  *  2.1.5 - 05/12/20 - another fix and another fix and another fix
@@ -61,7 +62,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.7"
+	state.version = "2.1.8"
 }
 
 definition(
@@ -221,7 +222,7 @@ def activityConfig() {
 				paragraph "App will only display ACTIVE Devices."
 			} else {
 				paragraph "App will only display INACTIVE Devices."
-             }
+            }
         }
         display2()
     }
@@ -235,6 +236,16 @@ def statusConfig() {
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Select devices")) {
 			input "statusDevices", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+            input "colorCodeStatus", "bool", title: "Color Code Status Values", description: "Color", defaultValue:false, submitOnChange:true
+			if(colorCodeStatus) {
+                if(parent.colorActive && parent.colorClear && parent.colorLocked && parent.colorOn && parent.colorPresent && parent.colorWet) {
+				    paragraph "Color Code Status will be color coded."
+                } else {
+                    paragraph "Please be sure to completely fill out the 'Device Attribute Color Options' in the parent app before using the option here."
+                }
+			} else {
+				paragraph "Color Code Status will not be color coded."
+            }
         }
         display2()
     }
@@ -659,30 +670,180 @@ def myStatusHandler() {
     sortedMap.each { it ->
         deviceStatus = null
 		if(logEnable) log.debug "In myStatusHandler - Working on: ${it.displayName}"
-        if(it.hasAttribute("accelerationSensor")) deviceStatus = it.currentValue("accelerationSensor")
-		if(it.hasAttribute("alarm")) deviceStatus = it.currentValue("alarm")
-		if(it.hasAttribute("battery")) deviceStatus = it.currentValue("battery")
-		if(it.hasAttribute("carbonMonoxideDetector")) deviceStatus = it.currentValue("carbonMonoxideDetector")		
-		if(it.hasAttribute("energyMeter")) deviceStatus = it.currentValue("energyMeter")
-		if(it.hasAttribute("illuminanceMeasurement")) deviceStatus = it.currentValue("illuminanceMeasurement")
-		if(it.hasAttribute("lock")) deviceStatus = it.currentValue("lock")
-		if(it.hasAttribute("powerMeter")) deviceStatus = it.currentValue("powerMeter")
-		if(it.hasAttribute("presence")) deviceStatus = it.currentValue("presence")
-        if(it.hasAttribute("pushed")) deviceStatus = it.currentValue("pushed")
-		if(it.hasAttribute("relativeHumidityMeasurement")) deviceStatus = it.currentValue("relativeHumidityMeasurement")
-		if(it.hasAttribute("smokeDetector")) deviceStatus = it.currentValue("smokeDetector")
-		if(it.hasAttribute("switchLevel")) deviceStatus = it.currentValue("switchLevel")
-		if(it.hasAttribute("temperatureMeasurement")) deviceStatus = it.currentValue("temperatureMeasurement")
-		if(it.hasAttribute("valve")) deviceStatus = it.currentValue("valve")
-		if(it.hasAttribute("voltageMeasurement")) deviceStatus = it.currentValue("voltageMeasurement")
-		if(it.hasAttribute("waterSensor")) deviceStatus = it.currentValue("waterSensor")
+        if(it.hasAttribute("accelerationSensor")) {
+            deviceStatus = it.currentValue("accelerationSensor")
+            if(colorCodeStatus) {
+                if(deviceStatus == "inactive") { dStatus = "<div style='color:${parent.colorInactive}'>${deviceStatus}</div>" }
+                if(deviceStatus == "active") { dStatus = "<div style='color:${parent.colorActive}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("alarm")) {
+            deviceStatus = it.currentValue("alarm")
+            if(colorCodeStatus) {
+                if(deviceStatus == "off") { dStatus = "<div style='color:${parent.colorOff}'>${deviceStatus}</div>" }
+                if(deviceStatus == "siren") { dStatus = "<div style='color:${parent.colorSiren}'>${deviceStatus}</div>" }
+                if(deviceStatus == "strobe") { dStatus = "<div style='color:${parent.colorStrobe}'>${deviceStatus}</div>" }
+                if(deviceStatus == "both") { dStatus = "<div style='color:${parent.colorBoth}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("battery")) {
+            deviceStatus = it.currentValue("battery")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("carbonMonoxideDetector")) {
+            deviceStatus = it.currentValue("carbonMonoxideDetector")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("energyMeter")) {
+            deviceStatus = it.currentValue("energyMeter")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("illuminanceMeasurement")) {
+            deviceStatus = it.currentValue("illuminanceMeasurement")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("lock")) {
+            deviceStatus = it.currentValue("lock")
+            if(colorCodeStatus) {
+                if(deviceStatus == "locked") { dStatus = "<div style='color:${parent.colorLocked}'>${deviceStatus}</div>" }
+                if(deviceStatus == "unlocked") { dStatus = "<div style='color:red'>${${parent.colorUnlocked}}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("powerMeter")) {
+            deviceStatus = it.currentValue("powerMeter")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("presence")) {
+            deviceStatus = it.currentValue("presence")
+            if(colorCodeStatus) {
+                if(deviceStatus == "present") { dStatus = "<div style='color:${parent.colorPresent}'>${deviceStatus}</div>" }
+                if(deviceStatus == "not present") { dStatus = "<div style='color:${parent.colorNotPresent}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("pushed")) {
+            deviceStatus = it.currentValue("pushed")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("relativeHumidityMeasurement")) {
+            deviceStatus = it.currentValue("relativeHumidityMeasurement")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("smokeDetector")) {
+            deviceStatus = it.currentValue("smokeDetector")
+            if(colorCodeStatus) {
+                if(deviceStatus == "clear") { dStatus = "<div style='color:${parent.colorClear}'>${deviceStatus}</div>" }
+                if(deviceStatus == "detected") { dStatus = "<div style='color:${parent.colorDetected}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("switchLevel")) {
+            deviceStatus = it.currentValue("switchLevel")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("temperatureMeasurement")) {
+            deviceStatus = it.currentValue("temperatureMeasurement")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("valve")) {
+            deviceStatus = it.currentValue("valve")
+            if(colorCodeStatus) {
+                if(deviceStatus == "open") { dStatus = "<div style='color:${parent.colorOpen}'>${deviceStatus}</div>" }
+                if(deviceStatus == "closed") { dStatus = "<div style='color:${parent.colorClosed}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("voltageMeasurement")) {
+            deviceStatus = it.currentValue("voltageMeasurement")
+            if(colorCodeStatus) {
+                dStatus = deviceStatus
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("waterSensor")) {
+            deviceStatus = it.currentValue("waterSensor")
+            if(colorCodeStatus) {
+                if(deviceStatus == "wet") { dStatus = "<div style='color:${parent.colorWet}'>${deviceStatus}</div>" }
+                if(deviceStatus == "dry") { dStatus = "<div style='color:${parent.colorDry}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
         
-        if(it.hasAttribute("motion")) deviceStatus = it.currentValue("motion")
-        if(it.hasAttribute("contact")) deviceStatus = it.currentValue("contact")
+        if(it.hasAttribute("motion")) {
+            deviceStatus = it.currentValue("motion")
+            if(colorCodeStatus) {
+                if(deviceStatus == "active") { dStatus = "<div style='color:${parent.colorActive}'>${deviceStatus}</div>" }
+                if(deviceStatus == "inactive") { dStatus = "<div style='color:${parent.colorInactive}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
+        if(it.hasAttribute("contact")) {
+            deviceStatus = it.currentValue("contact")
+            if(colorCodeStatus) {
+                if(deviceStatus == "open") { dStatus = "<div style='color:${parent.colorOpen}'>${deviceStatus}</div>" }
+                if(deviceStatus == "closed") { dStatus = "<div style='color:${parent.colorClosed}'>${deviceStatus}</div>" }
+            } else {
+                dStatus = deviceStatus
+            }
+        }
         
         if(deviceStatus == null || deviceStatus == "") {
             if(it.hasAttribute("switch")) {
                 deviceStatus = it.currentValue("switch")
+                if(colorCodeStatus) {
+                    if(deviceStatus == "on") { dStatus = "<div style='color:${parent.colorOn}'>${deviceStatus}</div>" }
+                    if(deviceStatus == "off") { dStatus = "<div style='color:${parent.colorOff}'>${deviceStatus}</div>" }
+                } else {
+                    dStatus = deviceStatus
+                }
             } else {
                 deviceStatus = "unavailable"
             }
@@ -695,12 +856,12 @@ def myStatusHandler() {
             newDate = "No Data"
         }
 		
-		if(logEnable) log.debug "In myStatusHandler - device: ${it.displayName} - myStatus: ${deviceStatus} - last checked: ${newDate}"
+		if(logEnable) log.debug "In myStatusHandler - device: ${it.displayName} - myStatus: ${dStatus} - last checked: ${newDate}"
         
         state.statusCount = state.statusCount + 1
-        line = "<tr><td>${it.displayName}<td>${deviceStatus}<td>${newDate}"
+        line = "<tr><td>${it.displayName}<td>${dStatus}<td>${newDate}"
         statusMapPhone += "${it.displayName} \n"
-		statusMapPhone += "${deviceStatus} - ${newDate} \n"
+		statusMapPhone += "${dStatus} - ${newDate} \n"
 
         totalLength = tbl.length() + line.length()
         if(logEnable) log.debug "In myStatusHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
