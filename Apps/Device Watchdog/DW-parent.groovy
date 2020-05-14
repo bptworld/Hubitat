@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.0.2 - 05/14/20 - Added color coding to status reports
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  --
@@ -42,7 +43,7 @@
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.0.1"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -53,11 +54,13 @@ definition(
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
-    iconX3Url: ""
+    iconX3Url: "",
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy"
     )
 
 preferences {
-     page name: "mainPage", title: "", install: true, uninstall: true
+    page name: "mainPage", title: "", install: true, uninstall: true
+    page name: "colorCodingConfig", title: "", install: false, uninstall: false, nextPage: "mainPage"
 } 
 
 def installed() {
@@ -89,6 +92,14 @@ def mainPage() {
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Device Watchdog Child", namespace: "BPTWorld", title: "<b>Add a new 'Device Watchdog' child</b>", multiple: true)
   			}
+                    
+            section(getFormat("header-green", "${getImage("Blank")}"+" Device Attribute Color Options")) {
+                if(colorActive || colorClear || colorLocked || colorOn || colorPresent || colorWet) {
+                    href "colorCodingConfig", title:"${getImage("optionsGreen")} Device Attribute Color Options", description:"Click here for Options"
+                } else {
+                    href "colorCodingConfig", title:"${getImage("optionsRed")} Device Attribute Color Options", description:"Click here for Options"
+                }
+            }
             
  			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        				label title: "Enter a name for parent app (optional)", required: false
@@ -96,6 +107,42 @@ def mainPage() {
 			display2()
 		}
 	}
+}
+
+def colorCodingConfig() {
+	dynamicPage(name: "colorCodingConfig", title: "", install:false, uninstall:false) {
+        display()
+        section() {
+            paragraph "Assign colors to your device attributes. For use with Status Reports."
+            
+            input "colorActive", "text", title: "Active", width: 6, defaultValue: "red"
+            input "colorInactive", "text", title: "Inactive", width: 6, defaultValue: "green"
+            
+            input "colorClear", "text", title: "Clear", width: 6, defaultValue: "green"
+            input "colorDetected", "text", title: "Detected", width: 6, defaultValue: "red"
+            
+            input "colorLocked", "text", title: "Locked", width: 6, defaultValue: "green"
+            input "colorUnlocked", "text", title: "Unlocked", width: 6, defaultValue: "red"
+            
+            input "colorOn", "text", title: "On", width: 6, defaultValue: "red"
+            input "colorOff", "text", title: "Off", width: 6, defaultValue: "green"
+            
+            input "colorOpen", "text", title: "Open", width: 6, defaultValue: "red"
+            input "colorClosed", "text", title: "Closed", width: 6, defaultValue: "green"
+            
+            input "colorPresent", "text", title: "Present", width: 6, defaultValue: "green"
+            input "colorNotPresent", "text", title: "Not Present", width: 6, defaultValue: "red"
+            
+            input "colorWet", "text", title: "Wet", width: 6, defaultValue: "red"
+            input "colorDry", "text", title: "Dry", width: 6, defaultValue: "green"
+            
+            input "colorSiren", "text", title: "Siren", width: 4, defaultValue: "red"
+            input "colorStrobe", "text", title: "Strobe", width: 4, defaultValue: "red"
+            input "colorBoth", "text", title: "Both", width: 4, defaultValue: "red"
+
+            paragraph "<hr>"
+        }
+    }
 }
 
 def installCheck(){  
@@ -159,8 +206,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
