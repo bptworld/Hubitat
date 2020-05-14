@@ -13,7 +13,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.1"
+			"version": "2.0.2"
 		},
 		{
 			"id" : "fb719d00-a244-4c5e-982b-46590d22e89f",
@@ -22,7 +22,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.1.7"
+			"version": "2.1.8"
 		}
 	],
 	"drivers" : [
