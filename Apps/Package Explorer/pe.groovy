@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 05/16/20 - Error trapping
  *  1.0.2 - 05/07/20 - Added 'Developer Options' Search, cosmetic changes
  *  1.0.1 - 05/02/20 - Minor changes
  *  1.0.0 - 05/01/20 - Initial release.
@@ -54,7 +55,7 @@ import groovy.transform.Field
 
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -78,13 +79,13 @@ preferences {
 
 def pageConfig() {
     if(logEnable) log.debug "In pageConfig - Starting Up ***************************************"    
-	updateRepositoryListing()
-    reposToShowHandler()
     
     dynamicPage(name: "", title: "", install: true, uninstall: true) {
         installCheck()
-		if(state.appInstalled == 'COMPLETE'){    
+		if(state.appInstalled == 'COMPLETE'){
             performRepositoryRefresh()
+            updateRepositoryListing()
+            reposToShowHandler()
             section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
                 paragraph "<b>Notes:</b>"
                 paragraph "Conveniently explore the apps and drivers available within the Hubitat Package Manager.<br>All credit goes to @dman2306 for his amazing work on HPM."
@@ -99,8 +100,8 @@ def pageConfig() {
                 app.removeSetting("pkgSearchNOT")      // reset pkgSearchNOT
                 app.removeSetting("pkgSearchType")     // reset pkgSearchType
                 
-                //input "installedRepositories", "enum", title: "Available Repositories", options:state.reposToShow, multiple:true, required:true, submitOnChange:true     
-                app.updateSetting("installedRepositories", state.reposToShow)
+                input "installedRepositories", "enum", title: "Available Repositories", options:state.reposToShow, multiple:true, required:true, submitOnChange:true     
+                //app.updateSetting("installedRepositories", state.reposToShow)
 
                 href "categoryOptions", title:"Category Options", description:"See all Apps and Drivers the selected Category has to offer"
                 href "developerOptions", title:"Developer Options", description:"See all Apps and Drivers the selected Developer has to offer"
@@ -238,22 +239,24 @@ def findPackagesByDeveloper() {
 		if (pkg.author == pkgAuthor) {      
             def info = getJSONFile(pkg.location)
                         
-            theLinks = ""            
-            if(info.documentationLink) {
-                theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
-            }
-            if(info.communityLink) {
-                theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
-            }
-            if(pkg.gitHubUrl) {
-                theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
-            }
-            if(pkg.payPalUrl) {
-                theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
-            }
-            if(theLinks != "") theLinks += "|"               
+            theLinks = ""
+            if(info) {
+                if(info.documentationLink) {
+                    theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
+                }
+                if(info.communityLink) {
+                    theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
+                }
+                if(pkg.gitHubUrl) {
+                    theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
+                }
+                if(pkg.payPalUrl) {
+                    theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
+                }
+                if(theLinks != "") theLinks += "|"               
                 
-            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"         
+                appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
+            }
         }
     }
 }
