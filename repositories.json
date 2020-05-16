@@ -160,6 +160,12 @@
    		"description": "Setup Simple Reminders through out the day."
    	},
       {
+   		"name": "Snapshot",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/packageManifest.json",
+   		"description": "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications."
+   	},
+      {
    		"name": "The Flasher",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/packageManifest.json",
