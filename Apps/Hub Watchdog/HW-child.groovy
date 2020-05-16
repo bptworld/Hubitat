@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 05/16/20 - Logging changes
  *  1.0.8 - 04/27/20 - Cosmetic changes
  *  1.0.7 - 09/26/19 - Added a 'push all' option
  *  1.0.6 - 09/26/19 - Holds up to 80 data points, added color coding
@@ -49,7 +50,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -94,7 +95,7 @@ def pageConfig() {
                 
                 paragraph "<u>Optional wildcards:</u><br>%adelay% - returns the Actual Delay value<br>%mdelay% - returns the Max Delay value"
                 input(name: "nRandom", type: "bool", defaultValue: "false", title: "Random message?", description: "Random", submitOnChange: "true")
-                if(!nRandom) input "nMessage", "text", title: "Message to be spoken - Single message",  required: true, defaultValue: "Hub Watchdog is reporting a delay of %adelay%, which is over the max %mdelay%"
+                if(!nRandom) input "nMessage", "text", title: "Message to be spoken - Single message",  required: true, defaultValue: "Hub Watchdog is reporting a delay of %adelay%, which is OVER the max delay of %mdelay%"
                 if(nRandom) {
 				    input "nMessage", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
 				    input(name: "nMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
@@ -283,7 +284,6 @@ def sendNotification() {
         sendToDevice.warnValue(warnValue)
         sendToDevice.dataPoint1(state.timeDiffMs)
     }
-    if(sendPushMessage && pushAll) pushHandler()
     
     def timeDiff = state.timeDiffMs.toFloat()
     def mDelay = maxDelay.toFloat()
@@ -297,7 +297,10 @@ def sendNotification() {
             if(logEnable) log.debug "In sendNotification - failedCount: ${state.failedCount} - Sending Notifications"
             if(isDataDevice) isDataDevice.on()
     
-            if(sendPushMessage && !pushAll) pushHandler()
+            if(sendPushMessage) {
+                if(logEnable) log.debug "In sendNotification - Going to pushHandler"
+                pushHandler()
+            }
         
             if(rmRule) {
                 if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
@@ -310,7 +313,13 @@ def sendNotification() {
         if(isDataDevice) isDataDevice.off()
         state.failedCount = 0
         state.testInProgress = "no"
-        if(logEnable) log.debug "In sendNotification - No need to send notifications"
+        if(sendPushMessage && pushAll) {
+            if(logEnable) log.debug "In sendNotification - pushAll is enabled, going to pushNow"
+            msg = "Hub Watchdog is reporting a delay of ${timeDiff}, which is UNDER the max delay of ${mDelay}"
+            pushNow(msg)
+        } else {
+            if(logEnable) log.debug "In sendNotification - No need to send notifications"
+        }
     }
 }
 
@@ -407,8 +416,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
