@@ -161,7 +161,7 @@ def pageConfig() {
 		}
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            label title: "Enter a name for Fthis automation", required:false, submitOnChange:true
+            label title: "Enter a name for this automation", required:false, submitOnChange:true
 			input "logEnable", "bool", title: "Enable Debug Logging", description: "debugging", defaultValue:false, submitOnChange:true
 		}
 		display2()
