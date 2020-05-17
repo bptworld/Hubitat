@@ -23,8 +23,8 @@
 			"required": true,
 			"oauth": false,
 			"version": "2.0.2"
-		}
-    {
+		},
+    		{
 			"id" : "5f3f66fd-77ab-4fde-a560-e266cf7a86fd",
 			"name": "Snapshot Lite Child",
 			"namespace": "BPTWorld",
