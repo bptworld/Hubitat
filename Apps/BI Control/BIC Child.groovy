@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 05/18/20 - Added contact triggers
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
  *  2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes
@@ -57,7 +58,7 @@
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -82,7 +83,7 @@ def pageConfig() {
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "BI Control keeps everything local, no Internet required!"
-			paragraph "This app uses 'Virtual Switches', instead of buttons. That way the devices can be used within Google Assistant and Rule Machine. Be sure to set 'Enable auto off' within each Virtual Device to '1s' (except for recording device)."
+			paragraph "This app uses 'Virtual Switches' and Contacts, instead of buttons. That way the devices can be used within Google Assistant and Rule Machine. Be sure to set 'Enable auto off' within each Virtual Device to '1s' (except for recording device)."
        	 paragraph "<b>Blue Iris requirements:</b>"
 			paragraph "In Blue Iris settings > Web Server > Advanced > Advanced Settings<br> - Ensure 'Use secure session keys and login page' is not checked.<br> - Disable authentication, select “Non-LAN only” (preferred) or “No” to disable authentication altogether.<br> - Blue Iris only allows Admin Users to toggle profiles."	
 		}
@@ -92,7 +93,7 @@ def pageConfig() {
         
 		if(triggerType == "Profile"){
             section() {
-    			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
+    			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch or Contact"], required: true, Multiple: false
             }
 			if(triggerMode == "Mode"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Profile based on HE Mode")) {
@@ -105,12 +106,14 @@ def pageConfig() {
 					input "biProfile7", "mode", title: "Profile 7 Mode(s)", required: false, multiple: true, width:3
 				}
             }
-			if(triggerMode == "Switch"){
-				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Profile using a Switch")) {
+			if(triggerMode == "Switch or Contact"){
+				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Profile using a Switch or Contact")) {
 					paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: false
+                    input "contacts", "capability. *  2.0.2 - 04/27/20 - ", title: "Select contact sensor to trigger Mode change", required: false, multiple: false
+                    
 					input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
 						[Pon1:"Profile 1"],
 						[Pon2:"Profile 2"],
@@ -126,7 +129,7 @@ def pageConfig() {
 
 		if(triggerType == "Schedule"){
             section() {
-    		    input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch"], required: true, Multiple: false
+    		    input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch or Contact"], required: true, Multiple: false
             }
 			if(triggerMode == "Mode"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Schedule based on HE Mode")) {
@@ -145,12 +148,14 @@ def pageConfig() {
 				}
 			}
                 
-			if(triggerMode == "Switch"){
-				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Schedule using a Switch")) {
+			if(triggerMode == "Switch or Contact"){
+				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Schedule using a Switch or Contact")) {
 					paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: true, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: false
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Mode change", required: false, multiple: false
+                    
                    	input "biScheduleSwitch", "text", title: "Schedule Name", description: "The exact name of the BI schedule to trigger with the switch"
                 }
 			}
@@ -162,10 +167,12 @@ def pageConfig() {
             }
 			if(triggerMode == "Camera_Preset"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Preset")) {
-					paragraph "<b>Ability to move a camera to a Preset using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to move a camera to a Preset using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: true, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: false, multiple: false
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Preset", required: false, multiple: false
+                    
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 					input "biCameraPreset", "enum", title: "Preset number", options: [
 						[PS1:"Preset 1"],
@@ -179,30 +186,35 @@ def pageConfig() {
             
 			if(triggerMode == "Camera_Snapshot"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Snapshot")) {
-					paragraph "<b>Ability to get a Camera Snapshot using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to get a Camera Snapshot using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
                 section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: true, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: false, multiple: false
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Snapshot", required: false, multiple: false
+                    
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
 			}
             
 			if(triggerMode == "Camera_Trigger"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Trigger")) {
-					paragraph "<b>Ability to start or stop manual recording on camera using a Switch.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
+					paragraph "<b>Ability to start or stop manual recording on camera using a Switch or Contact.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: true, multiple: false
+					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: false, multiple: false
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera", required: false, multiple: false
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
 			}
             
 			if(triggerMode == "Camera_PTZ"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera PTZ")) {
-					paragraph "<b>Ability to use PTZ commands using a Switch.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to use PTZ commands using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: true, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: false, multiple: false
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger PTZ command", required: false, multiple: false
+                    
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 					input "biCameraPTZ", "enum", title: "PTZ Command", options: [
 						[PTZ0:"0 - Left"],
@@ -247,15 +259,33 @@ def initialize() {
 	if(logEnable) log.debug "In initialize - triggerMode: ${triggerMode}"
 	if(triggerType == "Profile") {
 		if(triggerMode == "Mode"){subscribe(location, "mode", profileModeChangeHandler)}
-		if(triggerMode == "Switch"){subscribe(switches, "switch", profileSwitchHandler)}
+		if(triggerMode == "Switch or Contact") {
+            if(switches) { subscribe(switches, "switch", profileSwitchHandler) }
+            if(contacts) { subscribe(contacts, "contact", profileSwitchHandler) }
+        }
 	} else if (triggerType == "Schedule") {
 		if(triggerMode == "Mode"){subscribe(location, "mode", scheduleModeChangeHandler)}
-		if(triggerMode == "Switch"){subscribe(switches, "switch", scheduleSwitchHandler)}
+		if(triggerMode == "Switch or Contact") {
+            if(switches) { subscribe(switches, "switch", scheduleSwitchHandler) }
+            if(contacts) { subscribe(contacts, "contact", scheduleSwitchHandler) }
+        }
 	}
-	if(triggerMode == "Camera_Preset"){subscribe(switches, "switch", cameraPresetHandler)}
-	if(triggerMode == "Camera_Snapshot"){subscribe(switches, "switch", cameraSnapshotHandler)}
-	if(triggerMode == "Camera_Trigger"){subscribe(switches, "switch", cameraTriggerHandler)}
-	if(triggerMode == "Camera_PTZ"){subscribe(switches, "switch", cameraPTZHandler)}
+	if(triggerMode == "Camera_Preset") {
+        if(switches) { subscribe(switches, "switch", cameraPresetHandler) }
+        if(contacts) { subscribe(contacts, "contact", cameraPresetHandler) }   
+    }
+	if(triggerMode == "Camera_Snapshot") {
+        if(switches) { subscribe(switches, "switch", cameraSnapshotHandler) }
+        if(contacts) { subscribe(contacts, "contact", cameraSnapshotHandler) }
+    }
+	if(triggerMode == "Camera_Trigger") {
+        if(switches) { subscribe(switches, "switch", cameraTriggerHandler) }
+        if(contacts) { subscribe(contacts, "contact", cameraTriggerHandler) }
+    }
+	if(triggerMode == "Camera_PTZ") {
+        if(switches) { subscribe(switches, "switch", cameraPTZHandler) }
+        if(contacts) { subscribe(contacts, "contact", cameraPTZHandler) }
+    }
 }
 
 def profileModeChangeHandler(evt) {
@@ -303,7 +333,20 @@ def profileSwitchHandler(evt) {
 	if(logEnable) log.debug "BI Control-switchChangeHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
+    contin = false
+    if(switches) {
+        if(switches.currentValue("switch") == "on") {
+            contin = true
+        }
+    }
+    
+    if(contacts) {
+        if(contacts.currentValue("contact") == "open") {
+            contin = true
+        }
+    }
+                
+	if(contin) {
 		if(logEnable) log.debug "switchChangeHandler - switchProfileOn = ${switchProfileOn}"
 		if(switchProfileOn == "Pon1") {
 			def setProfile = "1"
@@ -370,7 +413,20 @@ def scheduleSwitchHandler(evt) {
 	if(logEnable) log.debug "BI Control-switchChangeHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
+	contin = false
+    if(switches) {
+        if(switches.currentValue("switch") == "on") {
+            contin = true
+        }
+    }
+    
+    if(contacts) {
+        if(contacts.currentValue("contact") == "open") {
+            contin = true
+        }
+    }
+                
+	if(contin) {
 		if(logEnable) log.debug "scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
 		biChangeSchedule(biScheduleSwitch)
 	}
@@ -380,7 +436,20 @@ def cameraPresetHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraPresetHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
+	contin = false
+    if(switches) {
+        if(switches.currentValue("switch") == "on") {
+            contin = true
+        }
+    }
+    
+    if(contacts) {
+        if(contacts.currentValue("contact") == "open") {
+            contin = true
+        }
+    }
+                
+	if(contin) {
 		if(logEnable) log.debug "cameraPresetHandler - biCameraPreset = ${biCameraPreset}"
 		if(biCameraPreset == "PS1") {
 			def setPreset = "1"
@@ -409,7 +478,20 @@ def cameraSnapshotHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraSnapshotHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
+	contin = false
+    if(switches) {
+        if(switches.currentValue("switch") == "on") {
+            contin = true
+        }
+    }
+    
+    if(contacts) {
+        if(contacts.currentValue("contact") == "open") {
+            contin = true
+        }
+    }
+                
+	if(contin) {
 		if(logEnable) log.debug "cameraSnapshotHandler - Nothing"
 		def setPreset = "0"
 		biChangeProfile(setPreset)
@@ -420,12 +502,24 @@ def cameraTriggerHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraTriggerHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
+	contin = false
+    if(switches) {
+        if(switches.currentValue("switch") == "on") {
+            contin = true
+        }
+    }
+    
+    if(contacts) {
+        if(contacts.currentValue("contact") == "open") {
+            contin = true
+        }
+    }
+                
+	if(contin) {
 		if(logEnable) log.debug "cameraTriggerHandler - On"
 		def setPreset = "1"
 		biChangeProfile(setPreset)
-	} else
-	if(switches.currentValue("switch") == "off") {
+    } else {
 		if(logEnable) log.debug "cameraTriggerHandler - Off"
 		def setPreset = "0"
 		biChangeProfile(setPreset)
@@ -436,7 +530,20 @@ def cameraPTZHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraPTZHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	if(switches.currentValue("switch") == "on") {
+	contin = false
+    if(switches) {
+        if(switches.currentValue("switch") == "on") {
+            contin = true
+        }
+    }
+    
+    if(contacts) {
+        if(contacts.currentValue("contact") == "open") {
+            contin = true
+        }
+    }
+                
+	if(contin) {
 		if(logEnable) log.debug "cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}"
 		if(biCameraPTZ == "PTZ0") {
 			def setPreset = "0"
@@ -612,8 +719,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
