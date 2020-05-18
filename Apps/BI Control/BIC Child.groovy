@@ -36,7 +36,7 @@
  *
  *  Changes:
  *
- *  2.0.3 - 05/18/20 - Added contact triggers
+ *  2.0.4 - 05/18/20 - Added contact triggers
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
  *  2.0.1 - 12/07/19 - Added a delay command option, code cleanup, cosmetic changes
@@ -58,7 +58,7 @@
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
