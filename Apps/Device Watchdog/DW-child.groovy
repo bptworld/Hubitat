@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.1.9 - 05/17/20 - Added Activity with Attributes report
  *  2.1.8 - 05/14/20 - Added color coding to status reports
  *  2.1.7 - 05/12/20 - Touch up to reports
  *  2.1.6 - 05/12/20 - Overhaul of the push notification sections and reports
@@ -62,7 +63,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.1.8"
+	state.version = "2.1.9"
 }
 
 definition(
@@ -84,6 +85,7 @@ preferences {
     page name: "batteryConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
     page name: "activityConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
     page name: "statusConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
+    page name: "activityAttConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -137,6 +139,12 @@ def pageConfig() {
                 href "statusConfig", title:"${getImage("optionsGreen")} Status Report Options", description:"Click here for Options"
             } else {
                 href "statusConfig", title:"${getImage("optionsRed")} Status Report Options", description:"Click here for Options"
+            }
+            
+            if(activityAttDevices) {
+                href "activityAttConfig", title:"${getImage("optionsGreen")} Activity Report with Attributes Options", description:"Click here for Options"
+            } else {
+                href "activityAttConfig", title:"${getImage("optionsRed")} Activity Report with Attributes Options", description:"Click here for Options"
             }
         }
 
@@ -239,7 +247,7 @@ def statusConfig() {
             input "colorCodeStatus", "bool", title: "Color Code Status Values", description: "Color", defaultValue:false, submitOnChange:true
 			if(colorCodeStatus) {
                 if(parent.colorActive && parent.colorClear && parent.colorLocked && parent.colorOn && parent.colorPresent && parent.colorWet) {
-				    paragraph "Color Code Status will be color coded."
+				    paragraph "Status will be color coded."
                 } else {
                     paragraph "Please be sure to completely fill out the 'Device Attribute Color Options' in the parent app before using the option here."
                 }
@@ -251,11 +259,55 @@ def statusConfig() {
     }
 }
 
+def activityAttConfig() {
+	dynamicPage(name: "activityAttConfig", title: "", install:false, uninstall:false) {
+        display()
+        section() {
+            paragraph "<b>Select the Status with Attributes Options</b>"
+        }
+		section(getFormat("header-green", "${getImage("Blank")}"+" Select devices")) {
+			input "activityAttDevices", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+            
+            if(activityAttDevices) {
+                allAttrs = []
+                allAttrs = activityAttDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }                
+                input "attOptions", "enum", title: "Attributes to display (up to 4)", options: allAttrs, required:true, multiple:true, submitOnChange:true
+            }
+
+            if(attOptions) {               
+                String result1 = attOptions.join(",")
+                def theOptions = result1.split(",")               
+                int optionSize = theOptions.size()
+                
+                if(optionSize < 5) {
+                    if(optionSize >= 1) att1 = theOptions[0]
+                    if(optionSize >= 2) att2 = theOptions[1]
+                    if(optionSize >= 3) att3 = theOptions[2]
+                    if(optionSize >= 4) att4 = theOptions[3]
+
+                    if(optionSize == 1) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>Last Activity</table>"
+
+                    if(optionSize == 2) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>Last Activity</table>"
+
+                    if(optionSize == 3) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>Last Activity</table>"
+
+                    if(optionSize == 4) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>${att4}<td>Last Activity</table>"
+
+                    paragraph "<b>Example Report:</b><br><br>${exDisplay}"
+                } else {
+                    paragraph "<b>Please only choose 4 Attributes.</b>"
+                }
+            }
+        }
+        display2()
+    }
+}
+
 def reportHandler() {
 	dynamicPage(name: "reportHandler", title: "", install:false, uninstall:false) {
         display()
         section() {
-            input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Combo-Activity-Battery"], required:true, submitOnChange:true
+            input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Activity with Attributes", "Combo-Activity-Battery"], required:true, submitOnChange:true
         }
 			
 		if(reportType == "Activity") {
@@ -299,6 +351,53 @@ def reportHandler() {
                         paragraph "<div style='font-size:${fontSize}px'>Activity Report<br>Nothing to report</div>"
                     }
                     paragraph "${state.activityMapGen}"
+                } else {
+                    paragraph "No devices have been selected for this option."
+                }
+            }
+		}
+
+        if(reportType == "Activity with Attributes") {
+            myActivityAttHandler()
+            pauseExecution(1000)
+            section() {
+                if(activityDevices) {
+                    activityAttMap1 = watchdogTileDevice.currentValue("watchdogActivityAtt1")
+                    activityAttMap2 = watchdogTileDevice.currentValue("watchdogActivityAtt2")
+                    activityAttMap3 = watchdogTileDevice.currentValue("watchdogActivityAtt3")
+
+                    activityAttCount1 = watchdogTileDevice.currentValue("watchdogActivityAttCount1")
+                    activityAttCount2 = watchdogTileDevice.currentValue("watchdogActivityAttCount2")
+                    activityAttCount3 = watchdogTileDevice.currentValue("watchdogActivityAttCount3")
+
+                    aa1 = activityAttCount1.toInteger()
+                    aa2 = activityAttCount2.toInteger()
+                    aa3 = activityAttCount3.toInteger()
+
+                    if(logEnable) log.debug "In reportHandler - aa1: ${aa1} - a2: ${aa2} - a3: ${aa3}"
+
+                    if(aa1 >= 67) {
+                        paragraph "${activityAttMap1}"
+                        if(aa1 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa1}</span>"
+                        if(aa1 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa1}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(aa2 >= 67) {
+                        paragraph "${activityAttMap2}"
+                        if(aa2 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa2}</span>"
+                        if(aa2 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa2}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(aa3 >= 67) {
+                        paragraph "${activityAttMap3}"
+                        if(aa3 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa3}</span>"
+                        if(aa3 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa3}</span>"
+                    }
+
+                    if(aa1 < 67 && aa2 < 67 && aa3 < 67) {
+                        paragraph "<div style='font-size:${fontSize}px'>Activity with Attributes Report<br>Nothing to report</div>"
+                    }
+                    paragraph "${state.activityAttMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
                 }
@@ -483,6 +582,7 @@ def activityHandler(evt) {
 	if(activityDevices) myActivityHandler()
 	if(batteryDevices) myBatteryHandler()
 	if(statusDevices) myStatusHandler()
+    if(activityAttDevices) myActivityAttHandler()
 			
 	if(isDataActivityDevice) isThereData()
 	if(isDataBatteryDevice) isThereData()
@@ -495,7 +595,7 @@ def myBatteryHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Battery) - - - - -     "
     if(logEnable) log.debug "In myBatteryHandler ${state.version}"
 	
-    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Report</b><td width=20%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=80%><b>Battery Report</b><td width=20%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -577,7 +677,7 @@ def myActivityHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Activity) - - - - -     "
     if(logEnable) log.debug "In myActivityHandler ${state.version}"
     
-    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Activity Report</b><td width=40%><b>Value</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=60%><b>Activity Report</b><td width=40%><b>Value</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -620,7 +720,7 @@ def myActivityHandler() {
                 tbl += "</table></div>"
                 if(logEnable) log.debug "${tbl}"
                 if(watchdogTileDevice) {
-                    if(logEnable) log.debug "In myActivityHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
+                    if(logEnable) log.debug "In myActivityHandler - Sending new Activity Watchdog data to Tiles (${tileCount})"
                     sending = "${tileCount}::${tbl}"
                     watchdogTileDevice.sendWatchdogActivityMap(sending)
                     tileCount = tileCount + 1
@@ -635,7 +735,7 @@ def myActivityHandler() {
         tbl += "</table></div>"
         if(logEnable) log.debug "${tbl}"
         if(watchdogTileDevice) {
-            if(logEnable) log.debug "In myActivityHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
+            if(logEnable) log.debug "In myActivityHandler - Sending new Activity Watchdog data to Tiles (${tileCount})"
             sending = "${tileCount}::${tbl}"
     	    watchdogTileDevice.sendWatchdogActivityMap(sending)
             tileCount = tileCount + 1
@@ -658,7 +758,7 @@ def myStatusHandler() {
 	if(logEnable) log.debug "     - - - - - Start (Status) - - - - -     "
     if(logEnable) log.debug "In myStatusHandler ${state.version}"
     
-    def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status Report</b><td width=35%><b>Last Activity</b>"
+    def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td width=45%><b>Device</b><td width=20%><b>Status Report</b><td width=35%><b>Last Activity</b>"
     def line = "" 
     def tbl = tblhead
     def tileCount = 1
@@ -901,6 +1001,98 @@ def myStatusHandler() {
 	activityMapPhone += "Report generated: ${rightNow} \n"
     state.statusMapPhoneS = statusMapPhone
 	if(logEnable) log.debug "     - - - - - End (Status) - - - - -     "
+}
+
+def myActivityAttHandler() {
+    if(useRefresh) refreshDevices(activityDevices)    // Refresh Devices before checking    
+	if(logEnable) log.debug "     - - - - - Start (Activity with Attributes) - - - - -     "
+    if(logEnable) log.debug "In myActivityAttributeHandler ${state.version}"
+    
+    String result1 = attOptions.join(",")
+    def theOptions = result1.split(",")               
+    int optionSize = theOptions.size()
+
+    if(optionSize >= 1) att1 = theOptions[0]
+    if(optionSize >= 2) att2 = theOptions[1]
+    if(optionSize >= 3) att3 = theOptions[2]
+    if(optionSize >= 4) att4 = theOptions[3]
+
+    if(optionSize == 1) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>Last Activity"
+
+    if(optionSize == 2) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>Last Activity"
+
+    if(optionSize == 3) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>Last Activity"
+    
+    if(optionSize == 4) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>${att4}<td>Last Activity"
+    
+    def line = "" 
+    def tbl = tblhead
+    def tileCount = 1
+	state.activityAttCount = 0
+	state.activityAttMapPhoneS = ""
+    activityAttMapPhone = "Activity with Attributes Report \n"
+    
+    theDevices = activityAttDevices.sort { a, b -> a.displayName <=> b.displayName }    
+    
+    theDevices.each { it ->
+        getTimeDiff(it)
+		if(state.since != null) {
+            if(att1) att1Value = it.currentValue("${att1}")
+            if(att2) att2Value = it.currentValue("${att2}")
+            if(att3) att3Value = it.currentValue("${att3}")
+            if(att4) att4Value = it.currentValue("${att4}")
+            
+            if(att1Value == null) att1Value = "-"
+            if(att2Value == null) att2Value = "-"
+            if(att3Value == null) att3Value = "-"
+            if(att4Value == null) att4Value = "-"
+            
+            if(optionSize == 1) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${state.theDuration}"
+            if(optionSize == 2) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${att2Value}<td>${state.theDuration}"
+            if(optionSize == 3) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${state.theDuration}"
+            if(optionSize == 4) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${state.theDuration}"
+            
+            activityAttMapPhone += "${it.displayName} - ${state.theDuration} \n"
+
+            totalLength = tbl.length() + line.length()
+            if(logEnable) log.debug "In myActivityAttributeHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+            if (totalLength < 1009) {
+                tbl += line
+            } else {
+                tbl += "</table></div>"
+                if(logEnable) log.debug "${tbl}"
+                if(watchdogTileDevice) {
+                    if(logEnable) log.debug "In myActivityAttributeHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
+                    sending = "${tileCount}::${tbl}"
+                    watchdogTileDevice.sendWatchdogActivityAttMap(sending)
+                    tileCount = tileCount + 1
+                }
+                tbl = tblhead + line 
+            }
+        }
+    }
+    
+    if (tbl != tblhead) {
+        tbl += "</table></div>"
+        if(logEnable) log.debug "${tbl}"
+        if(watchdogTileDevice) {
+            if(logEnable) log.debug "In myActivityAttributeHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
+            sending = "${tileCount}::${tbl}"
+    	    watchdogTileDevice.sendWatchdogActivityAttMap(sending)
+            tileCount = tileCount + 1
+        }
+    }
+    
+    for(x=tileCount;x<4;x++) {
+        sending = "${x}::<div style='font-size:${fontSize}px'>Activity Att Report - No Data</div>"
+        watchdogTileDevice.sendWatchdogActivityAttMap(sending)
+    }
+    
+    def rightNow = new Date()
+    state.activityAttMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
+	activityAttMapPhone += "Report generated: ${rightNow} \n"
+    state.activityAttMapPhoneS = activityAttMapPhone
+	if(logEnable) log.debug "     - - - - - End (Activity with Attributes) - - - - -     "
 }
 
 def refreshDevices(devices) {
