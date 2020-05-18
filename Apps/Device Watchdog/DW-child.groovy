@@ -34,7 +34,7 @@
  *
  *  Changes:
  *
- *  2.2.0 - 05/17/20 - 
+ *  2.2.0 - 05/17/20 - Fixed Battery Report, other adjustments
  *  2.1.9 - 05/17/20 - Added Activity with Attributes report
  *  2.1.8 - 05/14/20 - Added color coding to status reports
  *  2.1.7 - 05/12/20 - Touch up to reports
