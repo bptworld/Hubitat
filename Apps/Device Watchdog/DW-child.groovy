@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.2 - 05/18/20 - Added optional report time, added Time display options, added Last Activity display options
  *  2.2.1 - 05/18/20 - Added 'filters' to each report to lower character count
  *  2.2.0 - 05/17/20 - Fixed Battery Report, other adjustments
  *  2.1.9 - 05/17/20 - Added Activity with Attributes report
@@ -65,7 +66,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.1"
+	state.version = "2.2.2"
 }
 
 definition(
@@ -164,10 +165,13 @@ def pageConfig() {
             }
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Dashboard Table Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Report Options")) {
             paragraph "<b>Font Size:</b> Smaller number, smaller characters. So more data can fit on tile."
             
             input "fontSize", "number", title: "Font Size for Reports", required:false, defaultValue:12, submitOnChange:true
+            input "timeFormat", "bool", title: "Time Format - 12h=OFF - 24h=ON", description: "Time Format", defaultValue:false, submitOnChange:true
+            input "mmddyy", "bool", title: "Time Format - mm dd, yy=OFF - dd mm, yy=ON", description: "Time Format", defaultValue:false, submitOnChange:true
+            input "includeDate", "bool", title: "Include Timestamp on Report", description: "Timestamp", defaultValue:false, submitOnChange:true
 		}
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -200,7 +204,7 @@ def batteryConfig() {
 			}
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
-            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+            paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "bFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
             input "bFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
             
@@ -244,7 +248,10 @@ def activityConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
-            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+            paragraph "Last Activity can be displayed in two ways<br> - Time Since Last Activity: 0 D, 6 H, 49 M<br> - Actual Time Stamp of Last Activity: May 18, 2020 - 6:07 am"
+            input "laDisplay", "bool", title: "Time Since(OFF) or Time Stamp(ON)", description: "laDisplay", defaultValue:false, submitOnChange:true
+            
+            paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "aFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
             input "aFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
             
@@ -276,7 +283,7 @@ def statusConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
-            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+            paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "sFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
             input "sFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
             
@@ -304,7 +311,10 @@ def activityAttConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
-            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+            paragraph "Last Activity can be displayed in two ways<br> - Time Since Last Activity: 0 D, 6 H, 49 M<br> - Actual Time Stamp of Last Activity: May 18, 2020 - 6:07 am"
+            input "laDisplay", "bool", title: "Time Since(OFF) or Time Stamp(ON)", description: "laDisplay", defaultValue:false, submitOnChange:true
+            
+            paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
 			input "filter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
             input "filter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
             
@@ -630,109 +640,21 @@ def activityHandler(evt) {
     if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
 }	
 
-def myBatteryHandler() {
-    if(batteryDevices) {
-        if(logEnable) log.debug "     - - - - - Start (Battery) - - - - -     "
-        if(logEnable) log.debug "In myBatteryHandler ${state.version}"
-
-        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Battery Report</b><td><b>Level</b><td><b>Last Activity</b>"
-        def line = "" 
-        def tbl = tblhead
-        def tileCount = 1
-        state.batteryCount = 0
-        state.batteryMapPhoneS = ""
-        batteryMapPhone = "Battery Report \n"
-        data = false
-        theDevices = batteryDevices.sort { a, b -> a.displayName <=> b.displayName }
-
-        theDevices.each { it ->
-            def cv = it.currentValue("battery")
-            if(cv == null) cv = -999  //RayzurMod
-            if(cv <= batteryThreshold && cv > -999) { //RayzurMod
-                if(!batteryBadORgood) {
-                    if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv} less than ${batteryThreshold} threshold"
-                    data = true
-                }
-            } else {
-                if(batteryBadORgood && cv > -999) { //RayzurMod 
-                    if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv}, over ${batteryThreshold} threshold"
-                    data = true
-                } else {
-                    if (cv == -999) { //RayzurMod
-                        if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery hasn't reported in." //RayzurMod
-                        data = true
-                    }
-                }
-            }
-
-            if(data) {
-                state.batteryCount = state.batteryCount + 1
-                def lastActivity = it.getLastActivity()
-                if(lastActivity) {
-                    newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
-                } else {
-                    newDate = "No Data"
-                }
-
-                theName = it.displayName              
-                if(filter1) { theName = theName.replace("${bFilter1}", "") }
-                if(filter2) { theName = theName.replace("${bFilter2}", "") }
-                if(filter3) { theName = theName.replace("${bFilter3}", "") }
-                if(filter4) { theName = theName.replace("${bFilter4}", "") }
-                
-                line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
-                batteryMapPhone += "${theName} - ${cv} \n"
-
-                totalLength = tbl.length() + line.length()
-                if(logEnable) log.debug "In myBatteryHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-                if (totalLength < 1009) {
-                    tbl += line
-                } else {
-                    tbl += "</table></div>"
-                    if(logEnable) log.debug "${tbl}"
-                    if(watchdogTileDevice) {
-                        if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
-                        sending = "${tileCount}::${tbl}"
-                        watchdogTileDevice.sendWatchdogBatteryMap(sending)
-                        tileCount = tileCount + 1
-                    }
-                    tbl = tblhead + line 
-                }
-                data = false
-            }
-        }
-
-        if (tbl != tblhead) {
-            tbl += "</table></div>"
-            if(logEnable) log.debug "${tbl}"
-            if(watchdogTileDevice) {
-                if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
-                sending = "${tileCount}::${tbl}"
-                watchdogTileDevice.sendWatchdogBatteryMap(sending)
-                tileCount = tileCount + 1
-            }
-        }
-
-        for(x=tileCount;x<4;x++) {
-            sending = "${x}::<div style='font-size:${fontSize}px'>Battery Report - No Data</div>"
-            watchdogTileDevice.sendWatchdogBatteryMap(sending)
-        }
-
-        def rightNow = new Date()
-        state.batteryMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
-        batteryMapPhone += "Report generated: ${rightNow} \n"
-        state.batteryMapPhoneS = batteryMapPhone
-        if(logEnable) log.debug "     - - - - - End (Battery) - - - - -     "
-    }
-}
-
 def myActivityHandler() {
     if(activityDevices) {
         if(useRefresh) refreshDevices(activityDevices)    // Refresh Devices before checking    
         if(logEnable) log.debug "     - - - - - Start (Activity) - - - - -     "
         if(logEnable) log.debug "In myActivityHandler ${state.version}"
 
-        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Activity Report</b><td><b>Value</b>"
+        if(includeDate) { 
+            def rightNow = new Date()
+            dateFormatHandler(rightNow)
+            reportDateTime = " - ${newDate}"
+        } else {
+            reportDateTime = ""
+        }
+        
+        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Activity Report${reportDateTime}</b><td><b>Value</b>"
         def line = "" 
         def tbl = tblhead
         def tileCount = 1
@@ -764,18 +686,28 @@ def myActivityHandler() {
             } 
 
             if(data) {
+                if(!laDisplay) {
+                    getTimeDiff(it)
+                    lastAct = state.theDuration
+                } else {
+                    theDate = it.getLastActivity()
+                    dateFormatHandler(theDate)
+                    lastAct = newDate
+                }
+                
                 theName = it.displayName              
                 if(filter1) { theName = theName.replace("${aFilter1}", "") }
                 if(filter2) { theName = theName.replace("${aFilter2}", "") }
                 if(filter3) { theName = theName.replace("${aFilter3}", "") }
                 if(filter4) { theName = theName.replace("${aFilter4}", "") }
                 
-                line = "<tr><td>${theName}<td>${state.theDuration}"
-                activityMapPhone += "${thename} - ${state.theDuration} \n"
+                line = "<tr><td>${theName}<td>${lastAct}"
+                activityMapPhone += "${thename} - ${lastAct} \n"
 
                 totalLength = tbl.length() + line.length()
                 if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-                if (totalLength < 1009) {
+
+                if (totalLength < 1007) {
                     tbl += line
                 } else {
                     tbl += "</table></div>"
@@ -809,10 +741,118 @@ def myActivityHandler() {
         }
 
         def rightNow = new Date()
-        state.activityMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
-        activityMapPhone += "Report generated: ${rightNow} \n"
+        dateFormatHandler(rightNow)
+        state.activityMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
+        activityMapPhone += "Report generated: ${newDate} \n"
         state.activityMapPhoneS = activityMapPhone
         if(logEnable) log.debug "     - - - - - End (Activity) - - - - -     "
+    }
+}
+
+def myBatteryHandler() {
+    if(batteryDevices) {
+        if(logEnable) log.debug "     - - - - - Start (Battery) - - - - -     "
+        if(logEnable) log.debug "In myBatteryHandler ${state.version}"
+
+        if(includeDate) { 
+            def rightNow = new Date()
+            dateFormatHandler(rightNow)
+            reportDateTime = " - ${newDate}"
+        } else {
+            reportDateTime = ""
+        }
+        
+        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Battery Report${reportDateTime}</b><td><b>Level</b><td><b>Last Activity</b>"
+        def line = "" 
+        def tbl = tblhead
+        def tileCount = 1
+        state.batteryCount = 0
+        state.batteryMapPhoneS = ""
+        batteryMapPhone = "Battery Report \n"
+        data = false
+        theDevices = batteryDevices.sort { a, b -> a.displayName <=> b.displayName }
+
+        theDevices.each { it ->
+            def cv = it.currentValue("battery")
+            if(cv == null) cv = -999  //RayzurMod
+            if(cv <= batteryThreshold && cv > -999) { //RayzurMod
+                if(!batteryBadORgood) {
+                    if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv} less than ${batteryThreshold} threshold"
+                    data = true
+                }
+            } else {
+                if(batteryBadORgood && cv > -999) { //RayzurMod 
+                    if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv}, over ${batteryThreshold} threshold"
+                    data = true
+                } else {
+                    if (cv == -999) { //RayzurMod
+                        if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery hasn't reported in." //RayzurMod
+                        data = true
+                    }
+                }
+            }
+
+            if(data) {
+                state.batteryCount = state.batteryCount + 1
+                def lastActivity = it.getLastActivity()
+                if(lastActivity) {
+                    dateFormatHandler(lastActivity)
+                    // Handler Returns newDate
+                } else {
+                    newDate = "No Data"
+                }
+
+                theName = it.displayName              
+                if(filter1) { theName = theName.replace("${bFilter1}", "") }
+                if(filter2) { theName = theName.replace("${bFilter2}", "") }
+                if(filter3) { theName = theName.replace("${bFilter3}", "") }
+                if(filter4) { theName = theName.replace("${bFilter4}", "") }
+                
+                line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
+                batteryMapPhone += "${theName} - ${cv} - ${newDate}\n"
+
+                totalLength = tbl.length() + line.length()
+                if(logEnable) log.debug "In myBatteryHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+                
+                if (totalLength < 1007) {
+                    tbl += line
+                } else {
+                    tbl += "</table></div>"
+                    if(logEnable) log.debug "${tbl}"
+                    if(watchdogTileDevice) {
+                        if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
+                        sending = "${tileCount}::${tbl}"
+                        watchdogTileDevice.sendWatchdogBatteryMap(sending)
+                        tileCount = tileCount + 1
+                    }
+                    tbl = tblhead + line 
+                }
+                data = false
+            }
+        }
+
+        if (tbl != tblhead) {
+            tbl += "</table></div>"
+            if(logEnable) log.debug "${tbl}"
+            if(watchdogTileDevice) {
+                if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
+                sending = "${tileCount}::${tbl}"
+                watchdogTileDevice.sendWatchdogBatteryMap(sending)
+                tileCount = tileCount + 1
+            }
+        }
+
+        for(x=tileCount;x<4;x++) {
+            sending = "${x}::<div style='font-size:${fontSize}px'>Battery Report - No Data</div>"
+            watchdogTileDevice.sendWatchdogBatteryMap(sending)
+        }
+
+        def rightNow = new Date()
+        dateFormatHandler(rightNow)
+        state.batteryMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
+        batteryMapPhone += "Report generated: ${newDate} \n"
+        state.batteryMapPhoneS = batteryMapPhone
+        if(logEnable) log.debug "     - - - - - End (Battery) - - - - -     "
     }
 }
 
@@ -821,7 +861,15 @@ def myStatusHandler() {
         if(logEnable) log.debug "     - - - - - Start (Status) - - - - -     "
         if(logEnable) log.debug "In myStatusHandler ${state.version}"
 
-        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Device</b><td><b>Status Report</b><td><b>Last Activity</b>"
+        if(includeDate) { 
+            def rightNow = new Date()
+            dateFormatHandler(rightNow)
+            reportDateTime = " - ${newDate}"
+        } else {
+            reportDateTime = ""
+        }
+        
+        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Status Report${reportDateTime}</b><td><b>Value</b><td><b>Last Activity</b>"
         def line = "" 
         def tbl = tblhead
         def tileCount = 1
@@ -1014,7 +1062,8 @@ def myStatusHandler() {
 
             def lastActivity = it.getLastActivity()
             if(lastActivity) {
-                newDate = lastActivity.format( 'EEE, MMM d,yyy - h:mm:ss a' )
+                dateFormatHandler(lastActivity)
+                // Handler Returns newDate
             } else {
                 newDate = "No Data"
             }
@@ -1035,7 +1084,8 @@ def myStatusHandler() {
 
             totalLength = tbl.length() + line.length()
             if(logEnable) log.debug "In myStatusHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-            if (totalLength < 1009) {
+            
+            if (totalLength < 1007) {
                 tbl += line
             } else {
                 tbl += "</table></div>"
@@ -1067,8 +1117,9 @@ def myStatusHandler() {
         }
 
         def rightNow = new Date()
-        state.statusMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
-        activityMapPhone += "Report generated: ${rightNow} \n"
+        dateFormatHandler(rightNow)
+        state.statusMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
+        activityMapPhone += "Report generated: ${newDate} \n"
         state.statusMapPhoneS = statusMapPhone
         if(logEnable) log.debug "     - - - - - End (Status) - - - - -     "
     }
@@ -1084,18 +1135,26 @@ def myActivityAttHandler() {
         def theOptions = result1.split(",")               
         int optionSize = theOptions.size()
 
+        if(includeDate) { 
+            def rightNow = new Date()
+            dateFormatHandler(rightNow)
+            reportDateTime = " - ${newDate}"
+        } else {
+            reportDateTime = ""
+        }
+        
         if(optionSize >= 1) att1 = theOptions[0]
         if(optionSize >= 2) att2 = theOptions[1]
         if(optionSize >= 3) att3 = theOptions[2]
         if(optionSize >= 4) att4 = theOptions[3]
 
-        if(optionSize == 1) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>Last Activity"
+        if(optionSize == 1) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report${reportDateTime}<td>${att1.capitalize()}<td>Last Activity"
 
-        if(optionSize == 2) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>Last Activity"
+        if(optionSize == 2) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report${reportDateTime}<td>${att1.capitalize()}<td>${att2.capitalize()}<td>Last Activity"
 
-        if(optionSize == 3) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>Last Activity"
+        if(optionSize == 3) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report${reportDateTime}<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>Last Activity"
 
-        if(optionSize == 4) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>${att4.capitalize()}<td>Last Activity"
+        if(optionSize == 4) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report${reportDateTime}<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>${att4.capitalize()}<td>Last Activity"
 
         def line = "" 
         def tbl = tblhead
@@ -1107,7 +1166,15 @@ def myActivityAttHandler() {
         theDevices = activityAttDevices.sort { a, b -> a.displayName <=> b.displayName }    
 
         theDevices.each { it ->
-            getTimeDiff(it)
+            if(!laDisplay) {
+                getTimeDiff(it)
+                lastAct = state.theDuration
+            } else {
+                theDate = it.getLastActivity()
+                dateFormatHandler(theDate)
+                lastAct = newDate
+            }
+            
             if(state.since != null) {
                 if(att1) att1Value = it.currentValue("${att1}")
                 if(att2) att2Value = it.currentValue("${att2}")
@@ -1125,16 +1192,17 @@ def myActivityAttHandler() {
                 if(filter3) { theName = theName.replace("${filter3}", "") }
                 if(filter4) { theName = theName.replace("${filter4}", "") }
 
-                if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}<td>${state.theDuration}"
-                if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${state.theDuration}"
-                if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${state.theDuration}"
-                if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${state.theDuration}"
+                if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}<td>${lastAct}"
+                if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${lastAct}"
+                if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${lastAct}"
+                if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${lastAct}"
 
-                activityAttMapPhone += "${it.displayName} - ${state.theDuration} \n"
+                activityAttMapPhone += "${it.displayName} - ${lastAct} \n"
 
                 totalLength = tbl.length() + line.length()
                 if(logEnable) log.debug "In myActivityAttributeHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-                if (totalLength < 1009) {
+                
+                if (totalLength < 1007) {
                     tbl += line
                 } else {
                     tbl += "</table></div>"
@@ -1167,8 +1235,9 @@ def myActivityAttHandler() {
         }
 
         def rightNow = new Date()
-        state.activityAttMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${rightNow}</table>"
-        activityAttMapPhone += "Report generated: ${rightNow} \n"
+        dateFormatHandler(rightNow)
+        state.activityAttMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
+        activityAttMapPhone += "Report generated: ${newDate} \n"
         state.activityAttMapPhoneS = activityAttMapPhone
         if(logEnable) log.debug "     - - - - - End (Activity with Attributes) - - - - -     "
     }
@@ -1335,6 +1404,13 @@ def createDataChildDevice() {
     return statusMessageD
 }
 
+def dateFormatHandler(theDate) {
+    if(!timeFormat && !mmddyy) { newDate = theDate.format( 'MMM d, yyy - h:mm: a' ) }
+    if(timeFormat && !mmddyy) { newDate = theDate.format( 'MMM d, yyy - HH:mm' ) }
+    if(!timeFormat && mmddyy) { newDate = theDate.format( 'd MMM, yyy - h:mm: a' ) }
+    if(timeFormat && mmddyy) { newDate = theDate.format( 'd MMM, yyy - HH:mm' ) }
+    return newDate
+}
 // ********** Normal Stuff **********
 
 def setDefaults(){
