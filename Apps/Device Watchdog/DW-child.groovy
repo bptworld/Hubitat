@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.1 - 05/18/20 - Added 'filters' to each report to lower character count
  *  2.2.0 - 05/17/20 - Fixed Battery Report, other adjustments
  *  2.1.9 - 05/17/20 - Added Activity with Attributes report
  *  2.1.8 - 05/14/20 - Added color coding to status reports
@@ -64,7 +65,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.0"
+	state.version = "2.2.1"
 }
 
 definition(
@@ -198,6 +199,14 @@ def batteryConfig() {
 				paragraph "App will only display Devices BELOW Threshold."
 			}
         }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
+            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+			input "bFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
+            input "bFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
+            
+            input "bFilter3", "text", title: "Filter 3", required:false, submitOnChange:true, width:6
+            input "bFilter4", "text", title: "Filter 4", required:false, submitOnChange:true, width:6
+        }
         display2()
     }
 }
@@ -233,6 +242,15 @@ def activityConfig() {
 				paragraph "App will only display INACTIVE Devices."
             }
         }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
+            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+			input "aFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
+            input "aFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
+            
+            input "aFilter3", "text", title: "Filter 3", required:false, submitOnChange:true, width:6
+            input "aFilter4", "text", title: "Filter 4", required:false, submitOnChange:true, width:6
+        }
         display2()
     }
 }
@@ -256,6 +274,15 @@ def statusConfig() {
 				paragraph "Color Code Status will not be color coded."
             }
         }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
+            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+			input "sFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
+            input "sFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
+            
+            input "sFilter3", "text", title: "Filter 3", required:false, submitOnChange:true, width:6
+            input "sFilter4", "text", title: "Filter 4", required:false, submitOnChange:true, width:6
+        }
         display2()
     }
 }
@@ -274,7 +301,18 @@ def activityAttConfig() {
                 allAttrs = activityAttDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }                
                 input "attOptions", "enum", title: "Attributes to display (up to 4)", options: allAttrs, required:true, multiple:true, submitOnChange:true
             }
-
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
+            paragraph "To save characters, enter in a filter to remove from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+			input "filter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
+            input "filter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
+            
+            input "filter3", "text", title: "Filter 3", required:false, submitOnChange:true, width:6
+            input "filter4", "text", title: "Filter 4", required:false, submitOnChange:true, width:6
+        }
+        
+        section() {
             if(attOptions) {               
                 String result1 = attOptions.join(",")
                 def theOptions = result1.split(",")               
@@ -286,13 +324,13 @@ def activityAttConfig() {
                     if(optionSize >= 3) att3 = theOptions[2]
                     if(optionSize >= 4) att4 = theOptions[3]
 
-                    if(optionSize == 1) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>Last Activity</table>"
+                    if(optionSize == 1) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>Last Activity</table>"
 
-                    if(optionSize == 2) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>Last Activity</table>"
+                    if(optionSize == 2) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>Last Activity</table>"
 
-                    if(optionSize == 3) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>Last Activity</table>"
+                    if(optionSize == 3) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>Last Activity</table>"
 
-                    if(optionSize == 4) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>${att4}<td>Last Activity</table>"
+                    if(optionSize == 4) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>${att4.capitalize()}<td>Last Activity</table>"
 
                     paragraph "<b>Example Report:</b><br><br>${exDisplay}"
                 } else {
@@ -636,8 +674,14 @@ def myBatteryHandler() {
                     newDate = "No Data"
                 }
 
-                line = "<tr><td>${it.displayName}<td>${cv}<td>${newDate}"
-                batteryMapPhone += "${it.displayName} - ${cv} \n"
+                theName = it.displayName              
+                if(filter1) { theName = theName.replace("${bFilter1}", "") }
+                if(filter2) { theName = theName.replace("${bFilter2}", "") }
+                if(filter3) { theName = theName.replace("${bFilter3}", "") }
+                if(filter4) { theName = theName.replace("${bFilter4}", "") }
+                
+                line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
+                batteryMapPhone += "${theName} - ${cv} \n"
 
                 totalLength = tbl.length() + line.length()
                 if(logEnable) log.debug "In myBatteryHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
@@ -720,8 +764,14 @@ def myActivityHandler() {
             } 
 
             if(data) {
-                line = "<tr><td>${it.displayName}<td>${state.theDuration}"
-                activityMapPhone += "${it.displayName} - ${state.theDuration} \n"
+                theName = it.displayName              
+                if(filter1) { theName = theName.replace("${aFilter1}", "") }
+                if(filter2) { theName = theName.replace("${aFilter2}", "") }
+                if(filter3) { theName = theName.replace("${aFilter3}", "") }
+                if(filter4) { theName = theName.replace("${aFilter4}", "") }
+                
+                line = "<tr><td>${theName}<td>${state.theDuration}"
+                activityMapPhone += "${thename} - ${state.theDuration} \n"
 
                 totalLength = tbl.length() + line.length()
                 if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
@@ -972,8 +1022,15 @@ def myStatusHandler() {
             if(logEnable) log.debug "In myStatusHandler - device: ${it.displayName} - myStatus: ${dStatus} - last checked: ${newDate}"
 
             state.statusCount = state.statusCount + 1
-            line = "<tr><td>${it.displayName}<td>${dStatus}<td>${newDate}"
-            statusMapPhone += "${it.displayName} \n"
+            
+            theName = it.displayName              
+            if(filter1) { theName = theName.replace("${sFilter1}", "") }
+            if(filter2) { theName = theName.replace("${sFilter2}", "") }
+            if(filter3) { theName = theName.replace("${sFilter3}", "") }
+            if(filter4) { theName = theName.replace("${sFilter4}", "") }
+
+            line = "<tr><td>${theName}<td>${dStatus}<td>${newDate}"
+            statusMapPhone += "${theName} \n"
             statusMapPhone += "${dStatus} - ${newDate} \n"
 
             totalLength = tbl.length() + line.length()
@@ -1032,13 +1089,13 @@ def myActivityAttHandler() {
         if(optionSize >= 3) att3 = theOptions[2]
         if(optionSize >= 4) att4 = theOptions[3]
 
-        if(optionSize == 1) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>Last Activity"
+        if(optionSize == 1) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>Last Activity"
 
-        if(optionSize == 2) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>Last Activity"
+        if(optionSize == 2) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>Last Activity"
 
-        if(optionSize == 3) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>Last Activity"
+        if(optionSize == 3) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>Last Activity"
 
-        if(optionSize == 4) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1}<td>${att2}<td>${att3}<td>${att4}<td>Last Activity"
+        if(optionSize == 4) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Activity with Attributes Report<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>${att4.capitalize()}<td>Last Activity"
 
         def line = "" 
         def tbl = tblhead
@@ -1061,11 +1118,17 @@ def myActivityAttHandler() {
                 if(att2Value == null) att2Value = "-"
                 if(att3Value == null) att3Value = "-"
                 if(att4Value == null) att4Value = "-"
+                
+                theName = it.displayName              
+                if(filter1) { theName = theName.replace("${filter1}", "") }
+                if(filter2) { theName = theName.replace("${filter2}", "") }
+                if(filter3) { theName = theName.replace("${filter3}", "") }
+                if(filter4) { theName = theName.replace("${filter4}", "") }
 
-                if(optionSize == 1) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${state.theDuration}"
-                if(optionSize == 2) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${att2Value}<td>${state.theDuration}"
-                if(optionSize == 3) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${state.theDuration}"
-                if(optionSize == 4) line = "<tr><td>${it.displayName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${state.theDuration}"
+                if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}<td>${state.theDuration}"
+                if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${state.theDuration}"
+                if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${state.theDuration}"
+                if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${state.theDuration}"
 
                 activityAttMapPhone += "${it.displayName} - ${state.theDuration} \n"
 
