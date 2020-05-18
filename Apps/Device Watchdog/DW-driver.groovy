@@ -37,14 +37,15 @@
  *
  *  Changes:
  *
- *  V1.0.7 - 05/09/20 - Changes to match new app
- *  V1.0.6 - 11/26/19 - Minor changes
- *  V1.0.5 - 08/29/19 - App Watchdog compatible
- *  V1.0.4 - 04/16/19 - Cleanup Code, added importURL
- *  V1.0.3 - 03/31/19 - Added support for Status tiles
- *  V1.0.2 - 03/18/19 - Added support for mutiple tiles
- *  V1.0.1 - 02/25/19 - Added Device Status attribute
- *  V1.0.0 - 01/28/19 - Initial release
+ *  1.0.8 - 05/17/20 - Changes to add Activity with Attributes
+ *  1.0.7 - 05/09/20 - Changes to match new app
+ *  1.0.6 - 11/26/19 - Minor changes
+ *  1.0.5 - 08/29/19 - App Watchdog compatible
+ *  1.0.4 - 04/16/19 - Cleanup Code, added importURL
+ *  1.0.3 - 03/31/19 - Added support for Status tiles
+ *  1.0.2 - 03/18/19 - Added support for mutiple tiles
+ *  1.0.1 - 02/25/19 - Added Device Status attribute
+ *  1.0.0 - 01/28/19 - Initial release
  */
 
 metadata {
@@ -52,7 +53,8 @@ metadata {
    		capability "Actuator"
         
         command "clearStates"
-		command "sendWatchdogActivityMap", ["string"]	
+		command "sendWatchdogActivityMap", ["string"]
+        command "sendWatchdogActivityAttMap", ["string"]
         command "sendWatchdogBatteryMap", ["string"]	
 		command "sendWatchdogStatusMap", ["string"]
         command "sendWatchdogComboActBatMap", ["string"]
@@ -60,6 +62,10 @@ metadata {
     	attribute "watchdogActivity1", "string"
 		attribute "watchdogActivity2", "string"
 		attribute "watchdogActivity3", "string"
+        
+        attribute "watchdogActivityAtt1", "string"
+		attribute "watchdogActivityAtt2", "string"
+		attribute "watchdogActivityAtt3", "string"
 		
 		attribute "watchdogBattery1", "string"
 		attribute "watchdogBattery2", "string"
@@ -74,6 +80,10 @@ metadata {
         attribute "watchdogActivityCount1", "string"
 		attribute "watchdogActivityCount2", "string"
 		attribute "watchdogActivityCount3", "string"
+        
+        attribute "watchdogActivityAttCount1", "string"
+		attribute "watchdogActivityAttCount2", "string"
+		attribute "watchdogActivityAttCount3", "string"
 		
 		attribute "watchdogBatteryCount1", "string"
 		attribute "watchdogBatteryCount2", "string"
@@ -116,6 +126,29 @@ def sendWatchdogActivityMap(activityMap) {
     if(whichMap == "3") {
 	    sendEvent(name: "watchdogActivity3", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityCount3", value: activityDeviceCount, displayed: true)
+    }
+}
+
+def sendWatchdogActivityAttMap(activityAttMap) {
+    if(logEnable) log.debug "In Device Watchdog Tile - Received new Activity with Attributes data!"
+    def (whichMap, theData) = activityAttMap.split('::')
+	activityAttDeviceCount = activityAttMap.length()
+	if(activityAttDeviceCount <= 1024) {
+		if(logEnable) log.debug "activityAttDevice - has ${activityAttDeviceCount} Characters"
+	} else {
+		theData = "Too many characters to display on Dashboard (${activityAttDeviceCount})"
+	}
+    if(whichMap == "1") {
+	    sendEvent(name: "watchdogActivityAtt1", value: theData, displayed: true)
+        sendEvent(name: "watchdogActivityAttCount1", value: activityAttDeviceCount, displayed: true)
+    }
+    if(whichMap == "2") {
+	    sendEvent(name: "watchdogActivityAtt2", value: theData, displayed: true)
+        sendEvent(name: "watchdogActivityAttCount2", value: activityAttDeviceCount, displayed: true)
+    }
+    if(whichMap == "3") {
+	    sendEvent(name: "watchdogActivityAtt3", value: theData, displayed: true)
+        sendEvent(name: "watchdogActivityAttCount3", value: activityAttDeviceCount, displayed: true)
     }
 }
 
