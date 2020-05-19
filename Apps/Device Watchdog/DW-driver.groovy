@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 05/19/20 - Changes to add Special Tracking
  *  1.0.8 - 05/17/20 - Changes to add Activity with Attributes
  *  1.0.7 - 05/09/20 - Changes to match new app
  *  1.0.6 - 11/26/19 - Minor changes
@@ -58,6 +59,7 @@ metadata {
         command "sendWatchdogBatteryMap", ["string"]	
 		command "sendWatchdogStatusMap", ["string"]
         command "sendWatchdogComboActBatMap", ["string"]
+        command "sendWatchdogSpecialMap", ["string"]
 		
     	attribute "watchdogActivity1", "string"
 		attribute "watchdogActivity2", "string"
@@ -77,6 +79,11 @@ metadata {
         
         attribute "watchdogComboActBat", "string"
         
+        attribute "watchdogSpecial1", "string"
+		attribute "watchdogSpecial2", "string"
+		attribute "watchdogSpecial3", "string"
+        
+        
         attribute "watchdogActivityCount1", "string"
 		attribute "watchdogActivityCount2", "string"
 		attribute "watchdogActivityCount3", "string"
@@ -94,6 +101,10 @@ metadata {
 		attribute "watchdogStatusCount3", "string"
         
         attribute "watchdogComboActBatCount", "string"
+        
+        attribute "watchdogSpecialCount1", "string"
+		attribute "watchdogSpecialCount2", "string"
+		attribute "watchdogSpecialCount3", "string"
 	}
 	preferences() {    	
         section(""){
@@ -210,5 +221,28 @@ def sendWatchdogComboActBatMap(comboMap) {
     if(whichMap == "1") {
 	    sendEvent(name: "watchdogComboActBat", value: theData, displayed: true)
         sendEvent(name: "watchdogComboActBatCount", value: comboDeviceCount, displayed: true)
+    }
+}
+
+def sendWatchdogSpecialMap(specialMap) {
+    if(logEnable) log.debug "In Device Watchdog Tile - Received new Special data!"
+    def (whichMap, theData) = specialMap.split('::')
+	specialDeviceCount = specialMap.length()
+	if(specialDeviceCount <= 1024) {
+		if(logEnable) log.debug "specialDevice - has ${specialDeviceCount} Characters"
+	} else {
+		theData = "Too many characters to display on Dashboard (${specialDeviceCount})"
+	}
+    if(whichMap == "1") {
+	    sendEvent(name: "watchdogSpecial1", value: theData, displayed: true)
+        sendEvent(name: "watchdogSpecialCount1", value: specialDeviceCount, displayed: true)
+    }
+    if(whichMap == "2") {
+	    sendEvent(name: "watchdogSpecial2", value: theData, displayed: true)
+        sendEvent(name: "watchdogSpecialCount2", value: specialDeviceCount, displayed: true)
+    }
+    if(whichMap == "3") {
+	    sendEvent(name: "watchdogSpecial3", value: theData, displayed: true)
+        sendEvent(name: "watchdogSpecialCount3", value: specialDeviceCount, displayed: true)
     }
 }
