@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.3 - 05/19/20 - Track devices without 'lastActivity' data
  *  2.2.2 - 05/18/20 - Added optional report time, added Time display options, added Last Activity display options
  *  2.2.1 - 05/18/20 - Added 'filters' to each report to lower character count
  *  2.2.0 - 05/17/20 - Fixed Battery Report, other adjustments
@@ -66,7 +67,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.2"
+	state.version = "2.2.3"
 }
 
 definition(
@@ -89,6 +90,7 @@ preferences {
     page name: "activityConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
     page name: "statusConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
     page name: "activityAttConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
+    page name: "specialTrackingConfig", title: "", install: false, uninstall: false, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -145,9 +147,15 @@ def pageConfig() {
             }
             
             if(activityAttDevices) {
-                href "activityAttConfig", title:"${getImage("optionsGreen")} Activity Report with Attributes Options", description:"Click here for Options"
+                href "activityAttConfig", title:"${getImage("optionsGreen")} Activity Report with Attributes Report Options", description:"Click here for Options"
             } else {
-                href "activityAttConfig", title:"${getImage("optionsRed")} Activity Report with Attributes Options", description:"Click here for Options"
+                href "activityAttConfig", title:"${getImage("optionsRed")} Activity Report with Attributes Report Options", description:"Click here for Options"
+            }
+            
+            if(specialDevices1) {
+                href "specialTrackingConfig", title:"${getImage("optionsGreen")} Special Tracking Report Options", description:"Track devices that don't report 'Last Activity' or 'Battery Level'"
+            } else {
+                href "specialTrackingConfig", title:"${getImage("optionsRed")} Special Tracking Report Options", description:"Track devices that don't report 'Last Activity' or 'Battery Level'"
             }
         }
 
@@ -305,8 +313,9 @@ def activityAttConfig() {
             
             if(activityAttDevices) {
                 allAttrs = []
-                allAttrs = activityAttDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }                
-                input "attOptions", "enum", title: "Attributes to display (up to 4)", options: allAttrs, required:true, multiple:true, submitOnChange:true
+                allAttrs = activityAttDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                allAttrsa = allAttrs.sort { a, b -> a.value <=> b.value }
+                input "attOptions", "enum", title: "Attributes to display (up to 4)", options: allAttrsa, required:true, multiple:true, submitOnChange:true
             }
         }
         
@@ -352,11 +361,86 @@ def activityAttConfig() {
     }
 }
 
+def specialTrackingConfig() {
+	dynamicPage(name: "specialTrackingConfig", title: "", install:false, uninstall:false) {
+        display()
+        section() {
+            paragraph "<b>Select the Special Tracking Options</b>"
+        }
+		section(getFormat("header-green", "${getImage("Blank")}"+" Select devices")) {
+            paragraph "If the device(s) have a attribute that displays true or false, select them here.<br><small>ie. Low_Battery: true</small>"
+			input "specialDevices1", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+            
+            if(specialDevices1) {
+                allAttrs1 = []
+                allAttrs1 = specialDevices1.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
+                input "specialOptions1", "enum", title: "Attributes to track (max=4)", options: allAttrs1a, required:true, multiple:true, submitOnChange:true
+            }
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Attribute Triggers")) {
+            paragraph "For each attribute selected, a trigger value will need to entered. When a report is created and the device is found to be displaying this value, it will add the device to the report and notify you that there may be an issue. Just like a when a battery is below a set level."
+
+            if(specialOptions1) {
+                String result1 = specialOptions1.join(",")
+                def theOptions = result1.split(",")               
+                int optionSize = theOptions.size()
+
+                if(optionSize < 5) {
+                    if(optionSize >= 1) stAtt1 = theOptions[0]
+                    if(optionSize >= 2) stAtt2 = theOptions[1]
+                    if(optionSize >= 3) stAtt3 = theOptions[2]
+                    if(optionSize >= 4) stAtt4 = theOptions[3]
+                } else {
+                    paragraph "<b>Please only choose 4 Attributes.</b>"
+                }
+
+                if(stAtt1) input "stAttTValue1", "text", title: "Trigger Value for attribute - ${stAtt1.capitalize()}", submitOnChange:true
+                if(stAtt2) input "stAttTValue2", "text", title: "Trigger Value for attribute - ${stAtt2.capitalize()}", submitOnChange:true
+                if(stAtt3) input "stAttTValue3", "text", title: "Trigger Value for attribute - ${stAtt3.capitalize()}", submitOnChange:true
+                if(stAtt4) input "stAttTValue4", "text", title: "Trigger Value for attribute - ${stAtt4.capitalize()}", submitOnChange:true
+
+            } 
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Filter Options")) {
+            paragraph "To save characters, enter in a filter to remove characters from each device name. Must be exact, including case.<br><small>ie. 'Motion Sensor', 'Bedroom', 'Contact'</small>"
+			input "stFilter1", "text", title: "Filter 1", required:false, submitOnChange:true, width:6
+            input "stFilter2", "text", title: "Filter 2", required:false, submitOnChange:true, width:6
+            
+            input "stFilter3", "text", title: "Filter 3", required:false, submitOnChange:true, width:6
+            input "stFilter4", "text", title: "Filter 4", required:false, submitOnChange:true, width:6
+        }
+        
+        section() {
+            if(specialOptions1) {
+                String result1 = specialOptions1.join(",")
+                def theOptions = result1.split(",")               
+                int optionSize = theOptions.size()
+             
+                if(optionSize == 1) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report<td>${stAtt1.capitalize()}</table>"
+
+                if(optionSize == 2) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report<td>${stAtt1.capitalize()}<td>${stAtt2.capitalize()}</table>"
+
+                if(optionSize == 3) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report<td>${stAtt1.capitalize()}<td>${stAtt2.capitalize()}<td>${stAtt3.capitalize()}</table>"
+
+                if(optionSize == 4) exDisplay = "<table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report<td>${stAtt1.capitalize()}<td>${stAtt2.capitalize()}<td>${stAtt3.capitalize()}<td>${stAtt4.capitalize()}</table>"
+
+                paragraph "<b>Example Report:</b><br><br>${exDisplay}"
+            } else {
+                paragraph "<b>Please only choose 4 Attributes.</b>"
+            }
+        }
+        display2()
+    }
+}
+
 def reportHandler() {
 	dynamicPage(name: "reportHandler", title: "", install:false, uninstall:false) {
         display()
         section() {
-            input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Activity with Attributes", "Combo-Activity-Battery"], required:true, submitOnChange:true
+            input "reportType", "enum", title: "Select Report Type", options: ["Activity", "Battery", "Status", "Activity with Attributes", "Special Tracking", "Combo-Activity-Battery"], required:true, submitOnChange:true
         }
 			
 		if(reportType == "Activity") {
@@ -400,53 +484,6 @@ def reportHandler() {
                         paragraph "<div style='font-size:${fontSize}px'>Activity Report<br>Nothing to report</div>"
                     }
                     paragraph "${state.activityMapGen}"
-                } else {
-                    paragraph "No devices have been selected for this option."
-                }
-            }
-		}
-
-        if(reportType == "Activity with Attributes") {
-            myActivityAttHandler()
-            pauseExecution(1000)
-            section() {
-                if(activityDevices) {
-                    activityAttMap1 = watchdogTileDevice.currentValue("watchdogActivityAtt1")
-                    activityAttMap2 = watchdogTileDevice.currentValue("watchdogActivityAtt2")
-                    activityAttMap3 = watchdogTileDevice.currentValue("watchdogActivityAtt3")
-
-                    activityAttCount1 = watchdogTileDevice.currentValue("watchdogActivityAttCount1")
-                    activityAttCount2 = watchdogTileDevice.currentValue("watchdogActivityAttCount2")
-                    activityAttCount3 = watchdogTileDevice.currentValue("watchdogActivityAttCount3")
-
-                    aa1 = activityAttCount1.toInteger()
-                    aa2 = activityAttCount2.toInteger()
-                    aa3 = activityAttCount3.toInteger()
-
-                    if(logEnable) log.debug "In reportHandler - aa1: ${aa1} - a2: ${aa2} - a3: ${aa3}"
-
-                    if(aa1 >= 67) {
-                        paragraph "${activityAttMap1}"
-                        if(aa1 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa1}</span>"
-                        if(aa1 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa1}</span>"
-                        paragraph "<hr>"
-                    }
-                    if(aa2 >= 67) {
-                        paragraph "${activityAttMap2}"
-                        if(aa2 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa2}</span>"
-                        if(aa2 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa2}</span>"
-                        paragraph "<hr>"
-                    }
-                    if(aa3 >= 67) {
-                        paragraph "${activityAttMap3}"
-                        if(aa3 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa3}</span>"
-                        if(aa3 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa3}</span>"
-                    }
-
-                    if(aa1 < 67 && aa2 < 67 && aa3 < 67) {
-                        paragraph "<div style='font-size:${fontSize}px'>Activity with Attributes Report<br>Nothing to report</div>"
-                    }
-                    paragraph "${state.activityAttMapGen}"
                 } else {
                     paragraph "No devices have been selected for this option."
                 }
@@ -547,6 +584,100 @@ def reportHandler() {
 			}
         }
         
+        if(reportType == "Activity with Attributes") {
+            myActivityAttHandler()
+            pauseExecution(1000)
+            section() {
+                if(activityDevices) {
+                    activityAttMap1 = watchdogTileDevice.currentValue("watchdogActivityAtt1")
+                    activityAttMap2 = watchdogTileDevice.currentValue("watchdogActivityAtt2")
+                    activityAttMap3 = watchdogTileDevice.currentValue("watchdogActivityAtt3")
+
+                    activityAttCount1 = watchdogTileDevice.currentValue("watchdogActivityAttCount1")
+                    activityAttCount2 = watchdogTileDevice.currentValue("watchdogActivityAttCount2")
+                    activityAttCount3 = watchdogTileDevice.currentValue("watchdogActivityAttCount3")
+
+                    aa1 = activityAttCount1.toInteger()
+                    aa2 = activityAttCount2.toInteger()
+                    aa3 = activityAttCount3.toInteger()
+
+                    if(logEnable) log.debug "In reportHandler - aa1: ${aa1} - a2: ${aa2} - a3: ${aa3}"
+
+                    if(aa1 >= 67) {
+                        paragraph "${activityAttMap1}"
+                        if(aa1 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa1}</span>"
+                        if(aa1 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa1}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(aa2 >= 67) {
+                        paragraph "${activityAttMap2}"
+                        if(aa2 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa2}</span>"
+                        if(aa2 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa2}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(aa3 >= 67) {
+                        paragraph "${activityAttMap3}"
+                        if(aa3 <= 1024) paragraph "Tile Count: <span style='color:green'>${aa3}</span>"
+                        if(aa3 > 1024) paragraph "<span style='color:red'>Tile Count: ${aa3}</span>"
+                    }
+
+                    if(aa1 < 67 && aa2 < 67 && aa3 < 67) {
+                        paragraph "<div style='font-size:${fontSize}px'>Activity with Attributes Report<br>Nothing to report</div>"
+                    }
+                    paragraph "${state.activityAttMapGen}"
+                } else {
+                    paragraph "No devices have been selected for this option."
+                }
+            }
+		}
+        
+        if(reportType == "Special Tracking") {
+            specialTrackingHandler()
+            pauseExecution(1000)
+        	section() {
+                if(specialDevices1) {
+                    specialMap1 = watchdogTileDevice.currentValue("watchdogSpecial1")
+                    specialMap2 = watchdogTileDevice.currentValue("watchdogSpecial2")
+                    specialMap3 = watchdogTileDevice.currentValue("watchdogSpecial3")
+
+                    specialCount1 = watchdogTileDevice.currentValue("watchdogSpecialCount1")
+                    specialCount2 = watchdogTileDevice.currentValue("watchdogSpecialCount2")
+                    specialCount3 = watchdogTileDevice.currentValue("watchdogSpecialCount3")
+
+                    st1 = specialCount1.toInteger()
+                    st2 = specialCount2.toInteger()
+                    st3 = specialCount3.toInteger()
+
+                    if(logEnable) log.debug "In reportHandler - st1: ${st1} - st2: ${st2} - st3: ${st3}"
+
+                    if(st1 >= 71) {
+                        paragraph "${specialMap1}"
+                        if(st1 <= 1024) paragraph "Tile Count: <span style='color:green'>${st1}</span>"
+                        if(st1 > 1024) paragraph "<span style='color:red'>Tile Count: ${st1}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(st2 >= 71) {
+                        paragraph "${specialMap2}"
+                        if(st2 <= 1024) paragraph "Tile Count: <span style='color:green'>${st2}</span>"
+                        if(st2 > 1024) paragraph "<span style='color:red'>Tile Count: ${st2}</span>"
+                        paragraph "<hr>"
+                    }
+                    if(st3 >= 71) {
+                        paragraph "${specialMap3}"
+                        if(st3 <= 1024) paragraph "Tile Count: <span style='color:green'>${st3}</span>"
+                        if(st3 > 1024) paragraph "<span style='color:red'>Tile Count: ${st3}</span>"
+                    }
+
+                    if(st1 < 71 && st2 < 71 && st3 < 71) {
+                        paragraph "<div style='font-size:${fontSize}px'>Special Tracking Report<br>Nothing to report</div>"
+                    }
+                    paragraph "${state.specialMapGen}"
+                } else {
+                    paragraph "No devices have been selected for this option."
+                }
+			}
+        }
+        
         if(reportType == "Combo-Activity-Battery") {
             myActivityHandler()
             myBatteryHandler()
@@ -632,6 +763,7 @@ def activityHandler(evt) {
 	if(batteryDevices) myBatteryHandler()
 	if(statusDevices) myStatusHandler()
     if(activityAttDevices) myActivityAttHandler()
+    if(specialDevices1) specialTrackingHandler()
 			
 	if(isDataActivityDevice) isThereData()
 	if(isDataBatteryDevice) isThereData()
@@ -762,7 +894,7 @@ def myBatteryHandler() {
             reportDateTime = ""
         }
         
-        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Battery Report${reportDateTime}</b><td><b>Level</b><td><b>Last Activity</b>"
+        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Battery Report${reportDateTime}<td>Level<td>Last Activity"
         def line = "" 
         def tbl = tblhead
         def tileCount = 1
@@ -869,7 +1001,7 @@ def myStatusHandler() {
             reportDateTime = ""
         }
         
-        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Status Report${reportDateTime}</b><td><b>Value</b><td><b>Last Activity</b>"
+        def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Status Report${reportDateTime}<td>Value<td>Last Activity"
         def line = "" 
         def tbl = tblhead
         def tileCount = 1
@@ -1243,6 +1375,143 @@ def myActivityAttHandler() {
     }
 }
 
+def specialTrackingHandler() {
+    if(specialDevices1) {   
+        if(logEnable) log.debug "     - - - - - Start (Special Tracking) - - - - -     "
+        if(logEnable) log.debug "In specialTrackingHandler ${state.version}"
+
+        String result1 = specialOptions1.join(",")
+        def theOptions = result1.split(",")               
+        int optionSize = theOptions.size()
+
+        if(includeDate) { 
+            def rightNow = new Date()
+            dateFormatHandler(rightNow)
+            reportDateTime = " - ${newDate}"
+        } else {
+            reportDateTime = ""
+        }
+        
+        if(optionSize >= 1) att1 = theOptions[0]
+        if(optionSize >= 2) att2 = theOptions[1]
+        if(optionSize >= 3) att3 = theOptions[2]
+        if(optionSize >= 4) att4 = theOptions[3]
+
+        if(optionSize == 1) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report${reportDateTime}<td>${att1.capitalize()}"
+
+        if(optionSize == 2) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report${reportDateTime}<td>${att1.capitalize()}<td>${att2.capitalize()}"
+
+        if(optionSize == 3) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report${reportDateTime}<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}"
+
+        if(optionSize == 4) tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr style='font-weight:bold'><td>Special Tracking Report${reportDateTime}<td>${att1.capitalize()}<td>${att2.capitalize()}<td>${att3.capitalize()}<td>${att4.capitalize()}"
+
+        def line = "" 
+        def tbl = tblhead
+        def tileCount = 1
+        state.specialCount = 0
+        state.specialMapPhoneS = ""
+        specialMapPhone = "Special Tracking Report \n"
+        data = false
+
+        theDevices = specialDevices1.sort { a, b -> a.displayName <=> b.displayName }    
+
+        theDevices.each { it ->
+            if(att1) att1Value = it.currentValue("${att1}")
+            if(att2) att2Value = it.currentValue("${att2}")
+            if(att3) att3Value = it.currentValue("${att3}")
+            if(att4) att4Value = it.currentValue("${att4}")
+            
+            if(att1Value == null) att1Value = "-"
+            if(att2Value == null) att2Value = "-"
+            if(att3Value == null) att3Value = "-"
+            if(att4Value == null) att4Value = "-"
+            
+            if(att1 && att1Value == stAttTValue1) { 
+                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att1.capitalize()} EQUALS ${stAttTValue1}"
+                data = true
+            }
+            
+            if(att2 && att2Value == stAttTValue2) { 
+                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att2.capitalize()} EQUALS ${stAttTValue2}"
+                data = true
+            }
+            
+            if(att3 && att3Value == stAttTValue3) { 
+                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att3.capitalize()} EQUALS ${stAttTValue3}"
+                data = true
+            }
+            
+            if(att4 && att4Value == stAttTValue4) { 
+                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att4.capitalize()} EQUALS ${stAttTValue4}"
+                data = true
+            }
+        
+            if(data) {
+                theName = it.displayName              
+                if(stFilter1) { theName = theName.replace("${stFilter1}", "") }
+                if(stFilter2) { theName = theName.replace("${stFilter2}", "") }
+                if(stFilter3) { theName = theName.replace("${stFilter3}", "") }
+                if(stFilter4) { theName = theName.replace("${stFilter4}", "") }
+
+                if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}"
+                if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}"
+                if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}"
+                if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}"
+
+                if(optionSize == 1) specialMapPhone += "${it.displayName} - ${att1Value} \n"
+                if(optionSize == 2) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} \n"
+                if(optionSize == 3) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} - ${att3Value} \n"
+                if(optionSize == 4) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} - ${att3Value} - ${att4Value} \n"
+
+                totalLength = tbl.length() + line.length()
+                if(logEnable) log.debug "In specialTrackingHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+
+                if (totalLength < 1007) {
+                    tbl += line
+                } else {
+                    tbl += "</table></div>"
+                    if(logEnable) log.debug "${tbl}"
+                    if(watchdogTileDevice) {
+                        if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"
+                        sending = "${tileCount}::${tbl}"
+                        watchdogTileDevice.sendWatchdogSpecialMap(sending)
+                        tileCount = tileCount + 1
+                    }
+                    tbl = tblhead + line 
+                }
+            }
+        }
+
+        if (tbl != tblhead) {
+            tbl += "</table></div>"
+            if(logEnable) log.debug "${tbl}"
+            if(watchdogTileDevice) {
+                if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"
+                sending = "${tileCount}::${tbl}"
+                watchdogTileDevice.sendWatchdogSpecialMap(sending)
+            }
+        } else {
+            if(watchdogTileDevice) {
+                if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"
+                sending = "${tileCount}::<div style='font-size:${fontSize}px'>Special Tracking Report - No Data</div>"
+                watchdogTileDevice.sendWatchdogSpecialMap(sending)
+            }
+        }
+
+        for(x=tileCount;x<4;x++) {
+            sending = "${x}::<div style='font-size:${fontSize}px'>Special Tracking Report - No Data</div>"
+            watchdogTileDevice.sendWatchdogSpecialMap(sending)
+        }
+
+        def rightNow = new Date()
+        dateFormatHandler(rightNow)
+        state.specialMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
+        specialMapPhone += "Report generated: ${newDate} \n"
+        state.specialMapPhoneS = specialMapPhone
+        if(logEnable) log.debug "     - - - - - End (Special Tracking) - - - - -     "
+    }
+}
+
 def refreshDevices(devices) {
     if(logEnable) log.debug "In refreshDevices (${state.version})"
 
@@ -1431,7 +1700,7 @@ def getImage(type) {					// Modified from @Stephack Code
 }
 
 def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight:bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
@@ -1456,7 +1725,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
