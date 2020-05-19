@@ -105,7 +105,7 @@ def mainPage() {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {}
             section("Global Variables", hideable: true) {
 			    paragraph "This app <b>requires</b> a 'virtual device' to send variables between child apps. This is to prevent multiple announcements.<br>ie. Person A comes home and enters door 1, walks through the house and opens door 2 to let the dogs out.  We only want one 'Welcome Home' message to be played."
-			    paragraph "* Vitual Device must use our custom 'Home Tracker Driver'"
+			    paragraph "* Virtual Device must use our custom 'Home Tracker Driver'"
 			    input "gvDevice", "capability.actuator", title: "Virtual Device created for Home Tracker", required: false, multiple: false
 		    }
 			section("Presence Sensors:", hideable: true) {
