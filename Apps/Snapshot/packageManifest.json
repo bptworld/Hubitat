@@ -39,7 +39,7 @@
 			"id": "d4226c26-3ce8-4e20-b8ce-cd9fa311e6e7",
 			"name": "Snapshot Driver",
 			"namespace": "BPTWorld",
-			"location": "https://github.com/bptworld/Hubitat/blob/master/Apps/Snapshot/S-driver.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-driver.groovy",
 			"required": true,
 			"version": "1.1.1"
 		}
