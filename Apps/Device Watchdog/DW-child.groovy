@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.5 - 05/20/20 - Added more Error trapping
  *  2.2.4 - 05/19/20 - Changes to tile names for better Smartly compatibility
  *  2.2.3 - 05/19/20 - Track devices without 'lastActivity' data
  *  2.2.2 - 05/18/20 - Added optional report time, added Time display options, added Last Activity display options
@@ -68,7 +69,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.4"
+	state.version = "2.2.5"
 }
 
 definition(
@@ -1260,7 +1261,7 @@ def myStatusHandler() {
 }
 
 def myActivityAttHandler() {
-    if(activityAttDevices) {
+    if(activityAttDevices && attOptions) {
         if(useRefresh) refreshDevices(activityDevices)    // Refresh Devices before checking    
         if(logEnable) log.debug "     - - - - - Start (Activity with Attributes) - - - - -     "
         if(logEnable) log.debug "In myActivityAttributeHandler ${state.version}"
@@ -1378,7 +1379,7 @@ def myActivityAttHandler() {
 }
 
 def specialTrackingHandler() {
-    if(specialDevices1) {   
+    if(specialDevices1 && specialOptions1) {   
         if(logEnable) log.debug "     - - - - - Start (Special Tracking) - - - - -     "
         if(logEnable) log.debug "In specialTrackingHandler ${state.version}"
 
