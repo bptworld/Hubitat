@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.6 - 05/20/20 - Gremlins!
  *  2.2.5 - 05/20/20 - Added more Error trapping
  *  2.2.4 - 05/19/20 - Changes to tile names for better Smartly compatibility
  *  2.2.3 - 05/19/20 - Track devices without 'lastActivity' data
@@ -69,7 +70,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.5"
+	state.version = "2.2.6"
 }
 
 definition(
@@ -1585,25 +1586,31 @@ def clearMaps() {
 def isThereData(){
 	if(logEnable) log.debug "In isThereData..."
 	if(logEnable) log.debug "In isThereData - Activity - ${state.activityCount}"
-	if(state.activityCount >= 1) {
-		isDataActivityDevice.on()
-	} else {
-			isDataActivityDevice.off()
-	}
-    
-	if(logEnable) log.debug "In isThereData - Battery - ${state.batteryCount}"
-	if(state.batteryCount >= 1) {
-		isDataBatteryDevice.on()
-	} else {
-		isDataBatteryDevice.off()
-	}
-	
-	if(logEnable) log.debug "In isThereData - Status - ${state.statusCount}"
-	if(state.statusCount >= 1) {
-		isDataStatusDevice.on()
-	} else {
-		isDataStatusDevice.off()
-	}
+    if(isDataActivityDevice) {
+        if(state.activityCount >= 1) {
+            isDataActivityDevice.on()
+        } else {
+            isDataActivityDevice.off()
+        }
+    }
+
+    if(isDataBatteryDevice) {
+        if(logEnable) log.debug "In isThereData - Battery - ${state.batteryCount}"
+        if(state.batteryCount >= 1) {
+            isDataBatteryDevice.on()
+        } else {
+            isDataBatteryDevice.off()
+        }
+    }
+
+    if(isDataStatusDevice) {
+        if(logEnable) log.debug "In isThereData - Status - ${state.statusCount}"
+        if(state.statusCount >= 1) {
+            isDataStatusDevice.on()
+        } else {
+            isDataStatusDevice.off()
+        }
+    }
 }
 
 def pushNow(){
