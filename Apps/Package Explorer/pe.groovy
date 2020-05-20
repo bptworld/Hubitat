@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 05/20/20 - Fix for HE update
  *  1.0.3 - 05/16/20 - Error trapping
  *  1.0.2 - 05/07/20 - Added 'Developer Options' Search, cosmetic changes
  *  1.0.1 - 05/02/20 - Minor changes
@@ -51,11 +52,11 @@ import groovy.transform.Field
 @Field static String repositoryListing = "https://raw.githubusercontent.com/dcmeglio/hubitat-packagerepositories/master/repositories.json"
 @Field static List categories = [] 
 @Field static List allPackages = []
-@Field static groovy.json.internal.LazyMap listOfRepositories = [:]
-
+@Field static def listOfRepositories = [:]
+    
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -95,10 +96,11 @@ def pageConfig() {
             }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Search Options")) {
-                app.removeSetting("pkgCategory")       // reset pkgCategory
-                app.removeSetting("pkgSearch")         // reset pkgSearch
-                app.removeSetting("pkgSearchNOT")      // reset pkgSearchNOT
-                app.removeSetting("pkgSearchType")     // reset pkgSearchType
+                app.removeSetting("pkgCategory")
+                app.removeSetting("pkgSearch")
+                app.removeSetting("pkgSearchNOT")
+                app.removeSetting("pkgSearchType")
+                app.removeSetting("pkgAuthor")
                 
                 input "installedRepositories", "enum", title: "Available Repositories", options:state.reposToShow, multiple:true, required:true, submitOnChange:true     
                 //app.updateSetting("installedRepositories", state.reposToShow)
