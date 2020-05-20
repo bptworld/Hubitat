@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.4 - 05/19/20 - Changes to tile names for better Smartly compatibility
  *  2.2.3 - 05/19/20 - Track devices without 'lastActivity' data
  *  2.2.2 - 05/18/20 - Added optional report time, added Time display options, added Last Activity display options
  *  2.2.1 - 05/18/20 - Added 'filters' to each report to lower character count
@@ -67,7 +68,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.3"
+	state.version = "2.2.4"
 }
 
 definition(
@@ -368,7 +369,7 @@ def specialTrackingConfig() {
             paragraph "<b>Select the Special Tracking Options</b>"
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Select devices")) {
-            paragraph "If the device(s) have a attribute that displays true or false, select them here.<br><small>ie. Low_Battery: true</small>"
+            paragraph "Track devices that do not have a 'Last Activity' value. Trigger is based on any attribute."
 			input "specialDevices1", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
             
             if(specialDevices1) {
@@ -448,9 +449,9 @@ def reportHandler() {
             pauseExecution(1000)
             section() {
                 if(activityDevices) {
-                    activityMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
-                    activityMap2 = watchdogTileDevice.currentValue("watchdogActivity2")
-                    activityMap3 = watchdogTileDevice.currentValue("watchdogActivity3")
+                    activityMap1 = watchdogTileDevice.currentValue("bpt-watchdogActivity1")
+                    activityMap2 = watchdogTileDevice.currentValue("bpt-watchdogActivity2")
+                    activityMap3 = watchdogTileDevice.currentValue("bpt-watchdogActivity3")
 
                     activityCount1 = watchdogTileDevice.currentValue("watchdogActivityCount1")
                     activityCount2 = watchdogTileDevice.currentValue("watchdogActivityCount2")
@@ -495,9 +496,9 @@ def reportHandler() {
             pauseExecution(1000)
             section() {
                 if(batteryDevices) {
-                    batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
-                    batteryMap2 = watchdogTileDevice.currentValue("watchdogBattery2")
-                    batteryMap3 = watchdogTileDevice.currentValue("watchdogBattery3")
+                    batteryMap1 = watchdogTileDevice.currentValue("bpt-watchdogBattery1")
+                    batteryMap2 = watchdogTileDevice.currentValue("bpt-watchdogBattery2")
+                    batteryMap3 = watchdogTileDevice.currentValue("bpt-watchdogBattery3")
 
                     batteryCount1 = watchdogTileDevice.currentValue("watchdogBatteryCount1")
                     batteryCount2 = watchdogTileDevice.currentValue("watchdogBatteryCount2")
@@ -542,9 +543,9 @@ def reportHandler() {
             pauseExecution(1000)
         	section() {
                 if(statusDevices) {
-                    statusMap1 = watchdogTileDevice.currentValue("watchdogStatus1")
-                    statusMap2 = watchdogTileDevice.currentValue("watchdogStatus2")
-                    statusMap3 = watchdogTileDevice.currentValue("watchdogStatus3")
+                    statusMap1 = watchdogTileDevice.currentValue("bpt-watchdogStatus1")
+                    statusMap2 = watchdogTileDevice.currentValue("bpt-watchdogStatus2")
+                    statusMap3 = watchdogTileDevice.currentValue("bpt-watchdogStatus3")
 
                     statusCount1 = watchdogTileDevice.currentValue("watchdogStatusCount1")
                     statusCount2 = watchdogTileDevice.currentValue("watchdogStatusCount2")
@@ -589,9 +590,9 @@ def reportHandler() {
             pauseExecution(1000)
             section() {
                 if(activityDevices) {
-                    activityAttMap1 = watchdogTileDevice.currentValue("watchdogActivityAtt1")
-                    activityAttMap2 = watchdogTileDevice.currentValue("watchdogActivityAtt2")
-                    activityAttMap3 = watchdogTileDevice.currentValue("watchdogActivityAtt3")
+                    activityAttMap1 = watchdogTileDevice.currentValue("bpt-watchdogActivityAtt1")
+                    activityAttMap2 = watchdogTileDevice.currentValue("bpt-watchdogActivityAtt2")
+                    activityAttMap3 = watchdogTileDevice.currentValue("bpt-watchdogActivityAtt3")
 
                     activityAttCount1 = watchdogTileDevice.currentValue("watchdogActivityAttCount1")
                     activityAttCount2 = watchdogTileDevice.currentValue("watchdogActivityAttCount2")
@@ -636,9 +637,9 @@ def reportHandler() {
             pauseExecution(1000)
         	section() {
                 if(specialDevices1) {
-                    specialMap1 = watchdogTileDevice.currentValue("watchdogSpecial1")
-                    specialMap2 = watchdogTileDevice.currentValue("watchdogSpecial2")
-                    specialMap3 = watchdogTileDevice.currentValue("watchdogSpecial3")
+                    specialMap1 = watchdogTileDevice.currentValue("bpt-watchdogSpecial1")
+                    specialMap2 = watchdogTileDevice.currentValue("bpt-watchdogSpecial2")
+                    specialMap3 = watchdogTileDevice.currentValue("bpt-watchdogSpecial3")
 
                     specialCount1 = watchdogTileDevice.currentValue("watchdogSpecialCount1")
                     specialCount2 = watchdogTileDevice.currentValue("watchdogSpecialCount2")
@@ -685,8 +686,8 @@ def reportHandler() {
             section() {
                 paragraph "Remember, this will still have to be under the 1024 character limit on dashboard tiles. So if combining the two reports results in the character count over 1024, it can not be displayed on the dashboard."
                 if(batteryDevices && activityDevices) {
-                    batteryMap1 = watchdogTileDevice.currentValue("watchdogBattery1")
-                    activityMap1 = watchdogTileDevice.currentValue("watchdogActivity1")
+                    batteryMap1 = watchdogTileDevice.currentValue("bpt-watchdogBattery1")
+                    activityMap1 = watchdogTileDevice.currentValue("bpt-watchdogActivity1")
                         
                     batteryCount1 = watchdogTileDevice.currentValue("watchdogBatteryCount1")
                     bc1 = batteryCount1.toInteger()
@@ -787,6 +788,7 @@ def myActivityHandler() {
         }
         
         def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>Activity Report${reportDateTime}</b><td><b>Value</b>"
+        
         def line = "" 
         def tbl = tblhead
         def tileCount = 1
