@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 05/19/20 - Changes to tile names for better Smartly compatibility
  *  1.0.9 - 05/19/20 - Changes to add Special Tracking
  *  1.0.8 - 05/17/20 - Changes to add Activity with Attributes
  *  1.0.7 - 05/09/20 - Changes to match new app
@@ -61,27 +62,27 @@ metadata {
         command "sendWatchdogComboActBatMap", ["string"]
         command "sendWatchdogSpecialMap", ["string"]
 		
-    	attribute "watchdogActivity1", "string"
-		attribute "watchdogActivity2", "string"
-		attribute "watchdogActivity3", "string"
+    	attribute "bpt-watchdogActivity1", "string"
+		attribute "bpt-watchdogActivity2", "string"
+		attribute "bpt-watchdogActivity3", "string"
         
-        attribute "watchdogActivityAtt1", "string"
-		attribute "watchdogActivityAtt2", "string"
-		attribute "watchdogActivityAtt3", "string"
+        attribute "bpt-watchdogActivityAtt1", "string"
+		attribute "bpt-watchdogActivityAtt2", "string"
+		attribute "bpt-watchdogActivityAtt3", "string"
 		
-		attribute "watchdogBattery1", "string"
-		attribute "watchdogBattery2", "string"
-		attribute "watchdogBattery3", "string"
+		attribute "bpt-watchdogBattery1", "string"
+		attribute "bpt-watchdogBattery2", "string"
+		attribute "bpt-watchdogBattery3", "string"
 		
-		attribute "watchdogStatus1", "string"
-		attribute "watchdogStatus2", "string"
-		attribute "watchdogStatus3", "string"
+		attribute "bpt-watchdogStatus1", "string"
+		attribute "bpt-watchdogStatus2", "string"
+		attribute "bpt-watchdogStatus3", "string"
         
-        attribute "watchdogComboActBat", "string"
+        attribute "bpt-watchdogComboActBat", "string"
         
-        attribute "watchdogSpecial1", "string"
-		attribute "watchdogSpecial2", "string"
-		attribute "watchdogSpecial3", "string"
+        attribute "bpt-watchdogSpecial1", "string"
+		attribute "bpt-watchdogSpecial2", "string"
+		attribute "bpt-watchdogSpecial3", "string"
         
         
         attribute "watchdogActivityCount1", "string"
@@ -127,15 +128,15 @@ def sendWatchdogActivityMap(activityMap) {
 		theData = "Too many characters to display on Dashboard (${activityDeviceCount})"
 	}
     if(whichMap == "1") {
-	    sendEvent(name: "watchdogActivity1", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogActivity1", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityCount1", value: activityDeviceCount, displayed: true)
     }
     if(whichMap == "2") {
-	    sendEvent(name: "watchdogActivity2", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogActivity2", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityCount2", value: activityDeviceCount, displayed: true)
     }
     if(whichMap == "3") {
-	    sendEvent(name: "watchdogActivity3", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogActivity3", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityCount3", value: activityDeviceCount, displayed: true)
     }
 }
@@ -150,15 +151,15 @@ def sendWatchdogActivityAttMap(activityAttMap) {
 		theData = "Too many characters to display on Dashboard (${activityAttDeviceCount})"
 	}
     if(whichMap == "1") {
-	    sendEvent(name: "watchdogActivityAtt1", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogActivityAtt1", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityAttCount1", value: activityAttDeviceCount, displayed: true)
     }
     if(whichMap == "2") {
-	    sendEvent(name: "watchdogActivityAtt2", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogActivityAtt2", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityAttCount2", value: activityAttDeviceCount, displayed: true)
     }
     if(whichMap == "3") {
-	    sendEvent(name: "watchdogActivityAtt3", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogActivityAtt3", value: theData, displayed: true)
         sendEvent(name: "watchdogActivityAttCount3", value: activityAttDeviceCount, displayed: true)
     }
 }
@@ -173,15 +174,15 @@ def sendWatchdogBatteryMap(batteryMap) {
 		theData = "Too many characters to display on Dashboard (${batteryDeviceCount})"
 	}
     if(whichMap == "1") {
-	    sendEvent(name: "watchdogBattery1", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogBattery1", value: theData, displayed: true)
         sendEvent(name: "watchdogBatteryCount1", value: batteryDeviceCount, displayed: true)
     }
     if(whichMap == "2") {
-	    sendEvent(name: "watchdogBattery2", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogBattery2", value: theData, displayed: true)
         sendEvent(name: "watchdogBatteryCount2", value: batteryDeviceCount, displayed: true)
     }
     if(whichMap == "3") {
-	    sendEvent(name: "watchdogBattery3", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogBattery3", value: theData, displayed: true)
         sendEvent(name: "watchdogBatteryCount3", value: batteryDeviceCount, displayed: true)
     }    
 }
@@ -196,15 +197,15 @@ def sendWatchdogStatusMap(statusMap) {
 		theData = "Too many characters to display on Dashboard (${statusDeviceCount})"
 	}
     if(whichMap == "1") {
-	    sendEvent(name: "watchdogStatus1", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogStatus1", value: theData, displayed: true)
         sendEvent(name: "watchdogStatusCount1", value: statusDeviceCount, displayed: true)
     }
     if(whichMap == "2") {
-	    sendEvent(name: "watchdogStatus2", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogStatus2", value: theData, displayed: true)
         sendEvent(name: "watchdogStatusCount2", value: statusDeviceCount, displayed: true)
     }
     if(whichMap == "3") {
-	    sendEvent(name: "watchdogStatus3", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogStatus3", value: theData, displayed: true)
         sendEvent(name: "watchdogStatusCount3", value: statusDeviceCount, displayed: true)
     }
 }
@@ -219,7 +220,7 @@ def sendWatchdogComboActBatMap(comboMap) {
 		theData = "Too many characters to display on Dashboard (${comboDeviceCount})"
 	}
     if(whichMap == "1") {
-	    sendEvent(name: "watchdogComboActBat", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogComboActBat", value: theData, displayed: true)
         sendEvent(name: "watchdogComboActBatCount", value: comboDeviceCount, displayed: true)
     }
 }
@@ -234,15 +235,15 @@ def sendWatchdogSpecialMap(specialMap) {
 		theData = "Too many characters to display on Dashboard (${specialDeviceCount})"
 	}
     if(whichMap == "1") {
-	    sendEvent(name: "watchdogSpecial1", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogSpecial1", value: theData, displayed: true)
         sendEvent(name: "watchdogSpecialCount1", value: specialDeviceCount, displayed: true)
     }
     if(whichMap == "2") {
-	    sendEvent(name: "watchdogSpecial2", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogSpecial2", value: theData, displayed: true)
         sendEvent(name: "watchdogSpecialCount2", value: specialDeviceCount, displayed: true)
     }
     if(whichMap == "3") {
-	    sendEvent(name: "watchdogSpecial3", value: theData, displayed: true)
+	    sendEvent(name: "bpt-watchdogSpecial3", value: theData, displayed: true)
         sendEvent(name: "watchdogSpecialCount3", value: specialDeviceCount, displayed: true)
     }
 }
