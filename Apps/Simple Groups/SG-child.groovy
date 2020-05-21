@@ -37,13 +37,14 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 05/21/20 - Added more stuff
  *  1.0.0 - 05/20/20 - Initial release.
  *
  */
 
 def setVersion(){
     state.name = "Simple Groups"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
