@@ -2,7 +2,7 @@
  *  **************** Simple Groups Child App  ****************
  *
  *  Design Usage:
- *  Group just about anything! Including Sensors and Devices.
+ *  Group just about anything. Even groups of groups!
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  * 
@@ -50,7 +50,7 @@ definition(
     name: "Simple Groups Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Group just about anything! Including Sensors and Devices.",
+    description: "Group just about anything. Even groups of groups!",
     category: "Convenience",
 	parent: "BPTWorld:Simple Groups",
     iconUrl: "",
@@ -62,6 +62,7 @@ definition(
 preferences {
     page(name: "pageConfig")
     page(name: "contactSensorOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "groupOfGroupsOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "lockOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "motionSensorOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "switchOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
@@ -73,10 +74,10 @@ def pageConfig() {
 		display() 
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Group just about anything! Including Sensors and Devices."
+    		paragraph "Group just about anything. Even groups of groups!"
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
-            paragraph "Each child app needs a virtual device to store the grouping result. This is the device you'll use to control other things."
+            paragraph "Each child app needs a virtual device to store the grouping results. Each device can hold data for each of the options beleow, no need for multiple devices. This is the device you'll use to control other things."
             input "useExistingDevice", "bool", title: "Use existing device (off) or have SG create a new one for you (on)", defaultValue:false, submitOnChange:true
             if(useExistingDevice) {
 			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'SG - Motion Sensors')", required:true, submitOnChange:true
@@ -123,6 +124,11 @@ def pageConfig() {
                 href "waterSensorOptions", title:"${getImage("optionsRed")} Setup Water Sensor Groups", description:"Click here for Options"
             }
             
+            if(group1 || group2 || group3) {
+                href "groupOfGroupsOptions", title:"${getImage("optionsGreen")} Setup Goup of Groups", description:"Click here for Options"
+            } else {
+                href "groupOfGroupsOptions", title:"${getImage("optionsRed")} Setup Group of Groups", description:"Click here for Options"
+            }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -139,6 +145,41 @@ def contactSensorOptions() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Contact Sensor Grouping Options")) {
             paragraph "Setup a group of Contact Sensors to report as one."
             input "contactSensors", "capability.contactSensor", title: "Select Contact Sensor Device(s)", required:false, multiple:true, submitOnChange:true
+            
+            paragraph "<hr>"
+        }
+    }
+}
+
+def groupOfGroupsOptions() {
+    dynamicPage(name: "groupOfGroupsOptions", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Groups of Groups Options")) {
+            paragraph "Setup the Groups of Groups to report as one."
+            
+            input "group1", "enum", title: "Select Group 1 Options", options: [
+                "contactGroup":"Contact Sensor Group",
+                "lockGroup":"Lock Group",
+                "motionGroup":"Motion Sensor Group",
+                "switchGroup":"Switch Group",
+                "waterGroup":"Water Group"
+            ], required:false, multiple:true, submitOnChange:true
+            
+            input "group2", "enum", title: "Select Group 2 Options", options: [
+                "contactGroup":"Contact Sensor Group",
+                "lockGroup":"Lock Group",
+                "motionGroup":"Motion Sensor Group",
+                "switchGroup":"Switch Group",
+                "waterGroup":"Water Group"
+            ], required:false, multiple:true, submitOnChange:true
+            
+            input "group3", "enum", title: "Select Group 3 Options", options: [
+                "contactGroup":"Contact Sensor Group",
+                "lockGroup":"Lock Group",
+                "motionGroup":"Motion Sensor Group",
+                "switchGroup":"Switch Group",
+                "waterGroup":"Water Group"
+            ], required:false, multiple:true, submitOnChange:true
             
             paragraph "<hr>"
         }
@@ -246,6 +287,7 @@ def contactGroupHandler(evt) {
         }
         if(logEnable) log.debug "     - - - - - End (Contact Grouping) - - - - -     "
     }
+    groupOfGroupsHandler()
 }
 
 def lockGroupHandler(evt) {
@@ -272,6 +314,7 @@ def lockGroupHandler(evt) {
         }
         if(logEnable) log.debug "     - - - - - End (Lock Grouping) - - - - -     "
     }
+    groupOfGroupsHandler()
 }
 
 def motionGroupHandler(evt) {
@@ -298,6 +341,7 @@ def motionGroupHandler(evt) {
         }
         if(logEnable) log.debug "     - - - - - End (Motion Grouping) - - - - -     "
     }
+    groupOfGroupsHandler()
 }
 
 def switchGroupHandler(evt) {
@@ -324,6 +368,7 @@ def switchGroupHandler(evt) {
         }
         if(logEnable) log.debug "     - - - - - End (Switch Grouping) - - - - -     "
     }
+    groupOfGroupsHandler()
 }
 
 def waterGroupHandler(evt) {
@@ -350,12 +395,73 @@ def waterGroupHandler(evt) {
         }
         if(logEnable) log.debug "     - - - - - End (Water Grouping) - - - - -     "
     }
+    groupOfGroupsHandler()
 }
 
 
+def groupOfGroupsHandler(evt) {
+    if(logEnable) log.debug "In groupOfGroupsHandler (${state.version})"
+    if(group1) {
+        if(logEnable) log.debug "     - - - - - Start (Group of Groups Grouping) - - - - -     "
 
+        for(x=1;x<4;x++) {
+            data = false
+            if(x == 1) {
+                groups = group1
+                virtualGroup = "virtualGroup1"
+            }
+            if(x == 2) {
+                groups = group2
+                virtualGroup = "virtualGroup2"
+            }
+            if(x == 3) {
+                groups = group3
+                virtualGroup = "virtualGroup3"
+            }
+            
+            if(groups == null) {
+                if(logEnable) log.debug "In groupOfGroupsHandler - Group ${x} is blank so skipping"
+            } else {
+                groups.each { it ->
+                    if(logEnable) log.debug "In groupOfGroupsHandler - Working on Group ${x} - ${it}"
+                    if(it.contains("contactGroup")) {
+                        theValue = dataDevice.currentValue("contact")
+                        if(theValue == "open") data = true
+                    }
 
+                    if(it.contains("lockGroup")) {
+                        theValue = dataDevice.currentValue("lock")
+                        if(theValue == "unlocked") data = true
+                    }
 
+                    if(it.contains("motionGroup")) {
+                        theValue = dataDevice.currentValue("motion")
+                        if(theValue == "active") data = true
+                    }
+
+                    if(it.contains("switchGroup")) {
+                        theValue = dataDevice.currentValue("switch")
+                        if(theValue == "on") data = true
+                    }
+
+                    if(it.contains("waterGroup")) {
+                        theValue = dataDevice.currentValue("water")
+                        if(theValue == "wet") data = true
+                    }
+                    
+                    if(data) {
+                        if(logEnable) log.debug "In groupOfGroupsHandler - Setting group ${x} device to True"
+                        dataDevice."${virtualGroup}"("true")
+                    } else {
+                        if(logEnable) log.debug "In groupOfGroupsHandler - Setting group ${x} device to False"
+                        dataDevice."${virtualGroup}"("false")
+                    }
+                }
+            }
+        }
+        if(logEnable) log.debug "     - - - - - End (Group of Groups Grouping) - - - - -     "
+    }
+}
 
 def createDataChildDevice() {    
     if(logEnable) log.debug "In createDataChildDevice (${state.version})"
