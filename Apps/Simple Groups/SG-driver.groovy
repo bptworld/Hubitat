@@ -51,21 +51,22 @@ metadata {
         capability "Water Sensor"
         
         command "virtualContact", ["string"]
+        command "virtualGroup1", ["string"]
+        command "virtualGroup2", ["string"]
+        command "virtualGroup3", ["string"]
         command "virtualLock", ["string"]
         command "virtualMotion", ["string"]
         command "virtualSwitch", ["string"]
         command "virtualWater", ["string"]
         
         attribute "contact", "string"
-        attribute "contactStatus", "string"
+        attribute "group1", "string"
+        attribute "group2", "string"
+        attribute "group3", "string"
         attribute "lock", "string"
-        attribute "lockStatus", "string"
         attribute "motion", "string"
-        attribute "motionStatus", "string"
         attribute "switch", "string"
-        attribute "switchStatus", "string"
         attribute "water", "string"
-        attribute "waterStatus", "string"
 	}
 	preferences() {    	
         section(){
@@ -80,28 +81,63 @@ def virtualContact(data) {
     if(data == "open") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to open"
         sendEvent(name: "contact", value: "open", isStateChange: true)
-        sendEvent(name: "contactStatus", value: "true", isStateChange: true)
     }
 
     if(data == "closed") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to closed"
         sendEvent(name: "contact", value: "closed", isStateChange: true)
-        sendEvent(name: "contactStatus", value: "false", isStateChange: true)
     }
 } 
+
+def virtualGroup1(data) {
+    if(logEnable) log.info "In Simple Groups Driver - Group Of Groups 1"
+    if(data == "true") {
+        if(logEnable) log.info "In Simple Groups Driver - Setting group1 to true"
+        sendEvent(name: "group1", value: "true", isStateChange: true)
+    }
+
+    if(data == "false") {
+        if(logEnable) log.info "In Simple Groups Driver - Setting group1 to false"
+        sendEvent(name: "group1", value: "false", isStateChange: true)
+    }
+}
+
+def virtualGroup2(data) {
+    if(logEnable) log.info "In Simple Groups Driver - Group Of Groups 2"
+    if(data == "true") {
+        if(logEnable) log.info "In Simple Groups Driver - Setting group2 to true"
+        sendEvent(name: "group2", value: "true", isStateChange: true)
+    }
+
+    if(data == "false") {
+        if(logEnable) log.info "In Simple Groups Driver - Setting group2 to false"
+        sendEvent(name: "group2", value: "false", isStateChange: true)
+    }
+}
+
+def virtualGroup3(data) {
+    if(logEnable) log.info "In Simple Groups Driver - Group Of Groups 3"
+    if(data == "true") {
+        if(logEnable) log.info "In Simple Groups Driver - Setting group3 to true"
+        sendEvent(name: "group3", value: "true", isStateChange: true)
+    }
+
+    if(data == "false") {
+        if(logEnable) log.info "In Simple Groups Driver - Setting group3 to false"
+        sendEvent(name: "group3", value: "false", isStateChange: true)
+    }
+}
 
 def virtualLock(data) {
     if(logEnable) log.info "In Simple Groups Driver - Lock"
     if(data == "unlocked") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to unlocked"
         sendEvent(name: "lock", value: "unlocked", isStateChange: true)
-        sendEvent(name: "lockStatus", value: "true", isStateChange: true)
     }
 
     if(data == "locked") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to locked"
         sendEvent(name: "lock", value: "locked", isStateChange: true)
-        sendEvent(name: "lockStatus", value: "false", isStateChange: true)
     }
 } 
 
@@ -110,13 +146,11 @@ def virtualMotion(data) {
     if(data == "active") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to active"
         sendEvent(name: "motion", value: "active", isStateChange: true)
-        sendEvent(name: "motionStatus", value: "true", isStateChange: true)
     }
 
     if(data == "inactive") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to inactive"
         sendEvent(name: "motion", value: "inactive", isStateChange: true)
-        sendEvent(name: "motionStatus", value: "false", isStateChange: true)
     }
 } 
 
@@ -125,13 +159,11 @@ def virtualSwitch(data) {
     if(data == "on") {
         if(logEnable) log.info "In Simple Groups Driver - Turning Switch On"
         sendEvent(name: "switch", value: "on", isStateChange: true)
-        sendEvent(name: "switchStatus", value: "true", isStateChange: true)
     }
 
     if(data == "off") {
         if(logEnable) log.info "In Simple Groups Driver - Turning Switch Off"
         sendEvent(name: "switch", value: "off", isStateChange: true)
-        sendEvent(name: "switchStatus", value: "false", isStateChange: true)
     }
 }
 
@@ -140,12 +172,10 @@ def virtualWater(data) {
     if(data == "wet") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to wet"
         sendEvent(name: "water", value: "wet", isStateChange: true)
-        sendEvent(name: "waterStatus", value: "true", isStateChange: true)
     }
 
     if(data == "dry") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to dry"
         sendEvent(name: "water", value: "dry", isStateChange: true)
-        sendEvent(name: "waterStatus", value: "false", isStateChange: true)
     }
 }
