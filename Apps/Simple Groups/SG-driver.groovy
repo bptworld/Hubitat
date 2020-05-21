@@ -37,13 +37,18 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 05/21/20 - Added more stuff
  *  V1.0.0 - 05/20/20 - Initial release
  */
 
 
 metadata {
-	definition (name: "Simple Groups Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Simple Groups Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Groups/SG-driver.groovy") {
+        capability "Contact Sensor"
+        capability "Lock"
+        capability "Motion Sensor"
         capability "Switch"
+        capability "Water Sensor"
         
         command "virtualContact", ["string"]
         command "virtualLock", ["string"]
@@ -52,10 +57,15 @@ metadata {
         command "virtualWater", ["string"]
         
         attribute "contact", "string"
+        attribute "contactStatus", "string"
         attribute "lock", "string"
+        attribute "lockStatus", "string"
         attribute "motion", "string"
+        attribute "motionStatus", "string"
         attribute "switch", "string"
+        attribute "switchStatus", "string"
         attribute "water", "string"
+        attribute "waterStatus", "string"
 	}
 	preferences() {    	
         section(){
@@ -70,11 +80,13 @@ def virtualContact(data) {
     if(data == "open") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to open"
         sendEvent(name: "contact", value: "open", isStateChange: true)
+        sendEvent(name: "contactStatus", value: "true", isStateChange: true)
     }
 
     if(data == "closed") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to closed"
         sendEvent(name: "contact", value: "closed", isStateChange: true)
+        sendEvent(name: "contactStatus", value: "false", isStateChange: true)
     }
 } 
 
@@ -83,11 +95,13 @@ def virtualLock(data) {
     if(data == "unlocked") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to unlocked"
         sendEvent(name: "lock", value: "unlocked", isStateChange: true)
+        sendEvent(name: "lockStatus", value: "true", isStateChange: true)
     }
 
     if(data == "locked") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to locked"
         sendEvent(name: "lock", value: "locked", isStateChange: true)
+        sendEvent(name: "lockStatus", value: "false", isStateChange: true)
     }
 } 
 
@@ -96,11 +110,13 @@ def virtualMotion(data) {
     if(data == "active") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to active"
         sendEvent(name: "motion", value: "active", isStateChange: true)
+        sendEvent(name: "motionStatus", value: "true", isStateChange: true)
     }
 
     if(data == "inactive") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to inactive"
         sendEvent(name: "motion", value: "inactive", isStateChange: true)
+        sendEvent(name: "motionStatus", value: "false", isStateChange: true)
     }
 } 
 
@@ -109,11 +125,13 @@ def virtualSwitch(data) {
     if(data == "on") {
         if(logEnable) log.info "In Simple Groups Driver - Turning Switch On"
         sendEvent(name: "switch", value: "on", isStateChange: true)
+        sendEvent(name: "switchStatus", value: "true", isStateChange: true)
     }
 
     if(data == "off") {
         if(logEnable) log.info "In Simple Groups Driver - Turning Switch Off"
         sendEvent(name: "switch", value: "off", isStateChange: true)
+        sendEvent(name: "switchStatus", value: "false", isStateChange: true)
     }
 }
 
@@ -122,10 +140,12 @@ def virtualWater(data) {
     if(data == "wet") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to wet"
         sendEvent(name: "water", value: "wet", isStateChange: true)
+        sendEvent(name: "waterStatus", value: "true", isStateChange: true)
     }
 
     if(data == "dry") {
         if(logEnable) log.info "In Simple Groups Driver - Setting device to dry"
         sendEvent(name: "water", value: "dry", isStateChange: true)
+        sendEvent(name: "waterStatus", value: "false", isStateChange: true)
     }
 }
