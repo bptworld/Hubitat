@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.7 - 05/20/20 - Typo!
  *  2.2.6 - 05/20/20 - Gremlins!
  *  2.2.5 - 05/20/20 - Added more Error trapping
  *  2.2.4 - 05/19/20 - Changes to tile names for better Smartly compatibility
@@ -70,7 +71,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.6"
+	state.version = "2.2.7"
 }
 
 definition(
@@ -838,7 +839,7 @@ def myActivityHandler() {
                 if(filter4) { theName = theName.replace("${aFilter4}", "") }
                 
                 line = "<tr><td>${theName}<td>${lastAct}"
-                activityMapPhone += "${thename} - ${lastAct} \n"
+                activityMapPhone += "${theName} - ${lastAct} \n"
 
                 totalLength = tbl.length() + line.length()
                 if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
@@ -1255,7 +1256,7 @@ def myStatusHandler() {
         def rightNow = new Date()
         dateFormatHandler(rightNow)
         state.statusMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
-        activityMapPhone += "Report generated: ${newDate} \n"
+        statusMapPhone += "Report generated: ${newDate} \n"
         state.statusMapPhoneS = statusMapPhone
         if(logEnable) log.debug "     - - - - - End (Status) - - - - -     "
     }
