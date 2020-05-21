@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.0 - 05/21/20 - Fixed a typo
  *  2.3.9 - 04/27/20 - Cosmetic changes
  *  2.3.8 - 04/16/20 - Cosmetic changes
  *  2.3.7 - 03/23/20 - Attempt to fix working with RM variables
@@ -51,7 +52,7 @@
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.3.9"
+	state.version = "2.4.0"
 }
 
 definition(
@@ -1403,7 +1404,7 @@ def tileHandler(evt){
                 catch (e) {}
 			    if(deviceStatusb == null) deviceStatusb = "No Data"
                 if(!valueOrCellb || useIconsb) {
-                    getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, icon2Nameb, iconNumLowb, iconNumHighb)
+                    getStatusColors(theDeviceb, deviceStatusb, deviceAttsb, useColorsb, textORnumberb, color1Nameb, color1Valueb, color2Nameb, color2Valueb, numLowb, numHighb, colorNumLowb, colorNumb, colorNumHighb, useColorsBEFb, useColorsAFTb, wordsBEFb, wordsAFTb, useIconsb, iconSizeb, iconLink1b, iconLink2b, iconLink3b, icon1Nameb, icon2Nameb,iconNumLowb, iconNumHighb)
                     def (deviceStatus1b,wordsBEF1b,wordsAFT1b) = theStatusCol.split(",")
                     if(logEnable) log.debug "In tileHandler - b - deviceStatus1b: ${deviceStatus1b} - wordsBEF1b: ${wordsBEF1b} - wordsAFT1b: ${wordsAFT1b}"
                     if(deviceStatus1b != "null") deviceStatusb = deviceStatus1b
@@ -1884,7 +1885,7 @@ def makeTile() {
     }
     
     if(!secGlobal) tileData += "</table>"
-    if(secGlobal) tileData += "</td></tr></table>"
+    if(secGlobal) tileData += "</table>"
     
     if(logEnable) log.debug "In makeTile - tileData: ${tileData}"
     if(tileDevice) {
@@ -2120,7 +2121,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -2134,8 +2135,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
