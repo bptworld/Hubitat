@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 05/22/20 - More contact options
  *  2.0.4 - 05/18/20 - Added contact triggers
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.2 - 02/16/20 - Fixed typo, thanks to @mluck
@@ -58,7 +59,7 @@
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -111,8 +112,8 @@ def pageConfig() {
 					paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: false
-                    input "contacts", "capability. *  2.0.2 - 04/27/20 - ", title: "Select contact sensor to trigger Mode change", required: false, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Mode change", required: false, multiple: true
                     
 					input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
 						[Pon1:"Profile 1"],
@@ -153,8 +154,8 @@ def pageConfig() {
 					paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: false
-                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Mode change", required: false, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Mode change", required: false, multiple: true
                     
                    	input "biScheduleSwitch", "text", title: "Schedule Name", description: "The exact name of the BI schedule to trigger with the switch"
                 }
@@ -170,8 +171,8 @@ def pageConfig() {
 					paragraph "<b>Ability to move a camera to a Preset using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: false, multiple: false
-                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Preset", required: false, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Preset", required: false, multiple: true
                     
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 					input "biCameraPreset", "enum", title: "Preset number", options: [
@@ -189,8 +190,8 @@ def pageConfig() {
 					paragraph "<b>Ability to get a Camera Snapshot using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
                 section(){
-					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: false, multiple: false
-                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Snapshot", required: false, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Snapshot", required: false, multiple: true
                     
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
@@ -201,8 +202,8 @@ def pageConfig() {
 					paragraph "<b>Ability to start or stop manual recording on camera using a Switch or Contact.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: false, multiple: false
-                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera", required: false, multiple: false
+					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera", required: false, multiple: true
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
 			}
@@ -212,8 +213,8 @@ def pageConfig() {
 					paragraph "<b>Ability to use PTZ commands using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
-					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: false, multiple: false
-                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger PTZ command", required: false, multiple: false
+					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger PTZ command", required: false, multiple: true
                     
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 					input "biCameraPTZ", "enum", title: "PTZ Command", options: [
@@ -333,18 +334,7 @@ def profileSwitchHandler(evt) {
 	if(logEnable) log.debug "BI Control-switchChangeHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-    contin = false
-    if(switches) {
-        if(switches.currentValue("switch") == "on") {
-            contin = true
-        }
-    }
-    
-    if(contacts) {
-        if(contacts.currentValue("contact") == "open") {
-            contin = true
-        }
-    }
+    checkSwitchesContacts()
                 
 	if(contin) {
 		if(logEnable) log.debug "switchChangeHandler - switchProfileOn = ${switchProfileOn}"
@@ -413,18 +403,7 @@ def scheduleSwitchHandler(evt) {
 	if(logEnable) log.debug "BI Control-switchChangeHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	contin = false
-    if(switches) {
-        if(switches.currentValue("switch") == "on") {
-            contin = true
-        }
-    }
-    
-    if(contacts) {
-        if(contacts.currentValue("contact") == "open") {
-            contin = true
-        }
-    }
+	checkSwitchesContacts()
                 
 	if(contin) {
 		if(logEnable) log.debug "scheduleSwitchHandler - switchScheduleOn = ${biScheduleSwitch}"
@@ -436,18 +415,7 @@ def cameraPresetHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraPresetHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	contin = false
-    if(switches) {
-        if(switches.currentValue("switch") == "on") {
-            contin = true
-        }
-    }
-    
-    if(contacts) {
-        if(contacts.currentValue("contact") == "open") {
-            contin = true
-        }
-    }
+	checkSwitchesContacts()
                 
 	if(contin) {
 		if(logEnable) log.debug "cameraPresetHandler - biCameraPreset = ${biCameraPreset}"
@@ -478,18 +446,7 @@ def cameraSnapshotHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraSnapshotHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	contin = false
-    if(switches) {
-        if(switches.currentValue("switch") == "on") {
-            contin = true
-        }
-    }
-    
-    if(contacts) {
-        if(contacts.currentValue("contact") == "open") {
-            contin = true
-        }
-    }
+	checkSwitchesContacts()
                 
 	if(contin) {
 		if(logEnable) log.debug "cameraSnapshotHandler - Nothing"
@@ -502,18 +459,7 @@ def cameraTriggerHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraTriggerHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	contin = false
-    if(switches) {
-        if(switches.currentValue("switch") == "on") {
-            contin = true
-        }
-    }
-    
-    if(contacts) {
-        if(contacts.currentValue("contact") == "open") {
-            contin = true
-        }
-    }
+	checkSwitchesContacts()
                 
 	if(contin) {
 		if(logEnable) log.debug "cameraTriggerHandler - On"
@@ -530,18 +476,7 @@ def cameraPTZHandler(evt) {
 	if(logEnable) log.debug "BI Control-cameraPTZHandler (${state.version})"
 	if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
-	contin = false
-    if(switches) {
-        if(switches.currentValue("switch") == "on") {
-            contin = true
-        }
-    }
-    
-    if(contacts) {
-        if(contacts.currentValue("contact") == "open") {
-            contin = true
-        }
-    }
+	checkSwitchesContacts()
                 
 	if(contin) {
 		if(logEnable) log.debug "cameraPTZHandler - biCameraPTZ = ${biCameraPTZ}"
@@ -661,6 +596,26 @@ def biChangeSchedule(schedule) {
         pauseExecution(delayM)
     }
     sendHubCommand(hubAction)
+}
+
+def checkSwitchesContacts() {
+    contin = false
+    if(switches) {
+        switches.each { it1 ->
+            if(it1.currentValue("switch") == "on") {
+                contin = true
+            }
+        }
+    }
+    
+    if(contacts) { 
+        contacts.each { it2 ->
+            if(it2.currentValue("contact") == "open") {
+                contin = true
+            }
+        }
+    }
+    return contin
 }
 
 // ********** Normal Stuff **********
