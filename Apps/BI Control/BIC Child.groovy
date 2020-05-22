@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.6 - 05/22/20 - Add toggle for camera triggers option
  *  2.0.5 - 05/22/20 - More contact options
  *  2.0.4 - 05/18/20 - Added contact triggers
  *  2.0.2 - 04/27/20 - Cosmetic changes
@@ -59,7 +60,7 @@
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -205,6 +206,9 @@ def pageConfig() {
 					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera", required: false, multiple: true
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+                    
+                    paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
+                    input "useMethod", "bool", "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
 				}
 			}
             
@@ -536,8 +540,8 @@ def biChangeProfile(num) {
 	} else
 	if(triggerMode == "Camera_Trigger") {
 		if(logEnable) log.debug "I'm in Camera_Trigger"
-		biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-		// biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
+		if(!useMethod) biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+		if(useMethod) biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
 		// NOTE: if this Command doesn't work for you, try the second one instead
 		// /admin?camera=x&manrec=1
 	} else
@@ -576,7 +580,7 @@ def biChangeSchedule(schedule) {
 
 	biRawCommand = "/admin?schedule=${schedule}&user=${parent.biUser}&pw=${parent.biPass}"
 
-	if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
+	if(logEnable) log.debug "sending GET to URL ${biHost}${biRawCommand}"
 	if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
 
 	def httpMethod = "GET"
@@ -660,7 +664,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
