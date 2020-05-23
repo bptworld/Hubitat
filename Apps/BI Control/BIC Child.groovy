@@ -208,7 +208,7 @@ def pageConfig() {
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                     
                     paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
-                    input "useMethod", "bool", "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
+                    input "useMethod", "bool", title: "Manrec (off) or Trigger (on)", defaultValue:false, submitOnChange:true
 				}
 			}
             
