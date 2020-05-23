@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 05/23/20 - Added What's new 
  *  1.0.4 - 05/20/20 - Fix for HE update
  *  1.0.3 - 05/16/20 - Error trapping
  *  1.0.2 - 05/07/20 - Added 'Developer Options' Search, cosmetic changes
@@ -48,6 +49,7 @@
  *
  */
 
+import groovy.time.TimeCategory
 import groovy.transform.Field
 @Field static String repositoryListing = "https://raw.githubusercontent.com/dcmeglio/hubitat-packagerepositories/master/repositories.json"
 @Field static List categories = [] 
@@ -56,7 +58,7 @@ import groovy.transform.Field
     
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -76,6 +78,7 @@ preferences {
     page(name: "searchOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "categoryOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "developerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "whatsNewOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -108,6 +111,7 @@ def pageConfig() {
                 href "categoryOptions", title:"Category Options", description:"See all Apps and Drivers the selected Category has to offer"
                 href "developerOptions", title:"Developer Options", description:"See all Apps and Drivers the selected Developer has to offer"
                 href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an App or Driver across all Developers and Categories"
+                href "whatsNewOptions", title:"What's New Options", description:"See 'What's New' within the past 7 days. <i>This will take a minute to run! Please be patient.</i>"
             }
 
             section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -186,6 +190,19 @@ def searchOptions() {
                 paragraph appsList
             }
 	    }
+    }
+}
+
+def whatsNewOptions() {
+    dynamicPage(name: "whatsNewOptions", title: "", install: false, uninstall:false){
+        display()
+		
+        findPakcagesByDateAdded()
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" ${state.resultsTitle}")) {
+            paragraph appsList
+
+        }
     }
 }
 
@@ -309,6 +326,81 @@ def findPackagesBySearch() {
             }
         }
     }
+}
+
+def findPakcagesByDateAdded() {
+    if(logEnable) log.debug "In findPakcagesByDateAdded (${state.version})"   
+    allPackages = state.allPackages.sort{ name-> name.name}
+    state.packageCount = allPackages.size()
+                
+    state.resultsTitle = "<b>Search Results for New Packages</b>"
+    appsList = ""
+    allDays7 = []
+    
+	for (pkg in allPackages) {
+        def info = getJSONFile(pkg.location)
+
+        theLinks = "" 
+        try {
+            if(info.documentationLink) {
+                theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
+            }
+            if(info.communityLink) {
+                theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
+            }
+            if(pkg.gitHubUrl) {
+                theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
+            }
+            if(pkg.payPalUrl) {
+                theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
+            }
+            if(theLinks != "") theLinks += "|"
+        }
+        catch (a) {
+            //log.error a
+        }
+        
+        try {
+            theDate = "${info.dateReleased} 01:00:00"
+            def prev = Date.parse("yyy-MM-dd HH:mm:ss","${theDate}".replace("+00:00","+0000"))
+            def now = new Date()
+
+            use(TimeCategory) {       
+                dur = now - prev
+                days = dur.days
+                if(logDebug) log.debug "Author/Package: ${pkg.author} - ${pkg.name} - Days: ${days}"
+            }
+        } catch (e) {            
+            //log.error e
+        }
+        
+        if(days) {
+            theDays = days.toInteger()
+
+            if(theDays <= 7) {
+                def mapInfo = [
+                    cat: pkg.category,
+                    name: pkg.name,
+                    author: pkg.author,
+                    theDays: theDays,
+                    theLinks: theLinks,
+                    description: pkg.description
+                ]
+                allDays7 << mapInfo      
+            }
+        }
+    }
+    sortedByDays = allDays7.sort{ stuff -> stuff.theDays }
+
+    sortedByDays.each { data -> 
+        if(data.theDays == 1) {
+            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>${data.theDays} day - <b>${data.name}</b> - ${data.cat} - ${data.author}<br>${data.theLinks}<br>${data.description}</div>"
+        } else {
+            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>${data.theDays} days - <b>${data.name}</b> - ${data.cat} - ${data.author}<br>${data.theLinks}<br>${data.description}</div>"
+        }
+    }
+
+    theLinks = ""     
 }
 
 def reposToShowHandler() {        // Code by dman2306
@@ -500,7 +592,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
