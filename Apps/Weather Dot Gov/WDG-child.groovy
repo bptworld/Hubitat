@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 05/23/20 - Rewrite of some of the tables
  *  1.1.3 - 05/07/20 - Added multiple alert tiles and summary tile
  *  1.1.2 - 04/27/20 - Cosmetic changes
  *  1.1.1 - 04/24/20 - Adjustments Asthma and Pollen forecasts
@@ -56,7 +57,7 @@
 
 def setVersion(){
     state.name = "Weather Dot Gov"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -157,7 +158,8 @@ def currentTileOptions() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Current Weather Tile Options")) {
             paragraph "Time to setup the Current Weather Tile for use with Dashboards!"
             
-            input "updateTimeC", "enum", title: "How ofter to update tile?", options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], submitOnChange:true  
+            input "fontSizeCurrentTile", "text", title: "Font Size", required: true, defaultValue:"15", submitOnChange:true
+            input "updateTimeC", "enum", title: "How ofter to update tile?", options:["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], submitOnChange:true  
             
             paragraph "<hr>"
             input "updateTileC", "bool", title: "Manually Update Tiles", description: "", submitOnChange:true
@@ -541,6 +543,11 @@ def initialize() {
     if(useNotify) subscribe(dataDevice, "alertSeverity", alertNotifications)
     if(useNotify) subscribe(dataDevice, "alertUrgency", alertNotifications)
     if(useNotify) subscribe(dataDevice, "alertDescription", alertNotifications)
+    
+    if(zipCode) {
+        runEvery3Hours(getPollenData)
+        runEvery3Hours(getAsthmaData)
+    }
 }
 
 def initializeAlerts() {
@@ -604,20 +611,22 @@ def getCurrentData(evt) {
     if(cVisibility == null) cVisibility = "No Data"
     if(cLastUpdated == null) cLastUpdated = "No Data"
 
-    fontSize = "45"
+    fontSize = "${fontSizeCurrentTile}"
+    fontSizePlus = fontSize.toInteger() + 15
             
-    currentTable1 =  "<table width=100% align=center>"
-    currentTable1 += "<tr><td width=90><img src='https://${cIcon}'>"
-    currentTable1 += "<td><span style='font-weight:bold'>${cTextDescription}</span><br><span style='font-size:${fontSize}px;font-weight:bold'>${cTemp1}</span>"
-    currentTable1 += "<td><b>Humidity:</b> ${cRelativeHumidity}%<br><b>Wind Speed:</b> ${cWindSpeed}<br><b>Barometer:</b> ${cBarometricPressure}"
-    currentTable1 += "<td><b>Dewpoint:</b> ${cDewpoint}<br><b>Visibility:</b> ${cVisibility}<br><b>Last Updated:</b>"
-    currentTable1 += "</tr><tr><td colspan=4 align=center><small>${cLastUpdated}</small>"
-    currentTable1 += "</tr></table>"
+    currentTable1 =  "<div style='overflow:auto;height:90%'>"
+    currentTable1 += "<table style='width:100%;align-content:center'>"
+    currentTable1 += "<tr><td><img src='https://${cIcon}'>"
+    currentTable1 += "<td><span style='font-weight:bold'>${cTextDescription}</span><br><span style='font-size:${fontSizePlus}px;font-weight:bold'>${cTemp1}</span>"
+    currentTable1 += "<td><span style='font-size:${fontSize}px'><b>Humidity:</b> ${cRelativeHumidity}%<br><b>Wind Speed:</b> ${cWindSpeed}<br><b>Barometer:</b> ${cBarometricPressure}</span>"
+    currentTable1 += "<td><span style='font-size:${fontSize}px'><b>Dewpoint:</b> ${cDewpoint}<br><b>Visibility:</b> ${cVisibility}<br><b>Last Updated:</b></span>"
+    currentTable1 += "<tr><td colspan=4 align=center><small>${cLastUpdated}</small>"
+    currentTable1 += "</table></div>"
 
     state.currentTable1 = currentTable1
     
-    currentTable2 =  "<table width=100% align=center>"
-    currentTable2 += "<tr><td width=100 align=center><img src='https://${cIcon}'><br>"
+    currentTable2 =  "<div style='overflow:auto;height:90%'><table style='width:100%;align-content:center'>"
+    currentTable2 += "<tr><td style='width:100%;align-content:center'><img src='https://${cIcon}'><br>"
     currentTable2 += "<span style='font-weight:bold'>${cTextDescription}</span><br>"
     currentTable2 += "<span style='font-size:${fontSize}px;font-weight:bold'>${cTemp1}</span><br>"
     currentTable2 += "<b>Humidity:</b> ${cRelativeHumidity}%<br>"
@@ -627,7 +636,7 @@ def getCurrentData(evt) {
     currentTable2 += "<b>Visibility:</b> ${cVisibility}<br>"
     currentTable2 += "<b>Last Updated:</b><br>"
     currentTable2 += "<small>${cLastUpdated}</small>"
-    currentTable2 += "</tr></table>"
+    currentTable2 += "</table></div>"
     
     state.currentTable2 = currentTable2
             
@@ -691,64 +700,64 @@ def getWeeklyData(evt) {
         // zforecast_1 : 1:This Afternoon:63:F:null:13 mph:NW:api.weather.gov/icons/land/day/few?size=medium:Sunny:Sunny, with a high near 63. Northwest wind around 13 mph, with gusts as high as 23 mph.
     
         weeklyTable_$x = "${wNumber}::"
-        weeklyTable_$x += "<table width=100% align=center>"
-        weeklyTable_$x += "<tr><td width=90 height=60 align=center><small><b>${wName}</b></small></td></tr>"
-        weeklyTable_$x += "<tr><td width=90 align=center><img src='https://${wIcon}'></td></tr>"
-        weeklyTable_$x += "<tr><td width=90 height=100 align=center><small>${wShortForecast}</small></td></tr>"
-        weeklyTable_$x += "<tr><td width=90 align=center><span style='font-weight:bold'>${wTemp1}</span></td></tr>"
-        weeklyTable_$x += "</table>"
+        weeklyTable_$x += "<div style='overflow:auto;height:90%'><table style='width:100%;height:100%;align-content:center'>"
+        weeklyTable_$x += "<tr style='vertical-align:text-top;align-content:center'><td><small><b>${wName}</b></small><br>"
+        weeklyTable_$x += "<img width=50% src='https://${wIcon}'><br>"
+        weeklyTable_$x += "<small>${wShortForecast}</small>"
+        weeklyTable_$x += "<tr style='vertical-align:text-bottom;align-content:center'><td>${wTemp1}"
+        weeklyTable_$x += "</table></div>"
         
         if(logEnable) log.debug "In weeklytTileOptions - Sending 'weeklyTable' to tile device (${tileDevice})"
         tileDevice.weeklyData(weeklyTable_$x)
         
-        if(x == 0) forecastTable1 =  "<table width=100% style='text-align:left'>"
+        if(x == 0) forecastTable1 =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:left'>"
         if(smallTileF) { if(x >= 0 && x <= 2) forecastTable1 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
         if(!smallTileF) { if(x >= 0 && x <= 2) forecastTable1 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
         
-        if(x == 3) forecastTable2 =  "<table width=100% align=left>"
+        if(x == 3) forecastTable2 =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:left'>"
         if(smallTileF) { if(x >= 3 && x <= 5) forecastTable2 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
         if(!smallTileF) { if(x >= 3 && x <= 5) forecastTable2 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
         
-        if(x == 6) forecastTable3 =  "<table width=100% align=left>"
+        if(x == 6) forecastTable3 =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:left'>"
         if(smallTileF) { if(x >= 6 && x <= 8) forecastTable3 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
         if(!smallTileF) { if(x >= 6 && x <= 8) forecastTable3 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }    
         
-        if(x == 9) forecastTable4 =  "<table width=100% align=left>"
+        if(x == 9) forecastTable4 =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:left'>"
         if(smallTileF) { if(x >= 9 && x <= 11) forecastTable4 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
         if(!smallTileF) { if(x >= 9 && x <= 11) forecastTable4 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
         
-        if(x == 12) forecastTable5 =  "<table width=100% align=left>"
+        if(x == 12) forecastTable5 =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:left'>"
         if(smallTileF) { if(x >= 12 && x <= 13) forecastTable5 += "<tr><td style='text-align:left;font-size:${sF}px'><b>${wName}</b> - ${wDetailedForecast}" }
         if(!smallTileF) { if(x >= 12 && x <= 13) forecastTable5 += "<tr><td style='text-align:left'><b>${wName}</b> - ${wDetailedForecast}" }
     }
     
     if(forecastTable1) {
         forecastTable1a =  forecastTable1.take(1015)
-        forecastTable1a += "</table>"
+        forecastTable1a += "</table></div>"
         tileDevice.forecastData1(forecastTable1a)       
     }
     
     if(forecastTable2) {
         forecastTable2a =  forecastTable2.take(1015)
-        forecastTable2a += "</table>"
+        forecastTable2a += "</table></div>"
         tileDevice.forecastData2(forecastTable2a)       
     }
     
     if(forecastTable3) {
         forecastTable3a =  forecastTable3.take(1015)
-        forecastTable3a += "</table>"
+        forecastTable3a += "</table></div>"
         tileDevice.forecastData3(forecastTable3a)       
     }
     
     if(forecastTable4) {
         forecastTable4a =  forecastTable4.take(1015)
-        forecastTable4a += "</table>"
+        forecastTable4a += "</table></div>"
         tileDevice.forecastData4(forecastTable4a)       
     }
     
     if(forecastTable5) {
         forecastTable5a =  forecastTable5.take(1015)
-        forecastTable5a += "</table>"
+        forecastTable5a += "</table></div>"
         tileDevice.forecastData5(forecastTable5a)       
     }
 }
@@ -779,8 +788,8 @@ def getAlertData(evt) {
         statusFontSize = alertFontSize - 2
 
         if(alertDescription != "No Data") {
-            alertTable =  "<table width=100% align=center>"
-            alertTable += "<tr><td width=100%>"
+            alertTable =  "<div style='overflow:auto;height:90%'><table width=100% align=center>"
+            alertTable += "<tr><td style='width:100%'>"
             alertTable += "<span style='font-size:${alertFontSize}px;font-weight:bold'>${alertHeadline}</span><br>"
             alertTable += "<span style='font-size:${statusFontSize}px;font-weight:bold'>Message Type: ${alertMessageType} - Urgency: ${alertUrgency} - Severity: ${alertSeverity} - Certainty: ${alertCertainty}</span><hr>"
 
@@ -801,11 +810,11 @@ def getAlertData(evt) {
                     alertTable += "${alertInstruction1}"
                 }
             }
-            alertTable += "</span></tr></table>"
+            alertTable += "</span></table></div>"
             dataDevice.on()
         } else {
             alertTable =  "<table width=100% align=center>"
-            alertTable += "<tr><td width=100%>"
+            alertTable += "<tr><td style='width:100%'>"
             alertTable += "<span style='font-size:${titleFontSize}px;font-weight:bold'>No alerts</span><br>"
             alertTable += "</table>"
             dataDevice.off()
@@ -823,10 +832,10 @@ def getAlertData(evt) {
     alertHeadline4 = dataDevice.currentValue("alertHeadline_3")
     alertHeadline5 = dataDevice.currentValue("alertHeadline_4")
         
-    alertSummaryTable =  "<table width=100%>"
-    alertSummaryTable += "<tr><td width=100% align='left'>"
-    alertSummaryTable += "<span style='font-size:${alertFontSize}px;text-align:left'>- ${alertHeadline1}<br>- ${alertHeadline2}<br>- ${alertHeadline3}<br>- ${alertHeadline4}<br>- ${alertHeadline5}</span><br>"
-    alertSummaryTable += "</table>"
+    alertSummaryTable =  "<div style='overflow:auto;height:90%'><table width=100%>"
+    alertSummaryTable += "<tr><td style='width:100%;text-align:left'>"
+    alertSummaryTable += "<span style='font-size:${alertFontSize}px'>- ${alertHeadline1}<br>- ${alertHeadline2}<br>- ${alertHeadline3}<br>- ${alertHeadline4}<br>- ${alertHeadline5}</span><br>"
+    alertSummaryTable += "</table></div>"
         
     tileDevice.alertSummaryData(alertSummaryTable)
         
@@ -889,27 +898,27 @@ def getAsthmaData() {
     asthmaTriggersYesterday = dataDevice.currentValue('asthmaTriggersYesterday')
     
 	if(logEnable) log.debug "In asthmaYesterdayTileMap"
-	asthmaDataYesterday =  "<table width=100% align=center>"
-	asthmaDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Asthma Forecast Yesterday<br>${zipCode}</div>"
-	asthmaDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${asthmaIndexYesterday} - ${asthmaCategoryYesterday}</div>"
-	asthmaDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${asthmaTriggersYesterday}</div>"
-	asthmaDataYesterday += "</table>"
+	asthmaDataYesterday =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:center'>"
+	asthmaDataYesterday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>Asthma Forecast Yesterday<br>${zipCode}</span>"
+	asthmaDataYesterday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeIndex}px'>${asthmaIndexYesterday} - ${asthmaCategoryYesterday}</span>"
+	asthmaDataYesterday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>${asthmaTriggersYesterday}</span>"
+	asthmaDataYesterday += "</table></div>"
 	tileDevice.asthmaYesterdayData(asthmaDataYesterday)
 
 	if(logEnable) log.debug "In asthmaTodayTileMap"
-	asthmaDataToday =  "<table width=100% align=center>"
-	asthmaDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Asthma Forecast Today<br>${zipCode}</div>"
-	asthmaDataToday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${asthmaIndexToday} - ${asthmaCategoryToday}</div>"
-	asthmaDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${asthmaTriggersToday}</div>"
-	asthmaDataToday += "</table>"
+	asthmaDataToday =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:center'>"
+	asthmaDataToday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>Asthma Forecast Today<br>${zipCode}</span>"
+	asthmaDataToday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeIndex}px'>${asthmaIndexToday} - ${asthmaCategoryToday}</span>"
+	asthmaDataToday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>${asthmaTriggersToday}</span>"
+	asthmaDataToday += "</table></div>"
 	tileDevice.asthmaTodayData(asthmaDataToday)
 
 	if(logEnable) log.debug "In asthmaTomorrowTileMap"
-	asthmaDataTomorrow =  "<table width=100% align=center>"
-	asthmaDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Asthma Forecast Tomorrow<br>${zipCode}</div>"
-	asthmaDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${asthmaIndexTomorrow} - ${asthmaCategoryTomorrow}</div>"
-	//asthmaDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${asthmaTriggersTomorrow}</div>"
-	asthmaDataTomorrow += "</table>"
+	asthmaDataTomorrow =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:center'>"
+	asthmaDataTomorrow += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>Asthma Forecast Tomorrow<br>${zipCode}</span>"
+	asthmaDataTomorrow += "<tr><td style='text-align:center'><span style='font-size:${fontSizeIndex}px'>${asthmaIndexTomorrow} - ${asthmaCategoryTomorrow}</span>"
+	//asthmaDataTomorrow += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>${asthmaTriggersTomorrow}</span>"
+	asthmaDataTomorrow += "</table></div>"
 	tileDevice.asthmaTomorrowData(asthmaDataTomorrow)   
 }
 
@@ -930,27 +939,27 @@ def getPollenData() {
     pollenTriggersYesterday = dataDevice.currentValue('pollenTriggersYesterday')
     
 	if(logEnable) log.debug "In pollenYesterdayTileMap"
-	pollenDataYesterday =  "<table width=100% align=center>"
-	pollenDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Pollen Forecast Yesterday<br>${zipCode}</div>"
-	pollenDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${pollenIndexYesterday} - ${pollenCategoryYesterday}</div>"
-	pollenDataYesterday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${pollenTriggersYesterday}</div>"
-	pollenDataYesterday += "</table>"
+	pollenDataYesterday =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:center'>"
+	pollenDataYesterday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>Pollen Forecast Yesterday<br>${zipCode}</span>"
+	pollenDataYesterday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeIndex}px'>${pollenIndexYesterday} - ${pollenCategoryYesterday}</span>"
+	pollenDataYesterday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>${pollenTriggersYesterday}</span>"
+	pollenDataYesterday += "</table></div>"
 	tileDevice.pollenYesterdayData(pollenDataYesterday)
 
 	if(logEnable) log.debug "In pollenTodayTileMap"
-	pollenDataToday =  "<table width=100% align=center>"
-	pollenDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Pollen Forecast Today<br>${zipCode}</div>"
-	pollenDataToday += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${pollenIndexToday} - ${pollenCategoryToday}</div>"
-	pollenDataToday += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${pollenTriggersToday}</div>"
-	pollenDataToday += "</table>"
+	pollenDataToday =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:center'>"
+	pollenDataToday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>Pollen Forecast Today<br>${zipCode}</span>"
+	pollenDataToday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeIndex}px'>${pollenIndexToday} - ${pollenCategoryToday}</span>"
+	pollenDataToday += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>${pollenTriggersToday}</span>"
+	pollenDataToday += "</table></div>"
 	tileDevice.pollenTodayData(pollenDataToday)
 
 	if(logEnable) log.debug "In pollenTomorrowTileMap"
-	pollenDataTomorrow =  "<table width=100% align=center>"
-	pollenDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>Pollen Forecast Tomorrow<br>${zipCode}</div>"
-	pollenDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeIndex}px'>${pollenIndexTomorrow} - ${pollenCategoryTomorrow}</div>"
-	pollenDataTomorrow += "<tr><td align=center><div style='font-size:${fontSizeTriggers}px'>${pollenTriggersTomorrow}</div>"
-	pollenDataTomorrow += "</table>"
+	pollenDataTomorrow =  "<div style='overflow:auto;height:90%'><table style='width:100%;text-align:center'>"
+	pollenDataTomorrow += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>Pollen Forecast Tomorrow<br>${zipCode}</span>"
+	pollenDataTomorrow += "<tr><td style='text-align:center'><span style='font-size:${fontSizeIndex}px'>${pollenIndexTomorrow} - ${pollenCategoryTomorrow}</span>"
+	pollenDataTomorrow += "<tr><td style='text-align:center'><span style='font-size:${fontSizeTriggers}px'>${pollenTriggersTomorrow}</span>"
+	pollenDataTomorrow += "</table></div>"
 	tileDevice.pollenTomorrowData(pollenDataTomorrow)   
 }
 
@@ -1066,7 +1075,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
