@@ -144,7 +144,7 @@
       {
    		"name": "Simple Groups",
    		"category": "Utility",
-         "dateAdded": "05/20/2020"
+         "dateAdded": "05/20/2020",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Groups/packageManifest.json",
    		"description": "Group just about anything. Motion, Contact, Water Sensors and other devices. Even group the groups!"
    	},
