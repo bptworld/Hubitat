@@ -5,6 +5,7 @@
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-room-director-smarter-rooms-automatically/27291",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "95decf3b-7e1e-4304-9fbc-e1460f357cf0",
