@@ -5,6 +5,7 @@
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-device-check-plus-check-selected-devices-then-warn-you-whats-not-in-the-right-state/24454",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "21d1e256-35ff-46be-8417-8ed6a8757281",
