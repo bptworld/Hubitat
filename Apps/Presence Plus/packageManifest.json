@@ -5,6 +5,7 @@
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-presence-plus-creates-a-combined-presence-device/26071",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "4b7f1e52-407b-4ae9-a5dd-3f817815c3c8",
