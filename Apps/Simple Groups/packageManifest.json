@@ -5,6 +5,7 @@
 	"dateReleased": "2020-05-20",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "3819fe1d-20a1-4505-b420-353412635573",
