@@ -5,6 +5,7 @@
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-snapshot-monitor-devices-and-sensors-see-status-on-dashboard-by-notifications-and-speech/12042",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "6c909327-a768-4cfa-a19d-914c5d865b44",
