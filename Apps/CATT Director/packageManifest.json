@@ -5,6 +5,7 @@
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-catt-director-app-and-driver/20894",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "801d2cca-7c7f-470a-a438-fd3c16768018",
