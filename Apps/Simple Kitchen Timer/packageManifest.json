@@ -5,6 +5,7 @@
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-simple-kitchen-timer-with-controls-for-use-with-dashboards/37021",
+	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "c5b511d7-c4fd-4aa0-98b3-c7bb86838857",
