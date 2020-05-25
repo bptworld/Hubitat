@@ -42,7 +42,7 @@
 
 
 metadata {
-	definition (name: "Averaging Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Averaging Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/AP-driver.groovy") {
         capability "Actuator"
         capability "Contact Sensor"
         capability "Motion Sensor"
