@@ -27,6 +27,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-polle
 <b>At Home Simulator</b> - Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-at-home-simulator/8697" target="_blank">Go Here</a>
 <br><br>
+<b>Averaging Plus</b> - Average just about anything. Get notifications based on Setpoints.<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
+<br><br>
 <b>BI Control</b> - Designed to work locally with Blue Iris security software.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-bi-control-local-blue-iris-control/5454" target="_blank">Go Here</a>
 <br><br>
