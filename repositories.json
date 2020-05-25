@@ -10,6 +10,12 @@
    		"description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine."
    	},
       {
+   		"name": "Averaging Plus",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/packageManifest.json",
+   		"description": "Average just about anything. Get notifications based on Setpoints."
+   	},
+      {
    		"name": "BI Control",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/packageManifest.json",
