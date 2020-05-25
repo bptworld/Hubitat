@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.7 - 05/25/20 - Little adjustments here and there
  *  2.0.6 - 04/27/20 - Cosmetic changes
  *  2.0.5 - 04/18/20 - Adjustments
  *  2.0.4 - 12/09/19 - Fixed a bug 
@@ -54,7 +55,7 @@
 
 def setVersion(){
     state.name = "Web Pinger"
-	state.version = "2.0.6"
+	state.version = "2.0.7"
 }
 
 definition(
@@ -97,7 +98,7 @@ def pageConfig() {
             input "switches2", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-            input(name: "resetSwitches", type: "bool", defaultValue: "false", title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: "true")
+            input(name: "resetSwitches", type: "bool", defaultValue: false, title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: true)
             if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds)", type: "number", required: true, defaultValue:60)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
@@ -109,7 +110,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+            input(name: "logEnable", type: "bool", defaultValue: false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
 		}
 		display2()
 	}
@@ -129,8 +130,8 @@ def updated() {
 
 def initialize() {
 	if (validateURL()) {
-		state.downHost = "false"
-		state.pollVerify = "false"
+		state.downHost = false
+		state.pollVerify = false
 		runIn(5, poll)
     }
 }
@@ -151,12 +152,12 @@ def validateURL() {
     			state.website = state.website.replace("www.", "")
     		}
 			if(logEnable) log.debug "In validateURL - URL is valid"
-    		state.validURL = "true"
+    		state.validURL = true
     		return true
     	}
 		catch (e) {
 			if(logEnable) log.debug "In validateURL - URL is NOT valid"
-			state.validURL = "false"
+			state.validURL = false
 			return false
 		}
 }
@@ -166,12 +167,12 @@ def poll() {
             uri: "http://${state.website}",
             timeout: 30
     	]
-    	if (state.validURL == "true") {
+    	if (state.validURL) {
     		try {
         		httpGet(reqParams) { resp ->
 					if(logEnable) log.debug "In Poll - Response was ${resp.status}"
             		if (resp.status == 200) {
-                		if (state.downHost == "true") {
+                		if (state.downHost) {
             				if(switches) turnOffHandler()
                             if(switches2) turnOnHandler()
                     		if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}"
@@ -181,10 +182,10 @@ def poll() {
                     		if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}"
                 		}
             		} else { 
-            			if (state.downHost == "false") {
-                			if (state.pollVerify == "false") {
+            			if (!state.downHost) {
+                			if (!state.pollVerify) {
         						runIn(60*threshold, pollVerify)
-            					state.pollVerify = "true"
+            					state.pollVerify = true
             				}
                 			if(logEnable) log.debug "Request failed (${resp.status}) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
                 		} else {
@@ -193,10 +194,10 @@ def poll() {
             		}
         		}
     		} catch (e) {
-        		if (state.downHost == "false") {
-        			if (state.pollVerify == "false") {
+        		if (!state.downHost) {
+        			if (!state.pollVerify) {
         				runIn(60*threshold, pollVerify)
-            			state.pollVerify = "true"
+            			state.pollVerify = true
             		}
             		if(logEnable) log.debug "Request failed (NO status code) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
         		} else {
@@ -224,24 +225,25 @@ def pollVerify() {
         	httpGet(reqParams) { resp ->
 				if(logEnable) log.debug "In pollVerify - Response was ${resp.status}"
             	if (resp.status == 200) {
-                	state.downHost = "false"
-                	state.pollVerify = "false"
+                	state.downHost = false
+                	state.pollVerify = false
                 	if(switches) turnOffHandler()
                     if(switches2) turnOnHandler()
                 	if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}, false alarm avoided"
             	} else {
-            		state.downHost = "true"
-                	state.pollVerify = "false"
+            		state.downHost = true
+                	state.pollVerify = false
             		if(switches) turnOnHandler()
                     if(switches2) turnOffHandler()
                 	if(logEnable) log.debug "Request failed (${resp.status}) to ${state.website}"
             	}
         	}
     	} catch (e) {
-        	state.downHost = "true"
-        	state.pollVerify = "false"
+        	state.downHost = true
+        	state.pollVerify = false
         	if(switches) turnOnHandler()
             if(switches2) turnOffHandler()
+            if(sendPushMessage) pushNow()
         	if(logEnable) log.debug "Request failed to ${state.website}"
     	}
 }
@@ -250,7 +252,6 @@ def turnOnHandler() {
 	if (switches) {
     	switches.on()
     	if(logEnable) log.debug "Turning on switch(es)"
-		if(sendPushMessage) pushNow()
         
         if(resetSwitches) {
             rTime = resetTime * 1000
@@ -285,7 +286,6 @@ def turnOffHandler() {
     
     if (switches2) {
     	switches2.off()
-        if(sendPushMessage) pushNow()
     	if(logEnable) log.debug "Turning off switch(es)"
         
         if(resetSwitches) {
@@ -297,8 +297,8 @@ def turnOffHandler() {
 }
 
 def pushNow(){
-	if(logEnable) log.debug "In pushNow..."
-	if(state.downHost == "true") {
+	if(logEnable) log.debug "In pushNow - Sending message"
+	if(state.downHost) {
 		sendPushMessage.deviceNotification(message)
 	}	
 }
@@ -346,7 +346,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -360,8 +360,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
