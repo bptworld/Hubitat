@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.1.6 - 05/25/20 - Added bug fix by @djw1191, thanks!
  *  2.1.5 - 05/16/20 - Minor change
  *  2.1.4 - 05/12/20 - All tiles now scroll
  *  2.1.3 - 05/11/20 - Added more code traps
@@ -219,10 +220,13 @@ def speak(message) {
 def priorityHandler(message) { 
     if(logEnable) log.debug "In priorityHandler - message: ${message}"
 
-    if(message.contains("]")) {
-        def (prior, msgA) = message.split(']')
-        priority = prior.drop(1)
-        lastSpoken = msgA
+    if(message.startsWith("[")) {
+		tmp = message.substring(0,6)
+		if(logEnable) log.debug "n priorityHandler - tmp: ${tmp}"
+		def (prior, msgA) = tmp.split(']')
+		priority = prior.drop(1)
+		msgA = message.substring(5)
+		lastSpoken = msgA
     } else {
         priority = "X:X"
         lastSpoken = message
