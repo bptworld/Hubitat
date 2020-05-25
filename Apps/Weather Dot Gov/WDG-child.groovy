@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.1.5 - 05/25/20 - Fixed an issue with forecast tiles
+ *  1.1.6 - 05/25/20 - Fix for font size issue
+ *  1.1.5 - 05/25/20 - Attempt to fix an issue with forecast tiles
  *  1.1.4 - 05/23/20 - Rewrite of some of the tables
  *  1.1.3 - 05/07/20 - Added multiple alert tiles and summary tile
  *  1.1.2 - 04/27/20 - Cosmetic changes
@@ -58,7 +59,7 @@
 
 def setVersion(){
     state.name = "Weather Dot Gov"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -612,6 +613,7 @@ def getCurrentData(evt) {
     if(cVisibility == null) cVisibility = "No Data"
     if(cLastUpdated == null) cLastUpdated = "No Data"
 
+    if(fontSizeCurrentTile == null) fontSizeCurrentTile = 15
     fontSize = "${fontSizeCurrentTile}"
     fontSizePlus = fontSize.toInteger() + 15
             
