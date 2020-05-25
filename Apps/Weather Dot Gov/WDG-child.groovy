@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 05/25/20 - Fixed an issue with forecast tiles
  *  1.1.4 - 05/23/20 - Rewrite of some of the tables
  *  1.1.3 - 05/07/20 - Added multiple alert tiles and summary tile
  *  1.1.2 - 04/27/20 - Cosmetic changes
@@ -57,7 +58,7 @@
 
 def setVersion(){
     state.name = "Weather Dot Gov"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -732,31 +733,31 @@ def getWeeklyData(evt) {
     }
     
     if(forecastTable1) {
-        forecastTable1a =  forecastTable1.take(1015)
+        forecastTable1a =  forecastTable1.take(1009)
         forecastTable1a += "</table></div>"
         tileDevice.forecastData1(forecastTable1a)       
     }
     
     if(forecastTable2) {
-        forecastTable2a =  forecastTable2.take(1015)
+        forecastTable2a =  forecastTable2.take(1009)
         forecastTable2a += "</table></div>"
         tileDevice.forecastData2(forecastTable2a)       
     }
     
     if(forecastTable3) {
-        forecastTable3a =  forecastTable3.take(1015)
+        forecastTable3a =  forecastTable3.take(1009)
         forecastTable3a += "</table></div>"
         tileDevice.forecastData3(forecastTable3a)       
     }
     
     if(forecastTable4) {
-        forecastTable4a =  forecastTable4.take(1015)
+        forecastTable4a =  forecastTable4.take(1009)
         forecastTable4a += "</table></div>"
         tileDevice.forecastData4(forecastTable4a)       
     }
     
     if(forecastTable5) {
-        forecastTable5a =  forecastTable5.take(1015)
+        forecastTable5a =  forecastTable5.take(1009)
         forecastTable5a += "</table></div>"
         tileDevice.forecastData5(forecastTable5a)       
     }
@@ -1075,7 +1076,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
