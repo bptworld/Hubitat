@@ -92,7 +92,7 @@ def pageConfig() {
     		paragraph "Making the Weather.gov data usable with Hubitat."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            paragraph "Each child app needs a TWO virtual devices. One to store the weather raw data and the second to store the tile data. Enter a short descriptive name for each device."
+            paragraph "Each child app needs TWO virtual devices. One to store the weather raw data and the second to store the tile data. Enter a short descriptive name for each device."
 			input "dataName", "text", title: "Enter a name for this Data Device (ie. 'Dracut Weather Data' will become 'WDG - Dracut Weather Data')", required:true, submitOnChange:true
             paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
             if(dataName) createDataChildDevice()
