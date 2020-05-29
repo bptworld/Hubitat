@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
  *  1.0.4 - 05/07/20 - Added multiple alert data
  *  1.0.3 - 04/19/20 - Added Asthma and Pollen Forecasts
  *  1.0.2 - 04/17/20 - Added alerts
@@ -69,42 +70,42 @@ metadata {
         command "pollenTodayData"
         command "pollenTomorrowData"
 		
-    	attribute "currentDataTile", "string"
+    	attribute "bpt-currentDataTile", "string"
         
-        attribute "weeklyDataTile01", "string"
-        attribute "weeklyDataTile02", "string"
-        attribute "weeklyDataTile03", "string"
-        attribute "weeklyDataTile04", "string"
-        attribute "weeklyDataTile05", "string"
-        attribute "weeklyDataTile06", "string"
-        attribute "weeklyDataTile07", "string"
-        attribute "weeklyDataTile08", "string"
-        attribute "weeklyDataTile09", "string"
-        attribute "weeklyDataTile10", "string"
-        attribute "weeklyDataTile11", "string"
-        attribute "weeklyDataTile12", "string"
-        attribute "weeklyDataTile13", "string"
-        attribute "weeklyDataTile14", "string"
+        attribute "bpt-weeklyDataTile01", "string"
+        attribute "bpt-weeklyDataTile02", "string"
+        attribute "bpt-weeklyDataTile03", "string"
+        attribute "bpt-weeklyDataTile04", "string"
+        attribute "bpt-weeklyDataTile05", "string"
+        attribute "bpt-weeklyDataTile06", "string"
+        attribute "bpt-weeklyDataTile07", "string"
+        attribute "bpt-weeklyDataTile08", "string"
+        attribute "bpt-weeklyDataTile09", "string"
+        attribute "bpt-weeklyDataTile10", "string"
+        attribute "bpt-weeklyDataTile11", "string"
+        attribute "bpt-weeklyDataTile12", "string"
+        attribute "bpt-weeklyDataTile13", "string"
+        attribute "bpt-weeklyDataTile14", "string"
         
-        attribute "forecastTable1", "string"
-        attribute "forecastTable2", "string"
-        attribute "forecastTable3", "string"
-        attribute "forecastTable4", "string"
-        attribute "forecastTable5", "string"
+        attribute "bpt-forecastTable1", "string"
+        attribute "bpt-forecastTable2", "string"
+        attribute "bpt-forecastTable3", "string"
+        attribute "bpt-forecastTable4", "string"
+        attribute "bpt-forecastTable5", "string"
         
-        attribute "alertSummaryTile", "string"
-        attribute "alertTile1", "string"
-        attribute "alertTile2", "string"
-        attribute "alertTile3", "string"
-        attribute "alertTile4", "string"
-        attribute "alertTile5", "string" 
+        attribute "bpt-alertSummaryTile", "string"
+        attribute "bpt-alertTile1", "string"
+        attribute "bpt-alertTile2", "string"
+        attribute "bpt-alertTile3", "string"
+        attribute "bpt-alertTile4", "string"
+        attribute "bpt-alertTile5", "string" 
         
-        attribute "asthmaYesterdayTile", "string"
-		attribute "asthmaTodayTile", "string"
-		attribute "asthmaTomorrowTile", "string"        
-        attribute "pollenYesterdayTile", "string"
-		attribute "pollenTodayTile", "string"
-		attribute "pollenTomorrowTile", "string"
+        attribute "bpt-asthmaYesterdayTile", "string"
+		attribute "bpt-asthmaTodayTile", "string"
+		attribute "bpt-asthmaTomorrowTile", "string"        
+        attribute "bpt-pollenYesterdayTile", "string"
+		attribute "bpt-pollenTodayTile", "string"
+		attribute "bpt-pollenTomorrowTile", "string"
 	}
 	preferences() {    	
         section(){
