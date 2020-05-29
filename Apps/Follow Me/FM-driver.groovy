@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.1.7 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
  *  2.1.6 - 05/25/20 - Added bug fix by @djw1191, thanks!
  *  2.1.5 - 05/16/20 - Minor change
  *  2.1.4 - 05/12/20 - All tiles now scroll
@@ -76,19 +77,19 @@ metadata {
 
         command "sendQueue", ["string", "string", "string"]
 
-        attribute "whatDidISay", "string"
+        attribute "bpt-whatDidISay", "string"
         attribute "whatDidISayCount", "string"
         attribute "latestMessage", "string"
         attribute "latestMessageDateTime", "string"
-        attribute "speakerStatus1", "string"
-        attribute "speakerStatus2", "string"
-        attribute "speakerStatus3", "string"
+        attribute "bpt-speakerStatus1", "string"
+        attribute "bpt-speakerStatus2", "string"
+        attribute "bpt-speakerStatus3", "string"
 
-        attribute "queue1", "string"
-        attribute "queue2", "string"
-        attribute "queue3", "string"
-        attribute "queue4", "string"
-        attribute "queue5", "string"
+        attribute "bpt-queue1", "string"
+        attribute "bpt-queue2", "string"
+        attribute "bpt-queue3", "string"
+        attribute "bpt-queue4", "string"
+        attribute "bpt-queue5", "string"
     }
     preferences() {    	
         section(){
@@ -302,7 +303,7 @@ def populateMap(priority,speech) {
             theData1 = "Too many characters to display on Dashboard (${dataCharCount1})"
         }
 
-        sendEvent(name: "whatDidISay", value: theData1)
+        sendEvent(name: "bpt-whatDidISay", value: theData1)
         sendEvent(name: "whatDidISayCount", value: dataCharCount1)
     } catch(e) {
         log.error "Follow Me Driver - ${e}"  
@@ -349,12 +350,9 @@ def clearSpeechData(){
     sMap1S = "Waiting for Data"
     sMap2S = "Waiting for Data"
     sMap3S = "Waiting for Data"
-    sMap4S = "Waiting for Data"
-    sendEvent(name: "speakerStatus1", value: sMap1S)
-    sendEvent(name: "speakerStatus2", value: sMap2S)
-    sendEvent(name: "speakerStatus3", value: sMap3S)
-    sendEvent(name: "speakerStatus4", value: sMap4S)
-
+    sendEvent(name: "bpt-speakerStatus1", value: sMap1S)
+    sendEvent(name: "bpt-speakerStatus2", value: sMap2S)
+    sendEvent(name: "bpt-speakerStatus3", value: sMap3S)
     speechTop = "Waiting for Data..."
     sendEvent(name: "whatDidISay", value: speechTop)
     if (clearData) runIn(2,clearDataOff)
@@ -389,9 +387,9 @@ def sendFollowMeSpeaker(status) {
             tbl += "</table></div>"
             if(logEnable) log.debug "${tbl}"
             tbl = tblhead + line
-            if(tileCount == 1) sendEvent(name: "speakerStatus1", value: tbl)
-            if(tileCount == 2) sendEvent(name: "speakerStatus2", value: tbl)
-            if(tileCount == 3) sendEvent(name: "speakerStatus3", value: tbl)
+            if(tileCount == 1) sendEvent(name: "bpt-speakerStatus1", value: tbl)
+            if(tileCount == 2) sendEvent(name: "bpt-speakerStatus2", value: tbl)
+            if(tileCount == 3) sendEvent(name: "bpt-speakerStatus3", value: tbl)
             tileCount = tileCount + 1
         }
     }
@@ -399,16 +397,16 @@ def sendFollowMeSpeaker(status) {
     if (tbl != tblhead) {
         tbl += "</table></div>"
         if(logEnable) log.debug "${tbl}"
-        if(tileCount == 1) sendEvent(name: "speakerStatus1", value: tbl)
-        if(tileCount == 2) sendEvent(name: "speakerStatus2", value: tbl)
-        if(tileCount == 3) sendEvent(name: "speakerStatus3", value: tbl)
+        if(tileCount == 1) sendEvent(name: "bpt-speakerStatus1", value: tbl)
+        if(tileCount == 2) sendEvent(name: "bpt-speakerStatus2", value: tbl)
+        if(tileCount == 3) sendEvent(name: "bpt-speakerStatus3", value: tbl)
         tileCount = tileCount + 1
     }
 
     for(x=tileCount;x<4;x++) {
-        if(tileCount == 1) sendEvent(name: "speakerStatus1", value: "No Data")
-        if(tileCount == 2) sendEvent(name: "speakerStatus2", value: "No Data")
-        if(tileCount == 3) sendEvent(name: "speakerStatus3", value: "No Data")
+        if(tileCount == 1) sendEvent(name: "bpt-speakerStatus1", value: "No Data")
+        if(tileCount == 2) sendEvent(name: "bpt-speakerStatus2", value: "No Data")
+        if(tileCount == 3) sendEvent(name: "bpt-speakerStatus3", value: "No Data")
     }
 }
 
