@@ -37,24 +37,13 @@
  *
  *  Changes:
  *
- *  V2.0.3 - 02/23/20 - Make default logging false
- *  V2.0.2 - 09/22/19 - Removed 'Font Size', Also added new attribute: lastUpdated, removed several 'state.*'
- *  V2.0.1 - 09/20/19 - Initial release.
- *  V2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  V1.0.0 - 02/16/19 - Initially started working on this concept but never released.
+ *  2.0.4 - 05/29/20 - Now more 'Smartly' friendly
+ *  2.0.3 - 02/23/20 - Make default logging false
+ *  2.0.2 - 09/22/19 - Removed 'Font Size', Also added new attribute: lastUpdated, removed several 'state.*'
+ *  2.0.1 - 09/20/19 - Initial release.
+ *  2.0.0 - 08/18/19 - Now App Watchdog compliant
+ *  1.0.0 - 02/16/19 - Initially started working on this concept but never released.
  */
-
-def setVersion(){
-    appName = "TileMasterDriver"
-	version = "v2.0.3" 
-    dwInfo = "${appName}:${version}"
-    sendEvent(name: "dwDriverInfo", value: dwInfo, displayed: true)
-}
-
-def updateVersion() {
-    log.info "In updateVersion"
-    setVersion()
-}
 
 metadata {
 	definition (name: "Tile Master Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM-Driver.groovy") {
@@ -62,12 +51,9 @@ metadata {
 
 		command "sendTile01", ["string"]
 		
-    	attribute "tile01", "string"
+    	attribute "tm-tile01", "string"
         attribute "tile01Count", "number"
         attribute "lastUpdated", "string"
-        
-        attribute "dwDriverInfo", "string"
-        command "updateVersion"
 	}
 	preferences() {    	
         section(""){
@@ -85,7 +71,7 @@ def sendTile01(tile1) {
 	} else {
 		device1 = "Too many characters to display on Dashboard (${device1Count})"
 	}
-	sendEvent(name: "tile01", value: device1, displayed: true)
+	sendEvent(name: "tm-tile01", value: device1, displayed: true)
     sendEvent(name: "tile01Count", value: device1Count, displayed: true)
     
     lastUpdated = new Date()
