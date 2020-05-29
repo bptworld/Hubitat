@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 05/29/20 - Fixed a booboo
  *  1.0.5 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
  *  1.0.4 - 05/07/20 - Added multiple alert data
  *  1.0.3 - 04/19/20 - Added Asthma and Pollen Forecasts
@@ -124,103 +125,103 @@ def weeklyData(stuff) {
     if(logEnable) log.debug "In weeklyData"
     def (theNumb,theTable) = stuff.split('::')
     //log.info "${stuff}"
-    if(theNumb == "1") sendEvent(name: "weeklyDataTile01", value: theTable)
-    if(theNumb == "2") sendEvent(name: "weeklyDataTile02", value: theTable)
-    if(theNumb == "3") sendEvent(name: "weeklyDataTile03", value: theTable)
-    if(theNumb == "4") sendEvent(name: "weeklyDataTile04", value: theTable)
-    if(theNumb == "5") sendEvent(name: "weeklyDataTile05", value: theTable)
-    if(theNumb == "6") sendEvent(name: "weeklyDataTile06", value: theTable)
-    if(theNumb == "7") sendEvent(name: "weeklyDataTile07", value: theTable)
-    if(theNumb == "8") sendEvent(name: "weeklyDataTile08", value: theTable)
-    if(theNumb == "9") sendEvent(name: "weeklyDataTile09", value: theTable)
-    if(theNumb == "10") sendEvent(name: "weeklyDataTile10", value: theTable)
-    if(theNumb == "11") sendEvent(name: "weeklyDataTile11", value: theTable)
-    if(theNumb == "12") sendEvent(name: "weeklyDataTile12", value: theTable)
-    if(theNumb == "13") sendEvent(name: "weeklyDataTile13", value: theTable)
-    if(theNumb == "14") sendEvent(name: "weeklyDataTile14", value: theTable)
+    if(theNumb == "1") sendEvent(name: "bpt-weeklyDataTile01", value: theTable)
+    if(theNumb == "2") sendEvent(name: "bpt-weeklyDataTile02", value: theTable)
+    if(theNumb == "3") sendEvent(name: "bpt-weeklyDataTile03", value: theTable)
+    if(theNumb == "4") sendEvent(name: "bpt-weeklyDataTile04", value: theTable)
+    if(theNumb == "5") sendEvent(name: "bpt-weeklyDataTile05", value: theTable)
+    if(theNumb == "6") sendEvent(name: "bpt-weeklyDataTile06", value: theTable)
+    if(theNumb == "7") sendEvent(name: "bpt-weeklyDataTile07", value: theTable)
+    if(theNumb == "8") sendEvent(name: "bpt-weeklyDataTile08", value: theTable)
+    if(theNumb == "9") sendEvent(name: "bpt-weeklyDataTile09", value: theTable)
+    if(theNumb == "10") sendEvent(name: "bpt-weeklyDataTile10", value: theTable)
+    if(theNumb == "11") sendEvent(name: "bpt-weeklyDataTile11", value: theTable)
+    if(theNumb == "12") sendEvent(name: "bpt-weeklyDataTile12", value: theTable)
+    if(theNumb == "13") sendEvent(name: "bpt-weeklyDataTile13", value: theTable)
+    if(theNumb == "14") sendEvent(name: "bpt-weeklyDataTile14", value: theTable)
 }
 
 def forecastData1(stuff) {
     if(logEnable) log.debug "In forecastData1"
-    sendEvent(name: "forecastTable1", value: stuff)   
+    sendEvent(name: "bpt-forecastTable1", value: stuff)   
 }
 
 def forecastData2(stuff) {
     if(logEnable) log.debug "In forecastData2"
-    sendEvent(name: "forecastTable2", value: stuff)   
+    sendEvent(name: "bpt-forecastTable2", value: stuff)   
 }
 
 def forecastData3(stuff) {
     if(logEnable) log.debug "In forecastData3"
-    sendEvent(name: "forecastTable3", value: stuff)   
+    sendEvent(name: "bpt-forecastTable3", value: stuff)   
 }
 
 def forecastData4(stuff) {
     if(logEnable) log.debug "In forecastData4"
-    sendEvent(name: "forecastTable4", value: stuff)   
+    sendEvent(name: "bpt-forecastTable4", value: stuff)   
 }
 
 def forecastData5(stuff) {
     if(logEnable) log.debug "In forecastData5"
-    sendEvent(name: "forecastTable5", value: stuff)   
+    sendEvent(name: "bpt-forecastTable5", value: stuff)   
 }
 
 def alertSummaryData(stuff) {
     if(logEnable) log.debug "In alertSummaryData"
-    sendEvent(name: "alertSummaryTile", value: stuff)   
+    sendEvent(name: "bpt-alertSummaryTile", value: stuff)   
 }
 
 def alertData1(stuff) {
     if(logEnable) log.debug "In alertData1"
-    sendEvent(name: "alertTile1", value: stuff)   
+    sendEvent(name: "bpt-alertTile1", value: stuff)   
 }
 
 def alertData2(stuff) {
     if(logEnable) log.debug "In alertData2"
-    sendEvent(name: "alertTile2", value: stuff)   
+    sendEvent(name: "bpt-alertTile2", value: stuff)   
 }
 
 def alertData3(stuff) {
     if(logEnable) log.debug "In alertData3"
-    sendEvent(name: "alertTile3", value: stuff)   
+    sendEvent(name: "bpt-alertTile3", value: stuff)   
 }
 
 def alertData4(stuff) {
     if(logEnable) log.debug "In alertData4"
-    sendEvent(name: "alertTile4", value: stuff)   
+    sendEvent(name: "bpt-alertTile4", value: stuff)   
 }
 
 def alertData5(stuff) {
     if(logEnable) log.debug "In alertData5"
-    sendEvent(name: "alertTile5", value: stuff)   
+    sendEvent(name: "bpt-alertTile5", value: stuff)   
 }
 
 def asthmaYesterdayData(stuff) {
     if(logEnable) log.debug "In asthmaYesterdayData"
-    sendEvent(name: "asthmaYesterdayTile", value: stuff)   
+    sendEvent(name: "bpt-asthmaYesterdayTile", value: stuff)   
 }
 
 def asthmaTodayData(stuff) {
     if(logEnable) log.debug "In asthmaTodayData"
-    sendEvent(name: "asthmaTodayTile", value: stuff)   
+    sendEvent(name: "bpt-asthmaTodayTile", value: stuff)   
 }
 
 def asthmaTomorrowData(stuff) {
     if(logEnable) log.debug "In asthmaTomorrowData"
-    sendEvent(name: "asthmaTomorrowTile", value: stuff)   
+    sendEvent(name: "bpt-asthmaTomorrowTile", value: stuff)   
 }
 
 def pollenYesterdayData(stuff) {
     if(logEnable) log.debug "In pollenYesterdayData"
-    sendEvent(name: "pollenYesterdayTile", value: stuff)   
+    sendEvent(name: "bpt-pollenYesterdayTile", value: stuff)   
 }
 
 def pollenTodayData(stuff) {
     if(logEnable) log.debug "In pollenTodayData"
-    sendEvent(name: "pollenTodayTile", value: stuff)   
+    sendEvent(name: "bpt-pollenTodayTile", value: stuff)   
 }
 
 def pollenTomorrowData(stuff) {
     if(logEnable) log.debug "In pollenTomorrowData"
-    sendEvent(name: "pollenTomorrowTile", value: stuff)   
+    sendEvent(name: "bpt-pollenTomorrowTile", value: stuff)   
 }
