@@ -39,8 +39,9 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 04/12/20 - Added last updated date/time to StatusTile1, other small adjustments
- *  V1.0.0 - 01/18/20 - Initial release
+ *  1.0.2 - 05/29/20 - Adjusted placement of date/time stamp, made tile 'smartly' friendly
+ *  1.0.1 - 04/12/20 - Added last updated date/time to StatusTile1, other small adjustments
+ *  1.0.0 - 01/18/20 - Initial release
  */
 
 import java.text.SimpleDateFormat
@@ -79,12 +80,13 @@ metadata {
         attribute "speedMiles", "number"
         attribute "speedKm", "number"
         attribute "status", "string"
-        attribute "statusTile1", "string"
+        attribute "bpt-statusTile1", "string"
    	    attribute "wifiState", "boolean" //boolean
         
         // extra attributes for Location Tracker
         //attribute "address1", "string"
         attribute "activity", "string"
+        attribute "avatarURL", "string"
         //attribute "battery", "number"
         attribute "currentCity", "string"
         attribute "currentState", "string"
@@ -120,6 +122,7 @@ preferences {
     input "threshold", "number", title: "Min minutes between checks (Places)", required: false, defaultValue: 2
         
 	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
+    input "avatarURL", "text", title: "Avatar URL (Places)", required: false
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
 
@@ -135,8 +138,9 @@ def sendTheMap(theMap) {
 }
     
 def sendStatusTile1() {
-    if(logEnable) log.debug "In sendStatusTile1 - Making the Avatar Tile"
+    if(logEnable) log.debug "In sendStatusTile1 - Making the Avatar Tile"    
     def avat = device.currentValue('avatar')
+    if(avat == null || avat == "") avat = avatarURL
     def add1 = device.currentValue('address1')
     def bLevel = device.currentValue('battery')
     def bCharge = device.currentValue('powerSource')
@@ -176,7 +180,7 @@ def sendStatusTile1() {
 
     theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue('latitude')},${device.currentValue('longitude')}"
     
-	tileMap = "<table width='100%'>"
+	tileMap = "<div style='overflow:auto;height:90%'><table width='100%'>"
     tileMap += "<tr><td width='25%' align=center><img src='${avat}' height='${avatarSize}%'>"
     tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>"
     tileMap += "At: <a href='${theMap}' target='_blank'>${add1}</a><br>"
@@ -186,8 +190,8 @@ def sendStatusTile1() {
     if(units == "Miles") tileMap += "${binTransita} - ${bSpeedMiles} MPH<br>"
     
     tileMap += "Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}<br></p>"
-    tileMap += "<p style='width:100%;text-align:right;font-size:${sFont}px'>${lUpdated}</p>"
-    tileMap += "</table>"
+    tileMap += "<p style='width:100%;text-align:right;font-size:${sFont}px'>${lUpdated}&nbsp; &nbsp; &nbsp; &nbsp;</p>"
+    tileMap += "</table></div>"
     
 	tileDevice1Count = tileMap.length()
 	if(tileDevice1Count <= 1000) {
@@ -195,7 +199,7 @@ def sendStatusTile1() {
 	} else {
 		log.warn "In sendStatusTile1 - Too many characters to display on Dashboard (${tileDevice1Count})"
 	}
-	sendEvent(name: "statusTile1", value: tileMap, displayed: true)
+	sendEvent(name: "bpt-statusTile1", value: tileMap, displayed: true)
 }
 
 def sendHistory(msgValue) {
@@ -296,9 +300,14 @@ def deviceLoc(date, time, latitude, longitude, locSpd, locAlt) {
 def deviceOther(battery, wifi) {
     if(logEnable) log.debug "In deviceOther - Batt: ${battery}, wifi: ${wifi}"
     sendEvent(name: "battery", value: battery)
-    //sendEvent(name: "wifiState", value: wifi)
-    sendEvent(name: "activity", value: activity)
+    sendEvent(name: "wifiState", value: wifi)
+    //sendEvent(name: "activity", value: activity)
     //sendEvent(name: "mapURL", value: mapURL)
+    
+    sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
+    def date = new Date()
+    sendEvent(name: "lastUpdated", value: date.format("MM-dd - h:mm:ss a"))
+    sendStatusTile1()
 }
 
 // **** Location Tracker - Places ****
@@ -332,7 +341,18 @@ def getLocation(latitude, longitude) {
                 currentCountry = "-"
                 
                 if(logEnable) log.debug "In getLocation - street: ${address1} - City: ${currentCity} - State: ${currentState} - postalCode: ${currentpostalCode}"
-                sendEvent(name: "address1", value: address1, isStateChange: true)
+                
+                if(address1 != device.currentValue('address1')) {
+                    sendEvent(name: "address1", value: address1, isStateChange: true)
+                    sendEvent(name: "since", value: since)
+
+                    if(address1 == "home" || address1 == "Home") { 
+                        sendEvent(name: "presence", value: "present", isStateChange: true)
+                    } else {
+                        sendEvent(name: "presence", value: "not present", isStateChange: true)
+                    }
+                }
+                
                 sendEvent(name: "currentCity", value: currentCity)
                 sendEvent(name: "currentStateZip", value: currentStateZip)
                 sendEvent(name: "currentCountry", value: currentCountry)
@@ -363,7 +383,18 @@ def getLocation(latitude, longitude) {
                 if(logEnable) log.debug "In getLocation  - 0: ${currentAddress[0]} - 1: ${currentAddress[1]} - 2: ${currentAddress[2]} - 3: ${currentAddress[3]}"
                 if(logEnable) log.debug "In getLocation  - street: ${currentAddress[0]} - City: ${currentAddress[1]} - State Zip: ${currentAddress[2]} - Country: ${currentAddress[3]}"
                 
-                sendEvent(name: "address1", value: currentAddress[0], isStateChange: true)
+                address1 = currentAddress[0]
+                if(address1 != device.currentValue('address1')) {
+                    sendEvent(name: "address1", value: address1, isStateChange: true)
+                    sendEvent(name: "since", value: since)
+
+                    if(address1 == "home" || address1 == "Home") { 
+                        sendEvent(name: "presence", value: "present", isStateChange: true)
+                    } else {
+                        sendEvent(name: "presence", value: "not present", isStateChange: true)
+                    }
+                }
+                            
                 sendEvent(name: "currentCity", value: currentAddress[1])
                 sendEvent(name: "currentStateZip", value: currentAddress[2])
                 sendEvent(name: "currentCountry", value: currentAddress[3])
@@ -375,6 +406,10 @@ def getLocation(latitude, longitude) {
             if(logEnable) log.debug "In getLocation - Can't check for current stats - Under the ${threshold} min threshold."
         }
     }
+    def date = new Date()
+    sendEvent(name: "lastUpdated", value: date.format("MM-dd - h:mm:ss a"))
+    sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
+    sendStatusTile1()
 }
 
 // **** Location Tracker - Places ****
@@ -551,7 +586,7 @@ private getState(boolean present) {
 
 // **** Life360 ****
 def refresh() {
-	parent.refresh()
+	//parent.refresh()
     return null
 }
 
