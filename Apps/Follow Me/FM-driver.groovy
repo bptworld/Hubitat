@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.1.8 - 05/30/20 - Fixed the bug with Speaker Map
  *  2.1.7 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
  *  2.1.6 - 05/25/20 - Added bug fix by @djw1191, thanks!
  *  2.1.5 - 05/16/20 - Minor change
@@ -202,7 +203,7 @@ def setVolumeSpeakAndRestore(volume, message, restoreVolume) {
 def setVolumeAndSpeak(volume, message) {
     if(logEnable) log.debug "In setVolumeAndSpeak"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
-    theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, 'N:X', volume)
+    theMessage = composeMessageMap('setVolumeAndSpeak', state.speechReceivedFULL, 'N:X', volume)
     sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
 }
 
@@ -363,7 +364,7 @@ def sendFollowMeSpeaker(status) {
     if(sName == null) sName = "blank"
     if(sStatus == null) sStatus = "not found"
     if(logEnable) log.debug "In sendFollowMeSpeaker - sName: ${sName} - sStatus: ${sStatus}"
-    if(state.speakerMap == null) state.speakcounterMap = [:]
+    if(state.speakerMap == null) state.speakerMap = [:]
     state.speakerMap.put(sName, sStatus)
 
     def tblhead = "<div style='overflow:auto;height:90%'><table width=100% style='line-height:1.00;font-size:${fontSize}px;text-align:left'>"
@@ -419,4 +420,9 @@ private cleanUp() {
     state.remove("speechTop")
     state.remove("speakerMapS")
     state.remove("count")
+    
+    sendEvent(name: "speakerStatus1", value: "No longer used")
+    sendEvent(name: "speakerStatus2", value: "No longer used")
+    sendEvent(name: "speakerStatus3", value: "No longer used")
+    sendEvent(name: "whatDidISay", value: "No longer used")
 }
