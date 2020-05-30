@@ -168,8 +168,8 @@ def turnValveOn() {
 			turnValveOff()
 		}
 	} else {
-		log.info "${app.label} didn't pass weather check. Water not turned on."
-		state.msg = "${app.label} didn't pass weather check. ${valveDevice} will not turn on."
+		log.info "${app.label} didn't pass day check. Water not turned on."
+		state.msg = "${app.label} didn't pass day check. ${valveDevice} will not turn on."
 		turnValveOff()
 	}	
 }
@@ -194,6 +194,9 @@ def turnValveOff() {
             if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
             log.warn "${valveDevice} is now ${state.valveStatus}"
             state.msg = "${valveDevice} is now ${state.valveStatus}"
+            if (state.canWater == no) {
+				state.msg = "${valveDevice} is now ${state.valveStatus}; session skipped due to weather."
+			}
 			if ((state.canWater == no && sendSafetyPushMessage == true) || (state.canWater == yes)) {
             	if(sendPushMessage) pushHandler()
 			}
