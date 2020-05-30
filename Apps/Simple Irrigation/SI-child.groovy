@@ -109,7 +109,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
 			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple: true, required: false
-            input(name: "sendSafetyPushMessage", type: "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue: "true", required: true)
+            input(name: "sendSafetyPushMessage", type: "bool", title: "Send notification even if weather switch has cancelled the schedule.", defaultValue: "true", required: true)
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
