@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.1.7 - 05/30/20 - Fixed a typo with contact sensors
  *  2.1.6 - 05/29/20 - Adjustments to push handler
  *  2.1.5 - 05/11/20 - Added a default speak option
  *  2.1.4 - 04/27/20 - Cosmetic changes
@@ -48,7 +49,7 @@ import groovy.json.*
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.1.6"   
+	state.version = "2.1.7"   
 }
 
 definition(
@@ -376,7 +377,7 @@ def updated() {
 def initialize() {
     setDefaults()
 	subscribe(gvDevice, "latestMessage", startHandler)
-	if(myContact) subscribe(myContacts, "contact", contactSensorHandler)
+	if(myContacts) subscribe(myContacts, "contact", contactSensorHandler)
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
 	if(mySwitches) subscribe(mySwitches, "switch", switchHandler)
 	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
