@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2020-04-07",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "https://github.com/bptworld/Hubitat/blob/master",
+	"communityLink": "https://community.hubitat.com/t/release-remote-wellness-check/32038",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
