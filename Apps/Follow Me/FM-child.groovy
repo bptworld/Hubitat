@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.1.6 - 05/29/20 - Adjustments to push handler
  *  2.1.5 - 05/11/20 - Added a default speak option
  *  2.1.4 - 04/27/20 - Cosmetic changes
  *  2.1.3 - 04/15/20 - Adjustments to speaker queue
@@ -47,7 +48,7 @@ import groovy.json.*
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.1.5"   
+	state.version = "2.1.6"   
 }
 
 definition(
@@ -929,20 +930,32 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
     if(logEnable) log.debug "In priorityVoicesHandler - Speaker: ${it} - priorityVoice: ${priorityVoice} - Voice: ${state.voiceSelected} - Message: ${lastSpoken} - uriMessage: ${state.uriMessage}"
 }
 
-def pushOrQueue(priority,lastSpoken) {
-	if(logEnable) log.debug "In pushOrQueue (${state.version}) - ${lastSpoken}"
-    if(priority.toUpperCase().contains("L")) {
-		lastSpoken = "[L]" + lastSpoken
+def pushOrQueue(msg) {
+	if(logEnable) log.debug "In pushOrQueue (${state.version}) - ${msg}"
+    def message =  new JsonSlurper().parseText(msg)    
+    theMessage = message.message
+    try {
+        def thePriority = message.priority.split(":")
+        priorityValue = thePriority[0]
+        priorityVoice = thePriority[1]
+    } catch (e) {
+        log.warn "Follow Me - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
+        if(logEnable) log.error "In letsTalk - ${e}"
+        priorityValue = "X"
+        priorityVoice = "X"
+    }
+    
+    if(priorityValue.toUpperCase().contains("L")) {
+		lastSpoken = "[L]" + theMessage
 	}
-	if(priority.toUpperCase().contains("N")) {
-		lastSpoken = "[N]" + lastSpoken
+	if(priorityValue.toUpperCase().contains("N")) {
+		lastSpoken = "[N]" + theMessage
 	}
-	if(priority.toUpperCase().contains("H")) {
-		lastSpoken = "[H]" + lastSpoken
+	if(priorityValue.toUpperCase().contains("H")) {
+		lastSpoken = "[H]" + theMessage
 	}
     
 	if(state.IH1 == "no") {
-		theMessage = "${lastSpoken}"
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH1 Sending message: ${theMessage}"
     	    sendPushMessage1.deviceNotification(theMessage)
@@ -953,7 +966,6 @@ def pushOrQueue(priority,lastSpoken) {
         }
 	}
 	if(state.IH2 == "no") {
-		theMessage = "${lastSpoken}"
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH2 Sending message: ${theMessage}"
     	    sendPushMessage2.deviceNotification(theMessage)
@@ -964,7 +976,6 @@ def pushOrQueue(priority,lastSpoken) {
         }
 	}
 	if(state.IH3 == "no") {
-		theMessage = "${lastSpoken}"
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH3 Sending message: ${theMessage}"
     	    sendPushMessage3.deviceNotification(theMessage)
@@ -975,7 +986,6 @@ def pushOrQueue(priority,lastSpoken) {
         }
 	}
 	if(state.IH4 == "no") {
-		theMessage = "${lastSpoken}"
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH4 Sending message: ${theMessage}"
     	    sendPushMessage4.deviceNotification(theMessage)
@@ -986,7 +996,6 @@ def pushOrQueue(priority,lastSpoken) {
         }
 	}
 	if(state.IH5 == "no") {
-		theMessage = "${lastSpoken}"
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH5 Sending message: ${theMessage}"
     	    sendPushMessage5.deviceNotification(theMessage)
@@ -1195,7 +1204,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -1209,8 +1218,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
