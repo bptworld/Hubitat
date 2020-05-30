@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 05/30/20 - Cosmetic Change - Recommended to delete device and recreate.
  *  1.0.2 - 05/29/20 - Adjusted placement of date/time stamp, made tile 'smartly' friendly
  *  1.0.1 - 04/12/20 - Added last updated date/time to StatusTile1, other small adjustments
  *  1.0.0 - 01/18/20 - Initial release
@@ -65,7 +66,7 @@ metadata {
 	    attribute "distanceMetric", "Number"
    	    attribute "distanceKm", "Number"
 	    attribute "distanceMiles", "Number"
-	    attribute "history", "string"
+	    attribute "bpt-history", "string"
        	attribute "inTransit", "String" //boolean
    	    attribute "isDriving", "String" //boolean
         attribute "lastLogMessage", "string"
@@ -241,7 +242,7 @@ def sendHistory(msgValue) {
             if(numOfLines >= 10) logTop10 += "${lines[9]}"
             logTop10 += "</div></td></tr></table>"
     
-	        sendEvent(name: "history", value: logTop10, displayed: true)
+	        sendEvent(name: "bpt-history", value: logTop10, displayed: true)
             sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
             sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
         }
@@ -274,7 +275,7 @@ def historyClearData() {
     logCharCount = "0"
     state.list1 = []	
 	historyLog = "Waiting for Data..."
-    sendEvent(name: "history", value: historyLog, displayed: true)
+    sendEvent(name: "bpt-history", value: historyLog, displayed: true)
     sendEvent(name: "numOfCharacters1", value: logCharCount1, displayed: true)
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
 }	
