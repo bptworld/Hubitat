@@ -109,6 +109,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
 			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple: true, required: false
+			input "sendSafetyPushMessage", "capability.notification", title: "Send close notification even if weather switch has cancelled the schedule", multiple: true, required: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
@@ -193,7 +194,9 @@ def turnValveOff() {
             if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
             log.warn "${valveDevice} is now ${state.valveStatus}"
             state.msg = "${valveDevice} is now ${state.valveStatus}"
-            if(sendPushMessage) pushHandler()
+			if ((state.canWater == no && sendSafetyPushMessage == true) || (state.canWater == yes)) {
+            	if(sendPushMessage) pushHandler()
+			}
         }
     }
 }
