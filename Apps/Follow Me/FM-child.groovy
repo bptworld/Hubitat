@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.1.8 - 05/30/20 - Virtual Device can now be automatically created - Recommended to delete device and recreate
  *  2.1.7 - 05/30/20 - Fixed a typo with contact sensors
  *  2.1.6 - 05/29/20 - Adjustments to push handler
  *  2.1.5 - 05/11/20 - Added a default speak option
@@ -49,7 +50,7 @@ import groovy.json.*
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.1.7"   
+	state.version = "2.1.8"   
 }
 
 definition(
@@ -199,12 +200,26 @@ def pageConfig() {
 				}
 			}
 		}
+        
 		// both Speakers and Push
-		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Device")) {
-			paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device."
-			paragraph "* Vitual Device must use our custom 'Follow Me Driver'"
-			input "gvDevice", "capability.speechSynthesis", title: "Virtual Device created for Follow Me", required: true, multiple: false
-		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speech Device")) {
+            paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device."
+            input "useExistingDevice", "bool", title: "Use existing device (off) or have FM create a new one for you (on)", defaultValue:false, submitOnChange:true
+            if(useExistingDevice) {
+			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Follow Me')", required:true, submitOnChange:true
+                paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                if(dataName) createDataChildDevice()
+                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                paragraph "${statusMessageD}"
+            }
+            input "gvDevice", "capability.actuator", title: "Virtual Device created for FM", required:true, multiple:false
+            if(!useExistingDevice) {
+                app.removeSetting("dataName")
+                paragraph "<small>* Device must use the 'Follow Me Driver'.</small>"
+            }
+        }
+
 		// Push
 		if(messageDest == "Push") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Push Messages")) {
@@ -386,6 +401,14 @@ def initialize() {
 	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
 	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
 	if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
+}
+
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(delete) {
+	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
 def presenceSensorHandler1(evt){
@@ -1151,6 +1174,22 @@ def clearTheQueue() {
 def showTheQueue() {
     app?.updateSetting("showQueue",[value:"false",type:"bool"])
     if(logEnable) log.debug "In showTheQueue (${state.version})"	
+}
+
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "Follow Me Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "Follow Me unable to create device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
 }
 
 // ********** Normal Stuff **********
