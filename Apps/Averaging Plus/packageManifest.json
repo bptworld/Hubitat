@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2020-05-25",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "",
+	"communityLink": "https://community.hubitat.com/t/release-averaging-plus-average-just-about-anything-get-notifications-based-on-set-points/42388",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
