@@ -32,6 +32,8 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 05/22/20 - Override switch now supports multiple switches
+ *  1.0.9 - 05/17/20 - Added Mode Override option
  *  1.0.8 - 05/02/20 - More changes to repeat option
  *  1.0.7 - 04/28/20 - Added a Switch option to Notifications
  *  1.0.6 - 04/27/20 - Cosmetic changes
@@ -50,7 +52,7 @@ import groovy.time.TimeCategory
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.0.8"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -114,8 +116,14 @@ def pageConfig() {
             input "timeDelayed", "number", title: "How long should the lights stay on if room is vacant (in minutes)", required: false
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
-            paragraph "If this device is On, no Room Director events will happen."
-            input "roomOverride", "capability.switch", title: "Select the device to 'disable' the room"        
+            paragraph "<b>Room Override</b>, If this device is On, Room Director events will NOT happen for this child app."
+            input "roomOverride", "capability.switch", title: "Select the device(s) to 'disable' the room", multiple: true, submitOnChange:true 
+            paragraph "<b>Mode Override</b>, Great for rooms that are on a different schedule than the current Mode."
+            input "modeOverride", "capability.switch", title: "Select the device to 'control' the Mode override.", submitOnChange:true
+            if(modeOverride) {
+                paragraph "When Device is OFF, Room will follow the current Mode settings.<br>When Device is ON, Room will behave like it's the Mode selected below."
+                input "moMode", "mode", title: "If Mode Override is ON, use Mode", required: true, multiple: false, submitOnChange: true
+            }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Control")) { 
             if(modeName1) {
@@ -545,7 +553,12 @@ def luxLevel() {
 
 def occupancyHandler() {
     state.roStatus = "off"
-    if(roomOverride) state.roStatus = roomOverride.currentValue("switch")
+    if(roomOverride) {
+        roomOverride.each { it ->
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") state.roStatus = "on"
+        }
+    }
     
     if(logEnable) log.debug "In occupancyHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(state.roStatus == "off") {
@@ -569,7 +582,12 @@ def occupancyHandler() {
 
 def vacantHandler() {
     state.roStatus = "off"
-    if(roomOverride) state.roStatus = roomOverride.currentValue("switch")
+    if(roomOverride) {
+        roomOverride.each { it ->
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") state.roStatus = "on"
+        }
+    }
     
     if(logEnable) log.debug "In vacantHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {  
@@ -581,7 +599,12 @@ def vacantHandler() {
 
 def roomWarningHandler() {
     state.roStatus = "off"
-    if(roomOverride) state.roStatus = roomOverride.currentValue("switch")
+    if(roomOverride) {
+        roomOverride.each { it ->
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") state.roStatus = "on"
+        }
+    }
     
     if(logEnable) log.debug "In roomWarningHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
@@ -614,7 +637,12 @@ def roomWarningHandler() {
 
 def lightsHandler() {
     state.roStatus = "off"
-    if(roomOverride) state.roStatus = roomOverride.currentValue("switch")
+    if(roomOverride) {
+        roomOverride.each { it ->
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") state.roStatus = "on"
+        }
+    }
     
     if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
@@ -641,7 +669,12 @@ def lightsHandler() {
 
 def lightsHandler2() {
     state.roStatus = "off"
-    if(roomOverride) state.roStatus = roomOverride.currentValue("switch")
+    if(roomOverride) {
+        roomOverride.each { it ->
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") state.roStatus = "on"
+        }
+    }
     
     if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
@@ -661,7 +694,16 @@ def lightsHandler2() {
 
 def modeHandler(){
     if(logEnable) log.debug "In modeHandler (${state.version}) - Mode: ${location.mode}"
-	state.modeNow = location.mode
+    if(modeOverride) {
+        moStatus = modeOverride.currentValue("switch")
+        if(moStatus == "on") {
+            state.modeNow = moMode
+        } else {
+            state.modeNow = location.mode
+        }
+    } else {
+        state.modeNow = location.mode
+    }
     state.matchFound = false
     
     if(modeName1) {
@@ -1082,7 +1124,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -1096,8 +1138,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
