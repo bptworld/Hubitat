@@ -109,6 +109,7 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
 			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple: true, required: false
+            input(name: "sendSafetyPushMessage", type: "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue: "true", required: true)
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
@@ -167,8 +168,8 @@ def turnValveOn() {
 			turnValveOff()
 		}
 	} else {
-		log.info "${app.label} didn't pass weather check. Water not turned on."
-		state.msg = "${app.label} didn't pass weather check. ${valveDevice} will not turn on."
+		log.info "${app.label} didn't pass day check. Water not turned on."
+		state.msg = "${app.label} didn't pass day check. ${valveDevice} will not turn on."
 		turnValveOff()
 	}	
 }
@@ -193,7 +194,12 @@ def turnValveOff() {
             if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
             log.warn "${valveDevice} is now ${state.valveStatus}"
             state.msg = "${valveDevice} is now ${state.valveStatus}"
-            if(sendPushMessage) pushHandler()
+            if (state.canWater == "no") {
+				state.msg = "${valveDevice} is now ${state.valveStatus}. Watering session skipped due to weather switch."
+			}
+			if ((state.canWater == "no" && sendSafetyPushMessage == true) || (state.canWater == "yes")) {
+            	if(sendPushMessage) pushHandler()
+			}
         }
     }
 }
