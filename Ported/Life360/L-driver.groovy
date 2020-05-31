@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 05/31/20 - Adjustments
  *  1.0.4 - 05/30/20 - Fix for History
  *  1.0.3 - 05/30/20 - Cosmetic Change - Recommended to delete device and recreate.
  *  1.0.2 - 05/29/20 - Adjusted placement of date/time stamp, made tile 'smartly' friendly
@@ -122,9 +123,9 @@ preferences {
     input "apiKey", "text", title: "API Key from Google Maps (Places)", required: false
     input "consumerKey", "text", title: "Consumer Key from MapQuest (Places)", required: false
     input "threshold", "number", title: "Min minutes between checks (Places)", required: false, defaultValue: 2
-        
-	input name: "units", type: "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarURL", "text", title: "Avatar URL (Places)", required: false
+        
+	input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
 
@@ -213,7 +214,7 @@ def sendHistory(msgValue) {
             if(state.list1 == null) state.list1 = []
             
             getDateTime()
-	        last = "${newdate} - ${msgValue}"
+	        last = "${newDate} - ${msgValue}"
             state.list1.add(0,last)  
 
             if(state.list1) {
@@ -229,7 +230,7 @@ def sendHistory(msgValue) {
 
             theData1 = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td>"
             
-            for (i=0; i<intNumOfLines && i<listSize1 && theData1.length() < 927;i++)
+            for (i=0; i<intNumOfLines && i<listSize1 && theData1.length() < 912;i++)
             theData1 += "${lines1[i]}<br>"
 
             theData1 += "</table></div>"
