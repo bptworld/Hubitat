@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.1.9 - 05/31/20 - Adjustments to zone off handler and a few other little bits
  *  2.1.8 - 05/30/20 - Virtual Device can now be automatically created - Recommended to delete device and recreate
  *  2.1.7 - 05/30/20 - Fixed a typo with contact sensors
  *  2.1.6 - 05/29/20 - Adjustments to push handler
@@ -50,7 +51,7 @@ import groovy.json.*
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.1.8"   
+	state.version = "2.1.9"   
 }
 
 definition(
@@ -392,9 +393,9 @@ def updated() {
 def initialize() {
     setDefaults()
 	subscribe(gvDevice, "latestMessage", startHandler)
-	if(myContacts) subscribe(myContacts, "contact", contactSensorHandler)
-	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
-	if(mySwitches) subscribe(mySwitches, "switch", switchHandler)
+	if(triggerMode == "Contact_Sensor") subscribe(myContacts, "contact", contactSensorHandler)
+	if(triggerMode == "Motion_Sensor") subscribe(myMotion, "motion", motionSensorHandler)
+	if(triggerMode == "Switch") subscribe(mySwitches, "switch", switchHandler)
 	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
 	if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler2)
 	if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler3)
@@ -490,7 +491,7 @@ def contactSensorHandler(evt) {
 		}
 		if(state.contactStatus == "open") {
 			sOff = sZoneWaiting * 60
-			runIn(sOff,speechOff)
+			runIn(sOff,zoneOffHandler)
 		}
 	}
 	if(contactOption == "Open") {
@@ -502,7 +503,7 @@ def contactSensorHandler(evt) {
 		}
 		if(state.contactStatus == "closed") {
 			sOff = sZoneWaiting * 60
-			runIn(sOff,speechOff)
+			runIn(sOff,zoneOffHandler)
 		}
 	}
 }
@@ -518,7 +519,7 @@ def motionSensorHandler(evt) {
 	}
 	if(state.motionStatus == "inactive") {
 		sOff = sZoneWaiting * 60
-		runIn(sOff,speechOff)
+		runIn(sOff,zoneOffHandler)
 	}
 }
 
@@ -533,7 +534,7 @@ def switchHandler(evt) {
 	}
 	if(state.switchStatus == "off") {
 		sOff = sZoneWaiting * 60
-		runIn(sOff,speechOff)
+		runIn(sOff,zoneOffHandler)
 	}
 }
 
@@ -545,15 +546,16 @@ def startHandler(evt) {
 	if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)
 }
 
-def speechOff() {
-	if(state.motionStatus == 'active'){
+def zoneOffHandler() {
+    if(logEnable) log.debug "In zoneOffHandler (${state.version}) - Checking for status change"
+	if(state.contactStatus == "open" || state.motionStatus == "active" || state.switchStatus == "on"){
 		state.sZone = true
-		if(logEnable) log.debug "In speechOff (${state.version}) - Speech is on - sZone: ${state.sZone}"
+		if(logEnable) log.debug "In zoneOffHandler - Zone status changed, staying on - sZone: ${state.sZone}"
 	} else {
 		state.sZone = false
 		speakerStatus = "${app.label}:${state.sZone}"
 		gvDevice.sendFollowMeSpeaker(speakerStatus)
-		if(logEnable) log.debug "In speechOff (${state.version}) - Speech is off - sZone: ${state.sZone}"
+		if(logEnable) log.debug "In zoneOffHandler - Zone is now off - sZone: ${state.sZone}"
 	}
 }
 
@@ -570,7 +572,7 @@ def letsTalkQueue(evt) {
     if(useQueue) {
         if(logEnable) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
 	    state.TTSQueue << [theText]
-	    if(state.playingTTS == false) { runInMillis(500, processQueue) }
+	    if(!state.playingTTS) { runInMillis(500, processQueue) }
     } else {
         if(logEnable) log.debug "In letsTalkQueue (${state.version}) - Queue not activated, going to letsTalk"
         letsTalk(theText)
@@ -600,7 +602,7 @@ def letsTalk(msg) {
     // Reminder to reference the attributes as message.message, message.priority, message.title, etc
 
 	if(triggerMode == "Always_On") alwaysOnHandler()
-	if(state.sZone == true){
+	if(state.sZone){
 		checkTime()
 		checkVol()
         
@@ -618,7 +620,7 @@ def letsTalk(msg) {
         checkPriority(priorityValue)
         
 		if(logEnable) log.debug "In letsTalk - continuing"
-		if(state.timeBetween == true) {
+		if(state.timeBetween) {
 			state.sStatus = "speaking"
 			speakerStatus = "${app.label}:${state.sStatus}"
 			gvDevice.sendFollowMeSpeaker(speakerStatus)
@@ -633,8 +635,7 @@ def letsTalk(msg) {
             
             state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
             state.speakers.each {
-                priorityVoicesHandler(it,priorityVoice,theMessage)
-                
+                priorityVoicesHandler(it,priorityVoice,theMessage)               
                 if(!defaultSpeak) {    
                     switch(message.method) {        // Code modified from @storageanarchy
                         case 'deviceNotification':
