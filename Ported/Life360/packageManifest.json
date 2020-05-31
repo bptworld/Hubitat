@@ -21,7 +21,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
 			"required": true,
-			"version": "1.0.3"
+			"version": "1.0.4"
 		}
 	]
 }
