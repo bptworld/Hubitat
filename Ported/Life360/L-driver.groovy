@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 05/30/20 - Fix for History
  *  1.0.3 - 05/30/20 - Cosmetic Change - Recommended to delete device and recreate.
  *  1.0.2 - 05/29/20 - Adjusted placement of date/time stamp, made tile 'smartly' friendly
  *  1.0.1 - 04/12/20 - Added last updated date/time to StatusTile1, other small adjustments
@@ -127,7 +128,6 @@ preferences {
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
 
-    input "numOfLines", "number", title: "How many lines to display on History Tile (from 1 to 10 only)", required:true, defaultValue: 5
     input "historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15"
     input "historyHourType", "bool", title: "Time Selection for History Tile (Off for 24h, On for 12h)", required: false, defaultValue: false
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
@@ -210,44 +210,45 @@ def sendHistory(msgValue) {
        if(logEnable) log.trace "In sendHistory - Nothing to report (No Data)"
     } else {   
         try {
+            if(state.list1 == null) state.list1 = []
+            
             getDateTime()
-	        nMessage = newDate + " - " + msgValue
-        
-            if(state.list == null) state.list = []
-            state.list.add(0,nMessage)  
+	        last = "${newdate} - ${msgValue}"
+            state.list1.add(0,last)  
 
-            listSize = state.list.size()
-            if(listSize > 10) state.list.removeAt(10)
+            if(state.list1) {
+                listSize1 = state.list1.size()
+            } else {
+                listSize1 = 0
+            }
 
-            String result = state.list.join(";")
-            logCharCount = result.length()
-	        if(logCharCount <= 1000) {
-	            if(logEnable) log.debug "In sendHistory - ${logCharCount} Characters"
-	        } else {
-	            logTop10 = "Too many characters to display on Dashboard - ${logCharCount}"
-	        }
+            int intNumOfLines = 10
+            if (listSize1 > intNumOfLines) state.list1.removeAt(intNumOfLines)
+            String result1 = state.list1.join(";")
+            def lines1 = result1.split(";")
 
-            def lines = result.split(";")
-            if(logEnable) log.trace "In sendHistory - numOfLines: ${numOfLines}"
-            logTop10 = "<table><tr><td align='Left'><div style='font-size:${historyFontSize}px'>"
-            if(numOfLines >= 1) logTop10 += "${lines[0]}<br>"
-            if(numOfLines >= 2) logTop10 += "${lines[1]}<br>"
-            if(numOfLines >= 3) logTop10 += "${lines[2]}<br>"
-            if(numOfLines >= 4) logTop10 += "${lines[3]}<br>"
-            if(numOfLines >= 5) logTop10 += "${lines[4]}<br>"
-            if(numOfLines >= 6) logTop10 += "${lines[5]}<br>"
-            if(numOfLines >= 7) logTop10 += "${lines[6]}<br>"
-            if(numOfLines >= 8) logTop10 += "${lines[7]}<br>"
-            if(numOfLines >= 9) logTop10 += "${lines[8]}<br>"
-            if(numOfLines >= 10) logTop10 += "${lines[9]}"
-            logTop10 += "</div></td></tr></table>"
-    
-	        sendEvent(name: "bpt-history", value: logTop10, displayed: true)
-            sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
+            theData1 = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td>"
+            
+            for (i=0; i<intNumOfLines && i<listSize1 && theData1.length() < 927;i++)
+            theData1 += "${lines1[i]}<br>"
+
+            theData1 += "</table></div>"
+            if(logEnable) log.debug "theData1 - ${theData1.replace("<","!")}"       
+
+            dataCharCount1 = theData1.length()
+            if(dataCharCount1 <= 1024) {
+                if(logEnable) log.debug "What did I Say Attribute - theData1 - ${dataCharCount1} Characters"
+            } else {
+                theData1 = "Too many characters to display on Dashboard (${dataCharCount1})"
+            }
+  
+	        sendEvent(name: "bpt-history", value: theData1, displayed: true)
+            sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
             sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
         }
         catch(e1) {
-            log.warn "In sendHistory - Something went wrong<br>${e1}"        
+            log.warn "In sendHistory - Something went wrong<br>${e1}"
+            log.error e1
         }
     }
     sendStatusTile1()
