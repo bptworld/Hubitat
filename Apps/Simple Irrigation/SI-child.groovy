@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 05/31/20 - Some great changes/additions by @bdwilson. Thanks!
  *  2.0.2 - 04/29/20 - Check for days match before turning valve off
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -53,7 +54,7 @@
 
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
