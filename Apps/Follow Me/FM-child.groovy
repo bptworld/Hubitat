@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.0 - 05/31/20 - Chasing a bug in push handler
  *  2.1.9 - 05/31/20 - Adjustments to zone off handler and a few other little bits
  *  2.1.8 - 05/30/20 - Virtual Device can now be automatically created - Recommended to delete device and recreate
  *  2.1.7 - 05/30/20 - Fixed a typo with contact sensors
@@ -51,7 +52,7 @@ import groovy.json.*
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.1.9"   
+	state.version = "2.2.0"   
 }
 
 definition(
@@ -955,7 +956,8 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
     if(logEnable) log.debug "In priorityVoicesHandler - Speaker: ${it} - priorityVoice: ${priorityVoice} - Voice: ${state.voiceSelected} - Message: ${lastSpoken} - uriMessage: ${state.uriMessage}"
 }
 
-def pushOrQueue(msg) {
+def pushOrQueue(evt) {
+    msg = evt.value
 	if(logEnable) log.debug "In pushOrQueue (${state.version}) - ${msg}"
     def message =  new JsonSlurper().parseText(msg)    
     theMessage = message.message
