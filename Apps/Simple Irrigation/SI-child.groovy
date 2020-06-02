@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.4 - 06/02/20 - Lots of little adjustments
  *  2.0.3 - 05/31/20 - Some great changes/additions by @bdwilson. Thanks!
  *  2.0.2 - 04/29/20 - Check for days match before turning valve off
  *  2.0.1 - 04/27/20 - Cosmetic changes
@@ -54,7 +55,7 @@
 
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -87,13 +88,13 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Schedule")) {
 			input(name: "days", type: "enum", title: "Only water on these days", description: "Days to water", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 			paragraph "Select up to 3 watering sessions per day."
-			input "startTime1", "time", title: "Time to turn on 1", required: true, width: 6
+			input "startTime1", "time", title: "Time to turn on 1", required: true, width: 6, submitOnChange:true
         	input "onLength1", "number", title: "Leave valve on for how long (in minutes)", required: true, width: 6
 			paragraph "<hr>"
-			input "startTime2", "time", title: "Time to turn on 2", required: false, width: 6
+			input "startTime2", "time", title: "Time to turn on 2", required: false, width: 6, submitOnChange:true
         	input "onLength2", "number", title: "Leave valve on for how long (in minutes)", required: false, width: 6
 			paragraph "<hr>"
-			input "startTime3", "time", title: "Time to turn on 3", required: false, width: 6
+			input "startTime3", "time", title: "Time to turn on 3", required: false, width: 6, submitOnChange:true
         	input "onLength3", "number", title: "Leave valve on for how long (in minutes)", required: false, width: 6
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Safety Features")) {
@@ -110,11 +111,11 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
 			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple: true, required: false
-            input(name: "sendSafetyPushMessage", type: "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue: "true", required: true)
+            input "sendSafetyPushMessage", "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue:false, required:true
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging."
 		}
 		display2()
 	}
@@ -139,22 +140,24 @@ def initialize() {
 }
 	
 def turnValveOn() {
+    if(state.valveTry == null) state.valveTry = 0
+    if(state.valveTry == 0) { if(logEnable) log.warn "*************** Start Valve On - Simple Irrigation Child - (${state.version}) ***************" }
 	state.valveStatus = valveDevice.currentValue("valve")
 	dayOfTheWeekHandler()
 	checkForWeather()
-	if(state.daysMatch == "yes") {
-		if(state.canWater == "yes") {
-			if(logEnable) log.debug "In turnValveOn..."
-			def valveTry = 0
+	if(state.daysMatch) {
+		if(state.canWater) {
+            if(logEnable) log.debug "In turnValveOn (${state.version})"
 			if(state.valveStatus == "closed") {
-				valveTry = valveTry + 1
-				if(logEnable) log.debug "In turnValveOn - trying to turn on - will check again in 20 seconds"
+				state.valveTry = state.valveTry + 1
+                if(logEnable) log.debug "In turnValveOn - trying to turn on - Attempt ${state.valveTry} - will check again in 20 seconds"
 				valveDevice.open()
-				if(valveTry <= maxTriesOn) runIn(20, turnValveOn)		// Repeat for safety
-				if(valveTry > maxTriesOn) {
+				if(state.valveTry <= maxTriesOn) runIn(20, turnValveOn)		// Repeat for safety
+				if(state.valveTry > maxTriesOn) {
 					log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
 					state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
 					if(sendPushMessage) pushHandler()
+                    resetTrys()
 				}
 			} else {
 				def delay = onLength1 * 60
@@ -162,86 +165,97 @@ def turnValveOn() {
 				log.warn "${valveDevice} is now ${state.valveStatus}"
 				state.msg = "${valveDevice} is now ${state.valveStatus}"
 				if(sendPushMessage) pushHandler()
+                resetTrys()
 				runIn(delay, turnValveOff)
 			}
 		} else {
 			log.info "${app.label} didn't pass weather check. ${valveDevice} not turned on."
+            resetTrys()
 			turnValveOff()
 		}
 	} else {
 		log.info "${app.label} didn't pass day check. Water not turned on."
 		state.msg = "${app.label} didn't pass day check. ${valveDevice} will not turn on."
+        resetTrys()
 		turnValveOff()
-	}	
+	}
+    if(state.valveTry == 0) { if(logEnable) log.warn "*************** End Valve On - Simple Irrigation Child - (${state.version}) ***************" }
 }
 
-def turnValveOff() {		
+def turnValveOff() {
+    if(state.valveTryOff == null) state.valveTryOff = 0
+    if(state.valveTryOff == 0) { if(logEnable) log.warn "*************** Start Valve Off - Simple Irrigation Child - (${state.version}) ***************" }
     dayOfTheWeekHandler()
-	if(state.daysMatch == "yes") {
-        if(logEnable) log.debug "In turnValveOff..."
+	if(state.daysMatch) {
+        if(logEnable) log.debug "In turnValveOff (${state.version})"
         state.valveStatus = valveDevice.currentValue("valve")
-        def valveTryOff = 0
         if(state.valveStatus == "open") {
-            valveTryOff = valveTryOff + 1
-            if(logEnable) log.debug "In turnValveOff - trying to turn off - will check again in 20 seconds"
+            state.valveTryOff = state.valveTryOff + 1
+            if(logEnable) log.debug "In turnValveOff - trying to turn off - Attempt ${state.valveTryOff} - will check again in 20 seconds"
             valveDevice.close()
-            if(valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
-            if(valveTryOff > maxTriesOff) {
+            if(state.valveTryOff <= maxTriesOff) runIn(20, turnValveOff)		// Repeat for safety
+            if(state.valveTryOff > maxTriesOff) {
                 log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
                 state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
                 if(sendPushMessage) pushHandler()
+                resetTrys()
             }
         } else {
             if(logEnable) log.debug "In turnValveOff - Valve is now ${state.valveStatus}"
             log.warn "${valveDevice} is now ${state.valveStatus}"
             state.msg = "${valveDevice} is now ${state.valveStatus}"
-            if (state.canWater == "no") {
+            if (!state.canWater) {
 				state.msg = "${valveDevice} is now ${state.valveStatus}. Watering session skipped due to weather switch."
+                resetTrys()
 			}
-			if ((state.canWater == "no" && sendSafetyPushMessage == true) || (state.canWater == "yes")) {
+			if ((!state.canWater && sendSafetyPushMessage == true) || (state.canWater)) {
             	if(sendPushMessage) pushHandler()
+                resetTrys()
 			}
         }
     }
+    if(state.valveTryOff == 0) { if(logEnable) log.warn "*************** End Valve Off - Simple Irrigation Child - (${state.version}) ***************" }
+}
+
+def resetTrys() {
+    if(logEnable) log.debug "In resetTrys (${state.version})"
+    state.valveTry = 0
+    state.valveTryOff = 0
 }
 
 def checkForWeather() {
-	if(logEnable) log.debug "In checkForWeather..."
+	if(logEnable) log.debug "In checkForWeather (${state.version})"
 	if(rainSensor) state.rainDevice = rainSensor.currentValue("switch")
 	if(windSensor) state.windDevice = windSensor.currentValue("switch")
 	if(otherSensor) state.otherDevice = otherSensor.currentValue("switch")
 	if(state.rainDevice == "on" || state.windDevice == "on" || state.otherDevice == "on") {
 		if(logEnable) log.debug "In checkForWeather - Weather Check failed."
-		state.canWater = "no"
+		state.canWater = false
 	} else {
 		if(logEnable) log.debug "In checkForWeather - Weather Check passed."
-		state.canWater = "yes"
+		state.canWater = true
 	}
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek..."
-	Calendar date = Calendar.getInstance()
-	int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
-	if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
-	if(dayOfTheWeek == 2) state.dotWeek = "Monday"
-	if(dayOfTheWeek == 3) state.dotWeek = "Tuesday"
-	if(dayOfTheWeek == 4) state.dotWeek = "Wednesday"
-	if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
-	if(dayOfTheWeek == 6) state.dotWeek = "Friday"
-	if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+    
+    def df = new java.text.SimpleDateFormat("EEEE")
+    df.setTimeZone(location.timeZone)
+    def day = df.format(new Date())
+    def dayCheck = days.contains(day)
 
-	if(days.contains(state.dotWeek)) {
+    if(dayCheck) {
 		if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
-		state.daysMatch = "yes"
+		state.daysMatch = true
 	} else {
 		if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
-		state.daysMatch = "no"
+		state.daysMatch = false
 	}
 }
 
 def pushHandler(){
-	if(logEnable) log.debug "In pushNow..."
+	if(logEnable) log.debug "In pushNow (${state.version})"
 	theMessage = "${app.label} - ${state.msg}"
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
@@ -255,8 +269,10 @@ def setDefaults(){
 	if(state.rainDevice == null){state.rainDevice = "off"}
 	if(state.windDevice == null){state.windDevice = "off"}
 	if(state.otherDevice == null){state.otherDevice = "off"}
-	if(state.daysMatch == null){state.daysMatch = "no"}
+	if(state.daysMatch == null){state.daysMatch = false}
 	if(state.msg == null){state.msg = ""}
+    state.valveTry = 0
+    state.valveTryOff = 0
 }
 
 def getImage(type) {					// Modified from @Stephack Code
