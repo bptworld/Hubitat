@@ -41,11 +41,12 @@
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!  This would not be possible
- *  without his work.
+ *  Special thanks goes out to @cwwilson08 for working on and figuring out the oauth stuff!
+ *  This would not be possible without his work.
  *
  *  Changes:
  *
+ *  2.0.6 - 06/01/20 - Added code to remove devices if app is uninstalled
  *  2.0.5 - 04/27/20 - Cosmetic changes
  *  2.0.4 - 04/15/20 - Code adjustments, container driver no longer used. New devices need to be created.
  *  2.0.3 - 04/01/20 - Added a timeout to get http commands
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -626,6 +627,14 @@ def cmdHandler(resp, data) {
     }
 }
 
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(delete) {
+	delete.each {deleteChildDevice(it.deviceNetworkId)}
+}
+
 def childList() {
 	def children = getChildDevices()
     if(logEnable) log.debug "In childList - children: ${children}"
@@ -670,7 +679,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -684,8 +693,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
