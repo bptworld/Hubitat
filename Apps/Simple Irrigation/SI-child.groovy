@@ -160,6 +160,7 @@ def turnValveOn() {
                     resetTrys()
 				}
 			} else {
+				def onLength1 = onLength1 ?: 10
 				def delay = onLength1 * 60
 				if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength1} minutes"
 				log.warn "${valveDevice} is now ${state.valveStatus}"
