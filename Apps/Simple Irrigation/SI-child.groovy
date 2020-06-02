@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 06/02/20 - Fixed issues with scheduling
  *  2.0.4 - 06/02/20 - Lots of little adjustments
  *  2.0.3 - 05/31/20 - Some great changes/additions by @bdwilson. Thanks!
  *  2.0.2 - 04/29/20 - Check for days match before turning valve off
@@ -55,7 +56,7 @@
 
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -134,11 +135,17 @@ def updated() {
 
 def initialize() {
     setDefaults()
-	if(startTime1) schedule(startTime1, turnValveOn, [overwrite: false])
-	if(startTime2) schedule(startTime2, turnValveOn, [overwrite: false])
-	if(startTime3) schedule(startTime3, turnValveOn, [overwrite: false])
+	if(startTime1) schedule(startTime1, settingUpHandler, [overwrite: false])
+	if(startTime2) schedule(startTime2, settingUpHandler, [overwrite: false])
+	if(startTime3) schedule(startTime3, settingUpHandler, [overwrite: false])
 }
 	
+def settingUpHandler() {
+    resetTrys()
+    timeHandler()
+    turnValveOn()
+}
+
 def turnValveOn() {
     if(state.valveTry == null) state.valveTry = 0
     if(state.valveTry == 0) { if(logEnable) log.warn "*************** Start Valve On - Simple Irrigation Child - (${state.version}) ***************" }
@@ -160,9 +167,22 @@ def turnValveOn() {
                     resetTrys()
 				}
 			} else {
-				def onLength1 = onLength1 ?: 10
-				def delay = onLength1 * 60
-				if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength1} minutes"
+                if(logEnable) log.debug "In turnValveOn - theSchedule: ${state.theSchedule}"
+                if(state.theSchedule == "1") { 
+                    if(onLength1 == null) onLength1 = 10
+                    onLength = onLength1
+                } else if(state.theSchedule == "2") {
+                        if(onLength2 == null) onLength2 = 10
+                        onLength = onLength2
+                } else if(state.theSchedule == "3") {
+                        if(onLength3 == null) onLength3 = 10
+                        onLength = onLength3
+                } else {
+                    onLength = 10
+                }
+                //log.warn "onLength: ${onLength}"
+                def delay = onLength * 60
+				if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength} minutes"
 				log.warn "${valveDevice} is now ${state.valveStatus}"
 				state.msg = "${valveDevice} is now ${state.valveStatus}"
 				if(sendPushMessage) pushHandler()
@@ -253,6 +273,31 @@ def dayOfTheWeekHandler() {
 		if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
 		state.daysMatch = false
 	}
+}
+
+def timeHandler() {
+	if(logEnable) log.debug "In timeHandler (${state.version})"
+
+    def date = new Date()
+    tTime = date.format("yyyy-MM-dd'T'HH:mm:ss.'000'Z")
+    
+    sTime1 = startTime1
+    sTime2 = startTime2
+    sTime3 = startTime3
+    
+    if(logEnable) log.debug "In timeHandler - startTime1: ${sTime1} - theTime: ${tTime}"
+    if(sTime1 == tTime) {
+		if(logEnable) log.debug "In timeHandler - Time Check Matches Timer 1"
+		state.theSchedule = "1"
+    }
+    if(sTime2 == tTime) {
+		if(logEnable) log.debug "In timeHandler - Time Check Matches Timer 2"
+		state.theSchedule = "2"
+    }
+    if(sTime3 == tTime) {
+		if(logEnable) log.debug "In timeHandler - Time Check Matches Timer 3"
+		state.theSchedule = "3"
+    }
 }
 
 def pushHandler(){
