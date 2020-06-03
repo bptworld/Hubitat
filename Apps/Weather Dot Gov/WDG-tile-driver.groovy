@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 06/03/20 - Fixed a typo with currentDataTile
  *  1.0.6 - 05/29/20 - Fixed a booboo
  *  1.0.5 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
  *  1.0.4 - 05/07/20 - Added multiple alert data
@@ -118,7 +119,7 @@ metadata {
 
 def currentData(stuff) {
     if(logEnable) log.debug "In currentData"    
-    sendEvent(name: "currentDataTile", value: stuff)
+    sendEvent(name: "bpt-currentDataTile", value: stuff)
 }
 
 def weeklyData(stuff) {
