@@ -40,7 +40,8 @@
  *
  *  Changes:
  *
- *  1.0.5 - 05/23/20 - Added What's new 
+ *  1.0.6 - 06/03/20 - Added a Master List Option
+ *  1.0.5 - 05/23/20 - Added What's New Option
  *  1.0.4 - 05/20/20 - Fix for HE update
  *  1.0.3 - 05/16/20 - Error trapping
  *  1.0.2 - 05/07/20 - Added 'Developer Options' Search, cosmetic changes
@@ -58,7 +59,7 @@ import groovy.transform.Field
     
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -79,6 +80,7 @@ preferences {
     page(name: "categoryOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "developerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "whatsNewOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "masterListOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -94,7 +96,8 @@ def pageConfig() {
                 paragraph "<b>Notes:</b>"
                 paragraph "Conveniently explore the apps and drivers available within the Hubitat Package Manager.<br>All credit goes to @dman2306 for his amazing work on HPM."
             }
-            section(getFormat("header-green", "${getImage("Blank")}"+" HPM Stats")) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" HPM Information")) {
+                paragraph "<b>As more and more packages come online, it will take a bit longer for this app to sort through all the great packages. Please be patient after making your selection.</b>"
                 paragraph "Hubitat Package Manager is now serving <b>${state.packCount} packages</b> (apps/drivers) from <b>${state.repoCount} developers</b>!"
             }
             
@@ -111,7 +114,8 @@ def pageConfig() {
                 href "categoryOptions", title:"Category Options", description:"See all Apps and Drivers the selected Category has to offer"
                 href "developerOptions", title:"Developer Options", description:"See all Apps and Drivers the selected Developer has to offer"
                 href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an App or Driver across all Developers and Categories"
-                href "whatsNewOptions", title:"What's New Options", description:"See 'What's New' within the past 7 days. <i>This will take a minute to run! Please be patient.</i>"
+                href "masterListOptions", title:"Master List Options", description:"Creates an alphabetical list of ALL packages. <i><b>This will take a minute to run! Please be patient.</b></i>"
+                href "whatsNewOptions", title:"What's New Options", description:"See 'What's New' within the past 7 days. <i><b>This will take a minute to run! Please be patient.</b></i>"
             }
 
             section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -193,6 +197,19 @@ def searchOptions() {
     }
 }
 
+def masterListOptions() {
+    dynamicPage(name: "masterListOptions", title: "", install: false, uninstall:false){
+        display()
+		
+        findAllPackages()
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" ${state.resultsTitle}")) {
+            paragraph appsList
+
+        }
+    }
+}
+
 def whatsNewOptions() {
     dynamicPage(name: "whatsNewOptions", title: "", install: false, uninstall:false){
         display()
@@ -207,7 +224,7 @@ def whatsNewOptions() {
 }
 
 def findPackagesByCategory() {
-    if(logEnable) log.debug "In findPackagesByCategory"   
+    if(logEnable) log.debug "In findPackagesByCategory (${state.version})"   
     if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name}
     if(sortBy) allPackages = state.allPackages.sort{ name-> name.author}    
     state.packageCount = allPackages.size()
@@ -243,7 +260,7 @@ def findPackagesByCategory() {
 }
     
 def findPackagesByDeveloper() {
-    if(logEnable) log.debug "In findPackagesByDeveloper"
+    if(logEnable) log.debug "In findPackagesByDeveloper (${state.version})"
     if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name}
     if(sortBy) allPackages = state.allPackages.sort{ name-> name.category}
     
@@ -281,7 +298,7 @@ def findPackagesByDeveloper() {
 }
 
 def findPackagesBySearch() {
-    if(logEnable) log.debug "In findPackagesBySearch"
+    if(logEnable) log.debug "In findPackagesBySearch (${state.version})"
     if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name }
     if(sortBy) allPackages = state.allPackages.sort{ name-> name.author }
                 
@@ -324,6 +341,39 @@ def findPackagesBySearch() {
                     theLinks = "" 
                 }
             }
+        }
+    }
+}
+
+def findAllPackages() {
+    if(logEnable) log.debug "In findAllPackages (${state.version})"
+    allPackages = state.allPackages.sort{ name-> name.name}   
+    state.packageCount = allPackages.size()
+            
+    state.resultsTitle = "<b>Search Results for All Packages</b>"
+    appsList = ""
+    
+	for (pkg in allPackages) {
+        if(logEnable) log.debug "In findPackagesByDeveloper - Getting all packages - author: ${pkg.author} - package: ${pkg.name}"   
+        def info = getJSONFile(pkg.location)
+
+        theLinks = ""
+        if(info) {
+            if(info.documentationLink) {
+                theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
+            }
+            if(info.communityLink) {
+                theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
+            }
+            if(pkg.gitHubUrl) {
+                theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
+            }
+            if(pkg.payPalUrl) {
+                theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
+            }
+            if(theLinks != "") theLinks += "|"               
+
+            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
         }
     }
 }
@@ -404,7 +454,7 @@ def findPakcagesByDateAdded() {
 }
 
 def reposToShowHandler() {        // Code by dman2306
-    if(logEnable) log.debug "In reposToShowHandler"
+    if(logEnable) log.debug "In reposToShowHandler (${state.version})"
     def reposToShow = [:]
     state.repoCount = 0
 	listOfRepositories.repositories.each { r -> reposToShow << ["${r.location}":r.name] }
@@ -419,7 +469,7 @@ def getRepoName(location) {        // Code by dman2306
 }
 
 def performRepositoryRefresh() {        // Code by dman2306, mods by bptworld
-    if(logEnable) log.debug "In performRepositoryRefresh"
+    if(logEnable) log.debug "In performRepositoryRefresh (${state.version})"
 	allPackages = []
 	categories = []
     allDevNames = []
@@ -507,7 +557,7 @@ def downloadFile(file) {        // Code by dman2306
 }
 
 def updateRepositoryListing() {        // Code by dman2306
-	if(logEnable) log.debug "In updateRepositoryListing - Refreshing repository list"
+	if(logEnable) log.debug "In updateRepositoryListing - Refreshing repository list (${state.version})"
 	def oldListOfRepositories = listOfRepositories
 	listOfRepositories = getJSONFile(repositoryListing)
 	if (installedRepositories == null) {
@@ -526,7 +576,7 @@ def updateRepositoryListing() {        // Code by dman2306
 }
 
 def getAppList() {    // Thanks to gavincampbell for the code below!
-    if(logEnable) log.debug "In getAppList"
+    if(logEnable) log.debug "In getAppList (${state.version})"
     def params = [
     	uri: "http://127.0.0.1:8080/app/list",
         textParser: true,
