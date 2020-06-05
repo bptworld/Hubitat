@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  * 1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other cosmetic changes
+ *  1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other cosmetic changes
  *  1.1.0 - 04/27/20 - Cosmetic changes
  *  1.0.9 - 04/04/20 - Fixed a typo
  *  1.0.8 - 04/01/20 - Added a 'No devices found' message
