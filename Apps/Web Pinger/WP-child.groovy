@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.8 - 06/05/20 - Minor adjustments
  *  2.0.7 - 05/25/20 - Little adjustments here and there
  *  2.0.6 - 04/27/20 - Cosmetic changes
  *  2.0.5 - 04/18/20 - Adjustments
@@ -53,9 +54,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Web Pinger"
-	state.version = "2.0.7"
+	state.version = "2.0.8"
 }
 
 definition(
@@ -250,48 +254,76 @@ def pollVerify() {
 
 def turnOnHandler() {
 	if (switches) {
-    	switches.on()
-    	if(logEnable) log.debug "Turning on switch(es)"
+        switches.each{ s1 ->
+            theStatus = s1.deviceValue("switch")
+    	    if(theStatus == "off") s1.on()
+            if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning on ${s1}"
+        }
         
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
-            switches.off
+            switches.each{ rs1 ->
+                theStatus = rs1.deviceValue("switch")
+                if(theStatus == "on") rs1.off()
+                if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning off ${rs1}"
+            }
         }
    	}
     
     if (switches2) {
-    	switches2.on()
-    	if(logEnable) log.debug "Turning on switch(es)"
+    	switches2.each{ s2 ->
+            theStatus = s2.deviceValue("switch")
+    	    if(theStatus == "off") s2.on()
+            if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning on ${s2}"
+        }
 		
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
-            switches2.off
+            switches2.each{ rs2 ->
+                theStatus = rs2.deviceValue("switch")
+                if(theStatus == "on") rs2.off()
+                if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning off ${rs2}"
+            }
         }
    	}
 }
 
 def turnOffHandler() {
-    if (switches) {
-    	switches.off()
-    	if(logEnable) log.debug "Turning off switch(es)"
+    if (switches1) {
+        switches1.each{ s1 ->
+            theStatus = s1.deviceValue("switch")
+    	    if(theStatus == "on") s1.off()
+            if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning off ${s1}"
+        }
         
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
-            switches.on()
+            switches1.each{ rs1 ->
+                theStatus = rs1.deviceValue("switch")
+                if(theStatus == "off") rs1.on()
+                if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning on ${rs1}"
+            }
         }
-    }
+   	}
     
     if (switches2) {
-    	switches2.off()
-    	if(logEnable) log.debug "Turning off switch(es)"
-        
+    	switches2.each{ s2 ->
+            theStatus = s2.deviceValue("switch")
+    	    if(theStatus == "on") s2.off()
+            if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning off ${s2}"
+        }
+		
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
-            switches2.on()
+            switches2.each{ rs2 ->
+                theStatus = rs2.deviceValue("switch")
+                if(theStatus == "off") rs2.on()
+                if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning on ${rs2}"
+            }
         }
     }
 }
@@ -346,25 +378,44 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
-    }
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
+}
+
