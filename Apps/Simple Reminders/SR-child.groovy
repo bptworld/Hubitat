@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 06/05/20 - Fixed max repeats, Added Specific Date trigger, Added Repeat every X days, Removed 'Every Other', other minor changes
  *  1.0.6 - 04/27/20 - Cosmetic changes
  *  1.0.5 - 02/03/20 - Only one reminder per child app, Repeat is still not honoring the control switch status
  *  1.0.4 - 01/31/20 - Second Attempt to fix flashing, fix Repeat
@@ -48,10 +49,11 @@
  */
 
 import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -79,13 +81,63 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
             paragraph "Setup Simple Reminders through out the day."
 		}
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reminder Options")) {
-            input "days", "enum", title: "Set Reminder on these days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
-            if(days) {
+            input "triggerType", "enum", title: "Tigger", required: true, multiple: false, submitOnChange: true, options: [
+                ["xDate":"by Date"],
+                ["xDayOfTheWeek":"by Day of the Week"],
+                ["xEverySoManyDays":"Every So Many Days"]
+            ]
+            
+            if(triggerType == "xDate") {
+                app.removeSetting("days")
+                app.removeSetting("timeToRun")
+                
+                app.removeSetting("howManyDays")
+                app.removeSetting("timeForReminder")
+                
+                paragraph "Set Reminder for this Specific Date"
+                input "month", "enum", title: "Select Month", required: true, multiple: false, width: 6, submitOnChange: true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+                if(month == "1" || month == "3" || month == "5" || month == "7" || month == "8" || month == "10" || month == "12") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 6, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+                if(month == "4" || month == "6" || month == "9" || month == "11") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 6, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+                if(month == "2") input "day", "enum", title: "Select Day(s)", required: true, multiple: true, width: 6, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28"]
+                paragraph " "
+                input "hour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
+                input "min", "enum", title: "Select Minute", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
+                paragraph " "
+                paragraph "<small>* Note: This will repeat every year on this date</small>"
+            }
+            
+            if(triggerType == "xDayOfTheWeek") {
+                app.removeSetting("month")
+                app.removeSetting("day")
+                app.removeSetting("hour")
+                app.removeSetting("min")
+                
+                app.removeSetting("howManyDays")
+                app.removeSetting("timeForReminder")
+                
+                input "days", "enum", title: "Set Reminder on the Selected Days", description: "Days", required: false, multiple: true, submitOnChange: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], width:6
                 input "timeToRun", "time", title: "Time for Reminder", required: false, width:6
-                input "everyOther", "bool", defaultValue: false, title: "<b>Every other?</b>", description: "Every other", submitOnChange: true
-                paragraph "<small>* To get this on the right schedule, don't turn this switch on until the week you want to start the reminder. Also, if using the Every Other option - only ONE day can be selected.</small>"
-                input "msg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: "true"
+            }
+            
+            if(triggerType == "xEverySoManyDays") {
+                app.removeSetting("days")
+                app.removeSetting("timeToRun")
+                
+                app.removeSetting("month")
+                app.removeSetting("day")
+                app.removeSetting("hour")
+                app.removeSetting("min")
+                
+                paragraph "On the day you want this to start, Come back here and hit 'Done'. It will then remind you x days out. Great for Furnace filter (every 60 days), Recycle Week (every 14 days) type reminders!"
+                input "howManyDays", "number", title: "How Many Days", required: false, submitOnChange: true
+                input "hmdHour", "enum", title: "Select Hour (24h format)", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"]
+                input "hmdMin", "enum", title: "Select Minute", required: true, width: 6, options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14","15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]
+            }
+            
+            if(triggerType == "xDate" || triggerType == "xDayOfTheWeek" || triggerType == "xEverySoManyDays") {
+                input "msg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required: false, submitOnChange: true
 				input "list1", "bool", defaultValue: "false", title: "Show a list view of the random messages?", description: "List", submitOnChange: true
 				if(list1) {
 					def values1 = "${msg}".split(";")
@@ -122,6 +174,7 @@ def pageConfig() {
                 input "newMode", "mode", title: "Change to Mode", required: false, multiple: false
     	    }
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
             paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
            input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required:false, multiple:true, submitOnChange:true
@@ -150,9 +203,11 @@ def pageConfig() {
 		        paragraph "Speaker proxy in use"
             }
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
     	}
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
@@ -175,39 +230,63 @@ def updated() {
 def initialize() {
     setVersion()
     setDefaults()
-	if(timeToRun) schedule(timeToRun, startTheProcess)
+	if(triggerType == "xDayOfTheWeek") schedule(timeToRun, startTheProcess)
+    if(triggerType == "xDate") dateHandler()
+    if(triggerType == "xEverySoManyDays") everySoManyDaysHandler()
 }
 
 def startTheProcess(evt) {
     if(logEnable) log.debug "In startTheProcess (${state.version})"
-    state.beenHere = 0
-    if(everyOther) {
-        state.everyOther = true
-    } else {
-        state.everyOther = false
-    }
         
-    dayOfTheWeekHandler(days)
+    dayOfTheWeekHandler()
     if(state.daysMatch && switchesOn) switchesOnHandler(switchesOn)
     if(state.daysMatch && switchesOff) switchesOffHandler(switchesOff)
     if(state.daysMatch && switchesFlash) flashLights(switchesFlash,numOfFlashes,delayFlashes)
     if(state.daysMatch && newMode) modeHandler(newMode)
-    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) messageHandler(msg)
+    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) checkMaxRepeat()
+    
+    // reset for next time
+    initialize()
 }
 
-def letsTalk(msg) {
+def dateHandler() {
+	if(logEnable) log.debug "In dateHandler (${state.version})"
+	theMonth = month
+	String jDays = day.join(",")
+	theDays = jDays
+	
+    state.schedule = "0 ${min} ${hour} ${theDays} ${theMonth} ? *"
+	if(logEnable) log.debug "In dateHandler - xTime - schedule: 0 ${min} ${hour} ${theDays} ${theMonth} ? *"
+    schedule(state.schedule, startTheProcess)
+}
+
+def everySoManyDaysHandler() {
+	if(logEnable) log.debug "In everySoManyDaysHandler (${state.version})"
+    int hmd = howManyDays
+	Date futureDate = new Date().plus(hmd)
+    if(logEnable) log.debug "In everySoManyDaysHandler - howManyDays: ${howManyDays} - futureDate: ${futureDate}"
+    
+    hmdMonth = futureDate.format("MM")
+    hmdDay = futureDate.format("dd")
+
+    hmdSchedule = "0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? *"
+	if(logEnable) log.debug "In everySoManyDaysHandler - schedule: 0 ${hmdMin} ${hmdHour} ${hmdDay} ${hmdMonth} ? *"
+    schedule(hmdSchedule, startTheProcess)
+}
+
+def letsTalk(theMsg) {
 	if(logEnable) log.debug "In letsTalk (${state.version})"
 	checkTime()
 	checkVol()
     checkEveryOther()
     if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween} - thisTime: ${state.thisTime}"
     if(state.timeBetween && state.daysMatch && state.thisTime == "yes") {
-        if(msg) state.theMsg = msg
+        if(theMsg) state.theMsg = theMsg
               
         def duration = Math.max(Math.round(state.theMsg.length()/12),2)+3
         theDuration = duration * 1000
         state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
+    	if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, theMsg: ${state.theMsg}, volRestore: ${volRestore}"
         state.speakers.each { it ->
             if(logEnable) log.debug "Speaker in use: ${it}"
             if(speakerProxy) {
@@ -232,7 +311,8 @@ def letsTalk(msg) {
                 if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
                 if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
             }
-        }
+        } 
+        state.repeat = state.repeat + 1
         checkMaxRepeat()
 	} else {
 		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
@@ -241,19 +321,17 @@ def letsTalk(msg) {
 
 def checkMaxRepeat() {
     if(logEnable) log.debug "In checkMaxRepeat (${state.version})"
-    if(state.beenHere == null) state.beenHere = 0
-    state.beenHere = state.beenHere + 1
-    
-    if(sendPushMessage && state.beenHere == 1) pushNow(state.theMsg)
+    if(state.repeat == null) state.repeat = 1   
+    if(sendPushMessage && state.repeat == 1) pushNow(state.theMsg)
     
     if(maxRepeats == 1) {
-        if(logEnable) log.debug "In checkMaxRepeat - Max repeats (${maxRepeats}) has been reached"
+        if(logEnable) log.debug "In checkMaxRepeat - Max repeats (${maxRepeats}) has been reached (${state.repeat})"
     } else {
-        if(state.beenHere <= maxRepeats) {
+        if(state.repeat < maxRepeats) {
             repeatDelay = repeatSeconds * 1000
-            pauseExecution(repeatDelay)
+            if(state.repeat > 1) pauseExecution(repeatDelay)
             def theControlSwitch = rControlSwitch.currentValue("switch")
-            if(logEnable) log.debug "In checkMaxRepeat - ${rControlSwitch}: ${theControlSwitch} - **********"
+            if(logEnable) log.debug "In checkMaxRepeat - Control switch: ${rControlSwitch} is ${theControlSwitch} - Max repeats: ${maxRepeats} - repeated: ${state.repeat}"
          
             if(theControlSwitch == "on") {
                 letsTalk(state.theMsg)
@@ -262,11 +340,11 @@ def checkMaxRepeat() {
             }
         } else {
             rControlSwitch.off()
-            if(logEnable) log.debug "In checkMaxRepeat - Max repeats (${maxRepeats}) has been reached"
+            if(logEnable) log.debug "In checkMaxRepeat - Max repeats (${maxRepeats}) has been reached (${state.repeat})"
         }
     }
-    state.beenHere = 0
-    if(logEnable) log.debug "In checkMaxRepeat - Finished speaking"
+    state.repeat = 0
+    if(logEnable) log.debug "In checkMaxRepeat - Finished - Max repeats: ${maxRepeats} - repeated: ${state.repeat}"
 }
 
 def checkVol(){
@@ -294,22 +372,7 @@ def checkTime() {
 	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
-def checkEveryOther() {
-    if(logEnable) log.debug "In checkEveryOther (${state.version})"
-    if(state.everyOther) {
-        if(state.thisTime == null || state.thisTime == "") state.thisTime = "no"
-        if(state.thisTime == "yes") {
-            state.thisTime = "no"
-        } else {
-            state.thisTime = "yes"
-        }
-    } else {
-        state.thisTime = "yes"
-    }
-    if(logEnable) log.debug "In checkEveryOther - thisTime: ${state.thisTime}"
-}
-
-def messageHandler(msg) {
+def messageHandler() {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
 	state.theMsg = ""
     
@@ -317,33 +380,33 @@ def messageHandler(msg) {
 	vSize = values.size()
     count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
-	msg = values[randomKey]
-	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, msg: ${msg}"
+	theMsg = values[randomKey]
+	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMsg: ${theMsg}"
     
 	if(logEnable) log.debug "In messageHandler - theMsg: ${theMsg}"
         
-    letsTalk(msg)
+    letsTalk(theMsg)
 }
 
-def dayOfTheWeekHandler(days) {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
-	Calendar date = Calendar.getInstance()
-	int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
-	if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
-	if(dayOfTheWeek == 2) state.dotWeek = "Monday"
-	if(dayOfTheWeek == 3) state.dotWeek = "Tuesday"
-	if(dayOfTheWeek == 4) state.dotWeek = "Wednesday"
-	if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
-	if(dayOfTheWeek == 6) state.dotWeek = "Friday"
-	if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
+def dayOfTheWeekHandler() {
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+    if(days) {
+        def df = new java.text.SimpleDateFormat("EEEE")
+        df.setTimeZone(location.timeZone)
+        def day = df.format(new Date())
+        def dayCheck = days.contains(day)
 
-	if(days.contains(state.dotWeek)) {
-		if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
-		state.daysMatch = true
-	} else {
-		if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
-		state.daysMatch = false
-	}
+        if(dayCheck) {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+            state.daysMatch = true
+        } else {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+            state.daysMatch = false
+        }
+    } else {
+        state.daysMatch = true
+    }
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 def pushNow(theMsg){
@@ -462,25 +525,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
