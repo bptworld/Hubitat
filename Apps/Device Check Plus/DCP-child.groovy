@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  * 1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other cosmetic changes
  *  1.1.0 - 04/27/20 - Cosmetic changes
  *  1.0.9 - 04/04/20 - Fixed a typo
  *  1.0.8 - 04/01/20 - Added a 'No devices found' message
@@ -51,9 +52,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -169,9 +173,9 @@ def triggerOptions() {
             
             if(triggerType1 == "xDay") {
                 section() {
-                    paragraph "<b>Run 'Device Check' on a set schedule</b> (optional)"
+                    paragraph "<b>Run 'Device Check' on a set schedule</b>"
                     input "days", "enum", title: "Only run on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                    if(days) input "timeToRun", "time", title: "Auto Run at", required:true
+                    input "timeToRun", "time", title: "Auto Run at", required:true
                 }
             }
                 
@@ -420,7 +424,7 @@ private removeChildDevices(delete) {
 def initialize() {
     setDefaults()
 	if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", checkDeviceHandler)
-    if(triggerType1 == "xDay" && days) schedule(timeToRun, checkDeviceHandler)
+    if(triggerType1 == "xDay" && timeToRun) schedule(timeToRun, checkDeviceHandler)
     if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
     if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
     if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
@@ -447,15 +451,12 @@ def checkDeviceHandler(evt) {
     state.wrongSwitchesMSG = ""
     state.wrongLocksMSG = ""
     maxCheck = 3
-    if(evt != "1" && evt != "2" && evt != "3") {
-        x = 1
-    } else {
-        x = evt.toInteger()
-    }
+    if(state.round == null) state.round = 1
+    int x = state.round
     
     if(!tryToFix) { x=maxCheck }
     somethingWrong = false
-    if(logEnable) log.info "Pass: ${x} - evt: ${evt}"
+    if(logEnable) log.info "Pass: ${x} - round: ${state.round}"
     
     if(switchesOn) {
         switchesOn.each { sOn -> 
@@ -528,9 +529,10 @@ def checkDeviceHandler(evt) {
     if(somethingWrong && x < maxCheck) {
         if(logEnable) log.debug "In checkDeviceHandler - Device was in wrong state.  Please wait..."
         x=x+1
-        runIn(5,checkDeviceHandler, [data:"${x}"])
+        state.round = x
+        runIn(5,checkDeviceHandler)
     } else {
-        x = null
+        state.round = null
         checkContactHandler()
     }
 }
@@ -571,17 +573,17 @@ def checkContactHandler() {
 }
     
 def deviceTriggeredHandler() {
-    if(logEnable) log.debug "In deviceControlHandler (${state.version})"
+    if(logEnable) log.debug "In deviceTriggeredHandler (${state.version})"
     if(switchesToTurnOn) {
         switchesToTurnOn.each { it ->
-		    if(logEnable) log.debug "In deviceControlHandler - Turning on ${it}"
+		    if(logEnable) log.debug "In deviceTriggeredHandler - Turning on ${it}"
 		    it.on()
         }
 	}
     
     if(switchesToTurnOff) {
         switchesToTurnOff.each { it ->
-		    if(logEnable) log.debug "In deviceControlHandler - Turning off ${it}"
+		    if(logEnable) log.debug "In deviceTriggeredHandler - Turning off ${it}"
 		    it.off()
         }
 	}
@@ -595,15 +597,15 @@ def deviceNotTriggeredHandler() {
     if(logEnable) log.debug "In deviceNotTriggeredHandler (${state.version})"
     if(switchesToTurnOn) {
         switchesToTurnOn.each { it ->
-		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning off ${it}"
-		    it.off()
+		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning on ${it}"
+		    it.on()
         }
 	}
     
     if(switchesToTurnOff) {
         switchesToTurnOff.each { it ->
-		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning on ${it}"
-		    it.on()
+		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning off ${it}"
+		    it.off()
         }
 	}
 }
@@ -822,29 +824,24 @@ def modeHandler(evt) {
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
     if(days) {
-	    Calendar date = Calendar.getInstance()
-	    int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
-	    if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
-	    if(dayOfTheWeek == 2) state.dotWeek = "Monday"
-	    if(dayOfTheWeek == 3) state.dotWeek = "Tuesday"
-	    if(dayOfTheWeek == 4) state.dotWeek = "Wednesday"
-	    if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
-	    if(dayOfTheWeek == 6) state.dotWeek = "Friday"
-	    if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
+        def df = new java.text.SimpleDateFormat("EEEE")
+        df.setTimeZone(location.timeZone)
+        def day = df.format(new Date())
+        def dayCheck = days.contains(day)
 
-	    if(days.contains(state.dotWeek)) {
-	    	if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
-		    state.daysMatch = true
-	    } else {
-	    	if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
-		    state.daysMatch = false
-	    }
+        if(dayCheck) {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+            state.daysMatch = true
+        } else {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+            state.daysMatch = false
+        }
     } else {
         state.daysMatch = true
     }
-	if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 def thermostatHandler(evt) {
@@ -1166,25 +1163,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
