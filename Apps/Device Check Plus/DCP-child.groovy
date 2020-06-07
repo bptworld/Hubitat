@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other cosmetic changes
+ *  1.1.2 - 06/07/20 - More options added to 'Actions'
+ *  1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other minor changes
  *  1.1.0 - 04/27/20 - Cosmetic changes
  *  1.0.9 - 04/04/20 - Fixed a typo
  *  1.0.8 - 04/01/20 - Added a 'No devices found' message
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -76,6 +77,7 @@ definition(
 preferences {
     page(name: "pageConfig")
     page(name: "checkConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "actionConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "triggerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "notificationOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "speechOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
@@ -104,10 +106,16 @@ def pageConfig() {
                 href "triggerOptions", title:"${getImage("optionsRed")} Select Trigger", description:"Click here for Options"
             }
             
-            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked || switchesToTurnOn || switchesToTurnOff || switchesToFlash) {
-                href "checkConfig", title:"${getImage("optionsGreen")} Select Actions", description:"Click here for Options"
+            if(switchesOn || switchesOff || contactsOpen || contactsClosed || locksLocked || locksUnlocked) {
+                href "checkConfig", title:"${getImage("optionsGreen")} Select Devices", description:"Click here for Options"
             } else {
-                href "checkConfig", title:"${getImage("optionsRed")} Select Actions", description:"Click here for Options"
+                href "checkConfig", title:"${getImage("optionsRed")} Select Devices", description:"Click here for Options"
+            }
+            
+            if(switchesToTurnOn || switchesToTurnOff || switchesToFlash) {
+                href "actionConfig", title:"${getImage("optionsGreen")} Select Actions", description:"Click here for Options"
+            } else {
+                href "actionConfig", title:"${getImage("optionsRed")} Select Actions", description:"Click here for Options"
             }
             
             if(isDataDevice || preMsg || postMsg) {
@@ -294,18 +302,24 @@ def checkConfig() {
                 }
 		    }
         }
-        
+    }
+}
+
+def actionConfig() {
+    dynamicPage(name: "actionConfig", title: "", install:false, uninstall:false) {
+        display()        
         section(getFormat("header-green", "${getImage("Blank")}"+" Actions")) {
-            paragraph "<b>When 'Triggered' turn these switches ON</b>"
+            paragraph "<b>If anything was in the wrong state</b>"
 			input "switchesToTurnOn", "capability.switch", title: "Switches to Turn ON", multiple:true, required:false
-                
-            paragraph "<b>When 'Triggered' turn these switches OFF</b>"
 			input "switchesToTurnOff", "capability.switch", title: "Switches to Turn OFF", multiple:true, required:false
-                
-            paragraph "<b>When 'Triggered' Flash these devices</b>"
+
 			input "switchesToFlash", "capability.switch", title: "Flash these lights", multiple: true
 		    input "numOfFlashes", "number", title: "Number of times (default: 2)", required: false, width: 6
             input "delayFlashes", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+            
+            paragraph "<b>If everything was in the correct state</b>"
+			input "switchesToTurnOnC", "capability.switch", title: "Switches to Turn ON", multiple:true, required:false
+			input "switchesToTurnOffC", "capability.switch", title: "Switches to Turn OFF", multiple:true, required:false
         }
     }
 }
@@ -595,15 +609,15 @@ def deviceTriggeredHandler() {
 
 def deviceNotTriggeredHandler() {
     if(logEnable) log.debug "In deviceNotTriggeredHandler (${state.version})"
-    if(switchesToTurnOn) {
-        switchesToTurnOn.each { it ->
+    if(switchesToTurnOnC) {
+        switchesToTurnOnC.each { it ->
 		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning on ${it}"
 		    it.on()
         }
 	}
     
-    if(switchesToTurnOff) {
-        switchesToTurnOff.each { it ->
+    if(switchesToTurnOffC) {
+        switchesToTurnOffC.each { it ->
 		    if(logEnable) log.debug "In deviceNotTriggeredHandler - Turning off ${it}"
 		    it.off()
         }
