@@ -83,7 +83,7 @@ def pageConfig() {
             input "useExistingDevice", "bool", title: "Use existing device (off) or have AP create a new one for you (on)", defaultValue:false, submitOnChange:true
             if(useExistingDevice) {
 			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'AP - Motion Sensors')", required:true, submitOnChange:true
-                paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
                 if(dataName) createDataChildDevice()
                 if(statusMessageD == null) statusMessageD = "Waiting on status message..."
                 paragraph "${statusMessageD}"
