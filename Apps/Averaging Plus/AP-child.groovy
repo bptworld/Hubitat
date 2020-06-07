@@ -37,13 +37,17 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 06/07/20 - Added more options and some error trapping
  *  1.0.0 - 05/25/20 - Initial release.
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -75,7 +79,7 @@ def pageConfig() {
             paragraph "<b>How the Averaging works</b><br>- Select a bunch of devices that share an attribute (ie. temperature)<br>- Select the Attribute to average<br>- Select the time frame between averages<br><br>For each device that has the attribute, the value will be added to the total value, then divided by the number of devices that had the attribute."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
-            paragraph "Each child app needs a virtual device to store the averaging results. This is the device you'll use to control other things."
+            paragraph "Each child app needs a virtual device to store the averaging results. This device can also be selected below in the Setpoint options to be used as a switch to control other things."
             input "useExistingDevice", "bool", title: "Use existing device (off) or have AP create a new one for you (on)", defaultValue:false, submitOnChange:true
             if(useExistingDevice) {
 			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'AP - Motion Sensors')", required:true, submitOnChange:true
@@ -153,7 +157,14 @@ def lowSetpointConfig() {
         display()
         section(getFormat("header-green", "${getImage("Blank")}"+" Average Too Low Options")) {
             input "spLowDevices", "capability.switch", title: "Turn on Device(s)", required:false, multiple:true, submitOnChange:true
-            input "lowDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+            if(spLowDevices) {
+                input "lowTimesOn", "number", title: "How many 'Too Low Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                input "lowDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+                if(lowDeviceAutoOff) {
+                    input "lowTimesOff", "number", title: "How many 'Normal Averages' required in a row to turn switch Off", defaultValue:3, submitOnChange:true
+                }
+            }
+            
             input "sendPushLow", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
         }       
     }
@@ -164,7 +175,14 @@ def highSetpointConfig() {
         display()
         section(getFormat("header-green", "${getImage("Blank")}"+" Average Too High Options")) {
             input "spHighDevices", "capability.switch", title: "Turn on Device(s)", required:false, multiple:true, submitOnChange:true
-            input "highDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+            if(spHighDevices) {
+                input "highTimes", "number", title: "How many 'Too High Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                input "highDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+                if(highDeviceAutoOff) {
+                    input "highTimesOff", "number", title: "How many 'Normal Averages' required in a row to turn switch Off", defaultValue:3, submitOnChange:true
+                }
+            }
+            
             input "sendPushHigh", "bool", title: "Send a Pushover notification", defaultValue:false, required:false, submitOnChange:true
         }      
     }
@@ -274,15 +292,19 @@ def averageHandler(evt) {
         state.high = false
         
         theDevices.each { it ->
-            num = it.currentValue("${attrib}")
+            num1 = it.currentValue("${attrib}")
+            int num = num1
             if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib} - num: ${num}"
             if(num) {
                 numOfDev += 1
                 totalNum += num
             }
         }
-        
-        state.theAverage = (totalNum / numOfDev).toDouble().round(1)
+        if(totalNum == 0 || totalNum == null) {
+            state.theAverage = 0
+        } else {
+            state.theAverage = (totalNum / numOfDev).toDouble().round(1)
+        }
         if(logEnable) log.debug "In averageHandler - Sending virtualAverage: ${state.theAverage}"
         todaysHigh = dataDevice.currentValue("todaysHigh")
         todaysLow = dataDevice.currentValue("todaysLow")
@@ -296,6 +318,8 @@ def averageHandler(evt) {
         if(state.theAverage <= lowSetpoint) {
             if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
             state.low = true
+            state.nTimes = 0
+            state.lTimes = state.lTimes + 1
             if(spLowDevices) {
                 spLowDevices.each {
                     it.on()
@@ -310,6 +334,8 @@ def averageHandler(evt) {
         if(state.theAverage >= highSetpoint) {
             if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
             state.high = true
+            state.nTimes = 0
+            state.hTimes = state.hTimes + 1
             if(spHighDevices) {
                 spHighDevices.each {
                     it.on()
@@ -323,13 +349,18 @@ def averageHandler(evt) {
         
         if(state.theAverage < highSetpoint && state.theAverage > lowSetpoint) {
             if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) looks good!"
-            if(spHighDevices && highDeviceAutoOff) {
+            
+            state.hTimes = 0
+            state.lTimes = 0
+            state.nTimes = state.nTimes + 1
+            
+            if(spHighDevices && highDeviceAutoOff && state.nTimes >= highTimesOff) {               
                 spHighDevices.each {
                     it.off()
                 }
             }
             
-            if(spLowDevices && lowDeviceAutoOff) {
+            if(spLowDevices && lowDeviceAutoOff && state.nTimes >= lowTimesOff) {                
                 spLowDevices.each {
                     it.off()
                 }
@@ -448,6 +479,9 @@ def createDataChildDevice() {
 
 def setDefaults() {
 	if(logEnable == null){logEnable = false}
+    state.nTimes = 0
+    state.lTimes = 0
+    state.hTimes = 0
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -486,25 +520,44 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
-    }
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
+}
+
