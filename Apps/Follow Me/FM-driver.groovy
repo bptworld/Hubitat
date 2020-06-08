@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.1.9 - 06/08/20 - Minor fix to clear Speaker Map - suggested by @mark.cockcroft. Thank you.
  *  2.1.8 - 05/30/20 - Fixed the bug with Speaker Map
  *  2.1.7 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
  *  2.1.6 - 05/25/20 - Added bug fix by @djw1191, thanks!
@@ -355,6 +356,7 @@ def clearSpeechData(){
     sendEvent(name: "bpt-speakerStatus2", value: sMap2S)
     sendEvent(name: "bpt-speakerStatus3", value: sMap3S)
     speechTop = "Waiting for Data..."
+    state.speakerMap = null
     sendEvent(name: "whatDidISay", value: speechTop)
     if (clearData) runIn(2,clearDataOff)
 }	
