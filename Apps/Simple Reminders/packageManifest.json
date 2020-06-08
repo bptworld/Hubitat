@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/SR-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.7"
+			"version": "1.0.8"
 		}
 	],
 	"drivers" : [	
