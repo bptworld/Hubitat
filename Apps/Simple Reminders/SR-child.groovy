@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 06/07/20 - Bug fixes
  *  1.0.7 - 06/05/20 - Fixed max repeats, Added Specific Date trigger, Added Repeat every X days, Removed 'Every Other', other minor changes
  *  1.0.6 - 04/27/20 - Cosmetic changes
  *  1.0.5 - 02/03/20 - Only one reminder per child app, Repeat is still not honoring the control switch status
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -243,7 +244,7 @@ def startTheProcess(evt) {
     if(state.daysMatch && switchesOff) switchesOffHandler(switchesOff)
     if(state.daysMatch && switchesFlash) flashLights(switchesFlash,numOfFlashes,delayFlashes)
     if(state.daysMatch && newMode) modeHandler(newMode)
-    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) checkMaxRepeat()
+    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) letsTalk()
     
     // reset for next time
     initialize()
@@ -278,7 +279,6 @@ def letsTalk(theMsg) {
 	if(logEnable) log.debug "In letsTalk (${state.version})"
 	checkTime()
 	checkVol()
-    checkEveryOther()
     if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween} - thisTime: ${state.thisTime}"
     if(state.timeBetween && state.daysMatch && state.thisTime == "yes") {
         if(theMsg) state.theMsg = theMsg
