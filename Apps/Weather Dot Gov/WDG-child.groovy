@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.1.6 - 05/25/20 - Fix for font size issue
+ *  1.1.7 - 05/09/20 - New font options for Current Weather Tile
+ *  1.1.6 - 06/25/20 - Fix for font size issue
  *  1.1.5 - 05/25/20 - Attempt to fix an issue with forecast tiles
  *  1.1.4 - 05/23/20 - Rewrite of some of the tables
  *  1.1.3 - 05/07/20 - Added multiple alert tiles and summary tile
@@ -59,7 +60,7 @@
 
 def setVersion(){
     state.name = "Weather Dot Gov"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -160,7 +161,8 @@ def currentTileOptions() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Current Weather Tile Options")) {
             paragraph "Time to setup the Current Weather Tile for use with Dashboards!"
             
-            input "fontSizeCurrentTile", "text", title: "Font Size", required: true, defaultValue:"15", submitOnChange:true
+            input "fontSizeCurrentTileCTemp", "text", title: "Font Size for Current Temp", required: true, defaultValue:"20", submitOnChange:true, width:6
+            input "fontSizeCurrentTileCStats", "text", title: "Font Size for Current Stats", required: true, defaultValue:"20", submitOnChange:true, width:6
             input "updateTimeC", "enum", title: "How ofter to update tile?", options:["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], submitOnChange:true  
             
             paragraph "<hr>"
@@ -613,16 +615,15 @@ def getCurrentData(evt) {
     if(cVisibility == null) cVisibility = "No Data"
     if(cLastUpdated == null) cLastUpdated = "No Data"
 
-    if(fontSizeCurrentTile == null) fontSizeCurrentTile = 15
-    fontSize = "${fontSizeCurrentTile}"
-    fontSizePlus = fontSize.toInteger() + 15
+    if(fontSizeCurrentTileCTemp == null) fontSizeCurrentTileCTemp = 30
+    if(fontSizeCurrentTileCStats == null) fontSizeCurrentTileCStats = 15
             
     currentTable1 =  "<div style='overflow:auto;height:90%'>"
     currentTable1 += "<table style='width:100%;align-content:center'>"
     currentTable1 += "<tr><td><img src='https://${cIcon}'>"
-    currentTable1 += "<td><span style='font-weight:bold'>${cTextDescription}</span><br><span style='font-size:${fontSizePlus}px;font-weight:bold'>${cTemp1}</span>"
-    currentTable1 += "<td><span style='font-size:${fontSize}px'><b>Humidity:</b> ${cRelativeHumidity}%<br><b>Wind Speed:</b> ${cWindSpeed}<br><b>Barometer:</b> ${cBarometricPressure}</span>"
-    currentTable1 += "<td><span style='font-size:${fontSize}px'><b>Dewpoint:</b> ${cDewpoint}<br><b>Visibility:</b> ${cVisibility}<br><b>Last Updated:</b></span>"
+    currentTable1 += "<td><span style='font-weight:bold'>${cTextDescription}</span><br><span style='font-size:${fontSizeCurrentTileCTemp}px;font-weight:bold'>${cTemp1}</span>"
+    currentTable1 += "<td><span style='font-size:${fontSizeCurrentTileCStats}px'><b>Humidity:</b> ${cRelativeHumidity}%<br><b>Wind Speed:</b> ${cWindSpeed}<br><b>Barometer:</b> ${cBarometricPressure}</span>"
+    currentTable1 += "<td><span style='font-size:${fontSizeCurrentTileCStats}px'><b>Dewpoint:</b> ${cDewpoint}<br><b>Visibility:</b> ${cVisibility}<br><b>Last Updated:</b></span>"
     currentTable1 += "<tr><td colspan=4 align=center><small>${cLastUpdated}</small>"
     currentTable1 += "</table></div>"
 
@@ -631,13 +632,13 @@ def getCurrentData(evt) {
     currentTable2 =  "<div style='overflow:auto;height:90%'><table style='width:100%;align-content:center'>"
     currentTable2 += "<tr><td style='width:100%;align-content:center'><img src='https://${cIcon}'><br>"
     currentTable2 += "<span style='font-weight:bold'>${cTextDescription}</span><br>"
-    currentTable2 += "<span style='font-size:${fontSize}px;font-weight:bold'>${cTemp1}</span><br>"
-    currentTable2 += "<b>Humidity:</b> ${cRelativeHumidity}%<br>"
+    currentTable2 += "<span style='font-size:${fontSizeCurrentTileCTemp}px;font-weight:bold'>${cTemp1}</span><br>"
+    currentTable2 += "<span style='font-size:${fontSizeCurrentTileCStats}px;font-weight:bold'><b>Humidity:</b> ${cRelativeHumidity}%<br>"
     currentTable2 += "<b>Wind Speed:</b> ${cWindSpeed}<br>"
     currentTable2 += "<b>Barometer:</b> ${cBarometricPressure}<br>"
     currentTable2 += "<b>Dewpoint:</b> ${cDewpoint}<br>"
     currentTable2 += "<b>Visibility:</b> ${cVisibility}<br>"
-    currentTable2 += "<b>Last Updated:</b><br>"
+    currentTable2 += "<b>Last Updated:</b></span><br>"
     currentTable2 += "<small>${cLastUpdated}</small>"
     currentTable2 += "</table></div>"
     
