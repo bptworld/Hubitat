@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 06/10/20 - Made a few changes
  *  1.1.0 - 05/22/20 - Override switch now supports multiple switches
  *  1.0.9 - 05/17/20 - Added Mode Override option
  *  1.0.8 - 05/02/20 - More changes to repeat option
@@ -49,10 +50,11 @@
 import groovy.json.*
 import hubitat.helper.RMUtils
 import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -82,38 +84,45 @@ def pageConfig() {
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "Make your rooms smarter by directing them to do what you want, automatically."
+            paragraph "Note: Remember Vibration Sensors can be used as Motion Sensors. They work great as a 'helper device'! (ie. In a chair cushion)"
 		}
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Trigger")) {
             paragraph "This is what will trigger the room to be occupied."
-    		input "triggerMode", "enum", title: "Select room activation Type", submitOnChange: true, options: ["Contact_Sensor","Motion_Sensor","Switch"], required: true
+    		input "triggerMode", "enum", title: "Select room activation Type", submitOnChange: true, options: ["Contact_Sensor","Motion_Sensor","Presence","Switch"], required:true
 			if(triggerMode == "Contact_Sensor"){
-				input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the room", required: false, multiple: true
-				input "contactOption", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required: true
+				input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the room", required:false, multiple:true
+				input "contactOption", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
 			}
 			if(triggerMode == "Motion_Sensor"){
-				input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the room", required: false, multiple: true
+				input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the room", required:false, multiple:true
+			}
+            if(triggerMode == "Presence"){
+				input "myPresence", "capability.presenceSensor", title: "Select the Presence Sensor(s) to activate the room", required:false, multiple:true
 			}
 			if(triggerMode == "Switch"){
-				input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the room", required: false, multiple: true
+				input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the room", required: false, multiple:true
 			}
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Helper Device (optional)")) {
             paragraph "This will help the room stay occupied but not trigger the room to be active."
             href "examples", title:"${getImage("instructions")} Find Examples of Secondary Trigger use here", description:"Click here for examples"
-    		input "triggerMode2", "enum", title: "Select room helper Type", submitOnChange: true, options: ["Contact_Sensor","Motion_Sensor","Switch"], required: false
+    		input "triggerMode2", "enum", title: "Select room helper Type", submitOnChange: true, options: ["Contact_Sensor","Motion_Sensor","Presence","Switch"], required: false
 			if(triggerMode2 == "Contact_Sensor"){
-				input "myContacts2", "capability.contactSensor", title: "Select the contact sensor(s) to help keep the room occupied", required: false, multiple: true
-				input "contactOption2", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required: true
+				input "myContacts2", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
+				input "contactOption2", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
 			}
 			if(triggerMode2 == "Motion_Sensor"){
-				input "myMotion2", "capability.motionSensor", title: "Select the motion sensor(s) to help keep the room occupied", required: false, multiple: true
+				input "myMotion2", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
+			}
+            if(triggerMode2 == "Presence"){
+				input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
 			}
 			if(triggerMode2 == "Switch"){
-				input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required: false, multiple: true
+				input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
 			}
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Room Vacant Options")) {
-            input "timeDelayed", "number", title: "How long should the lights stay on if room is vacant (in minutes)", required: false
+            input "timeDelayed", "number", title: "How long should the lights stay on if room is vacant (in minutes)", required:false
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
             paragraph "<b>Room Override</b>, If this device is On, Room Director events will NOT happen for this child app."
@@ -413,10 +422,12 @@ def initialize() {
     
 	if(triggerMode == "Contact_Sensor") subscribe(myContacts, "contact", primaryHandler)
 	if(triggerMode == "Motion_Sensor") subscribe(myMotion, "motion", primaryHandler)
+    if(triggerMode == "Presence") subscribe(myPresence, "presence", primaryHandler)
 	if(triggerMode == "Switch") subscribe(mySwitches, "switch", primaryHandler)
 	
     if(triggerMode2 == "Contact_Sensor") subscribe(myContacts2, "contact", primaryHandler)
 	if(triggerMode2 == "Motion_Sensor") subscribe(myMotion2, "motion", primaryHandler)
+    if(triggerMode2 == "Presence") subscribe(myPresence2, "presence", primaryHandler)
 	if(triggerMode2 == "Switch") subscribe(mySwitches2, "switch", primaryHandler)
     
     if(sunRestriction) subscribe(location, "sunriseTime", sunriseTimeHandler)
@@ -453,13 +464,23 @@ def primaryHandler(evt) {
     if(triggerMode == "Motion_Sensor") {
         myMotion.each { it ->
             status = it.currentValue("motion")
-            if(logEnable) log.debug "In primaryHandler - M Sensor: ${it} - value: ${status}"
+            if(logEnable) log.debug "In primaryHandler - Motion Sensor: ${it} - value: ${status}"
             if(status == "active") {
 		        state.occupancy1 = "yes"
             }
         }
     }
 
+    if(triggerMode == "Presence") {
+        myPresence.each { it ->
+            status = it.currentValue("presence")
+            if(logEnable) log.debug "In primaryHandler - Presence: ${it} - value: ${status}"
+            if(status == "present") {
+		        state.occupancy1 = "yes"
+            }
+        }
+    }
+    
     if(triggerMode == "Switch") {    
         mySwitches.each { it ->
             status = it.currentValue("switch")
@@ -505,6 +526,16 @@ def secondaryHandler() {
         }
     }
 
+    if(triggerMode2 == "Presence") {
+        myPresence2.each { it ->
+            status = it.currentValue("presence")
+            if(logEnable) log.debug "In secondaryHandler - Presence: ${it} - value: ${status}"
+            if(status == "present") {
+		        state.occupancy2 = "yes" 
+            }
+        }
+    }
+    
     if(triggerMode2 == "Switch") {
         mySwitches2.each { it ->
             status = it.currentValue("switch")
@@ -521,7 +552,7 @@ def secondaryHandler() {
 def whatToDo() {
     if(logEnable) log.debug "In whatToDo (${state.version}) - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
     dayOfTheWeekHandler()
-    if(state.dayMatches == "yes" && state.sunRiseTosunSet) {
+    if(state.dayMatches && state.sunRiseTosunSet) {
         if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
             if(logEnable) log.debug "In whatToDo - Going to vacantHandler"
             vacantHandler()
@@ -594,6 +625,8 @@ def vacantHandler() {
         timeD = timeDelayed * 60
         runIn(timeD, roomWarningHandler)
         if(logEnable) log.debug "In vacantHandler - Room Warning has been scheduled in ${timeDelayed} minute(s)"
+    } else {
+        occupancyHandler()
     }
 }
 
@@ -631,7 +664,8 @@ def roomWarningHandler() {
         
         if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
         runIn(30, lightsHandler)
-
+    } else {
+        occupancyHandler()
     }
 }
 
@@ -664,6 +698,8 @@ def lightsHandler() {
         }
         //log.info "newTime: ${newTime}"
         runOnce(newTime, lightsHandler2)
+    } else {
+        occupancyHandler()
     }
 }
 
@@ -676,7 +712,7 @@ def lightsHandler2() {
         }
     }
     
-    if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+    if(logEnable) log.debug "In lightsHandler2 (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
         if(unSwitchesOff) {
             unSwitchesOff.each { it ->
@@ -689,6 +725,8 @@ def lightsHandler2() {
             }
         }
         if(warningSwitches) warningSwitches.off()
+    } else {
+        occupancyHandler()
     }
 }
 
@@ -904,46 +942,46 @@ def messageHandler() {
 }
 
 def letsTalk(theMessage) {
-	    if(logEnable) log.debug "In letsTalk (${state.version})"
-	    checkTime()
-	    checkVol()
-        if(state.timeBetween == true) {
-		    theMsg = theMessage
-            speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
-            speechDuration2 = speechDuration * 1000
-            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	    if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
-            state.speakers.each { it ->
-                if(logEnable) log.debug "Speaker in use: ${it}"
-                if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                    it.speak(theMsg)
-                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                    def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-                } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(theMsg, prevVolume)
-                } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.speak(theMsg)
-                    pauseExecution(speechDuration2)
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                }
+    if(logEnable) log.debug "In letsTalk (${state.version})"
+    checkTime()
+    checkVol()
+    if(state.timeBetween == true) {
+        theMsg = theMessage
+        speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
+        speechDuration2 = speechDuration * 1000
+        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+        if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
+        state.speakers.each { it ->
+            if(logEnable) log.debug "Speaker in use: ${it}"
+            if(speakerProxy) {
+                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
+                it.speak(theMsg)
+            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
+                def prevVolume = it.currentValue("volume")
+                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
+            } else if(it.hasCommand('playTextAndRestore')) {   
+                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                def prevVolume = it.currentValue("volume")
+                it.playTextAndRestore(theMsg, prevVolume)
+            } else {		        
+                if(logEnable) log.debug "In letsTalk - ${it}"
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
+                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
+                it.speak(theMsg)
+                pauseExecution(speechDuration2)
+                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
+                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
             }
-            state.canSpeak = "no"
-	        if(logEnable) log.debug "In letsTalk - Finished speaking"
-	    } else {
-            state.canSpeak = "no"
-		    if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	    }
+        }
+        state.canSpeak = "no"
+        if(logEnable) log.debug "In letsTalk - Finished speaking"
+    } else {
+        state.canSpeak = "no"
+        if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
+    }
 }
 
 def checkVol(){
@@ -987,33 +1025,24 @@ def pushNow(msg) {
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
-	state.dayMatches = "no"
-	if(days) {
-		Calendar date = Calendar.getInstance()
-		int dayOfTheWeek = date.get(Calendar.DAY_OF_WEEK)
-		if(dayOfTheWeek == 1) state.dotWeek = "Sunday"
-		if(dayOfTheWeek == 2) state.dotWeek = "Monday"
-		if(dayOfTheWeek == 3) state.dotWeek = "Tuesday"
-		if(dayOfTheWeek == 4) state.dotWeek = "Wednesday"
-		if(dayOfTheWeek == 5) state.dotWeek = "Thursday"
-		if(dayOfTheWeek == 6) state.dotWeek = "Friday"
-		if(dayOfTheWeek == 7) state.dotWeek = "Saturday"
-		if(logEnable) log.debug "In dayOfTheWeek - dayOfTheWeek: ${dayOfTheWeek} dotWeek: ${state.dotWeek}"
-		if(logEnable) log.debug "In dayOfTheWeek - days: ${days}"
-		def values = "${days}".split(",")
-		values.each { it ->
-			theDay = it.replace("[","").replace("]","").replace(" ","")
-			if(theDay == state.dotWeek) {
-				if(logEnable) log.debug "In dayOfTheWeekHandler - Match: state.dotWeek: ${state.dotWeek} - values: ${theDay}"
-				state.dayMatches = "yes"
-			} else {
-				if(logEnable) log.debug "In dayOfTheWeekHandler - Days set to run (${theDay}) does not match today (${state.dotWeek})"
-			}
-		}
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+    if(days) {
+        def df = new java.text.SimpleDateFormat("EEEE")
+        df.setTimeZone(location.timeZone)
+        def day = df.format(new Date())
+        def dayCheck = days.contains(day)
+
+        if(dayCheck) {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+            state.daysMatch = true
+        } else {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+            state.daysMatch = false
+        }
     } else {
-        state.dayMatches = "yes"
+        state.daysMatch = true
     }
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 // ** Start Sunset to Sunrise code - Modified from Smartthings docs
@@ -1124,25 +1153,44 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
-    }
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
+}
+
