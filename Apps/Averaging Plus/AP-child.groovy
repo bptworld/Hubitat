@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 06/10/20 - Attribute average now save under same attribute name when possible, app will only display attributres that are numbers, added weekly high/low.
  *  1.0.1 - 06/07/20 - Added more options and some error trapping
  *  1.0.0 - 05/25/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -101,19 +102,38 @@ def pageConfig() {
             
             if(theDevices) {
                 allAttrs = []
-                allAttrs = theDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
-                allAttrsa = allAttrs.sort { a, b -> a.value <=> b.value }
+                //allAttrs = theDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
+                theDevices.each { dev ->
+                    attributes = dev.supportedAttributes
+                    attributes.each { att ->
+                        theType = att.getDataType()
+                        if(theType == "NUMBER") {
+                            allAttrs << att.name
+                        }
+                    }
+                }
+                allAttrsa = allAttrs.unique().sort()
                 input "attrib", "enum", title: "Attribute to Average", required:true, multiple:false, submitOnChange:true, options:allAttrsa
             }
-            
+            if(theDevices && attrib) { 
+                match = false
+                list = dataDevice.supportedAttributes
+                lista = list.join(",")
+                listb = lista.split(",")            
+                listb.each { lt ->
+                    if(lt == attrib) { match = true }
+                }
+                if(!match) paragraph "<b>** Please post the attribute name that you are trying to Average on the 'Average Plus' thread to get it properly added to the driver. **</b>"
+            }
             if(theDevices && attrib) {
                 input "triggerMode", "enum", title: "Time Between Averages", submitOnChange:true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required:true
-                input "timeToReset", "time", title: "Reset averages at this time every day (ie. 12:00am)", required:true
+                input "timeToReset", "time", title: "Reset the Daily Averages at this time, every day (ie. 12:00am)", required:true
+                input "days", "enum", title: "Reset the Weekly Averages on this day, every week, at the same time as the Daily (ie. Monday)", description: "Days", required:true, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             }
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Setpoint Options")) {
-            paragraph "If the average becomes too high or low, notifications can be sent."
+        section(getFormat("header-green", "${getImage("Blank")}"+" Daily Setpoint Options")) {
+            paragraph "If the Daily Average becomes too high or low, notifications can be sent."
             input "highSetpoint", "number", title: "High Setpoint", required:false, submitOnChange:true, width:6
             input "lowSetpoint", "number", title: "Low Setpoint", required:false, submitOnChange:true, width:6
             
@@ -261,6 +281,7 @@ def initialize() {
         
         schedule(timeToReset, resetHandler)
         
+        
         averageHandler()
     }
 }
@@ -280,6 +301,15 @@ def resetHandler() {
         dataDevice.todaysHigh("-")
         dataDevice.todaysLow("-")
     }
+    weeklyResetHandler()
+}
+
+def weeklyResetHandler() {
+    dayOfTheWeekHandler()
+    if(state.daysMatch) {
+        dataDevice.weeklyHigh("-")
+        dataDevice.weeklyLow("-")
+    }
 }
 
 def averageHandler(evt) {
@@ -292,12 +322,15 @@ def averageHandler(evt) {
         state.high = false
         
         theDevices.each { it ->
+            if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib}"
             num1 = it.currentValue("${attrib}")
-            int num = num1
-            if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib} - num: ${num}"
-            if(num) {
-                numOfDev += 1
-                totalNum += num
+            if(num1) {
+                int num = num1
+                if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib} - num: ${num}"
+                if(num) {
+                    numOfDev += 1
+                    totalNum += num
+                }
             }
         }
         if(totalNum == 0 || totalNum == null) {
@@ -305,15 +338,25 @@ def averageHandler(evt) {
         } else {
             state.theAverage = (totalNum / numOfDev).toDouble().round(1)
         }
-        if(logEnable) log.debug "In averageHandler - Sending virtualAverage: ${state.theAverage}"
+        
         todaysHigh = dataDevice.currentValue("todaysHigh")
         todaysLow = dataDevice.currentValue("todaysLow")
+        weeklyHigh = dataDevice.currentValue("weeklyHigh")
+        weeklyLow = dataDevice.currentValue("weeklyLow")
         
         if(todaysHigh == null) todaysHigh = 0
         if(todaysLow == null) todaysLow = 100000
+        if(weeklyHigh == null) weeklyHigh = todaysHigh
+        if(weeklyLow == null) weeklyLow = todaysLow
+        
         if(state.theAverage > todaysHigh) { dataDevice.todaysHigh(state.theAverage) }
-        if(state.theAverage < todaysLow) { dataDevice.todaysLow(state.theAverage) }        
-        dataDevice.virtualAverage(state.theAverage)
+        if(state.theAverage < todaysLow) { dataDevice.todaysLow(state.theAverage) }  
+        if(state.theAverage > weeklyHigh) { dataDevice.weeklyHigh(state.theAverage) }
+        if(state.theAverage < weeklyLow) { dataDevice.weeklyLow(state.theAverage) } 
+        
+        theData = "${attrib}:${state.theAverage}"
+        if(logEnable) log.debug "In averageHandler - Sending theData: ${theData}"
+        dataDevice.virtualAverage(theData)
         
         if(state.theAverage <= lowSetpoint) {
             if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
@@ -473,6 +516,27 @@ def createDataChildDevice() {
         statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
     }
     return statusMessageD
+}
+
+def dayOfTheWeekHandler() {
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+    if(days) {
+        def df = new java.text.SimpleDateFormat("EEEE")
+        df.setTimeZone(location.timeZone)
+        def day = df.format(new Date())
+        def dayCheck = days.contains(day)
+
+        if(dayCheck) {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+            state.daysMatch = true
+        } else {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+            state.daysMatch = false
+        }
+    } else {
+        state.daysMatch = true
+    }
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 // ********** Normal Stuff **********
