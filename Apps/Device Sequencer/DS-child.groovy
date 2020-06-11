@@ -33,7 +33,7 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *
+ *  2.0.2 - 06/11/20 - Bug fixes
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  1.0.5 - 04/16/19 - Fixed some code 
@@ -45,9 +45,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Device Sequencer"
-	state.version = "2.0.1"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -74,7 +77,9 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
 			paragraph "* Select as many devices from each group as needed.<br>* All devices selected will turn on/off with the Control Switch.<br>* When executed, group 1 will run first, then group 2, group 3, group 4 and group 5.<br>* Each group can have a different pause between devices AND a different pause between groups."	
 		}
+
 		section(getFormat("header-green", "${getImage("Blank")}"+" Define Switch Groups")) {
+ /*           
             for(x=1;x < maxGroups;x++) {
                 paragraph "<b>Group $x</b>"
                 input "g1Switches_$x", "capability.switch", title: "Devices to control", required: false, multiple: true, submitOnChange: true
@@ -88,9 +93,12 @@ def pageConfig() {
                 
                 
             }
-
+*/
             
-            
+            paragraph "<b>Group 1</b>"
+			input "g1Switches", "capability.switch", title: "Group 1 - Switches to control", required: false, multiple: true, submitOnChange: true
+			if(g1Switches) input "timeToPause1", "number", title: "Group 1 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
+			if(g1Switches) input "timeToPause1a", "number", title: "<b>*</b> Extra Time to pause between Group 1 and 2 (in seconds)", required: true, defaultValue: 0
 			paragraph "<b>Group 2</b>"
 			input "g2Switches", "capability.switch", title: "Group 2 - Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g2Switches) input "timeToPause2", "number", title: "Group 2 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
@@ -274,26 +282,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
-    }
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
 
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
+}
