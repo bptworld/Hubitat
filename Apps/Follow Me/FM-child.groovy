@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- *  2.2.2 - 06/11/20 - Fixed 'Quiet Time' and '' when the time frame cross over midnight
+ *  2.2.2 - 06/11/20 - Fixed 'Quiet Time' and 'Time Restriction' when the time frame cross over midnight
  *  2.2.1 - 06/11/20 - Added more debug logging
  *  2.2.0 - 05/31/20 - Chasing a bug in push handler
  *  2.1.9 - 05/31/20 - Adjustments to zone off handler and a few other little bits
