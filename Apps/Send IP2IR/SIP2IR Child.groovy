@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 06/11/20 - Added 'Digit Separator' option, fixed problem with auto created device
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 10/20/19 - Time for an overhaul, this was one of the first big apps I created and it's definitely time for some changes!
         - removed all button code since Google Home only uses switches. Switches are also much more versatile (on and off options)
@@ -47,29 +48,13 @@
         - Code cleanup
         - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  1.2.0 - 07/14/19 - Minor code changes
- *  1.1.9 - 04/16/19 - Fixed a bug, thank you @NickP!
- *  1.1.8 - 04/15/19 - Code cleanup
- *  1.1.7 - 01/15/19 - Updated footer with update check and links
- *  1.1.6 - 12/30/18 - Updated to my new color theme.
- *  1.1.5 - 12/06/18 - Code cleanup, removal of IP Address from Child Apps as it was not needed anymore.
- *  1.1.4 - 11/30/18 - Added pause button to child apps. Added an Enable/Disable by switch option. Cleaned up code. 
- *                      NOTE: Must open and resave each child app for them to work again! Sorry.
- *  1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send multiple times with
- *                      each push. Also Fixed some typo's.
- *  1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
- *                      Delay between sending digits user specified and added in some instructions.
- *  1.1.1 - 10/29/18 - Updated Channels to be either a Button or a Switch, only Switches can be used with Google Assistant.
- *  1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
- *			 			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
- *			 			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
- *						me how to send code from parent to child apps.
+ *  --
  *  1.0.0 - 10/15/18 - Initial release
  */
  
 def setVersion(){
     state.name = "Send IP2IR"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -97,7 +82,7 @@ def pageConfig() {
 			paragraph "There are 3 types of Triggers that can be used."
         	paragraph "<b>Switch (on/off):</b><br>To turn anything on/off. ie. Television, Stereo, Cable Box, etc. Remember, it's okay to put the same code in box on and off if necessary."
             paragraph "<b>Switch (auto off):</b><br>This works just like a button, press to turn on and then in 1 second it will turn off."
-        	paragraph "<b>Channel:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channel numbers based on the Presets in the Parent app."
+        	paragraph "<b>Channel:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channel numbers based on the Presets in the Parent app. Switch will also auto turn off after 1 second."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger")) {
 			paragraph "<b>Select the Trigger Type to Activate to send the IR command</b>"
@@ -140,8 +125,11 @@ def pageConfig() {
 		    section(getFormat("header-green", "${getImage("Blank")}"+" IR Command to Send")) {
 			    paragraph "<b>Input between 1 and 4 digits to send.</b>"
             	input "Digit1", "text", required: true, title: "Channel - First Digit", defaultValue: ""
+                if(parent.msgDigitDS) input "dSeparator1", "bool", title: "Use Digit Separator between First and Second Digit", defaultValue:false
             	input "Digit2", "text", required: false, title: "Channel - Second Digit", defaultValue: ""
+                if(parent.msgDigitDS) input "dSeparator2", "bool", title: "Use Digit Separator between Second and Third Digit", defaultValue:false
             	input "Digit3", "text", required: false, title: "Channel - Third Digit", defaultValue: ""
+                if(parent.msgDigitDS) input "dSeparator3", "bool", title: "Use Digit Separator between Third and Fourth Digit", defaultValue:false
 				input "Digit4", "text", required: fasle, title: "Channel - Fourth Digit", defaultValue: ""
 				input "Delay", "number", required: true, title: "Delay between sending Digits", defaultValue: 1000
 				input "EnterCode", "bool", title: "Send Enter Code after Digits", required: true, defaultValue: false
@@ -289,9 +277,14 @@ def PresetToSend4(){
     if(logEnable) log.debug "Getting Digit 4...${Digit4} - ${msgToSend4}"
 }
 
-def PresetToSendS(){
-    msgToSendE = parent.msgDigitE
-    if(logEnable) log.debug "Getting Digit E...${PresetToSendS} - ${msgToSendE}"
+def PresetToSendE(){
+    msgToSendE = parent.msgDigitE    
+    if(logEnable) log.debug "Getting Digit E...${PresetToSendE} - ${msgToSendE}"
+}
+
+def PresetToSendDS() {
+    if(parent.msgDigitDS) msgToSendDS = {parent.msgDigitDS}
+    if(logEnable) log.debug "Getting Digit DS...${PresetToSendDS} - ${msgToSendDS}"
 }
 
 def channelHandlerSwitch(evt) {
@@ -302,13 +295,22 @@ def channelHandlerSwitch(evt) {
     	PresetToSend2()
 		PresetToSend3()
 		PresetToSend4()
-   		PresetToSendS()
+   		PresetToSendE()
+        PresetToSendDS()
     
 		if(logEnable) log.debug "In channelHandlerSwitch - Digits ${Digit1} ${Digit2} ${Digit3} ${Digit4} ${EnterCode}"
 	
 		if(logEnable) log.debug "Msg to send Digit One: ${Digit1} - ${msgToSend1}"
 		parent.telnetDevice.speak(msgToSend1)
     	pauseExecution(Delay)
+        
+        if(dSeparator1) {
+            if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator1} - ${msgToSendDS}"
+			parent.telnetDevice.speak(msgToSendDS)
+			pauseExecution(Delay)
+		} else{
+			if(logEnable) log.debug "Did not send Digit Separator"
+		}
 
 		if(Digit2 != "null") {
     		if(logEnable) log.debug "Msg to send Digit Two: ${Digit2} - ${msgToSend2}"
@@ -317,6 +319,15 @@ def channelHandlerSwitch(evt) {
 		} else{
 			if(logEnable) log.debug "Did not send Channel Digit 2"
 		}
+        
+        if(dSeparator2) {
+            if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator2} - ${msgToSendDS}"
+			parent.telnetDevice.speak(msgToSendDS)
+			pauseExecution(Delay)
+		} else{
+			if(logEnable) log.debug "Did not send Digit Separator"
+		}
+        
 		if(Digit3 != "null") {
     		if(logEnable) log.debug "Msg to send Digit Three: ${Digit3} - ${msgToSend3}"
 			parent.telnetDevice.speak(msgToSend3)
@@ -324,6 +335,15 @@ def channelHandlerSwitch(evt) {
 		} else{
 			if(logEnable) log.debug "Did not send Channel Digit 3"
 		}
+        
+        if(dSeparator3) {
+            if(logEnable) log.debug "Msg to send Digit Separator: ${dSeparator3} - ${msgToSendDS}"
+			parent.telnetDevice.speak(msgToSendDS)
+			pauseExecution(Delay)
+		} else{
+			if(logEnable) log.debug "Did not send Digit Separator"
+		}
+        
 		if(Digit4 != "null") {
     		if(logEnable) log.debug "Msg to send Digit Four: ${Digit4} - ${msgToSend4}"
 			parent.telnetDevice.speak(msgToSend4)
@@ -332,7 +352,7 @@ def channelHandlerSwitch(evt) {
 			if(logEnable) log.debug "Did not send Channel Digit 4"
 		}
 		if(logEnable) log.debug "${EnterCode}"
-		if(EnterCode == true) {
+		if(EnterCode) {
     		if(logEnable) log.debug "Msg to send Enter: ${EnterCode} - ${msgToSendE}"
     		parent.telnetDevice.speak(msgToSendE)
 		} else{
@@ -354,7 +374,7 @@ def checkVirtualChild(){
 def createVirtualChild() {
     if(logEnable) log.debug "In createVirtualChild - No children Found - Time to create device"
     try {
-        if(triggerMode == "Switch - auto off") addChildDevice("BPTWorld", "Send IP2IR Switch Driver", "IP2IR-${app.id}", null, [name: "${app.label}", label: "${app.label}"])
+        if(triggerMode == "Switch - auto off" || triggerMode == "Channel") addChildDevice("BPTWorld", "Send IP2IR Switch Driver", "IP2IR-${app.id}", null, [name: "${app.label}", label: "${app.label}"])
         if(triggerMode == "Switch - on/off") addChildDevice("hubitat", "Virtual Switch", "IP2IR-${app.id}", null, [name: "${app.label}", label: "${app.label}"])
         if(logEnable) log.debug "In createVirtualChild - Device ${app.label} was successfully created!"
         state.deviceCreatedMessage = "Device created!"
