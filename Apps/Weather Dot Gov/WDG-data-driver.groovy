@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
  *  1.1.4 - 05/07/20 - Added multiple alert data
  *  1.1.3 - 04/27/20 - Added two new attributes, todaysHigh and todaysLow
  *  1.1.2 - 04/24/20 - Adjustments to Asthma and Pollen handlers
@@ -126,6 +127,7 @@ metadata {
         attribute "relativeHumidity", "number"
         attribute "windChill", "number"
         attribute "heatIndex", "number"
+        attribute "howItFeels", "number"
         
         attribute "alertStatus_0", "string"
         attribute "alertMessageType_0", "string"
@@ -211,6 +213,7 @@ metadata {
 	preferences() {    	
         section(){
 			input name: "about", type: "paragraph", title: "<b>Weather Data from Weather.gov</b><br>This driver holds the raw data for use with the app", description: ""
+            input "hourType", "bool", title: "Time Selection<br>(Off for 24h, On for 12h)", required: false, defaultValue: false
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
         }
     }
@@ -242,9 +245,8 @@ def dataOptions(data) {
 
 def getPointsData() {
     if(logEnable) log.debug "In getPointsData"
-	currentDate = new Date()
+	getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Points Data...")
-    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
 
     lat1 = device.currentValue('lat')
     lng1 = device.currentValue('lng')
@@ -307,9 +309,8 @@ def getPointsData() {
                 if(logEnable) log.debug "In getPointsData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getPointsData)
             }
-            currentDate = new Date()
+            getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
-            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
     } 
     
@@ -322,17 +323,15 @@ def getPointsData() {
         log.warn "In getPointsData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
-        currentDate = new Date()
+        getCurrentDate()
         sendEvent(name: "responseStatus", value: reason[1])
-        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     }
 }
 
 def getWeeklyData() {
     if(logEnable) log.debug "In getWeeklyData"
-	currentDate = new Date()
+	getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
-    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
 
     gridOffice = device.currentValue('pointsOffice')
     pointsGridX = device.currentValue('pointsGridX')
@@ -377,9 +376,8 @@ def getWeeklyData() {
                 if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getWeeklyData)
             }
-            currentDate = new Date()
+            getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
-            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
     } 
     
@@ -392,17 +390,15 @@ def getWeeklyData() {
         log.warn "In getWeeklyData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
-        currentDate = new Date()
+        getCurrentDate()
         sendEvent(name: "responseStatus", value: reason[1])
-        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     }
 }
 
 def getWeatherData() {
     if(logEnable) log.debug "In getWeatherData"
-
+    getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
-    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
     unitFormat1 = device.currentValue('unitFormat')
     station1 = device.currentValue('station')
@@ -674,14 +670,20 @@ def getWeatherData() {
                     }
                 }
                 if(logEnable) log.debug "In getWeatherData - heatIndex: ${heatIndex}"
-                sendEvent(name: "heatIndex", value: heatIndex)    
+                sendEvent(name: "heatIndex", value: heatIndex) 
+                
+                if(windChill != "No Data") xHowItFeels = windChill
+                if(heatIndex != "No Data") xHowItFeels = heatIndex
+                if(xHowItFeels == null) xHowItFeels = "No Data"
+                if(logEnable) log.debug "In getWeatherData - howItFeels: ${xHowItFeels}"
+                sendEvent(name: "howItFeels", value: xHowItFeels)
+                   
             } else {
                 if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getWeatherData)
             }
-            currentDate = new Date()
+            getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
-            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
     } 
     
@@ -691,21 +693,19 @@ def getWeatherData() {
 	}
     
     catch (e) {
-        log.warn "In getWeatherData - Please double check your Station ID in the Weather Dot Gov app."
+        log.warn "In getWeatherData - Either WDG website is having issues (probably) or double check your Station ID in the Weather Dot Gov app."
         theError = "${e}"
         def reason = theError.split(':')
-        currentDate = new Date()
+        getCurrentDate()
         sendEvent(name: "responseStatus", value: reason[1])
-        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     }
 }
 
 
 def getAlertData() {
     if(logEnable) log.debug "In getAlertData"
-	currentDate = new Date()
+	getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Alert Data...")
-    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
     zone = device.currentValue('pointsForecastZone')
     
@@ -822,9 +822,8 @@ def getAlertData() {
                 runOnce(1,getAlertData)
             }
             
-            currentDate = new Date()
+            getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
-            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
     } 
     
@@ -837,18 +836,16 @@ def getAlertData() {
         log.warn "In getAlertData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
-        currentDate = new Date()
+        getCurrentDate()
         sendEvent(name: "responseStatus", value: reason[1])
-        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     }
 }
 
 
 def getRadarData() {
     if(logEnable) log.debug "In getRadarData"
-	currentDate = new Date()
+	getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
-    sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     
     station1 = device.currentValue('station')
 	forecastURL = "https://api.weather.gov/stations/radar/${station1}"
@@ -871,9 +868,8 @@ def getRadarData() {
                 if(logEnable) log.debug "In getRadarData - Bad Request - ${response.status} - Something went wrong, please try again."
                 runOnce(1,getRadarData)
             }
-            currentDate = new Date()
+            getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
-            sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
         }
     } 
     
@@ -886,13 +882,18 @@ def getRadarData() {
         log.warn "In getRadarData - ${e}"
         theError = "${e}"
         def reason = theError.split(':')
-        currentDate = new Date()
+        getCurrentDate()
         sendEvent(name: "responseStatus", value: reason[1])
-        sendEvent(name: "lastUpdated", value: currentDate, isStateChange: true)
     }
 }
   
-    
+def getCurrentDate() {
+    currentDate = new Date()
+    if(hourType == false) newdate=currentDate.format("MM-d HH:mm")
+    if(hourType == true) newdate=currentDate.format("MM-d hh:mm a")
+    sendEvent(name: "lastUpdated", value: newdate, isStateChange: true)
+}
+
 private cTOf(unit) {
     // Celsius to Fahrenheit
 	unitI = unit.toFloat()
