@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 06/11/20 - Added 'Digit Separator' to Advanced Options
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 10/20/19 - Moved telnetDevice to parent app
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -133,6 +134,7 @@ def mainPage() {
                 input "msgDigit9", "text", required: true, title: "IR Code to Send - 9", defaultValue: ""
                 input "msgDigit0", "text", required: true, title: "IR Code to Send - 0", defaultValue: ""
                 input "msgDigitE", "text", required: false, title: "IR Code to Send - Enter", defaultValue: ""
+                input "msgDigitDS", "text", required: false, title: "IR Code to Send - Digit Separator (-)", defaultValue: ""
             }
 		}
 		display2()
