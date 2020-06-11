@@ -37,24 +37,40 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 06/10/20 - Lots of changes to match app
  *  V1.0.0 - 05/25/20 - Initial release
  */
-
 
 metadata {
 	definition (name: "Averaging Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/AP-driver.groovy") {
         capability "Actuator"
+        capability "Switch"
         capability "Contact Sensor"
         capability "Motion Sensor"
         capability "Water Sensor"
         
+        command "clearData"
         command "virtualAverage", ["string"]
         command "todaysHigh", ["string"]
         command "todaysLow", ["string"]
+        command "weeklyHigh", ["string"]
+        command "weeklyLow", ["string"]
         
         attribute "average", "number"
+        attribute "battery", "number"
+        attribute "energy", "number"
+        attribute "humidity", "number"
+        attribute "illuminance", "number"
+        attribute "level", "number"
+        attribute "power", "number"
+        attribute "temperature", "number"
+        attribute "ultravioletIndex", "number"
+        attribute "voltage", "number"
+
         attribute "todaysHigh", "number"
         attribute "todaysLow", "number"
+        attribute "weeklyHigh", "number"
+        attribute "weeklyLow", "number"
 	}
 	preferences() {    	
         section(){
@@ -65,31 +81,59 @@ metadata {
 }
 
 def virtualAverage(data) {
-    if(logEnable) log.info "In Averaging Plus Driver - Setting average to ${data}"
-    if(data == "-") {
-        newData = null
-    } else {
-        newData = data
-    }
-    sendEvent(name: "average", value: newData, isStateChange: true)
+    def (theType, theValue) = data.split(":")
+    if(logEnable) log.info "In Averaging Plus Driver - Recieved ${data}"
+
+    sendEvent(name: "average", value: theValue, isStateChange: true)
+    if(theType == "battery") sendEvent(name: "battery", value: theValue, isStateChange: true)
+    if(theType == "energy") sendEvent(name: "energy", value: theValue, isStateChange: true)
+    if(theType == "humidity") sendEvent(name: "humidity", value: theValue, isStateChange: true)
+    if(theType == "illuminance") sendEvent(name: "illuminance", value: theValue, isStateChange: true)
+    if(theType == "level") sendEvent(name: "level", value: theValue, isStateChange: true)
+    if(theType == "power") sendEvent(name: "power", value: theValue, isStateChange: true)
+    if(theType == "temperature") sendEvent(name: "temperature", value: theValue, isStateChange: true)
+    if(theType == "ultravioletIndex") sendEvent(name: "ultravioletIndex", value: theValue, isStateChange: true)
+    if(theType == "voltage") sendEvent(name: "voltage", value: theValue, isStateChange: true)
 } 
 
 def todaysHigh(data) {
     if(logEnable) log.info "In Averaging Plus Driver - Setting todaysHigh to ${data}"
-    if(data == "-") {
-        newData = null
-    } else {
-        newData = data
-    }
-    sendEvent(name: "todaysHigh", value: newData, isStateChange: true)
+    sendEvent(name: "todaysHigh", value: data, isStateChange: true)
 }
 
 def todaysLow(data) {
     if(logEnable) log.info "In Averaging Plus Driver - Setting todaysLow to ${data}"
-    if(data == "-") {
-        newData = null
-    } else {
-        newData = data
-    }
-    sendEvent(name: "todaysLow", value: newData, isStateChange: true)
+    sendEvent(name: "todaysLow", value: data, isStateChange: true)
+}
+
+def weeklyHigh(data) {
+    if(logEnable) log.info "In Averaging Plus Driver - Setting weeklyHigh to ${data}"
+    sendEvent(name: "weeklyHigh", value: data, isStateChange: true)
+}
+
+def weeklyLow(data) {
+    if(logEnable) log.info "In Averaging Plus Driver - Setting weeklyLow to ${data}"
+    sendEvent(name: "weeklyLow", value: data, isStateChange: true)
+}
+
+def on() {
+    if(logEnable) log.info "In Averaging Plus Driver - Turning Switch On"
+    device.on
+    sendEvent(name: "switch", value: "on", isStateChange: true)
+}
+
+def off() {
+    if(logEnable) log.info "In Averaging Plus Driver - Turning Switch Off"
+    device.off
+    sendEvent(name: "switch", value: "off", isStateChange: true)
+} 
+
+def clearData() {
+    if(logEnable) log.info "In Averaging Plus Driver - Clearing the Data"
+    sendEvent(name: "average", value: "-")
+    sendEvent(name: "todaysHigh", value: "-")
+    sendEvent(name: "todaysLow", value: "-")
+    sendEvent(name: "weeklyHigh", value: "-")
+    sendEvent(name: "weeklyLow", value: "-")
+    sendEvent(name: "switch", value: "off")
 }
