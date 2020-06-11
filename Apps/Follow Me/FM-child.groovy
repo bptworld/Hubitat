@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.2 - 06/11/20 - Fixed 'Quiet Time' and '' when the time frame cross over midnight
  *  2.2.1 - 06/11/20 - Added more debug logging
  *  2.2.0 - 05/31/20 - Chasing a bug in push handler
  *  2.1.9 - 05/31/20 - Adjustments to zone off handler and a few other little bits
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.1"   
+	state.version = "2.2.2"   
 }
 
 definition(
@@ -157,13 +158,17 @@ def pageConfig() {
           		paragraph "<hr>"
                 paragraph "<b>Quiet Time Options</b>"
                 input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-			    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    		    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+                if(volQuiet) {
+                    input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
+    		        input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+                    input "midnightCheckQ", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                }
 		        paragraph "<hr>"
                 paragraph "<b>Speech Restriction Options</b>"
                 paragraph "Speech can also be restricted to within a certain time frame. (Optional)"
-        		input "fromTime", "time", title: "From", required: false, width: 6
+        		input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
         		input "toTime", "time", title: "To", required: false, width: 6
+                if(fromTime) input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
 				input "messagePriority", "bool", defaultValue:false, title: "Use Message Priority features?", description: "Message Priority", submitOnChange:true
@@ -608,7 +613,6 @@ def letsTalk(msg) {
 	if(triggerMode == "Always_On") alwaysOnHandler()
 	if(state.sZone){
 		checkTime()
-		checkVol()
         
         try {
             def thePriority = message.priority.split(":")
@@ -622,7 +626,7 @@ def letsTalk(msg) {
         }
             
         checkPriority(priorityValue)
-        
+        checkVol()
 		if(logEnable) log.debug "In letsTalk - continuing"
 		if(state.timeBetween) {
 			state.sStatus = "speaking"
@@ -643,100 +647,100 @@ def letsTalk(msg) {
                 if(!defaultSpeak) {    
                     switch(message.method) {        // Code modified from @storageanarchy
                         case 'deviceNotification':
-                        beforeVolume(it)
-                        it.speak(message.message)
-                        pauseExecution(theDuration)
-                        afterVolume(it)
-                        if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playAnnouncement':
-                        it.playAnnouncement(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playAnnouncementAll':
-                        it.playAnnouncementAll(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playText':
-                        beforeVolume(it)
-                        it.playText(message.message)
-                        pauseExecution(theDuration)
-                        afterVolume(it)
-                        if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playTextAndRestore':
-                        beforeVolume(it)
-                        it.playTextAndRestore(message.message, message.returnLevel)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playTextAndResume':
-                        beforeVolume(it)
-                        it.playTextAndResume(message.message, message.returnLevel)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playTrack':
-                        beforeVolume(it)
-                        playSound(it)
-                        it.playTrack(state.uriMessage)
-                        pauseExecution(theDuration)
-                        afterVolume(it)
-                        if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'playTrackAndRestore':
-                        beforeVolume(it)
-                        playSound(it)
-                        it.playTrackAndRestore(state.uriMessage, message.returnLevel)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'setVolume':
-                        it.setVolume(message.speakLevel)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
-                        break;
-                        case 'setVolumeSpeakAndRestore':
-                        it.setVolumeSpeakAndRestore(message.message, message.priority, message.speakLevel, message.returnLevel)
-                        pauseExecution(theDuration)
-                        if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'setVolumeAndSpeak':
-                        it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
-                        pauseExecution(theDuration)
-                        afterVolume(it)
-                        if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
-                        break;
-                        case 'speak':
-                        if(logEnable) log.debug "In letsTalk - speak - speaker: ${it} - Using best case handler"
-                        if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                            if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${message.message}"
-                            def prevVolume = it.currentValue("volume")
-                            it.setVolumeSpeakAndRestore(state.volume, message.message, prevVolume)
-                            pauseExecution(theDuration)
-                        } else if(it.hasCommand('playTextAndRestore')) {   
-                            if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${message.message}"
-                            def prevVolume = it.currentValue("volume")
-                            beforeVolume(it)
-                            it.playTextAndRestore(message.message, prevVolume)
-                            pauseExecution(theDuration)
-                        } else if(it.hasCommand('playTrack')) {
-                            if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${message.message}"
-                            beforeVolume(it)
-                            playSound(it)
-                            it.playTrack(state.uriMessage)
-                            pauseExecution(theDuration)
-                            afterVolume(it)                               
-                        } else {		        
-                            if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
                             beforeVolume(it)
                             it.speak(message.message)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                        }
-                        break; 
+                            if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playAnnouncement':
+                            it.playAnnouncement(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playAnnouncementAll':
+                            it.playAnnouncementAll(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playText':
+                            beforeVolume(it)
+                            it.playText(message.message)
+                            pauseExecution(theDuration)
+                            afterVolume(it)
+                            if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTextAndRestore':
+                            beforeVolume(it)
+                            it.playTextAndRestore(message.message, message.returnLevel)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTextAndResume':
+                            beforeVolume(it)
+                            it.playTextAndResume(message.message, message.returnLevel)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTrack':
+                            beforeVolume(it)
+                            playSound(it)
+                            it.playTrack(state.uriMessage)
+                            pauseExecution(theDuration)
+                            afterVolume(it)
+                            if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'playTrackAndRestore':
+                            beforeVolume(it)
+                            playSound(it)
+                            it.playTrackAndRestore(state.uriMessage, message.returnLevel)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'setVolume':
+                            it.setVolume(message.speakLevel)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
+                           break;
+                        case 'setVolumeSpeakAndRestore':
+                            it.setVolumeSpeakAndRestore(message.message, message.priority, message.speakLevel, message.returnLevel)
+                            pauseExecution(theDuration)
+                            if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'setVolumeAndSpeak':
+                            it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
+                            pauseExecution(theDuration)
+                            afterVolume(it)
+                            if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
+                            break;
+                        case 'speak':
+                            if(logEnable) log.debug "In letsTalk - speak - speaker: ${it} - Using best case handler"
+                            if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                                if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${message.message}"
+                                def prevVolume = it.currentValue("volume")
+                                it.setVolumeSpeakAndRestore(state.volume, message.message, prevVolume)
+                                pauseExecution(theDuration)
+                            } else if(it.hasCommand('playTextAndRestore')) {   
+                                if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${message.message}"
+                                def prevVolume = it.currentValue("volume")
+                                beforeVolume(it)
+                                it.playTextAndRestore(message.message, prevVolume)
+                                pauseExecution(theDuration)
+                            } else if(it.hasCommand('playTrack')) {
+                                if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${message.message}"
+                                beforeVolume(it)
+                                playSound(it)
+                                it.playTrack(state.uriMessage)
+                                pauseExecution(theDuration)
+                                afterVolume(it)                               
+                            } else {		        
+                                if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
+                                beforeVolume(it)
+                                it.speak(message.message)
+                                pauseExecution(theDuration)
+                                afterVolume(it)
+                            }
+                            break; 
                     }
                 } else {
                     if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${message.message}"
@@ -788,7 +792,11 @@ def afterVolume(it) {
 def checkTime() {
 	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
 	if(fromTime) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+        if(midnightCheckR) {
+            state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
+        } else {
+		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+        }
 		if(state.betweenTime) {
             if(logEnable) log.debug "In checkTime - Time within range - Don't Speak"
 			state.timeBetween = true
@@ -806,16 +814,20 @@ def checkTime() {
 def checkVol() {
 	if(logEnable) log.debug "In checkVol (${state.version})"
 	if(QfromTime) {
-		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+        if(midnightCheckQ) {
+            state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime)+1, new Date(), location.timeZone)
+        } else {
+		    state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+        }
     	if(state.quietTime) {
-            if(logEnable) log.debug "In checkVol - Time within range - Using Quiet Time"
+            if(logEnable) log.debug "In checkVol - Time within range - Using Quiet Time - setting volume to ${volQuiet}"
     		state.volume = volQuiet
 		} else {
-            if(logEnable) log.debug "In checkVol - Time outside of range - Not using Quiet Time"
+            if(logEnable) log.debug "In checkVol - Time outside of range - Not using Quiet Time - setting volume to ${volSpeech}"
 			state.volume = volSpeech
 		}
 	} else {
-        if(logEnable) log.debug "In checkVol - NO Quite Time Specified"
+        if(logEnable) log.debug "In checkVol - NO Quite Time Specified - setting volume to ${volSpeech}"
 		state.volume = volSpeech
 	}
 }
