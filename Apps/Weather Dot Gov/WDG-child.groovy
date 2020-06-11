@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.1.7 - 05/09/20 - New font options for Current Weather Tile
+ *  1.1.8 - 06/11/20 - Cosmetic changes
+ *  1.1.7 - 06/09/20 - New font options for Current Weather Tile
  *  1.1.6 - 06/25/20 - Fix for font size issue
  *  1.1.5 - 05/25/20 - Attempt to fix an issue with forecast tiles
  *  1.1.4 - 05/23/20 - Rewrite of some of the tables
@@ -63,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Weather Dot Gov"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -626,8 +627,7 @@ def getCurrentData(evt) {
     currentTable1 += "<tr><td><img src='https://${cIcon}'>"
     currentTable1 += "<td><span style='font-weight:bold'>${cTextDescription}</span><br><span style='font-size:${fontSizeCurrentTileCTemp}px;font-weight:bold'>${cTemp1}</span>"
     currentTable1 += "<td><span style='font-size:${fontSizeCurrentTileCStats}px'><b>Humidity:</b> ${cRelativeHumidity}%<br><b>Wind Speed:</b> ${cWindSpeed}<br><b>Barometer:</b> ${cBarometricPressure}</span>"
-    currentTable1 += "<td><span style='font-size:${fontSizeCurrentTileCStats}px'><b>Dewpoint:</b> ${cDewpoint}<br><b>Visibility:</b> ${cVisibility}<br><b>Last Updated:</b></span>"
-    currentTable1 += "<tr><td colspan=4 align=center><small>${cLastUpdated}</small>"
+    currentTable1 += "<td><span style='font-size:${fontSizeCurrentTileCStats}px'><b>Dewpoint:</b> ${cDewpoint}<br><b>Visibility:</b> ${cVisibility}<br><b>Updated:</b> <small>${cLastUpdated}</small></span>"
     currentTable1 += "</table></div>"
 
     state.currentTable1 = currentTable1
@@ -641,8 +641,7 @@ def getCurrentData(evt) {
     currentTable2 += "<b>Barometer:</b> ${cBarometricPressure}<br>"
     currentTable2 += "<b>Dewpoint:</b> ${cDewpoint}<br>"
     currentTable2 += "<b>Visibility:</b> ${cVisibility}<br>"
-    currentTable2 += "<b>Last Updated:</b></span><br>"
-    currentTable2 += "<small>${cLastUpdated}</small>"
+    currentTable2 += "<b>Updated:</b> <small>${cLastUpdated}</small>"
     currentTable2 += "</table></div>"
     
     state.currentTable2 = currentTable2
