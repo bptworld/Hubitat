@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 06/11/20 - All speech now goes through Follow Me
  *  1.0.2 - 06/10/20 - Attribute average now save under same attribute name when possible, app will only display attributres that are numbers, added weekly high/low.
  *  1.0.1 - 06/07/20 - Added more options and some error trapping
  *  1.0.0 - 05/25/20 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -156,7 +157,7 @@ def pageConfig() {
         
         if(highSetpoint || lowSetpoint) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-                if(speakerMP || speakerSS || speakerProxy) {
+                if(speakerSS) {
                     href "notificationOptions", title:"${getImage("optionsGreen")} Notification Options", description:"Click here for options"
                 } else {
                     href "notificationOptions", title:"${getImage("optionsRed")} Notification Options", description:"Click here for options"
@@ -210,38 +211,17 @@ def highSetpointConfig() {
 
 def notificationOptions(){
     dynamicPage(name: "notificationOptions", title: "", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
-           paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerProxy", "bool", defaultValue: false, title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange: true
+        section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) { 
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
+            input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+            if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
+            paragraph "<hr>"
+            input "pushMessage", "capability.notification", title: "Send a Push notification to certain users", multiple:true, required:false, submitOnChange:true
         }
-        if(!speakerProxy) {
-            if(speakerMP || speakerSS) {
-		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
-                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
-		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
-                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
-    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
-                }
-		    }
-		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-                input "fromTime", "time", title: "From", required:false, width: 6
-        	    input "toTime", "time", title: "To", required:false, width: 6
-		    }
-        } else {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
-		        paragraph "Speaker proxy in use."
-            }
-        }
-        
+
         if(sendPushLow) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages - Low")) {
                 paragraph "Wildcards:<br>- %avg% - Display the Average value"
-                input "spLowSendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
                 input "spLowMessage", "text", title: "Message", submitOnChange:true
             }
         }
@@ -249,7 +229,6 @@ def notificationOptions(){
         if(sendPushHigh) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages - High")) {
                 paragraph "Wildcards:<br>- %avg% - Display the Average value"
-                input "spHighSendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
                 input "spHighMessage", "text", title: "Message", submitOnChange:true
             }
         }
@@ -279,9 +258,7 @@ def initialize() {
         if(triggerMode == "1_Hour") runEvery1Hour(averageHandler)
         if(triggerMode == "3_Hour") runEvery3Hours(averageHandler)
         
-        schedule(timeToReset, resetHandler)
-        
-        
+        schedule(timeToReset, resetHandler)        
         averageHandler()
     }
 }
@@ -368,10 +345,11 @@ def averageHandler(evt) {
                     it.on()
                 }
             }
-            if(spLowSendPushMessage && !state.sentPush) {
+            if(pushMessage && !state.sentPush) {
                 messageHandler(spLowMessage)
                 pushNow(theMsg)
             }
+            if(useSpeech && fmSpeaker) letsTalk(theMsg)
         }
         
         if(state.theAverage >= highSetpoint) {
@@ -384,10 +362,11 @@ def averageHandler(evt) {
                     it.on()
                 }
             }
-            if(spHighSendPushMessage && !state.sentPush) {
+            if(pushMessage && !state.sentPush) {
                 messageHandler(spHighMessage)
                 pushNow(theMsg)
             }
+            if(useSpeech && fmSpeaker) letsTalk(theMsg)
         }
         
         if(state.theAverage < highSetpoint && state.theAverage > lowSetpoint) {
@@ -416,72 +395,10 @@ def averageHandler(evt) {
 }
 
 def letsTalk(msg) {
-	if(logEnable) log.debug "In letsTalk (${state.version})"
-	checkTime()
-	checkVol()
-    if(state.timeBetween == true) {
-		theMsg = msg
-        speechDuration = Math.max(Math.round(theMsg.length()/12),2)+3		// Code from @djgutheinz
-        speechDuration2 = speechDuration * 1000
-        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-        if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, theMsg: ${theMsg}, volRestore: ${volRestore}"
-        state.speakers.each { it ->
-            if(logEnable) log.debug "Speaker in use: ${it}"
-            if(speakerProxy) {
-                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                it.speak(theMsg)
-            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                def prevVolume = it.currentValue("volume")
-                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-            } else if(it.hasCommand('playTextAndRestore')) {   
-                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                def prevVolume = it.currentValue("volume")
-                it.playTextAndRestore(theMsg, prevVolume)
-            } else {		        
-                if(logEnable) log.debug "In letsTalk - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                it.speak(theMsg)
-                pauseExecution(speechDuration2)
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-            }
-        }
-	    if(logEnable) log.debug "In letsTalk - Finished speaking"  
-	    log.info "${app.label} - ${theMsg}"
-	} else {
-        if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	}
-    if(logEnable) log.debug "In letsTalk - *** Finished ***"
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    fmSpeaker.speak(theMsg)
     theMsg = ""
-}
-
-def checkVol(){
-	if(logEnable) log.debug "In checkVol (${state.version})"
-	if(QfromTime) {
-		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
-    	if(state.quietTime) state.volume = volQuiet
-		if(!state.quietTime) state.volume = volSpeech
-	} else {
-		state.volume = volSpeech
-	}
-	if(logEnable) log.debug "In checkVol - setting volume: ${state.volume}"
-}
-
-def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) state.timeBetween = true
-		if(!state.betweenTime) state.timeBetween = false
-  	} else {  
-		state.timeBetween = true
-  	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def messageHandler(msg) {
@@ -494,11 +411,11 @@ def messageHandler(msg) {
 
 def pushNow(msg) {
     if(logEnable) log.debug "In pushNow (${state.version})"
-    pushMessage = "${app.label} \n"
-    pushMessage += msg
-    if(logEnable) log.debug "In pushNow - Sending message: ${pushMessage}"
-    if(state.low) spLowSendPushMessage.deviceNotification(pushMessage)
-    if(state.high) spHighSendPushMessage.deviceNotification(pushMessage)
+    thePushMessage = "${app.label} \n"
+    thePushMessage += msg
+    if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
+    if(state.low) pushMessage.deviceNotification(thePushMessage)
+    if(state.high) pushMessage.deviceNotification(thePushMessage)
     state.sentPush = true
 }
 
@@ -624,4 +541,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
