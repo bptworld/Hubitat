@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.3 - 06/12/20 - Cosmetic changes
  *  2.2.2 - 06/11/20 - Fixed 'Quiet Time' and 'Time Restriction' when the time frame cross over midnight
  *  2.2.1 - 06/11/20 - Added more debug logging
  *  2.2.0 - 05/31/20 - Chasing a bug in push handler
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.2"   
+	state.version = "2.2.3"   
 }
 
 definition(
@@ -86,21 +87,50 @@ def pageConfig() {
 		display()
 		getVoices()
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-			paragraph "<b>Notes:</b>"
-			paragraph "- Create a new child app for each room that has a speaker in it.<br>- Push child app can have up to 5 sensors defined.<br>- If more than 5 sensors are needed, simply add another child device."
-			paragraph "<b>Priority Messages</b>"
-			paragraph "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>- Volume levels can then be adjusted by priority level.<br>- ie. (l)Dogs are hungry;(m)Door has been open too long;(h)Heat is on and window is open"
-			paragraph "<b>Requirements:</b>"
-			paragraph "- Virtual Device using our custom 'Follow Me' driver"
+            speakerNotes =  "<b>Speakers:</b><br>"
+            speakerNotes += "- Create a new child app for each room that has a speaker in it you want to control."
+            
+            pushNotes =  "<b>Push:</b><br>"
+            pushNotes += "- Only one child app is need for up to 5 pressence sensors<br>"
+            pushNotes += "- If more than 5 sensors are needed, simply add another child app."
+            
+            pmNotes =  "<b>Priority Messages</b><br>"
+            pmNotes += "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>"
+            pmNotes += "- Volume levels can also be adjusted by priority level."
+          
+            sAbilities = "Remember: Not all speakers can use volume controls, play sounds and/or restore to what it was doing before the speech event. Please use the report below to see some known speaker abilities."
+            
+            paragraph "${speakerNotes}"
+            paragraph "${pushNotes}"
+            paragraph "${pmNotes}"
+            paragraph "${sAbilities}"
+
             paragraph "<hr>"
-            paragraph "NOTE: Not all speakers can use volume controls, play sounds and/or restore to what it was doing before the speech event. Please use the report below to see some known speaker abilities."
             href "speakerStatus", title: "Known Speaker Abilities", description: "Click to see report."
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Initial Setup")) {
-            label title: "Enter a name for this child app", required: false
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speech Device")) {
+            paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device."
+            input "useExistingDevice", "bool", title: "Use existing device (off) or have FM create a new one for you (on)", defaultValue:false, submitOnChange:true
+            if(useExistingDevice) {
+			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Follow Me')", required:true, submitOnChange:true
+                paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                if(dataName) createDataChildDevice()
+                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                paragraph "${statusMessageD}"
+            }
+            input "gvDevice", "capability.actuator", title: "Virtual Device created for FM", required:true, multiple:false
+            if(!useExistingDevice) {
+                app.removeSetting("dataName")
+                paragraph "<small>* Device must use the 'Follow Me Driver'.</small>"
+            }
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" Message Destination")) {
     		//input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push","Queue"], required: true
             input "messageDest", "enum", title: "Select message destination", submitOnChange: true, options: ["Speakers","Push"], required: true
 		}
+        
 		// Speakers
 		if(messageDest == "Speakers") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Activation Type for Room Speakers")) {
@@ -150,31 +180,48 @@ def pageConfig() {
                 if(speakerType == "otherSpeaker") {
                     paragraph "<b>Speaker type is an Other Device.</b>"
                 }
-                paragraph "<b>Note:</b> Some speakers just don't play nicely with Follow Me. If your speaker is having an issue, please turn this switch on."
+                paragraph "<b>Note:</b> Some speakers just don't play nicely with Follow Me. If your speaker is having an issue, please try turning this switch on."
                 input "defaultSpeak", "bool", title: "Use default 'speak'", defaultValue:false, submitOnChange:true
-                paragraph "<hr>"
-                paragraph "<b>If the command sent doesn't have the ability to set the volume, this app will try to do it. It will also return the volume to the previous state after the speech.</b>"
+            }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Volume Options")) {
+                paragraph "<b>If the command sent doesn't have the ability to set the volume, this app will try to do it.<br>It will also return the volume to the previous state after the speech.</b>"
                 input "volSpeech", "number", title: "Speaker volume for speech (if not automatic)", description: "0-100", required:true
           		paragraph "<hr>"
-                paragraph "<b>Quiet Time Options</b>"
-                input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-                if(volQuiet) {
-                    input "QfromTime", "time", title: "Quiet Time Start", required: true, width: 6
-    		        input "QtoTime", "time", title: "Quiet Time End", required: true, width: 6
+                paragraph "<b>Quiet Time Override Options</b><br>This will override any other volume settings."
+                input "useQuietTime", "bool", title: "Use Quiet Time", defaultValue:false, submitOnChange:true
+                if(useQuietTime) {
+                    input "volQuiet", "number", title: "Quiet Time Speaker volume", description: "0-100", required:false, submitOnChange:true
+                    input "QfromTime", "time", title: "Quiet Time Start", required: false, width: 6
+                    input "QtoTime", "time", title: "Quiet Time End", required: false, width: 6
                     input "midnightCheckQ", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                } else {
+                    app.removeSetting("volQuiet")
+                    app.removeSetting("QfromTime")
+                    app.removeSetting("QtoTime")
+                    app.removeSetting("midnightCheckQ")
                 }
-		        paragraph "<hr>"
-                paragraph "<b>Speech Restriction Options</b>"
-                paragraph "Speech can also be restricted to within a certain time frame. (Optional)"
-        		input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
-        		input "toTime", "time", title: "To", required: false, width: 6
-                if(fromTime) input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                paragraph "<hr>"
+		        paragraph "<b>Speech Restriction Options</b><br>Speech can also be restricted to within a certain time frame."
+                input "useSpeechRestriction", "bool", title: "Use Speech Restriction", defaultValue:false, submitOnChange:true
+                if(useSpeechRestriction) {
+                    input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
+                    input "toTime", "time", title: "To", required: false, width: 6
+                    input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                } else {
+                    app.removeSetting("fromTime")
+                    app.removeSetting("toTime")
+                    app.removeSetting("midnightCheckR")
+                }
 			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
-				input "messagePriority", "bool", defaultValue:false, title: "Use Message Priority features?", description: "Message Priority", submitOnChange:true
-				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input "priorityVoices", "bool", defaultValue:false, title: "Use different voices for each Priority level?", description: "Priority Voices", submitOnChange:true
-				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input "messageSounds", "bool", defaultValue:false, title: "Play a sound before message?", description: "Message Sounds", submitOnChange:true
+            
+			section(getFormat("header-green", "${getImage("Blank")}"+" Message Priority (Advanced Options)")) {
+                paragraph "The following are considered 'Advanced Options'. They should only be used once the app is up and running."
+				input "messagePriority", "bool", defaultValue:false, title: "Use Message Priority features", description: "Message Priority", submitOnChange:true
+				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input "priorityVoices", "bool", defaultValue:false, title: "Use different voices for each Priority level", description: "Priority Voices", submitOnChange:true
+				if((messagePriority) && (speakerSS) && (speakerType != "echoSpeaksSpeaker")) input "messageSounds", "bool", defaultValue:false, title: "Play a sound before message", description: "Message Sounds", submitOnChange:true
 			}
+            
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
 					paragraph "<b>Notes:</b>"
@@ -211,40 +258,26 @@ def pageConfig() {
 			}
 		}
         
-		// both Speakers and Push
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Speech Device")) {
-            paragraph "This app requires a 'virtual device' to 'catch' the speech and send it here. All child apps will share this device."
-            input "useExistingDevice", "bool", title: "Use existing device (off) or have FM create a new one for you (on)", defaultValue:false, submitOnChange:true
-            if(useExistingDevice) {
-			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'Follow Me')", required:true, submitOnChange:true
-                paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
-                if(dataName) createDataChildDevice()
-                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
-                paragraph "${statusMessageD}"
-            }
-            input "gvDevice", "capability.actuator", title: "Virtual Device created for FM", required:true, multiple:false
-            if(!useExistingDevice) {
-                app.removeSetting("dataName")
-                paragraph "<small>* Device must use the 'Follow Me Driver'.</small>"
-            }
-        }
-
 		// Push
 		if(messageDest == "Push") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Push Messages")) {
 				href "pushOptions", title:"Presence and Push Setup", description:"Select up to 5 presence sensor / push combinations"
 			}
 		}
+        
         if(messageDest == "Queue") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Presence Options for Queued Messages")) {
 				paragraph "With this option, choose which Presence Sensors to have messages Queued for when they arrive back home."
 			}
 		}
+        
 		// both Speakers and Push
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
-            input "logEnable", "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging."
-            paragraph "<hr>"
+            label title: "Enter a name for this child app", required: false
+            input "logEnable", "bool", title: "Enable Debug Logging", description: "Enable extra logging for debugging.", defaultValue:false, submitOnChange:true
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speech Queue (Experimental)")) {
             paragraph "Follow Me can use a custom speech queue. If you would like to try this experimental queueing system, turn this switch on."
             input "useQueue", "bool", defaultValue:false, title: "Use speech queueing", description: "speech queue", submitOnChange:true
             
@@ -809,6 +842,27 @@ def checkTime() {
 		state.timeBetween = true
   	}
 	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+}
+
+def dayOfTheWeekHandler() {
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+    if(days) {
+        def df = new java.text.SimpleDateFormat("EEEE")
+        df.setTimeZone(location.timeZone)
+        def day = df.format(new Date())
+        def dayCheck = days.contains(day)
+
+        if(dayCheck) {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+            state.daysMatch = true
+        } else {
+            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+            state.daysMatch = false
+        }
+    } else {
+        state.daysMatch = true
+    }
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 def checkVol() {
