@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.2.0 - 06/12/20 - Added error trap for null message
  *  2.1.9 - 06/08/20 - Minor fix to clear Speaker Map - suggested by @mark.cockcroft. Thank you.
  *  2.1.8 - 05/30/20 - Fixed the bug with Speaker Map
  *  2.1.7 - 05/29/20 - Renamed attributes to be 'Smartly' friendly
@@ -78,6 +79,8 @@ metadata {
         command "sendFollowMeSpeaker", 	[[name:"Follow Me Request*", type:"JSON_OBJECT", description:"JSON-encoded command string (see source)"]]
 
         command "sendQueue", ["string", "string", "string"]
+        
+        command "sendPush", ["string"]
 
         attribute "bpt-whatDidISay", "string"
         attribute "whatDidISayCount", "string"
@@ -92,7 +95,10 @@ metadata {
         attribute "bpt-queue3", "string"
         attribute "bpt-queue4", "string"
         attribute "bpt-queue5", "string"
+        
+        attribute "pushMessage", "string"
     }
+    
     preferences() {    	
         section(){
             input("fontSize", "text", title: "Font Size", required: true, defaultValue: "15")
@@ -107,6 +113,11 @@ metadata {
 // Queue's for Home Tracker
 def sendQueue(ps, theMessage, duration) {
     log.info "Follow Me - NEW Home Tracker - ps: ${ps} - duration: ${duration} - theMessage: ${theMessage}"
+}
+
+def sendPush(data) {
+    if(logEnable) log.debug "In sendPush - data: ${data}"
+    sendEvent(name: "pushMessage", value: data, isStateChange: true) 
 }
 
 // -- code by @storageanarchy - Thank you for showing me how to pass the variables!
@@ -210,14 +221,18 @@ def setVolumeAndSpeak(volume, message) {
 
 def speak(message) {    
     if(logEnable) log.debug "In speak - message: ${message}"
-    priorityHandler(message)
-    // returned priority,lastSpoken
-    speechReceivedFULL = lastSpoken.replace("%20"," ").replace("%5B","[").replace("%5D","]")   
-    theMessage = composeMessageMap('speak', speechReceivedFULL, priority)
-    if(logEnable) log.debug "In speak - theMessage: ${theMessage}"
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
-    latestMessageDate()
-    populateMap(priority,lastSpoken)
+    if(message) {
+        priorityHandler(message)
+        // returns priority,lastSpoken
+        speechReceivedFULL = lastSpoken.replace("%20"," ").replace("%5B","[").replace("%5D","]")   
+        theMessage = composeMessageMap('speak', speechReceivedFULL, priority)
+        if(logEnable) log.debug "In speak - theMessage: ${theMessage}"
+        sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+        latestMessageDate()
+        populateMap(priority,lastSpoken)
+    } else {
+        log.warn "Follow Me - speak - Something went Wrong, No message received."
+    }
 }
 
 def priorityHandler(message) { 
