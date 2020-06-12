@@ -86,12 +86,27 @@ def mainPage() {
     	installCheck()
 		if(state.appInstalled == 'COMPLETE'){
 			section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-                paragraph "<div style='color:#1A77C9'>Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!</div>"
-				paragraph "<b>Notes:</b>"
-				paragraph "- Create a new child app for each room that has a speaker in it.<br>- Pushover child app can have up to 5 sensors defined<br>- If more than 5 sensors are needed, simply add another child device."
-				paragraph "<b>Requirements:</b>"
-				paragraph "- Virtual Device using our custom 'Follow Me Driver'"
-			}
+            speakerNotes =  "<b>Speakers:</b><br>"
+            speakerNotes += "- Create a new child app for each room that has a speaker in it you want to control."
+            
+            pushNotes =  "<b>Push:</b><br>"
+            pushNotes += "- Only one child app is need for up to 5 pressence sensors<br>"
+            pushNotes += "- If more than 5 sensors are needed, simply add another child app."
+            
+            pmNotes =  "<b>Priority Messages</b><br>"
+            pmNotes += "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>"
+            pmNotes += "- Volume levels can also be adjusted by priority level."
+          
+            sAbilities = "Remember: Not all speakers can use volume controls, play sounds and/or restore to what it was doing before the speech event. Please use the report below to see some known speaker abilities."
+            
+            paragraph "${speakerNotes}"
+            paragraph "${pushNotes}"
+            paragraph "${pmNotes}"
+            paragraph "${sAbilities}"
+
+            paragraph "<hr>"
+            href "speakerStatus", title: "Known Speaker Abilities", description: "Click to see report."
+		}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Follow Me Child", namespace: "BPTWorld", title: "<b>Add a new 'Follow Me' child</b>", multiple: true)
 			}
