@@ -102,7 +102,7 @@ def pageConfig() {
             } else {
                 href "messageOptions", title:"Message Options", description:"Click here to setup Home Now, Welcome Home and Departed Message Options"
             }
-            if(speakerMP || speakerSS) {
+            if(fmSpeaker) {
                 href "speechOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here to setup speakers, volume control , push Options and/or Flash Lights"
             } else {
                 href "speechOptions", title:"Notification Options", description:"Click here to setup speakers, volume control, push Options and/or Flash Lights"
