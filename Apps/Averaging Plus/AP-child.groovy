@@ -396,7 +396,7 @@ def averageHandler(evt) {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    fmSpeaker.speak(theMsg)
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
     theMsg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
@@ -541,3 +541,4 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
+
