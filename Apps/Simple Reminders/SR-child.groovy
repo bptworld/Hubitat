@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 06/11/20 - All speech now goes through Follow Me
  *  1.0.8 - 06/07/20 - Bug fixes
  *  1.0.7 - 06/05/20 - Fixed max repeats, Added Specific Date trigger, Added Repeat every X days, Removed 'Every Other', other minor changes
  *  1.0.6 - 04/27/20 - Cosmetic changes
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -177,32 +178,9 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
-            paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required:false, multiple:true, submitOnChange:true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required:false, multiple:true, submitOnChange:true
-           paragraph "This app supports speaker proxies like, 'Follow Me'. This allows all speech to be controlled by one app. Follow Me features - Priority Messaging, volume controls, voices, sound files and more!"
-           input "speakerProxy", "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange:true
-        }
-        if(!speakerProxy) {
-            if(speakerMP || speakerSS) {
-		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
-                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
-		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
-                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
-    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
-                }
-		    }
-		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-                input "fromTime", "time", title: "From", required:false, width: 6
-        	    input "toTime", "time", title: "To", required:false, width: 6
-		    }
-        } else {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
-		        paragraph "Speaker proxy in use"
-            }
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
+            input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+            if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
@@ -275,48 +253,12 @@ def everySoManyDaysHandler() {
     schedule(hmdSchedule, startTheProcess)
 }
 
-def letsTalk(theMsg) {
-	if(logEnable) log.debug "In letsTalk (${state.version})"
-	checkTime()
-	checkVol()
-    if(logEnable) log.debug "In letsTalk - Checking daysMatch: ${state.daysMatch} - timeBetween: ${state.timeBetween} - thisTime: ${state.thisTime}"
-    if(state.timeBetween && state.daysMatch && state.thisTime == "yes") {
-        if(theMsg) state.theMsg = theMsg
-              
-        def duration = Math.max(Math.round(state.theMsg.length()/12),2)+3
-        theDuration = duration * 1000
-        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, theMsg: ${state.theMsg}, volRestore: ${volRestore}"
-        state.speakers.each { it ->
-            if(logEnable) log.debug "Speaker in use: ${it}"
-            if(speakerProxy) {
-                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                it.speak(state.theMsg)
-            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                def prevVolume = it.currentValue("volume")
-                it.setVolumeSpeakAndRestore(state.volume, state.theMsg, prevVolume)
-            } else if(it.hasCommand('playTextAndRestore')) {   
-                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                def prevVolume = it.currentValue("volume")
-                it.playTextAndRestore(state.theMsg, prevVolume)
-            } else {		        
-                if(logEnable) log.debug "In letsTalk - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                it.speak(state.theMsg)
-                pauseExecution(theDuration)
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-            }
-        } 
-        state.repeat = state.repeat + 1
-        checkMaxRepeat()
-	} else {
-		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	}
+def letsTalk(msg) {
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
+    state.repeat = state.repeat + 1
+    checkMaxRepeat()
+    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def checkMaxRepeat() {
@@ -345,31 +287,6 @@ def checkMaxRepeat() {
     }
     state.repeat = 0
     if(logEnable) log.debug "In checkMaxRepeat - Finished - Max repeats: ${maxRepeats} - repeated: ${state.repeat}"
-}
-
-def checkVol(){
-	if(logEnable) log.debug "In checkVol (${state.version})"
-	if(QfromTime) {
-		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-		if(logEnable) log.debug "In checkVol - quietTime: ${state.quietTime}"
-    	if(state.quietTime) state.volume = volQuiet
-		if(!state.quietTime) state.volume = volSpeech
-	} else {
-		state.volume = volSpeech
-	}
-	if(logEnable) log.debug "In checkVol - setting volume: ${state.volume}"
-}
-
-def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) state.timeBetween = true
-		if(!state.betweenTime) state.timeBetween = false
-  	} else {  
-		state.timeBetween = true
-  	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
 def messageHandler() {
