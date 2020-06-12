@@ -731,7 +731,7 @@ def checkTimeInState(evt) {
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     dayOfTheWeekHandler()
-    if(state.daysMatch) fmSpeaker.speak(theMsg)
+    if(state.daysMatch && useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
     theMsg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
