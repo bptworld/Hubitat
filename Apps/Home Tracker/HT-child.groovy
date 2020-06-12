@@ -135,6 +135,7 @@ def speechOptions(){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
             input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+            if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
