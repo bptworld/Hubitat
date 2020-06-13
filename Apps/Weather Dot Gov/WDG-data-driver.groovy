@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 06/13/20 - Changed 'No Data' to 0 for current weather values as requested
  *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
  *  1.1.4 - 05/07/20 - Added multiple alert data
  *  1.1.3 - 04/27/20 - Added two new attributes, todaysHigh and todaysLow
@@ -429,7 +430,7 @@ def getWeatherData() {
                                 
                 def xtemperature = response.data.properties.temperature.value
                 if(!xtemperature) {
-                    temperature = "No Data"
+                    temperature = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xtemperature)
@@ -445,7 +446,7 @@ def getWeatherData() {
                 
                 def xdewpoint = response.data.properties.dewpoint.value
                 if(!xdewpoint) {
-                    temperature = "No Data"
+                    temperature = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xdewpoint)
@@ -461,7 +462,7 @@ def getWeatherData() {
                 
                 def xwindDirection = response.data.properties.windDirection.value
                 if(!xwindDirection) {
-                    windDirection = "No Data"
+                    windDirection = "0"
                 } else {
                     direction(xwindDirection)
                     windDirection = theUnit
@@ -472,7 +473,7 @@ def getWeatherData() {
                 
                 def xwindSpeed = response.data.properties.windSpeed.value
                 if(!xwindSpeed) {
-                    windSpeed = "No Data"
+                    windSpeed = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mpsTOmph(xwindSpeed)
@@ -488,7 +489,7 @@ def getWeatherData() {
                 
                 def xwindGust = response.data.properties.windGust.value
                 if(!xwindGust) {
-                    windGust = "No Data"
+                    windGust = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         kphTOmph(xwindGust)
@@ -504,7 +505,7 @@ def getWeatherData() {
                 
                 def xbarometricPressure = response.data.properties.barometricPressure.value
                 if(!xbarometricPressure) {
-                    barometricPressure = "No Data"
+                    barometricPressure = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mbTOinhg(xbarometricPressure)
@@ -520,7 +521,7 @@ def getWeatherData() {
                 
                 def xseaLevelPressure = response.data.properties.seaLevelPressure.value
                 if(!xseaLevelPressure) {
-                    seaLevelPressure = "No Data"
+                    seaLevelPressure = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mbTOinhg(xseaLevelPressure)
@@ -536,7 +537,7 @@ def getWeatherData() {
                 
                 def xvisibility = response.data.properties.visibility.value
                 if(!xvisibility) {
-                    visibility = "No Data"
+                    visibility = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mTOft(xvisibility)
@@ -552,7 +553,7 @@ def getWeatherData() {
                 
                 def xmaxTemperatureLast24Hours = response.data.properties.maxTemperatureLast24Hours.value
                 if(!xmaxTemperatureLast24Hours) {
-                    maxTemperatureLast24Hours = "No Data"
+                    maxTemperatureLast24Hours = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xmaxTemperatureLast24Hours)
@@ -568,7 +569,7 @@ def getWeatherData() {
                 
                 def xminTemperatureLast24Hours = response.data.properties.minTemperatureLast24Hours.value
                 if(!xminTemperatureLast24Hours) {
-                    minTemperatureLast24Hours = "No Data"
+                    minTemperatureLast24Hours = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xminTemperatureLast24Hours)
@@ -584,7 +585,7 @@ def getWeatherData() {
                 
                 def xprecipitationLastHour = response.data.properties.precipitationLastHour.value
                 if(!xprecipitationLastHour) {
-                    precipitationLastHour = "No Data"
+                    precipitationLastHour = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mmTOin(xprecipitationLastHour)
@@ -600,7 +601,7 @@ def getWeatherData() {
                 
                 def xprecipitationLast3Hours = response.data.properties.precipitationLast3Hours.value
                 if(!xprecipitationLast3Hours) {
-                    precipitationLast3Hours = "No Data"
+                    precipitationLast3Hours = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mmTOin(xprecipitationLast3Hours)
@@ -616,7 +617,7 @@ def getWeatherData() {
                 
                 def xprecipitationLast6Hours = response.data.properties.precipitationLast6Hours.value
                 if(!xprecipitationLast6Hours) {
-                    precipitationLast6Hours = "No Data"
+                    precipitationLast6Hours = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         mmTOin(xprecipitationLast6Hours)
@@ -632,7 +633,7 @@ def getWeatherData() {
                 
                 def xrelativeHumidity = response.data.properties.relativeHumidity.value
                 if(!xrelativeHumidity) {
-                    relativeHumidity = "No Data"
+                    relativeHumidity = "0"
                 } else {
                     unitI = xrelativeHumidity.toFloat()
                     relativeHumidity = unitI.round(2)
@@ -643,7 +644,7 @@ def getWeatherData() {
                 
                 def xwindChill = response.data.properties.windChill.value
                 if(!xwindChill) {
-                    windChill = "No Data"
+                    windChill = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xwindChill)
@@ -659,7 +660,7 @@ def getWeatherData() {
                 
                 def xheatIndex = response.data.properties.heatIndex.value
                 if(!xheatIndex) {
-                    heatIndex = "No Data"
+                    heatIndex = "0"
                 } else {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xheatIndex)
@@ -672,9 +673,9 @@ def getWeatherData() {
                 if(logEnable) log.debug "In getWeatherData - heatIndex: ${heatIndex}"
                 sendEvent(name: "heatIndex", value: heatIndex) 
                 
-                if(windChill != "No Data") xHowItFeels = windChill
-                if(heatIndex != "No Data") xHowItFeels = heatIndex
-                if(xHowItFeels == null) xHowItFeels = "No Data"
+                if(windChill != "0") xHowItFeels = windChill
+                if(heatIndex != "0") xHowItFeels = heatIndex
+                if(xHowItFeels == null) xHowItFeels = "0"
                 if(logEnable) log.debug "In getWeatherData - howItFeels: ${xHowItFeels}"
                 sendEvent(name: "howItFeels", value: xHowItFeels)
                    
