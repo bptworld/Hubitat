@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.4 - 06/13/20 - Added Presence Sensor to speaker triggers
  *  2.2.3 - 06/12/20 - Cosmetic changes
  *  2.2.2 - 06/11/20 - Fixed 'Quiet Time' and 'Time Restriction' when the time frame cross over midnight
  *  2.2.1 - 06/11/20 - Added more debug logging
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.3"   
+	state.version = "2.2.4"   
 }
 
 definition(
@@ -134,7 +135,7 @@ def pageConfig() {
 		// Speakers
 		if(messageDest == "Speakers") {
 			section(getFormat("header-green", "${getImage("Blank")}"+" Activation Type for Room Speakers")) {
-    			input "triggerMode", "enum", title: "Select message activation Type", submitOnChange: true, options: ["Always_On","Contact_Sensor","Motion_Sensor","Switch"], required: true, Multiple: false
+    			input "triggerMode", "enum", title: "Select message activation Type", submitOnChange: true, options: ["Always_On","Contact_Sensor","Motion_Sensor","Presence_Sensor","Switch"], required: true, Multiple: false
 				if(triggerMode == "Always_On"){
 					paragraph "Selected speakers will always play messages."	
 				}
@@ -146,6 +147,10 @@ def pageConfig() {
 				if(triggerMode == "Motion_Sensor"){
 					input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the speaker", required: true, multiple: true
 					input "sZoneWaiting", "number", title: "After motion stops, wait X minutes to turn the speaker off", required: true, defaultValue: 5
+				}
+                if(triggerMode == "Presence_Sensor"){
+					input "myPresence", "capability.presenceSensor", title: "Select the presence sensor(s) to activate the speaker", required: true, multiple: true
+					input "sZoneWaiting", "number", title: "After becoming not present, wait X minutes to turn the speaker off", required: true, defaultValue: 5
 				}
 				if(triggerMode == "Switch"){
 					input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the speaker", required: true, multiple: true
@@ -437,6 +442,7 @@ def initialize() {
 	subscribe(gvDevice, "latestMessage", startHandler)
 	if(triggerMode == "Contact_Sensor") subscribe(myContacts, "contact", contactSensorHandler)
 	if(triggerMode == "Motion_Sensor") subscribe(myMotion, "motion", motionSensorHandler)
+    if(triggerMode == "Presence_Sensor") subscribe(myPresence, "presence", presenceSensorHandler)
 	if(triggerMode == "Switch") subscribe(mySwitches, "switch", switchHandler)
 	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
 	if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler2)
@@ -560,6 +566,21 @@ def motionSensorHandler(evt) {
 		gvDevice.sendFollowMeSpeaker(speakerStatus)
 	}
 	if(state.motionStatus == "inactive") {
+		sOff = sZoneWaiting * 60
+		runIn(sOff,zoneOffHandler)
+	}
+}
+
+def presenceSensorHandler(evt) {
+	state.presenceStatus = evt.value
+	if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.presenceStatus}"
+	if(state.presenceStatus == "present") {
+		if(logEnable) log.debug "In presenceSensorHandler - setting sZone to true"
+		state.sZone = true
+		speakerStatus = "${app.label}:${state.sZone}"
+		gvDevice.sendFollowMeSpeaker(speakerStatus)
+	}
+	if(state.presenceStatus == "not present") {
 		sOff = sZoneWaiting * 60
 		runIn(sOff,zoneOffHandler)
 	}
