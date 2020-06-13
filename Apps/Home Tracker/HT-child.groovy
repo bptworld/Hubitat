@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.4 - 06/13/20 - Fixed letsTalk typo
  *  2.3.3 - 06/11/20 - All speech now goes through Follow Me
  *  2.3.2 - 04/27/20 - Cosmetic changes
  *  2.3.1 - 02/27/20 - Changes to flash when message is delayed
@@ -57,7 +58,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.3.3"
+	state.version = "2.3.4"
 }
 
 definition(
@@ -726,8 +727,8 @@ def messageHandler() {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
-    theMsg = ""
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    msg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
