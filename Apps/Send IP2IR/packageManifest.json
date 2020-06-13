@@ -34,6 +34,14 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Driver.groovy",
 			"required": true,
 			"version": "1.0.5"
+		},
+		{
+			"id": "f12feec5-d91e-47ef-8fed-ffd407654cbc",
+			"name": "Send IP2IR Switch Driver",
+			"namespace": "BPTWorld",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Switch%20Driver.groovy",
+			"required": true,
+			"version": "1.0.0"
 		}
 	]
 }
