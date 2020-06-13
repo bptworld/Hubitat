@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 06/13/20 - Fixed letsTalk typo
  *  1.0.3 - 06/11/20 - All speech now goes through Follow Me
  *  1.0.2 - 06/10/20 - Attribute average now save under same attribute name when possible, app will only display attributres that are numbers, added weekly high/low.
  *  1.0.1 - 06/07/20 - Added more options and some error trapping
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -396,8 +397,8 @@ def averageHandler(evt) {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
-    theMsg = ""
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    msg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
