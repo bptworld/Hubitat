@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 06/13/20 - Cosmetic changes
  *  1.1.3 - 06/11/20 - All speech now goes through Follow Me
  *  1.1.2 - 06/07/20 - More options added to 'Actions'
  *  1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other minor changes
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -454,7 +455,7 @@ def checkDeviceHandler(evt) {
     if(switchesOn) {
         switchesOn.each { sOn -> 
             switchName = sOn.displayName
-            switchStatus = sOn.currentValue('switch')
+            switchStatus = sOn.currentValue("switch")
             if(logEnable) log.debug "In checkDeviceHandler - Switch On - CHECKING - ${switchName} - ${switchStatus}"
             if(switchStatus == "off") {
                 if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
@@ -472,7 +473,7 @@ def checkDeviceHandler(evt) {
     if(switchesOff) {
         switchesOff.each { sOff -> 
             switchName = sOff.displayName
-            switchStatus = sOff.currentValue('switch')
+            switchStatus = sOff.currentValue("switch")
             if(logEnable) log.debug "In checkDeviceHandler - Switch Off - ${switchName} - ${switchStatus}"
             if(switchStatus == "on") {
                 if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
@@ -490,7 +491,7 @@ def checkDeviceHandler(evt) {
     if(locksUnlocked) {
         locksUnlocked.each { lUnlocked ->
             def lockName = lUnlocked.displayName
-            def lockStatus = lUnlocked.currentValue('lock')
+            def lockStatus = lUnlocked.currentValue("lock")
             if(logEnable) log.debug "In checkDeviceHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
             if(lockStatus == "locked") {
                 if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
@@ -506,7 +507,7 @@ def checkDeviceHandler(evt) {
     if(locksLocked) {
         locksLocked.each { lLocked ->
             def lockName = lLocked.displayName
-            def lockStatus = lLocked.currentValue('lock')
+            def lockStatus = lLocked.currentValue("lock")
             if(logEnable) log.debug "In checkDeviceHandler - Locks Locked - ${lockName} - ${lockStatus}"
             if(lockStatus == "unlocked") {
                 if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
@@ -537,7 +538,7 @@ def checkContactHandler() {
     if(contactsOpen) {
 		contactsOpen.each { cOpen ->
 			def contactName = cOpen.displayName
-			def contactStatus = cOpen.currentValue('contact')
+			def contactStatus = cOpen.currentValue("contact")
 			if(logEnable) log.debug "In checkContactHandler - Contact Open - ${contactName} - ${contactStatus}"
             if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
 		}
@@ -545,7 +546,7 @@ def checkContactHandler() {
 	if(contactsClosed) {
 		contactsClosed.each { cClosed ->
 			def contactName = cClosed.displayName
-			def contactStatus = cClosed.currentValue('contact')
+			def contactStatus = cClosed.currentValue("contact")
 			if(logEnable) log.debug "In checkContactHandler - Contact Closed - ${contactName} - ${contactStatus}"
 			if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
         }
@@ -784,7 +785,7 @@ def thermostatHandler(evt) {
     if(thermostats) {
         thermostats.each { therm ->
             def thermName = therm.displayName
-			def thermStatus = therm.currentValue('thermostatOperatingState')
+			def thermStatus = therm.currentValue("thermostatOperatingState")
             if(thermStatus != "idle") {
                 state.thermFound = true
 			    if(logEnable) log.debug "In thermostatHandler - Match Found - thermName: ${thermName} - thermStatus: ${thermStatus}"
@@ -804,7 +805,7 @@ def thermostatModeHandler(evt) {
     if(thermostats) {
         thermostats.each { thermMode ->
             def thermModeName = thermMode.displayName
-			def thermModeStatus = thermMode.currentValue('thermostatMode')
+			def thermModeStatus = thermMode.currentValue("thermostatMode")
             if(thermModeStatus != "off") {
                 state.thermModeFound = true
 			    if(logEnable) log.debug "In thermostatModeHandler - Match Found - thermModeName: ${thermModeName} - thermMStatus: ${thermModeStatus}"
