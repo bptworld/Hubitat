@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 06/13/20 - Fixed letsTalk typo
  *  1.1.4 - 06/13/20 - Cosmetic changes
  *  1.1.3 - 06/11/20 - All speech now goes through Follow Me
  *  1.1.2 - 06/07/20 - More options added to 'Actions'
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -732,8 +733,8 @@ def checkTimeInState(evt) {
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     dayOfTheWeekHandler()
-    if(state.daysMatch && useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
-    theMsg = ""
+    if(state.daysMatch && useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    msg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
@@ -759,7 +760,8 @@ def modeHandler(evt) {
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"  
+    state.daysMatch = false
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
@@ -963,7 +965,7 @@ def messageHandler() {
     if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
  
     if(state.theMsg) {
-        letsTalk()
+        letsTalk(state.theMsg)
         if(sendPushMessage) pushHandler()
     }
 }
