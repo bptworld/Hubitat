@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 06/13/20 - Fixed type in letsTalk
  *  1.0.9 - 06/11/20 - All speech now goes through Follow Me
  *  1.0.8 - 06/07/20 - Bug fixes
  *  1.0.7 - 06/05/20 - Fixed max repeats, Added Specific Date trigger, Added Repeat every X days, Removed 'Every Other', other minor changes
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -222,7 +223,7 @@ def startTheProcess(evt) {
     if(state.daysMatch && switchesOff) switchesOffHandler(switchesOff)
     if(state.daysMatch && switchesFlash) flashLights(switchesFlash,numOfFlashes,delayFlashes)
     if(state.daysMatch && newMode) modeHandler(newMode)
-    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) letsTalk()
+    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) letsTalk(state.theMsg)
     
     // reset for next time
     initialize()
@@ -255,7 +256,7 @@ def everySoManyDaysHandler() {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
     state.repeat = state.repeat + 1
     checkMaxRepeat()
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
@@ -298,15 +299,14 @@ def messageHandler() {
     count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
 	theMsg = values[randomKey]
-	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMsg: ${theMsg}"
-    
-	if(logEnable) log.debug "In messageHandler - theMsg: ${theMsg}"
-        
+	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMsg: ${theMsg}"    
+	state.theMsg = theMsg        
     letsTalk(theMsg)
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+    state.daysMatch = false
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
