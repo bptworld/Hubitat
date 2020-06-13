@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.5 - 06/13/20 - Fixed letsTalk typo... again
  *  2.3.4 - 06/13/20 - Fixed letsTalk typo
  *  2.3.3 - 06/11/20 - All speech now goes through Follow Me
  *  2.3.2 - 04/27/20 - Cosmetic changes
@@ -58,7 +59,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.3.4"
+	state.version = "2.3.5"
 }
 
 definition(
@@ -666,7 +667,7 @@ def messageHomeNow() {
 	state.message = ovaluesHN[orandomKeyHN] + ". " + cvaluesHN[crandomKeyHN]
 	if(logEnable) log.debug "In messageHomeNow - Random - ovSizeHN: ${ovSizeHN}, orandomKeyHN: ${orandomKeyHN}; Random - cvSizeHN: ${cvSizeHN}, crandomKeyHN: ${crandomKeyHN}, message: ${state.message}"
 	messageHandler()
-	letsTalk()
+	letsTalk(state.message)
 }
 
 def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and closing message code
@@ -692,7 +693,7 @@ def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and 
 	def delay1ms = delay1 * 1000
 	pauseExecution(delay1ms)
     if(logEnable) log.debug "In messageWelcomeHome - going to letsTalk with the message"
-	letsTalk()
+	letsTalk(state.message)
 }
 
 def messageDeparted() {
@@ -713,7 +714,7 @@ def messageDeparted() {
 	state.message = ovaluesD[orandomKeyD] + ". " + cvaluesD[crandomKeyD]
 	if(logEnable) log.debug "In messageDeparted - Random - ovSizeD: ${ovSizeD}, orandomKeyD: ${orandomKeyD}; Random - cvSizeD: ${cvSizeD}, crandomKeyD: ${crandomKeyD}, message: ${state.message}"
     messageHandler()
-	letsTalk()
+	letsTalk(state.message)
 }
 
 def messageHandler() {
