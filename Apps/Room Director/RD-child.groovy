@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 06/13/20 - Fixed typo with daysMatch, thanks @fourwhitehouse!
  *  1.1.2 - 06/11/20 - All speech now goes through Follow Me
  *  1.1.1 - 06/10/20 - Made a few changes
  *  1.1.0 - 05/22/20 - Override switch now supports multiple switches
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -529,7 +530,7 @@ def secondaryHandler() {
 def whatToDo() {
     if(logEnable) log.debug "In whatToDo (${state.version}) - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
     dayOfTheWeekHandler()
-    if(state.dayMatches && state.sunRiseTosunSet) {
+    if(state.daysMatch && state.sunRiseTosunSet) {
         if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
             if(logEnable) log.debug "In whatToDo - Going to vacantHandler"
             vacantHandler()
@@ -941,7 +942,8 @@ def pushNow(msg) {
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+    state.daysMatch = false
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
