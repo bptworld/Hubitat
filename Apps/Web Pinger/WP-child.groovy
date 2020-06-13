@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.9 - 06/13/20 - Minor adjustments, error catching
  *  2.0.8 - 06/05/20 - Minor adjustments
  *  2.0.7 - 05/25/20 - Little adjustments here and there
  *  2.0.6 - 04/27/20 - Cosmetic changes
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Web Pinger"
-	state.version = "2.0.8"
+	state.version = "2.0.9"
 }
 
 definition(
@@ -255,7 +256,7 @@ def pollVerify() {
 def turnOnHandler() {
 	if (switches) {
         switches.each{ s1 ->
-            theStatus = s1.deviceValue("switch")
+            theStatus = s1.currentValue("switch")
     	    if(theStatus == "off") s1.on()
             if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning on ${s1}"
         }
@@ -264,7 +265,7 @@ def turnOnHandler() {
             rTime = resetTime * 1000
             pauseExecution(rTime)
             switches.each{ rs1 ->
-                theStatus = rs1.deviceValue("switch")
+                theStatus = rs1.currentValue("switch")
                 if(theStatus == "on") rs1.off()
                 if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning off ${rs1}"
             }
@@ -273,7 +274,7 @@ def turnOnHandler() {
     
     if (switches2) {
     	switches2.each{ s2 ->
-            theStatus = s2.deviceValue("switch")
+            theStatus = s2.currentValue("switch")
     	    if(theStatus == "off") s2.on()
             if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning on ${s2}"
         }
@@ -282,7 +283,7 @@ def turnOnHandler() {
             rTime = resetTime * 1000
             pauseExecution(rTime)
             switches2.each{ rs2 ->
-                theStatus = rs2.deviceValue("switch")
+                theStatus = rs2.currentValue("switch")
                 if(theStatus == "on") rs2.off()
                 if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning off ${rs2}"
             }
@@ -293,7 +294,7 @@ def turnOnHandler() {
 def turnOffHandler() {
     if (switches1) {
         switches1.each{ s1 ->
-            theStatus = s1.deviceValue("switch")
+            theStatus = s1.currentValue("switch")
     	    if(theStatus == "on") s1.off()
             if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning off ${s1}"
         }
@@ -302,7 +303,7 @@ def turnOffHandler() {
             rTime = resetTime * 1000
             pauseExecution(rTime)
             switches1.each{ rs1 ->
-                theStatus = rs1.deviceValue("switch")
+                theStatus = rs1.currentValue("switch")
                 if(theStatus == "off") rs1.on()
                 if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning on ${rs1}"
             }
@@ -311,7 +312,7 @@ def turnOffHandler() {
     
     if (switches2) {
     	switches2.each{ s2 ->
-            theStatus = s2.deviceValue("switch")
+            theStatus = s2.currentValue("switch")
     	    if(theStatus == "on") s2.off()
             if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning off ${s2}"
         }
@@ -320,7 +321,7 @@ def turnOffHandler() {
             rTime = resetTime * 1000
             pauseExecution(rTime)
             switches2.each{ rs2 ->
-                theStatus = rs2.deviceValue("switch")
+                theStatus = rs2.currentValue("switch")
                 if(theStatus == "off") rs2.on()
                 if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning on ${rs2}"
             }
