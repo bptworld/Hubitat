@@ -94,18 +94,26 @@ def pageConfig() {
             paragraph "<small>* Minimum recommended interval is 5 minutes.</small>"
             if(timeToPing == "30s") paragraph "<b>30 second interval is not recommended and might slow down your hub.</b>"
             if(timeToPing == "1") paragraph "<b>1 minute interval is not recommended and might slow down your hub.</b>"
-            input(name: "threshold", title:"False alarm safety net (minutes)", type: "number", required: true, defaultValue:2)
+            input(name: "threshold", title:"False alarm safety net (minutes) - Should be long enough for a couple of regular pings", type: "number", required: true, defaultValue:20)
         }
+        section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
+            paragraph "Recomended to create a virtual switch with the 'Enable auto off' set to '1s'."
+            input "sendPingSwitch", "capability.switch", title: "Turn this switch 'on' to send a new 'ping' at any time", required:false, submitOnChange:true
+        }
+    
         section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) ON if URL is not available, OFF if everything is good.")) {
             input "switches", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) OFF if URL is not available, ON if everything is good.")) {
             input "switches2", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
         }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
             input(name: "resetSwitches", type: "bool", defaultValue: false, title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: true)
             if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds)", type: "number", required: true, defaultValue:60)
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
 			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) {
@@ -139,6 +147,7 @@ def initialize() {
 		state.pollVerify = false
 		runIn(5, poll)
     }
+    if(sendPingSwitch) subscribe(sendPingSwitch, "switch.on", poll)
 }
 
 def validateURL() {
