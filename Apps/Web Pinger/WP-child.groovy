@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.0 - 06/15/20 - Added 'Control Switch'
  *  2.0.9 - 06/13/20 - Minor adjustments, error catching
  *  2.0.8 - 06/05/20 - Minor adjustments
  *  2.0.7 - 05/25/20 - Little adjustments here and there
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Web Pinger"
-	state.version = "2.0.9"
+	state.version = "2.1.0"
 }
 
 definition(
