@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.1 - 06/15/20 - Fixed 'Control Switch'
  *  2.1.0 - 06/15/20 - Added 'Control Switch'
  *  2.0.9 - 06/13/20 - Minor adjustments, error catching
  *  2.0.8 - 06/05/20 - Minor adjustments
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Web Pinger"
-	state.version = "2.1.0"
+	state.version = "2.1.1"
 }
 
 definition(
@@ -146,9 +147,9 @@ def initialize() {
 	if (validateURL()) {
 		state.downHost = false
 		state.pollVerify = false
-		runIn(5, poll)
+		runIn(5, pollHandler)
     }
-    if(sendPingSwitch) subscribe(sendPingSwitch, "switch.on", poll)
+    if(sendPingSwitch) subscribe(sendPingSwitch, "switch.on", pollHandler)
 }
 
 def validateURL() {
@@ -177,7 +178,7 @@ def validateURL() {
 		}
 }
 
-def poll() {
+def pollHandler(evt) {
 		def reqParams = [
             uri: "http://${state.website}",
             timeout: 30
@@ -185,7 +186,7 @@ def poll() {
     	if (state.validURL) {
     		try {
         		httpGet(reqParams) { resp ->
-					if(logEnable) log.debug "In Poll - Response was ${resp.status}"
+					if(logEnable) log.debug "In pollHandler - Response was ${resp.status}"
             		if (resp.status == 200) {
                 		if (state.downHost) {
             				if(switches) turnOffHandler()
@@ -222,13 +223,13 @@ def poll() {
         		}
     		}
     	}
-        if(timeToPing == "30s") runIn(30, poll)   
-        if(timeToPing == "1") schedule("0 0/1 * * * ?", poll)
-    	if(timeToPing == "5") schedule("0 0/5 * * * ?", poll)
-		if(timeToPing == "10") schedule("0 0/10 * * * ?", poll)
-		if(timeToPing == "15") schedule("0 0/15 * * * ?", poll)
-		if(timeToPing == "30") schedule("0 0/30 * * * ?", poll)
-		if(timeToPing == "59") schedule("0 0/59 * * * ?", poll)
+        if(timeToPing == "30s") runIn(30, pollHandler)   
+        if(timeToPing == "1") schedule("0 0/1 * * * ?", pollHandler)
+    	if(timeToPing == "5") schedule("0 0/5 * * * ?", pollHandler)
+		if(timeToPing == "10") schedule("0 0/10 * * * ?", pollHandler)
+		if(timeToPing == "15") schedule("0 0/15 * * * ?", pollHandler)
+		if(timeToPing == "30") schedule("0 0/30 * * * ?", pollHandler)
+		if(timeToPing == "59") schedule("0 0/59 * * * ?", pollHandler)
 }
 
 def pollVerify() {
