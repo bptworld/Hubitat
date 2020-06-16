@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 06/16/20 - Changes by @rvrolyk, thanks!
  *  1.0.4 - 06/13/20 - Fixed letsTalk typo
  *  1.0.3 - 06/11/20 - All speech now goes through Follow Me
  *  1.0.2 - 06/10/20 - Attribute average now save under same attribute name when possible, app will only display attributres that are numbers, added weekly high/low.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
