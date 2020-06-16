@@ -38,6 +38,7 @@
  *
  *  Changes:
  *
+ *  2.0.6 - 06/16/20 - Added more push options
  *  2.0.5 - 06/02/20 - Fixed issues with scheduling
  *  2.0.4 - 06/02/20 - Lots of little adjustments
  *  2.0.3 - 05/31/20 - Some great changes/additions by @bdwilson. Thanks!
@@ -54,9 +55,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Simple Irrigation"
-	state.version = "2.0.5"
+	state.version = "2.0.6"
 }
 
 definition(
@@ -111,8 +115,12 @@ def pageConfig() {
 			input "otherSensor", "capability.switch", title: "Other Switch", required: false
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple: true, required: false
-            input "sendSafetyPushMessage", "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue:false, required:true
+			input "sendPushMessage", "capability.notification", title: "Send a notification?", multiple:true, required:false, submitOnChange:true
+            if(sendPushMessage) {
+                input "sendInfoPushMessage", "bool", title: "Send informational message regarding value status.", defaultValue:false, required:true
+                input "sendTroublePushMessage", "bool", title: "Send message when value may be in trouble.", defaultValue:false, required:true
+                input "sendSafetyPushMessage", "bool", title: "Send close notification even if weather switch has cancelled the schedule.", defaultValue:false, required:true
+            }
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
@@ -163,7 +171,7 @@ def turnValveOn() {
 				if(state.valveTry > maxTriesOn) {
 					log.warn "${valveDevice} didn't open after ${maxTriesOn} tries."
 					state.msg = "${valveDevice} didn't open after ${maxTriesOn} tries. Please CHECK device."
-					if(sendPushMessage) pushHandler()
+					if(sendTroublePushMessage) pushHandler()
                     resetTrys()
 				}
 			} else {
@@ -185,7 +193,7 @@ def turnValveOn() {
 				if(logEnable) log.debug "In turnValveOn - Valve is now ${state.valveStatus}, Setting valve timer to off in ${onLength} minutes"
 				log.warn "${valveDevice} is now ${state.valveStatus}"
 				state.msg = "${valveDevice} is now ${state.valveStatus}"
-				if(sendPushMessage) pushHandler()
+				if(sendInfoPushMessage) pushHandler()
                 resetTrys()
 				runIn(delay, turnValveOff)
 			}
@@ -218,7 +226,7 @@ def turnValveOff() {
             if(state.valveTryOff > maxTriesOff) {
                 log.warn "${valveDevice} didn't close after ${maxTriesOff} tries."
                 state.msg = "${valveDevice} didn't close after ${maxTriesOff} tries. Please CHECK device."
-                if(sendPushMessage) pushHandler()
+                if(sendTroublePushMessage) pushHandler()
                 resetTrys()
             }
         } else {
@@ -230,7 +238,7 @@ def turnValveOff() {
                 resetTrys()
 			}
 			if ((!state.canWater && sendSafetyPushMessage == true) || (state.canWater)) {
-            	if(sendPushMessage) pushHandler()
+            	if(sendInfoPushMessage) pushHandler()
                 resetTrys()
 			}
         }
@@ -305,7 +313,7 @@ def pushHandler(){
 	theMessage = "${app.label} - ${state.msg}"
 	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
-	state.msg = ""
+    state.msg = ""
 }
 
 // ********** Normal Stuff **********
@@ -357,25 +365,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
