@@ -37,8 +37,9 @@
  *
  *  Changes:
  *
- *  V1.0.1 - 06/10/20 - Lots of changes to match app
- *  V1.0.0 - 05/25/20 - Initial release
+ *  1.0.2 - 06/15/20 - Added capability IlluminanceMeasurement - @rvrolyk
+ *  1.0.1 - 06/10/20 - Lots of changes to match app
+ *  1.0.0 - 05/25/20 - Initial release
  */
 
 metadata {
