@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/WP-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.1.0"
+			"version": "2.1.1"
 		}
 	],
 	"drivers" : [	
