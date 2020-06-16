@@ -48,7 +48,8 @@ metadata {
         capability "Contact Sensor"
         capability "Motion Sensor"
         capability "Water Sensor"
-        
+        capability "IlluminanceMeasurement"
+
         command "clearData"
         command "virtualAverage", ["string"]
         command "todaysHigh", ["string"]

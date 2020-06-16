@@ -298,6 +298,7 @@ def averageHandler(evt) {
         numOfDev = 0
         state.low = false
         state.high = false
+        floatingPoint = false
         
         theDevices.each { it ->
             if(logEnable) log.debug "In averageHandler - working on ${it} - ${attrib}"
@@ -314,7 +315,9 @@ def averageHandler(evt) {
         if(totalNum == 0 || totalNum == null) {
             state.theAverage = 0
         } else {
-            state.theAverage = (totalNum / numOfDev).toDouble().round(1)
+            state.theAverage = floatingPoint
+                ? (totalNum / numOfDev).toDouble().round(1)
+                : (totalNum / numOfDev).toDouble().round()
         }
         
         todaysHigh = dataDevice.currentValue("todaysHigh")
