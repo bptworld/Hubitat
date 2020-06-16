@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.2 - 06/16/20 - More changes. Make sure to reinput your Switches.
  *  2.1.1 - 06/15/20 - Fixed 'Control Switch'
  *  2.1.0 - 06/15/20 - Added 'Control Switch'
  *  2.0.9 - 06/13/20 - Minor adjustments, error catching
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Web Pinger"
-	state.version = "2.1.1"
+	state.version = "2.1.2"
 }
 
 definition(
@@ -104,7 +105,7 @@ def pageConfig() {
         }
     
         section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) ON if URL is not available, OFF if everything is good.")) {
-            input "switches", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
+            input "switches1", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) OFF if URL is not available, ON if everything is good.")) {
@@ -113,7 +114,7 @@ def pageConfig() {
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
             input(name: "resetSwitches", type: "bool", defaultValue: false, title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: true)
-            if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds)", type: "number", required: true, defaultValue:60)
+            if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds) even if website is still down", type: "number", required: true, defaultValue:60)
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
@@ -123,9 +124,9 @@ def pageConfig() {
 				input "message", "text", required: true, title: "Message to Push"
 			}
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", title: "Enable Debug Logging", description: "debug", defaultValue: false
 		}
 		display2()
 	}
@@ -183,43 +184,45 @@ def pollHandler(evt) {
             uri: "http://${state.website}",
             timeout: 30
     	]
-    	if (state.validURL) {
+    	if(state.validURL) {
     		try {
         		httpGet(reqParams) { resp ->
-					if(logEnable) log.debug "In pollHandler - Response was ${resp.status}"
+                    if(logEnable) log.debug "In pollHandler (${state.version}) - Response was ${resp.status}"
             		if (resp.status == 200) {
-                		if (state.downHost) {
-            				if(switches) turnOffHandler()
-                            if(switches2) turnOnHandler()
-                    		if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}"
+                		if(state.downHost) {
+                            if(logEnable) log.debug "In pollHandler - Successful response (${resp.status}) from ${state.website} - Live Again!"
+                            state.downHost = false
+		                    state.pollVerify = false
+            				if(switches1) turnOffHandler()
+                            if(switches2) turnOnHandler() 
                 		} else {
-							if(switches) turnOffHandler()
+                            if(logEnable) log.debug "In pollHandler - Successful response (${resp.status}) from ${state.website} - All Good"
+                            state.downHost = false
+		                    state.pollVerify = false
+							if(switches1) turnOffHandler()
                             if(switches2) turnOnHandler()
-                    		if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}"
                 		}
             		} else { 
-            			if (!state.downHost) {
-                			if (!state.pollVerify) {
+            			if(!state.downHost) {
+                			if(!state.pollVerify) {
+                                if(logEnable) log.debug "In pollHandler - Request failed (${resp.status}) to ${state.website}, running pollVerify in ${threshold} minutes"
+                                state.pollVerify = true
         						runIn(60*threshold, pollVerify)
-            					state.pollVerify = true
             				}
-                			if(logEnable) log.debug "Request failed (${resp.status}) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
                 		} else {
-                			if(logEnable) log.debug "pollVerify already called"
+                			if(logEnable) log.debug "In pollHandler - pollVerify already called"
                 		}
             		}
         		}
     		} catch (e) {
         		if (!state.downHost) {
         			if (!state.pollVerify) {
-        				runIn(60*threshold, pollVerify)
-            			state.pollVerify = true
+                        state.pollVerify = true
+                        if(logEnable) log.debug "In pollHandler - err - Request failed (NO status code) to ${state.website}, running pollVerify in ${threshold} minutes"
+        				runIn(60*threshold, pollVerify)          			
             		}
-            		if(logEnable) log.debug "Request failed (NO status code) to ${state.website}, calling pollVerify with a ${threshold} minute threshold"
         		} else {
-                    if(switches) turnOnHandler()
-                    if(switches2) turnOffHandler()
-           			if(logEnable) log.debug "pollVerify already called"
+           			if(logEnable) log.debug "In pollHandler - err - pollVerify already called"
         		}
     		}
     	}
@@ -239,75 +242,39 @@ def pollVerify() {
 	]
     	try {
         	httpGet(reqParams) { resp ->
-				if(logEnable) log.debug "In pollVerify - Response was ${resp.status}"
+				if(logEnable) log.debug "In pollVerify (${state.version}) - Response was ${resp.status}"
             	if (resp.status == 200) {
+                    if(logEnable) log.debug "In pollVerify - Successful response (${resp.status}) from ${state.website}, false alarm avoided"
                 	state.downHost = false
                 	state.pollVerify = false
-                	if(switches) turnOffHandler()
+                	if(switches1) turnOffHandler()
                     if(switches2) turnOnHandler()
-                	if(logEnable) log.debug "Successful response (${resp.status}) from ${state.website}, false alarm avoided"
             	} else {
+                    if(logEnable) log.debug "In pollVerify - Request failed (${resp.status}) to ${state.website} - Verified"
             		state.downHost = true
                 	state.pollVerify = false
-            		if(switches) turnOnHandler()
+            		if(switches1) turnOnHandler()
                     if(switches2) turnOffHandler()
-                	if(logEnable) log.debug "Request failed (${resp.status}) to ${state.website}"
             	}
         	}
     	} catch (e) {
         	state.downHost = true
         	state.pollVerify = false
-        	if(switches) turnOnHandler()
+        	if(switches1) turnOnHandler()
             if(switches2) turnOffHandler()
             if(sendPushMessage) pushNow()
-        	if(logEnable) log.debug "Request failed to ${state.website}"
+        	if(logEnable) log.debug "In pollVerify - err - Request failed to ${state.website} - Verified"
     	}
 }
 
 def turnOnHandler() {
-	if (switches) {
-        switches.each{ s1 ->
-            theStatus = s1.currentValue("switch")
-    	    if(theStatus == "off") s1.on()
-            if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning on ${s1}"
-        }
-        
-        if(resetSwitches) {
-            rTime = resetTime * 1000
-            pauseExecution(rTime)
-            switches.each{ rs1 ->
-                theStatus = rs1.currentValue("switch")
-                if(theStatus == "on") rs1.off()
-                if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning off ${rs1}"
-            }
-        }
-   	}
-    
-    if (switches2) {
-    	switches2.each{ s2 ->
-            theStatus = s2.currentValue("switch")
-    	    if(theStatus == "off") s2.on()
-            if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning on ${s2}"
-        }
-		
-        if(resetSwitches) {
-            rTime = resetTime * 1000
-            pauseExecution(rTime)
-            switches2.each{ rs2 ->
-                theStatus = rs2.currentValue("switch")
-                if(theStatus == "on") rs2.off()
-                if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning off ${rs2}"
-            }
-        }
-   	}
-}
-
-def turnOffHandler() {
-    if (switches1) {
+	if(switches1) {
         switches1.each{ s1 ->
             theStatus = s1.currentValue("switch")
-    	    if(theStatus == "on") s1.off()
-            if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning off ${s1}"
+            if(theStatus == "off") {
+                s1.on()
+                if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning on ${s1}"
+            }
         }
         
         if(resetSwitches) {
@@ -315,17 +282,21 @@ def turnOffHandler() {
             pauseExecution(rTime)
             switches1.each{ rs1 ->
                 theStatus = rs1.currentValue("switch")
-                if(theStatus == "off") rs1.on()
-                if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning on ${rs1}"
+                if(theStatus == "on") {
+                    rs1.off()
+                    if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning off ${rs1}"
+                }
             }
         }
    	}
     
-    if (switches2) {
+    if(switches2) {
     	switches2.each{ s2 ->
             theStatus = s2.currentValue("switch")
-    	    if(theStatus == "on") s2.off()
-            if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning off ${s2}"
+            if(theStatus == "off") {
+                s2.on()
+                if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning on ${s2}"
+            }
         }
 		
         if(resetSwitches) {
@@ -333,15 +304,63 @@ def turnOffHandler() {
             pauseExecution(rTime)
             switches2.each{ rs2 ->
                 theStatus = rs2.currentValue("switch")
-                if(theStatus == "off") rs2.on()
-                if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning on ${rs2}"
+                if(theStatus == "on") {
+                    rs2.off()
+                    if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning off ${rs2}"
+                }
+            }
+        }
+   	}
+}
+
+def turnOffHandler() {
+    if(switches1) {
+        switches1.each{ s1 ->
+            theStatus = s1.currentValue("switch")
+            if(theStatus == "on") {
+                s1.off()
+                if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning off ${s1}"
+            }
+        }
+        
+        if(resetSwitches) {
+            rTime = resetTime * 1000
+            pauseExecution(rTime)
+            switches1.each{ rs1 ->
+                theStatus = rs1.currentValue("switch")
+                if(theStatus == "off") {
+                    rs1.on()
+                    if(logEnable) log.debug "In turnOnHandler - Switches 1 - Resetting - Turning on ${rs1}"
+                }
+            }
+        }
+   	}
+    
+    if(switches2) {
+    	switches2.each{ s2 ->
+            theStatus = s2.currentValue("switch")
+            if(theStatus == "on") {
+                s2.off()
+                if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning off ${s2}"
+            }
+        }
+		
+        if(resetSwitches) {
+            rTime = resetTime * 1000
+            pauseExecution(rTime)
+            switches2.each{ rs2 ->
+                theStatus = rs2.currentValue("switch")
+                if(theStatus == "off") {
+                    rs2.on()
+                    if(logEnable) log.debug "In turnOnHandler - Switches 2 - Resetting - Turning on ${rs2}"
+                }
             }
         }
     }
 }
 
 def pushNow(){
-	if(logEnable) log.debug "In pushNow - Sending message"
+	if(logEnable) log.debug "In pushNow (${state.version}) - Sending message"
 	if(state.downHost) {
 		sendPushMessage.deviceNotification(message)
 	}	
