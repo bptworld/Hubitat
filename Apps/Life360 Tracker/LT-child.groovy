@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.7 - 06/18/20 - Major Changes. Going at it a different way
  *  2.0.6 - 04/27/20 - Cosmetic changes
  *  2.0.5 - 12/10/19 - Minor bug fixes
  *  2.0.4 - 11/23/19 - More code adjustments
@@ -49,9 +50,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.0.6"
+	state.version = "2.0.7"
 }
 
 definition(
@@ -75,7 +79,7 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "pageConfig", title: "", nextPage: null, install: true, uninstall: true) {
-		display() 
+		display()        
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
     		paragraph "Track your Life360 users. Works with the user Life360 with States app."
@@ -87,43 +91,37 @@ def pageConfig() {
     if(presenceDevice) {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Place Tracking")) {
             paragraph "This will track the coming and going of places."
-            input "trackingOptions", "enum", title: "How to track Places", options: ["Track All","Track Specific"], required:true, submitOnChange:true
-            if(trackingOptions == "Track Specific") {
-                paragraph "This will combine your Starred Places from Life360 and any 'My Places' created in the Life360 Parent app."
-                savedPlacesTemp = presenceDevice.currentValue("savedPlaces")
-                if(savedPlacesTemp) state.lPlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
-                buildMyPlacesList()
-                state.allPlaces = [state.lPlaces, state.myPlacesList].flatten().findAll{it} 
-                state.thePlaces = "${state.allPlaces}".replace("[","").replace("]","").replace("]","").replace(" ,", ",").replace(", ", ",")
-                //if(logEnable) log.debug "In pageConfig - Free - thePlaces: ${state.thePlaces}"
-                
-                state.values = "${state.thePlaces}".split(",")
-                //if(logEnable) log.debug "In pageConfig - values: ${state.values}"
-                input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple:true, required:true, submitOnChange:true
-                input "oG1List", "bool", defaultValue: false, title: "Show a list view of Specific Places?", description: "List View", submitOnChange:true
-                if(oG1List) {
-                    def valuesG1 = "${trackSpecific}".split(",")
-			        listMapG1 = ""
-    			    valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
-				    paragraph "${listMapG1}".replace("[","").replace("]","")
-                }
+            paragraph "This will combine your Starred Places from Life360 and any 'My Places' created in the Life360 Parent app."
+            savedPlacesTemp = presenceDevice.currentValue("savedPlaces")
+            if(savedPlacesTemp) state.lPlaces = presenceDevice.currentValue("savedPlaces").replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")
+            buildMyPlacesList()
+            
+            state.allPlaces = [state.lPlaces, state.myPlacesList].flatten().findAll{it} 
+            state.thePlaces = "${state.allPlaces}".replace("[","").replace("]","").replace(" ,", ",").replace(", ", ",")               
+            state.values = "${state.thePlaces}".split(",")
+            
+            input "trackSpecific", "enum", title:"Life360 Places", options: state.values, multiple:true, required:true, submitOnChange:true
+            input "oG1List", "bool", defaultValue: false, title: "Show a list view of Specific Places?", description: "List View", submitOnChange:true
+            if(oG1List) {
+                def valuesG1 = "${trackSpecific}".split(",")
+                listMapG1 = ""
+                valuesG1.each { itemG1 -> listMapG1 += "${itemG1}<br>" }
+                paragraph "${listMapG1}".replace("[","").replace("]","")
             }
-            if(trackingOptions == "Track All") {
-                paragraph "Tracking all places"
-            }
-            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes, range 2 to 10)", required:true, submitOnChange:true, defaultValue: 2, range: '2..10'
+            
+            input "timeConsideredHere", "number", title: "Time to be considered at a Place (in Minutes, range 1 to 10)", required:true, submitOnChange:true, defaultValue: 2, range: '1..10'
         }
         
 // *** Home ***            
         section(getFormat("header-green", "${getImage("Blank")}"+" Home")) {    
-            paragraph "'Home' is a unique place in Life360 and with Automation. For most us we want things to happen as soon as possible.  With this app, one needs to be at a Place for at least 2 minutes before it will trigger things. This is to stop false alarms and to be sure we are not just passing by.  But with 'Home' sometimes things should work different..."
-            input(name: "homeDelay", type: "bool", defaultValue: "false", title: "Should Tracker announce when you arrive at 'Home', after the 2 minute wait? (off='No', on='Yes')", description: "Home Wait", submitOnChange: "true")
+            paragraph "'Home' is a unique place in Life360 and with Automation. For most us we want things to happen as soon as possible.  With this app, one needs to be at a Place for at least 1 minute before it will trigger things. This is to stop false alarms and to be sure we are not just passing by.  But with 'Home' sometimes things should work different..."
+            input "homeDelayed", "bool", defaultValue:false, title: "Should Tracker announce when you arrive at 'Home', after the 1 minute wait? (off='No', on='Yes')", description: "Home Wait", submitOnChange:true
             paragraph "<small>This is useful if you have another app announcing when you are home, like 'Welcome Home'</small>"
-            input(name: "homeNow", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange: "true")
+            input "homeNow", "bool", defaultValue:false, title: "Should Tracker announce when the User arrives at 'Home', with NO wait? (off='No', on='Yes')", description: "Home Instant", submitOnChange:true
             paragraph "<small>This will give a nice heads up that someone is home. But can be a false alarm if they are just driving by.</small>"
-            input(name: "homeDepartedDelayed", type: "bool", defaultValue: "false", title: "Should Tracker announce when the User departs from 'Home', after a 2 minute delay? (off='No', on='Yes')", description: "Delayed Home Depart", submitOnChange: "true")
+            input "homeDepartedDelayed", "bool", defaultValue:false, title: "Should Tracker announce when the User departs from 'Home', after a 1 minute delay? (off='No', on='Yes')", description: "Delayed Home Depart", submitOnChange:true
             paragraph "<small>This will give a heads up that someone has departed home. But help with false announcements.</small>"
-            input(name: "homeDeparted", type: "bool", defaultValue: "false", title: "Should Tracker announce right away, when the User departs from 'Home'? (off='No', on='Yes')", description: "Home Depart", submitOnChange: "true")
+            input "homeDeparted", "bool", defaultValue:false, title: "Should Tracker announce right away, when the User departs from 'Home'? (off='No', on='Yes')", description: "Home Depart", submitOnChange:true
             paragraph "<small>This will give a heads up that someone has departed home. As soon as it is detected.</small>"
             paragraph "Note: Home options will only work if you have the Speak or Push when 'Has arrived'and/or 'Has departed' switch in Message Options turned on."
         }
@@ -173,8 +171,21 @@ def pageConfig() {
     			values.each { item -> listMapMove += "${item}<br>"}
 				paragraph "${listMapMove}"
 			}
+            
+            if(speakOnTheMove || pushOnTheMove || historyOnTheMove) {
+                paragraph "If someone stops at a place this app isn't tracking, a message will be spoken."
+                input "messageMOVEStopped", "text", title: "Random Message to be spoken when <b>'on the move' but Stopped</b> - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange: true, defaultValue: "%name% has stopped near %place%"
+                input "moveSMsgList", "bool", defaultValue:false, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
+                if(moveSMsgList) {
+                    def valuesS = "${messageMOVEStopped}".split(";")
+                    listMapMoveS = ""
+                    valuesS.each { item -> listMapMoveS += "${item}<br>"}
+                    paragraph "${listMapMoveS}"
+                }
+            }
+            
             paragraph "<hr>"
-            input(name: "historyMap", type: "bool", defaultValue: "false", title: "Add Map Link to History message?", description: "History Map", submitOnChange: true)
+            input "historyMap", "bool", defaultValue:false, title: "Add Map Link to History message?", description: "History Map", submitOnChange:true
             paragraph "<small>This will put a clickable map link on the dashboard history tile for each place.</small>"
             if(speakOnTheMove || pushOnTheMove || historyOnTheMove) paragraph "<hr>"
         }
@@ -187,32 +198,9 @@ def pageConfig() {
 		}
         if(speakHasArrived || speakHasDeparted || speakOnTheMove) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) {
-                paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-               input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required:false, multiple:true, submitOnChange:true
-               input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required:false, multiple:true, submitOnChange:true
-               paragraph "This app supports speaker proxies like, 'Follow Me'. This allows all speech to be controlled by one app. Follow Me features - Priority Messaging, volume controls, voices, sound files and more!"
-               input "speakerProxy", "bool", defaultValue: "false", title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange:true
-            }
-            if(!speakerProxy) {
-                if(speakerMP || speakerSS) {
-		            section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		                paragraph "NOTE: Not all speakers can use volume controls.", width:8
-                        paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                        input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
-		                input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
-                        input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-		    	        if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
-    	    	        if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
-                    }
-		        }
-		        section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-                    input "fromTime", "time", title: "From", required:false, width: 6
-        	        input "toTime", "time", title: "To", required:false, width: 6
-		        }
-            } else {
-                section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
-		            paragraph "Speaker proxy in use."
-                }
+                paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
+                input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+                if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
             }
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
@@ -221,9 +209,9 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
             href "alertsConfig", title: "Alerts", description: "Phone Battery - Places Not Allowed"
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Debugging")
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging"
 		}
     }
 		display2()
@@ -239,21 +227,21 @@ def alertsConfig() {
             paragraph "<hr>"
             paragraph "<b>Battery Alert</b><br>If Battery is too low and not Charging, send Alert"
             input "alertBatt", "number", title: "At what percentage of battery life to Alert (range 0 to 100)", description: "0-100", required: false, range: '0..100'
-            input(name: "speakAlertsBatt", type: "bool", defaultValue: "false", title: "Speak on Alert", description: "Speak On Alert", width:6)
-            input(name: "pushAlertsBatt", type: "bool", defaultValue: "false", title: "Push on Alert", description: "Push On Alert", width:6)
+            input "speakAlertsBatt", "bool", defaultValue:false, title: "Speak on Alert", description: "Speak On Alert", width:6
+            input "pushAlertsBatt", "bool", defaultValue:false, title: "Push on Alert", description: "Push On Alert", width:6
             input "messageAlertBatt", "text", title: "Random Message to be spoken when <b>'Alert - Battery'</b> - Separate each message with <b>;</b> (semicolon)",  required: true, defaultValue: "%name%'s phone battery (%battery%) needs charging"
             paragraph "<hr>"
             paragraph "<b>Places Warning</b> - Sometimes there are Places one should not go."
             input "trackSpecific2", "enum", title:"Warn when at these Places", options: state.values, multiple: true, required:false
-            input(name: "speakHasArrived2", type: "bool", defaultValue: "false", title: "Speak when 'Has arrived'", description: "Speak Has Arrived", width: 4)
-            input(name: "pushHasArrived2", type: "bool", defaultValue: "false", title: "Push when 'Has arrived'", description: "Push Has Arrived", width: 4)
-            input(name: "historyHasArrived2", type: "bool", defaultValue: "false", title: "Log History when 'Has arrived'", description: "History Has arrived", width: 4)
+            input "speakHasArrived2", "bool", defaultValue:false, title: "Speak when 'Has arrived'", description: "Speak Has Arrived", width: 4
+            input "pushHasArrived2", "bool", defaultValue:false, title: "Push when 'Has arrived'", description: "Push Has Arrived", width: 4
+            input "historyHasArrived2", "bool", defaultValue:false, title: "Log History when 'Has arrived'", description: "History Has arrived", width: 4
 			input "messageAT2", "text", title: "Random Message to be spoken when <b>'has arrived'</b> at a place - Separate each message with <b>;</b> (semicolon)", required: true, defaultValue: "%name% has arrived at %place% but should NOT be there"
             
-			input(name: "speakHasDeparted2", type: "bool", defaultValue: "false", title: "Speak when 'Has departed'", description: "Speak Has departed", width: 4)
-            input(name: "pushHasDeparted2", type: "bool", defaultValue: "false", title: "Push when 'Has departed'", description: "Push Has departed", width: 4)
-            input(name: "historyHasDeparted2", type: "bool", defaultValue: "false", title: "Log History when 'Has departed'", description: "History Has departed", width: 4)
-			input "messageDEP2", "text", title: "Random Message to be spoken when <b>'has departed'</b> at a place - Separate each message with <b>;</b> (semicolon)", required: true, defaultValue: "%name% has departed %place% but should NOT have been there"
+			input "speakHasDeparted2", "bool", defaultValue:false, title: "Speak when 'Has departed'", description: "Speak Has departed", width: 4
+            input "pushHasDeparted2", "bool", defaultValue:false, title: "Push when 'Has departed'", description: "Push Has departed", width: 4
+            input "historyHasDeparted2", "bool", defaultValue:false, title: "Log History when 'Has departed'", description: "History Has departed", width: 4
+			input "messageDEP2", "text", title: "Random Message to be spoken when <b>'has departed'</b> a place - Separate each message with <b>;</b> (semicolon)", required: true, defaultValue: "%name% has departed %place% but should NOT have been there"
             paragraph "<hr>"
 		}
 	}
@@ -273,513 +261,399 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    subscribe(presenceDevice, "lastLocationUpdate", userHandler)
+    subscribe(presenceDevice, "address1", userHandler)
 }
 
 def userHandler(evt) {
-    if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - App version: ${state.version} ----------"
+    if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - ${state.version} ----------"
     whereAmI()
-    
-    if(trackSpecific2 == null){trackSpecific2 = "None selected"}
-    if(logEnable) log.debug "In userHandler (${state.version}) - address1Value: ${state.address1Value} - prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere}"
     alertBattHandler()
+    
+    state.match = false
+    state.placeToMatch = ""
+    if(trackSpecific2 == null) trackSpecific2 = "NoData"
+    
+    trackSpecific2.each { it ->
+        if(it == state.address1Value) {
+            state.match = true
+            placeNotAllowedHandler(it) 
+        }
+    } 
 
-    if(state.address1Value == "Home" || state.prevPlace == "Home" || state.delayDepHome == "yes") {
-        if(logEnable) log.debug "In UserHandler (${state.version}) - Going to trackHomeHandler  *******" 
-        trackHomeHandler()
-    } else if(trackSpecific2.contains(state.address1Value)) {
-        if(logEnable) log.debug "In UserHandler (${state.version}) - Going to placeNotAllowedHandler  *******"
-        placeNotAllowedHandler()
-    } else {
-        if(logEnable) log.debug "In UserHandler (${state.version}) - Going to trackingHandler  *******"
- 
-        if(state.address1Value == state.prevPlace) arrivalHandler()
-        if(state.address1Value != state.prevPlace) departureHandler()
+    trackSpecific.each { it ->
+        if(it == state.address1Value) {
+            if(it.toLowerCase() == "home") {
+                state.match = true
+                homeArrivedHandler(it)
+            } else {
+                state.match = true
+                arrivedHandler(it) 
+            }
+        } else if(it == state.address1Prev) {
+            if(it.toLowerCase() == "home") {
+                state.match = true
+                homeDepartedHandler(it)
+            } else {
+                state.match = true
+                departedHandler(it) 
+            }
+        }
     }
-    if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - App version: ${state.version} ----------"
+
+    if(state.match == false) {
+        if(logEnable) log.debug "In userHandler - No Match Found, Going to movingHandler - match: ${state.match}"
+        movingHandler(state.address1Value)
+    }
+     
+    if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - ${state.version} ----------"
 }
 
-// *** Tracking ***
+// Start Tracking
 
-def arrivalHandler() {
-    if(logEnable) log.debug "In arrivalHandler (${state.version})"
-    getTimeDiff()
+def arrivedHandler(aPlace) {
+    if(logEnable) log.debug "********* In arrivedHandler (${state.version}) *********"
+    if(aPlace == null) aPlace = state.address1Value
+    msg = ""
+    
+    if(logEnable) log.debug "In arrivedHandler - ${friendlyName} is near ${aPlace}"
     int timeHere = timeConsideredHere * 60
-    def where = "arrival"
-    
-    if(logEnable) log.debug "In arrivalHandler - ${friendlyName} is at ${state.address1Value}"
-    if(state.tDiff >= timeHere) {
-        if(logEnable) log.debug "In arrivalHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
-        if(state.beenHere == "no") {
-            if(logEnable) log.debug "In arrivalHandler - ${friendlyName} has arrived at ${state.address1Value}"
-            if(trackingOptions == "Track Specific") {
-                if(logEnable) log.debug "In arrivalHandler - using Track Specific"
-                trackSpecific.each { it ->
-                    if(it == state.address1Value) {
-                        if(logEnable) log.debug "In arrivalHandler - Track Specific - Match Found!"
-                        msg = "${messageAT}"
-                        state.lastKnownPlace = state.address1Value
-                    }
-                }
-            } else {        
-                if(logEnable) log.debug "In arrivalHandler - using Track All"
-                msg = "${messageAT}"
-            }
-        } else {
-            if(logEnable) log.debug "In arrivalHandler - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs - beenHere: ${state.beenHere}"
-        }
-        if(msg) messageHandler(where,msg)
+    getTimeDiff()
+    def theTimeDiff = timeDiff
+    if(logEnable) log.debug "In arrivedHandler - timeDiff: ${theTimeDiff} vs timeHere: ${timeHere}" 
+    if(timeDiff >= timeHere) {
+        if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
+        msg = "${messageAT}"
+        where = "arrived"
+        messageHandler(where,msg,aPlace)
         if(isDataDevice) isDataDevice.on()
-        state.beenHere = "yes"
-        if(logEnable) log.debug "In arrivalHandler - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
-    } else {  // ***  state.tDiff is NOT GREATER THAN timeHere ***
-        if(logEnable) log.debug "In arrivalHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere} - beenHere: ${state.beenHere}"
+        state.sMove = null
+    } else {  // ***  timeDiff is NOT GREATER THAN timeHere ***
+        if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS NOT greater than: ${timeHere}"
         if(isDataDevice) isDataDevice.off()
-        state.beenHere = "no"
-        if(logEnable) log.debug "In arrivalHandler - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}" 
+        runIn(30, arrivedHandler, [overwrite: false]) 
     }
-    state.justDEP = "no"
-    state.prevPlace = state.address1Value
+    if(logEnable) log.debug "********* In arrivedHandler - End *********"
 }
 
-def departureHandler() {
-    if(logEnable) log.debug "In departureHandler (${state.version})"
-    def where = "departure"
+def departedHandler(dPlace) {
+    if(logEnable) log.debug "********* In departedHandler (${state.version}) *********"
+    if(dPlace == null) dPlace = state.address1Prev
+    msg = ""
     
-    if(logEnable) log.debug "In departureHandler - address1: ${state.address1Value} DOES NOT MATCH prevPlace: ${state.prevPlace} - beenHere: ${state.beenHere}"
-        
-    if(state.beenHere == "yes") {
-        if(trackingOptions == "Track Specific") {
-            trackSpecific.each { it ->
-                if(it == state.lastKnownPlace) {
-                    if(logEnable) log.debug "In departureHandler - using Track Specific - Match Found!"
-                    msg = "${messageDEP}"
-                    if(logEnable) log.debug "In departureHandler - Track Specific - ${friendlyName} has departed from ${state.lastKnownPlace}"
-                }
-            }
-        } else {        
-            if(logEnable) log.debug "In departureHandler - Track All - ${friendlyName} has departed from ${state.prevPlace}"
-            msg = "${messageDEP}" 
-        }
-        if(msg) messageHandler(where,msg)
-        state.justDEP = "yes"
-        state.beenHere = "no"
-        state.lastKnownPlace = ""
-    } else {
-        movingHandler()
-    }
-    state.prevPlace = state.address1Value
+    if(logEnable) log.debug "In departedHandler - ${friendlyName} has departed from ${dPlace}"
+    where = "departed"
+    msg = "${messageDEP}"
+    messageHandler(where,msg,dPlace)
+    if(isDataDevice) isDataDevice.off()
+    if(logEnable) log.debug "********* In departedHandler - End *********"
 }
 
-def movingHandler() {
+def movingHandler(mPlace) {
+    if(logEnable) log.debug "********* In movingHandler (${state.version}) *********"
     if(!timeMove) timeMove = 5
     int timeMoving = timeMove * 60
-    def where = "moving"
+    if(mPlace == null) mPlace = state.address1Value
+    msg = ""
     
-        if(state.sMove == null) {
-            def now = new Date()
-            long startMove = now.getTime()
-            state.sMove = startMove
-            if(logEnable) log.debug "In movingHandler - Time Moving: ${now} - sMove: ${state.sMove}"
+    getTimeMoving()   
+    if(logEnable) log.debug "In arrivedHandler - movingDiff: ${movingDiff} vs timeMoving: ${timeMoving}" 
+    if(movingDiff >= timeMoving) {
+        state.sMove = null
+        if(state.movePrevPlace == mPlace) {
+            if(logEnable) log.debug "In movingHandler - ${friendlyName} has stopped near ${mPlace}"
+            msg = "${messageMOVEStopped}"
+            where = "moving"
+            messageHandler(where,msg,mPlace)
+            state.movePrevPlace = mPlace
+        } else {           
+            msg = "${messageMOVE}"
+            where = "moving"
+            messageHandler(where,msg,mPlace)
+            if(logEnable) log.debug "In movingHandler - ${friendlyName} is near ${mPlace}"
         }
-        if(state.justDEP == "no") {
-            getTimeMoving()
-            if(state.mDiff >= timeMoving) {
-                if(logEnable) log.debug "In movingHandler - ${friendlyName} is on the move near ${state.address1Value}"
-                msg = "${messageMOVE}"
-                messageHandler(where,msg)
-                state.beenHere = "no"
-                def now = new Date()
-                long startMove = now.getTime()
-                state.sMove = startMove
-                if(logEnable) log.debug "In movingHandler - Time Moving: ${now} - sMove: ${state.sMove}"
-            } else {
-                if(logEnable) log.debug "In movingHandler - ${friendlyName} has been on the move less than ${timeMove} minutes but is near ${state.address1Value}"   
-            }
-        } else {
-            state.justDEP = "no"
-            if(logEnable) log.debug "In movingHandler - ${friendlyName} has just departed so skipping first move notice, but is near ${state.address1Value}"
-        }
-     
+    } else {
+        if(logEnable) log.debug "In movingHandler - ${friendlyName} has been here less than ${timeMove} minutes but is near ${mPlace}"
+        if(state.movePrevPlace == null) { state.movePrevPlace = mPlace }
+    }     
     if(isDataDevice) isDataDevice.off()
-    state.beenHere = "no"
-    if(logEnable) log.debug "In movingHandler (${state.version}) - End of Departed/Move - beenHere: ${state.beenHere}"
+    if(logEnable) log.debug "********* In movingHandler - End *********"
 }
 
 // *** Track Home ***
 
-def trackHomeHandler() {
-    if(logEnable) log.debug "In trackHomeHandler (${state.version})"
-    getTimeDiff()
-    int timeHere = timeConsideredHere * 60
-    if(!timeMove) timeMove = 5
-    int timeMoving = timeMove * 60
+def homeArrivedHandler(haPlace) {
+    if(logEnable) log.debug "********* In homeArrivedHandler (${state.version}) *********"
+    if(haPlace == null) haPlace = "home"
+    msg = ""
     
-    if(state.address1Value == "Home") {
-        if((homeNow) && (state.beenHere == "no")) {
-            if(logEnable) log.debug "In trackHomeHandler - Home Now (beenHere: ${state.beenHere}) - ${friendlyName} has arrived at ${state.address1Value}"
-            where = "aHome"
+    if(homeNow) {
+        if(logEnable) log.debug "In homeArrivedHandler - Home Now - ${friendlyName} has arrived at ${haPlace}"
+        msg = "${messageAT}"
+        where = "HomeArrived"
+        messageHandler(where,msg,haPlace)
+        if(isDataDevice) isDataDevice.on()
+    } else if(homeDelayed) {
+        getTimeDiff()
+        if(timeDiff >= 60) {
+            if(logEnable) log.debug "In homeArrivedHandler - Home Delay - ${friendlyName} has arrived at ${haPlace}"
             msg = "${messageAT}"
-            messageHandler(where,msg)
+            where = "HomeArrived"
+            messageHandler(where,msg,haPlace)
             if(isDataDevice) isDataDevice.on()
-            state.beenHere = "yes"
         } else {
-            if(logEnable) log.debug "In trackHomeHandler - Home Now (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
-        }
-        
-        if((homeDelay) && (state.tDiff > timeHere) && (state.beenHere == "no")) {
-            if(logEnable) log.debug "In trackHomeHandler - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has arrived at ${state.address1Value}"
-            where = "aHome"
-            msg = "${messageAT}"
-            messageHandler(where,msg)
-            if(isDataDevice) isDataDevice.on()
-            state.beenHere = "yes"
-        } else {
-            if(logEnable) log.debug "In trackHomeHandler - Home Delay (beenHere: ${state.beenHere}) - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+            if(logEnable) log.debug "In homeArrivedHandler - ${friendlyName} arrived Home less than ${timeHere} minute(s) ago"
+            runIn(30, homeArrivedHandler, [overwrite: false])
         }
     }
+    if(logEnable) log.debug "********* In homeArrivedHandler - End *********"
+}
+
+def homeDepartedHandler(daPlace) {
+    if(logEnable) log.debug "********* In homeDepartedHandler (${state.version}) *********"
+    if(daPlace == null) daPlace = "home"
+    msg = ""
     
-    if(state.address1Value != "Home") {
-        if((homeDeparted) && (state.prevPlace == "Home") && (state.beenHere == "yes")) {
-            if(homeDeparted) {
-                if(logEnable) log.debug "In trackHomeHandler - Home Departed - ${friendlyName} has departed from ${state.prevPlace}"
-                where = "dHome"
-                msg = "${messageDEP}"
-                state.justDEP = "yes"
-                messageHandler(where,msg)
-                state.beenHere = "no"
-            }
-        } else if(homeDepartedDelay) {
-            // Announce AFTER 2 minutes has elapsed
-            if(state.sMove == null) {
-                def now = new Date()
-                long startMove = now.getTime()
-                state.sMove = startMove
-                if(logEnable) log.debug "In trackHomeHandler - Time Moving: ${now} - sMove: ${state.sMove}"
-            } 
-            getTimeMoving()
-            if(state.mDiff >= 2) {
-                if(logEnable) log.debug "In trackHomeHandler - ${friendlyName} has departed Home over 2 minutes ago and is on the move near ${state.address1Value}"
-                where = "dHome"
-                msg = "${messageDEP}"
-                state.justDEP = "yes"
-                messageHandler(where,msg)
-                state.beenHere = "no"
-                state.delayDepHome = "no"
-            } else {
-                if(logEnable) log.debug "In trackHomeHandler - ${friendlyName} departed Home less than 2 minutes ago but is near ${state.address1Value}"
-                state.delayDepHome = "yes"
-            }
+    if(homeDeparted) {
+        if(logEnable) log.debug "In homeDepartedHandler - Home Departed - ${friendlyName} has departed from ${daPlace}"
+        msg = "${messageDEP}"
+        where = "HomeDeparted"
+        messageHandler(where,msg,daPlace)
+    } else if(homeDepartedDelayed) {
+        getTimeMoving()      
+        if(logEnable) log.debug "In homeDepartedHandler - movingDiff: ${movingDiff}"
+        if(movingDiff >= 60) {
+            if(logEnable) log.debug "In homeDepartedHandler - ${friendlyName} has departed Home over 1 minute ago and is on the move near ${daPlace}"
+            msg = "${messageDEP}"
+            where = "HomeDeparted"
+            messageHandler(where,msg,daPlace)
         } else {
-           if(logEnable) log.debug "In trackHomeHandler - Home Departed (beenHere: ${state.beenHere}) - Previous Place: ${state.prevPlace} - Home Departed: ${homeDeparted} - No announcement needed"
-           state.justDEP = "no"
-           state.delayDepHome = "no"
+            if(logEnable) log.debug "In homeDepartedHandler - ${friendlyName} departed Home less than 1 minute ago but is near ${daPlace}"
+            runIn(30, homeDepartedHandler, [overwrite: false])
         }
     }
-    state.prevPlace = state.address1Value
-    state.lastKnownPlace = state.address1Value
+    if(logEnable) log.debug "********* In homeDepartedHandler - End *********"
 }
 
 // *** Track placeNotAllowed ***
 
-def placeNotAllowedHandler() {
-    if(logEnable) log.debug "In placeNotAllowedHandler (${state.version})"
-    getTimeDiff()
-    int timeHere = timeConsideredHere * 60
-    if(!timeMove) timeMove = 5
-    int timeMoving = timeMove * 60
+def placeNotAllowedHandler(naPlace) {
+    if(logEnable) log.debug "********* In placeNotAllowedHandler (${state.version}) *********"
+    if(naPlace == null) naPlace = state.address1Value
+    msg = ""
     
-    if(state.address1Value == state.prevPlace) {
-        if(logEnable) log.debug "In placeNotAllowedHandler - address1: ${state.address1Value} MATCHES state.prevPlace: ${state.prevPlace}"
-        if(trackSpecific2.contains(state.address1Value)) {
-            if(state.tDiff >= timeHere) {
-                if(logEnable) log.debug "In placeNotAllowedHandler - Time at Place: ${state.tDiff} IS greater than: ${timeHere} - beenHere: ${state.beenHere}"
-                if(state.beenHere == "no") {
-                    if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has arrived at ${state.address1Value}"
-                    msg = "${messageAT2}"
-                    where = "aAT2"
-                    messageHandler(where,msg)                   
-                    if(isDataDevice) isDataDevice.on()
-                    state.beenHere = "yes"
-                } else {
-                    if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has been at ${state.address1Value} for ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
-                }
-                if(logEnable) log.debug "In placeNotAllowedHandler - END - state.tDiff > timeHere - TRUE - beenHere: ${state.beenHere}"
-            } else {  // *** state.tDiff is NOT GREATER THAN timeHere ***
-                if(logEnable) log.debug "In placeNotAllowedHandler - Time at Place: ${state.tDiff} IS NOT greater than: ${timeHere} - address1Value: ${state.address1Value} - beenHere: ${state.beenHere}"
-                if(isDataDevice) isDataDevice.off()
-                state.beenHere = "no"
-                if(logEnable) log.debug "In placeNotAllowedHandler - END - state.tDiff > timeHere - FALSE - beenHere: ${state.beenHere}"
-            }
-        } else {  // *** ! trackSpecific.contains(state.address1Value) ***
-		    if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} is not at a place this app is tracking ${state.address1Value}"
-            if(isDataDevice) isDataDevice.off()
-            state.beenHere = "no"
-            if(logEnable) log.debug "In placeNotAllowedHandler - END - trackSpecific.contains(state.address1Value) - FALSE - beenHere: ${state.beenHere}"
-        }
-    } else {  // ***  state.address1Value DOES NOT EQUAL state.prevPlace ***
-        if(logEnable) log.debug "In placeNotAllowedHandler - address1: ${state.address1Value} DOES NOT MATCH state.prevPlace: ${state.prevPlace}"
-        if(state.beenHere == "yes") {
-            if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has departed from ${state.prevPlace}"
-            msg = "${messageDEP2}"
-            state.justDEP = "yes"
-            where = "lAT2"
-            messageHandler(where,msg)
-            state.beenHere = "no"
-        }                
+    if(logEnable) log.debug "In placeNotAllowedHandler - ${friendlyName} has arrived at ${naPlace}"    
+    int timeHere = timeConsideredHere * 60
+    getTimeDiff()
+    if(timeDiff >= timeHere) {
+        if(logEnable) log.debug "In placeNotAllowedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
+        msg = "${messageAT2}"
+        where = "aAT2"
+        messageHandler(where,msg,naPlace)  
+        if(isDataDevice) isDataDevice.on()
+    } else {  // *** timeDiff is NOT GREATER THAN timeHere ***
+        if(logEnable) log.debug "In placeNotAllowedHandler - Time at Place: ${timeDiff} IS NOT greater than: ${timeHere}"
         if(isDataDevice) isDataDevice.off()
-        if(logEnable) log.debug "In placeNotAllowedHandler - END - trackSpecific2.contains(state.address1Value) - Departed - beenHere: ${state.beenHere}"
-    } 
-    state.prevPlace = state.address1Value
+        runIn(30, placeNotAllowedHandler, [overwrite: false])
+    }
+    if(logEnable) log.debug "********* In placeNotAllowedHandler - End *********"
 }
 
 def alertBattHandler() {
     if(logEnable) log.debug "In alertBattHandler (${state.version})"
-    state.battery = presenceDevice.currentValue("battery")
-    state.charge = presenceDevice.currentValue("charge")
+    battery = presenceDevice.currentValue("battery")
+    charge = presenceDevice.currentValue("charge")
+    battPlace = ""
+    if(logEnable) log.debug "In alertBattHandler - battery: ${battery} - prev battery: ${state.prevBatt} - charge: ${charge} - alertBattRepeat: ${state.alertBattRepeat}"
     
-    if(logEnable) log.debug "In alertBattHandler - battery: ${state.battery} - prev battery: ${state.prevBatt} - charge: ${state.charge} - alertBattRepeat: ${state.alertBattRepeat}"
-    
-    if((state.battery <= alertBatt) && (state.charge == "false") && (state.alertBattRepeat != "yes")) {
-        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 1 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
+    if((battery <= alertBatt) && (charge == "false") && (state.alertBattRepeat != "yes")) {
+        if(logEnable) log.debug "In alertBattHandler - battery (${battery}) needs charging! - Step 1 - battery: ${battery} <= Prev: ${state.prevBatt}"
         msg = "${messageAlertBatt}"
-        state.prevBatt = state.battery - 10
+        state.prevBatt = battery - 10
         state.alerts = "yes"
         state.alertBattRepeat = "yes"
         where = "battAlert"
-        messageHandler(where,msg)
-    } else if((state.battery <= state.prevBatt) && (state.charge == "false")) {
-        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) needs charging! - Step 2 - battery: ${state.battery} <= Prev: ${state.prevBatt}"
+        messageHandler(where,msg,battPlace)
+    } else if((battery <= state.prevBatt) && (charge == "false")) {
+        if(logEnable) log.debug "In alertBattHandler - battery (${battery}) needs charging! - Step 2 - battery: ${battery} <= Prev: ${state.prevBatt}"
         msg = "${messageAlertBatt}"
         state.prevBatt = state.prevBatt - 10
         state.alertBattRepeat = "yes"
         state.alerts = "yes"
         where = "battAlert"
-        messageHandler(where,msg)
-    } else if(state.charge == "true") {
-        if(logEnable) log.debug "In alertBattHandler - battery (${state.battery}) is charging. - Step 3"
+        messageHandler(where,msg,battPlace)
+    } else if(charge == "true") {
+        if(logEnable) log.debug "In alertBattHandler - battery (${battery}) is charging. - Step 3"
         state.alertBattRepeat = "no"
         state.prevBatt = 0
     }  
     state.alerts = "no"
+    if(logEnable) log.debug "In alertBattHandler - End"
 }
 
 def getTimeDiff() {
-	if(logEnable) log.debug "In getTimeDiff (${state.version}) "
+	if(logEnable) log.debug "In getTimeDiff (${state.version})"   
 	long since = presenceDevice.currentValue("since")
    	def now = new Date()
     long unxNow = now.getTime()
     unxNow = unxNow/1000    
-    long timeDiff = Math.abs(unxNow-since)
-    state.tDiff = timeDiff
+    timeDiff = Math.abs(unxNow-since)
     if(logEnable) log.debug "In getTimeDiff - since: ${since}, Now: ${unxNow}, Diff: ${timeDiff}"
-    
-	state.timeDay = (timeDiff / 86400).toInteger()
-    state.timeHrs = ((timeDiff % 86400 ) / 3600).toInteger()
-	state.timeMin = (((timeDiff % 86400 ) % 3600 ) / 60).toInteger()
-	state.timeSec = (((timeDiff % 86400 ) % 3600 ) % 60).toInteger()
-    
-    if(logEnable) log.debug "In getTimeDiff - Time Diff: ${state.timeDay} days, ${state.timeHrs} hrs, ${state.timeMin} mins & ${state.timeSec} secs"
+    return timeDiff
 }
 
 def getTimeMoving() {
 	if(logEnable) log.debug "In getTimeMoving (${state.version})"
+    if(state.sMove == null || state.sMove == "") {
+        def now = new Date()
+        long startMove = now.getTime()
+        state.sMove = startMove
+        if(logEnable) log.debug "In getTimeMoving - NEW sMove: ${state.sMove}"
+    } 
+    
    	def now = new Date()
     long unxNow = now.getTime()
     long unxPrev = state.sMove
     unxNow = unxNow/1000
     unxPrev = unxPrev/1000
-    long timeDiff = Math.abs(unxNow-unxPrev)
-    state.mDiff = timeDiff
-    if(logEnable) log.debug "In getTimeMoving - prev: ${unxPrev}, Now: ${unxNow}, Diff: ${timeDiff}"
-    
-	state.mTimeDay = (timeDiff / 86400).toInteger()
-    state.mTimeHrs = ((timeDiff % 86400 ) / 3600).toInteger()
-	state.mTimeMin = (((timeDiff % 86400 ) % 3600 ) / 60).toInteger()
-	state.mTimeSec = (((timeDiff % 86400 ) % 3600 ) % 60).toInteger()
-    
-    if(logEnable) log.debug "In getTimeMoving - Time Diff: ${state.mTimeDay} days, ${state.mTimeHrs} hrs, ${state.mTimeMin} mins & ${state.mTimeSec} secs"
+    movingDiff = Math.abs(unxNow-unxPrev)
+    if(logEnable) log.debug "In getTimeMoving - prev: ${unxPrev}, Now: ${unxNow}, Diff: ${movingDiff}"
+    return movingDiff
 }
 
-def letsTalk() {
-	if(logEnable) log.debug "In letsTalk (${state.version})"
-	checkTime()
-	checkVol()
-	if(state.timeBetween == true) {
-		state.theMsg = "${state.theMessage}"
-    	if(logEnable) log.debug "In letsTalk - speaker: ${speaker}, vol: ${state.volume}, msg: ${state.theMsg}, volRestore: ${volRestore}"
-        speechDuration = Math.max(Math.round(state.theMsg.length()/12),2)+3		// Code from @djgutheinz
-        state.speechDuration2 = speechDuration * 1000
-        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-            state.speakers.each {
-                if(logEnable) log.debug "Speaker in use: ${it}"
-                if(speakerProxy) {
-                    if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                    it.speak(state.theMsg)
-                } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                    if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                    def prevVolume = it.currentValue("volume")
-                    it.setVolumeSpeakAndRestore(state.volume, state.theMsg, prevVolume)
-                } else if(it.hasCommand('playTextAndRestore')) {   
-                    if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    def prevVolume = it.currentValue("volume")
-                    it.playTextAndRestore(state.theMsg, prevVolume)
-                } else {		        
-                    if(logEnable) log.debug "In letsTalk - ${it}"
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                    if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                    it.speak(state.theMsg)
-                    pauseExecution(state.speechDuration2)
-                    if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                    if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-                }
-            }
-        pauseExecution(state.speechDuration2)
-	    if(logEnable) log.debug "In letsTalk - that's it!"  
-		log.info "${app.label} - ${state.theMsg}"
-	} else {
-		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	}
+def letsTalk(msg) {
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
-def checkVol(){
-	if(logEnable) log.debug "In checkVol (${state.version})"
-	if(QfromTime) {
-		state.quietTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
-		if(logEnable) log.debug "In checkVol (${state.version}) - quietTime: ${state.quietTime}"
-    	if(state.quietTime) state.volume = volQuiet
-		if(!state.quietTime) state.volume = volSpeech
-	} else {
-		state.volume = volSpeech
-	}
-	if(logEnable) log.debug "In checkVol - volume: ${state.volume}"
-}
-
-def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-	if((fromTime != null) && (toTime != null)) {
-		state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-		if(state.betweenTime) state.timeBetween = true
-		if(!state.betweenTime) state.timeBetween = false
-  	} else {  
-		state.timeBetween = true
-  	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
-}
-
-def messageHandler(where,msg) {
+def messageHandler(where,msg,place) {
 	if(logEnable) log.debug "In messageHandler (${state.version})"
-    //if(logEnable) log.debug "In messageHandler - name: ${} - place: ${address1} - lastplace: ${state.lastKnownPlace}"
-	message = msg
     
-	def values = "${message}".split(";")
+	def values = "${msg}".split(";")
 	vSize = values.size()
 	count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
-	theMessage = values[randomKey]
+	state.message = values[randomKey]
     
-	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMessage: ${theMessage}" 
-	if(theMessage.contains("%name%")) {theMessage = theMessage.replace('%name%', friendlyName )}
+    if(logEnable) log.debug "In messageHandler - where: ${where} - place: ${place} - message: ${state.message}" 
+	if(state.message.contains("%name%")) {state.message = state.message.replace('%name%', friendlyName )}
     
-    if(theMessage.contains("%place%") && where != "home") {theMessage = theMessage.replace('%place%', presenceDevice.currentValue("address1") )}
-    if(theMessage.contains("%place%") && where == "aHome") {theMessage = theMessage.replace('%place%', 'home')}
-    
-    if(where != "dHome") {
-        if(theMessage.contains("%lastplace%") && trackingOptions == "Track Specific") { theMessage = theMessage.replace('%lastplace%', state.lastKnownPlace) }
-        if(theMessage.contains("%lastplace%") && trackingOptions == "Track All") { theMessage = theMessage.replace('%lastplace%', state.prevPlace) }
+    if(where != "HomeArrived" || where != "HomeDeparted") { 
+        if(state.message.contains("%place%")) state.message = state.message.replace('%place%', place) 
+        if(state.message.contains("%lastplace%")) state.message = state.message.replace('%lastplace%', place)
     }
-    if(where == "dHome") {
-        if(theMessage.contains("%lastplace%") && where == "dHome") {theMessage = theMessage.replace('%lastplace%', 'home')}
+    
+    if(where == "HomeArrived") {
+        if( state.message.contains("%lastplace%") || state.message.contains("%place%") ) {
+            state.message = state.message.replace('%lastplace%', 'home') 
+            state.message = state.message.replace('%place%', 'home')
+        }
     }
-    if(theMessage.contains("%address1%")) {theMessage = theMessage.replace('%address1%', presenceDevice.currentValue("address1") )}
-    if(theMessage.contains("%address2%")) {theMessage = theMessage.replace('%address2%', presenceDevice.currentValue("address2") )}
-    if(theMessage.contains("%battery%")) {
+    
+    if(where == "HomeDeparted") { 
+        if(state.message.contains("%lastplace%") || state.message.contains("%place%")) {
+            state.message = state.message.replace('%lastplace%', 'home') 
+            state.message = state.message.replace('%place%', 'home')
+        }
+    }
+            
+    if(state.message.contains("%address1%")) {state.message = state.message.replace('%address1%', place) }
+    if(state.message.contains("%battery%")) {
         String currBatt = presenceDevice.currentValue("battery")
-        theMessage = theMessage.replace('%battery%', currBatt)
+        state.message = state.message.replace('%battery%', currBatt)
     }
-    if(theMessage.contains("%charge%")) {theMessage = theMessage.replace('%charge%', presenceDevice.currentValue("charge") )}
-    if(theMessage.contains("%distanceKm%")) {theMessage = theMessage.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
-    if(theMessage.contains("%distanceMetric%")) {theMessage = theMessage.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
-    if(theMessage.contains("%distanceMiles%")) {theMessage = theMessage.replace('%distanceMiles%', presenceDevice.currentValue("distanceMiles") )}
-    if(theMessage.contains("%inTransit%")) {theMessage = theMessage.replace('%inTransit%', presenceDevice.currentValue("inTransit") )}
-    if(theMessage.contains("%isDriving%")) {theMessage = theMessage.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
-    if(theMessage.contains("%lastCheckin%")) {
-        String currLastCheckin = presenceDevice.currentValue("lastCheckin")
-        theMessage = theMessage.replace('%lastCheckin%', currLastCheckin)    
-    }
-    if(theMessage.contains("%latitude%")) {
-        String currLatitude = presenceDevice.currentValue("latitude")
-        theMessage = theMessage.replace('%latitude%', currLatitude)    
-    }
-    if(theMessage.contains("%longitude%")) {
-        String currLongitude = presenceDevice.currentValue("longitude")
-        theMessage = theMessage.replace('%longitude%', currLongitude)    
-    }
-    if(theMessage.contains("%powerSource%")) {theMessage = theMessage.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
-    if(theMessage.contains("%presence%")) {theMessage = theMessage.replace('%presence%', state.presenceDevice.currentValue("presence") )}
-    if(theMessage.contains("%speedKm%")) {theMessage = theMessage.replace('%speedKm%', state.presenceDevice.currentValue("speedKm") )}
-    if(theMessage.contains("%speedMetric%")) {theMessage = theMessage.replace('%speedMetric%', state.presenceDevice.currentValue("speedMetric") )}
-    if(theMessage.contains("%speedMiles%")) {theMessage = theMessage.replace('%speedMiles%', state.presenceDevice.currentValue("speedMiles") )}
-    if(theMessage.contains("%wifiState%")) {theMessage = theMessage.replace('%wifiState%', state.presenceDevice.currentValue("wifiState") )}
-    if(theMessage.contains("%display%")) {theMessage = theMessage.replace('%display%', state.presenceDevice.currentValue("display") )}
-    if(theMessage.contains("%status%")) {theMessage = theMessage.replace('%status%', state.presenceDevice.currentValue("status") )}
-    if(theMessage.contains("%lastLocationUpdate%")) {theMessage = theMessage.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
     
-    state.theMessage = theMessage
+    if(state.message.contains("%charge%")) {state.message = state.message.replace('%charge%', presenceDevice.currentValue("charge") )}
+    if(state.message.contains("%distanceKm%")) {state.message = state.message.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
+    if(state.message.contains("%distanceMetric%")) {state.message = state.message.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
+    if(state.message.contains("%distanceMiles%")) {state.message = state.message.replace('%distanceMiles%', presenceDevice.currentValue("distanceMiles") )}
+    if(state.message.contains("%inTransit%")) {state.message = state.message.replace('%inTransit%', presenceDevice.currentValue("inTransit") )}
+    if(state.message.contains("%isDriving%")) {state.message = state.message.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
+    if(state.message.contains("%lastCheckin%")) {
+        String currLastCheckin = presenceDevice.currentValue("lastCheckin")
+        state.message = state.message.replace('%lastCheckin%', currLastCheckin)    
+    }
+    if(state.message.contains("%latitude%")) {
+        String currLatitude = presenceDevice.currentValue("latitude")
+        state.message = state.message.replace('%latitude%', currLatitude)    
+    }
+    if(state.message.contains("%longitude%")) {
+        String currLongitude = presenceDevice.currentValue("longitude")
+        state.message = state.message.replace('%longitude%', currLongitude)    
+    }
+    if(state.message.contains("%powerSource%")) {state.message = state.message.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
+    if(state.message.contains("%presence%")) {state.message = state.message.replace('%presence%', state.presenceDevice.currentValue("presence") )}
+    if(state.message.contains("%speedKm%")) {state.message = state.message.replace('%speedKm%', state.presenceDevice.currentValue("speedKm") )}
+    if(state.message.contains("%speedMetric%")) {state.message = state.message.replace('%speedMetric%', state.presenceDevice.currentValue("speedMetric") )}
+    if(state.message.contains("%speedMiles%")) {state.message = state.message.replace('%speedMiles%', state.presenceDevice.currentValue("speedMiles") )}
+    if(state.message.contains("%wifiState%")) {state.message = state.message.replace('%wifiState%', state.presenceDevice.currentValue("wifiState") )}
+    if(state.message.contains("%display%")) {state.message = state.message.replace('%display%', state.presenceDevice.currentValue("display") )}
+    if(state.message.contains("%status%")) {state.message = state.message.replace('%status%', state.presenceDevice.currentValue("status") )}
+    if(state.message.contains("%lastLocationUpdate%")) {state.message = state.message.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
+
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
 	
     if(state.alerts == "yes") {
-        if(speakAlertsBatt && (speakerMP || speakerSS)) letsTalk()
-        
-        if(pushAlertsBatt && sendPushMessage) pushHandler()
-        
+        if(speakAlertsBatt && (speakerMP || speakerSS)) letsTalk(state.message)       
+        if(pushAlertsBatt && sendPushMessage) pushHandler(state.message)       
         state.alerts = "no"
     } else {
-        if(state.theMessage == "No Data") {
+        if(state.message == "No Data") {
             if(logEnable) log.debug "In messageHandler - Life360 reported 'No Data' - So doing nothing"
         } else {
-            if(where == "arrival" || where == "aHome") {
-                if(speakHasArrived) letsTalk()
-                if(pushHasArrived) pushHandler()
-            } else if(where == "departure" || where == "dHome") {
-                if(speakHasDeparted) letsTalk()
-                if(pushHasDeparted) pushHandler()
-            } else if(where == "moving") {
-                if(speakOnTheMove) letsTalk()             
-                if(pushOnTheMove) pushHandler()
-            }
-        
-            if(historyMap && historyHasArrived) {
-                state.theHistoryMessage = "${state.theMessage} - ${theMapLink}"
-                presenceDevice.sendHistory(state.theHistoryMessage)
-                log.info "Life360 Tracker-HISTORY-A: ${state.theHistoryMessage}"
-            } else if(historyMap && historyHasDeparted) {
-                state.theHistoryMessage = "${state.theMessage} - ${theMapLink}"
-                presenceDevice.sendHistory(state.theHistoryMessage)
-                log.info "Life360 Tracker-HISTORY-D: ${state.theHistoryMessage}"
-            } else if(historyMap && historyOnTheMove) {
-                state.theHistoryMessage = "${state.theMessage} - ${theMapLink}"
-                presenceDevice.sendHistory(state.theHistoryMessage)
-                log.info "Life360 Tracker-HISTORY-M: ${state.theHistoryMessage}"
+            if(state.previousMessage == null) state.previousMessage = "abcdefghijkl"
+            if(state.previousMessage.toLowerCase() != state.message.toLowerCase()) {       
+                if(where == "arrived" || where == "HomeArrived") {
+                    if(speakHasArrived) letsTalk(state.message)
+                    if(pushHasArrived) pushHandler(state.message)
+                } else if(where == "departed" || where == "HomeDeparted") {
+                    if(speakHasDeparted) letsTalk(state.message)
+                    if(pushHasDeparted) pushHandlertheMessage(state.message)
+                } else if(where == "moving") {
+                    if(speakOnTheMove) letsTalk(state.message)             
+                    if(pushOnTheMove) pushHandler(state.message)
+                }
+
+                if(historyMap && historyHasArrived) {
+                    state.theHistoryMessage = "${state.message} - ${theMapLink}"
+                    presenceDevice.sendHistory(state.theHistoryMessage)
+                    if(logEnable) log.info "Life360 Tracker-HISTORY-A: ${state.theHistoryMessage}"
+                } else if(historyMap && historyHasDeparted) {
+                    state.theHistoryMessage = "${state.message} - ${theMapLink}"
+                    presenceDevice.sendHistory(state.theHistoryMessage)
+                    if(logEnable) log.info "Life360 Tracker-HISTORY-D: ${state.theHistoryMessage}"
+                } else if(historyMap && historyOnTheMove) {
+                    state.theHistoryMessage = "${state.message} - ${theMapLink}"
+                    presenceDevice.sendHistory(state.theHistoryMessage)
+                    if(logEnable) log.info "Life360 Tracker-HISTORY-M: ${state.theHistoryMessage}"
+                } else if(historyHasArrived) {
+                    state.theHistoryMessage = "${state.message}"
+                    presenceDevice.sendHistory(state.theHistoryMessage)
+                    if(logEnable) log.info "Life360 Tracker-HISTORY-A: ${state.theHistoryMessage}"
+                } else if(historyHasDeparted) {
+                    state.theHistoryMessage = "${state.message}"
+                    presenceDevice.sendHistory(state.theHistoryMessage)
+                    if(logEnable) log.info "Life360 Tracker-HISTORY-D: ${state.theHistoryMessage}"
+                } else if(historyOnTheMove) {
+                    state.theHistoryMessage = "${state.message}"
+                    presenceDevice.sendHistory(state.theHistoryMessage)
+                    if(logEnable) log.info "Life360 Tracker-HISTORY-M: ${state.theHistoryMessage}"
+                } 
             } else {
-                state.theHistoryMessage = "${theMessage}"
-                presenceDevice.sendHistory(state.theHistoryMessage)
-                log.info "Life360 Tracker (${state.version}) - HISTORY: ${state.theHistoryMessage}"
-            } 
+                if(logEnable) log.debug "In messageHandler - Duplicate message, not sending."
+            }
         }
-    }
-    
-    state.theMessage = ""
+    }   
+    state.previousMessage = state.message
+    state.message = ""
     state.theHistoryMessage = ""
     theMessage = ""
 }
 
-def pushHandler() {
+def pushHandler(msg) {
 	if(logEnable) log.debug "In pushNow (${state.version})"
-    theMessage = "${state.theMessage}\n\n"
+    theMessage = "${msg}\n\n"
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     if(linkPush) {theMessage += "${theMap}"}
 	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
@@ -787,33 +661,10 @@ def pushHandler() {
     presenceDevice.sendTheMap(theMap)
 }
 
-def appButtonHandler(buttonPressed) {
-    state.whichButton = buttonPressed
-    if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(state.whichButton == "testSpeaker"){
-        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-        if(logEnable) log.debug "In testButtonHandler - Testing Speaker"
-        testResult = "<table><tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
-        testResult += "<tr><td colspan=3 align=center><b>Speaker Test Results</b></td></tr>"
-        state.speakers.each {
-            if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                testResult += "<tr><td>${it}</td><td> - </td><td>uses setVolumeSpeakAndRestore</td></tr>"
-            } else if(it.hasCommand('playTextAndRestore')) {
-                testResult += "<tr><td>${it}</td><td> - </td><td>uses playTextAndRestore</td></tr>"
-            } else {
-                testResult += "<tr><td>${it}</td><td> - </td><td>needs all volume fields filled in</td></tr>"
-            }
-        }
-        testResult += "<tr><td colspan=3><br>*Note: Speaker proxies can't be accurately tested.<br>If using a speaker proxy like 'What Did I Say', always fill in the failsafe fields.</td><tr>"
-        testResult += "<tr><td colspan=3 align=center>----------------------------------------------------------------</td></tr>"
-        testResult += "</table>"
-        log.info "${testResult}"
-    }
-}
-
 def whereAmI(evt) { 
     if(logEnable) log.debug "In whereAmI (${state.version})"
     state.address1Value = presenceDevice.currentValue("address1")
+    state.address1Prev = presenceDevice.currentValue("address1prev")
     def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
     def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
     
@@ -925,7 +776,7 @@ def haversine(lat1, lon1, lat2, lon2) {
 }
 
 def buildMyPlacesList() {
-    if(logEnable) log.debug "In buildMyPlacesList (${state.version}) "
+    if(logEnable) log.debug "In buildMyPlacesList (${state.version})"
     state.myPlacesList = []
     if(parent.myName01) state.myPlacesList = state.myPlacesList.plus([parent.myName01])
     if(parent.myName02) state.myPlacesList = state.myPlacesList.plus([parent.myName02])
@@ -943,11 +794,11 @@ def buildMyPlacesList() {
 // ********** Normal Stuff **********
 
 def setDefaults(){
-	if(logEnable == null){logEnable = false}
-    if(state.beenHere == null){state.beenHere = "no"}
-    if(state.address1Value == null){state.address1Value = presenceDevice.currentValue("address1")}
-    if(state.prevPlace == null){state.prevPlace = state.address1Value}
-    if(trackSpecific2 == null){trackSpecific2 = "None selected"}
+	if(logEnable == null) {logEnable = false}
+    if(state.address1Value == null) {state.address1Value = presenceDevice.currentValue("address1")}
+    if(state.address1Prev == null) {state.address1Prev = presenceDevice.currentValue("address1prev")}
+    if(trackSpecific2 == null) {trackSpecific2 = "NoData"}
+    if(state.previousMessage == null) state.previousMessage = "abcdefghijkl"
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -986,25 +837,44 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
-    }
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
+}
+
