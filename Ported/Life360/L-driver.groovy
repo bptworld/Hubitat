@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 06/17/20 - Added code for address1prev, other adjustments
  *  1.0.5 - 05/31/20 - Adjustments
  *  1.0.4 - 05/30/20 - Fix for History
  *  1.0.3 - 05/30/20 - Cosmetic Change - Recommended to delete device and recreate.
@@ -60,17 +61,18 @@ metadata {
         capability "Battery"
         capability "Power Source"
 
-        attribute "address1", "String"
+        attribute "address1", "string"
+        attribute "address1prev", "string"
         attribute "avatar", "string"
         attribute "avatarHtml", "string"
   	    attribute "battery", "number"
    	    attribute "charge", "boolean" //boolean
 	    attribute "distanceMetric", "Number"
-   	    attribute "distanceKm", "Number"
+   	    attribute "distanceKm", "number"
 	    attribute "distanceMiles", "Number"
 	    attribute "bpt-history", "string"
-       	attribute "inTransit", "String" //boolean
-   	    attribute "isDriving", "String" //boolean
+       	attribute "inTransit", "string" //boolean
+   	    attribute "isDriving", "string" //boolean
         attribute "lastLogMessage", "string"
         attribute "lastMap", "string"
         attribute "lastUpdated", "string"
@@ -230,8 +232,12 @@ def sendHistory(msgValue) {
 
             theData1 = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td>"
             
-            for (i=0; i<intNumOfLines && i<listSize1 && theData1.length() < 912;i++)
-            theData1 += "${lines1[i]}<br>"
+            for (i=0;i<intNumOfLines && i<listSize1;i++) {
+                combined = theData1.length() + lines1[i].length()
+                if(combined < 1006) {
+                    theData1 += "${lines1[i]}<br>"
+                }
+            }
 
             theData1 += "</table></div>"
             if(logEnable) log.debug "theData1 - ${theData1.replace("<","!")}"       
@@ -345,15 +351,23 @@ def getLocation(latitude, longitude) {
                 
                 if(logEnable) log.debug "In getLocation - street: ${address1} - City: ${currentCity} - State: ${currentState} - postalCode: ${currentpostalCode}"
                 
-                if(address1 != device.currentValue('address1')) {
-                    sendEvent(name: "address1", value: address1, isStateChange: true)
+                newAddress = address1
+                oldAddress = device.currentValue('address1')
+                if(newAddress != oldAddress) {
+                    sendEvent(name: "address1prev", value: oldAddress)
+                    sendEvent(name: "address1", value: newAddress)
                     sendEvent(name: "since", value: since)
 
-                    if(address1 == "home" || address1 == "Home") { 
+                    if(newAddress == "home" || newAddress == "Home") { 
                         sendEvent(name: "presence", value: "present", isStateChange: true)
                     } else {
                         sendEvent(name: "presence", value: "not present", isStateChange: true)
                     }
+                }
+                
+                prevAddress = device.currentValue('address1prev')
+                if(prevAddress == null) {
+                    sendEvent(name: "address1prev", value: "Lost")
                 }
                 
                 sendEvent(name: "currentCity", value: currentCity)
@@ -386,18 +400,25 @@ def getLocation(latitude, longitude) {
                 if(logEnable) log.debug "In getLocation  - 0: ${currentAddress[0]} - 1: ${currentAddress[1]} - 2: ${currentAddress[2]} - 3: ${currentAddress[3]}"
                 if(logEnable) log.debug "In getLocation  - street: ${currentAddress[0]} - City: ${currentAddress[1]} - State Zip: ${currentAddress[2]} - Country: ${currentAddress[3]}"
                 
-                address1 = currentAddress[0]
-                if(address1 != device.currentValue('address1')) {
-                    sendEvent(name: "address1", value: address1, isStateChange: true)
+                newAddress = currentAddress[0]
+                oldAddress = device.currentValue('address1')
+                if(newAddress != oldAddress) {
+                    sendEvent(name: "address1prev", value: oldAddress)
+                    sendEvent(name: "address1", value: newAddress)
                     sendEvent(name: "since", value: since)
 
-                    if(address1 == "home" || address1 == "Home") { 
+                    if(newAddress == "home" || newAddress == "Home") { 
                         sendEvent(name: "presence", value: "present", isStateChange: true)
                     } else {
                         sendEvent(name: "presence", value: "not present", isStateChange: true)
                     }
                 }
-                            
+                    
+                prevAddress = device.currentValue('address1prev')
+                if(prevAddress == null) {
+                    sendEvent(name: "address1prev", value: "Lost")
+                }
+                
                 sendEvent(name: "currentCity", value: currentAddress[1])
                 sendEvent(name: "currentStateZip", value: currentAddress[2])
                 sendEvent(name: "currentCountry", value: currentAddress[3])
@@ -461,14 +482,14 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	    def statusDistance = homeDistance / 1000
 	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
         if(status != device.currentValue('status')){
-            sendEvent( name: "status", value: status, isStateChange:true)
+            sendEvent( name: "status", value: status )
             state.update = true
         }
     } else {
 	    def statusDistance = (homeDistance / 1000) / 1.609344 
    	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
         if(status != device.currentValue('status')){
-   	        sendEvent( name: "status", value: status, isStateChange:true )
+   	        sendEvent( name: "status", value: status )
             state.update = true
         }
         state.status = status
@@ -503,17 +524,25 @@ def generatePresenceEvent(boolean present, homeDistance) {
 private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated) {
 	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
 	   
-    if(address1 != device.currentValue('address1')) {
-        sendEvent(name: "address1", value: address1, isStateChange: true)
+    newAddress = address1
+    oldAddress = device.currentValue('address1')
+    if(newAddress != oldAddress) {
+        sendEvent(name: "address1prev", value: oldAddress)
+        sendEvent(name: "address1", value: newAddress)
         sendEvent(name: "since", value: since)
         
-        if(address1 == "home" || address1 == "Home") { 
+        if(newAddress == "home" || newAddress == "Home") { 
             sendEvent(name: "presence", value: "present", isStateChange: true)
         } else {
             sendEvent(name: "presence", value: "not present", isStateChange: true)
         }
 	}
 
+    prevAddress = device.currentValue('address1prev')
+    if(prevAddress == null) {
+        sendEvent(name: "address1prev", value: "Lost")
+    }
+    
     if(battery != device.currentValue('battery')) { sendEvent(name: "battery", value: battery) }    
     if(charge != device.currentValue('charge')) { sendEvent(name: "charge", value: charge) }
  
