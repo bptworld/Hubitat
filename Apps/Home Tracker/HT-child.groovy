@@ -425,9 +425,11 @@ def presenceSensorHandler(evt){
                         flashData = "Preset::${flashOnHomePreset}"
                         theFlasherDevice.sendPreset(flashData)
                     }
-                    if(useTheFlasher && homeNow) {
-                        flashData = "Preset::${flashOnHomePreset}"
-                        theFlasherDevice.sendPreset(flashData)
+                    if(homeNow) {
+                        if(useTheFlasher) {
+                            flashData = "Preset::${flashOnHomePreset}"
+                            theFlasherDevice.sendPreset(flashData)
+                        }
                         addNameToPresenceMap(fName)
                         messageHomeNow()
                     }
