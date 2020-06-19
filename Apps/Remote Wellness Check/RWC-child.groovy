@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 06/19/20 - added The Flasher
  *  1.0.3 - 04/27/20 - Cosmetic changes
  *  1.0.2 - 01/17/20 - Minor changes
  *  1.0.1 - 01/16/20 - Added more 'Check' options
@@ -42,7 +43,7 @@
 
 def setVersion(){
     state.name = "Remote Wellness Check"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -129,6 +130,16 @@ def pageConfig(){
 		    input "isDataDevice", "capability.switch", title: "Turn this device on", submitOnChange:true, required:false, multiple:false
             input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+            input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+            if(useTheFlasher) {
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
+                input "flashPreset", "number", title: "Select the Preset to use (1..5)", required:true, submitOnChange:true
+            }
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this child app", required: false, submitOnChange: true
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
@@ -180,6 +191,10 @@ def scheduleCheck(evt) {
 		            if(logEnable) log.debug msg
                     if(isDataDevice) { isDataDevice.on() }
 		            if(sendPushMessage) pushHandler(msg)
+                    if(useTheFlasher && flashPreset) {
+                        flashData = "Preset::${flashPreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
                 } else {
                     if(logEnable) log.debug "Mode did not match, not checking for alert"
                 }
