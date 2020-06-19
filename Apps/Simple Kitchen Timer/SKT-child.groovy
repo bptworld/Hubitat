@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 06/19/20 - Added The Flasher, all speech now goes through 'Follow Me'
  *  1.0.4 - 04/27/20 - Cosmetic changes
  *  1.0.3 - 04/04/20 - Fixed push, fixed issue with 'unexpected error' with Notification page, added wildcard for timer name in message.
  *  1.0.2 - 03/29/20 - Bug hunting
@@ -45,9 +46,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Simple Kitchen Timer"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -130,7 +134,7 @@ def pageConfig() {
                 href "messageOptions", title:"Message Options", description:"Click here to setup Messaging options"
             }
             
-            if(speakerMP || speakerSS || switchesOn || switchesOff) {
+            if(fmSpeaker || switchesOn || switchesOff) {
                 href "notificationOptions", title:"${getImage("checkMarkGreen")} Select Notification options here", description:"Click here for Options"
             } else {
                 href "notificationOptions", title:"Select Notification options here", description:"Click here for Options"
@@ -164,32 +168,11 @@ def pageConfig() {
 def notificationOptions() {
     dynamicPage(name: "notificationOptions", title: "Notification Options", install: false, uninstall:false){
 		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
-           paragraph "Please select your speakers below from each field.<br><small>Note: Some speakers may show up in each list but each speaker only needs to be selected once.</small>"
-           input "speakerMP", "capability.musicPlayer", title: "Choose Music Player speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerSS", "capability.speechSynthesis", title: "Choose Speech Synthesis speaker(s)", required: false, multiple: true, submitOnChange: true
-           input "speakerProxy", "bool", defaultValue: false, title: "Is this a speaker proxy device", description: "speaker proxy", submitOnChange: true
+           paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
+            input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+            if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
         }
-        if(!speakerProxy) {
-            if(speakerMP || speakerSS) {
-		        section(getFormat("header-green", "${getImage("Blank")}"+" Volume Control Options")) {
-		            paragraph "NOTE: Not all speakers can use volume controls.", width:8
-                    paragraph "Volume will be restored to previous level if your speaker(s) have the ability, as a failsafe please enter the values below."
-                    input "volSpeech", "number", title: "Speaker volume for speech", description: "0-100", required:true, width:6
-		            input "volRestore", "number", title: "Restore speaker volume to X after speech", description: "0-100", required:true, width:6
-                    input "volQuiet", "number", title: "Quiet Time Speaker volume (Optional)", description: "0-100", required:false, submitOnChange:true
-		    	    if(volQuiet) input "QfromTime", "time", title: "Quiet Time Start", required:true, width:6
-    	    	    if(volQuiet) input "QtoTime", "time", title: "Quiet Time End", required:true, width:6
-                }
-		    }
-		    section(getFormat("header-green", "${getImage("Blank")}"+" Allow messages between what times? (Optional)")) {
-                input "fromTime", "time", title: "From", required:false, width: 6
-        	    input "toTime", "time", title: "To", required:false, width: 6
-		    }
-        } else {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Proxy")) {
-		        paragraph "Speaker proxy in use."
-            }
-        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
         }
@@ -224,11 +207,11 @@ def messageOptions(){
 def flashOptions(){
     dynamicPage(name: "flashOptions", title: "Flash Lights Options", install: false, uninstall:false){  
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
-            input "flash", "bool", defaultValue: false, title: "Flash light(s) when timer is finished?", description: "Flash", submitOnChange: true
-            if(flash) {
-                input "switchesFlash", "capability.switch", title: "Flash these lights", multiple: true
-		        input "numFlashes", "number", title: "Number of times", required: false, defaultValue: 2, width: 6
-                input "delayFlashes", "number", title: "Milliseconds for lights to be on/off<br><small>(500=.5 sec, 1000=1 sec)</small>", required: false, defaultValue: 1000, width: 6
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+            input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+            if(useTheFlasher) {
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
+                input "flashPreset", "number", title: "Select the Preset to use with Timer (1..5)", required:true, submitOnChange:true
             }
         }
     }
@@ -242,7 +225,6 @@ def deviceOptions(){
         }
     }
 }
-
 
 def installed() {
     log.debug "Installed with settings: ${settings}"
@@ -285,53 +267,19 @@ def startHandler(evt) {
         messageHandler(randomMessage0)
         if(deviceOn) deviceOnHandler()
         if(deviceOff) deviceOffHandler()
-        if(flash) flashLights()
+        if(usingTheFlasher) {
+            if(useTheFlasher) {
+                flashData = "Preset::${flashPreset}"
+                theFlasherDevice.sendPreset(flashData)
+            }
+        }
     }
 }
 
 def letsTalk(msg) {
-	if(logEnable) log.debug "In letsTalk (${state.version})"
-	checkTime()
-	checkVol()
-    if(logEnable) log.debug "In letsTalk - Checking timeBetween: ${state.timeBetween}"
-    if(state.timeBetween) {
-        theMsg = msg
-        
-        def duration = Math.max(Math.round(theMsg.length()/12),2)+3
-        theDuration = duration * 1000
-        state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-    	if(logEnable) log.debug "In letsTalk - speaker: ${state.speakers}, vol: ${state.volume}, msg: ${theMsg}, volRestore: ${volRestore}"
-        state.speakers.each { it ->
-            if(logEnable) log.debug "Speaker in use: ${it}"
-            if(speakerProxy) {
-                if(logEnable) log.debug "In letsTalk - speakerProxy - ${it}"
-                it.speak(theMsg)
-            } else if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore - ${it}"
-                def prevVolume = it.currentValue("volume")
-                it.setVolumeSpeakAndRestore(state.volume, theMsg, prevVolume)
-            } else if(it.hasCommand('playTextAndRestore')) {   
-                if(logEnable) log.debug "In letsTalk - playTextAndRestore - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                def prevVolume = it.currentValue("volume")
-                it.playTextAndRestore(theMsg, prevVolume)
-            } else {		        
-                if(logEnable) log.debug "In letsTalk - ${it}"
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(state.volume)
-                if(volSpeech && (it.hasCommand('setVolume'))) it.setVolume(state.volume)
-                it.speak(theMsg)
-                pauseExecution(theDuration)
-                if(volSpeech && (it.hasCommand('setLevel'))) it.setLevel(volRestore)
-                if(volRestore && (it.hasCommand('setVolume'))) it.setVolume(volRestore)
-            }
-        }
-            
-        if(logEnable) log.debug "In letsTalk - Finished speaking"  
-        if(sendPushMessage) pushNow(theMsg)
-	} else {
-		if(logEnable) log.debug "In letsTalk - Messages not allowed at this time"
-	}
+    if(logEnable) log.warn "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    if(logEnable) log.warn "In letsTalk - *** Finished ***"
 }
 
 def checkVol(){
@@ -377,7 +325,7 @@ def messageHandler(msg) {
     }
     
 	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, msg: ${msg}"
-        
+    if(sendPushMessage) pushNow(msg)
     letsTalk(msg)
 }
 
@@ -402,46 +350,6 @@ def deviceOffHandler() {
     deviceOff.each { it ->
         it.off()
     }
-}
-
-private flashLights() {    // Code modified from ST documents
-    if(logEnable) log.debug "In flashLights (${state.version})"
-    
-	def doFlash = true
-    
-	if(logEnable) log.debug "In flashLights - lastActivated: ${state.lastActivated}"
-	if(state.lastActivated) {
-		def elapsed = now() - state.lastActivated
-		def sequenceTime = (numFlashes + 1) * (onFor + offFor)
-		doFlash = elapsed > sequenceTime
-		if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash, ELAPSED: $elapsed, LAST ACTIVATED: ${state.lastActivated}"
-	}
-
-	if(doFlash) {
-		if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
-		def initialActionOn = switchesFlash.collect{it.currentSwitch != "on"}
-		def delayOn = delayFlashes * 1000
-        
-		numFlashes.times {
-			switchesFlash.eachWithIndex {s, i ->
-				if(initialActionOn[i]) {
-                    if(logEnable) log.debug "In flashLights - 1 - Switching Lights On after $delayOn second(s)"
-					s.on()
-                    pauseExecution(delayFlashes)
-                    if(logEnable) log.debug "In flashLights - 1 - Switching Lights Off after $delayOn second(s)"
-                    s.off()
-                    pauseExecution(delayFlashes)
-				} else {
-                    if(logEnable) log.debug "In flashLights - 2 - Switching Lights Off after $delayOn second(s)"
-					s.off()
-                    pauseExecution(delayFlashes)
-                    if(logEnable) log.debug "In flashLights - 2 - Switching Lights On after $delayOn second(s)"
-                    s.on()
-                    pauseExecution(delayFlashes)
-				}
-			}
-		}
-	}
 }
 
 def sendDataToDriver() {
@@ -521,25 +429,44 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
-    }
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
 }
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
+    }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
+}
+
