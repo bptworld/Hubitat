@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.8 - 06/19/20 - added The Flasher
  *  2.0.7 - 06/18/20 - Major Changes. Going at it a different way
  *  2.0.6 - 04/27/20 - Cosmetic changes
  *  2.0.5 - 12/10/19 - Minor bug fixes
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.0.7"
+	state.version = "2.0.8"
 }
 
 definition(
@@ -201,6 +202,21 @@ def pageConfig() {
                 paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
                 input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
                 if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
+            }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
+                paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+                input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+                if(useTheFlasher) {
+                    input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:false, multiple:false
+                    input "flashArrivedHomePreset", "number", title: "Select the Preset to use when someone arrives at Home (1..5)", required:false, submitOnChange:true
+                    input "flashDepartedHomePreset", "number", title: "Select the Preset to use when someone departs Home (1..5)", required:false, submitOnChange:true
+                    
+                    input "flashArrivedPlacePreset", "number", title: "Select the Preset to use when someone arrives at a Place (1..5)", required:false, submitOnChange:true
+                    input "flashDepartedPlacePreset", "number", title: "Select the Preset to use when someone departs a Place (1..5)", required:false, submitOnChange:true
+                    
+                    input "flashArrivedNotAllowedPreset", "number", title: "Select the Preset to use when someone arrives at a Place NOT allowed (1..5)", required:false, submitOnChange:true
+                }
             }
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Other Options")) {
@@ -607,12 +623,32 @@ def messageHandler(where,msg,place) {
                 if(where == "arrived" || where == "HomeArrived") {
                     if(speakHasArrived) letsTalk(state.message)
                     if(pushHasArrived) pushHandler(state.message)
+                    if(useTheFlasher && flashArrivedHomePreset) {
+                        flashData = "Preset::${flashArrivedHomePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
+                    if(useTheFlasher && flashArrivedPlacePreset) {
+                        flashData = "Preset::${flashArrivedPlacePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
                 } else if(where == "departed" || where == "HomeDeparted") {
                     if(speakHasDeparted) letsTalk(state.message)
                     if(pushHasDeparted) pushHandlertheMessage(state.message)
+                    if(useTheFlasher && flashDepartedHomePreset) {
+                        flashData = "Preset::${flashDepartedHomePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
+                    if(useTheFlasher && flashDepartedPlacePreset) {
+                        flashData = "Preset::${flashDepartedPlacePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
                 } else if(where == "moving") {
                     if(speakOnTheMove) letsTalk(state.message)             
                     if(pushOnTheMove) pushHandler(state.message)
+                    if(useTheFlasher && flashArrivedNotAllowedPreset) {
+                        flashData = "Preset::${flashArrivedNotAllowedPreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
                 }
 
                 if(historyMap && historyHasArrived) {
