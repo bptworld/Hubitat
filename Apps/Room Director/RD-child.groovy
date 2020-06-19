@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 06/19/20 - Added The Flasher
  *  1.1.3 - 06/13/20 - Fixed typo with daysMatch, thanks @fourwhitehouse!
  *  1.1.2 - 06/11/20 - All speech now goes through Follow Me
  *  1.1.1 - 06/10/20 - Made a few changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -356,6 +357,15 @@ def speechOptions(){
                 input "warningSwitches", "capability.switch", title: "Select Switch to turn ON", multiple: true
             }
         }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+            input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+            if(useTheFlasher) {
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
+                input "flashPreset", "number", title: "Select the Preset to use (1..5)", required:true, submitOnChange:true
+            }
+        }
     }
 }
 
@@ -639,6 +649,12 @@ def roomWarningHandler() {
         if(warningSwitches) warningSwitches.on()
         if(rMachine) rulesHandler(rMachine)
         if(omessage) messageHandler()
+        if(useTheFlasher) {
+            if(useTheFlasher) {
+                flashData = "Preset::${flashPreset}"
+                theFlasherDevice.sendPreset(flashData)
+            }
+        }
         
         if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
         runIn(30, lightsHandler)
