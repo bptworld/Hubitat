@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.7 - 06/19/20 - Removed internal Flash Lights and added The Flasher
  *  2.3.6 - 06/14/20 - Chasing bugs
  *  2.3.5 - 06/13/20 - Fixed letsTalk typo... again
  *  2.3.4 - 06/13/20 - Fixed letsTalk typo
@@ -60,7 +61,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.3.6"
+	state.version = "2.3.7"
 }
 
 definition(
@@ -144,18 +145,12 @@ def speechOptions(){
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
-            input "flashOnHome", "bool", defaultValue: false, title: "Flash light(s) when someone comes home", description: "Flash on Home", submitOnChange: true
-            if(flashOnHome) {
-                input "switchesHome", "capability.switch", title: "Flash these lights", multiple: true
-		        input "numFlashesHome", "number", title: "Number of times (default: 2)", required: false, width: 6
-                input "delayHome", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
-            }
-            input "flashOnDep", "bool", defaultValue: false, title: "Flash light(s) when someone leaves", description: "Flash on Departure", submitOnChange: true
-            paragraph "<small>* Can't Flash if Departure Message is set to delayed.</small>"
-            if(flashOnDep) {
-                input "switchesDep", "capability.switch", title: "Flash these lights", multiple: true
-		        input "numFlashesDep", "number", title: "Number of times (default: 2)", required: false, width: 6
-                input "delayDep", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+            input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+            if(useTheFlasher) {
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
+                input "flashOnHomePreset", "number", title: "Select the Preset to use when someone comes home (1..5)", required:true, submitOnChange:true
+                input "flashOnDepPreset", "number", title: "Select the Preset to use when someone leaves (1..5)", required:true, submitOnChange:true
             }
         }
     }
@@ -426,13 +421,13 @@ def presenceSensorHandler(evt){
                 if(logEnable) log.debug "In presenceSensorHandler (${x}) - Working On: ${parent.presenceSensors[x]} - fName: ${fName} - pSensor: ${pSensor} - status: ${status[1]} - TtimeDiffSecs: ${timeDiffSecs} - timeDiff: ${timeDiff}"
                 if(timeDiffSecs < 20) {
                     if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${timeDiff}"
-                    if(flashOnHome) {
-                        state.fSwitches = switchesHome
-                        state.fNumFlashes = numFlashesHome
-                        state.fDelay = delayHome
+                    if(useTheFlasher && flashOnHome) {
+                        flashData = "Preset::${flashOnHomePreset}"
+                        theFlasherDevice.sendPreset(flashData)
                     }
-                    if(homeNow) {
-                        if(flashOnHome) flashLights()
+                    if(useTheFlasher && homeNow) {
+                        flashData = "Preset::${flashOnHomePreset}"
+                        theFlasherDevice.sendPreset(flashData)
                         addNameToPresenceMap(fName)
                         messageHomeNow()
                     }
@@ -456,19 +451,20 @@ def presenceSensorHandler(evt){
                 if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Time Diff: ${timeDiff} - pSensor: ${pSensor}"            
                 if(timeDiff < 20) {
                     if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${timeDiff}"   
-                    if(flashOnDep) {
-                        state.fSwitches = switchesDep
-                        state.fNumFlashes = numFlashesDep
-                        state.fDelay = delayDep
+                    if(useTheFlasher && flashOnDep) {
+                        flashData = "Preset::${flashOnDepPreset}"
+                        theFlasherDevice.sendPreset(flashData)
                     }
                     if(departedNow) {
-                        if(flashOnDep) flashLights()
+                        if(useTheFlasher) {
+                            flashData = "Preset::${flashOnHomePreset}"
+                            theFlasherDevice.sendPreset(flashData)
+                        }
                         addNameToPresenceMap(fName)
                         messageDeparted()
                     }                   
                     if(departedDelayed) {
                         if(logEnable) log.debug "In whosAwayHandler - Will announce departure after a 2 minutes wait"
-                        //if(flashOnDep) runIn(120, flashLights)
                         addNameToPresenceMap(fName)
                         runIn(120, messageDeparted)
                     }
@@ -550,13 +546,15 @@ def lockPresenceHandler(evt){
                 if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 2 - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock} - status: ${status[1]}"
                 if(timeDiffSecs < 20) {
                     if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${timeDiff}"
-                    if(flashOnHome) {
-                        state.fSwitches = switchesHome
-                        state.fNumFlashes = numFlashesHome
-                        state.fDelay = delayHome
+                    if(useTheFlasher && flashOnHome) {
+                        flashData = "Preset::${flashOnHomePreset}"
+                        theFlasherDevice.sendPreset(flashData)
                     }
                     if(homeNow) {
-                        if(flashOnHome) flashLights()
+                        if(useTheFlasher) {
+                            flashData = "Preset::${flashOnHomePreset}"
+                            theFlasherDevice.sendPreset(flashData)
+                        }
                         addNameToPresenceMap(fName)
                         messageHomeNow()
                     }
@@ -827,53 +825,6 @@ def pushNow(msg) {
 		if(logEnable) log.debug "In pushNow - Sending message: ${pushMessage}"
         sendPushMessage.deviceNotification(pushMessage)
 	}	
-}
-
-private flashLights() {    // Modified from ST documents
-    if(logEnable) log.debug "In flashLights (${state.version})"
-	def doFlash = true
-	def delay = state.fDelay ?: 500
-	def numFlashes = state.fNumFlashes ?: 2
-
-	if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
-	if(state.lastActivated) {
-		def elapsed = now() - state.lastActivated
-		def sequenceTime = (numFlashes + 1) * (delay)
-		doFlash = elapsed > sequenceTime
-		if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
-	}
-
-	if(doFlash) {        // Modified from ST documents
-		if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
-		state.lastActivated = now()
-		if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: ${state.lastActivated}"
-		def initialActionOn = state.fSwitches.collect{it.currentSwitch != "on"}
-
-		numFlashes.times {
-			if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
-			state.fSwitches.eachWithIndex {s, i ->
-				if (initialActionOn[i]) {
-                    pauseExecution(delay)
-					s.on()
-				}
-				else {
-                    pauseExecution(delay)
-					s.off()
-				}
-			}
-			if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
-			state.fSwitches.eachWithIndex {s, i ->
-				if (initialActionOn[i]) {
-                    pauseExecution(delay)
-					s.off()
-				}
-				else {
-                    pauseExecution(delay)
-					s.on()
-				}
-			}
-		}
-	}
 }
 
 // ********** Normal Stuff **********
