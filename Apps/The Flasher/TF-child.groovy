@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 06/19/20 - Presets, can now be controlled by outside apps
  *  1.1.0 - 04/27/20 - Cosmetic changes
  *  1.0.9 - 04/27/20 - Added indefinite flashing with Control Switch
  *  1.0.8 - 04/26/20 - Small change to flash handler
@@ -50,9 +51,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -79,81 +83,251 @@ def pageConfig() {
             paragraph "Flash your lights based on several triggers!"
             paragraph "<b>Notes:</b><br>Bulb colors are based on Hue bulbs, results may vary with other type of bulbs."
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" Trigger Options")) {
-            input "acceleration", "capability.accelerationSensor", title: "Acceleration Sensor(s)", required: false, multiple: true, submitOnChange: true
-            if(acceleration) {
-                input "accelerationValue", "bool", defaultValue: false, title: "Flash when Inactive or Active (off = Inactive, On = Active)", description: "Options"
-            }
-            
-            input "button", "capability.pushableButton", title: "Button Device(s)", required: false, multiple: true, submitOnChange: true
-            
-            input "contact", "capability.contactSensor", title: "Contact Sensor(s)", required: false, multiple: true, submitOnChange: true
-            if(contact) {
-                input "contactValue", "bool", defaultValue: false, title: "Flash when Closed or Open (off = Closed, On = Open)", description: "Options"
-            }
-            
-            input "lock", "capability.lock", title: "Lock(s)", required: false, multiple: true, submitOnChange: true
-            if(lock) {
-                input "lockValue", "bool", defaultValue: false, title: "Flash when Unlocked or Locked (off = Unlocked, On = Locked)", description: "Options"
-            }
-            
-            input "motion", "capability.motionSensor", title: "Motion Sensor(s)", required: false, multiple: true, submitOnChange: true
-            if(motion) {
-                input "motionValue", "bool", defaultValue: false, title: "Flash when Inactive or Active (off = Inactive, On = Active)", description: "Options"
-            }
-            
-		    input "myPresence", "capability.presenceSensor", title: "Presence Sensor(s)", required: false, multiple: true, submitOnChange: true
-            if(myPresence) {
-                input "presenceValue", "bool", defaultValue: false, title: "Flash when Not Present or Present (off = Not Present, On = Present)", description: "Options"
-            }
-
-		    input "mySwitch", "capability.switch", title: "Switch(es)", required: false, multiple: true, submitOnChange: true
-            if(mySwitch) {
-                input "switchValue", "bool", defaultValue: false, title: "Flash when Off or On (off = Off, On = On)", description: "Options"
-            }
-            
-            input "myWater", "capability.waterSensor", title: "Water Sensor(s)", required: false, multiple: true, submitOnChange: true
-            if(myWater) {
-                input "waterValue", "bool", defaultValue: false, title: "Flash when Wet or Dry (off = Wet, On = Dry)", description: "Options"
-            }
-            
-            input "timeToRun", "time", title: "Flash at a Certain Time", required: false
-	    }
-	    section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
-		    input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
-            paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
-		    input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
-            input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
-            if(theSwitch) {
-                if(theSwitch.hasCommand('setColor')) {
-                    input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"
-                    ]
+		section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
+            paragraph "This child app can work as a stand alone app with triggers and actions, just like any other app.<br>BUT, it can also be setup to be controlled by other BPTWorld apps!  By creating Presets that can be used in select BPTWorld apps."
+            input "presetsORstandalon", "bool", title: "'Stand Alone' or 'Controlled by Other Apps'", defaultValue:false, submitOnChange:true
+        }
+        if(presetsORstandalon) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {
+                paragraph "Each child app needs a virtual device to store the Presets and to control the app."
+                input "useExistingDevice", "bool", title: "Use existing device (off) or have TF create a new one for you (on)", defaultValue:false, submitOnChange:true
+                if(useExistingDevice) {
+                    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'TF - Presets')", required:true, submitOnChange:true
+                    paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
+                    if(dataName) createDataChildDevice()
+                    if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                    paragraph "${statusMessageD}"
+                }
+                input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false, submitOnChange:true
+                if(!useExistingDevice) {
+                    app.removeSetting("dataName")
+                    paragraph "<small>* Device must use the 'The Flasher Driver'.</small>"
                 }
             }
-            if(numFlashes == 0) {
-                input "controlSwitch", "capability.switch", title: "Control Switch", multiple:false, submitOnChange:true
-                paragraph "<b>Flashing will continue until the Control Switch is turned off.</b>"
+            
+            if(dataDevice) {
+                section("${getImage('instructions')} Flashing Preset 1", hideable: true) {
+                    paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                    input "numFlashes1", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
+                    input "delay1", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
+                    if(theSwitch1) {
+                        if(theSwitch1.hasCommand('setColor')) {
+                            input "fColor1", "enum", title: "Color", required: false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                            ]
+                        }
+                    }
+
+                    if(theSwitch1 || numFlashes1 || delay1) {
+                        paragraph "<hr>"
+                        input "setupPreset2", "bool", title: "Setup Preset 2?", description: "p2", defaultValue:false, submitOnChange:true
+                    }
+                }
             } else {
-                app.removeSetting("controlSwitch")
+                app.removeSetting("theSwitch1")
+                app.removeSetting("numFlashes1")
+                app.removeSetting("delay1")
+                app.removeSetting("fColor1")
             }
-	    }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions")) {
-            paragraph "Allow flashing between what times"
-            input "fromTime", "time", title: "From", required:false, width: 6
-        	input "toTime", "time", title: "To", required:false, width: 6
             
-            input "myMode", "mode", title: "Allow flashing when in this Mode", multiple:true, submitOnChange:true
+            if(setupPreset2) {
+                section("${getImage('instructions')} Flashing Preset 2", hideable: true) {
+                    input "theSwitch2", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+                    paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                    input "numFlashes2", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
+                    input "delay2", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
+                    if(theSwitch2) {
+                        if(theSwitch2.hasCommand('setColor')) {
+                            input "fColor2", "enum", title: "Color", required: false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                            ]
+                        }
+                    }
+
+                    if(theSwitch2 || numFlashes2 || delay2) {
+                        paragraph "<hr>"
+                       input "setupPreset3", "bool", title: "Setup Preset 3?", defaultValue:false, submitOnChange:true
+                    }
+                }
+            } else {
+                app.removeSetting("theSwitch2")
+                app.removeSetting("numFlashes2")
+                app.removeSetting("delay2")
+                app.removeSetting("fColor2")
+            }
             
-            input "days", "enum", title: "Only flash on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "Logging", submitOnChange:true
+            if(setupPreset3) {
+                section("${getImage('instructions')} Flashing Preset 3", hideable: true) {
+                    input "theSwitch3", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+                    paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                    input "numFlashes3", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
+                    input "delay3", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
+                    if(theSwitch3) {
+                        if(theSwitch3.hasCommand('setColor')) {
+                            input "fColor3", "enum", title: "Color", required: false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                            ]
+                        }
+                    }
+
+                    if(theSwitch3 || numFlashes3 || delay3) {
+                        paragraph "<hr>"
+                       input "setupPreset4", "bool", title: "Setup Preset 3?", defaultValue:false, submitOnChange:true
+                    }
+                }
+            } else {
+                app.removeSetting("theSwitch3")
+                app.removeSetting("numFlashes3")
+                app.removeSetting("delay3")
+                app.removeSetting("fColor3")
+            }
+            
+            if(setupPreset4) {
+                section("${getImage('instructions')} Flashing Preset 4", hideable: true) {
+                    input "theSwitch4", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+                    paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                    input "numFlashes4", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
+                    input "delay4", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
+                    if(theSwitch4) {
+                        if(theSwitch4.hasCommand('setColor')) {
+                            input "fColor4", "enum", title: "Color", required: false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                            ]
+                        }
+                    }
+
+                    if(theSwitch4 || numFlashes4 || delay4) {
+                        paragraph "<hr>"
+                       input "setupPreset5", "bool", title: "Setup Preset 3?", defaultValue:false, submitOnChange:true
+                    }
+                }
+            } else {
+                app.removeSetting("theSwitch4")
+                app.removeSetting("numFlashes4")
+                app.removeSetting("delay4")
+                app.removeSetting("fColor4")
+            }
+            
+            if(setupPreset5) {
+                section("${getImage('instructions')} Flashing Preset 5", hideable: true) {
+                    input "theSwitch5", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+                    paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                    input "numFlashes5", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
+                    input "delay5", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
+                    if(theSwitch5) {
+                        if(theSwitch5.hasCommand('setColor')) {
+                            input "fColor5", "enum", title: "Color", required: false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                            ]
+                        }
+                    }
+                }
+            } else {
+                app.removeSetting("theSwitch5")
+                app.removeSetting("numFlashes5")
+                app.removeSetting("delay5")
+                app.removeSetting("fColor5")
+            }         
+        } else {
+            section(getFormat("header-green", "${getImage("Blank")}"+" The Flasher Trigger Options")) {
+                input "acceleration", "capability.accelerationSensor", title: "Acceleration Sensor(s)", required:false, multiple:true, submitOnChange:true
+                if(acceleration) {
+                    input "accelerationValue", "bool", defaultValue: false, title: "Flash when Inactive or Active (off = Inactive, On = Active)", description: "Options"
+                }
+
+                input "button", "capability.pushableButton", title: "Button Device(s)", required:false, multiple:true, submitOnChange:true
+
+                input "contact", "capability.contactSensor", title: "Contact Sensor(s)", required:false, multiple:true, submitOnChange:true
+                if(contact) {
+                    input "contactValue", "bool", defaultValue: false, title: "Flash when Closed or Open (off = Closed, On = Open)", description: "Options"
+                }
+
+                input "lock", "capability.lock", title: "Lock(s)", required:false, multiple:true, submitOnChange:true
+                if(lock) {
+                    input "lockValue", "bool", defaultValue: false, title: "Flash when Unlocked or Locked (off = Unlocked, On = Locked)", description: "Options"
+                }
+
+                input "motion", "capability.motionSensor", title: "Motion Sensor(s)", required:false, multiple:true, submitOnChange:true
+                if(motion) {
+                    input "motionValue", "bool", defaultValue: false, title: "Flash when Inactive or Active (off = Inactive, On = Active)", description: "Options"
+                }
+
+                input "myPresence", "capability.presenceSensor", title: "Presence Sensor(s)", required:false, multiple:true, submitOnChange:true
+                if(myPresence) {
+                    input "presenceValue", "bool", defaultValue:false, title: "Flash when Not Present or Present (off=Not Present, On=Present)", description: "Options"
+                }
+
+                input "mySwitch", "capability.switch", title: "Switch(es)", required:false, multiple:true, submitOnChange:true
+                if(mySwitch) {
+                    input "switchValue", "bool", defaultValue:false, title: "Flash when Off or On (off = Off, On = On)", description: "Options"
+                }
+
+                input "myWater", "capability.waterSensor", title: "Water Sensor(s)", required:false, multiple:true, submitOnChange:true
+                if(myWater) {
+                    input "waterValue", "bool", defaultValue: false, title: "Flash when Wet or Dry (off = Wet, On = Dry)", description: "Options"
+                }
+
+                input "timeToRun", "time", title: "Flash at a Certain Time", required:false
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Flash Options")) {
+                input "theSwitch", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
+                paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
+                input "numFlashes", "number", title: "Number of times<br>(0 = indefinite)", required: false, submitOnChange:true, width: 6
+                input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
+                if(theSwitch) {
+                    if(theSwitch.hasCommand('setColor')) {
+                        input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"
+                        ]
+                    }
+                }
+                if(numFlashes == 0) {
+                    input "controlSwitch", "capability.switch", title: "Control Switch", multiple:false, submitOnChange:true
+                    paragraph "<b>Flashing will continue until the Control Switch is turned off.</b>"
+                } else {
+                    app.removeSetting("controlSwitch")
+                }
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions")) {
+                paragraph "Allow flashing between what times"
+                input "fromTime", "time", title: "From", required:false, width: 6
+                input "toTime", "time", title: "To", required:false, width: 6
+
+                input "myMode", "mode", title: "Allow flashing when in this Mode", multiple:true, submitOnChange:true
+
+                input "days", "enum", title: "Only flash on these days", description: "Days to run", required:false, multiple:true, submitOnChange:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            }
+        }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Logging", submitOnChange:true
 		}
 		display2()
 	}
@@ -172,15 +346,72 @@ def updated() {
 }
 
 def subscribe() {
-    if(acceleration) subscribe(acceleration, "acceleration", accelerationHandler)
-    if(button) subscribe(button, "pushed", buttonHandler)
-	if(contact) subscribe(contact, "contact", contactHandler)
-	if(lock) subscribe(lock, "lock", lockHandler)
-	if(motion) subscribe(motion, "motion", motionHandler)
-    if(myPresence) subscribe(myPresence, "presence", presenceHandler)
-	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
-    if(myWater) subscribe(myWater, "water", moistureHandler)
-    if(timeToRun) schedule(timeToRun, timeHandler)
+    if(presetsORstandalon) {
+        if(dataDevice) subscribe(dataDevice, "presetCommand", runPresetHandler)
+    } else {
+        if(acceleration) subscribe(acceleration, "acceleration", accelerationHandler)
+        if(button) subscribe(button, "pushed", buttonHandler)
+        if(contact) subscribe(contact, "contact", contactHandler)
+        if(lock) subscribe(lock, "lock", lockHandler)
+        if(motion) subscribe(motion, "motion", motionHandler)
+        if(myPresence) subscribe(myPresence, "presence", presenceHandler)
+        if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
+        if(myWater) subscribe(myWater, "water", moistureHandler)
+        if(timeToRun) schedule(timeToRun, timeHandler)
+    }
+}
+
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(delete) {
+	delete.each {deleteChildDevice(it.deviceNetworkId)}
+}
+
+def runPresetHandler(evt) {
+    if(logEnable) log.debug "In runPresetHandler (${state.version})"
+    values = evt.value
+    def (theName,thePreset) = values.split("::")
+    if(logEnable) log.debug "In runPresetHandler - theName: ${theName} - thePreset: ${thePreset}"
+    state.presetMatch = false
+    
+    if(thePreset == "1" && theSwitch1) {
+        theSwitch = theSwitch1
+        numFlashes = numFlashes1
+        delay = delay1
+        fColor = fColor1
+        state.presetMatch = true
+    } else if(thePreset == "2" && theSwitch2) {
+        theSwitch = theSwitch2
+        numFlashes = numFlashes2
+        delay = delay2
+        fColor = fColor2
+        state.presetMatch = true
+    } else if(thePreset == "3" && theSwitch3) {
+        theSwitch = theSwitch3
+        numFlashes = numFlashes3
+        delay = delay3
+        fColor = fColor3
+        state.presetMatch = true
+    } else if(thePreset == "4" && theSwitch4) {
+        theSwitch = theSwitch4
+        numFlashes = numFlashes4
+        delay = delay4
+        fColor = fColor4
+        state.presetMatch = true
+    } else if(thePreset == "5" && theSwitch5) {
+        theSwitch = theSwitch5
+        numFlashes = numFlashes5
+        delay = delay5
+        fColor = fColor5
+        state.presetMatch = true
+    } else {
+        if(logEnable) log.debug "In runPresetHandler - Preset NOT found (${thePreset})"
+        state.presetMatch = false
+    }
+    
+    if(state.presetMatch) flashLights()
 }
 
 def accelerationHandler(evt) {
@@ -231,7 +462,7 @@ def moistureHandler(evt) {
 }
 
 def timeHandler(evt) {
-	if(logEnable) log.debug "In timeHandler - Time: -"
+	if(logEnable) log.debug "In timeHandler - Time: $timeToRun"
 	flashLights()
 }
 
@@ -263,7 +494,7 @@ def checkMode() {
     if(logEnable) log.debug "In checkMode - modeMatch: ${state.modeMatch}"
 }
 
-def flashLights() {    // Modified from ST documents
+def flashLights() {
     if(logEnable) log.debug "******************* Start - The Flasher *******************"
     if(logEnable) log.debug "In flashLights (${state.version})"
     checkTime()
@@ -360,6 +591,7 @@ def flashLights() {    // Modified from ST documents
                             theSwitch.setColor(state.oldValue)
                             if(logEnable) log.debug "In flashLights - Resetting switch - switch: $theSwitch - oldValue: $state.oldValue"
                         }
+                        pauseExecution(500)
                         if(state.oldSwitchState == "on") {
                             theSwitch.on()
                         } else {
@@ -454,6 +686,22 @@ def dayOfTheWeekHandler() {
 	if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "The Flasher Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "The Flasher unable to create device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults(){
@@ -497,25 +745,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
