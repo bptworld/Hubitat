@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 06/19/20 - Removed internal Flash Lights and added The Flasher
  *  1.1.0 - 06/13/20 - Fixed type in letsTalk
  *  1.0.9 - 06/11/20 - All speech now goes through Follow Me
  *  1.0.8 - 06/07/20 - Bug fixes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -169,10 +170,12 @@ def pageConfig() {
                 paragraph "<hr>"
                 input "switchesOn", "capability.switch", title: "Turn these switches ON", required: false, multiple: true
 			    input "switchesOff", "capability.switch", title: "Turn these switches OFF", required: false, multiple: true
-                input "switchesFlash", "capability.switch", title: "Flash these lights", required: false, multiple: true, submitOnChange:true
-                if(switchesFlash) {                 
-		            input "numOfFlashes", "number", title: "Number of times (default: 2)", required: false, width: 6
-                    input "delayFlashes", "number", title: "Milliseconds for lights to be on/off (default: 500 - 500=.5 sec, 1000=1 sec)", required: false, width: 6
+                
+                paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+                input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+                if(useTheFlasher) {
+                    input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
+                    input "flashPreset", "number", title: "Select the Preset to use (1..5)", required:true, submitOnChange:true
                 }
                 input "newMode", "mode", title: "Change to Mode", required: false, multiple: false
     	    }
@@ -221,9 +224,12 @@ def startTheProcess(evt) {
     dayOfTheWeekHandler()
     if(state.daysMatch && switchesOn) switchesOnHandler(switchesOn)
     if(state.daysMatch && switchesOff) switchesOffHandler(switchesOff)
-    if(state.daysMatch && switchesFlash) flashLights(switchesFlash,numOfFlashes,delayFlashes)
+    if(state.daysMatch && useTheFlasher) {
+        flashData = "Preset::${flashPreset}"
+        theFlasherDevice.sendPreset(flashData)
+    }
     if(state.daysMatch && newMode) modeHandler(newMode)
-    if(state.daysMatch && (speakerMP || speakerSS) && msg != null) letsTalk(state.theMsg)
+    if(state.daysMatch && fmSpeaker && msg != null) letsTalk(state.theMsg)
     
     // reset for next time
     initialize()
@@ -257,6 +263,7 @@ def everySoManyDaysHandler() {
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    state.theMsg = msg
     state.repeat = state.repeat + 1
     checkMaxRepeat()
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
@@ -331,53 +338,6 @@ def pushNow(theMsg){
 	theMessage = "${app.label} - ${theMsg}"
 	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
-}
-
-private flashLights(switchesToFlash,numOfFlashes,delayFlashes) {    // Modified from ST documents
-    if(logEnable) log.debug "In flashLights (${state.version})"
-	def doFlash = true
-	def delay = delayFlashes ?: 500
-	def numFlashes = numOfFlashes ?: 2
-
-	if(logEnable) log.debug "In flashLights - LAST ACTIVATED: ${state.lastActivated}"
-	if(state.lastActivated) {
-		def elapsed = now() - state.lastActivated
-		def sequenceTime = (numFlashes + 1) * (delay)
-		doFlash = elapsed > sequenceTime
-		if(logEnable) log.debug "In flashLights - DO FLASH: $doFlash - ELAPSED: $elapsed - LAST ACTIVATED: ${state.lastActivated}"
-	}
-
-	if(doFlash) {
-		if(logEnable) log.debug "In flashLights - FLASHING $numFlashes times"
-		state.lastActivated = now()
-		if(logEnable) log.debug "In flashLights - LAST ACTIVATED SET TO: ${state.lastActivated}"
-		def initialActionOn = switchesToFlash.collect{it.currentSwitch != "on"}
-
-		numFlashes.times {
-			if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
-			switchesToFlash.eachWithIndex {s, i ->
-				if (initialActionOn[i]) {
-                    pauseExecution(delay)
-					s.on()
-				}
-				else {
-                    pauseExecution(delay)
-					s.off()
-				}
-			}
-			if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
-			switchesToFlash.eachWithIndex {s, i ->
-				if (initialActionOn[i]) {
-                    pauseExecution(delay)
-					s.off()
-				}
-				else {
-                    pauseExecution(delay)
-					s.on()
-				}
-			}
-		}
-	}
 }
 
 def switchesOnHandler(switchesOn) {
