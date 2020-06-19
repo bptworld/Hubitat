@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/LT-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.7"
+			"version": "2.0.8"
 		}
 	],
 	"drivers" : [
