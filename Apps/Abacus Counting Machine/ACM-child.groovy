@@ -59,7 +59,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/ACM-child.groovy",
 )
 
 preferences {
