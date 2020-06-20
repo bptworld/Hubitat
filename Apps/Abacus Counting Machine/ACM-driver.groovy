@@ -41,7 +41,7 @@
  */
 
 metadata {
-	definition (name: "Abacus Counting Machine Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "Abacus Counting Machine Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/ACM-driver.groovy") {
    		capability "Actuator"
 
         command "sendContactMap", ["string"]
