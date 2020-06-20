@@ -31,7 +31,7 @@
 			"id": "0e009f99-0005-440d-a642-c3273301c1ee",
 			"name": "The Flasher Driver",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/TF-child.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/TF-driver.groovy",
 			"required": true,
 			"version": "1.0.0"
 		}
