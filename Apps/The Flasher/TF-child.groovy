@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 06/20/20 - Fixed Preset 1
  *  1.1.1 - 06/19/20 - Presets, can now be controlled by outside apps
  *  1.1.0 - 04/27/20 - Cosmetic changes
  *  1.0.9 - 04/27/20 - Added indefinite flashing with Control Switch
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -107,6 +108,7 @@ def pageConfig() {
             
             if(dataDevice) {
                 section("${getImage('instructions')} Flashing Preset 1", hideable: true) {
+                    input "theSwitch1", "capability.switch", title: "Flash this light", multiple:false, submitOnChange:true
                     paragraph "<b>Note:</b> If the light isn't returning to it's original state, raise the Milliseconds between on/off. Range is 1000 to 5000 (1 to 5 seconds)."
                     input "numFlashes1", "number", title: "Number of times", required: false, submitOnChange:true, width: 6
                     input "delay1", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
