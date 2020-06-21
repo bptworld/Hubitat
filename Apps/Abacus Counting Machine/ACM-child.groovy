@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 06/21/20 - Fixed Reset Counts
  *  1.0.0 - 06/20/20 - Initial release.
  *
  */
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Abacus Counting Machine"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -341,10 +342,26 @@ def initialize() {
 	subscribe(switchEvent, "switch.on", switchHandler)
 	subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
 
-    schedule("0 57 23 1/1 * ? *", resetCountsHandler, [data: "D"])
-	schedule("0 58 23 ? * SAT *", resetCountsHandler, [data: "W"])
-	schedule("0 59 23 L * ? *", resetCountsHandler, [data: "M"])
-	schedule("0 0 0 1 1 ? *", resetCountsHandler, [data: "Y"])
+    schedule("0 57 23 1/1 * ? *", resetDayHandler, [data: "D"])
+	schedule("0 58 23 ? * SAT *", resetWeekHandler, [data: "W"])
+	schedule("0 59 23 L * ? *", resetMonthHandler, [data: "M"])
+	schedule("0 0 0 1 1 ? *", resetYearHandler, [data: "Y"])
+}
+
+def resetDayHandler(data) {
+    resetCountsHandler(data)
+}
+
+def resetWeekHandler(data) {
+    resetCountsHandler(data)
+}
+
+def resetMonthHandler(data) {
+    resetCountsHandler(data)
+}
+
+def resetYearHandler(data) {
+    resetCountsHandler(data)
 }
 
 def contactHandler(evt) {
@@ -521,7 +538,8 @@ def resetCountsHandler(data) {
             if(logEnable) log.debug "In resetCountsHandler - Contact Sensor - ${theName} - newValues: ${newValues}"
             state.contactMap.put(theName, newValues)
         }
-    }  
+    }
+    if(contactEvent) { buildMaps("Contact Sensor") }
     
     if(logEnable) log.debug "In resetCountsHandler - Resetting Motion - dataValue: ${dataValue}"
     motionEvent.each { it ->
@@ -538,6 +556,7 @@ def resetCountsHandler(data) {
             state.motionMap.put(theName, newValues)
         }
     }
+    if(motionEvent) { buildMaps("Motion Sensor") }
     
     if(logEnable) log.debug "In resetCountsHandler - Resetting Switch - dataValue: ${dataValue}"
     switchEvent.each { it ->
@@ -554,6 +573,7 @@ def resetCountsHandler(data) {
             state.switchMap.put(theName, newValues)
         }
     }
+    if(switchEvent) { buildMaps("Switch") }
     
     if(logEnable) log.debug "In resetCountsHandler - Resetting Thermostat - dataValue: ${dataValue}"
     thermostatEvent.each { it ->
@@ -570,6 +590,7 @@ def resetCountsHandler(data) {
             state.thermostatMap.put(theName, newValues)
         }
     }
+    if(thermostatEvent) { buildMaps("Thermostat") }
 }
 
 def buildMaps(data) {
