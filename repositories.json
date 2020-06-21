@@ -4,6 +4,12 @@
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
       {
+   		"name": "Abacus Counting Machine",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
+   		"description": "Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!"
+   	},
+      {
    		"name": "At Home Simulator",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
