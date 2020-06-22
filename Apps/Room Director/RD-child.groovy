@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 06/22/20 - Changes to letsTalk
  *  1.1.4 - 06/19/20 - Added The Flasher
  *  1.1.3 - 06/13/20 - Fixed typo with daysMatch, thanks @fourwhitehouse!
  *  1.1.2 - 06/11/20 - All speech now goes through Follow Me
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -937,7 +938,10 @@ def messageHandler() {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(theMsg)
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(theMsg)
+    }
     theMsg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
