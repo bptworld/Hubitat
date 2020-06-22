@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.9 - 06/22/20 - Changes to letsTalk
  *  2.0.8 - 06/19/20 - added The Flasher
  *  2.0.7 - 06/18/20 - Major Changes. Going at it a different way
  *  2.0.6 - 04/27/20 - Cosmetic changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.0.8"
+	state.version = "2.0.9"
 }
 
 definition(
@@ -538,7 +539,10 @@ def getTimeMoving() {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(msg)
+    }
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
