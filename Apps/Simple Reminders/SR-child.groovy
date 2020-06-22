@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 06/22/20 - Changes to 'Follow Me'
  *  1.1.2 - 06/21/20 - Minor changes
  *  1.1.1 - 06/19/20 - Removed internal Flash Lights and added The Flasher
  *  1.1.0 - 06/13/20 - Fixed type in letsTalk
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -263,7 +264,10 @@ def everySoManyDaysHandler() {
 
 def letsTalk() {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(state.theMsg)
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom("Simple Reminders")
+        fmSpeaker.speak(state.theMsg)
+    }
     state.repeat = state.repeat + 1
     checkMaxRepeat()
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
