@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 06/22/20 - Changes to letsTalk
  *  1.1.5 - 06/13/20 - Fixed letsTalk typo
  *  1.1.4 - 06/13/20 - Cosmetic changes
  *  1.1.3 - 06/11/20 - All speech now goes through Follow Me
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -733,7 +734,10 @@ def checkTimeInState(evt) {
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     dayOfTheWeekHandler()
-    if(state.daysMatch && useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    if(state.daysMatch && useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(msg)
+    }
     msg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
