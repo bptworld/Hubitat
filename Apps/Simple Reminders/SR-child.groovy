@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 06/21/20 - Minor changes
  *  1.1.1 - 06/19/20 - Removed internal Flash Lights and added The Flasher
  *  1.1.0 - 06/13/20 - Fixed type in letsTalk
  *  1.0.9 - 06/11/20 - All speech now goes through Follow Me
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Reminders"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -229,7 +230,7 @@ def startTheProcess(evt) {
         theFlasherDevice.sendPreset(flashData)
     }
     if(state.daysMatch && newMode) modeHandler(newMode)
-    if(state.daysMatch && fmSpeaker && msg != null) letsTalk(state.theMsg)
+    if(state.daysMatch && fmSpeaker && state.theMsg) letsTalk()
     
     // reset for next time
     initialize()
@@ -260,10 +261,9 @@ def everySoManyDaysHandler() {
     schedule(hmdSchedule, startTheProcess)
 }
 
-def letsTalk(msg) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
-    state.theMsg = msg
+def letsTalk() {
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(state.theMsg)
     state.repeat = state.repeat + 1
     checkMaxRepeat()
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
@@ -272,7 +272,7 @@ def letsTalk(msg) {
 def checkMaxRepeat() {
     if(logEnable) log.debug "In checkMaxRepeat (${state.version})"
     if(state.repeat == null) state.repeat = 1   
-    if(sendPushMessage && state.repeat == 1) pushNow(state.theMsg)
+    if(sendPushMessage && state.repeat == 1) pushNow()
     
     if(maxRepeats == 1) {
         if(logEnable) log.debug "In checkMaxRepeat - Max repeats (${maxRepeats}) has been reached (${state.repeat})"
@@ -284,7 +284,7 @@ def checkMaxRepeat() {
             if(logEnable) log.debug "In checkMaxRepeat - Control switch: ${rControlSwitch} is ${theControlSwitch} - Max repeats: ${maxRepeats} - repeated: ${state.repeat}"
          
             if(theControlSwitch == "on") {
-                letsTalk(state.theMsg)
+                letsTalk()
             } else {
                 if(logEnable) log.debug "In checkMaxRepeat - Control Switch is OFF"
             }
@@ -305,10 +305,9 @@ def messageHandler() {
 	vSize = values.size()
     count = vSize.toInteger()
     def randomKey = new Random().nextInt(count)
-	theMsg = values[randomKey]
-	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMsg: ${theMsg}"    
-	state.theMsg = theMsg        
-    letsTalk(theMsg)
+	state.theMsg = values[randomKey]
+	if(logEnable) log.debug "In messageHandler - Random - vSize: ${vSize}, randomKey: ${randomKey}, theMsg: ${state.theMsg}"    
+    letsTalk()
 }
 
 def dayOfTheWeekHandler() {
@@ -333,9 +332,9 @@ def dayOfTheWeekHandler() {
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
-def pushNow(theMsg){
+def pushNow() {
 	if(logEnable) log.debug "In pushNow (${state.version})"
-	theMessage = "${app.label} - ${theMsg}"
+	theMessage = "${app.label} - ${state.theMsg}"
 	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
 }
@@ -363,7 +362,6 @@ def modeHandler(newMode) {
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
-	if(state.msg == null){state.msg = ""}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
