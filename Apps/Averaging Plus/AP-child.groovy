@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 06/21/20 - Minor changes
  *  1.0.5 - 06/16/20 - Changes by @rvrolyk, thanks!
  *  1.0.4 - 06/13/20 - Fixed letsTalk typo
  *  1.0.3 - 06/11/20 - All speech now goes through Follow Me
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -351,10 +352,11 @@ def averageHandler(evt) {
                 }
             }
             if(pushMessage && !state.sentPush) {
-                messageHandler(spLowMessage)
-                pushNow(theMsg)
+                state.theMsg = spLowMessage
+                messageHandler()
+                pushNow()
             }
-            if(useSpeech && fmSpeaker) letsTalk(theMsg)
+            if(useSpeech && fmSpeaker) letsTalk()
         }
         
         if(state.theAverage >= highSetpoint) {
@@ -368,10 +370,11 @@ def averageHandler(evt) {
                 }
             }
             if(pushMessage && !state.sentPush) {
-                messageHandler(spHighMessage)
-                pushNow(theMsg)
+                messageHandler = spHighMessage
+                messageHandler()
+                pushNow()
             }
-            if(useSpeech && fmSpeaker) letsTalk(theMsg)
+            if(useSpeech && fmSpeaker) letsTalk()
         }
         
         if(state.theAverage < highSetpoint && state.theAverage > lowSetpoint) {
@@ -399,25 +402,24 @@ def averageHandler(evt) {
     }
 }
 
-def letsTalk(msg) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
-    msg = ""
+def letsTalk() {
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
+    if(useSpeech && fmSpeaker) fmSpeaker.speak(state.theMsg)
+    state.theMsg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
-def messageHandler(msg) {
+def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
-    if(msg.contains("%avg%")) {theMsg = msg.replace('%avg%', "${state.theAverage}" )}
+    if(state.theMsg.contains("%avg%")) {state.theMsg = state.theMsg.replace('%avg%', "${state.theAverage}" )}
 
-    if(logEnable) log.debug "In messageHandler - theMsg: ${theMsg}"
-    return theMsg
+    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
 }
 
-def pushNow(msg) {
+def pushNow() {
     if(logEnable) log.debug "In pushNow (${state.version})"
     thePushMessage = "${app.label} \n"
-    thePushMessage += msg
+    thePushMessage += state.theMsg
     if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
     if(state.low) pushMessage.deviceNotification(thePushMessage)
     if(state.high) pushMessage.deviceNotification(thePushMessage)
