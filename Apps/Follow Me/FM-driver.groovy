@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.2.1 - 06/22/20 - Adjustments
  *  2.2.0 - 06/12/20 - Added error trap for null message
  *  2.1.9 - 06/08/20 - Minor fix to clear Speaker Map - suggested by @mark.cockcroft. Thank you.
  *  2.1.8 - 05/30/20 - Fixed the bug with Speaker Map
@@ -81,11 +82,13 @@ metadata {
         command "sendQueue", ["string", "string", "string"]
         
         command "sendPush", ["string"]
+        command "latestMessageFrom", ["string"]
 
         attribute "bpt-whatDidISay", "string"
         attribute "whatDidISayCount", "string"
         attribute "latestMessage", "string"
         attribute "latestMessageDateTime", "string"
+        attribute "latestMessageFrom", "string"
         attribute "bpt-speakerStatus1", "string"
         attribute "bpt-speakerStatus2", "string"
         attribute "bpt-speakerStatus3", "string"
@@ -117,7 +120,7 @@ def sendQueue(ps, theMessage, duration) {
 
 def sendPush(data) {
     if(logEnable) log.debug "In sendPush - data: ${data}"
-    sendEvent(name: "pushMessage", value: data, isStateChange: true) 
+    sendEvent(name: "pushMessage", value: data) 
 }
 
 // -- code by @storageanarchy - Thank you for showing me how to pass the variables!
@@ -129,48 +132,48 @@ def playAnnouncement(String message, volume=null, restoreVolume=null) {
     if(logEnable) log.debug "In playAnnouncement"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, 'N:X', volume, restoreVolume)
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def playAnnouncement(String message, String title, volume=null, restoreVolume=null) {
     if(logEnable) log.debug "In playAnnouncement"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncement', state.speechReceivedFULL, 'N:X', volume, restoreVolume, title)
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def playAnnouncementAll(String message, title=null) {
     if(logEnable) log.debug "In playAnnouncementAll"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playAnnouncementAll', state.speechReceivedFULL, 'N:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def deviceNotification(message) {
     if(logEnable) log.debug "In deviceNotification"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('deviceNotification', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def playText(message) {
     if(logEnable) log.debug "In playText"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playText', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def playTextAndRestore(message) {
     if(logEnable) log.debug "In playTextAndRestore"
     //state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playTextAndRestore', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def playTrack(message) {
     if(logEnable) log.debug "In playTrack"
     theMessage = composeMessageMap('playTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def playTrackAndRestore(message) {
@@ -178,45 +181,45 @@ def playTrackAndRestore(message) {
     //NB - Maybe shouldn't strip the URL encoding, as this is supposed to be a URL
     state.speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('playTrackAndRestore', state.speechReceivedFULL, 'X:0')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def restoreTrack(message) {
     if(logEnable) log.debug "In restoreTrack"
     theMessage = composeMessageMap('restoreTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def resumeTrack(message) {
     if(logEnable) log.debug "In resumeTrack"
     theMessage = composeMessageMap('resumeTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def setTrack(message) {
     if(logEnable) log.debug "In setTrack"
     theMessage = composeMessageMap('setTrack', state.speechReceivedFULL, 'X:X')
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def setVolume(volume) {
     if(logEnable) log.debug "In setVolume"
     theMessage = composeMessageMap('setVolume', '', 'X:X', volume, null, null)
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)   
+    sendEvent(name: "latestMessage", value: theMessage)   
 }
 
 def setVolumeSpeakAndRestore(volume, message, restoreVolume) {
     if(logEnable) log.debug "In setVolumeSpeakAndRestore"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('setVolumeSpeakAndRestore', state.speechReceivedFULL, 'N:X', volume, restoreVolume)
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def setVolumeAndSpeak(volume, message) {
     if(logEnable) log.debug "In setVolumeAndSpeak"
     speechReceivedFULL = message.replace("%20"," ").replace("%5B","[").replace("%5D","]")
     theMessage = composeMessageMap('setVolumeAndSpeak', state.speechReceivedFULL, 'N:X', volume)
-    sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+    sendEvent(name: "latestMessage", value: theMessage)
 }
 
 def speak(message) {    
@@ -227,11 +230,11 @@ def speak(message) {
         speechReceivedFULL = lastSpoken.replace("%20"," ").replace("%5B","[").replace("%5D","]")   
         theMessage = composeMessageMap('speak', speechReceivedFULL, priority)
         if(logEnable) log.debug "In speak - theMessage: ${theMessage}"
-        sendEvent(name: "latestMessage", value: theMessage, isStateChange: true)
+        sendEvent(name: "latestMessage", value: theMessage)
         latestMessageDate()
         populateMap(priority,lastSpoken)
     } else {
-        log.warn "Follow Me - speak - Something went Wrong, No message received."
+        log.warn "Follow Me - speak - Something went Wrong, No message received. (${latestMessageFrom})"
     }
 }
 
@@ -353,6 +356,10 @@ def latestMessageDate() {
     def date = new Date()
     latestMessageDateTime = date
     sendEvent(name: "latestMessageDateTime", value: date)
+}
+
+def latestMessageFrom(data) {
+    sendEvent(name: "latestMessageFrom", value: data)
 }
 
 def clearDataOff(){
