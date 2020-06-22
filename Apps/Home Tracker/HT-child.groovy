@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.8 - 06/22/20 - Changes to letsTalk
  *  2.3.7 - 06/19/20 - Removed internal Flash Lights and added The Flasher
  *  2.3.6 - 06/14/20 - Chasing bugs
  *  2.3.5 - 06/13/20 - Fixed letsTalk typo... again
@@ -61,7 +62,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.3.7"
+	state.version = "2.3.8"
 }
 
 definition(
@@ -733,7 +734,10 @@ def messageHandler(message) {
 
 def letsTalk(msg) {
     if(logEnable) log.warn "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(msg)
+    }
     if(logEnable) log.warn "In letsTalk - *** Finished ***"
     clearPresenceMap()
 }
