@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 06/22/20 - Changes to letsTalk
  *  1.0.6 - 06/21/20 - Minor changes
  *  1.0.5 - 06/16/20 - Changes by @rvrolyk, thanks!
  *  1.0.4 - 06/13/20 - Fixed letsTalk typo
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -404,7 +405,10 @@ def averageHandler(evt) {
 
 def letsTalk() {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(state.theMsg)
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(state.theMsg)
+    }
     state.theMsg = ""
     if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
