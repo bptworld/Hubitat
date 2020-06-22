@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 06/22/20 - Changes to letsTalk
  *  1.0.5 - 06/19/20 - Added The Flasher, all speech now goes through 'Follow Me'
  *  1.0.4 - 04/27/20 - Cosmetic changes
  *  1.0.3 - 04/04/20 - Fixed push, fixed issue with 'unexpected error' with Notification page, added wildcard for timer name in message.
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Simple Kitchen Timer"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -278,7 +279,10 @@ def startHandler(evt) {
 
 def letsTalk(msg) {
     if(logEnable) log.warn "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
-    if(useSpeech && fmSpeaker) fmSpeaker.speak(msg)
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(msg)
+    }
     if(logEnable) log.warn "In letsTalk - *** Finished ***"
 }
 
