@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.5"
+			"version": "1.0.6"
 		}
 	],
 	"drivers" : [
