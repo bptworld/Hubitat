@@ -199,6 +199,7 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
     sendToDevice()
 	unschedule()
+    unsubscribe()
 	initialize()
 }
 
