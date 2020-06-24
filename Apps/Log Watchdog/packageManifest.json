@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2020-06-24",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": https://community.hubitat.com/t/beta-log-watchdog-keep-an-eye-on-whats-important-in-the-log/22270",
+	"communityLink": "https://community.hubitat.com/t/beta-log-watchdog-keep-an-eye-on-whats-important-in-the-log/22270",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
