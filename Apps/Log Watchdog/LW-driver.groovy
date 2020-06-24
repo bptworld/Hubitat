@@ -65,11 +65,13 @@ metadata {
         attribute "bpt-logData", "string"        
         attribute "numOfCharacters", "number"
         attribute "keywordInfo", "string"
+        attribute "appStatus", "string"
         
         command "connect"
         command "close"
         command "clearData"
         command "keywordInfo"
+        command "appStatus"
     }
     preferences() {    	
         section(){
@@ -139,56 +141,58 @@ def keywordInfo(keys) {
 }
 
 def parse(String description) {
-    theData = "${description}"
-    // This is what the incoming data looks like
-    //{"name":"Log Watchdog","msg":"Log Watchdog Driver - Connected","id":365,"time":"2019-11-24 10:05:07.518","type":"dev","level":"warn"}
-    
-    def (name, msg, id, time, type, level) = theData.split(",")
-    def (msgKey, msgValue) = msg.split(":",2)
-    
-    def (nameKey, nameValue) = name.split(":",2)
-    
-    msgValue = msgValue.replace("\"","")
-    nameValue = nameValue.replace("\"","")
-    msgCheck = msgValue.toLowerCase()
-    
-    try {
-        def (lvlKey, lvlValue) = level.split(":",2)
-        lvlValue = lvlValue.replace("\"","").replace("}","")
-        lvlCheck = lvlValue.toLowerCase()
-    } catch (e) {
-        lvlCheck = "-"
-    }
- 
-// *****************************
-    try {
-        def match = "no"
-        def keyValue = state.keyValue.toLowerCase()
-        def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
-        if(keyword1 == "-") keyword1 = ""
-        if(sKeyword1 == "-") sKeyword1 = ""
-        if(sKeyword2 == "-") sKeyword2 = ""
-        if(sKeyword3 == "-") sKeyword3 = ""
-        if(sKeyword4 == "-") sKeyword4 = ""
-        if(nKeyword1 == "-") nKeyword1 = ""
-        if(nKeyword2 == "-") nKeyword2 = ""
-        lCheck1 = "no"
-        lCheck2 = "no"
-        lCheck3 = "no"
-        kCheck1 = "no"
-        kCheck2 = "no"
-        kCheck3 = "no"
-        
-    // -- check 1 start    
+    def aStatus = device.currentValue('appStatus')
+    if(aStatus == "active") {
+        theData = "${description}"
+        // This is what the incoming data looks like
+        //{"name":"Log Watchdog","msg":"Log Watchdog Driver - Connected","id":365,"time":"2019-11-24 10:05:07.518","type":"dev","level":"warn"}
+
+        def (name, msg, id, time, type, level) = theData.split(",")
+        def (msgKey, msgValue) = msg.split(":",2)
+
+        def (nameKey, nameValue) = name.split(":",2)
+
+        msgValue = msgValue.replace("\"","")
+        nameValue = nameValue.replace("\"","")
+        msgCheck = msgValue.toLowerCase()
+
+        try {
+            def (lvlKey, lvlValue) = level.split(":",2)
+            lvlValue = lvlValue.replace("\"","").replace("}","")
+            lvlCheck = lvlValue.toLowerCase()
+        } catch (e) {
+            lvlCheck = "-"
+        }
+
+        // *****************************
+        try {
+            def match = "no"
+            def keyValue = state.keyValue.toLowerCase()
+            def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+            if(keyword1 == "-") keyword1 = ""
+            if(sKeyword1 == "-") sKeyword1 = ""
+            if(sKeyword2 == "-") sKeyword2 = ""
+            if(sKeyword3 == "-") sKeyword3 = ""
+            if(sKeyword4 == "-") sKeyword4 = ""
+            if(nKeyword1 == "-") nKeyword1 = ""
+            if(nKeyword2 == "-") nKeyword2 = ""
+            lCheck1 = "no"
+            lCheck2 = "no"
+            lCheck3 = "no"
+            kCheck1 = "no"
+            kCheck2 = "no"
+            kCheck3 = "no"
+
+            // -- check 1 start    
             if((keySetType == "l") && (lvlCheck.contains("${keyword1}"))) {
-//log.info "keySetType = l"
+                //log.info "keySetType = l"
                 if(traceEnable) {
                     keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                     log.trace "In level - Found lvlCheck: ${keyword1a}"
                 }
                 lCheck1 = "yes"
-    // -- check 1 done 
-    // -- check 2 start
+                // -- check 1 done 
+                // -- check 2 start
                 if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
                     if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
                         if(traceEnable) log.trace "In level: ${keyword1a} - Passed keywords"
@@ -198,33 +202,33 @@ def parse(String description) {
                     if(traceEnable) log.trace "In level: ${keyword1a} - Passed keywords"
                     lCheck2 = "yes"
                 }
-    // -- check 2 done 
-    // -- check 3 start            
+                // -- check 2 done 
+                // -- check 3 start            
                 if(nKeyword1 || nKeyword2) {
                     if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
                         if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
-                    l    Check3 = "yes"
-                     }
+                        l    Check3 = "yes"
+                    }
                 } else {
-                     if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
-                     lCheck3 = "yes"
+                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
+                    lCheck3 = "yes"
                 }
-    // -- check 3 done
+                // -- check 3 done
                 if(traceEnable) log.trace "In keyword: ${keyword1a} - lCheck1: ${lCheck1}, lCheck2: ${lCheck2}, lCheck3: ${lCheck3}"
                 if(lCheck1 == "yes" && lCheck2 == "yes" && lCheck3 == "yes") match = "yes"
             }
-        
-    // -- check 1 start
-//log.info "msgCheck: ${msgCheck} - keyword1: ${keyword1}"
+
+            // -- check 1 start
+            //log.info "msgCheck: ${msgCheck} - keyword1: ${keyword1}"
             if((keySetType == "k") && (msgCheck.contains("${keyword1}"))) {
-//log.info "keySetType = k"
+                //log.info "keySetType = k"
                 if(traceEnable) {
                     keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                     log.trace "In keyword - Found msgCheck: ${keyword1a}"
                 }
                 kCheck1 = "yes"
-   // -- check 1 done 
-   // -- check 2 start
+                // -- check 1 done 
+                // -- check 2 start
                 if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
                     if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
                         if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed keywords"
@@ -234,8 +238,8 @@ def parse(String description) {
                     if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed keywords"
                     kCheck2 = "yes"
                 }
-    // -- check 2 done 
-    // -- check 3 start            
+                // -- check 2 done 
+                // -- check 3 start            
                 if(nKeyword1 || nKeyword2) {                
                     if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
                         if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed NOT contain"
@@ -245,18 +249,19 @@ def parse(String description) {
                     if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed NOT contain"
                     kCheck3 = "yes"
                 }
-    // -- check 3 done
+                // -- check 3 done
                 if(traceEnable) log.trace "In keyword: ${keyword1a} - kCheck1: ${kCheck1}, kCheck2: ${kCheck2}, kCheck3: ${kCheck3}"
                 if(kCheck1 == "yes" && kCheck2 == "yes" && kCheck3 == "yes") match = "yes"
             }
-        
+
             if(match == "yes") {
                 if(traceEnable) log.trace "In keyword: ${keyword1a} - WE HAD A MATCH"
                 makeList(nameValue,msgValue)
             }
-    } catch (e) {
-        log.error "In parse - ${e}"
-        close()
+        } catch (e) {
+            log.error "In parse - ${e}"
+            close()
+        }
     }
 }
 // *****************************
@@ -310,6 +315,11 @@ def makeList(nameValue,msgValue) {
         log.error "In makeList - ${e1}"
         close()    
     }
+}
+
+def appStatus(data){
+	if(logEnable) log.debug "Log Watchdog Driver - In appStatus"
+    sendEvent(name: "appStatus", value: data, displayed: true)
 }
 
 def clearData(){
