@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.0 - 06/24/20 - Added App Control options
  *  2.0.9 - 06/24/20 - More changes 
  *  2.0.8 - 06/24/20 - Lots of changes
  *  2.0.7 - 04/27/20 - Cosmetic changes
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.0.8"
+	state.version = "2.1.0"
 }
 
 definition(
@@ -108,10 +109,22 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
-            
 		}
         
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(!app.label.contains("pauseApp")) {
+                    app.updateLabel(app.label + " Paused")
+                }
+            } else {
+                app.updateLabel(app.label.replaceAll(" Paused",""))
+            }
+            //paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            //input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
             
@@ -204,8 +217,18 @@ def updated() {
 }
 
 def initialize() {
-    setDefaults()
-    subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+    if(app.label.contains("Paused")) {
+        app.updateLabel(app.label.replaceAll(" Paused",""))
+        app.updateLabel(app.label + " <font color='red'>Paused</font>")
+    }
+    
+    if(!pauseApp) {
+        setDefaults()
+        subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+        dataDevice.appStatus("active")
+    } else {
+        dataDevice.appStatus("paused")
+    }
 }
 	
 def uninstalled() {
@@ -214,6 +237,15 @@ def uninstalled() {
 
 private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
+}
+
+def checkEnableHandler() {
+    eSwitch = true
+    if(edSwitch) { 
+        eSwitch = edSwitch.currentValue("switch")
+        if(eSwitch == "on") { eSwitch = false }
+    }
+    return eSwitch
 }
 
 def countWords(stuff) {
@@ -232,9 +264,12 @@ def sendToDevice() {
 }
 
 def theNotifyStuff(evt) {
-    if(logEnable) log.debug "In theNotifyStuff"
-    //log.info "theNotifyStuff - could push or talk if selected"
-    if(sendPushMessage) pushHandler()
+    checkEnableHandler()
+    if(eSwitch) {
+        if(logEnable) log.debug "In theNotifyStuff"
+        //log.info "theNotifyStuff - could push or talk if selected"
+        if(sendPushMessage) pushHandler()
+    }
 }
 
 def pushHandler(){
