@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.0.2 - 06/24/20 - Minor changes
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/31/19 - Initial release.
  *
@@ -40,7 +41,7 @@
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.0.1"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -86,7 +87,6 @@ def mainPage() {
 			}
   			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "Log Watchdog Child", namespace: "BPTWorld", title: "<b>Add a new 'Log Watchdog' child</b>", multiple: true)
-                app(name: "anyOpenApp", appName: "Log Watchdog Events Child", namespace: "BPTWorld", title: "<b>Add a new 'Log Watchdog Events' child</b>", multiple: true)
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -144,7 +144,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -158,8 +158,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
