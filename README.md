@@ -12,7 +12,7 @@ Paypal: https://paypal.me/bptworld<br>Venmo: Bryan-Turcotte-MA (8477)</b><br>Rem
 <b>All BPTWorld apps/drivers are now available with the Hubitat Package Manager app</b><br><br>
 <b>Be sure to visit my '<a href="https://github.com/bptworld/Hubitat/tree/master/Docs" target="_blank">Docs</a>' folder for more information!</b>
 <hr>
-<b>Abacus - Intense Counting</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
+<b>Abacus - Counting Machine</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
 <b>Abacus - Time Traveler</b> - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
