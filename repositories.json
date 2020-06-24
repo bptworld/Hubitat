@@ -100,6 +100,12 @@
    		"description": "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect."
    	},
       {
+   		"name": "Log Watchdog",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/packageManifest.json",
+   		"description": "Keep an eye on what's important in the log."
+   	},
+      {
    		"name": "Magic Cube",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/packageManifest.json",
