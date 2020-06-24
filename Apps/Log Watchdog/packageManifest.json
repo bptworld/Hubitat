@@ -33,7 +33,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy",
 			"required": true,
-			"version": "1.0.8"
+			"version": "1.0.9"
 		}
 	]
 }
