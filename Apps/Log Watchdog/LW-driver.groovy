@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 06/24/20 - More changes
  *  1.0.8 - 06/24/20 - Tons of little changes
  *  1.0.7 - 10/08/19 - Now handles only 1 keyset per child app
  *  1.0.6 - 09/07/19 - Added some error catching
@@ -52,7 +53,7 @@
 
 def setVersion(){
     appName = "Log Watchdog Driver"
-	version = "1.0.8" 
+	version = "1.0.9" 
 }
 
 metadata {
@@ -139,21 +140,25 @@ def keywordInfo(keys) {
 
 def parse(String description) {
     theData = "${description}"
-    //log.info "${theData}"
     // This is what the incoming data looks like
     //{"name":"Log Watchdog","msg":"Log Watchdog Driver - Connected","id":365,"time":"2019-11-24 10:05:07.518","type":"dev","level":"warn"}
     
     def (name, msg, id, time, type, level) = theData.split(",")
-    def (nameKey, nameValue) = name.split(":")
-    def (msgKey, msgValue) = msg.split(":")
-    def (lvlKey, lvlValue) = level.split(":")
+    def (msgKey, msgValue) = msg.split(":",2)
+    
+    def (nameKey, nameValue) = name.split(":",2)
     
     msgValue = msgValue.replace("\"","")
     nameValue = nameValue.replace("\"","")
     msgCheck = msgValue.toLowerCase()
     
-    lvlValue = lvlValue.replace("\"","").replace("}","")
-    lvlCheck = lvlValue.toLowerCase()
+    try {
+        def (lvlKey, lvlValue) = level.split(":",2)
+        lvlValue = lvlValue.replace("\"","").replace("}","")
+        lvlCheck = lvlValue.toLowerCase()
+    } catch (e) {
+        lvlCheck = "-"
+    }
  
 // *****************************
     try {
@@ -281,7 +286,7 @@ def makeList(nameValue,msgValue) {
 
         for (i=0;i<intNumOfLines && i<listSize1;i++) {
             combined = theData.length() + lines[i].length() + 16
-            if(combined < 1006) {
+            if(combined < 1000) {
                 def (theApp, theTime, theMsg) = lines[i].split("::") 
                 theData += "<tr><td>${theApp} <td> - <td>${theTime}<td> - <td>${theMsg}"
             }
@@ -299,7 +304,7 @@ def makeList(nameValue,msgValue) {
 
         sendEvent(name: "bpt-logData", value: theData, displayed: true)
         sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
-        sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
+        sendEvent(name: "bpt-lastLogMessage", value: msgValue, displayed: true)
     }
     catch(e1) {
         log.error "In makeList - ${e1}"
