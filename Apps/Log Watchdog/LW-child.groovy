@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.0.8 - 06/24/20 - Lots of changes
  *  2.0.7 - 04/27/20 - Cosmetic changes
  *  2.0.6 - 11/24/19 - Code enhancements
  *  2.0.5 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
@@ -48,9 +49,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.0.7"
+	state.version = "2.0.8"
 }
 
 definition(
@@ -78,22 +82,41 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
     		paragraph "Keep an eye on what's important in the log."
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
+            paragraph "Log Watchdog needs a virtual device to store the results."
+            input "useExistingDevice", "bool", title: "Use existing device (off) or have LW create a new one for you (on)", defaultValue:false, submitOnChange:true
+            if(useExistingDevice) {
+			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'LW - Stats')", required:true, submitOnChange:true
+                paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
+                if(dataName) createDataChildDevice()
+                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                paragraph "${statusMessageD}"
+            }
+            input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false
+            if(!useExistingDevice) {
+                app.removeSetting("dataName")
+                paragraph "<small>* Device must use the 'Log Watchdog Driver'.</small>"
+            }
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Keyset Options")) {
             href "pageKeySet", title: "Keyset Setup", description: "Click here to setup Keywords."
             if(state.if01) paragraph "Keyset: ${state.if01}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
-			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple: true, required: false
+			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
             
 		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Watchdog Device - Required")) {
-			input "lwdDevice", "capability.actuator", title: "Select Log Watchdog Device", required: false
-            paragraph "<small>* Virtual Device must use the Log Watchdog Driver</small>"
-		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
+            
+            paragraph "<hr>"
+            input "testLevel", "button", title: "Test Level"
+            
             paragraph "<hr>"
             input "testPrimaryKeyword", "button", title: "Test Pri Keyword 1"
             
@@ -106,7 +129,7 @@ def pageConfig() {
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
             try {
-                if(lwdDevice) status = lwdDevice.currentValue("status")
+                if(dataDevice) status = dataDevice.currentValue("status")
             }
             catch(e) {
                 theStatus = "Unknown"
@@ -128,7 +151,7 @@ def pageConfig() {
 def pageKeySet(){
     dynamicPage(name: "pageKeySet", title: "Keyset 01 Options", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Keywords")) {
-            input "option1", "enum", title: "Select a Opton to 'Watch'", required: true, submitOnChange: true, options: ["Logging Level","Keywords"]
+            input "option1", "enum", title: "Select a Opton to 'Watch'", required:true, submitOnChange:true, options: ["Logging Level","Keywords"]
             
             if(option1 == "Keywords") {
                 keySetType1 = "K"
@@ -137,18 +160,18 @@ def pageKeySet(){
             } else if(option1 == "Logging Level") {
                 keySetType1 = "L"
                 paragraph "<b>Primary Check</b> - Select logging level"
-                input "keyword1", "enum", title: "Select a Logging Level to 'Watch'", required: false, multiple: false, submitOnChange: true, options: ["Trace","Debug","Info","Warn","Error"]
+                input "keyword1", "enum", title: "Select a Logging Level to 'Watch'", required:false, multiple:false, submitOnChange:true, options: ["trace","debug","info","warn","error"]
             }
             paragraph "<b>AND</b>"   
             paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
-            input "sKeyword1", "text", title: "Secondary Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword2", "text", title: "Secondary Keyword 2",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword3", "text", title: "Secondary Keyword 3",  required: false, submitOnChange: "true", width: 6
-            input "sKeyword4", "text", title: "Secondary Keyword 4",  required: false, submitOnChange: "true", width: 6
+            input "sKeyword1", "text", title: "Secondary Keyword 1",  required:false, submitOnChange:true, width: 6
+            input "sKeyword2", "text", title: "Secondary Keyword 2",  required:false, submitOnChange:true, width: 6
+            input "sKeyword3", "text", title: "Secondary Keyword 3",  required:false, submitOnChange:true, width: 6
+            input "sKeyword4", "text", title: "Secondary Keyword 4",  required:false, submitOnChange:true, width: 6
             paragraph "<b>BUT DOES NOT CONTAIN</b>"   
             paragraph "<b>Third Check</b> - Select up to 2 keywords"
-            input "nKeyword1", "text", title: "Third Keyword 1",  required: false, submitOnChange: "true", width: 6
-            input "nKeyword2", "text", title: "Third Keyword 2",  required: false, submitOnChange: "true", width: 6
+            input "nKeyword1", "text", title: "Third Keyword 1",  required:false, submitOnChange:true, width: 6
+            input "nKeyword2", "text", title: "Third Keyword 2",  required:false, submitOnChange:true, width: 6
             paragraph "<hr>"
             if(!keyword1) keyword1 = "-"
             if(!sKeyword1) sKeyword1 = "-"
@@ -180,9 +203,17 @@ def updated() {
 
 def initialize() {
     setDefaults()
-    subscribe(lwdDevice, "lastLogMessage", theNotifyStuff)
+    subscribe(dataDevice, "lastLogMessage", theNotifyStuff)
 }
 	
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(delete) {
+	delete.each {deleteChildDevice(it.deviceNetworkId)}
+}
+
 def countWords(stuff) {
     if(logEnable) log.info "In countWords"
     def values = stuff.split(";")
@@ -193,7 +224,7 @@ def countWords(stuff) {
 def sendToDevice() {
     if(logEnable) log.info "In sendToDriver"
     if(state.theData01) {
-        lwdDevice.keywordInfo(state.theData01) 
+        dataDevice.keywordInfo(state.theData01) 
         log.info "Log Watchdog - Sending theData01"
     }
 }
@@ -216,10 +247,10 @@ def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     if(state.whichButton == "openConnection"){
-        lwdDevice.connect()
+        dataDevice.connect()
     }
     if(state.whichButton == "closeConnection"){
-        lwdDevice.close()
+        dataDevice.close()
     }
     if(state.whichButton == "testPrimaryKeyword"){
         log.info "Log Watchdog - Testing Primary Keyword1: ${keyword1}"
@@ -236,6 +267,29 @@ def appButtonHandler(buttonPressed) {
     if(state.whichButton == "testSecondaryKeyword4"){
         log.info "Log Watchdog - Testing Secondary Keyword4: ${sKeyword4}"
     }
+    
+    if(state.whichButton == "testLevel"){
+        log.info "Log Watchdog - Testing Level: ${keyword1}"
+        log.debug "Log Watchdog - Testing Level: ${keyword1}"
+        log.warn "Log Watchdog - Testing Level: ${keyword1}"
+        log.error "Log Watchdog - Testing Level: ${keyword1}"
+    }
+}
+
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "Log Watchdog Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "Log Watchdog was unable to create device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
 }
 
 // ********** Normal Stuff **********
@@ -281,25 +335,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
