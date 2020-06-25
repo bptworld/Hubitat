@@ -590,7 +590,7 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
 	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
 		requestContentType: "application/json",
@@ -604,8 +604,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
