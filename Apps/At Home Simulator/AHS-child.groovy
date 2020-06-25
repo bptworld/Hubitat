@@ -34,6 +34,7 @@
  *
  *  Changes:
  *  
+ *  2.0.2 - 06/25/20 - Added App Control options
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  --
@@ -43,7 +44,7 @@
 
 def setVersion(){
     state.name = "At Home Simulator"
-	state.version = "2.0.1"
+	state.version = "2.0.2"
 }
 
 definition(
@@ -135,9 +136,27 @@ def pageConfig() {
 			if(gRSwitches) input "pFromR", "number", title: "<b>*</b> From...", required: true, defaultValue: 5, width: 6
 			if(gRSwitches) input "pToR", "number", title: "<b>*</b> ...To (in minutes)", required: true, defaultValue: 10, width: 6
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false, submitOnChange: true}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains("pauseApp")) {
+                        app.updateLabel(app.label + " Paused")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false, submitOnChange: true
+            input "logEnable", "bool", defaultValue:true, title: "Enable Debug Logging", description: "Logging"
 		}
 		display2()
 	}
@@ -156,219 +175,236 @@ def updated() {
 }
 
 def initialize() {
-	setDefaults()
-	subscribe(enablerSwitch1, "switch", enablerSwitchHandler)
-	subscribe(controlSwitch, "switch", deviceHandler)
-	
-	int tRT = (tRunTime * 60)			// Minutes
-	runIn(tRT, deviceOffHandler)
+    if(app.label) {
+        if(app.label.contains("Paused")) {
+            app.updateLabel(app.label.replaceAll(" Paused",""))
+            app.updateLabel(app.label + " <font color='red'>Paused</font>")
+        }
+    }
+    
+    if(!pauseApp) {
+        setDefaults()
+        subscribe(controlSwitch, "switch", deviceHandler)
+        int tRT = (tRunTime * 60)			// Minutes
+        runIn(tRT, deviceOffHandler)
+    }
+}
+
+def checkEnableHandler() {
+    eSwitch = true
+    if(edSwitch) { 
+        eSwitch = edSwitch.currentValue("switch")
+        if(eSwitch == "on") { eSwitch = false }
+    }
+    return eSwitch
 }
 
 def deviceHandler(evt) {
-	if(logEnable) log.debug "In DeviceHandler..."
-	state.controllerSwitch = evt.value
-	if(state.controllerSwitch == "on") {
-		atomicState.cSwitch = 1
-		if(logEnable) log.debug "In deviceHandler...CS JUST TURNED ON."
-	}
-	
-	if(state.controllerSwitch == "off") {
-		atomicState.cSwitch = 0
-		if(logEnable) log.debug "In deviceHandler...CS JUST TURNED OFF."
-	}
-	
-	if(logEnable) log.debug "In deviceHandler... cs: ${atomicState.cSwitch}"
-		if(pauseApp == true){log.warn "${app.label} - Unable to continue - App paused"}
-    	if(pauseApp == false){if(logEnable) log.debug "Continue - App NOT paused"
-			if(atomicState.cSwitch == 1) {
-				def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
-				if(logEnable) log.debug "In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group - cs: ${atomicState.cSwitch} **********"
-				int delaySc = (delaySb * 60) * 1000			// Minutes
-				log.info "Starting - Waiting Random Pause: ${delaySb} minutes"
-				if(atomicState.cSwitch == 1) pauseExecution(delaySc)
-				if(gRSwitches) randomSwitchesHandler()
-				
-				if(logEnable) log.debug "In between S and 1 ... cs: ${atomicState.cSwitch}   *   *   *"
-				
-				if(atomicState.cSwitch == 1 && g1Switches) {
-					int delay1 = (timeToPause1 * 1000)			// Seconds
-					int g1TTSO = (g1TimeToStayOn * 60)			// Minutes
-					totalDevices = g1Switches.size()
-					numOfDevices = 0
-					log.info "Group 1 - Total Devices in Group: ${totalDevices}"
-					if(totalDevices == 1) {
-						g1Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 1 - Turning on ${device}"
-								device.on()
-							}
-    					}
-					}
-					if(totalDevices >= 2) {
-   						g1Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								numOfDevices = numOfDevices + 1
-								if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}"
-								log.info "Group 1 - Turning on ${device}"
-        						device.on()
-								if(numOfDevices < totalDevices) log.info "Group 1 - Waiting Pause between devices: ${timeToPause1} seconds"
-								if(numOfDevices < totalDevices) pauseExecution(delay1)
-							}
-						}
-    				}
-					runIn(g1TTSO, g1SwitchesOff)
-					def delay1b = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
-					if(logEnable) log.debug "In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********"
-					int delay1c = (delay1b * 60) * 1000			// Minutes
-					if(atomicState.cSwitch == 1 && g2Switches) log.info "Group 1 - Waiting Random Pause: ${delay1b} minutes before heading to Group 2"
-					if(atomicState.cSwitch == 1 && g2Switches) pauseExecution(delay1c)
-				}
-				
-				if(logEnable) log.debug "In between 1 and 2 ... cs: ${atomicState.cSwitch}   *   *   *"
-				
-				if(atomicState.cSwitch == 1 && g2Switches) {
-					int delay2 = (timeToPause2 * 1000) 			// Seconds
-					int g2TTSO = (g2TimeToStayOn * 60)			// Minutes
-					totalDevices = g2Switches.size()
-					numOfDevices = 0
-					log.info "Group 2 - Total Devices in Group: ${totalDevices}"
-					if(totalDevices == 1) {
-						g2Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 2 - Turning on ${device}"
-								device.on()
-							}
-    					}
-					}
-					if(totalDevices >= 2) {
-   						g2Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								numOfDevices = numOfDevices + 1
-								if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 2 - Turning on ${device}"
-								device.on()
-								if(numOfDevices < totalDevices) log.info "Group 2 - Waiting Pause between devices: ${timeToPause2} seconds"
-								if(numOfDevices < totalDevices) pauseExecution(delay2)
-							}
-    					}
-					}
-					runIn(g2TTSO, g2SwitchesOff)
-					def delay2b = Math.abs(new Random().nextInt() % ([pTo2] - [pFrom2])) + [pFrom2]
-					if(logEnable) log.debug "In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********"
-					int delay2c = (delay2b * 60) * 1000			// Minutes
-					if(atomicState.cSwitch == 1 && g3Switches) log.info "Group 2 - Waiting Random Pause: ${delay2b} minutes before heading to Group 3"
-					if(atomicState.cSwitch == 1 && g3Switches) pauseExecution(delay2c)
-				}
-		
-				if(atomicState.cSwitch == 1 && g3Switches) {
-					int delay3 = timeToPause3 * 1000 			// Seconds
-					int g3TTSO = (g3TimeToStayOn * 60)			// Minutes
-					totalDevices = g3Switches.size()
-					numOfDevices = 0
-					log.info "Group 3 - Total Devices in Group: ${totalDevices}"
-					if(totalDevices == 1) {
-						g3Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 3 - Turning on ${device}"
-								device.on()
-							}
-    					}
-					}
-					if(totalDevices >= 2) {
-   						g3Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								numOfDevices = numOfDevices + 1
-								if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 3 - Turning on ${device}"
-								device.on()
-								if(numOfDevices < totalDevices) log.info "Group 3 - Waiting Pause between devices: ${timeToPause3} seconds"
-								if(numOfDevices < totalDevices) pauseExecution(delay3)
-							}
-    					}
-					}
-					runIn(g3TTSO, g3SwitchesOff)
-					def delay3b = Math.abs(new Random().nextInt() % ([pTo3] - [pFrom3])) + [pFrom3]
-					if(logEnable) log.debug "In deviceOnHandler 3...Delay: ${pFrom3} to ${pTo3} = ${delay3b} till next Group **********"
-					int delay3c = (delay3b * 60) * 1000			// Minutes
-					if(atomicState.cSwitch == 1 && g4Switches)log.info "Group 3 - Waiting Random Pause: ${delay3b} minutes before heading to Group 4"
-					if(atomicState.cSwitch == 1 && g4Switches) pauseExecution(delay3c)
-				}
-				
-				if(atomicState.cSwitch == 1 && g4Switches) {
-					int delay4 = timeToPause4 * 1000 			// Seconds
-					int g4TTSO = (g4TimeToStayOn * 60)			// Minutes
-					totalDevices = g4Switches.size()
-					numOfDevices = 0
-					log.info "Group 4 - Total Devices in Group: ${totalDevices}"
-					if(totalDevices == 1) {
-						g4Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 4 - Turning on ${device}"
-								device.on()
-							}
-    					}
-					}
-					if(totalDevices >= 2) {
-   						g4Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								numOfDevices = numOfDevices + 1
-								if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 4 - Turning on ${device}"
-								device.on()
-								if(numOfDevices < totalDevices) log.info "Group 4 - Waiting Pause between devices: ${timeToPause4} seconds"
-								if(numOfDevices < totalDevices) pauseExecution(delay4)
-							}
-						}
-    				}
-					runIn(g4TTSO, g4SwitchesOff)
-					def delay4b = Math.abs(new Random().nextInt() % ([pTo4] - [pFrom4])) + [pFrom4]
-					if(logEnable) log.debug "In deviceOnHandler 4...Delay: ${pFrom4} to ${pTo4} = ${delay4b} till next Group **********"
-					int delay4c = (delay4b * 60) * 1000			// Minutes
-					if(atomicState.cSwitch == 1 && g5Switches)log.info "Group 4 - Waiting Random Pause: ${delay4b} minutes before heading to Group 5"
-					if(atomicState.cSwitch == 1 && g5Switches) pauseExecution(delay4c)			
-				}
-					
-				if(atomicState.cSwitch == 1 && g5Switches) {
-					int delay5 = timeToPause5 * 1000 			// Seconds
-					int g5TTSO = (g5TimeToStayOn * 60)			// Minutes
-					totalDevices = g5Switches.size()
-					numOfDevices = 0
-					log.info "Group 5 - Total Devices in Group: ${totalDevices}"
-					if(totalDevices == 1) {
-						g5Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 5 - Turning on ${device}"
-								device.on()
-							}
-    					}
-					}
-					if(totalDevices >= 2) {
-   						g5Switches.each { device ->
-							if(atomicState.cSwitch == 1) {
-								numOfDevices = numOfDevices + 1
-								if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}"
-        						log.info "Group 5 - Turning on ${device}"
-								device.on()
-								if(numOfDevices < totalDevices) log.info "Group 5 - Waiting Pause between devices: ${timeToPause5} seconds"
-								if(numOfDevices < totalDevices) pauseExecution(delay5)	
-							}
-						}
-					}
-					runIn(g5TTSO, g5SwitchesOff)
-					def delay5b = Math.abs(new Random().nextInt() % ([pTo5] - [pFrom5])) + [pFrom5]
-					if(logEnable) log.debug "In deviceOnHandler 5...Delay: ${pFrom5} to ${pTo5} = ${delay5b} till Simulation Finished **********"
-					int delay5c = (delay5b * 60) * 1000			// Minutes
-					if(atomicState.cSwitch == 1) pauseExecution(delay5c)
-				}
-			} else {
-				deviceOffHandler()
-			}
-		}
+    checkEnableHandler()
+    if(eSwitch) {
+        if(logEnable) log.debug "In DeviceHandler..."
+        state.controllerSwitch = evt.value
+        if(state.controllerSwitch == "on") {
+            atomicState.cSwitch = 1
+            if(logEnable) log.debug "In deviceHandler...CS JUST TURNED ON."
+        }
+
+        if(state.controllerSwitch == "off") {
+            atomicState.cSwitch = 0
+            if(logEnable) log.debug "In deviceHandler...CS JUST TURNED OFF."
+        }
+
+        if(logEnable) log.debug "In deviceHandler... cs: ${atomicState.cSwitch}"
+
+        if(atomicState.cSwitch == 1) {
+            def delaySb = Math.abs(new Random().nextInt() % ([pToS] - [pFromS])) + [pFromS]
+            if(logEnable) log.debug "In deviceOnHandler S...Delay: ${pFromS} to ${pToS} = ${delaySb} till next Group - cs: ${atomicState.cSwitch} **********"
+            int delaySc = (delaySb * 60) * 1000			// Minutes
+            log.info "Starting - Waiting Random Pause: ${delaySb} minutes"
+            if(atomicState.cSwitch == 1) pauseExecution(delaySc)
+            if(gRSwitches) randomSwitchesHandler()
+
+            if(logEnable) log.debug "In between S and 1 ... cs: ${atomicState.cSwitch}   *   *   *"
+
+            if(atomicState.cSwitch == 1 && g1Switches) {
+                int delay1 = (timeToPause1 * 1000)			// Seconds
+                int g1TTSO = (g1TimeToStayOn * 60)			// Minutes
+                totalDevices = g1Switches.size()
+                numOfDevices = 0
+                log.info "Group 1 - Total Devices in Group: ${totalDevices}"
+                if(totalDevices == 1) {
+                    g1Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 1 - Turning on ${device}"
+                            device.on()
+                        }
+                    }
+                }
+                if(totalDevices >= 2) {
+                    g1Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            numOfDevices = numOfDevices + 1
+                            if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}, Time to Stay On: ${g1TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 1 - Turning on ${device}"
+                            device.on()
+                            if(numOfDevices < totalDevices) log.info "Group 1 - Waiting Pause between devices: ${timeToPause1} seconds"
+                            if(numOfDevices < totalDevices) pauseExecution(delay1)
+                        }
+                    }
+                }
+                runIn(g1TTSO, g1SwitchesOff)
+                def delay1b = Math.abs(new Random().nextInt() % ([pTo1] - [pFrom1])) + [pFrom1]
+                if(logEnable) log.debug "In deviceOnHandler 1...Delay: ${pFrom1} to ${pTo1} = ${delay1b} till next Group **********"
+                int delay1c = (delay1b * 60) * 1000			// Minutes
+                if(atomicState.cSwitch == 1 && g2Switches) log.info "Group 1 - Waiting Random Pause: ${delay1b} minutes before heading to Group 2"
+                if(atomicState.cSwitch == 1 && g2Switches) pauseExecution(delay1c)
+            }
+
+            if(logEnable) log.debug "In between 1 and 2 ... cs: ${atomicState.cSwitch}   *   *   *"
+
+            if(atomicState.cSwitch == 1 && g2Switches) {
+                int delay2 = (timeToPause2 * 1000) 			// Seconds
+                int g2TTSO = (g2TimeToStayOn * 60)			// Minutes
+                totalDevices = g2Switches.size()
+                numOfDevices = 0
+                log.info "Group 2 - Total Devices in Group: ${totalDevices}"
+                if(totalDevices == 1) {
+                    g2Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 2 - Turning on ${device}"
+                            device.on()
+                        }
+                    }
+                }
+                if(totalDevices >= 2) {
+                    g2Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            numOfDevices = numOfDevices + 1
+                            if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}, Time to Stay On: ${g2TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 2 - Turning on ${device}"
+                            device.on()
+                            if(numOfDevices < totalDevices) log.info "Group 2 - Waiting Pause between devices: ${timeToPause2} seconds"
+                            if(numOfDevices < totalDevices) pauseExecution(delay2)
+                        }
+                    }
+                }
+                runIn(g2TTSO, g2SwitchesOff)
+                def delay2b = Math.abs(new Random().nextInt() % ([pTo2] - [pFrom2])) + [pFrom2]
+                if(logEnable) log.debug "In deviceOnHandler 2...Delay: ${pFrom2} to ${pTo2} = ${delay2b} till next Group **********"
+                int delay2c = (delay2b * 60) * 1000			// Minutes
+                if(atomicState.cSwitch == 1 && g3Switches) log.info "Group 2 - Waiting Random Pause: ${delay2b} minutes before heading to Group 3"
+                if(atomicState.cSwitch == 1 && g3Switches) pauseExecution(delay2c)
+            }
+
+            if(atomicState.cSwitch == 1 && g3Switches) {
+                int delay3 = timeToPause3 * 1000 			// Seconds
+                int g3TTSO = (g3TimeToStayOn * 60)			// Minutes
+                totalDevices = g3Switches.size()
+                numOfDevices = 0
+                log.info "Group 3 - Total Devices in Group: ${totalDevices}"
+                if(totalDevices == 1) {
+                    g3Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 3 - Turning on ${device}"
+                            device.on()
+                        }
+                    }
+                }
+                if(totalDevices >= 2) {
+                    g3Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            numOfDevices = numOfDevices + 1
+                            if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}, Time to Stay On: ${g3TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 3 - Turning on ${device}"
+                            device.on()
+                            if(numOfDevices < totalDevices) log.info "Group 3 - Waiting Pause between devices: ${timeToPause3} seconds"
+                            if(numOfDevices < totalDevices) pauseExecution(delay3)
+                        }
+                    }
+                }
+                runIn(g3TTSO, g3SwitchesOff)
+                def delay3b = Math.abs(new Random().nextInt() % ([pTo3] - [pFrom3])) + [pFrom3]
+                if(logEnable) log.debug "In deviceOnHandler 3...Delay: ${pFrom3} to ${pTo3} = ${delay3b} till next Group **********"
+                int delay3c = (delay3b * 60) * 1000			// Minutes
+                if(atomicState.cSwitch == 1 && g4Switches)log.info "Group 3 - Waiting Random Pause: ${delay3b} minutes before heading to Group 4"
+                if(atomicState.cSwitch == 1 && g4Switches) pauseExecution(delay3c)
+            }
+
+            if(atomicState.cSwitch == 1 && g4Switches) {
+                int delay4 = timeToPause4 * 1000 			// Seconds
+                int g4TTSO = (g4TimeToStayOn * 60)			// Minutes
+                totalDevices = g4Switches.size()
+                numOfDevices = 0
+                log.info "Group 4 - Total Devices in Group: ${totalDevices}"
+                if(totalDevices == 1) {
+                    g4Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 4 - Turning on ${device}"
+                            device.on()
+                        }
+                    }
+                }
+                if(totalDevices >= 2) {
+                    g4Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            numOfDevices = numOfDevices + 1
+                            if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}, Time to Stay On: ${g4TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 4 - Turning on ${device}"
+                            device.on()
+                            if(numOfDevices < totalDevices) log.info "Group 4 - Waiting Pause between devices: ${timeToPause4} seconds"
+                            if(numOfDevices < totalDevices) pauseExecution(delay4)
+                        }
+                    }
+                }
+                runIn(g4TTSO, g4SwitchesOff)
+                def delay4b = Math.abs(new Random().nextInt() % ([pTo4] - [pFrom4])) + [pFrom4]
+                if(logEnable) log.debug "In deviceOnHandler 4...Delay: ${pFrom4} to ${pTo4} = ${delay4b} till next Group **********"
+                int delay4c = (delay4b * 60) * 1000			// Minutes
+                if(atomicState.cSwitch == 1 && g5Switches)log.info "Group 4 - Waiting Random Pause: ${delay4b} minutes before heading to Group 5"
+                if(atomicState.cSwitch == 1 && g5Switches) pauseExecution(delay4c)			
+            }
+
+            if(atomicState.cSwitch == 1 && g5Switches) {
+                int delay5 = timeToPause5 * 1000 			// Seconds
+                int g5TTSO = (g5TimeToStayOn * 60)			// Minutes
+                totalDevices = g5Switches.size()
+                numOfDevices = 0
+                log.info "Group 5 - Total Devices in Group: ${totalDevices}"
+                if(totalDevices == 1) {
+                    g5Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 5 - Turning on ${device}"
+                            device.on()
+                        }
+                    }
+                }
+                if(totalDevices >= 2) {
+                    g5Switches.each { device ->
+                        if(atomicState.cSwitch == 1) {
+                            numOfDevices = numOfDevices + 1
+                            if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}, Time to Stay On: ${g5TimeToStayOn} - cs: ${atomicState.cSwitch}"
+                            log.info "Group 5 - Turning on ${device}"
+                            device.on()
+                            if(numOfDevices < totalDevices) log.info "Group 5 - Waiting Pause between devices: ${timeToPause5} seconds"
+                            if(numOfDevices < totalDevices) pauseExecution(delay5)	
+                        }
+                    }
+                }
+                runIn(g5TTSO, g5SwitchesOff)
+                def delay5b = Math.abs(new Random().nextInt() % ([pTo5] - [pFrom5])) + [pFrom5]
+                if(logEnable) log.debug "In deviceOnHandler 5...Delay: ${pFrom5} to ${pTo5} = ${delay5b} till Simulation Finished **********"
+                int delay5c = (delay5b * 60) * 1000			// Minutes
+                if(atomicState.cSwitch == 1) pauseExecution(delay5c)
+            }
+        } else {
+            deviceOffHandler()
+        }
+    }
 }
 
 def randomSwitchesHandler() {
@@ -513,7 +549,6 @@ def deviceOffHandler() {
 // ***** Normal Stuff *****
 
 def setDefaults(){
-    if(state.pauseApp == null){state.pauseApp = false}
 	if(logEnable == null){logEnable = false}
 	if(atomicState.cSwitch == null){atomicState.cSwitch = 1}
 	if(numOfDevices == null){numOfDevices = 0}
