@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.1 - 06/25/20 - Fixing bugs
  *  2.1.0 - 06/24/20 - Added App Control options
  *  2.0.9 - 06/24/20 - More changes 
  *  2.0.8 - 06/24/20 - Lots of changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.1.0"
+	state.version = "2.1.1"
 }
 
 definition(
@@ -114,11 +115,15 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
-                if(!app.label.contains("pauseApp")) {
-                    app.updateLabel(app.label + " Paused")
+                if(app.label) {
+                    if(!app.label.contains("pauseApp")) {
+                        app.updateLabel(app.label + " Paused")
+                    }
                 }
             } else {
-                app.updateLabel(app.label.replaceAll(" Paused",""))
+                if(app.label) {
+                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                }
             }
             //paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             //input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
@@ -217,17 +222,19 @@ def updated() {
 }
 
 def initialize() {
-    if(app.label.contains("Paused")) {
-        app.updateLabel(app.label.replaceAll(" Paused",""))
-        app.updateLabel(app.label + " <font color='red'>Paused</font>")
-    }
-    
-    if(!pauseApp) {
-        setDefaults()
-        subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
-        dataDevice.appStatus("active")
-    } else {
-        dataDevice.appStatus("paused")
+    if(app.label) {
+        if(app.label.contains("Paused")) {
+            app.updateLabel(app.label.replaceAll(" Paused",""))
+            app.updateLabel(app.label + " <font color='red'>Paused</font>")
+        }
+
+        if(!pauseApp) {
+            setDefaults()
+            subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+            dataDevice.appStatus("active")
+        } else {
+            dataDevice.appStatus("paused")
+        }
     }
 }
 	
