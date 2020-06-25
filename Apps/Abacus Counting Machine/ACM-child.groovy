@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 06/25/20 - Added App Control options
  *  1.0.1 - 06/21/20 - Fixed Reset Counts
  *  1.0.0 - 06/20/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Abacus Counting Machine"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -113,6 +114,23 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
 			href "pageCounts", title: "Abacus Counting Machine Report", description: "Click here to view the report."
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains("pauseApp")) {
+                        app.updateLabel(app.label + " Paused")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this child app", required:false, submitOnChange:true
@@ -335,17 +353,26 @@ def updated() {
 }
 
 def initialize() {
-	if(logEnable) log.debug "In initialize (${state.version})"
-	setDefaults()
-	subscribe(contactEvent, "contact.open", contactHandler)
-    subscribe(motionEvent, "motion.active", motionHandler)
-	subscribe(switchEvent, "switch.on", switchHandler)
-	subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
+    if(app.label) {
+        if(app.label.contains("Paused")) {
+            app.updateLabel(app.label.replaceAll(" Paused",""))
+            app.updateLabel(app.label + " <font color='red'>Paused</font>")
+        }
+    }
 
-    schedule("0 57 23 1/1 * ? *", resetDayHandler, [data: "D"])
-	schedule("0 58 23 ? * SAT *", resetWeekHandler, [data: "W"])
-	schedule("0 59 23 L * ? *", resetMonthHandler, [data: "M"])
-	schedule("0 0 0 1 1 ? *", resetYearHandler, [data: "Y"])
+    if(!pauseApp) {
+        if(logEnable) log.debug "In initialize (${state.version})"
+        setDefaults()
+        subscribe(contactEvent, "contact.open", contactHandler)
+        subscribe(motionEvent, "motion.active", motionHandler)
+        subscribe(switchEvent, "switch.on", switchHandler)
+        subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
+
+        schedule("0 57 23 1/1 * ? *", resetDayHandler, [data: "D"])
+        schedule("0 58 23 ? * SAT *", resetWeekHandler, [data: "W"])
+        schedule("0 59 23 L * ? *", resetMonthHandler, [data: "M"])
+        schedule("0 0 0 1 1 ? *", resetYearHandler, [data: "Y"])
+    }
 }
 
 def resetDayHandler(data) {
@@ -364,160 +391,181 @@ def resetYearHandler(data) {
     resetCountsHandler(data)
 }
 
-def contactHandler(evt) {
-    if(logEnable) log.debug "In contactHandler (${state.version})"
-    if(state.contactMap == null) state.contactMap = [:]
-    
-    contactEvent.each { it ->
-        String theEvent = evt.displayName
-        String theName = it
-        
-        if(logEnable) log.debug "In contactHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-        if(theEvent == theName) { 
-            if(logEnable) log.debug "In contactHandler - MATCH!"
-            theCounts = state.contactMap.get(it.displayName)
-            
-            if(theCounts) {     
-                def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                if(logEnable) log.debug "In contactHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-                
-                newDay = theDay.toInteger() + 1
-                newWeek = theWeek.toInteger() + 1
-                newMonth = theMonth.toInteger() + 1
-                newYear = theYear.toInteger() + 1
-                
-                if(logEnable) log.debug "In contactHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.contactMap.put(theName, newValues)
-                
-                if(logEnable) log.debug "In contactHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            } else {
-                newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.contactMap.put(theName, newValues)                
-                if(logEnable) log.debug "In contactHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            }
-        }     
+def checkEnableHandler() {
+    eSwitch = true
+    if(edSwitch) { 
+        eSwitch = edSwitch.currentValue("switch")
+        if(eSwitch == "on") { eSwitch = false }
     }
-    comingFrom = "Contact Sensor"
-    buildMaps(comingFrom)
+    return eSwitch
+}
+
+def contactHandler(evt) {
+    checkEnableHandler()
+    if(eSwitch) {
+        if(logEnable) log.debug "In contactHandler (${state.version})"
+        if(state.contactMap == null) state.contactMap = [:]
+
+        contactEvent.each { it ->
+            String theEvent = evt.displayName
+            String theName = it
+
+            if(logEnable) log.debug "In contactHandler - Comparing theEvent: ${theEvent} vs ${theName}"
+            if(theEvent == theName) { 
+                if(logEnable) log.debug "In contactHandler - MATCH!"
+                theCounts = state.contactMap.get(it.displayName)
+
+                if(theCounts) {     
+                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
+                    if(logEnable) log.debug "In contactHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
+
+                    newDay = theDay.toInteger() + 1
+                    newWeek = theWeek.toInteger() + 1
+                    newMonth = theMonth.toInteger() + 1
+                    newYear = theYear.toInteger() + 1
+
+                    if(logEnable) log.debug "In contactHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.contactMap.put(theName, newValues)
+
+                    if(logEnable) log.debug "In contactHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                } else {
+                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.contactMap.put(theName, newValues)                
+                    if(logEnable) log.debug "In contactHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                }
+            }     
+        }
+        comingFrom = "Contact Sensor"
+        buildMaps(comingFrom)
+    }
 }
 
 def motionHandler(evt) {
-    if(logEnable) log.debug "In motionHandler (${state.version})"
-    if(state.motionMap == null) state.motionMap = [:]
-    
-    motionEvent.each { it ->
-        String theEvent = evt.displayName
-        String theName = it
-        
-        if(logEnable) log.debug "In motionHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-        if(theEvent == theName) { 
-            if(logEnable) log.debug "In motionHandler - MATCH!"
-            theCounts = state.motionMap.get(it.displayName)
-            
-            if(theCounts) {     
-                def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                if(logEnable) log.debug "In motionHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-                
-                newDay = theDay.toInteger() + 1
-                newWeek = theWeek.toInteger() + 1
-                newMonth = theMonth.toInteger() + 1
-                newYear = theYear.toInteger() + 1
-                
-                if(logEnable) log.debug "In motionHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.motionMap.put(theName, newValues)
-                
-                if(logEnable) log.debug "In motionHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            } else {
-                newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.motionMap.put(theName, newValues)                
-                if(logEnable) log.debug "In motionHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            }
-        }     
+    checkEnableHandler()
+    if(eSwitch) {
+        if(logEnable) log.debug "In motionHandler (${state.version})"
+        if(state.motionMap == null) state.motionMap = [:]
+
+        motionEvent.each { it ->
+            String theEvent = evt.displayName
+            String theName = it
+
+            if(logEnable) log.debug "In motionHandler - Comparing theEvent: ${theEvent} vs ${theName}"
+            if(theEvent == theName) { 
+                if(logEnable) log.debug "In motionHandler - MATCH!"
+                theCounts = state.motionMap.get(it.displayName)
+
+                if(theCounts) {     
+                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
+                    if(logEnable) log.debug "In motionHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
+
+                    newDay = theDay.toInteger() + 1
+                    newWeek = theWeek.toInteger() + 1
+                    newMonth = theMonth.toInteger() + 1
+                    newYear = theYear.toInteger() + 1
+
+                    if(logEnable) log.debug "In motionHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.motionMap.put(theName, newValues)
+
+                    if(logEnable) log.debug "In motionHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                } else {
+                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.motionMap.put(theName, newValues)                
+                    if(logEnable) log.debug "In motionHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                }
+            }     
+        }
+        comingFrom = "Motion Sensor"
+        buildMaps(comingFrom)
     }
-    comingFrom = "Motion Sensor"
-    buildMaps(comingFrom)
 }
 
 def switchHandler(evt) {
-    if(logEnable) log.debug "In switchHandler (${state.version})"
-    if(state.switchMap == null) state.switchMap = [:]
-    
-    switchEvent.each { it ->
-        String theEvent = evt.displayName
-        String theName = it
-        
-        if(logEnable) log.debug "In switchHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-        if(theEvent == theName) { 
-            if(logEnable) log.debug "In switchHandler - MATCH!"
-            theCounts = state.switchMap.get(it.displayName)
-            
-            if(theCounts) {     
-                def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                if(logEnable) log.debug "In switchHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-                
-                newDay = theDay.toInteger() + 1
-                newWeek = theWeek.toInteger() + 1
-                newMonth = theMonth.toInteger() + 1
-                newYear = theYear.toInteger() + 1
-                
-                if(logEnable) log.debug "In switchHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.switchMap.put(theName, newValues)
-                
-                if(logEnable) log.debug "In switchHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            } else {
-                newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.switchMap.put(theName, newValues)                
-                if(logEnable) log.debug "In switchHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            }
-        }     
+    checkEnableHandler()
+    if(eSwitch) {
+        if(logEnable) log.debug "In switchHandler (${state.version})"
+        if(state.switchMap == null) state.switchMap = [:]
+
+        switchEvent.each { it ->
+            String theEvent = evt.displayName
+            String theName = it
+
+            if(logEnable) log.debug "In switchHandler - Comparing theEvent: ${theEvent} vs ${theName}"
+            if(theEvent == theName) { 
+                if(logEnable) log.debug "In switchHandler - MATCH!"
+                theCounts = state.switchMap.get(it.displayName)
+
+                if(theCounts) {     
+                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
+                    if(logEnable) log.debug "In switchHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
+
+                    newDay = theDay.toInteger() + 1
+                    newWeek = theWeek.toInteger() + 1
+                    newMonth = theMonth.toInteger() + 1
+                    newYear = theYear.toInteger() + 1
+
+                    if(logEnable) log.debug "In switchHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.switchMap.put(theName, newValues)
+
+                    if(logEnable) log.debug "In switchHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                } else {
+                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.switchMap.put(theName, newValues)                
+                    if(logEnable) log.debug "In switchHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                }
+            }     
+        }
+        comingFrom = "Switch"
+        buildMaps(comingFrom)
     }
-    comingFrom = "Switch"
-    buildMaps(comingFrom)
 }
 
 def thermostatHandler(evt) {
-    if(logEnable) log.debug "In thermostatHandler (${state.version})"
-    if(state.thermostatMap == null) state.thermostatMap = [:]
-    
-    thermostatEvent.each { it ->
-        String theEvent = evt.displayName
-        String theName = it
-        
-        if(logEnable) log.debug "In thermostatHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-        if(theEvent == theName) { 
-            if(logEnable) log.debug "In thermostatHandler - MATCH!"
-            theCounts = state.thermostatMap.get(it.displayName)
-            
-            if(theCounts) {     
-                def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                if(logEnable) log.debug "In thermostatHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-                
-                newDay = theDay.toInteger() + 1
-                newWeek = theWeek.toInteger() + 1
-                newMonth = theMonth.toInteger() + 1
-                newYear = theYear.toInteger() + 1
-                
-                if(logEnable) log.debug "In thermostatHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.thermostatMap.put(theName, newValues)
-                
-                if(logEnable) log.debug "In thermostatHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            } else {
-                newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                state.thermostatMap.put(theName, newValues)                
-                if(logEnable) log.debug "In thermostatHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-            }
-        }     
+    checkEnableHandler()
+    if(eSwitch) {
+        if(logEnable) log.debug "In thermostatHandler (${state.version})"
+        if(state.thermostatMap == null) state.thermostatMap = [:]
+
+        thermostatEvent.each { it ->
+            String theEvent = evt.displayName
+            String theName = it
+
+            if(logEnable) log.debug "In thermostatHandler - Comparing theEvent: ${theEvent} vs ${theName}"
+            if(theEvent == theName) { 
+                if(logEnable) log.debug "In thermostatHandler - MATCH!"
+                theCounts = state.thermostatMap.get(it.displayName)
+
+                if(theCounts) {     
+                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
+                    if(logEnable) log.debug "In thermostatHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
+
+                    newDay = theDay.toInteger() + 1
+                    newWeek = theWeek.toInteger() + 1
+                    newMonth = theMonth.toInteger() + 1
+                    newYear = theYear.toInteger() + 1
+
+                    if(logEnable) log.debug "In thermostatHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.thermostatMap.put(theName, newValues)
+
+                    if(logEnable) log.debug "In thermostatHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                } else {
+                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
+                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+                    state.thermostatMap.put(theName, newValues)                
+                    if(logEnable) log.debug "In thermostatHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                }
+            }     
+        }
+        comingFrom = "Thermostat"
+        buildMaps(comingFrom)
     }
-    comingFrom = "Thermostat"
-    buildMaps(comingFrom)
 }
 
 def resetCountsHandler(data) {
