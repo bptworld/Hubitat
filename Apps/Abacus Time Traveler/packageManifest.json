@@ -2,7 +2,7 @@
 	"packageName": "Abacus Time Traveler",
 	"minimumHEVersion": "2.1.9",
 	"author": "BPTWorld",
-	"dateReleased": "2020-06-20",
+	"dateReleased": "2020-06-26",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
 	"communityLink": "https://community.hubitat.com/t/release-abacus-time-traveler/8091",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
