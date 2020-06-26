@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.2 - 06/26/20 - Fixed push messages
  *  2.1.1 - 06/25/20 - Fixing bugs
  *  2.1.0 - 06/24/20 - Added App Control options
  *  2.0.9 - 06/24/20 - More changes 
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.1.1"
+	state.version = "2.1.2"
 }
 
 definition(
@@ -255,15 +256,8 @@ def checkEnableHandler() {
     return eSwitch
 }
 
-def countWords(stuff) {
-    if(logEnable) log.info "In countWords"
-    def values = stuff.split(";")
-    wordCount = values.size()
-    return wordCount
-}
-
 def sendToDevice() {
-    if(logEnable) log.info "In sendToDriver"
+    if(logEnable) log.info "In sendToDriver (${state.version})"
     if(state.theData01) {
         dataDevice.keywordInfo(state.theData01) 
         log.info "Log Watchdog - Sending theData01"
@@ -273,18 +267,17 @@ def sendToDevice() {
 def theNotifyStuff(evt) {
     checkEnableHandler()
     if(eSwitch) {
-        if(logEnable) log.debug "In theNotifyStuff"
-        //log.info "theNotifyStuff - could push or talk if selected"
+        if(logEnable) log.debug "In theNotifyStuff (${state.version})"
         if(sendPushMessage) pushHandler()
     }
 }
 
 def pushHandler(){
-	if(logEnable) log.debug "In pushNow"
-	theMessage = "${app.label} - ${state.msg}"
-	if(logEnable) log.debug "In pushNow...Sending message: ${theMessage}"
+	if(logEnable) log.debug "In pushNow (${state.version})"
+    theLastMsg = dataDevice.currentValue("bpt-lastLogMessage")
+	theMessage = "${app.label} - ${theLastMsg}"
+	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
-	state.msg = ""
 }
 
 def appButtonHandler(buttonPressed) {
@@ -340,7 +333,6 @@ def createDataChildDevice() {
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
-	if(state.msg == null){state.msg = ""}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
