@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 06/26/20 - Tighting up the code
  *  1.0.9 - 06/24/20 - More changes
  *  1.0.8 - 06/24/20 - Tons of little changes
  *  1.0.7 - 10/08/19 - Now handles only 1 keyset per child app
@@ -49,12 +50,8 @@
  *  1.0.2 - 09/02/19 - Evolving fast!
  *  1.0.1 - 09/01/19 - Major changes to the driver
  *  1.0.0 - 08/31/19 - Initial release
+ *
  */
-
-def setVersion(){
-    appName = "Log Watchdog Driver"
-	version = "1.0.9" 
-}
 
 metadata {
 	definition (name: "Log Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy") {
@@ -96,7 +93,6 @@ def updated() {
 }
 
 def initialize() {
-    setVersion()
     log.info "In initialize"
 }
 
