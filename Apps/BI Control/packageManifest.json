@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.7"
+			"version": "2.0.8"
 		}
 	],
 	"drivers" : [
