@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.3 - 06/26/20 - Minor change 
  *  2.1.2 - 06/26/20 - Fixed push messages
  *  2.1.1 - 06/25/20 - Fixing bugs
  *  2.1.0 - 06/24/20 - Added App Control options
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.1.2"
+	state.version = "2.1.3"
 }
 
 definition(
@@ -149,16 +150,12 @@ def pageConfig() {
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
             try {
-                if(dataDevice) status = dataDevice.currentValue("status")
+                if(dataDevice) theStatus = dataDevice.currentValue("status")
             }
             catch(e) {
                 theStatus = "Unknown"
             }
-            if(status == "Open") {
-                theStatus = "Connected"
-            } else {
-                theStatus = "Disconnected"
-            }
+            
             paragraph "This will control whether the app is actively 'watching' the log or not."
             paragraph "Current Log Watchdog status: <b>${theStatus}</b>", width: 6
             input "openConnection", "button", title: "Connect", width: 3
