@@ -222,7 +222,7 @@ def parse(String description) {
                 if(traceEnable) log.trace "In keyword: ${keyword1a} - lCheck1: ${lCheck1}, lCheck2: ${lCheck2}, lCheck3: ${lCheck3}"
                 if(lCheck1 == "yes" && lCheck2 == "yes" && lCheck3 == "yes") match = "yes"
             }
-
+// **********
             // -- check 1 start
             //log.info "msgCheck: ${msgCheck} - keyword1: ${keyword1}"
             if((keySetType == "k") && (msgCheck.contains("${keyword1}"))) {
@@ -264,8 +264,9 @@ def parse(String description) {
                 makeList(nameValue,msgValue)
             }
         } catch (e) {
-            log.error "In parse - ${e}"
-            close()
+            if(traceEnable) log.trace "In parse - Error to follow!"
+            log.error e
+            //close()
         }
     }
 }
