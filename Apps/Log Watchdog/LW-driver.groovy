@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 06/26/20 - Added code to reconnect the websocket if something goes wrong
  *  1.1.0 - 06/26/20 - Tighting up the code
  *  1.0.9 - 06/24/20 - More changes
  *  1.0.8 - 06/24/20 - Tons of little changes
@@ -102,27 +103,35 @@ def connect() {
 
 def close() {
     interfaces.webSocket.close()
+    log.warn "Log Watchdog Driver - Closing webSocket"
 }
 
 def webSocketStatus(String socketStatus) {
+    if(logEnabled) log.debug "In webSocketStatus - socketStatus: ${socketStatus}"
 	if(socketStatus.startsWith("status: open")) {
 		log.warn "Log Watchdog Driver - Connected"
-        sendEvent(name: "status", value: "Open", displayed: true)
-		return
-	} 
-	else if(socketStatus.startsWith("status: closing")) {
+        sendEvent(name: "status", value: "connected", displayed: true)
+        pauseExecution(500)
+        state.delay = null
+	} else if(socketStatus.startsWith("status: closing")) {
 		log.warn "Log Watchdog Driver - Closing connection"
-        sendEvent(name: "status", value: "Closing", displayed: true)
-		return
-	} 
-	else if(socketStatus.startsWith("failure:")) {
+        sendEvent(name: "status", value: "disconnected")
+	} else if(socketStatus.startsWith("failure:")) {
 		log.warn "Log Watchdog Driver - Connection has failed with error [${socketStatus}]."
-        sendEvent(name: "status", value: "Failed", displayed: true)
-	} 
-	else {
-		log.warn "Log Watchdog Driver - Connection has been lost due to an unknown error"
-        sendEvent(name: "status", value: "Lost", displayed: true)
+        sendEvent(name: "status", value: "disconnected", displayed: true)
+        autoReconnectWebSocket()
+	} else {
+        log.warn "WebSocket error, reconnecting."
+        autoReconnectWebSocket()
 	}
+}
+
+def autoReconnectWebSocket() {
+    state.delay = (state.delay ?: 0) + 30    
+    if(state.delay > 600) state.delay = 600
+
+    log.warn "Log Watchdog Driver - Connection lost, will try to reconnect in ${state.delay} seconds"
+    runIn(state.delay, connect)
 }
 
 def keywordInfo(keys) {
@@ -308,7 +317,8 @@ def makeList(nameValue,msgValue) {
         sendEvent(name: "bpt-lastLogMessage", value: msgValue, displayed: true)
     }
     catch(e1) {
-        log.error "In makeList - ${e1}"
+        log.error "Log Watchdog Driver - In makeList - Error to follow!"
+        log.error e1
         close()    
     }
 }
