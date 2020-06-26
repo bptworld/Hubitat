@@ -12,14 +12,11 @@ Paypal: https://paypal.me/bptworld<br>Venmo: Bryan-Turcotte-MA (8477)</b><br>Rem
 <b>All BPTWorld apps/drivers are now available with the Hubitat Package Manager app</b><br><br>
 <b>Be sure to visit my '<a href="https://github.com/bptworld/Hubitat/tree/master/Docs" target="_blank">Docs</a>' folder for more information!</b>
 <hr>
-<b>Abacus - Counting Machine</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
+<b>Abacus Counting Machine</b> - Count how many times a Device is triggered. Displays Daily, Weekly, Monthly and Yearly counts!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus/7883" target="_blank">Go Here</a>
 <br><br>
-<b>Abacus - Time Traveler</b> - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
+<b>Abacus Time Traveler</b> - Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-abacus-time-traveler/8091" target="_blank">Go Here</a>
-<br><br>
-<b>App Watchdog</b> - See if any compatible app needs an update, all in one place. DEVELOPERS WELCOME!<br>
-Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-app-watchdog/9952" target="_blank">Go Here</a>
 <br><br>
 <b>Asthma Forecaster</b> (Driver) - Retrieve data from asthmaforecast.com. For use with Hubitat dashboards.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-pollen-forecaster-and-asthma-forecaster/13636" target="_blank">Go Here</a>
