@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.1.2"
+			"version": "2.1.3"
 		}
 	],
 	"drivers" : [
