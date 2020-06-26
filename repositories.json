@@ -4,6 +4,12 @@
    "payPalUrl": "https://paypal.me/bptworld",
    "packages": [
       {
+   		"name": "Abacus Time Traveler",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/packageManifest.json",
+   		"description": "Track how long a Device has been active. Displays Daily, Weekly, Monthly and Yearly Timers!"
+   	},
+      {
    		"name": "Abacus Counting Machine",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/packageManifest.json",
