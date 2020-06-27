@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 06/27/20 - Improvements to connection and to the dashboard list
  *  1.1.1 - 06/26/20 - Added code to reconnect the websocket if something goes wrong
  *  1.1.0 - 06/26/20 - Tighting up the code
  *  1.0.9 - 06/24/20 - More changes
@@ -290,10 +291,10 @@ def makeList(nameValue,msgValue) {
 
         int intNumOfLines = 10
         if (listSize1 > intNumOfLines) state.list.removeAt(intNumOfLines)
-        String result1 = state.list.join(";")
-        def lines = result1.split(";")
+        String result1 = state.list.join(",")
+        def lines = result1.split(",")
 
-        theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td colspan=5>"
+        theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=10%><td width=1%><td width=10%><td width=1%><td width=78%>"
 
         for (i=0;i<intNumOfLines && i<listSize1;i++) {
             combined = theData.length() + lines[i].length() + 16
