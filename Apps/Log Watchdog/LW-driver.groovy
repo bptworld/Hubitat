@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 06/27/20 - Massive overhaul of the logic
  *  1.1.2 - 06/27/20 - Improvements to connection and to the dashboard list
  *  1.1.1 - 06/26/20 - Added code to reconnect the websocket if something goes wrong
  *  1.1.0 - 06/26/20 - Tighting up the code
@@ -161,6 +162,7 @@ def parse(String description) {
         msgValue = msgValue.replace("\"","")
         nameValue = nameValue.replace("\"","")
         msgCheck = msgValue.toLowerCase()
+        state.msgV = msgValue
 
         try {
             def (lvlKey, lvlValue) = level.split(":",2)
@@ -170,104 +172,137 @@ def parse(String description) {
             lvlCheck = "-"
         }
 
-        // *****************************
-        try {
-            def match = "no"
-            def keyValue = state.keyValue.toLowerCase()
-            def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
-            if(keyword1 == "-") keyword1 = ""
-            if(sKeyword1 == "-") sKeyword1 = ""
-            if(sKeyword2 == "-") sKeyword2 = ""
-            if(sKeyword3 == "-") sKeyword3 = ""
-            if(sKeyword4 == "-") sKeyword4 = ""
-            if(nKeyword1 == "-") nKeyword1 = ""
-            if(nKeyword2 == "-") nKeyword2 = ""
-            lCheck1 = "no"
-            lCheck2 = "no"
-            lCheck3 = "no"
-            kCheck1 = "no"
-            kCheck2 = "no"
-            kCheck3 = "no"
+// *****************************
 
-            // -- check 1 start    
-            if((keySetType == "l") && (lvlCheck.contains("${keyword1}"))) {
-                //log.info "keySetType = l"
-                if(traceEnable) {
-                    keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                    log.trace "In level - Found lvlCheck: ${keyword1a}"
-                }
-                lCheck1 = "yes"
-                // -- check 1 done 
-                // -- check 2 start
-                if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
-                    if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
-                        if(traceEnable) log.trace "In level: ${keyword1a} - Passed keywords"
-                        lCheck2 = "yes"
+        def keyValue = state.keyValue.toLowerCase()
+        def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+        if(keyword1 == "-") keyword1 = ""
+        if(sKeyword1 == "-") sKeyword1 = ""
+        if(sKeyword2 == "-") sKeyword2 = ""
+        if(sKeyword3 == "-") sKeyword3 = ""
+        if(sKeyword4 == "-") sKeyword4 = ""
+        if(nKeyword1 == "-") nKeyword1 = ""
+        if(nKeyword2 == "-") nKeyword2 = ""
+        
+        String keyword = keyword1.replace("[","").replace("]","")
+        if(logEnable) log.debug "msgCheck: ${msgCheck} - keyword: ${keyword}"
+        
+        state.kCheck1 = false
+        state.kCheck2 = true
+        state.match = false
+
+        if(keySetType == "l") {
+            try {
+                if(lvlCheck.contains("${keyword}")) {
+                    if(traceEnable) {
+                        keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        log.trace "In keyword - Found msgCheck: ${keyword1a}"
                     }
-                } else {
-                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed keywords"
-                    lCheck2 = "yes"
-                }
-                // -- check 2 done 
-                // -- check 3 start            
-                if(nKeyword1 || nKeyword2) {
-                    if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
-                        if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
-                        l    Check3 = "yes"
+
+                    if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
+                        if(msgCheck.contains("${sKeyword1}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1: ${sKeyword1} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword2}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword2: ${sKeyword2} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword3}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1: ${sKeyword3} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword4}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword4: ${sKeyword4} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        }       
+                    } else {
+                        state.kCheck1 = true
                     }
-                } else {
-                    if(traceEnable) log.trace "In level: ${keyword1a} - Passed NOT contain"
-                    lCheck3 = "yes"
+
+                    if(nKeyword1 || nKeyword2) {  
+                        if(msgCheck.contains("${nKeyword1}")) {
+                            if(traceEnable) log.trace "In Not Keyword1: ${nKeyword1} found! That's BAD!"
+                            state.kCheck2 = false
+                        } else if(msgCheck.contains("${nKeyword2}")) {
+                            if(traceEnable) log.trace "In Not Keyword2: ${nKeyword2} found! That's BAD!"
+                            state.kCheck2 = false
+                        }
+                    }
+
+                    if(traceEnable) log.trace "In keyword: ${keyword1a} - kCheck1: ${state.kCheck1} - kCheck2: ${state.kCheck2}"
+                    if(state.kCheck1 && state.kCheck2) {
+                        state.match = true
+                    } else {
+                        state.match = false
+                    }
                 }
-                // -- check 3 done
-                if(traceEnable) log.trace "In keyword: ${keyword1a} - lCheck1: ${lCheck1}, lCheck2: ${lCheck2}, lCheck3: ${lCheck3}"
-                if(lCheck1 == "yes" && lCheck2 == "yes" && lCheck3 == "yes") match = "yes"
+
+                if(state.match) {
+                    if(traceEnable) log.warn "In keyword: ${keyword1a} - Everything is GOOD!"
+                    if(traceEnable) log.warn "In keyword: Sending: ${state.msgV}"
+                    makeList(nameValue, state.msgV)
+                    state.msgV = null
+                }
+            } catch (e) {
+                if(traceEnable) log.trace "In parse - Error to follow!"
+                log.error e
             }
+        }
+        
 // **********
-            // -- check 1 start
-            //log.info "msgCheck: ${msgCheck} - keyword1: ${keyword1}"
-            if((keySetType == "k") && (msgCheck.contains("${keyword1}"))) {
-                //log.info "keySetType = k"
-                if(traceEnable) {
-                    keyword1a = keyword1.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                    log.trace "In keyword - Found msgCheck: ${keyword1a}"
-                }
-                kCheck1 = "yes"
-                // -- check 1 done 
-                // -- check 2 start
-                if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
-                    if(msgCheck.contains("${sKeyword1}") || msgCheck.contains("${sKeyword2}") || msgCheck.contains("${sKeyword3}") || msgCheck.contains("${sKeyword4}")) {
-                        if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed keywords"
-                        kCheck2 = "yes"
+            
+        if(keySetType == "k") {
+            try {
+                if(msgCheck.contains("${keyword}")) {
+                    if(traceEnable) {
+                        keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        log.trace "In keyword - Found msgCheck: ${keyword1a}"
                     }
-                } else {
-                    if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed keywords"
-                    kCheck2 = "yes"
-                }
-                // -- check 2 done 
-                // -- check 3 start            
-                if(nKeyword1 || nKeyword2) {                
-                    if(!msgCheck.contains("${nKeyword1}") || !msgCheck.contains("${nKeyword2}")) {
-                        if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed NOT contain"
-                        kcheck3 = "yes"
-                    }
-                } else {
-                    if(traceEnable) log.trace "In keyword: ${keyword1a} - Passed NOT contain"
-                    kCheck3 = "yes"
-                }
-                // -- check 3 done
-                if(traceEnable) log.trace "In keyword: ${keyword1a} - kCheck1: ${kCheck1}, kCheck2: ${kCheck2}, kCheck3: ${kCheck3}"
-                if(kCheck1 == "yes" && kCheck2 == "yes" && kCheck3 == "yes") match = "yes"
-            }
 
-            if(match == "yes") {
-                if(traceEnable) log.trace "In keyword: ${keyword1a} - WE HAD A MATCH"
-                makeList(nameValue,msgValue)
+                    if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
+                        if(msgCheck.contains("${sKeyword1}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1: ${sKeyword1} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword2}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword2: ${sKeyword2} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword3}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1: ${sKeyword3} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword4}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword4: ${sKeyword4} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        }       
+                    } else {
+                        state.kCheck1 = true
+                    }
+
+                    if(nKeyword1 || nKeyword2) {  
+                        if(msgCheck.contains("${nKeyword1}")) {
+                            if(traceEnable) log.trace "In Not Keyword1: ${nKeyword1} found! That's BAD!"
+                            state.kCheck2 = false
+                        } else if(msgCheck.contains("${nKeyword2}")) {
+                            if(traceEnable) log.trace "In Not Keyword2: ${nKeyword2} found! That's BAD!"
+                            state.kCheck2 = false
+                        }
+                    }
+
+                    if(traceEnable) log.trace "In keyword: ${keyword1a} - kCheck1: ${state.kCheck1} - kCheck2: ${state.kCheck2}"
+                    if(state.kCheck1 && state.kCheck2) {
+                        state.match = true
+                    } else {
+                        state.match = false
+                    }
+                }
+
+                if(state.match) {
+                    if(traceEnable) log.warn "In keyword: ${keyword1a} - Everything is GOOD!"
+                    if(traceEnable) log.warn "In keyword: Sending: ${state.msgV}"
+                    makeList(nameValue, state.msgV)
+                    state.msgV = null
+                }
+            } catch (e) {
+                if(traceEnable) log.trace "In parse - Error to follow!"
+                log.error e
             }
-        } catch (e) {
-            if(traceEnable) log.trace "In parse - Error to follow!"
-            log.error e
-            //close()
         }
     }
 }
@@ -294,7 +329,7 @@ def makeList(nameValue,msgValue) {
         String result1 = state.list.join(",")
         def lines = result1.split(",")
 
-        theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=10%><td width=1%><td width=10%><td width=1%><td width=78%>"
+        theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=20%><td width=1%><td width=10%><td width=1%><td width=68%>"
 
         for (i=0;i<intNumOfLines && i<listSize1;i++) {
             combined = theData.length() + lines[i].length() + 16
@@ -320,8 +355,7 @@ def makeList(nameValue,msgValue) {
     }
     catch(e1) {
         log.error "Log Watchdog Driver - In makeList - Error to follow!"
-        log.error e1
-        close()    
+        log.error e1    
     }
 }
 
