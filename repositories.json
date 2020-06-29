@@ -64,6 +64,12 @@
    		"description": "Keep an eye on your devices and see how long it's been since they checked in."
    	},
       {
+   		"name": "Event Watchdog",
+   		"category": "Utility",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Watchdog/packageManifest.json",
+   		"description": "Keep an eye on what's important in the Event log."
+   	},
+      {
    		"name": "Follow Me",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/packageManifest.json",
