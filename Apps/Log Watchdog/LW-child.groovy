@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.4 - 06/29/20 - Now auto connects
  *  2.1.3 - 06/26/20 - Minor change 
  *  2.1.2 - 06/26/20 - Fixed push messages
  *  2.1.1 - 06/25/20 - Fixing bugs
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.1.3"
+	state.version = "2.1.4"
 }
 
 definition(
@@ -155,11 +156,10 @@ def pageConfig() {
             catch(e) {
                 theStatus = "Unknown"
             }
-            
-            paragraph "This will control whether the app is actively 'watching' the log or not."
+            paragraph "<b>There is NO need to 'Connect' the service. It will automatically be turned on when you hit 'Done' below.</b>"
+            paragraph "If you don't want the service to start when saving the app, please use the 'Pause' feature above."
             paragraph "Current Log Watchdog status: <b>${theStatus}</b>", width: 6
-            input "openConnection", "button", title: "Connect", width: 3
-            input "closeConnection", "button", title: "Disconnect", width: 3
+            input "closeConnection", "button", title: "Disconnect", width: 6
         }
 		display2()
 	}
@@ -230,6 +230,7 @@ def initialize() {
             setDefaults()
             subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
             dataDevice.appStatus("active")
+            dataDevice.connect()
         } else {
             dataDevice.appStatus("paused")
         }
