@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.0.1 - 06/29/20 - 
+ *  1.0.1 - 06/29/20 - Now auto connects
  *  1.0.0 - 06/27/20 - Initial release.
  *
  */
@@ -95,7 +95,6 @@ def pageConfig() {
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Keyset Options")) {
             href "pageKeySet", title: "Keyset Setup", description: "Click here to setup Keywords."
-            if(state.if01) paragraph "Keyset: ${state.if01}"
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
@@ -122,7 +121,7 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
-            
+/*    
             paragraph "<hr>"
             input "testLevel", "button", title: "Test Level"
             
@@ -134,6 +133,7 @@ def pageConfig() {
             input "testSecondaryKeyword3", "button", title: "Test Sec Keyword 3", width: 3
             input "testSecondaryKeyword4", "button", title: "Test Sec Keyword 4", width: 3
             paragraph "<hr>"
+*/
             
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Tracking Status")) {
@@ -158,18 +158,18 @@ def pageKeySet(){
             input "option1", "enum", title: "Select a Opton to 'Watch'", required:true, submitOnChange:true, options: ["Device","Event_Type","Keywords"]
             
             if(option1 == "Keywords") {
-                if(keySetType1 != "K") app.removeSetting("keyword1")
-                keySetType1 = "K"
+                if(state.keySetType1 != "K") app.removeSetting("keyword1")
+                state.keySetType1 = "K"
 			    paragraph "<b>Primary Check</b> - Select Keyword or Phrase to log"
                 input "keyword1", "text", title: "Primary Keyword 1",  required:false, submitOnChange:true
             } else if(option1 == "Device") {
-                if(keySetType1 != "D") app.removeSetting("keyword1")
-                keySetType1 = "D"
+                if(state.keySetType1 != "D") app.removeSetting("keyword1")
+                state.keySetType1 = "D"
                 paragraph "<b>Primary Check</b> - Select Devices"
                 input "keyword1", "capability.*", title: "Select the Devices to log", multiple:false, required:false  
             } else if(option1 == "Event_Type") {
-                if(keySetType1 != "E") app.removeSetting("keyword1")
-                keySetType1 = "E"
+                if(state.keySetType1 != "E") app.removeSetting("keyword1")
+                state.keySetType1 = "E"
                 paragraph "<b>Primary Check</b> - Select Event Type"
                 input "keyword1", "enum", title: "Select the Type of Event to log", required:false, options: ["average", "battery", "colorTemperature", "contact", "energy", "energyDuration", "hue", "humidity", "illuminace", "lastUpdate", "mode", "motion", "pressure", "pushed", "schedule", "status", "switch", "temperature", "ultravioletIndex", "valve", "voltage"]
             } else {
@@ -195,10 +195,10 @@ def pageKeySet(){
             if(!nKeyword2) nKeyword2 = "-"
             
             String keyword1s = keyword1
-            state.if01 = "<b>(${keySetType1}) - if (${keyword1s}) and (${sKeyword1} or ${sKeyword2} or ${sKeyword3} or ${sKeyword4}) but not (${nKeyword1} or ${nKeyword2})</b>"
+            state.if01 = "<b>(${state.keySetType1}) - if (${keyword1s}) and (${sKeyword1} or ${sKeyword2} or ${sKeyword3} or ${sKeyword4}) but not (${nKeyword1} or ${nKeyword2})</b>"
             paragraph "<b>Complete Check</b><br>${state.if01}"
 
-            state.theData01 = "KeySet;${keySetType1};${keyword1s};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
+            state.theData01 = "KeySet;${state.keySetType1};${keyword1s};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
         }
     }
 }
