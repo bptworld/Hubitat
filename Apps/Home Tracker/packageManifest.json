@@ -23,7 +23,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.3.8"
+			"version": "2.3.9"
 		}
 	],
 	"drivers" : [
