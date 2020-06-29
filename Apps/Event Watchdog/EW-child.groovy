@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 06/29/20 - 
  *  1.0.0 - 06/27/20 - Initial release.
  *
  */
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Watchdog"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -142,11 +143,10 @@ def pageConfig() {
             catch(e) {
                 theStatus = "Unknown"
             }
-            paragraph "<b>Be sure to 'save' this child app BEFORE turning the connection on</b>"
-            paragraph "This will control whether the app is actively 'watching' the log or not."
+            paragraph "<b>There is NO need to 'Connect' the service. It will automatically be turned on when you hit 'Done' below.</b>"
+            paragraph "If you don't want the service to start when saving the app, please use the 'Pause' feature above."
             paragraph "Current Event Watchdog status: <b>${theStatus}</b>", width: 6
-            input "openConnection", "button", title: "Connect", width: 3
-            input "closeConnection", "button", title: "Disconnect", width: 3
+            input "closeConnection", "button", title: "Disconnect", width: 6
         }
 		display2()
 	}
@@ -227,6 +227,7 @@ def initialize() {
             setDefaults()
             subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
             dataDevice.appStatus("active")
+            dataDevice.connect()
         } else {
             dataDevice.appStatus("paused")
         }
