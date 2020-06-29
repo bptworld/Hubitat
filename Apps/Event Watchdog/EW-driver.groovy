@@ -194,8 +194,8 @@ def parse(String description) {
                 if(traceEnable) {
                     keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                     log.trace "In keyword - Found msgCheck: ${keyword1a}"
-                    readyToGo = true
                 }
+		    readyToGo = true
             }
                 
             if(readyToGo) {
