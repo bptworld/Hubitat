@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.9 - 06/29/20 - Changed how greetings are handled
  *  2.3.8 - 06/22/20 - Changes to letsTalk
  *  2.3.7 - 06/19/20 - Removed internal Flash Lights and added The Flasher
  *  2.3.6 - 06/14/20 - Chasing bugs
@@ -62,7 +63,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.3.8"
+	state.version = "2.3.9"
 }
 
 definition(
@@ -656,7 +657,6 @@ def getTimeDiff(x) {
 }
 
 def messageHomeNow() {
-    checkTimeForGreeting()
 	if(logEnable) log.debug "In messageHomeNow (${state.version})"
 
 	def ovaluesHN = "${omessageHN}".split(";")
@@ -670,13 +670,11 @@ def messageHomeNow() {
     def crandomKeyHN = new Random().nextInt(ccountHN)
 
 	message = ovaluesHN[orandomKeyHN] + ". " + cvaluesHN[crandomKeyHN]
-	if(logEnable) log.debug "In messageHomeNow - Random - ovSizeHN: ${ovSizeHN}, orandomKeyHN: ${orandomKeyHN}; Random - cvSizeHN: ${cvSizeHN}, crandomKeyHN: ${crandomKeyHN}, message: ${message}"
+	if(logEnable) log.debug "In messageHomeNow - Random - message: ${message}"
 	messageHandler(message)
-	letsTalk(theMessage)
 }
 
 def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and closing message code
-    checkTimeForGreeting()
 	if(logEnable) log.debug "In messageWelcomeHome (${state.version})"
 
 	def ovalues = "${omessage}".split(";")
@@ -690,18 +688,16 @@ def messageWelcomeHome() {   // Uses a modified version of @Matthew opening and 
     def crandomKey = new Random().nextInt(ccount)
 
     message = ovalues[orandomKey] + ". " + cvalues[crandomKey]
-	if(logEnable) log.debug "In messageWelcomeHome - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}; Random - cvSize: ${cvSize}, crandomKey: ${crandomKey}, message: ${message}"
+	if(logEnable) log.debug "In messageWelcomeHome - Random - message: ${message}"
     if(delay1 == null || delay1 == "") delay1 = 5
     if(logEnable) log.debug "In messageWelcomeHome - Waiting ${delay1} seconds to Speak"
 	def delay1ms = delay1 * 1000
 	pauseExecution(delay1ms)
     if(logEnable) log.debug "In messageWelcomeHome - going to letsTalk with the message"
     messageHandler(message)
-	letsTalk(theMessage)
 }
 
 def messageDeparted() {
-    checkTimeForGreeting()
     if(logEnable) log.debug "In messageDeparted (${state.version})"
     
 	def ovaluesD = "${omessageD}".split(";")
@@ -715,21 +711,20 @@ def messageDeparted() {
     def crandomKeyD = new Random().nextInt(ccountD)
 
 	message = ovaluesD[orandomKeyD] + ". " + cvaluesD[crandomKeyD]
-	if(logEnable) log.debug "In messageDeparted - Random - ovSizeD: ${ovSizeD}, orandomKeyD: ${orandomKeyD}; Random - cvSizeD: ${cvSizeD}, crandomKeyD: ${crandomKeyD}, message: ${message}"
+	if(logEnable) log.debug "In messageDeparted - Random - message: ${message}"
     messageHandler(message)
-	letsTalk(theMessage)
 }
 
 def messageHandler(message) {
     if(logEnable) log.debug "In messageHandler (${state.version}) - message: ${message}"
     state.message = message
-    if(state.message.contains("%greeting%")) {state.message = state.message.replace('%greeting%', "${state.greeting}" )}
+    if(state.message.contains("%greeting%")) {state.message = state.message.replace('%greeting%', checkTimeForGreeting() )}
 	if(state.message.contains("%name%")) {state.message = state.message.replace('%name%', getName() )}
 	if(state.message.contains("%is_are%")) {state.message = state.message.replace('%is_are%', "${is_are}" )}
 	if(state.message.contains("%has_have%")) {state.message = state.message.replace('%has_have%', "${has_have}" )}
     if(logEnable) log.debug "In messageHandler - message: ${state.message}"
     theMessage = state.message
-    return theMessage
+    letsTalk(theMessage)
 }
 
 def letsTalk(msg) {
@@ -744,37 +739,45 @@ def letsTalk(msg) {
 
 def checkTimeForGreeting() {
     if(logEnable) log.debug "In checkTimeForGreeting (${state.version}) - G1 - ${fromTimeG1} - ${toTimeG1}"
-    state.betweenTimeG1 = timeOfDayIsBetween(toDateTime(fromTimeG1), toDateTime(toTimeG1), new Date(), location.timeZone)
-    if(state.betweenTimeG1) {
-		def values = "${greeting1}".split(";")
-	    vSize = values.size()
-		count = vSize.toInteger()
-    	def randomKey = new Random().nextInt(count)
-		state.greeting = values[randomKey]
-		if(logEnable) log.debug "In checkTimeForGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
+    if(fromTimeG1 && toTimeG1) {
+        state.betweenTimeG1 = timeOfDayIsBetween(toDateTime(fromTimeG1), toDateTime(toTimeG1), new Date(), location.timeZone)
+        if(state.betweenTimeG1) {
+            def values = "${greeting1}".split(";")
+            vSize = values.size()
+            count = vSize.toInteger()
+            def randomKey = new Random().nextInt(count)
+            greeting = values[randomKey]
+            if(logEnable) log.debug "In checkTimeForGreeting - Random - greeting: ${greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
+        }
     }
     
     if(logEnable) log.debug "In checkTimeForGreeting (${state.version}) - G2 - ${fromTimeG2} - ${toTimeG2}"
-    state.betweenTimeG2 = timeOfDayIsBetween(toDateTime(fromTimeG2), toDateTime(toTimeG2), new Date(), location.timeZone)
-    if(state.betweenTimeG2) {
-		def values = "${greeting2}".split(";")
-		vSize = values.size()
-		count = vSize.toInteger()
-    	def randomKey = new Random().nextInt(count)
-		state.greeting = values[randomKey]
-		if(logEnable) log.debug "In checkTimeForGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
+    if(fromTimeG2 && toTimeG2) {
+        state.betweenTimeG2 = timeOfDayIsBetween(toDateTime(fromTimeG2), toDateTime(toTimeG2), new Date(), location.timeZone)
+        if(state.betweenTimeG2) {
+            def values = "${greeting2}".split(";")
+            vSize = values.size()
+            count = vSize.toInteger()
+            def randomKey = new Random().nextInt(count)
+            greeting = values[randomKey]
+            if(logEnable) log.debug "In checkTimeForGreeting - Random - greeting: ${greeting} timeampm: ${timeampm} - timehh: ${timeHH}"
+        }
     }
 
     if(logEnable) log.debug "In checkTimeForGreeting (${state.version}) - G3 - ${fromTimeG3} - ${toTimeG3}"
-    state.betweenTimeG3 = timeOfDayIsBetween(toDateTime(fromTimeG3), toDateTime(toTimeG3), new Date(), location.timeZone)
-    if(state.betweenTimeG3) {
-		def values = "${greeting3}".split(";")
-		vSize = values.size()
-		count = vSize.toInteger()
-    	def randomKey = new Random().nextInt(count)
-		state.greeting = values[randomKey]
-		if(logEnable) log.debug "In checkTimeForGreeting - Random - vSize: ${vSize}, randomKey: ${randomKey}, greeting: ${state.greeting} timeampm = ${timeampm} - timehh = ${timeHH}"
+    if(fromTimeG3 && toTimeG3) {
+        state.betweenTimeG3 = timeOfDayIsBetween(toDateTime(fromTimeG3), toDateTime(toTimeG3), new Date(), location.timeZone)
+        if(state.betweenTimeG3) {
+            def values = "${greeting3}".split(";")
+            vSize = values.size()
+            count = vSize.toInteger()
+            def randomKey = new Random().nextInt(count)
+            greeting = values[randomKey]
+            if(logEnable) log.debug "In checkTimeForGreeting - Random - greeting: ${greeting} timeampm = ${timeampm} - timehh = ${timeHH}"
+        }
     }
+    
+    return greeting
 }
 
 private getName() {
@@ -805,7 +808,7 @@ private getName() {
     
 	    if(name == null || name == "") names = "Whoever you are"
     
-	    if(logEnable) log.debug "Name: ${name}"
+	    if(logEnable) log.debug "In getName - Name: ${name}"
 	    return name 
     }
 }
