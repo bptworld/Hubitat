@@ -39,10 +39,13 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 06/29/20 - Learned some new things
  *  1.0.0 - 06/28/20 - Initial release
  *
  */
 
+import groovy.json.*
+    
 metadata {
 	definition (name: "Event Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
    		capability "Actuator"
@@ -142,43 +145,33 @@ def parse(String description) {
         // This is what the incoming data looks like
         //{"source":"DEVICE","name":"contact","displayName":"Kitchen Freezer Door Sensor","value":"open","unit":null,"deviceId":157,"hubId":null,"locationId":null,"installedAppId":null,"descriptionText":"Kitchen Freezer Door Sensor was opened"}
 
-        def (source, name, displayName,value, unit, deviceID, HubID, locationId, installedAppId, descriptionText) = theData.split(",")
+        def message =  new JsonSlurper().parseText(theData)
+        
+        // source, name, displayName,value, unit, deviceID, HubID, locationId, installedAppId, descriptionText
         
         def keyValue = state.keyValue.toLowerCase()
         def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
         
-        if(source) {
-            theSource = source.replace("\"","").replace("{","").replace("}","")
-            if(theSource.toLowerCase().contains(":")) {
-                def (sourceKey, sourceValue) = theSource.split(":",2)
-                state.sourceV = sourceValue.toLowerCase()
-                //log.info "sourceV: ${state.sourceV}"
-            }
-        }
+        if(message.source) {
+            sourceV = message.source.toLowerCase()
+            //log.info "sourceV: ${sourceV}"
         
-        if(state.sourceV == "device" && name) {
-            theName = name.replace("\"","").replace("{","").replace("}","")
-            if(theName.toLowerCase().contains(":")) {
-                def (nameKey, nameValue) = theName.split(":",2)
-                state.nameV = nameValue.toLowerCase()
-                //log.info "nameV: ${state.nameV}"
+            if(sourceV == "device") {
+                nameV = message.name.toLowerCase()
+                //log.info "nameV: ${nameV}"
             }
         }
-        
-        if(descriptionText) {
-            dText = descriptionText.replace("\"","").replace("{","").replace("}","")
-            
-            if(dText.toLowerCase().contains(":")) {
-                def (msgKey, msgValue) = dText.split(":",2)
-                msgCheck = msgValue.toLowerCase()
-                theValue = msgValue
-            } else {
-                msgCheck = dText.toLowerCase()
+
+        if(keySetType == "d" || keySetType == "k") {
+            if(message.descriptionText) {
+                msgCheck = message.descriptionText.toLowerCase()
             }
-        } else {
-            msgValue = "-"
-            msgCheck = "-"
+        } else if(keySetType == "e") {
+            if(message.descriptionText) {
+                msgCheck = nameV
+            }
         }
+        if(msgCheck == null) msgCheck = "-----"
 
         if(keyword1 == "-") keyword1 = ""
         if(sKeyword1 == "-") sKeyword1 = null
@@ -188,7 +181,7 @@ def parse(String description) {
         if(nKeyword1 == "-") nKeyword1 = null
         if(nKeyword2 == "-") nKeyword2 = null      
 
-        String keyword = keyword1.replace("[","").replace("]","")
+        String keyword = keyword1
         if(logEnable) log.debug "msgCheck: ${msgCheck} - keyword: ${keyword}"
         
         state.kCheck1 = false
@@ -197,22 +190,11 @@ def parse(String description) {
         
         try {
             readyToGo = false
-            if(keySetType == "d" || keySetType == "k") {
-                if(msgCheck.contains("${keyword}")) {
-                    if(traceEnable) {
-                        keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                        if(traceEnable) log.trace "In keyword - Found msgCheck: ${keyword1a}"
-                        readyToGo = true
-                    }
-                }
-            } else if(keySetType == "e") {
-                if(traceEnable) log.trace "Trying: ${state.nameV} VS ${keyword}"
-                if(state.nameV.contains("${keyword}")) {
-                    if(traceEnable) {
-                        keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                        if(traceEnable) log.trace "In keyword - Found msgCheck: ${keyword1a}"
-                        readyToGo = true
-                    }
+            if(msgCheck.contains("${keyword}")) {
+                if(traceEnable) {
+                    keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                    log.trace "In keyword - Found msgCheck: ${keyword1a}"
+                    readyToGo = true
                 }
             }
                 
@@ -259,8 +241,8 @@ def parse(String description) {
                 if(msgCheck == null || msgCheck == "null") {
                     if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
                 } else {
-                    if(traceEnable) log.warn "In keyword - Sending: ${theValue}"
-                    makeList(theValue)
+                    if(traceEnable) log.warn "In keyword - Sending: ${message.descriptionText}"
+                    makeList(message.descriptionText)
                 }
             }
         } catch (e) {
