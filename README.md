@@ -39,6 +39,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-devic
 <b>Device Watchdog</b> - Keep an eye on your devices and see how long it's been since they checked in.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-watchdog/7692" target="_blank">Go Here</a>
 <br><br>
+<b>Event Watchdog</b> - Keep an eye on what's important in the Event log.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-event-watchdog-keep-an-eye-on-whats-important-in-the-event-log/44284" target="_blank">Go Here</a>
+<br><br>
 <b>Follow Me</b> - Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-follow-me/12139" target="_blank">Go Here</a>
 <br><br>
@@ -53,6 +56,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-hub-w
 <br><br>
 <b>Lighting Effects</b> - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
+<br><br>
+<b>Log Watchdog</b> - Keep an eye on what's important in the log.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-log-watchdog-keep-an-eye-on-whats-important-in-the-log/22270" target="_blank">Go Here</a>
 <br><br>
 <b>Magic Cube</b> - Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-magic-cube/11987" target="_blank">Go Here</a>
