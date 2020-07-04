@@ -21,103 +21,120 @@
    		"name": "At Home Simulator",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/packageManifest.json",
-   		"description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine."
+   		"description": "Turn lights on and off to simulate the appearance of an occupied home using YOUR normal routine.",
+         "tags": [ "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Averaging Plus",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/packageManifest.json",
-   		"description": "Average just about anything. Get notifications based on Setpoints."
+   		"description": "Average just about anything. Get notifications based on Setpoints.",
+         "tags": [ "Tools & Utilities" ]
    	},
       {
    		"name": "BI Control",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/packageManifest.json",
-   		"description": "Designed to work locally with Blue Iris security software."
+   		"description": "Designed to work locally with Blue Iris security software.",
+         "tags": [ "Alarm Systems", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "CATT Director",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/packageManifest.json",
-   		"description": "Take control of a Chromecast device using CATT."
+   		"description": "Take control of a Chromecast device using CATT.",
+         "tags": [ "Appliances", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Chromecast Helper",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/packageManifest.json",
-   		"description": "Simple way to help keep your Goolge/Nest devices alive."
+   		"description": "Simple way to help keep your Goolge/Nest devices alive.",
+         "tags": [ "Multimedia", "Tools & Utilities", "Voice Assistants" ]
    	},
       {
    		"name": "Device Check Plus",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManifest.json",
-   		"description": "Check selected devices, then warn you what's not in the right state."
+   		"description": "Check selected devices, then warn you what's not in the right state.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Device Sequencer",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/packageManifest.json",
-   		"description": "Turn on/off several devices in a row, with a user defined pause in between each."
+   		"description": "Turn on/off several devices in a row, with a user defined pause in between each.",
+         "tags": [ "Automations & Groups", "IR & RF", "Misc. Devices", "Tools & Utilities" ]
    	},
       {
    		"name": "Device Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/packageManifest.json",
-   		"description": "Keep an eye on your devices and see how long it's been since they checked in."
+   		"description": "Keep an eye on your devices and see how long it's been since they checked in.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
    		"name": "Event Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Watchdog/packageManifest.json",
-   		"description": "Keep an eye on what's important in the Event log."
+   		"description": "Keep an eye on what's important in the Event log.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
    		"name": "Follow Me",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/packageManifest.json",
-   		"description": "Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!"
+   		"description": "Never miss a message again. Send messages to your occupied room speakers when home or by pushover when away. Automatically!",
+         "tags": [ "Dashboards", "Monitoring", "Multimedia", "Notifications", "Speakers", "Tools & Utilities" ]
    	},
       {
    		"name": "Fully Kiosk Director",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/packageManifest.json",
-   		"description": "Take control of a Fully Kiosk device! * Requires additional driver, instructions within app."
+   		"description": "Take control of a Fully Kiosk device! * Requires additional driver, instructions within app.",
+         "tags": [ "Appliances", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Home Tracker",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/packageManifest.json",
-   		"description": "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!"
+   		"description": "Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Hub Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/packageManifest.json",
-   		"description": "Simple way to monitor if your hub is slowing down or not."
+   		"description": "Simple way to monitor if your hub is slowing down or not.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
    		"name": "Life360 Tracker",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Life360%20Tracker/packageManifest.json",
-   		"description": "Track your Life360 users. Works with the Life360 with States app."
+   		"description": "Track your Life360 users. Works with the Life360 with States app.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Life360 with States",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/packageManifest.json",
-   		"description": "Connect Life360 to Hubitat including ALL states."
+   		"description": "Connect Life360 to Hubitat including ALL states.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Lighting Effects",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/packageManifest.json",
-   		"description": "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect."
+   		"description": "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.",
+         "tags": [ "Lights & Switches", "Tools & Utilities" ]
    	},
       {
    		"name": "Log Watchdog",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/packageManifest.json",
-   		"description": "Keep an eye on what's important in the log."
+   		"description": "Keep an eye on what's important in the log.",
+         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
    		"name": "Magic Cube",
