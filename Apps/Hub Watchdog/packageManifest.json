@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.2"
+			"version": "1.0.2",
+			"primary": true
 		},
 		{
 			"id" : "aef6e0f8-a500-409a-b858-289589070812",
