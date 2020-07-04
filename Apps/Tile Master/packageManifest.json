@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/TM2-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.1.5"
+			"version": "2.1.5",
+			"primary": true
 		},
 		{
 			"id" : "d331c97e-1c21-4bf7-a73c-e50e917a6e45",
