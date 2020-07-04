@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/SDT-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.1"
+			"version": "2.0.1",
+			"primary": true
 		},
 		{
 			"id" : "eb8c9d4b-cff8-4cb7-93fc-e8820e3b3408",
