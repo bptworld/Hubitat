@@ -168,14 +168,14 @@
    		"name": "Remote Wellness Check",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/packageManifest.json",
-   		"description": "Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time."
+   		"description": "Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time.",
          "tags": [ "Monitoring", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Room Director",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/packageManifest.json",
-   		"description": "Make your rooms smarter by directing them to do what you want, automaticaly."
+   		"description": "Make your rooms smarter by directing them to do what you want, automaticaly.",
          "tags": [ "Automations & Groups", "Monitoring", "Presence & Location", "Safety & Security", "Tools & Utilities" ]
    	},
       {
