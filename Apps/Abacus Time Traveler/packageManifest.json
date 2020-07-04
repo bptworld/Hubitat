@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Time%20Traveler/ATT-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.0",
+			"primary": true
 		},
 		{
 			"id" : "6714d1c6-220d-4b66-80db-d650dff1098f",
