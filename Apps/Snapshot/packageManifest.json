@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/S-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.1"
+			"version": "2.0.1",
+			"primary": true
 		},
 		{
 			"id" : "c5af8fec-d314-4a1f-8a51-15c812532ee8",
