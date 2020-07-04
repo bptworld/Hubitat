@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/AP-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.0",
+			"primary": true
 		},
 		{
 			"id" : "d36b2b70-ef3b-4cb5-bdfa-038f497dc863",
