@@ -36,21 +36,21 @@
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/packageManifest.json",
    		"description": "Designed to work locally with Blue Iris security software.",
-         "tags": [ "Alarm Systems", "Safety & Security", "Tools & Utilities" ]
+         "tags": [ "Alarm Systems", "LAN", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "CATT Director",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/CATT%20Director/packageManifest.json",
    		"description": "Take control of a Chromecast device using CATT.",
-         "tags": [ "Appliances", "Multimedia", "Tools & Utilities" ]
+         "tags": [ "Appliances", "LAN", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Chromecast Helper",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Chromecast%20Helper/packageManifest.json",
    		"description": "Simple way to help keep your Goolge/Nest devices alive.",
-         "tags": [ "Multimedia", "Tools & Utilities", "Voice Assistants" ]
+         "tags": [ "LAN", "Multimedia", "Tools & Utilities", "Voice Assistants" ]
    	},
       {
    		"name": "Device Check Plus",
@@ -92,7 +92,7 @@
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Fully%20Kiosk%20Director/packageManifest.json",
    		"description": "Take control of a Fully Kiosk device! * Requires additional driver, instructions within app.",
-         "tags": [ "Appliances", "Multimedia", "Tools & Utilities" ]
+         "tags": [ "Appliances", "LAN", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Home Tracker",
@@ -183,7 +183,7 @@
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/packageManifest.json",
    		"description": "This app is designed to send commands to an iTach IP2IR device.",
-         "tags": [ "IR & RF", "Multimedia", "Tools & Utilities" ]
+         "tags": [ "IR & RF", "LAN", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Dates",
@@ -253,7 +253,7 @@
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/packageManifest.json",
    		"description": "Making the Weather.gov data usable with Hubitat.",
-         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities", "Weather" ]
+         "tags": [ "Cloud", "Dashboards", "Monitoring", "Tools & Utilities", "Weather" ]
    	},
       {
    		"name": "Web Pinger",
