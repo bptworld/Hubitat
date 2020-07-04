@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Package%20Explorer/pe.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.6"
+			"version": "1.0.6",
+			"primary": true
 		}
 	],
 	"drivers" : [	
