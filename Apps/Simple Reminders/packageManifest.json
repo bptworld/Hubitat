@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/SR-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.1"
+			"version": "1.0.1",
+			"primary": true
 		},
 		{
 			"id" : "6f51012e-a555-4aa2-a61a-3be2bb6189c8",
