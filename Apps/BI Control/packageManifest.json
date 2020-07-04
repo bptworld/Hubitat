@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/BI%20Control/BIC%20Parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.1"
+			"version": "2.0.1",
+			"primary": true
 		},
 		{
 			"id" : "5d8fb8c5-dd09-4a74-a09d-2d744e727a0d",
