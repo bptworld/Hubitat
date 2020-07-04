@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/At%20Home%20Simulator/AHS-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.1"
+			"version": "2.0.1",
+			"primary": true
 		},
 		{
 			"id" : "344c2335-904d-40a9-8962-847a7bf2a451",
