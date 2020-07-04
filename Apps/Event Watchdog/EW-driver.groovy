@@ -35,10 +35,11 @@
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  Special thanks to @dan.t for his sample code for making the websocket connection.
+ *  Special thanks to @dan.t and his sample code for making the websocket connection.
  *
  *  Changes:
  *
+ *  1.0.2 - 06/29/20 - Code improvements
  *  1.0.1 - 06/29/20 - Learned some new things
  *  1.0.0 - 06/28/20 - Initial release
  *
@@ -105,9 +106,11 @@ def webSocketStatus(String socketStatus) {
         sendEvent(name: "status", value: "connected", displayed: true)
         pauseExecution(500)
         state.delay = null
+        return
 	} else if(socketStatus.startsWith("status: closing")) {
 		log.warn "Event Watchdog Driver - Closing connection"
         sendEvent(name: "status", value: "disconnected")
+        return
 	} else if(socketStatus.startsWith("failure:")) {
 		log.warn "Event Watchdog Driver - Connection has failed with error [${socketStatus}]."
         sendEvent(name: "status", value: "disconnected", displayed: true)
@@ -195,7 +198,7 @@ def parse(String description) {
                     keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                     log.trace "In keyword - Found msgCheck: ${keyword1a}"
                 }
-		    readyToGo = true
+                readyToGo = true
             }
                 
             if(readyToGo) {
@@ -251,7 +254,6 @@ def parse(String description) {
         }
     }
 }
-// *****************************
  
 def makeList(data) {
     def msgValue = data
