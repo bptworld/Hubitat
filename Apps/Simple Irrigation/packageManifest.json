@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/SI-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.1"
+			"version": "2.0.1",
+			"primary": true
 		},
 		{
 			"id" : "66dd229c-2128-4ac8-ad71-29053cd46c31",
