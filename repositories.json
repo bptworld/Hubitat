@@ -189,14 +189,14 @@
    		"name": "Simple Dates",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Dates/packageManifest.json",
-   		"description": "Create a simple coutdown to your most important dates."
+   		"description": "Create a simple coutdown to your most important dates.",
          "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Device Timer",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/packageManifest.json",
-   		"description": "Simple Device Timer with safety checks, reminders, multiple timers and restrictions."
+   		"description": "Simple Device Timer with safety checks, reminders, multiple timers and restrictions.",
          "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
       {
