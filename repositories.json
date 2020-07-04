@@ -140,109 +140,127 @@
    		"name": "Magic Cube",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Magic%20Cube/packageManifest.json",
-   		"description": "Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake."
+   		"description": "Take control of your Xiaomi Mi Cube. Control devices based on Flip, Slide, Knock, Rotation and Shake.",
+         "tags": [ "Misc. Devices", "Tools & Utilities" ]
    	},
       {
    		"name": "One at a Time",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/packageManifest.json",
-   		"description": "Designed to allow only one switch, in a group of switches, to be on at a time."
+   		"description": "Designed to allow only one switch, in a group of switches, to be on at a time.",
+         "tags": [ "Automations & Groups", "Tools & Utilities" ]
    	},
       {
    		"name": "Package Explorer",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Package%20Explorer/packageManifest.json",
-   		"description": "Conveniently explore the apps and drivers available within the Hubitat Package Manager."
+   		"description": "Conveniently explore the apps and drivers available within the Hubitat Package Manager.",
+         "tags": [ "Tools & Utilities" ]
    	},
       {
    		"name": "Presence Plus",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Presence%20Plus/packageManifest.json",
-   		"description": "Creates a combined presence device that can be used with Life360 Tracker, Google Assistant, Rule Machine and More!"
+   		"description": "Creates a combined presence device that can be used with Life360 Tracker, Google Assistant, Rule Machine and More!",
+         "tags": [ "Dashboards", "Monitoring", "Presence & Location",  "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Remote Wellness Check",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/packageManifest.json",
    		"description": "Stay connected to your loved ones. Get notified if they haven't triggered a device in a specified time."
+         "tags": [ "Monitoring", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Room Director",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/packageManifest.json",
    		"description": "Make your rooms smarter by directing them to do what you want, automaticaly."
+         "tags": [ "Automations & Groups", "Monitoring", "Presence & Location", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Send IP2IR",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/packageManifest.json",
-   		"description": "This app is designed to send commands to an iTach IP2IR device."
+   		"description": "This app is designed to send commands to an iTach IP2IR device.",
+         "tags": [ "IR & RF", "Multimedia", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Dates",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Dates/packageManifest.json",
    		"description": "Create a simple coutdown to your most important dates."
+         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Device Timer",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Device%20Timer/packageManifest.json",
    		"description": "Simple Device Timer with safety checks, reminders, multiple timers and restrictions."
+         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
       {
          "name": "Simple Groups",
          "category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Groups/packageManifest.json",
-   		"description": "Group just about anything. Motion, Contact, Water Sensors and other devices. Even group the groups!"
+   		"description": "Group just about anything. Motion, Contact, Water Sensors and other devices. Even group the groups!",
+         "tags": [ "Automations & Groups", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Irrigation",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Irrigation/packageManifest.json",
-   		"description": "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions."
+   		"description": "For use with any valve device connected to your hose, like the Orbit Hose Water Timer. Features mutiple timers and restrictions.",
+         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Kitchen Timer",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/packageManifest.json",
-   		"description": "Create a simple kitchen timer with controls for use with Dashboards"
+   		"description": "Create a simple kitchen timer with controls for use with Dashboards",
+         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
       {
    		"name": "Simple Reminders",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Reminders/packageManifest.json",
-   		"description": "Setup Simple Reminders through out the day."
+   		"description": "Setup Simple Reminders through out the day.",
+         "tags": [ "Dashboards", "Monitoring", "Timers", "Tools & Utilities" ]
    	},
       {
    		"name": "Snapshot",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Snapshot/packageManifest.json",
-   		"description": "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications."
+   		"description": "Monitor lights, devices and sensors. Easily see their status right on your dashboard with speech, device and/or push notifications.",
+         "tags": [ "Dashboards", "Monitoring", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "The Flasher",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/packageManifest.json",
-   		"description": "Flash your lights based on several triggers!"
+   		"description": "Flash your lights based on several triggers!",
+         "tags": [ "Lights & Switches", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Tile Master",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Tile%20Master/packageManifest.json",
-   		"description": "Create a tile with multiple devices with control."
+   		"description": "Create a tile with multiple devices with control.",
+         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
    	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Weather%20Dot%20Gov/packageManifest.json",
-   		"description": "Making the Weather.gov data usable with Hubitat."
+   		"description": "Making the Weather.gov data usable with Hubitat.",
+         "tags": [ "Dashboards", "Monitoring", "Tools & Utilities", "Weather" ]
    	},
       {
    		"name": "Web Pinger",
    		"category": "Security",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Web%20Pinger/packageManifest.json",
-   		"description": "Monitor a website and trigger automations if not found or if your internet goes down."
+   		"description": "Monitor a website and trigger automations if not found or if your internet goes down.",
+         "tags": [ "Cloud", "Monitoring", "Tools & Utilities" ]
    	}
    ]
 }
