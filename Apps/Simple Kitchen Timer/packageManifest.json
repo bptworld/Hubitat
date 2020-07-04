@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Simple%20Kitchen%20Timer/SKT-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.1"
+			"version": "1.0.1",
+			"primary": true
 		},
 		{
 			"id" : "778f4f7f-41e3-40f3-a8a5-1d76b0f15820",
