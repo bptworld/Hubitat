@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 07/04/20 - Code improvements
  *  1.1.4 - 06/29/20 - Learned some new things
  *  1.1.3 - 06/27/20 - Massive overhaul of the logic
  *  1.1.2 - 06/27/20 - Improvements to connection and to the dashboard list
@@ -112,9 +113,11 @@ def webSocketStatus(String socketStatus) {
         sendEvent(name: "status", value: "connected", displayed: true)
         pauseExecution(500)
         state.delay = null
+        return
 	} else if(socketStatus.startsWith("status: closing")) {
 		log.warn "Log Watchdog Driver - Closing connection"
         sendEvent(name: "status", value: "disconnected")
+        return
 	} else if(socketStatus.startsWith("failure:")) {
 		log.warn "Log Watchdog Driver - Connection has failed with error [${socketStatus}]."
         sendEvent(name: "status", value: "disconnected", displayed: true)
