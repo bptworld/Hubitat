@@ -39,7 +39,7 @@
  *
  *  Changes:
  *
- *  1.0.2 - 06/29/20 - Code improvements
+ *  1.0.2 - 07/04/20 - Code improvements
  *  1.0.1 - 06/29/20 - Learned some new things
  *  1.0.0 - 06/28/20 - Initial release
  *
