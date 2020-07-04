@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 07/04/20 - Added more logging
  *  1.1.5 - 06/22/20 - Changes to letsTalk
  *  1.1.4 - 06/19/20 - Added The Flasher
  *  1.1.3 - 06/13/20 - Fixed typo with daysMatch, thanks @fourwhitehouse!
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -650,11 +651,11 @@ def roomWarningHandler() {
         if(warningSwitches) warningSwitches.on()
         if(rMachine) rulesHandler(rMachine)
         if(omessage) messageHandler()
+
         if(useTheFlasher) {
-            if(useTheFlasher) {
-                flashData = "Preset::${flashPreset}"
-                theFlasherDevice.sendPreset(flashData)
-            }
+            if(logEnable) log.debug "In roomWarningHandler - Sending Preset: ${flashPreset} to The Flasher device (${theFlasherDevice.displayName})"
+            flashData = "Preset::${flashPreset}"
+            theFlasherDevice.sendPreset(flashData)
         }
         
         if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
