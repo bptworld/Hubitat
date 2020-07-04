@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/TF-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.2"
+			"version": "1.0.2",
+			"primary": true
 		},
 		{
 			"id" : "06ad494e-62b2-4599-a7f3-42e207ef1e48",
