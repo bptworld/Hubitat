@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Home%20Tracker/HT-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.2.4"
+			"version": "2.2.4",
+			"primary": true
 		},
 		{
 			"id" : "4666824f-8eed-482d-ad7c-33b85ee5a31d",
