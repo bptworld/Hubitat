@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Sequencer/DS-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.2"
+			"version": "2.0.2",
+			"primary": true
 		},
 		{
 			"id" : "16fa3362-93e7-473a-a503-fcd31cee4949",
