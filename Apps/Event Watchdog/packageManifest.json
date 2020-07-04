@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Watchdog/EW-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.0",
+			"primary": true
 		},
 		{
 			"id" : "523ad44c-8513-4560-9aa2-6a29ab322b75",
