@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/ACM-parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.0",
+			"primary": true
 		},
 		{
 			"id" : "7765a053-ac06-4378-a02b-712573df290a",
