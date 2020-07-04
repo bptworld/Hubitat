@@ -14,7 +14,8 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/SIP2IR%20Parent.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.3"
+			"version": "2.0.3",
+			"primary": true
 		},
 		{
 			"id" : "4fb2a3a3-e5fd-4019-a3f4-bdc78312c2d4",
