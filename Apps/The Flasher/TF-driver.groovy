@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  V1.0.0 - 06/17/20 - Initial release
+ *  1.0.1 - 07/05/20 - Adjustments
+ *  1.0.0 - 06/17/20 - Initial release
  */
 
 metadata {
@@ -63,6 +64,6 @@ def lastTime() {
 }
 
 def sendPreset(data) {
-    sendEvent(name: "presetCommand", value: data, displayed: true)
+    sendEvent(name: "presetCommand", value: data, isStateChange: true)
     lastTime()
 }
