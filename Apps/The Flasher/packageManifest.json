@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/The%20Flasher/TF-driver.groovy",
 			"required": true,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		}
 	]
 }
