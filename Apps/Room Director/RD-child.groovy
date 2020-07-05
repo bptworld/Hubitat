@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- *  * 1.1.7 - 07/05/20 - Added optional Data device, New driver to support data device, Added Sleep options
+ *  1.1.7 - 07/05/20 - Added optional Data device, New driver to support data device, Added Sleep options
  *  1.1.6 - 07/04/20 - Added more logging
  *  1.1.5 - 06/22/20 - Changes to letsTalk
  *  1.1.4 - 06/19/20 - Added The Flasher
