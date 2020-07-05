@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 07/05/20 - Adjustments
  *  1.0.8 - 06/25/20 - Added App Control options
  *  1.0.7 - 06/22/20 - Changes to letsTalk
  *  1.0.6 - 06/21/20 - Minor changes
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -384,6 +385,8 @@ def averageHandler(evt) {
                 if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is BELOW the low setpoint (${lowSetpoint})"
                 state.low = true
                 state.nTimes = 0
+                
+                if(state.lTimes == null) state.lTimes = 0
                 state.lTimes = state.lTimes + 1
                 if(spLowDevices) {
                     spLowDevices.each {
@@ -402,6 +405,8 @@ def averageHandler(evt) {
                 if(logEnable) log.debug "In averageHandler - The average (${state.theAverage}) is ABOVE the high setpoint (${highSetpoint})"
                 state.high = true
                 state.nTimes = 0
+                
+                if(state.hTimes == null) state.hTimes = 0
                 state.hTimes = state.hTimes + 1
                 if(spHighDevices) {
                     spHighDevices.each {
@@ -421,6 +426,8 @@ def averageHandler(evt) {
 
                 state.hTimes = 0
                 state.lTimes = 0
+                
+                if(state.nTimes == null) state.nTimes = 0
                 state.nTimes = state.nTimes + 1
 
                 if(spHighDevices && highDeviceAutoOff && state.nTimes >= highTimesOff) {               
