@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  * 1.1.7 - 07/05/20 - Added optional Data device, New driver to support data device, Added Sleep options
  *  1.1.6 - 07/04/20 - Added more logging
  *  1.1.5 - 06/22/20 - Changes to letsTalk
  *  1.1.4 - 06/19/20 - Added The Flasher
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -79,6 +80,7 @@ preferences {
     page(name: "pageConfig")
     page(name: "onConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "offConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "sleepConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "speechOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "examples", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
@@ -151,8 +153,14 @@ def pageConfig() {
             } else {
                 href "offConfig", title:"${getImage("optionsRed")} Select Device 'UNOCCUPIED' options here", description:"Click here for Options"
             }
+            
+            if(sleepDeviceContact || sleepDevicePresense || sleepDeviceSwitch) {
+                href "sleepConfig", title:"${getImage("optionsGreen")} Select Device 'SLEEP' options here", description:"Click here for Options"
+            } else {
+                href "sleepConfig", title:"${getImage("optionsRed")} Select Device 'SLEEP' options here", description:"Click here for Options"
+            }
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions (optional)")) { 
+        section(getFormat("header-green", "${getImage("Blank")}"+" Restrictions")) { 
             input(name: "days", type: "enum", title: "Only on these days", description: "Days", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
             input "sunRestriction", "bool", title: "Only from Sunset to Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
             if(sunRestriction) {
@@ -169,15 +177,33 @@ def pageConfig() {
             }
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-            if(fmSpeaker) {
+            if(fmSpeaker || usePush || useRule || useSwitch || useTheFlasher) {
                 href "speechOptions", title:"${getImage("optionsGreen")} Notification Options", description:"Click here to setup the Notification Options"
             } else {
                 href "speechOptions", title:"${getImage("optionsRed")} Notification Options", description:"Click here to setup the Notification Options"
             }
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Debugging", submitOnChange: "true")
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device (Optional)")) {
+            paragraph "Each child app can also create a virtual device to store the Room Data. This device will display the status of the room. ie. occupied, unoccupied or inBed"
+            input "useExistingDevice", "bool", title: "Use existing device (off) or have RD create a new one for you (on)", defaultValue:false, submitOnChange:true
+            if(useExistingDevice) {
+			    input "dataName", "text", title: "Enter a name for this vitual Device (ie. 'RD - Kitchen')", required:true, submitOnChange:true
+                paragraph "<b>A device will automatically be created for you as soon as you click outside of this field.</b>"
+                if(dataName) createDataChildDevice()
+                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                paragraph "${statusMessageD}"
+            }
+            input "dataDevice", "capability.*", title: "Virtual Device specified above", required:false, multiple:false
+            if(!useExistingDevice) {
+                app.removeSetting("dataName")
+                paragraph "<small>* Device must use the 'Room Director Driver'.</small>"
+            }
+        }  
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
 		}
 		display2()
 	}
@@ -302,6 +328,20 @@ def offConfig() {
     }
 }
 
+def sleepConfig() {
+    dynamicPage(name: "sleepConfig", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Device 'SLEEP' Options")) {
+            paragraph "Sleep status works as an automatic override.<br> - If Sleep is detected, nothing will automatically turn the devices in the room on.<br> - BUT the devices in the room <i>will turn off</i> based on your Unoccupied settings.<br> - When Sleep is detected, it will also skip all of the warnings before adjusting the lights."
+            paragraph "This is designed to work with things like the Withings Sleep Tracking Mat, but can also work by simply closing a door."
+            input "sleepDeviceContact", "capability.contactSensor", title: "Sleep Devices that act like Constact Sensors", multiple:true, required:false, submitOnChange:true
+            if(sleepDeviceContact) input "contactOptionSleep", "enum", title: "Select contact option - Sleep when - ", options: ["Open","Closed"], required:true
+            input "sleepDevicePresense", "capability.presenceSensor", title: "Sleep Devices that act like Presence Sensors", multiple:true, required:false
+            input "sleepDeviceSwitch", "capability.switch", title: "Sleep Devices that act like Switches", multiple:true, required:false
+        }
+    }
+}
+
 def speechOptions(){
     dynamicPage(name: "speechOptions", title: "Notification Options", install: false, uninstall:false){
         section() {
@@ -310,12 +350,11 @@ def speechOptions(){
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
                 paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
-                input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
+                input "useSpeech", "bool", title: "<b>Use Speech through Follow Me</b>", defaultValue:false, submitOnChange:true
                 if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
             }
         }
         section() {
-            paragraph "<hr>"
             input "usePush", "bool", defaultValue:false, title: "<b>Use Push?</b>", description: "Push", submitOnChange:true
         }
         if(usePush) {
@@ -338,7 +377,6 @@ def speechOptions(){
         }
         
         section() {
-            paragraph "<hr>"
             input "useRule", "bool", defaultValue:false, title: "<b>Use Rule Machine?</b>", description: "Rule", submitOnChange:true
         }
         if(useRule) {
@@ -350,7 +388,6 @@ def speechOptions(){
         }
         
         section() {
-            paragraph "<hr>"
             input "useSwitch", "bool", defaultValue:false, title: "<b>Use Switch?</b>", description: "Switch", submitOnChange:true
         }
         if(useSwitch) {
@@ -367,7 +404,7 @@ def speechOptions(){
                 input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
                 input "flashPreset", "number", title: "Select the Preset to use (1..5)", required:true, submitOnChange:true
             }
-        }
+        }  
     }
 }
 
@@ -427,6 +464,14 @@ def initialize() {
     if(sunRestriction) scheduleWithOffset(sunriseTime, sunriseOffsetValue, sunriseOffsetDir, "sunriseHandler")
     
     if(logEnable) log.debug "In initialize - Finished initialize"
+}
+
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(delete) {
+	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
 def primaryHandler(evt) {
@@ -542,19 +587,67 @@ def secondaryHandler() {
 def whatToDo() {
     if(logEnable) log.debug "In whatToDo (${state.version}) - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
     dayOfTheWeekHandler()
+    checkForSleep()
     if(state.daysMatch && state.sunRiseTosunSet) {
-        if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
-            if(logEnable) log.debug "In whatToDo - Going to vacantHandler"
+        if(state.sleeping) {
+            if(logEnable) log.debug "In whatToDo - Sleeping - Going to vacantHandler"
             vacantHandler()
-        } else if(state.occupancy1 == "no" && state.occupancy2 == "yes") {
-            if(logEnable) log.debug "In whatToDo - Doing nothing"
-            // Do nothing
         } else {
-            if(logEnable) log.debug "In whatToDo - Going to occupancyHandler"
-            if(warningSwitches) warningSwitches.off()
-            occupancyHandler()
+            if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
+                if(logEnable) log.debug "In whatToDo - Going to vacantHandler"
+                vacantHandler()
+            } else if(state.occupancy1 == "no" && state.occupancy2 == "yes") {
+                if(logEnable) log.debug "In whatToDo - Doing nothing"
+                // Do nothing
+            } else {
+                if(logEnable) log.debug "In whatToDo - Going to occupancyHandler"
+                if(warningSwitches) warningSwitches.off()
+                occupancyHandler()
+            }
         }
     }
+}
+
+def checkForSleep() {
+    if(logEnable) log.debug "In checkForSleep (${state.version})"
+    state.sleeping = false
+    
+    if(sleepDeviceContact) {
+        sleepDeviceContact.each { it ->
+            status = it.currentValue("contact")
+            if(logEnable) log.debug "In checkForSleep - Contact: ${it} - value: ${status}"
+            if(contactOptionSleep == "Closed") {
+                if(status == "closed") {
+                    state.sleeping = true
+                }
+	        }
+	        if(contactOptionSleep == "Open") {
+                if(status == "open") {
+                    state.sleeping = true 
+                }
+		    }
+        }
+    }
+    
+    if(sleepDevicePresense) {       
+        sleepDevicePresense.each { it ->
+            status = it.currentValue("presence")
+            if(logEnable) log.debug "In sleepDevicePresense - Presence: ${it} - value: ${status}"
+            if(status == "present") {
+		        state.sleeping = true 
+            }
+        }
+    }
+    
+    if(sleepDeviceSwitch) {
+        sleepDeviceSwitch.each { it ->
+            status = it.currentValue("switch")
+            if(logEnable) log.debug "In sleepDeviceSwitch - Switch: ${it} - value: ${status}"
+            if(status == "on") {
+		        state.sleeping = true 
+            }
+        }
+    }   
 }
 
 def luxLevel() {
@@ -581,23 +674,27 @@ def occupancyHandler() {
         }
     }
     
-    if(logEnable) log.debug "In occupancyHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
-    if(state.roStatus == "off") {
-        if(luxRestriction) {
-            luxLevel()
-            if(logEnable) log.debug "In occupancyHandler - Using Lux Level: ${state.curLev} and isItDark: ${state.isItDark}"
-            if(state.isItDark) {
-                if(logEnable) log.debug "In occupancyHandler - It's dark, adjusting room."
-                modeHandler()            
-            } else { // Too light in room
-                if(logEnable) log.debug "In occupancyHandler - It's not dark, leaving room alone."
-            }          
-        } else {  // No lux restrictions
-            if(logEnable) log.debug "In occupancyHandler - Not using Lux, adjusting room."
-            modeHandler()
+    if(logEnable) log.debug "In occupancyHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleep: ${state.sleeping}"
+    if(state.sleeping) {
+        if(logEnable) log.debug "In occupancyHandler - Sleeping (${state.sleeping}), leaving room alone."
+    } else {
+        if(state.roStatus == "off") {
+            if(luxRestriction) {
+                luxLevel()
+                if(logEnable) log.debug "In occupancyHandler - Using Lux Level: ${state.curLev} and isItDark: ${state.isItDark}"
+                if(state.isItDark) {
+                    if(logEnable) log.debug "In occupancyHandler - It's dark, adjusting room."
+                    modeHandler()            
+                } else { // Too light in room
+                    if(logEnable) log.debug "In occupancyHandler - It's not dark, leaving room alone."
+                }          
+            } else {  // No lux restrictions
+                if(logEnable) log.debug "In occupancyHandler - Not using Lux, adjusting room."
+                modeHandler()
+            }
+        } else { // roomOverride is on
+            if(logEnable) log.debug "In occupancyHandler - roomOverride is ON (${state.roStatus}), leaving room alone."
         }
-    } else { // roomOverride is on
-        if(logEnable) log.debug "In occupancyHandler - roomOverride is ON (${state.roStatus}), leaving room alone."
     }
 }
 
@@ -674,8 +771,9 @@ def lightsHandler() {
         }
     }
     
-    if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
-    if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
+    if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleeping: ${state.sleeping}"
+    if(state.sleeping) {
+        if(dataDevice) dataDevice.settingStatus("sleep")
         if(unSwitchesOff) {
             unSwitchesOff.each { it ->
                 it.off()
@@ -687,15 +785,30 @@ def lightsHandler() {
             }
         }
         if(warningSwitches) warningSwitches.off()
-        int repeatTime
-        now = new Date()
-        use( TimeCategory ) {  // repeatTime
-            newTime = now + repeatTime.seconds
-        }
-        //log.info "newTime: ${newTime}"
-        runOnce(newTime, lightsHandler2)
     } else {
-        occupancyHandler()
+        if(state.roStatus == "off" && state.occupancy1 == "no" && state.occupancy2 == "no") {
+            if(dataDevice) dataDevice.settingStatus("unoccupied")
+            if(unSwitchesOff) {
+                unSwitchesOff.each { it ->
+                    it.off()
+                }
+            }
+            if(unSwitchesOn) {
+                unSwitchesOn.each { it ->
+                    it.on()
+                }
+            }
+            if(warningSwitches) warningSwitches.off()
+            int repeatTime
+            now = new Date()
+            use( TimeCategory ) {  // repeatTime
+                newTime = now + repeatTime.seconds
+            }
+            //log.info "newTime: ${newTime}"
+            runOnce(newTime, lightsHandler2)
+        } else {
+            occupancyHandler()
+        }
     }
 }
 
@@ -847,79 +960,70 @@ def modeHandler(){
 
 def setScene() {
 	if(logEnable) log.debug "In setScene (${state.version}) - Mode is ${state.currentMode} - Mode: ${state.modeNow}"
-		if(state.currentMode == "1"){
-			if(logEnable) log.debug "In setScene - 1: currentMode: ${state.currentMode}"
-            if(sceneSwitch1) sceneSwitch1.push()
-            if(oSwitchesOn1) oSwitchesOn1.on()
-            if(oSwitchesOff1) oSwitchesOff1.off()
-            if(oDimmers1) oDimmers1.setLevel(dimLevel1)
-		} else
-		if(state.currentMode == "2"){
-			if(logEnable) log.debug "In setScene - 2: currentMode: ${state.currentMode}"
-			if(sceneSwitch2) sceneSwitch2.push()
-            if(oSwitchesOn2) oSwitchesOn2.on()
-            if(oSwitchesOff2) oSwitchesOff2.off()
-            if(oDimmers2) oDimmers2.setLevel(dimLevel2)
-		} else
-		if(state.currentMode == "3"){
-			if(logEnable) log.debug "In setScene - 3: currentMode: ${state.currentMode}"
-			if(sceneSwitch3) sceneSwitch3.push()
-            if(oSwitchesOn3) oSwitchesOn3.on()
-            if(oSwitchesOff3) oSwitchesOff3.off()
-            if(oDimmers3) oDimmers3.setLevel(dimLevel3)
-		} else
-		if(state.currentMode == "4"){
-			if(logEnable) log.debug "In setScene - 4: currentMode: ${state.currentMode}"
-			if(sceneSwitch4) sceneSwitch4.push()
-            if(oSwitchesOn4) oSwitchesOn4.on()
-            if(oSwitchesOff4) oSwitchesOff4.off()
-            if(oDimmers4) oDimmers4.setLevel(dimLevel4)
-		} else
-		if(state.currentMode == "5"){
-			if(logEnable) log.debug "In setScene - 5: currentMode: ${state.currentMode}"
-			if(sceneSwitch5) sceneSwitch5.push()
-            if(oSwitchesOn5) oSwitchesOn5.on()
-            if(oSwitchesOff5) oSwitchesOff5.off()
-            if(oDimmers5) oDimmers5.setLevel(dimLevel5)
-		} else
-		if(state.currentMode == "6"){
-			if(logEnable) log.debug "In setScene - 6: currentMode: ${state.currentMode}"
-			if(sceneSwitch6) sceneSwitch6.push()
-            if(oSwitchesOn6) oSwitchesOn6.on()
-            if(oSwitchesOff6) oSwitchesOff6.off()
-            if(oDimmers6) oDimmers6.setLevel(dimLevel6)
-		} else
-		if(state.currentMode == "7"){
-			if(logEnable) log.debug "In setScene - 7: currentMode: ${state.currentMode}"
-			if(sceneSwitch7) sceneSwitch7.push()
-            if(oSwitchesOn7) oSwitchesOn7.on()
-            if(oSwitchesOff7) oSwitchesOff7.off()
-            if(oDimmers7) oDimmers7.setLevel(dimLevel7)
-		} else
-		if(state.currentMode == "8"){
-			if(logEnable) log.debug "In setScene - 8: currentMode: ${state.currentMode}"
-			if(sceneSwitch8) sceneSwitch8.push()
-            if(oSwitchesOn8) oSwitchesOn8.on()
-            if(oSwitchesOff8) oSwitchesOff8.off()
-            if(oDimmers8) oDimmers8.setLevel(dimLevel8)
-		} else
-            if(state.currentMode == "9"){
-			if(logEnable) log.debug "In setScene - 9: currentMode: ${state.currentMode}"
-			if(sceneSwitch9) sceneSwitch9.push()
-            if(oSwitchesOn9) oSwitchesOn9.on()
-            if(oSwitchesOff9) oSwitchesOff9.off()
-            if(oDimmers9) oDimmers9.setLevel(dimLevel9)
-		} else
-        if(state.currentMode == "0"){
-			if(logEnable) log.debug "In setScene - 0: currentMode: ${state.currentMode}"
-			if(sceneSwitch0) sceneSwitch0.push()
-            if(oSwitchesOn0) oSwitchesOn0.on()
-            if(oSwitchesOff0) oSwitchesOff0.off()
-            if(oDimmers0) oDimmers0.setLevel(dimLevel0)
-		} else
-		if(state.currentMode == "NONE"){
-			if(logEnable) log.debug "In setScene - Something went wrong, no Mode matched!"
-		}
+    if(dataDevice) dataDevice.settingStatus("occupied")
+    if(state.currentMode == "1"){
+        if(logEnable) log.debug "In setScene - 1: currentMode: ${state.currentMode}"
+        if(sceneSwitch1) sceneSwitch1.push()
+        if(oSwitchesOn1) oSwitchesOn1.on()
+        if(oSwitchesOff1) oSwitchesOff1.off()
+        if(oDimmers1) oDimmers1.setLevel(dimLevel1)
+    } else if(state.currentMode == "2"){
+        if(logEnable) log.debug "In setScene - 2: currentMode: ${state.currentMode}"
+        if(sceneSwitch2) sceneSwitch2.push()
+        if(oSwitchesOn2) oSwitchesOn2.on()
+        if(oSwitchesOff2) oSwitchesOff2.off()
+        if(oDimmers2) oDimmers2.setLevel(dimLevel2)
+    } else if(state.currentMode == "3"){
+        if(logEnable) log.debug "In setScene - 3: currentMode: ${state.currentMode}"
+        if(sceneSwitch3) sceneSwitch3.push()
+        if(oSwitchesOn3) oSwitchesOn3.on()
+        if(oSwitchesOff3) oSwitchesOff3.off()
+        if(oDimmers3) oDimmers3.setLevel(dimLevel3)
+    } else if(state.currentMode == "4"){
+        if(logEnable) log.debug "In setScene - 4: currentMode: ${state.currentMode}"
+        if(sceneSwitch4) sceneSwitch4.push()
+        if(oSwitchesOn4) oSwitchesOn4.on()
+        if(oSwitchesOff4) oSwitchesOff4.off()
+        if(oDimmers4) oDimmers4.setLevel(dimLevel4)
+    } else if(state.currentMode == "5"){
+        if(logEnable) log.debug "In setScene - 5: currentMode: ${state.currentMode}"
+        if(sceneSwitch5) sceneSwitch5.push()
+        if(oSwitchesOn5) oSwitchesOn5.on()
+        if(oSwitchesOff5) oSwitchesOff5.off()
+        if(oDimmers5) oDimmers5.setLevel(dimLevel5)
+    } else if(state.currentMode == "6"){
+        if(logEnable) log.debug "In setScene - 6: currentMode: ${state.currentMode}"
+        if(sceneSwitch6) sceneSwitch6.push()
+        if(oSwitchesOn6) oSwitchesOn6.on()
+        if(oSwitchesOff6) oSwitchesOff6.off()
+        if(oDimmers6) oDimmers6.setLevel(dimLevel6)
+    } else if(state.currentMode == "7"){
+        if(logEnable) log.debug "In setScene - 7: currentMode: ${state.currentMode}"
+        if(sceneSwitch7) sceneSwitch7.push()
+        if(oSwitchesOn7) oSwitchesOn7.on()
+        if(oSwitchesOff7) oSwitchesOff7.off()
+        if(oDimmers7) oDimmers7.setLevel(dimLevel7)
+    } else if(state.currentMode == "8"){
+        if(logEnable) log.debug "In setScene - 8: currentMode: ${state.currentMode}"
+        if(sceneSwitch8) sceneSwitch8.push()
+        if(oSwitchesOn8) oSwitchesOn8.on()
+        if(oSwitchesOff8) oSwitchesOff8.off()
+        if(oDimmers8) oDimmers8.setLevel(dimLevel8)
+    } else if(state.currentMode == "9"){
+        if(logEnable) log.debug "In setScene - 9: currentMode: ${state.currentMode}"
+        if(sceneSwitch9) sceneSwitch9.push()
+        if(oSwitchesOn9) oSwitchesOn9.on()
+        if(oSwitchesOff9) oSwitchesOff9.off()
+        if(oDimmers9) oDimmers9.setLevel(dimLevel9)
+    } else if(state.currentMode == "0"){
+        if(logEnable) log.debug "In setScene - 0: currentMode: ${state.currentMode}"
+        if(sceneSwitch0) sceneSwitch0.push()
+        if(oSwitchesOn0) oSwitchesOn0.on()
+        if(oSwitchesOff0) oSwitchesOff0.off()
+        if(oDimmers0) oDimmers0.setLevel(dimLevel0)
+    } else if(state.currentMode == "NONE"){
+        if(logEnable) log.debug "In setScene - Something went wrong, no Mode matched!"
+    }
 }
 
 def messageHandler() {
@@ -1045,6 +1149,22 @@ private calculateTimeOffsetMillis(String offset) {
     result
 }
 // ** end Sunrise to Sunset code
+
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "Room Director Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "Room Director unable to create device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
+}
 
 // ********** Normal Stuff **********
 
