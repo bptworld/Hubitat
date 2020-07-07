@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.0.4 - 07/07/20 - Sounds Setup now in Parent App
  *  2.0.3 - 07/06/20 - Added Priority Speaker Setup
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 11/23/19 - Cosmetic changes
@@ -44,7 +45,7 @@
 
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -62,6 +63,7 @@ definition(
 preferences {
     page name: "mainPage", title: "", install: true, uninstall: true
     page name: "prioritySpeakerOptions", title: "", install: true, uninstall: true
+    page name: "soundOptions", title: "", install: true, uninstall: true
 } 
 
 def installed() {
@@ -114,8 +116,9 @@ def mainPage() {
                 app(name: "anyOpenApp", appName: "Follow Me Child", namespace: "BPTWorld", title: "<b>Add a new 'Follow Me' child</b>", multiple: true)
             }
             
-            section(getFormat("header-green", "${getImage("Blank")}"+" Priority Speaker Options")) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Priority Options")) {
                 href "prioritySpeakerOptions", title: "Priority Speaker Setup", description: "Click here for options."
+                href "soundOptions", title: "Priority Sound Options", description: "Click here for options."
             }
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -181,6 +184,121 @@ def prioritySpeakerOptions() {
             if(sType10) input "pSpeaker10", "capability.musicPlayer", title: "Speaker", required: false
         }
     }  
+}
+
+def soundOptions(){
+    dynamicPage(name: "soundOptions", title: "Sound Option Setup", install: false, uninstall:false){
+		section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
+			paragraph "Link to any sound file you want.  ie. http://192.168.86.81/local/bicycle_bell_ring.mp3<br><small>Note: You can always try the URL in a browser, to be sure it is valid.</small>"
+            paragraph "Remember, you can now store files right on your hub!"
+            paragraph "* Priority Voice and Sound options are only available when using speechSynthesis speakers."
+            input "testTheSpeakers", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
+			input "sound1", "text", title: "Sound - 1", required: false, submitOnChange: true
+            if(sound1 && testTheSpeakers) input "s1Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound1 && testTheSpeakers && s1Length) input "testBtn1", "button", title: "Test Sound 1", width: 3
+            
+			input "sound2", "text", title: "Sound - 2", required: false, width: 9, submitOnChange: true
+            if(sound2 && testTheSpeakers) input "s2Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound2 && testTheSpeakers && s2Length) input "testBtn2", "button", title: "Test Sound 2", width: 3
+            
+			input "sound3", "text", title: "Sound - 3", required: false, width: 9, submitOnChange: true
+            if(sound3 && testTheSpeakers) input "s3Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound3 && testTheSpeakers && s3Length) input "testBtn3", "button", title: "Test Sound 3", width: 3
+            
+			input "sound4", "text", title: "Sound - 4", required: false, width: 9, submitOnChange: true
+            if(sound4 && testTheSpeakers) input "s4Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound4 && testTheSpeakers && s4Length) input "testBtn4", "button", title: "Test Sound 4", width: 3
+            
+			input "sound5", "text", title: "Sound - 5", required: false, width: 9, submitOnChange: true
+            if(sound5 && testTheSpeakers) input "s5Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound5 && testTheSpeakers && s5Length) input "testBtn5", "button", title: "Test Sound 5", width: 3
+            
+            input "sound6", "text", title: "Sound - 6", required: false, width: 9, submitOnChange: true
+            if(sound6 && testTheSpeakers) input "s6Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound6 && testTheSpeakers && s6Length) input "testBtn6", "button", title: "Test Sound 6", width: 3
+            
+            input "sound7", "text", title: "Sound - 7", required: false, width: 9, submitOnChange: true
+            if(sound7 && testTheSpeakers) input "s7Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound7 && testTheSpeakers && s7Length) input "testBtn7", "button", title: "Test Sound 7", width: 3
+            
+            input "sound8", "text", title: "Sound - 8", required: false, width: 9, submitOnChange: true
+            if(sound8 && testTheSpeakers) input "s8Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound8 && testTheSpeakers && s8Length) input "testBtn8", "button", title: "Test Sound 8", width: 3
+            
+            input "sound9", "text", title: "Sound - 9", required: false, width: 9, submitOnChange: true
+            if(sound9 && testTheSpeakers) input "s9Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound9 && testTheSpeakers && s9Length) input "testBtn9", "button", title: "Test Sound 9", width: 3
+            
+            input "sound10", "text", title: "Sound - 10", required: false, width: 9, submitOnChange: true
+            if(sound10 && testTheSpeakers) input "s10Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
+            if(sound10 && testTheSpeakers && s10Length) input "testBtn10", "button", title: "Test Sound 0", width: 3
+		}
+	}
+}
+
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    if(logEnable) log.debug "In appButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
+    if(state.whichButton == "testBtn1"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 1 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound1)
+        } catch(e1) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn2"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 2 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound2)
+        } catch(e2) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn3"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 3 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound3)
+        } catch(e3) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn4"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 4 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound4)
+        } catch(e4) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn5"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 5 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound5)
+        } catch(e5) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn6"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 6 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound6)
+        } catch(e6) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn7"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 7 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound7)
+        } catch(e7) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn8"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 8 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound8)
+        } catch(e8) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn9"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 9 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound9)
+        } catch(e9) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
+    if(state.whichButton == "testBtn0"){
+        if(logEnable) log.debug "In appButtonHandler - Testing Sound 0 on Speaker: ${testTheSpeakers}"
+        try {
+            testTheSpeakers.playTrack(sound0)
+        } catch(e0) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
+    }
 }
 
 def installCheck(){  
