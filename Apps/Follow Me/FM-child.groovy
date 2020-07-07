@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.5 - 07/06/20 - Push upgrades, Added Priority Speaker features
  *  2.2.4 - 06/13/20 - Added Presence Sensor to speaker triggers
  *  2.2.3 - 06/12/20 - Cosmetic changes
  *  2.2.2 - 06/11/20 - Fixed 'Quiet Time' and 'Time Restriction' when the time frame cross over midnight
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.4"   
+	state.version = "2.2.5"   
 }
 
 definition(
@@ -229,14 +230,22 @@ def pageConfig() {
             
 			if(messagePriority) {
 				section("Instructions for Message Priority:", hideable: true, hidden: true) {
-					paragraph "<b>Notes:</b>"
-					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place the option bracket in front of any message to be spoken and the volume and/or voice will be adjusted accordingly."
-                    paragraph "Format: [priority:sound]"
-                    paragraph "<b>[F:0]</b> - Fun<br><b>[R:0]</b> - Random<br><b>[L:0]</b> - Low<br><b>[N:0]</b> - Normal<br><b>[H:0]</b> - High"
-					paragraph "You can also specify a sound file to be played before a message!<br><br><b>[1] - [5]</b> - Specify a files URL"
-					paragraph "<b>ie.</b> [L:0]Amy is home or [N:3]Window has been open too long or [H:0]Heat is on and window is open"
-					paragraph "If you JUST want a sound file played with NO speech after, use [L:1]. or [N:3]. etc. Notice the DOT after the [], that is the message and will not be spoken."
-					paragraph "Also notice there is no spaces between the option and the message."
+					paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place the option bracket in front of any message to be spoken and the Volume, Voice and/or Speaker will be adjusted accordingly."
+                    paragraph "Format: [priority:sound:speaker]<br><small>Note: Any option not needed, replace with a 0 (zero).</small>"
+                    
+                    paragraph "<b>Priority:</b><br>This can change the voice used and the color of the message displayed on the Dashboard Tile.<br>[F:0:0] - Fun<br>[R:0:0] - Random<br>[L:0:0] - Low<br>[N:0:0] - Normal<br>[H:0:0] - High"
+					
+                    paragraph "<b>Sound:</b><br>You can also specify a sound file to be played before a message!<br>[1] - [5] - Specify a files URL"
+					paragraph "<b>ie.</b> [L:0:0]Amy is home or [N:3:0]Window has been open too long or [H:0:0]Heat is on and window is open"
+                    paragraph "If you JUST want a sound file played with NO speech after, use [L:1:0]. or [N:3:0]. etc. Notice the DOT after the [], that is the message and will not be spoken."
+                    
+                    paragraph "<b>Speaker:</b><br>While Follow Me allows you to setup your speakers in many ways, sometimes you want it to ONLY speak on a specific device. This option will do just that! Just replace with the corresponding speaker number from the Follow Me Parent App."
+                    paragraph "<b>*</b> <i>Be sure to have the 'Priority Speaker Options' section completed in the Follow Me Parent App.</i>"
+                    
+                    paragraph "<hr>"
+					paragraph "<b>General Notes:</b>"
+                    paragraph "Priority Voice and Sound options are only available when using Speech Synth option.<br>Also notice there is no spaces between the option and the message."
+                    paragraph "<b>ie.</b> [N:3:0]Window has been open too long"
 				}
 				section() {
 					paragraph "Normal priority will use the standard volume set in the 'Speaker Options' Section"
@@ -601,6 +610,134 @@ def switchHandler(evt) {
 	}
 }
 
+def prioritySpeaker(data) {
+    if(logEnable) log.debug "In prioritySpeaker (${state.version})"
+    prioritySpeaker = null
+    
+    try {
+        def thePriority = data.split(":")
+        theValueCount = thePriority.size()
+        if(logEnable) log.debug "In prioritySpeaker - theValueCount: ${theValueCount}"
+
+        if(theValueCount >= 1) priorityValue = thePriority[0]
+        if(theValueCount >= 2) priorityVoice = thePriority[1]
+        if(theValueCount >= 3) prioritySpeaker = thePriority[2]
+
+        if(priorityValue == null) priorityValue = "X"
+        if(priorityVoice == null) priorityVoice = "X"
+        if(prioritySpeaker == null) prioritySpeaker = "X"
+        if(logEnable) log.debug "In prioritySpeaker - priorityValue: ${priorityValue} - priorityVoice: ${priorityVoice} - prioritySpeaker: ${prioritySpeaker}"
+    } catch (e) {
+        log.warn "In prioritySpeaker - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1:0]"
+        if(logEnable) log.error "In prioritySpeaker - ${e}"
+        priorityValue = "X"
+        priorityVoice = "X"
+        prioritySpeaker = "X"
+    }
+    
+    def prioritySpeaker1 = parent.pSpeaker1
+    def prioritySpeaker2 = parent.pSpeaker2
+    def prioritySpeaker3 = parent.pSpeaker3
+    def prioritySpeaker4 = parent.pSpeaker4
+    def prioritySpeaker5 = parent.pSpeaker5
+    def prioritySpeaker6 = parent.pSpeaker6
+    def prioritySpeaker7 = parent.pSpeaker7
+    def prioritySpeaker8 = parent.pSpeaker8
+    def prioritySpeaker9 = parent.pSpeaker9
+    def prioritySpeaker10 = parent.pSpeaker10
+
+    state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
+    
+    if(prioritySpeaker != "X") {
+        state.speakers.each { it ->
+            def theSpeaker = "${it.displayName}"
+            
+            if(prioritySpeaker == "1") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 1: ${prioritySpeaker1}"
+                if(theSpeaker == "${prioritySpeaker1}") {
+                    if(logEnable) log.debug "In prioritySpeaker - MATCH!"
+                    priSpeaker = prioritySpeaker1
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "2") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 2: ${prioritySpeaker2}"
+                if(theSpeaker == "${prioritySpeaker2}") {
+                    priSpeaker = prioritySpeaker2
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "3") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 3: ${prioritySpeaker3}"
+                if(theSpeaker == "${prioritySpeaker3}") {
+                    priSpeaker = prioritySpeaker3
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "4") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 4: ${prioritySpeaker4}"
+                if(theSpeaker == "${prioritySpeaker4}") {
+                    priSpeaker = prioritySpeaker4
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "5") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 5: ${prioritySpeaker5}"
+                if(theSpeaker == "${prioritySpeaker5}") {
+                    priSpeaker = prioritySpeaker5
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "6") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 6: ${prioritySpeaker6}"
+                if(theSpeaker == "${prioritySpeaker6}") {
+                    priSpeaker = prioritySpeaker6
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "7") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 7: ${prioritySpeaker7}"
+                if(theSpeaker == "${prioritySpeaker7}") {
+                    priSpeaker = prioritySpeaker7
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "8") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 8: ${prioritySpeaker8}"
+                if(theSpeaker == "${prioritySpeaker8}") {
+                    priSpeaker = prioritySpeaker8
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "9") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 9: ${prioritySpeaker9}"
+                if(theSpeaker == "${prioritySpeaker9}") {
+                    priSpeaker = prioritySpeaker9
+                    state.sZone = true
+                }
+            }
+            
+            if(prioritySpeaker == "10") {
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 10: ${prioritySpeaker10}"
+                if(theSpeaker == "${prioritySpeaker10}") {
+                    priSpeaker = prioritySpeaker10
+                    state.sZone = true
+                }
+            }
+        }
+    }
+    if(logEnable) log.debug "In prioritySpeaker - priSpeaker: ${priSpeaker}"
+    return priSpeaker
+}
+
 def startHandler(evt) { 
 	if(logEnable) log.debug "**********  Follow Me (${state.version}) - Start Talking  **********"
     
@@ -661,24 +798,19 @@ def processQueue() {
 
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk - msg: ${msg}"
-    def message =  new JsonSlurper().parseText(msg) // Code modified from @storageanarchy
-    // Reminder to reference the attributes as message.message, message.priority, message.title, etc
+    def message =  new JsonSlurper().parseText(msg)
 
+    prioritySpeaker(message.priority)
+    
+    if(priSpeaker) {
+        theSpeakers = priSpeaker
+    } else {
+        theSpeakers = state.speakers
+    }
+                   
 	if(triggerMode == "Always_On") alwaysOnHandler()
 	if(state.sZone){
-		checkTime()
-        
-        try {
-            def thePriority = message.priority.split(":")
-            priorityValue = thePriority[0]
-            priorityVoice = thePriority[1]
-        } catch (e) {
-            log.warn "Follow Me - Something went wrong with your speech priority formatting. Please check your syntax. ie. [N:1]"
-            if(logEnable) log.error "In letsTalk - ${e}"
-            priorityValue = "X"
-            priorityVoice = "X"
-        }
-            
+		checkTime()            
         checkPriority(priorityValue)
         checkVol()
 		if(logEnable) log.debug "In letsTalk - continuing"
@@ -694,107 +826,106 @@ def letsTalk(msg) {
 		        duration = 10
 			}
             theDuration = duration * 1000
-            
-            state.speakers = [speakerSS, speakerMP].flatten().findAll{it}
-            state.speakers.each {
+       
+            theSpeakers.each { it ->
                 priorityVoicesHandler(it,priorityVoice,theMessage)               
                 if(!defaultSpeak) {    
                     switch(message.method) {        // Code modified from @storageanarchy
                         case 'deviceNotification':
-                            beforeVolume(it)
-                            it.speak(message.message)
-                            pauseExecution(theDuration)
-                            afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${message.message}"
-                            break;
+                        beforeVolume(it)
+                        it.speak(message.message)
+                        pauseExecution(theDuration)
+                        afterVolume(it)
+                        if(logEnable) log.debug "In letsTalk - deviceNotification Received - speaker: ${it} - ${message.message}"
+                        break;
                         case 'playAnnouncement':
-                            it.playAnnouncement(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${message.message}"
-                            break;
+                        it.playAnnouncement(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - playAnnouncement Received - speaker: ${it} - ${message.message}"
+                        break;
                         case 'playAnnouncementAll':
-                            it.playAnnouncementAll(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
-                            break;
+                        it.playAnnouncementAll(message.message, message.priority, message.speakLevel, message.returnLevel, message.title)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - playAnnouncementAll Received - speaker: ${it} - ${message.message}"
+                        break;
                         case 'playText':
-                            beforeVolume(it)
-                            it.playText(message.message)
-                            pauseExecution(theDuration)
-                            afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - ${message.message}"
-                            break;
+                        beforeVolume(it)
+                        it.playText(message.message)
+                        pauseExecution(theDuration)
+                        afterVolume(it)
+                        if(logEnable) log.debug "In letsTalk - playText Received - speaker: ${it} - ${message.message}"
+                        break;
                         case 'playTextAndRestore':
-                            beforeVolume(it)
-                            it.playTextAndRestore(message.message, message.returnLevel)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${message.message}"
-                            break;
+                        beforeVolume(it)
+                        it.playTextAndRestore(message.message, message.returnLevel)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - playTextAndRestore Received - speaker: ${it} - ${message.message}"
+                        break;
                         case 'playTextAndResume':
-                            beforeVolume(it)
-                            it.playTextAndResume(message.message, message.returnLevel)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${message.message}"
-                            break;
+                        beforeVolume(it)
+                        it.playTextAndResume(message.message, message.returnLevel)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - playTextAndResume Received - speaker: ${it} - ${message.message}"
+                        break;
                         case 'playTrack':
+                        beforeVolume(it)
+                        playSound(it)
+                        it.playTrack(state.uriMessage)
+                        pauseExecution(theDuration)
+                        afterVolume(it)
+                        if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${message.message}"
+                        break;
+                        case 'playTrackAndRestore':
+                        beforeVolume(it)
+                        playSound(it)
+                        it.playTrackAndRestore(state.uriMessage, message.returnLevel)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
+                        break;
+                        case 'setVolume':
+                        it.setVolume(message.speakLevel)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
+                        break;
+                        case 'setVolumeSpeakAndRestore':
+                        it.setVolumeSpeakAndRestore(message.message, message.priority, message.speakLevel, message.returnLevel)
+                        pauseExecution(theDuration)
+                        if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
+                        break;
+                        case 'setVolumeAndSpeak':
+                        it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
+                        pauseExecution(theDuration)
+                        afterVolume(it)
+                        if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
+                        break;
+                        case 'speak':
+                        if(logEnable) log.debug "In letsTalk - speak - speaker: ${it} - Using best case handler"
+                        if(it.hasCommand('setVolumeSpeakAndRestore')) {
+                            if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${message.message}"
+                            def prevVolume = it.currentValue("volume")
+                            it.setVolumeSpeakAndRestore(state.volume, message.message, prevVolume)
+                            pauseExecution(theDuration)
+                        } else if(it.hasCommand('playTextAndRestore')) {   
+                            if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${message.message}"
+                            def prevVolume = it.currentValue("volume")
+                            beforeVolume(it)
+                            it.playTextAndRestore(message.message, prevVolume)
+                            pauseExecution(theDuration)
+                        } else if(it.hasCommand('playTrack')) {
+                            if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${message.message}"
                             beforeVolume(it)
                             playSound(it)
                             it.playTrack(state.uriMessage)
                             pauseExecution(theDuration)
-                            afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - playTrack Received - speaker: ${it} - ${message.message}"
-                            break;
-                        case 'playTrackAndRestore':
+                            afterVolume(it)                               
+                        } else {		        
+                            if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
                             beforeVolume(it)
-                            playSound(it)
-                            it.playTrackAndRestore(state.uriMessage, message.returnLevel)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - playTrackAndRestore Received - speaker: ${it} - ${message.message}"
-                            break;
-                        case 'setVolume':
-                            it.setVolume(message.speakLevel)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - setVolume Received - speaker: ${it} - ${message.speakLevel}"
-                           break;
-                        case 'setVolumeSpeakAndRestore':
-                            it.setVolumeSpeakAndRestore(message.message, message.priority, message.speakLevel, message.returnLevel)
-                            pauseExecution(theDuration)
-                            if(logEnable) log.debug "In letsTalk - setVolumeSpeakAndRestore Received - speaker: ${it} - ${message.message}"
-                            break;
-                        case 'setVolumeAndSpeak':
-                            it.setVolumeAndSpeak(message.message, message.priority, message.speakLevel)
+                            it.speak(message.message)
                             pauseExecution(theDuration)
                             afterVolume(it)
-                            if(logEnable) log.debug "In letsTalk - setVolumeAndSpeak Received - speaker: ${it} - ${message.message}"
-                            break;
-                        case 'speak':
-                            if(logEnable) log.debug "In letsTalk - speak - speaker: ${it} - Using best case handler"
-                            if(it.hasCommand('setVolumeSpeakAndRestore')) {
-                                if(logEnable) log.debug "In letsTalk - (speak) setVolumeSpeakAndRestore - ${it} - message: ${message.message}"
-                                def prevVolume = it.currentValue("volume")
-                                it.setVolumeSpeakAndRestore(state.volume, message.message, prevVolume)
-                                pauseExecution(theDuration)
-                            } else if(it.hasCommand('playTextAndRestore')) {   
-                                if(logEnable) log.debug "In letsTalk - (speak) playTextAndRestore - ${it} - message: ${message.message}"
-                                def prevVolume = it.currentValue("volume")
-                                beforeVolume(it)
-                                it.playTextAndRestore(message.message, prevVolume)
-                                pauseExecution(theDuration)
-                            } else if(it.hasCommand('playTrack')) {
-                                if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${message.message}"
-                                beforeVolume(it)
-                                playSound(it)
-                                it.playTrack(state.uriMessage)
-                                pauseExecution(theDuration)
-                                afterVolume(it)                               
-                            } else {		        
-                                if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
-                                beforeVolume(it)
-                                it.speak(message.message)
-                                pauseExecution(theDuration)
-                                afterVolume(it)
-                            }
-                            break; 
+                        }
+                        break; 
                     }
                 } else {
                     if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${message.message}"
@@ -1057,6 +1188,13 @@ def pushOrQueue(evt) {
 	if(logEnable) log.debug "In pushOrQueue (${state.version}) - ${msg}"
     def message =  new JsonSlurper().parseText(msg)    
     theMessage = message.message
+    
+    if(theMessage.contains("]")) {
+        def (p, pushMsg) = theMessage.split("]")
+    } else {
+        pushMsg = theMessage
+    }
+       
     try {
         def thePriority = message.priority.split(":")
         priorityValue = thePriority[0]
@@ -1069,19 +1207,19 @@ def pushOrQueue(evt) {
     }
     
     if(priorityValue.toUpperCase().contains("L")) {
-		lastSpoken = "[L]" + theMessage
+		pushMsg = "[L]" + pushMsg
 	}
 	if(priorityValue.toUpperCase().contains("N")) {
-		lastSpoken = "[N]" + theMessage
+		pushMsg = "[N]" + pushMsg
 	}
 	if(priorityValue.toUpperCase().contains("H")) {
-		lastSpoken = "[H]" + theMessage
+		pushMsg = "[H]" + pushMsg
 	}
     
 	if(state.IH1 == "no") {
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH1 Sending message: ${theMessage}"
-    	    sendPushMessage1.deviceNotification(theMessage)
+    	    sendPushMessage1.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH1"
@@ -1091,7 +1229,7 @@ def pushOrQueue(evt) {
 	if(state.IH2 == "no") {
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH2 Sending message: ${theMessage}"
-    	    sendPushMessage2.deviceNotification(theMessage)
+    	    sendPushMessage2.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH2"
@@ -1101,7 +1239,7 @@ def pushOrQueue(evt) {
 	if(state.IH3 == "no") {
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH3 Sending message: ${theMessage}"
-    	    sendPushMessage3.deviceNotification(theMessage)
+    	    sendPushMessage3.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH3"
@@ -1111,7 +1249,7 @@ def pushOrQueue(evt) {
 	if(state.IH4 == "no") {
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH4 Sending message: ${theMessage}"
-    	    sendPushMessage4.deviceNotification(theMessage)
+    	    sendPushMessage4.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH4"
@@ -1121,7 +1259,7 @@ def pushOrQueue(evt) {
 	if(state.IH5 == "no") {
         if(messageDest == "Push") {
 		    if(logEnable) log.debug "In pushOrQueue - IH5 Sending message: ${theMessage}"
-    	    sendPushMessage5.deviceNotification(theMessage)
+    	    sendPushMessage5.deviceNotification(pushMsg)
         }
         if(messageDest == "Queue") {
             ps = "IH5"
