@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 07/06/20 - Added Priority Speaker Setup
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 11/23/19 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -43,7 +44,7 @@
 
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -59,7 +60,8 @@ definition(
 )
 
 preferences {
-     page name: "mainPage", title: "", install: true, uninstall: true
+    page name: "mainPage", title: "", install: true, uninstall: true
+    page name: "prioritySpeakerOptions", title: "", install: true, uninstall: true
 } 
 
 def installed() {
@@ -83,33 +85,38 @@ def initialize() {
 
 def mainPage() {
     dynamicPage(name: "mainPage") {
-    	installCheck()
-		if(state.appInstalled == 'COMPLETE'){
-			section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
-            speakerNotes =  "<b>Speakers:</b><br>"
-            speakerNotes += "- Create a new child app for each room that has a speaker in it you want to control."
-            
-            pushNotes =  "<b>Push:</b><br>"
-            pushNotes += "- Only one child app is need for up to 5 pressence sensors<br>"
-            pushNotes += "- If more than 5 sensors are needed, simply add another child app."
-            
-            pmNotes =  "<b>Priority Messages</b><br>"
-            pmNotes += "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>"
-            pmNotes += "- Volume levels can also be adjusted by priority level."
-          
-            sAbilities = "Remember: Not all speakers can use volume controls, play sounds and/or restore to what it was doing before the speech event. Please use the report below to see some known speaker abilities."
-            
-            paragraph "${speakerNotes}"
-            paragraph "${pushNotes}"
-            paragraph "${pmNotes}"
-            paragraph "${sAbilities}"
+        installCheck()
+        if(state.appInstalled == 'COMPLETE'){
+            section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
+                speakerNotes =  "<b>Speakers:</b><br>"
+                speakerNotes += "- Create a new child app for each room that has a speaker in it you want to control."
 
-            paragraph "<hr>"
-            href "speakerStatus", title: "Known Speaker Abilities", description: "Click to see report."
-		}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Follow Me Child", namespace: "BPTWorld", title: "<b>Add a new 'Follow Me' child</b>", multiple: true)
-			}
+                pushNotes =  "<b>Push:</b><br>"
+                pushNotes += "- Only one child app is need for up to 5 pressence sensors<br>"
+                pushNotes += "- If more than 5 sensors are needed, simply add another child app."
+
+                pmNotes =  "<b>Priority Messages</b><br>"
+                pmNotes += "- Each message sent to 'Follow Me' can have a priority assigned to it.<br>"
+                pmNotes += "- Volume levels can also be adjusted by priority level."
+
+                sAbilities = "Remember: Not all speakers can use volume controls, play sounds and/or restore to what it was doing before the speech event. Please use the report below to see some known speaker abilities."
+
+                paragraph "${speakerNotes}"
+                paragraph "${pushNotes}"
+                paragraph "${pmNotes}"
+                paragraph "${sAbilities}"
+
+                paragraph "<hr>"
+                href "speakerStatus", title: "Known Speaker Abilities", description: "Click to see report."
+            }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+                app(name: "anyOpenApp", appName: "Follow Me Child", namespace: "BPTWorld", title: "<b>Add a new 'Follow Me' child</b>", multiple: true)
+            }
+            
+            section(getFormat("header-green", "${getImage("Blank")}"+" Priority Speaker Options")) {
+                href "prioritySpeakerOptions", title: "Priority Speaker Setup", description: "Click here for options."
+            }
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
        			label title: "Enter a name for parent app (optional)", required: false
@@ -117,6 +124,63 @@ def mainPage() {
 			display2()
 		}
 	}
+}
+
+def prioritySpeakerOptions() {
+    dynamicPage(name: "prioritySpeakerOptions", title: "", install: false, uninstall:false){
+        section(getFormat("header-green", "${getImage("Blank")}"+" Priority Speaker Options")) {
+            paragraph "Priority Speaker Option is a way to select one specific speaker to send the message to."
+            paragraph "<b>Speaker 1</b>", width:6
+            input "sType1", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType1) input "pSpeaker1", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType1) input "pSpeaker1", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 2</b>", width:6           
+            input "sType2", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType2) input "pSpeaker2", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType2) input "pSpeaker2", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 3</b>", width:6           
+            input "sType3", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType3) input "pSpeaker3", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType3) input "pSpeaker3", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 4</b>", width:6           
+            input "sType4", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType4) input "pSpeaker4", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType4) input "pSpeaker4", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 5</b>", width:6           
+            input "sType5", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType5) input "pSpeaker5", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType5) input "pSpeaker5", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 6</b>", width:6           
+            input "sType6", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType6) input "pSpeaker6", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType6) input "pSpeaker6", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 7</b>", width:6           
+            input "sType7", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType7) input "pSpeaker7", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType7) input "pSpeaker7", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 8</b>", width:6           
+            input "sType8", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType8) input "pSpeaker8", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType8) input "pSpeaker8", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 9</b>", width:6           
+            input "sType9", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType9) input "pSpeaker9", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType9) input "pSpeaker9", "capability.musicPlayer", title: "Speaker", required: false
+            
+            paragraph "<b>Speaker 10</b>", width:6           
+            input "sType10", "bool", title: "speechSynthesis (off) or Music Player (on)", width: 6, submitOnChange:true
+            if(!sType10) input "pSpeaker10", "capability.speechSynthesis", title: "Speaker", required: false
+            if(sType10) input "pSpeaker10", "capability.musicPlayer", title: "Speaker", required: false
+        }
+    }  
 }
 
 def installCheck(){  
