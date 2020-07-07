@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.6 - 07/07/20 - Sounds Setup now in Parent App
  *  2.2.5 - 07/06/20 - Push upgrades, Added Priority Speaker features
  *  2.2.4 - 06/13/20 - Added Presence Sensor to speaker triggers
  *  2.2.3 - 06/12/20 - Cosmetic changes
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.5"   
+	state.version = "2.2.6"   
 }
 
 definition(
@@ -79,7 +80,6 @@ preferences {
     page(name: "pageConfig")
 	page name: "pushOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "voiceOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "soundOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "testSpeaker", title: "", install: false, uninstall: true, nextPage: "pageConfig"
     page name: "speakerStatus", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
@@ -261,7 +261,7 @@ def pageConfig() {
 					}
 				    if(messageSounds) {
 					    section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
-					    	href "soundOptions", title:"Sound Options Setup", description:"Click here to setup the sound files"
+					    	paragraph "Sound files can be setup in the Parent App."
 					    }
                     }
 				} else {
@@ -353,55 +353,6 @@ def voiceOptions(){
 		    input "voiceHigh", "enum", title: "Select Voice for priority - High", options: state.list, required: false, submitOnChange: true, width: 7
             if(voiceHigh && testTheSpeakers) input "testVoiceHigh", "button", title: "Test Voice High", width: 5
         }
-	}
-}	
-
-def soundOptions(){
-    dynamicPage(name: "soundOptions", title: "Sound Option Setup", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Sound Options")) {
-			paragraph "Link to any sound file you want.  ie. http://192.168.7.89:820/fastpops1.mp3"
-            paragraph "<small>Remember you can always try the URL in a browser, to be sure it is valid.</small>"
-            input "testTheSpeakers", "capability.speechSynthesis", title: "Choose speaker for testing", required: true, submitOnChange: true
-			input "sound1", "text", title: "Sound - 1", required: false, submitOnChange: true
-            if(sound1 && testTheSpeakers) input "s1Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound1 && testTheSpeakers && s1Length) input "testBtn1", "button", title: "Test Sound 1", width: 3
-            
-			input "sound2", "text", title: "Sound - 2", required: false, width: 9, submitOnChange: true
-            if(sound2 && testTheSpeakers) input "s2Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound2 && testTheSpeakers && s2Length) input "testBtn2", "button", title: "Test Sound 2", width: 3
-            
-			input "sound3", "text", title: "Sound - 3", required: false, width: 9, submitOnChange: true
-            if(sound3 && testTheSpeakers) input "s3Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound3 && testTheSpeakers && s3Length) input "testBtn3", "button", title: "Test Sound 3", width: 3
-            
-			input "sound4", "text", title: "Sound - 4", required: false, width: 9, submitOnChange: true
-            if(sound4 && testTheSpeakers) input "s4Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound4 && testTheSpeakers && s4Length) input "testBtn4", "button", title: "Test Sound 4", width: 3
-            
-			input "sound5", "text", title: "Sound - 5", required: false, width: 9, submitOnChange: true
-            if(sound5 && testTheSpeakers) input "s5Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound5 && testTheSpeakers && s5Length) input "testBtn5", "button", title: "Test Sound 5", width: 3
-            
-            input "sound6", "text", title: "Sound - 6", required: false, width: 9, submitOnChange: true
-            if(sound6 && testTheSpeakers) input "s6Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound6 && testTheSpeakers && s6Length) input "testBtn6", "button", title: "Test Sound 6", width: 3
-            
-            input "sound7", "text", title: "Sound - 7", required: false, width: 9, submitOnChange: true
-            if(sound7 && testTheSpeakers) input "s7Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound7 && testTheSpeakers && s7Length) input "testBtn7", "button", title: "Test Sound 7", width: 3
-            
-            input "sound8", "text", title: "Sound - 8", required: false, width: 9, submitOnChange: true
-            if(sound8 && testTheSpeakers) input "s8Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound8 && testTheSpeakers && s8Length) input "testBtn8", "button", title: "Test Sound 8", width: 3
-            
-            input "sound9", "text", title: "Sound - 9", required: false, width: 9, submitOnChange: true
-            if(sound9 && testTheSpeakers) input "s9Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound9 && testTheSpeakers && s9Length) input "testBtn9", "button", title: "Test Sound 9", width: 3
-            
-            input "sound0", "text", title: "Sound - 0", required: false, width: 9, submitOnChange: true
-            if(sound0 && testTheSpeakers) input "s0Length", "number", title: "Sound length (in seconds)", description: "0-30", required:true, width:9, submitOnChange:true
-            if(sound0 && testTheSpeakers && s0Length) input "testBtn0", "button", title: "Test Sound 0", width: 3
-		}
 	}
 }		
 
@@ -1089,85 +1040,75 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
                 if(priorityVoice.contains("X")) {
                     state.sound = ""
                     state.sLength = s1Length * 1000
-                } else
-	            if(priorityVoice.contains("1")) {
-                    if(sound1) {
-                        state.sound = sound1
+                } else if(priorityVoice.contains("1")) {
+                    if(parent.sound1) {
+                        state.sound = parent.sound1
                         state.sLength = s1Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 1 not defined"
                     }
-                } else
-	            if(priorityVoice.contains("2")) {
-                    if(sound2) {
-                        state.sound = sound2
+                } else if(priorityVoice.contains("2")) {
+                    if(parent.sound2) {
+                        state.sound = parent.sound2
                         state.sLength = s2Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 2 not defined"
                     }
-                } else
-	            if(priorityVoice.contains("3")) {
-                    if(sound3) {
-                        state.sound = sound3
+                } else if(priorityVoice.contains("3")) {
+                    if(parent.sound3) {
+                        state.sound = parent.sound3
                         state.sLength = s3Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 3 not defined"
                     }
-                } else
-                if(priorityVoice.contains("4")) {
-                    if(sound4) {
-                        state.sound = sound4
+                } else if(priorityVoice.contains("4")) {
+                    if(parent.sound4) {
+                        state.sound = parent.sound4
                         state.sLength = s4Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 4 not defined"
                     }
-                } else
-                if(priorityVoice.contains("5")) {
-                    if(sound5) {
-                        state.sound = sound5
+                } else if(priorityVoice.contains("5")) {
+                    if(parent.sound5) {
+                        state.sound = parent.sound5
                         state.sLength = s5Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 5 not defined"
                     }
-                } else
-                if(priorityVoice.contains("6")) {
-                    if(sound6) {
-                        state.sound = sound6
+                } else if(priorityVoice.contains("6")) {
+                    if(parent.sound6) {
+                        state.sound = parent.sound6
                         state.sLength = s6Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 6 not defined"
                     }
-                } else
-                if(priorityVoice.contains("7")) {
-                    if(sound7) {
-                        state.sound = sound7
+                } else if(priorityVoice.contains("7")) {
+                    if(parent.sound7) {
+                        state.sound = parent.sound7
                         state.sLength = s7Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 7 not defined"
                     }
-                } else
-                if(priorityVoice.contains("8")) {
-                    if(sound8) {
-                        state.sound = sound8
+                } else if(priorityVoice.contains("8")) {
+                    if(parent.sound8) {
+                        state.sound = parent.sound8
                         state.sLength = s8Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 8 not defined"
                     }
-                } else
-                if(priorityVoice.contains("9")) {
-                    if(sound9) {
-                        state.sound = sound9
+                } else if(priorityVoice.contains("9")) {
+                    if(parent.sound9) {
+                        state.sound = parent.sound9
                         state.sLength = s9Length * 1000
                     } else {
                         if(logEnable) log.debug "${app.label} - Sound 9 not defined"
                     }
-                } else
-                if(priorityVoice.contains("0")) {
-                    if(sound0) {
-                        state.sound = ""
-                        state.sLength = s0Length * 1000
-                    } else { 
-                        if(logEnable) log.debug "${app.label} - Sound 0 not defined"
+                } else if(priorityVoice.contains("10")) {
+                    if(parent.sound10) {
+                        state.sound = parent.sound10
+                        state.sLength = s9Length * 1000
+                    } else {
+                        if(logEnable) log.debug "${app.label} - Sound 10 not defined"
                     }
                 }
             } else { 
@@ -1298,66 +1239,7 @@ def randomHandler() {
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(state.whichButton == "testBtn1"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 1 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound1)
-        } catch(e1) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn2"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 2 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound2)
-        } catch(e2) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn3"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 3 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound3)
-        } catch(e3) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn4"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 4 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound4)
-        } catch(e4) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn5"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 5 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound5)
-        } catch(e5) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn6"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 6 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound6)
-        } catch(e6) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn7"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 7 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound7)
-        } catch(e7) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn8"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 8 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound8)
-        } catch(e8) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn9"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 9 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound9)
-        } catch(e9) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
-    if(state.whichButton == "testBtn0"){
-        if(logEnable) log.debug "In testButtonHandler - Testing Sound 0 on Speaker: ${testTheSpeakers}"
-        try {
-            testTheSpeakers.playTrack(sound0)
-        } catch(e0) { log.warn "Follow Me (${state.version}) - ${testTheSpeakers} doesn't support playTrack or Test Sound was not found." }
-    }
+    
     if(state.whichButton == "testVoiceFun"){
         if(logEnable) log.debug "In testButtonHandler - Testing Voice Fun on Speaker: ${testTheSpeakers}"
         def tts = textToSpeech(testPhrase,voiceFun)
