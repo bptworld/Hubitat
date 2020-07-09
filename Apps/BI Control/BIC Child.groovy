@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.0.9 - 07/09/20 - Fixed Disable switch
  *  2.0.8 - 06/26/20 - Fixed a typo
  *  2.0.7 - 06/25/20 - Add App Control options
  *  2.0.6 - 05/22/20 - Add toggle for camera triggers option
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.0.8"
+	state.version = "2.0.9"
 }
 
 definition(
@@ -318,8 +319,11 @@ def initialize() {
 def checkEnableHandler() {
     eSwitch = true
     if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
+        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
+        edSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { eSwitch = false }
+        }
     }
     return eSwitch
 }
