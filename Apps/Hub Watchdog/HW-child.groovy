@@ -129,7 +129,7 @@ def pageConfig() {
 			paragraph "Now all you have to do is add this device to one of your dashboards to see your data on a tile!"
 			}
 		section() {
-			input(name: "sendToDevice", type: "capability.actuator", title: "Vitual Device created to send the data to:", submitOnChange: true)
+			input(name: "sendToDevice", type: "capability.actuator", title: "Virtual Device created to send the data to:", submitOnChange: true)
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Manual Run")) {
             paragraph "Hub Watchdog is set to run once an hour. To run now, click this button<br>Remember to save any changes before running the test."
