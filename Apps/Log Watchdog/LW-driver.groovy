@@ -273,19 +273,28 @@ def makeList(nameValue,msgValue) {
         last = "${nameValue}::${newDate}::${msgValue}"
         state.list.add(0,last)  
 
+        if(traceEnable) log.trace "In makeList - added to list - last: ${last}"
+        
         if(state.list) {
             listSize1 = state.list.size()
         } else {
             listSize1 = 0
         }
 
+        if(traceEnable) log.trace "In makeList - listSize1: ${listSize1}"
+        
         int intNumOfLines = 10
         if (listSize1 > intNumOfLines) state.list.removeAt(intNumOfLines)
+        
+        if(traceEnable) log.trace "In makeList - Passed Check 1"
+        
         String result1 = state.list.join(",")
         def lines = result1.split(",")
 
         theData = "<div style='overflow:auto;height:90%'><table style='text-align:left;font-size:${fontSize}px'><tr><td width=20%><td width=1%><td width=10%><td width=1%><td width=68%>"
 
+        if(traceEnable) log.trace "In makeList - Passed Check 2"
+        
         for (i=0;i<intNumOfLines && i<listSize1;i++) {
             combined = theData.length() + lines[i].length() + 16
             if(combined < 1000) {
@@ -294,6 +303,8 @@ def makeList(nameValue,msgValue) {
             }
         }
 
+        if(traceEnable) log.trace "In makeList - Passed Check 3"
+        
         theData += "</table></div>"
         if(logEnable) log.debug "theData - ${theData.replace("<","!")}"       
 
@@ -304,13 +315,15 @@ def makeList(nameValue,msgValue) {
             theData = "Log Watchdog - Too many characters to display on Dashboard (${dataCharCount1})"
         }
 
+        if(traceEnable) log.trace "In makeList - Passed Check 4"
+        
         sendEvent(name: "bpt-logData", value: theData, displayed: true)
         sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
         sendEvent(name: "bpt-lastLogMessage", value: msgValue, displayed: true)
     }
-    catch(e1) {
+    catch(e) {
         log.error "Log Watchdog Driver - In makeList - Error to follow!"
-        log.error e1    
+        log.error e  
     }
 }
 
