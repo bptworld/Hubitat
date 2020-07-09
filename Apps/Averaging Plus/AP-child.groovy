@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 07/09/20 - Fixed Disable switch
  *  1.0.9 - 07/05/20 - Adjustments
  *  1.0.8 - 06/25/20 - Added App Control options
  *  1.0.7 - 06/22/20 - Changes to letsTalk
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -306,8 +307,11 @@ private removeChildDevices(delete) {
 def checkEnableHandler() {
     eSwitch = true
     if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
+        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
+        edSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { eSwitch = false }
+        }
     }
     return eSwitch
 }
