@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.2.9 - 07/09/20 - Fixed reports again...
  *  2.2.8 - 07/09/20 - Fixed reports
  *  2.2.7 - 05/20/20 - Typo!
  *  2.2.6 - 05/20/20 - Gremlins!
@@ -46,7 +47,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.8"
+	state.version = "2.2.9"
 }
 
 definition(
@@ -567,7 +568,7 @@ def reportHandler() {
             myActivityAttHandler()
             pauseExecution(1000)
             section() {
-                if(activityDevices) {
+                if(activityAttDevices) {
                     activityAttMap1 = watchdogTileDevice.currentValue("bpt-watchdogActivityAtt1")
                     activityAttMap2 = watchdogTileDevice.currentValue("bpt-watchdogActivityAtt2")
                     activityAttMap3 = watchdogTileDevice.currentValue("bpt-watchdogActivityAtt3")
