@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 07/09/20 - Error trapping
  *  1.1.5 - 07/04/20 - Code improvements
  *  1.1.4 - 06/29/20 - Learned some new things
  *  1.1.3 - 06/27/20 - Massive overhaul of the logic
@@ -170,8 +171,10 @@ def parse(String description) {
             lvlCheck = "-----"
         }
 
-        def keyValue = state.keyValue.toLowerCase()
-        def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+        if(state.keyValue) {
+            def keyValue = state.keyValue.toLowerCase()
+            def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+        }
         if(keyword1 == "-") keyword1 = ""
         if(sKeyword1 == "-") sKeyword1 = ""
         if(sKeyword2 == "-") sKeyword2 = ""
