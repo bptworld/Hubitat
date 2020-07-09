@@ -39,7 +39,8 @@
  *
  *  Changes:
  *
- *  1.0.2 - 07/04/20 - Code improvements
+ *  1.0.3 - 07/09/20 - Error trapping
+ *  1.0.2 - 06/29/20 - Code improvements
  *  1.0.1 - 06/29/20 - Learned some new things
  *  1.0.0 - 06/28/20 - Initial release
  *
@@ -152,30 +153,32 @@ def parse(String description) {
         
         // source, name, displayName,value, unit, deviceID, HubID, locationId, installedAppId, descriptionText
         
-        def keyValue = state.keyValue.toLowerCase()
-        def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
+        if(state.keyValue) {
+            def keyValue = state.keyValue.toLowerCase()
+            def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
         
-        if(message.source) {
-            sourceV = message.source.toLowerCase()
-            //log.info "sourceV: ${sourceV}"
-        
-            if(sourceV == "device") {
-                nameV = message.name.toLowerCase()
-                //log.info "nameV: ${nameV}"
-            }
-        }
+            if(message.source) {
+                sourceV = message.source.toLowerCase()
+                //log.info "sourceV: ${sourceV}"
 
-        if(keySetType == "d" || keySetType == "k") {
-            if(message.descriptionText) {
-                msgCheck = message.descriptionText.toLowerCase()
+                if(sourceV == "device") {
+                    nameV = message.name.toLowerCase()
+                    //log.info "nameV: ${nameV}"
+                }
             }
-        } else if(keySetType == "e") {
-            if(message.descriptionText) {
-                msgCheck = nameV
-            }
-        }
-        if(msgCheck == null) msgCheck = "-----"
 
+            if(keySetType == "d" || keySetType == "k") {
+                if(message.descriptionText) {
+                    msgCheck = message.descriptionText.toLowerCase()
+                }
+            } else if(keySetType == "e") {
+                if(message.descriptionText) {
+                    msgCheck = nameV
+                }
+            }
+            if(msgCheck == null) msgCheck = "-----"
+        }
+           
         if(keyword1 == "-") keyword1 = ""
         if(sKeyword1 == "-") sKeyword1 = null
         if(sKeyword2 == "-") sKeyword2 = null
