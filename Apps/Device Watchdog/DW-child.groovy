@@ -34,34 +34,9 @@
  *
  *  Changes:
  *
+ *  2.2.8 - 07/09/20 - Fixed reports
  *  2.2.7 - 05/20/20 - Typo!
  *  2.2.6 - 05/20/20 - Gremlins!
- *  2.2.5 - 05/20/20 - Added more Error trapping
- *  2.2.4 - 05/19/20 - Changes to tile names for better Smartly compatibility
- *  2.2.3 - 05/19/20 - Track devices without 'lastActivity' data
- *  2.2.2 - 05/18/20 - Added optional report time, added Time display options, added Last Activity display options
- *  2.2.1 - 05/18/20 - Added 'filters' to each report to lower character count
- *  2.2.0 - 05/17/20 - Fixed Battery Report, other adjustments
- *  2.1.9 - 05/17/20 - Added Activity with Attributes report
- *  2.1.8 - 05/14/20 - Added color coding to status reports
- *  2.1.7 - 05/12/20 - Touch up to reports
- *  2.1.6 - 05/12/20 - Overhaul of the push notification sections and reports
- *  2.1.5 - 05/12/20 - another fix and another fix and another fix
- *  2.1.4 - 05/12/20 - Minor fix for lastUpdated not found
- *  2.1.3 - 05/12/20 - Tightening up the code, new combo activity/battery report
- *  2.1.2 - 05/11/20 - Tile scrolling will now auto adjust to tile size!
- *  2.1.1 - 05/10/20 - Fixed refresh handler code
- *  2.1.0 - 05/09/20 - Lets try this again, now using displayName
- *  2.0.9 - 05/09/20 - Added more error trapping, added code to make data scroll within tile if needed. All sorting/display now uses device label.
- *  2.0.8 - 05/09/20 - Major rewrite. Thanks to @arnb for some great suggestions and sample tile code!
- *  2.0.7 - 05/07/20 - Added a disable switch to the brand new amazing feature 'refresh'.
- *  2.0.6 - 05/07/20 - Added 'Device Refresh' to Activity Handler 
- *  2.0.5 - 04/27/20 - Cosmetic changes
- *  2.0.4 - 03/26/20 - BIG changes, streamlined code, fixed status report, *** everyone needs to re-select devices ***
- *  2.0.3 - 01/07/20 - Fixed status of button devices (status report)
- *  2.0.2 - 11/26/19 - Cosmetic changes
- *  2.0.1 - 11/17/19 - Fixed 'turn device on when activity to report', code clean up
- *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  ---
  *  1.0.0 - 12/21/18 - Initial release.
  *
@@ -71,7 +46,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.7"
+	state.version = "2.2.8"
 }
 
 definition(
@@ -124,7 +99,7 @@ def pageConfig() {
 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
             app.removeSetting("reportType")
-            if(batteryDevices || activityDevices || statusDevices) {
+            if(batteryDevices || activityDevices || statusDevices || activityAttDevices || specialDevices1) {
 			    href "reportHandler", title: "${getImage('reports')} Device Reports", description: "Click here to view the Device Reports."
             } else {
                 paragraph "Be sure to fill out the options below, then you can run a report."
