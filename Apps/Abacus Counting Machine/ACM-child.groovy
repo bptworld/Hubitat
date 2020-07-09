@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 07/09/20 - Fixed Disable switch
  *  1.0.2 - 06/25/20 - Added App Control options
  *  1.0.1 - 06/21/20 - Fixed Reset Counts
  *  1.0.0 - 06/20/20 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Abacus Counting Machine"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -394,8 +395,11 @@ def resetYearHandler(data) {
 def checkEnableHandler() {
     eSwitch = true
     if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
+        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
+        edSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { eSwitch = false }
+        }
     }
     return eSwitch
 }
