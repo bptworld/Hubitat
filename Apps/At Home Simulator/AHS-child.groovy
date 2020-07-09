@@ -34,6 +34,7 @@
  *
  *  Changes:
  *  
+ *  2.0.3 - 07/09/20 - Fixed Disable Switch
  *  2.0.2 - 06/25/20 - Added App Control options
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -44,7 +45,7 @@
 
 def setVersion(){
     state.name = "At Home Simulator"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -193,8 +194,11 @@ def initialize() {
 def checkEnableHandler() {
     eSwitch = true
     if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
+        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
+        edSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { eSwitch = false }
+        }
     }
     return eSwitch
 }
