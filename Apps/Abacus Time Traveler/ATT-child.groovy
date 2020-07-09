@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 07/09/20 - Fixed Disable switch
  *  1.0.0 - 06/26/20 - Initial release.
  *
  */
@@ -393,8 +394,11 @@ def resetYearHandler(data) {
 def checkEnableHandler() {
     eSwitch = true
     if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
+        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
+        edSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { eSwitch = false }
+        }
     }
     return eSwitch
 }
