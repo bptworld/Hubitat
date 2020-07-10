@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.2.3 - 07/10/20 - Added user selectable Priority colors
  *  2.2.2 - 07/06/20 - Added Priority Speaker options
  *  2.2.1 - 06/22/20 - Adjustments
  *  2.2.0 - 06/12/20 - Added error trap for null message
@@ -105,11 +106,16 @@ metadata {
     
     preferences() {    	
         section(){
-            input("fontSize", "text", title: "Font Size", required: true, defaultValue: "15")
-            input("fontFamily", "text", title: "Font Family (optional)<br>ie. Lucida Sans Typewriter", required: false)
-            input("hourType", "bool", title: "Time Selection<br>(Off for 24h, On for 12h)", required: false, defaultValue: false)
-            input("clearData", "bool", title: "Reset All Data", required: false, defaultValue: false)
-            input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
+            input "fontSize", "text", title: "Font Size", required: true, defaultValue: "15"
+            input "fontFamily", "text", title: "Font Family (optional)<br>ie. Lucida Sans Typewriter", required: false
+            input "hourType", "bool", title: "Time Selection<br>(Off for 24h, On for 12h)", required: false, defaultValue: false
+            
+            input "pLowColor", "text", title: "Color for Priority - Low<br>ie. Red,Yellow,Orange,Blue,etc.", required: false, defaultValue: "yellow"
+            input "pNormalColor", "text", title: "Color for Priority - Normal<br>.", required: false, defaultValue: "black"
+            input "pHighColor", "text", title: "Color for Priority - High<br>.", required: false, defaultValue: "red"
+            
+            input "clearData", "bool", title: "Reset All Data", required: false, defaultValue: false
+            input "logEnable", "bool", title: "Enable logging", required: false, defaultValue: false
         }
     }
 }
@@ -283,9 +289,9 @@ def populateMap(priority,speech) {
     }
 
     if((priorityValue.toUpperCase().contains("L")) || (priorityValue.toUpperCase().contains("N")) || (priorityValue.toUpperCase().contains("H"))) {
-        if(priorityValue.toUpperCase().contains("L")) { lastSpoken = "<span style='color:yellow'>${speech}</span>" }
-        if(priorityValue.toUpperCase().contains("N")) { lastSpoken = "${speech}" }
-        if(priorityValue.toUpperCase().contains("H")) { lastSpoken = "<span style='color:red'>${speech}</span>" }
+        if(priorityValue.toUpperCase().contains("L")) { lastSpoken = "<span style='color:${pLowColor}'>${speech}</span>" }
+        if(priorityValue.toUpperCase().contains("N")) { lastSpoken = "<span style='color:${pNormalColor}'>${speech}</span>" }
+        if(priorityValue.toUpperCase().contains("H")) { lastSpoken = "<span style='color:${pHighColor}'>${speech}</span>" }
         if(logEnable) log.debug "In populateMap - Contains(L,N,H) - lastSpoken: ${lastSpoken}"
     } else {
         lastSpoken = "${speech}"
