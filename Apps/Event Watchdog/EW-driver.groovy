@@ -187,73 +187,75 @@ def parse(String description) {
         if(nKeyword1 == "-") nKeyword1 = null
         if(nKeyword2 == "-") nKeyword2 = null      
 
-        String keyword = keyword1
-        if(logEnable) log.debug "msgCheck: ${msgCheck} - keyword: ${keyword}"
-        
-        state.kCheck1 = false
-        state.kCheck2 = true
-        state.match = false
-        
-        try {
-            readyToGo = false
-            if(msgCheck.contains("${keyword}")) {
-                if(traceEnable) {
-                    keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                    log.trace "In keyword - Found msgCheck: ${keyword1a}"
+        if(keyword1) {
+            String keyword = keyword1
+            if(logEnable) log.debug "msgCheck: ${msgCheck} - keyword: ${keyword}"
+
+            state.kCheck1 = false
+            state.kCheck2 = true
+            state.match = false
+
+            try {
+                readyToGo = false
+                if(msgCheck.contains("${keyword}")) {
+                    if(traceEnable) {
+                        keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        log.trace "In keyword - Found msgCheck: ${keyword1a}"
+                    }
+                    readyToGo = true
                 }
-                readyToGo = true
-            }
-                
-            if(readyToGo) {
-                if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
-                    if(msgCheck.contains("${sKeyword1}")) {
-                        if(traceEnable) log.trace "In Secondary Keyword1 - ${sKeyword1} Found! That's GOOD!"
+
+                if(readyToGo) {
+                    if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
+                        if(msgCheck.contains("${sKeyword1}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1 - ${sKeyword1} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword2}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword2 - ${sKeyword2} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword3}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1 - ${sKeyword3} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        } else if(msgCheck.contains("${sKeyword4}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword4 - ${sKeyword4} Found! That's GOOD!"
+                            state.kCheck1 = true
+                        }       
+                    } else {
                         state.kCheck1 = true
-                    } else if(msgCheck.contains("${sKeyword2}")) {
-                        if(traceEnable) log.trace "In Secondary Keyword2 - ${sKeyword2} Found! That's GOOD!"
-                        state.kCheck1 = true
-                    } else if(msgCheck.contains("${sKeyword3}")) {
-                        if(traceEnable) log.trace "In Secondary Keyword1 - ${sKeyword3} Found! That's GOOD!"
-                        state.kCheck1 = true
-                    } else if(msgCheck.contains("${sKeyword4}")) {
-                        if(traceEnable) log.trace "In Secondary Keyword4 - ${sKeyword4} Found! That's GOOD!"
-                        state.kCheck1 = true
-                    }       
-                } else {
-                    state.kCheck1 = true
-                }
-                    
-                if(nKeyword1 || nKeyword2) {  
-                    if(msgCheck.contains("${nKeyword1}")) {
-                        if(traceEnable) log.trace "In Not Keyword1 - ${nKeyword1} found! That's BAD!"
-                        state.kCheck2 = false
-                    } else if(msgCheck.contains("${nKeyword2}")) {
-                        if(traceEnable) log.trace "In Not Keyword2 - ${nKeyword2} found! That's BAD!"
-                        state.kCheck2 = false
+                    }
+
+                    if(nKeyword1 || nKeyword2) {  
+                        if(msgCheck.contains("${nKeyword1}")) {
+                            if(traceEnable) log.trace "In Not Keyword1 - ${nKeyword1} found! That's BAD!"
+                            state.kCheck2 = false
+                        } else if(msgCheck.contains("${nKeyword2}")) {
+                            if(traceEnable) log.trace "In Not Keyword2 - ${nKeyword2} found! That's BAD!"
+                            state.kCheck2 = false
+                        }
+                    }
+
+                    if(traceEnable) log.trace "In keyword - ${keyword1a} - kCheck1: ${state.kCheck1} - kCheck2: ${state.kCheck2}"
+                    if(state.kCheck1 && state.kCheck2) {
+                        state.match = true
+                    } else {
+                        state.match = false
                     }
                 }
 
-                if(traceEnable) log.trace "In keyword - ${keyword1a} - kCheck1: ${state.kCheck1} - kCheck2: ${state.kCheck2}"
-                if(state.kCheck1 && state.kCheck2) {
-                    state.match = true
-                } else {
-                    state.match = false
-                }
-            }
+                if(state.match) {
+                    if(traceEnable) log.warn "In keyword - ${keyword1a} - Everything Passed!"
 
-            if(state.match) {
-                if(traceEnable) log.warn "In keyword - ${keyword1a} - Everything Passed!"
- 
-                if(msgCheck == null || msgCheck == "null") {
-                    if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
-                } else {
-                    if(traceEnable) log.warn "In keyword - Sending: ${message.descriptionText}"
-                    makeList(message.descriptionText)
+                    if(msgCheck == null || msgCheck == "null") {
+                        if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
+                    } else {
+                        if(traceEnable) log.warn "In keyword - Sending: ${message.descriptionText}"
+                        makeList(message.descriptionText)
+                    }
                 }
+            } catch (e) {
+                if(traceEnable) log.trace "In parse - Error to follow!"
+                log.error e
             }
-        } catch (e) {
-            if(traceEnable) log.trace "In parse - Error to follow!"
-            log.error e
         }
     }
 }
