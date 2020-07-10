@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 07/10/20 - Added Maintenance Override Options
  *  1.0.9 - 05/16/20 - Logging changes
  *  1.0.8 - 04/27/20 - Cosmetic changes
  *  1.0.7 - 09/26/19 - Added a 'push all' option
@@ -50,7 +51,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -77,7 +78,7 @@ def pageConfig() {
         section("Instructions:", hideable: true, hidden: true) {
             paragraph "Simple way to monitor if your hub is slowing down or not."
 			paragraph "<b>Notes:</b>"
-			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device you use will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
+			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device used will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to watch")) {
             input(name: "watchDevice", type: "capability.switch", title: "Device", required: true, multiple: false)
@@ -122,6 +123,21 @@ def pageConfig() {
                 ["setRuleBooleanFalse":"Set Boolean False"]
             ]
 		}
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance Override Options")) {
+            paragraph "Sometimes there is a period that you don't want this to run. ie. During the nightly maintenance period."
+            input "maintTime", "bool", title: "Use Maintenance Override", defaultValue:false, submitOnChange:true
+            if(maintTime) {
+                input "QfromTime", "time", title: "Maintenance Time Start", required: false, width: 6
+                input "QtoTime", "time", title: "Maintenance Time End", required: false, width: 6
+                input "midnightCheckQ", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+            } else {
+                app.removeSetting("QfromTime")
+                app.removeSetting("QtoTime")
+                app.removeSetting("midnightCheckQ")
+            }
+        }
+    
         section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {}
 		section("Instructions for Data Device:", hideable: true, hidden: true) {
             paragraph "<b>** This is where the data is stored for the reports **</b>"
@@ -138,9 +154,9 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
 			href "reportOptions", title: "Reports", description: "Click here to view the Data Reports."
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "debugging", submitOnChange: true)
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "debugging", submitOnChange:true
 		}
 		display2()
 	}
@@ -214,13 +230,18 @@ def initialize() {
 }
 
 def testingDevice() {  
-    if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
-    watchDevice.off()
-    pauseExecution(5000)
-    log.trace "Hub Watchdog - ***** Starting Test *****"
-    if(logEnable) log.debug "In testingDevice - Turning Device On"
-    state.testInProgress = "no"
-    watchDevice.on()
+    maintHandler()
+    if(isMaintTime) {
+        if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
+    } else {
+        if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
+        watchDevice.off()
+        pauseExecution(5000)
+        log.trace "Hub Watchdog - ***** Starting Test *****"
+        if(logEnable) log.debug "In testingDevice - Turning Device On"
+        state.testInProgress = "no"
+        watchDevice.on()
+    }
 }
 
 def startTimeHandler(evt) {
@@ -348,6 +369,29 @@ def pushNow(msg) {
 		if(logEnable) log.debug "In pushNow - Sending message: ${pushMessage}"
         sendPushMessage.deviceNotification(pushMessage)
 	}	
+}
+
+def maintHandler() {
+	if(logEnable) log.debug "In maintHandler (${state.version})"
+    isMaintTime = false
+    
+	if(QfromTime) {
+        if(midnightCheckQ) {
+            state.maintTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime)+1, new Date(), location.timeZone)
+        } else {
+		    state.maintTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+        }
+    	if(state.maintTime) {
+            if(logEnable) log.debug "In maintHandler - Time within range - Using Maint Time"
+    		isMaintTime = true
+		} else {
+            if(logEnable) log.debug "In maintHandler - Time outside of range - Not using Maint Time"
+			isMaintTime = false
+		}
+	} else {
+        if(logEnable) log.debug "In maintHandler - NO Maint Time Specified"
+	}
+    return isMaintTime
 }
 
 def appButtonHandler(buttonPressed) {
