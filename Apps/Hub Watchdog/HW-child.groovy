@@ -88,7 +88,7 @@ def pageConfig() {
             paragraph "<small>* This will not send a notification but rather color code the value in the report so it stands out.</small>"
             input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required: true
             paragraph "If delay is over the max delay, it will automaticaly rerun the test in 1 minute. If x tests fail in a row, it will then use the Notification and RM options as set below."
-            input "maxFail", "number", title: "Max number of times it can fail before taking actions", required: true, defaultValue: 3, submitOnChange:true
+            input "maxFail", "number", title: "Max number of times it can fail before taking actions (range: 1 to 20)", range: "1..20", required: true, defaultValue: 3, submitOnChange:true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
 			input "isDataDevice", "capability.switch", title: "Turn this device on", required: false, multiple: false         
