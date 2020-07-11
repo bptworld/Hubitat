@@ -309,10 +309,11 @@ def sendNotification() {
     }
     
     def timeDiff = state.timeDiffMs.toFloat()
-    def mDelay = maxDelay.toFloat()
+    def mDelay = maxDelay.toFloat()    
+    nMaxFail = maxFail ?: 3
     
     if(timeDiff >= mDelay) {
-        if(state.failedCount <= maxFail) {
+        if(state.failedCount <= nMaxFail) {
             state.failedCount = state.failedCount + 1
             if(logEnable) log.debug "In sendNotification - failedCount: ${state.failedCount} - Waiting 1 minute and will run again"
             runIn(60, testingDevice)
