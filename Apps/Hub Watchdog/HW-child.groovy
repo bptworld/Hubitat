@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 07/11/20 - Added user selectable 'Max number of times it can fail'
  *  1.1.0 - 07/10/20 - Added Maintenance Override Options
  *  1.0.9 - 05/16/20 - Logging changes
  *  1.0.8 - 04/27/20 - Cosmetic changes
@@ -51,7 +52,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -86,9 +87,10 @@ def pageConfig() {
             input "warnValue", "text", title: "Get a warning in over this value (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".400", submitOnChange: true
             paragraph "<small>* This will not send a notification but rather color code the value in the report so it stands out.</small>"
             input "triggerMode", "enum", title: "Time Between Tests", submitOnChange: true, options: ["1_Min","5_Min","10_Min","15_Min","30_Min","1_Hour","3_Hour"], required: true
+            paragraph "If delay is over the max delay, it will automaticaly rerun the test in 1 minute. If x tests fail in a row, it will then use the Notification and RM options as set below."
+            input "maxFail", "number", title: "Max number of times it can fail before taking actions", required: true, defaultValue: 3, submitOnChange:true
         }
         section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
-            paragraph "If delay is over the max delay, it will automaticaly rerun the test in 1 minute. If 3 tests fail in a row, then it will do the following"
 			input "isDataDevice", "capability.switch", title: "Turn this device on", required: false, multiple: false         
 			input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple: true, required: false, submitOnChange: true
             if(sendPushMessage) {
@@ -310,7 +312,7 @@ def sendNotification() {
     def mDelay = maxDelay.toFloat()
     
     if(timeDiff >= mDelay) {
-        if(state.failedCount <= 2) {
+        if(state.failedCount <= maxFail) {
             state.failedCount = state.failedCount + 1
             if(logEnable) log.debug "In sendNotification - failedCount: ${state.failedCount} - Waiting 1 minute and will run again"
             runIn(60, testingDevice)
