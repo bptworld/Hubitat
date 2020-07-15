@@ -53,6 +53,13 @@
          "tags": [ "LAN", "Multimedia", "Tools & Utilities", "Voice Assistants" ]
    	},
       {
+   		"name": "Directional Alerter",
+   		"category": "Notifications",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Direction%20Alerter/packageManifest.json",
+   		"description": "Get notified on the direction something is moving in. Great for a Driveway Alert with direction.",
+         "tags": [ "Notifications", "Safety & Security", "Tools & Utilities" ]
+   	},
+      {
    		"name": "Device Check Plus",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManifest.json",
