@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 07/15/20 - Added Humidity and Power to secondary triggers. Added up to 3 secondary triggers.
  *  1.1.7 - 07/05/20 - Added optional Data device, New driver to support data device, Added Sleep options
  *  1.1.6 - 07/04/20 - Added more logging
  *  1.1.5 - 06/22/20 - Changes to letsTalk
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -113,20 +114,116 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Helper Device (optional)")) {
             paragraph "This will help the room stay occupied but not trigger the room to be active."
             href "examples", title:"${getImage("instructions")} Find Examples of Secondary Trigger use here", description:"Click here for examples"
-    		input "triggerMode2", "enum", title: "Select room helper Type", submitOnChange: true, options: ["Contact_Sensor","Motion_Sensor","Presence","Switch"], required: false
-			if(triggerMode2 == "Contact_Sensor"){
-				input "myContacts2", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
-				input "contactOption2", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
-			}
-			if(triggerMode2 == "Motion_Sensor"){
-				input "myMotion2", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
-			}
-            if(triggerMode2 == "Presence"){
-				input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
-			}
-			if(triggerMode2 == "Switch"){
-				input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
-			}
+            if(triggerMode) {
+                paragraph "<hr>"
+                input "useHelper2", "bool", title: "Use Helper?", defaultValue:false, submitOnChange:true
+                if(useHelper2) {
+                    input "triggerMode2", "enum", title: "Select room helper Type", submitOnChange: true, options: ["Contact", "Humidity", "Motion", "Power", "Presence", "Switch"], required: false
+                    if(triggerMode2 == "Contact"){
+                        input "myContacts2", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "contactOption2", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
+                    }
+                    if(triggerMode2 == "Humidity"){
+                        input "myHumidity2", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "myHumiditySP2", "number", title: "Select humidity breakpoint - if above then Occupied, below is Unoccupied", required:false
+                    }
+                    if(triggerMode2 == "Motion"){
+                        input "myMotion2", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
+                    }
+                    if(triggerMode2 == "Power"){
+                        input "myPower2", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "myPowerSP2", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
+                    }
+                    if(triggerMode2 == "Presence"){
+                        input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
+                    }
+                    if(triggerMode2 == "Switch"){
+                        input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
+                    }
+                } else {
+                    app.removeSetting("triggerMode2")
+                    app.removeSetting("myContacts2")
+                    app.removeSetting("myHumidity2")
+                    app.removeSetting("myMotion2")
+                    app.removeSetting("myPower2")
+                    app.removeSetting("myPresence2")
+                    app.removeSetting("mySwitches2")
+                }
+            }
+            
+            if(useHelper2) {
+                paragraph "<hr>"
+                input "useHelper3", "bool", title: "Use another Helper?", defaultValue:false, submitOnChange:true
+                if(useHelper3) {
+                    input "triggerMode3", "enum", title: "Select room helper 2 Type", submitOnChange: true, options: ["Contact", "Humidity", "Motion", "Presence", "Switch"], required: false
+                    if(triggerMode3 == "Contact"){
+                        input "myContacts3", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "contactOption3", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
+                    }
+                    if(triggerMode3 == "Humidity"){
+                        input "myHumidity3", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "myHumiditySP3", "number", title: "Select humidity breakpoint - if above then bad, below is good", required:false
+                    }
+                    if(triggerMode3 == "Motion"){
+                        input "myMotion3", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
+                    }
+                    if(triggerMode3 == "Power"){
+                        input "myPower3", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "myPowerSP3", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
+                    }
+                    if(triggerMode3 == "Presence"){
+                        input "myPresence3", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
+                    }
+                    if(triggerMode3 == "Switch"){
+                        input "mySwitches3", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
+                    }
+                } else {
+                    app.removeSetting("triggerMode3")
+                    app.removeSetting("myContacts3")
+                    app.removeSetting("myHumidity3")
+                    app.removeSetting("myMotion3")
+                    app.removeSetting("myPower3")
+                    app.removeSetting("myPresence3")
+                    app.removeSetting("mySwitches3")
+                }
+            }
+            
+            if(useHelper3) {
+                paragraph "<hr>"
+                input "useHelper4", "bool", title: "Use another Helper?", defaultValue:false, submitOnChange:true
+                if(useHelper4) {
+                    input "triggerMode4", "enum", title: "Select room helper 3 Type", submitOnChange: true, options: ["Contact", "Humidity", "Motion", "Presence", "Switch"], required: false
+                    if(triggerMode4 == "Contact"){
+                        input "myContacts4", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "contactOption4", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
+                    }
+                    if(triggerMode4 == "Humidity"){
+                        input "myHumidity4", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "myHumiditySP4", "number", title: "Select humidity breakpoint - if above then bad, below is good", required:false
+                    }
+                    if(triggerMode4 == "Motion"){
+                        input "myMotion4", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
+                    }
+                    if(triggerMode4 == "Power"){
+                        input "myPower4", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
+                        input "myPowerSP4", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
+                    }
+                    if(triggerMode4 == "Presence"){
+                        input "myPresence4", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
+                    }
+                    if(triggerMode4 == "Switch"){
+                        input "mySwitches4", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
+                    }
+                } else {
+                    app.removeSetting("triggerMode4")
+                    app.removeSetting("myContacts4")
+                    app.removeSetting("myHumidity4")
+                    app.removeSetting("myMotion4")
+                    app.removeSetting("myPower4")
+                    app.removeSetting("myPresence4")
+                    app.removeSetting("mySwitches4")
+                }
+            }
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Room Vacant Options")) {
             input "timeDelayed", "number", title: "How long should the lights stay on if room is vacant (in minutes)", required:false
@@ -452,10 +549,26 @@ def initialize() {
     if(triggerMode == "Presence") subscribe(myPresence, "presence", primaryHandler)
 	if(triggerMode == "Switch") subscribe(mySwitches, "switch", primaryHandler)
 	
-    if(triggerMode2 == "Contact_Sensor") subscribe(myContacts2, "contact", primaryHandler)
-	if(triggerMode2 == "Motion_Sensor") subscribe(myMotion2, "motion", primaryHandler)
+    if(triggerMode2 == "Contact") subscribe(myContacts2, "contact", primaryHandler)
+    if(triggerMode2 == "Humidity") subscribe(myHumidity2, "humidity", primaryHandler)
+	if(triggerMode2 == "Motion") subscribe(myMotion2, "motion", primaryHandler)
+    if(triggerMode2 == "Power") subscribe(myPower2, "power", primaryHandler)
     if(triggerMode2 == "Presence") subscribe(myPresence2, "presence", primaryHandler)
 	if(triggerMode2 == "Switch") subscribe(mySwitches2, "switch", primaryHandler)
+    
+    if(triggerMode3 == "Contact") subscribe(myContacts3, "contact", primaryHandler)
+    if(triggerMode3 == "Humidity") subscribe(myHumidity3, "humidity", primaryHandler)
+	if(triggerMode3 == "Motion") subscribe(myMotion3, "motion", primaryHandler)
+    if(triggerMode3 == "Power") subscribe(myPower3, "power", primaryHandler)
+    if(triggerMode3 == "Presence") subscribe(myPresence3, "presence", primaryHandler)
+	if(triggerMode3 == "Switch") subscribe(mySwitches3, "switch", primaryHandler)
+    
+    if(triggerMode4 == "Contact") subscribe(myContacts4, "contact", primaryHandler)
+    if(triggerMode4 == "Humidity") subscribe(myHumidity4, "humidity", primaryHandler)
+	if(triggerMode4 == "Motion") subscribe(myMotion4, "motion", primaryHandler)
+    if(triggerMode4 == "Power") subscribe(myPower4, "power", primaryHandler)
+    if(triggerMode4 == "Presence") subscribe(myPresence4, "presence", primaryHandler)
+	if(triggerMode4 == "Switch") subscribe(mySwitches4, "switch", primaryHandler)
     
     if(sunRestriction) subscribe(location, "sunriseTime", sunriseTimeHandler)
     if(sunRestriction) subscribe(location, "sunsetTime", sunsetTimeHandler)
@@ -534,8 +647,9 @@ def secondaryHandler() {
     if(logEnable) log.debug "In secondaryHandler (${state.version}) - triggerMode2: ${triggerMode2}"
     state.occupancy2 = "no"
     
-    if(triggerMode2 == "Contact_Sensor") {
-        myContacts2.each { it ->
+    if(myContacts2 || myContacts3 || myContacts4) {
+        allContacts = [myContacts2, myContacts3, myContacts4].flatten().findAll{it}
+        allContacts.each { it ->
             status = it.currentValue("contact")
             if(logEnable) log.debug "In secondaryHandler - Contact: ${it} - value: ${status}"
             if(contactOption2 == "Closed") {
@@ -551,8 +665,20 @@ def secondaryHandler() {
         }
 	}
     
-    if(triggerMode2 == "Motion_Sensor") {
-        myMotion2.each { it ->
+    if(myHumidity2 || myHumidity3 || myHumidity4) {
+        allHumidity = [myHumidity2, myHumidity3, myHumidity4].flatten().findAll{it}
+        allHumidity.each { it ->
+            status = it.currentValue("humidity")
+            if(logEnable) log.debug "In secondaryHandler - H Sensor: ${it} - value: ${status}"
+            if(status > myHumiditySP2) {
+		        state.occupancy2 = "yes"
+            }
+        }
+    }
+    
+    if(myMotion2 || myMotion3 || myMotion4) {
+        allMotion = [myMotion2, myMotion3, myMotion4].flatten().findAll{it}
+        allMotion.each { it ->
             status = it.currentValue("motion")
             if(logEnable) log.debug "In secondaryHandler - M Sensor: ${it} - value: ${status}"
             if(status == "active") {
@@ -561,8 +687,20 @@ def secondaryHandler() {
         }
     }
 
-    if(triggerMode2 == "Presence") {
-        myPresence2.each { it ->
+    if(myPower2 || myPower3 || myPower4) {
+        allPower = [myPower2, myPower3, myPower4].flatten().findAll{it}
+        allPower.each { it ->
+            status = it.currentValue("power")
+            if(logEnable) log.debug "In secondaryHandler - P Sensor: ${it} - value: ${status}"
+            if(status > myPowerSP2) {
+		        state.occupancy2 = "yes"
+            }
+        }
+    }
+    
+    if(myPresence2 || myPresence3 || myPresence4) {
+        allPresence = [myPresence2, myPresence3, myPresence4].flatten().findAll{it}
+        allPresence.each { it ->
             status = it.currentValue("presence")
             if(logEnable) log.debug "In secondaryHandler - Presence: ${it} - value: ${status}"
             if(status == "present") {
@@ -571,8 +709,9 @@ def secondaryHandler() {
         }
     }
     
-    if(triggerMode2 == "Switch") {
-        mySwitches2.each { it ->
+    if(mySwitches2 || mySwitches3 || mySwitches4) {
+        allSwitches = [mySwitches2, mySwitches3, mySwitches4].flatten().findAll{it}
+        allSwitches.each { it ->
             status = it.currentValue("switch")
             if(logEnable) log.debug "In secondaryHandler - Switch: ${it} - value: ${status}"
             if(status == "on") {
@@ -1252,4 +1391,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
