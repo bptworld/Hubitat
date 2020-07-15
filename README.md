@@ -39,6 +39,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-devic
 <b>Device Watchdog</b> - Keep an eye on your devices and see how long it's been since they checked in.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-device-watchdog/7692" target="_blank">Go Here</a>
 <br><br>
+<b>Direction Alerter</b> - Get notified on the direction something is moving in. Great for a Driveway Alert with direction.<br>
+Hubitat Forum Discussion: <a href="" target="_blank">Not yet</a>
+<br><br>
 <b>Event Watchdog</b> - Keep an eye on what's important in the Event log.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-event-watchdog-keep-an-eye-on-whats-important-in-the-event-log/44284" target="_blank">Go Here</a>
 <br><br>
