@@ -36,24 +36,12 @@
  *
  *  Changes:
  *
+ *  2.1.4 - 07/17/20 - Adjustments
+ *  2.1.3 - 06/19/20 - Added The Flasher
  *  2.1.2 - 06/16/20 - More changes. Make sure to reinput your Switches.
  *  2.1.1 - 06/15/20 - Fixed 'Control Switch'
  *  2.1.0 - 06/15/20 - Added 'Control Switch'
- *  2.0.9 - 06/13/20 - Minor adjustments, error catching
- *  2.0.8 - 06/05/20 - Minor adjustments
- *  2.0.7 - 05/25/20 - Little adjustments here and there
- *  2.0.6 - 04/27/20 - Cosmetic changes
- *  2.0.5 - 04/18/20 - Adjustments
- *  2.0.4 - 12/09/19 - Fixed a bug 
- *  2.0.3 - 12/04/19 - Added more logging
- *  2.0.2 - 12/03/19 - Added more time options. Cosmetic changes
- *  2.0.1 - 09/06/19 - Add new section to 'Turn Switch(es) OFF if URL is not available, ON if everything is good'
- *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  1.0.4 - 04/15/19 - Code cleanup
- *  1.0.3 - 03/12/19 - Fixed stuff
- *  1.0.2 - 01/15/19 - Updated footer with update check and links
- *  1.0.1 - 01/10/19 - Tons of cosmetic changes. Added in Push option, time between polls. Changed it up to turn the switch off
- *						if website/internet becomes active again. Added in all the normal stuff - like debug logging
+ *  ---
  *  1.0.0 - 01/09/19 - Hubitat Port of ST app 'SmartPing' - 2016 Jason Botello
  *
  */
@@ -61,9 +49,9 @@
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 
-def setVersion(){
+def setVersion() {
     state.name = "Web Pinger"
-	state.version = "2.1.2"
+	state.version = "2.1.4"
 }
 
 definition(
@@ -93,9 +81,8 @@ def pageConfig() {
 		
 		section(getFormat("header-green", "${getImage("Blank")}"+" URL to monitor")) {
             input(name: "website", title:"URL", type: "text", required: true)
-			input "timeToPing", "enum", title: "Time between pings (minutes)", submitOnChange: true,  options: ["30s","1","5","10","15","30", "59"], required: true, Multiple: false
+			input "timeToPing", "enum", title: "Time between pings (minutes)", submitOnChange: true,  options: ["1","5","10","15","30", "59"], required: true, Multiple: false
             paragraph "<small>* Minimum recommended interval is 5 minutes.</small>"
-            if(timeToPing == "30s") paragraph "<b>30 second interval is not recommended and might slow down your hub.</b>"
             if(timeToPing == "1") paragraph "<b>1 minute interval is not recommended and might slow down your hub.</b>"
             input(name: "threshold", title:"False alarm safety net (minutes) - Should be long enough for a couple of regular pings", type: "number", required: true, defaultValue:20)
         }
@@ -113,7 +100,7 @@ def pageConfig() {
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
-            input(name: "resetSwitches", type: "bool", defaultValue: false, title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: true)
+            input "resetSwitches", "bool", defaultValue:false, title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: true
             if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds) even if website is still down", type: "number", required: true, defaultValue:60)
         }
         
@@ -124,6 +111,16 @@ def pageConfig() {
 				input "message", "text", required: true, title: "Message to Push"
 			}
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
+            input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
+            if(useTheFlasher) {
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
+                input "flashPreset", "number", title: "Select the Preset to use when website is not available. (1..5)", required:true, submitOnChange:true
+            }
+        }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", title: "Enable Debug Logging", description: "debug", defaultValue: false
@@ -145,138 +142,137 @@ def updated() {
 }
 
 def initialize() {
-	if (validateURL()) {
-		state.downHost = false
-		state.pollVerify = false
-		runIn(5, pollHandler)
+    if(validateURL()) {
+        state.downHost = false
+        state.pollVerify = false
+        schedule("0 0/${timeToPing} * * * ?", pollHandler)
+        runIn(5, pollHandler)
     }
     if(sendPingSwitch) subscribe(sendPingSwitch, "switch.on", pollHandler)
 }
 
 def validateURL() {
-		try {
-			state.website = website.toLowerCase()
-   	 		state.website = state.website.trim()
-  	  		if (state.website.startsWith("http://")) {
-   	 			state.website = state.website.replace("http://", "")
-       			state.website = state.website.replace("www.", "")
-    		}
-   	 		if (state.website.startsWith("https://")) {
-    			state.website = state.website.replace("https://", "")
-       			state.website = state.website.replace("www.", "")
-    		}
-    		if (state.website.startsWith("www.")) {
-    			state.website = state.website.replace("www.", "")
-    		}
-			if(logEnable) log.debug "In validateURL - URL is valid"
-    		state.validURL = true
-    		return true
-    	}
-		catch (e) {
-			if(logEnable) log.debug "In validateURL - URL is NOT valid"
-			state.validURL = false
-			return false
-		}
+    try {
+        state.website = website.toLowerCase()
+        state.website = state.website.trim()
+        if(state.website.startsWith("http://")) {
+            state.website = state.website.replace("http://", "")
+            state.website = state.website.replace("www.", "")
+        }
+        if(state.website.startsWith("https://")) {
+            state.website = state.website.replace("https://", "")
+            state.website = state.website.replace("www.", "")
+        }
+        if(state.website.startsWith("www.")) {
+            state.website = state.website.replace("www.", "")
+        }
+        if(logEnable) log.debug "In validateURL - URL is valid"
+        state.validURL = true
+        return true
+    }
+    catch (e) {
+        if(logEnable) log.debug "In validateURL - URL is NOT valid"
+        state.validURL = false
+        return false
+    }
 }
 
 def pollHandler(evt) {
-		def reqParams = [
-            uri: "http://${state.website}",
-            timeout: 30
-    	]
-    	if(state.validURL) {
-    		try {
-        		httpGet(reqParams) { resp ->
-                    if(logEnable) log.debug "In pollHandler (${state.version}) - Response was ${resp.status}"
-            		if (resp.status == 200) {
-                		if(state.downHost) {
-                            if(logEnable) log.debug "In pollHandler - Successful response (${resp.status}) from ${state.website} - Live Again!"
-                            state.downHost = false
-		                    state.pollVerify = false
-            				if(switches1) turnOffHandler()
-                            if(switches2) turnOnHandler() 
-                		} else {
-                            if(logEnable) log.debug "In pollHandler - Successful response (${resp.status}) from ${state.website} - All Good"
-                            state.downHost = false
-		                    state.pollVerify = false
-							if(switches1) turnOffHandler()
-                            if(switches2) turnOnHandler()
-                		}
-            		} else { 
-            			if(!state.downHost) {
-                			if(!state.pollVerify) {
-                                if(logEnable) log.debug "In pollHandler - Request failed (${resp.status}) to ${state.website}, running pollVerify in ${threshold} minutes"
-                                state.pollVerify = true
-        						runIn(60*threshold, pollVerify)
-            				}
-                		} else {
-                			if(logEnable) log.debug "In pollHandler - pollVerify already called"
-                		}
-            		}
-        		}
-    		} catch (e) {
-        		if (!state.downHost) {
-        			if (!state.pollVerify) {
-                        state.pollVerify = true
-                        if(logEnable) log.debug "In pollHandler - err - Request failed (NO status code) to ${state.website}, running pollVerify in ${threshold} minutes"
-        				runIn(60*threshold, pollVerify)          			
-            		}
-        		} else {
-           			if(logEnable) log.debug "In pollHandler - err - pollVerify already called"
-        		}
-    		}
-    	}
-        if(timeToPing == "30s") runIn(30, pollHandler)   
-        if(timeToPing == "1") schedule("0 0/1 * * * ?", pollHandler)
-    	if(timeToPing == "5") schedule("0 0/5 * * * ?", pollHandler)
-		if(timeToPing == "10") schedule("0 0/10 * * * ?", pollHandler)
-		if(timeToPing == "15") schedule("0 0/15 * * * ?", pollHandler)
-		if(timeToPing == "30") schedule("0 0/30 * * * ?", pollHandler)
-		if(timeToPing == "59") schedule("0 0/59 * * * ?", pollHandler)
+    def reqParams = [
+        uri: "http://${state.website}",
+        timeout: 30
+    ]
+
+    if(state.validURL) {
+        try {
+            httpGet(reqParams) { resp ->
+                if(logEnable) log.debug "In pollHandler (${state.version}) - Response was ${resp.status}"
+                if(resp.status == 200) {
+                    if(state.downHost) {
+                        if(logEnable) log.debug "In pollHandler - Successful response (${resp.status}) from ${state.website} - Live Again!"
+                        state.downHost = false
+                        state.pollVerify = false
+                        if(switches1) turnOffHandler()
+                        if(switches2) turnOnHandler() 
+                    } else {
+                        if(logEnable) log.debug "In pollHandler - Successful response (${resp.status}) from ${state.website} - All Good"
+                        state.downHost = false
+                        state.pollVerify = false
+                        if(switches1) turnOffHandler()
+                        if(switches2) turnOnHandler()
+                    }
+                } else { 
+                    if(!state.downHost) {
+                        if(!state.pollVerify) {
+                            if(logEnable) log.debug "In pollHandler - Request failed (${resp.status}) to ${state.website}, running pollVerify in ${threshold} minutes"
+                            state.pollVerify = true
+                            runIn(60*threshold, pollVerify)
+                        }
+                    } else {
+                        if(logEnable) log.debug "In pollHandler - pollVerify already called"
+                    }
+                }
+            }
+        } catch (e) {
+            if(!state.downHost) {
+                if(!state.pollVerify) {
+                    state.pollVerify = true
+                    if(logEnable) log.debug "In pollHandler - err - Request failed (NO status code) to ${state.website}, running pollVerify in ${threshold} minutes"
+                    runIn(60*threshold, pollVerify)          			
+                }
+            } else {
+                if(logEnable) log.debug "In pollHandler - err - pollVerify already called"
+            }
+        }
+    }
 }
 
 def pollVerify() {
-	def reqParams = [
-		uri: "http://${state.website}",
+    def reqParams = [
+        uri: "http://${state.website}",
         timeout: 30
-	]
-    	try {
-        	httpGet(reqParams) { resp ->
-				if(logEnable) log.debug "In pollVerify (${state.version}) - Response was ${resp.status}"
-            	if (resp.status == 200) {
-                    if(logEnable) log.debug "In pollVerify - Successful response (${resp.status}) from ${state.website}, false alarm avoided"
-                	state.downHost = false
-                	state.pollVerify = false
-                	if(switches1) turnOffHandler()
-                    if(switches2) turnOnHandler()
-            	} else {
-                    if(logEnable) log.debug "In pollVerify - Request failed (${resp.status}) to ${state.website} - Verified"
-            		state.downHost = true
-                	state.pollVerify = false
-            		if(switches1) turnOnHandler()
-                    if(switches2) turnOffHandler()
-            	}
-        	}
-    	} catch (e) {
-        	state.downHost = true
-        	state.pollVerify = false
-        	if(switches1) turnOnHandler()
-            if(switches2) turnOffHandler()
-            if(sendPushMessage) pushNow()
-        	if(logEnable) log.debug "In pollVerify - err - Request failed to ${state.website} - Verified"
-    	}
+    ]
+    try {
+        httpGet(reqParams) { resp ->
+            if(logEnable) log.debug "In pollVerify (${state.version}) - Response was ${resp.status}"
+            if(resp.status == 200) {
+                if(logEnable) log.debug "In pollVerify - Successful response (${resp.status}) from ${state.website}, false alarm avoided"
+                state.downHost = false
+                state.pollVerify = false
+                if(switches1) turnOffHandler()
+                if(switches2) turnOnHandler()
+            } else {
+                if(logEnable) log.debug "In pollVerify - Request failed (${resp.status}) to ${state.website} - Verified"
+                state.downHost = true
+                state.pollVerify = false
+                if(switches1) turnOnHandler()
+                if(switches2) turnOffHandler()
+            }
+        }
+    } catch (e) {
+        state.downHost = true
+        state.pollVerify = false
+        if(switches1) turnOnHandler()
+        if(switches2) turnOffHandler()
+        if(sendPushMessage) pushNow()
+        if(useTheFlasher) {
+            flashData = "Preset::${flashPreset}"
+            theFlasherDevice.sendPreset(flashData)
+        }
+        if(logEnable) log.debug "In pollVerify - err - Request failed to ${state.website} - Verified"
+    }
 }
 
 def turnOnHandler() {
-	if(switches1) {
-        switches1.each{ s1 ->
+    if(switches1) {
+        switches1.each { s1 ->
             theStatus = s1.currentValue("switch")
             if(theStatus == "off") {
                 s1.on()
                 if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning on ${s1}"
             }
         }
-        
+
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
@@ -288,17 +284,17 @@ def turnOnHandler() {
                 }
             }
         }
-   	}
-    
+    }
+
     if(switches2) {
-    	switches2.each{ s2 ->
+        switches2.each{ s2 ->
             theStatus = s2.currentValue("switch")
             if(theStatus == "off") {
                 s2.on()
                 if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning on ${s2}"
             }
         }
-		
+
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
@@ -310,7 +306,7 @@ def turnOnHandler() {
                 }
             }
         }
-   	}
+    }
 }
 
 def turnOffHandler() {
@@ -322,7 +318,7 @@ def turnOffHandler() {
                 if(logEnable) log.debug "In turnOnHandler - Switches 1 - Turning off ${s1}"
             }
         }
-        
+
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
@@ -334,17 +330,17 @@ def turnOffHandler() {
                 }
             }
         }
-   	}
-    
+    }
+
     if(switches2) {
-    	switches2.each{ s2 ->
+        switches2.each{ s2 ->
             theStatus = s2.currentValue("switch")
             if(theStatus == "on") {
                 s2.off()
                 if(logEnable) log.debug "In turnOnHandler - Switches 2 - Turning off ${s2}"
             }
         }
-		
+
         if(resetSwitches) {
             rTime = resetTime * 1000
             pauseExecution(rTime)
@@ -359,18 +355,18 @@ def turnOffHandler() {
     }
 }
 
-def pushNow(){
-	if(logEnable) log.debug "In pushNow (${state.version}) - Sending message"
-	if(state.downHost) {
-		sendPushMessage.deviceNotification(message)
-	}	
+def pushNow() {
+    if(logEnable) log.debug "In pushNow (${state.version}) - Sending message"
+    if(state.downHost) {
+        sendPushMessage.deviceNotification(message)
+    }	
 }
-	
+
 // ********** Normal Stuff **********
 
-def setDefaults(){
-	if(logEnable) log.debug "In setDefaults..."
-	if(logEnable == null){logEnable = false}
+def setDefaults() {
+    if(logEnable) log.debug "In setDefaults..."
+    if(logEnable == null) {logEnable = false}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -384,7 +380,7 @@ def getImage(type) {					// Modified from @Stephack Code
 }
 
 def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
@@ -396,16 +392,16 @@ def display() {
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+    }
 }
 
 def display2() {
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+    section() {
+        paragraph getFormat("line")
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
         paragraph "${state.footerMessage}"
-	}       
+    }       
 }
 
 def getHeaderAndFooter() {
@@ -449,4 +445,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
