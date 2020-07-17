@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.5 - 07/17/20 - Added auto logs off after 1 hour
  *  2.1.4 - 07/17/20 - Adjustments
  *  2.1.3 - 06/19/20 - Added The Flasher
  *  2.1.2 - 06/16/20 - More changes. Make sure to reinput your Switches.
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion() {
     state.name = "Web Pinger"
-	state.version = "2.1.4"
+	state.version = "2.1.5"
 }
 
 definition(
@@ -138,6 +139,7 @@ def updated() {
 	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
 	unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -149,6 +151,11 @@ def initialize() {
         runIn(5, pollHandler)
     }
     if(sendPingSwitch) subscribe(sendPingSwitch, "switch.on", pollHandler)
+}
+
+def logsOff() {
+    log.info "Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
 }
 
 def validateURL() {
