@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.1.7 - 07/19/20 - Changed up Alerts to remove from app as Weather.com removes them from their website
+ *  1.1.7 - 07/19/20 - Changed up Alerts to remove from app as Weather.gov removes them from their website
  *  1.1.6 - 06/13/20 - Changed 'No Data' to 0 for current weather values as requested
  *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
  *  1.1.4 - 05/07/20 - Added multiple alert data
