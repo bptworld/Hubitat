@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.7 - 07/19/20 - Changed up Alerts to remove from app as Weather.com removes them from their website
  *  1.1.6 - 06/13/20 - Changed 'No Data' to 0 for current weather values as requested
  *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
  *  1.1.4 - 05/07/20 - Added multiple alert data
@@ -807,6 +808,7 @@ def getAlertData() {
                     }
                 } catch (e) {
                     //if(logEnable) log.error "In getAlertData - ${e}"
+                    alertTitle = "No Data"
                     alertStatus = "No Data"
                     alertMessageType = "No Data"
                     alertCategory = "No Data"
@@ -817,6 +819,20 @@ def getAlertData() {
                     alertHeadline = "No Data"
                     alertDescription = "No Data"
                     alertInstruction = "No Data" 
+                    
+                    for(y=x;y<5;y++) {
+                        sendEvent(name: "alertTitle_$y", value: alertTitle)
+                        sendEvent(name: "alertStatus_$y", value: alertStatus)
+                        sendEvent(name: "alertMessageType_$y", value: alertMessageType)
+                        sendEvent(name: "alertCategory_$y", value: alertCategory)
+                        sendEvent(name: "alertSeverity_$y", value: alertSeverity)
+                        sendEvent(name: "alertCertainty_$y", value: alertCertainty)
+                        sendEvent(name: "alertUrgency_$y", value: alertUrgency)
+                        sendEvent(name: "alertEvent_$y", value: alertEvent)
+                        sendEvent(name: "alertHeadline_$y", value: alertHeadline)
+                        sendEvent(name: "alertDescription_$y", value: alertDescription)
+                        sendEvent(name: "alertInstruction_$y", value: alertInstruction)
+                    }
                 }
             } else {
                 if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
