@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 07/20/20 - adjustments
  *  1.0.1 - 06/29/20 - Now auto connects
  *  1.0.0 - 06/27/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Watchdog"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -100,7 +101,8 @@ def pageConfig() {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
 		}
-        
+
+/*
 		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
@@ -117,7 +119,7 @@ def pageConfig() {
             //paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             //input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
+*/        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
@@ -215,7 +217,7 @@ def updated() {
     unsubscribe()
 	initialize()
 }
-
+/*
 def initialize() {
     if(app.label) {
         if(app.label.contains("Paused")) {
@@ -227,13 +229,23 @@ def initialize() {
             setDefaults()
             subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
             dataDevice.appStatus("active")
-            dataDevice.connect()
+            dataDevice.initialize()
         } else {
             dataDevice.appStatus("paused")
         }
     }
 }
-	
+*/
+
+def initialize() {
+    setDefaults()
+    if(dataDevice) {
+        subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+        dataDevice.appStatus("active")
+        dataDevice.initialize()
+    }
+}
+
 def uninstalled() {
 	removeChildDevices(getChildDevices())
 }
@@ -278,9 +290,7 @@ def pushHandler(){
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(state.whichButton == "openConnection"){
-        dataDevice.connect()
-    }
+
     if(state.whichButton == "closeConnection"){
         dataDevice.close()
     }
