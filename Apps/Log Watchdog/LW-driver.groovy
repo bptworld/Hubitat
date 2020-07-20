@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 07/20/20 - Changed up how it connects and reconnects 
  *  1.1.7 - 07/09/20 - Chasing a bug
  *  1.1.6 - 07/09/20 - Error trapping
  *  1.1.5 - 07/04/20 - Code improvements
@@ -59,23 +60,24 @@ import groovy.json.*
 metadata {
 	definition (name: "Log Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/LW-driver.groovy") {
    		capability "Actuator"
+        capability "Initialize"
        
+        command "close"
+        command "clearData"
+        command "keywordInfo"
+        command "appStatus"
+        
         attribute "status", "string"
         attribute "bpt-lastLogMessage", "string"       
         attribute "bpt-logData", "string"        
         attribute "numOfCharacters", "number"
         attribute "keywordInfo", "string"
         attribute "appStatus", "string"
-        
-        command "connect"
-        command "close"
-        command "clearData"
-        command "keywordInfo"
-        command "appStatus"
     }
     preferences() {    	
         section(){
             input name: "about", type: "paragraph", element: "paragraph", title: "<b>Log Watchdog Driver</b>", description: "ONLY click 'Clear Data' to clear the message data."
+            input("disableConnection", "bool", title: "Disable Connection", required: true, defaultValue: false)
             input("fontSize", "text", title: "Font Size", required: true, defaultValue: "15")
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
             input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
@@ -97,10 +99,16 @@ def updated() {
 
 def initialize() {
     log.info "In initialize"
+    if(disableConnection) {
+        log.info "Log Watchdog Driver - webSocket Connection is Disabled in the Device"
+    } else {
+        log.info "Log Watchdog Driver - Connecting webSocket"
+        interfaces.webSocket.connect("ws://localhost:8080/logsocket")
+    }
 }
 
-def connect() {
-	interfaces.webSocket.connect("ws://localhost:8080/logsocket")
+void uninstalled() {
+	interfaces.webSocket.close()
 }
 
 def close() {
@@ -135,7 +143,7 @@ def autoReconnectWebSocket() {
     if(state.delay > 600) state.delay = 600
 
     log.warn "Log Watchdog Driver - Connection lost, will try to reconnect in ${state.delay} seconds"
-    runIn(state.delay, connect)
+    runIn(state.delay, initialize)
 }
 
 def keywordInfo(keys) {
