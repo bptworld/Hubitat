@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.5 - 07/20/20 - Adjustments
  *  2.1.4 - 06/29/20 - Now auto connects
  *  2.1.3 - 06/26/20 - Minor change 
  *  2.1.2 - 06/26/20 - Fixed push messages
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.1.4"
+	state.version = "2.1.5"
 }
 
 definition(
@@ -113,7 +114,7 @@ def pageConfig() {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
 		}
-        
+/*        
 		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
@@ -130,7 +131,7 @@ def pageConfig() {
             //paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             //input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
+*/        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
@@ -156,7 +157,7 @@ def pageConfig() {
                 theStatus = "Unknown"
             }
             paragraph "<b>There is NO need to 'Connect' the service. It will automatically be turned on when you hit 'Done' below.</b>"
-            paragraph "If you don't want the service to start when saving the app, please use the 'Pause' feature above."
+            //paragraph "If you don't want the service to start when saving the app, please use the 'Pause' feature above."
             paragraph "Current Log Watchdog status: <b>${theStatus}</b>", width: 6
             input "closeConnection", "button", title: "Disconnect", width: 6
         }
@@ -180,13 +181,13 @@ def pageKeySet(){
                 paragraph "<b>Primary Check</b> - Select logging level"
                 input "keyword1", "enum", title: "Select a Logging Level to 'Watch'", required:false, multiple:false, submitOnChange:true, options: ["trace","debug","info","warn","error"]
             }
-            paragraph "<b>AND</b>"   
+            paragraph "<b>AND</b> (optional)"   
             paragraph "<b>Secondary Check</b> - Select up to 4 keywords"
             input "sKeyword1", "text", title: "Secondary Keyword 1",  required:false, submitOnChange:true, width: 6
             input "sKeyword2", "text", title: "Secondary Keyword 2",  required:false, submitOnChange:true, width: 6
             input "sKeyword3", "text", title: "Secondary Keyword 3",  required:false, submitOnChange:true, width: 6
             input "sKeyword4", "text", title: "Secondary Keyword 4",  required:false, submitOnChange:true, width: 6
-            paragraph "<b>BUT DOES NOT CONTAIN</b>"   
+            paragraph "<b>BUT DOES NOT CONTAIN</b> (optional)"   
             paragraph "<b>Third Check</b> - Select up to 2 keywords"
             input "nKeyword1", "text", title: "Third Keyword 1",  required:false, submitOnChange:true, width: 6
             input "nKeyword2", "text", title: "Third Keyword 2",  required:false, submitOnChange:true, width: 6
@@ -221,20 +222,11 @@ def updated() {
 }
 
 def initialize() {
-    if(app.label) {
-        if(app.label.contains("Paused")) {
-            app.updateLabel(app.label.replaceAll(" Paused",""))
-            app.updateLabel(app.label + " <font color='red'>Paused</font>")
-        }
-
-        if(!pauseApp) {
-            setDefaults()
-            subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
-            dataDevice.appStatus("active")
-            dataDevice.connect()
-        } else {
-            dataDevice.appStatus("paused")
-        }
+    setDefaults()
+    if(dataDevice) {
+        subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+        dataDevice.appStatus("active")
+        dataDevice.initialize()
     }
 }
 	
@@ -282,9 +274,7 @@ def pushHandler(){
 def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    if(state.whichButton == "openConnection"){
-        dataDevice.connect()
-    }
+
     if(state.whichButton == "closeConnection"){
         dataDevice.close()
     }
