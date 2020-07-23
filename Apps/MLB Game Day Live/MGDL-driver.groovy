@@ -41,7 +41,7 @@
  */
 
 metadata {
-	definition (name: "MLB Game Day Live Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+	definition (name: "MLB Game Day Live Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/MLB%20Game%20Day%20Live/MGDL-driver.groovy") {
    		capability "Actuator"
 
         command "liveScoreboard", ["string"]
