@@ -2,7 +2,7 @@
  *  ****************  MLB Game Day Live Parent ****************
  *
  *  Design Usage:
- *  Follow your favorite MLB team's Game Day Live
+ *  Follow your favorite MLB teams Game Day Live, put a Scoreboard right on your Dashboard!
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  *
@@ -49,12 +49,12 @@ definition(
     name:"MLB Game Day Live",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Follow your favorite MLB team's Game Day Live",
+    description: "Follow your favorite MLB teams Game Day Live, put a Scoreboard right on your Dashboard!",
     category: "Convenience",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: ""
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/MLB%20Game%20Day%20Live/MGDL-parent.groovy"
     )
 
 preferences {
@@ -85,7 +85,7 @@ def mainPage() {
 		if(state.appInstalled == 'COMPLETE'){
 			section("Instructions:", hideable: true, hidden: true) {
 				paragraph "<b>Information</b>"
-				paragraph "Follow your favorite MLB team's Game Day Live"
+				paragraph "Follow your favorite MLB teams Game Day Live, put a Scoreboard right on your Dashboard!"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
 				app(name: "anyOpenApp", appName: "MLB Game Day Live Child", namespace: "BPTWorld", title: "<b>Add a new 'MLB Game Day Live' child</b>", multiple: true)
