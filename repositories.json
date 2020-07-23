@@ -154,7 +154,7 @@
    		"name": "MLB Game Day Live",
    		"category": "Integrations",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/MLB%20Game%20Day%20Live/packageManifest.json",
-   		"description": "Follow your favorite MLB team's Game Day Live",
+   		"description": "Follow your favorite MLB team's Game Day Live, put a Scoreboard right on your Dashboard!",
          "tags": [ "Dashboards", "Monitoring", "Notifications" ]
    	},
       {
