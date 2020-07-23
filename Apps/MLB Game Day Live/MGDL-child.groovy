@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 07/23/20 - Restructured liveScoreboard tile, added lastPlay tile, other adjustments
  *  1.0.0 - 07/21/20 - Initial release.
  *
  */
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -111,7 +112,9 @@ def pageConfig() {
                     if(!app.label.contains(" (Paused)")) app.updateLabel(app.label + " (Paused)")
                 }
             } else {
-                if(app.label.contains(" (Paused)")) app.updateLabel(app.label - " (Paused)")
+                if(app.label) {
+                    if(app.label.contains(" (Paused)")) app.updateLabel(app.label - " (Paused)")
+                }
             }
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
@@ -379,7 +382,7 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
 	def isGameDay = false
     try {  // Today
         def todayDate = new Date().format('yyyy-MM-dd', location.timeZone)
-        // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&date=04/10/2018&expand=schedule.teams,schedule.broadcasts.all
+        // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=111&date=07/23/2020
         def params = [uri: "${state.MLB_API_URL}/schedule/games/?sportId=1&teamId=${state.Team.id}&date=${todayDate}"] 
             
         def tDate = new Date().format('MM-dd-yyyy', location.timeZone)
@@ -417,6 +420,17 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
                     if(state.awayTeam == game.teams.away.team.name) state.myTeamIs = "away"
                     if(state.homeTeam == game.teams.home.team.name) state.myTeamIs = "home"
                     
+                    state.awayLogo = "www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.away.team.id}.svg"
+                    state.homeLogo = "www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.home.team.id}.svg"
+                    
+                    awayTeamWins = game.teams.away.leagueRecord.wins ?: "0"
+                    awayTeamLosses = game.teams.away.leagueRecord.losses ?: "0"
+                    homeTeamWins = game.teams.home.leagueRecord.wins ?: "0"
+                    homeTeamLosses = game.teams.home.leagueRecord.losses ?: "0"
+
+                    state.awayRecord = " (${awayTeamWins} - ${awayTeamLosses})"
+                    state.homeRecord = " (${homeTeamWins} - ${homeTeamLosses})"
+
                     gameStats = "${state.awayTeam};${state.homeTeam};0;0;1"
                     checkLiveGameStats()
                     
@@ -428,10 +442,13 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
         if(state.homeTeam == null) {
             if(logEnable) log.debug "In checkIfGameDayHandler - No Game Today"
             lastUpdated = new Date().format('MM-dd-yyyy  h:mm:ss a', location.timeZone)
-            scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>"       
+            scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>" 
+            
             scoreBoard += "<table width=100%>"
-            scoreBoard += "<tr style='text-align:center;font-weight:bold'><td>No Game Today"
-            scoreBoard += "<tr style='text-align:center'><td>-, -"
+            scoreBoard += "<tr style='text-align:center;font-weight:bold'>"
+            scoreBoard += "<td> - "
+            scoreBoard += "<td>No Game Today<br><small>${lastUpdated}</small>"
+            scoreBoard += "<td> - "
             scoreBoard += "</table>"
 
             scoreBoard += "<tr style='text-align:center;font-weight:bold'><td width=40%>Teams<td> 1 <td> 2 <td> 3 <td> 4 <td> 5 <td> 6 <td> 7 <td> 8 <td> 9 <td> R <td> H <td> E "
@@ -440,18 +457,18 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
 
             scoreBoard += "<tr style='text-align:center'><td><b> - </b>  - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - "
 
-            scoreBoard += "<tr><td colspan=13 style='text-align:center'>"
-            scoreBoard += "<table width=100%>"
-            scoreBoard += "<tr><td style='text-align:center'><b>At Bat:</b> - | <b>Balls:</b> - | <b>Strikes:</b> - | <b>Outs:</b> -"        
-            scoreBoard += "<tr><td><b>Last Play:</b> -"
-            scoreBoard += "<tr><td><br><small><b>Last Updated:</b> ${lastUpdated}</small>"
             scoreBoard += "</table>"
-            scoreBoard += "</table>"
+            
+            theLastPlay = "<table width=100%>"
+            theLastPlay += "<tr><td style='text-align:center'><b>Inning:</b> - of the - | <b>At Bat:</b> - | <b>Balls:</b> - | <b>Strikes:</b> - | <b>Outs:</b> -"
+            theLastPlay += "<tr style='text-align:left'><td><b>Description:</b> No Game Today"
+            theLastPlay += "</table>"
             
             if(dataDevice) {
                 dataDevice.liveScoreboard(scoreBoard)
                 gameStats = "-;-;-;-;-"
                 dataDevice.gameStats(gameStats)
+                dataDevice.lastPlay(theLastPlay)
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Data sent"
             }
         }
@@ -496,23 +513,11 @@ def checkLiveGameStatsHandler(resp, data) {
             def result = slurper.parseText(resp.getData())       
             liveData = result.liveData
 
-            awayTeam = result.gameData.teams.away.name ?: "-"
-            homeTeam = result.gameData.teams.home.name ?: "-"
             venueName = result.gameData.venue.name ?: "-"
-            venueCity = result.gameData.venue.location.city ?: "-"
-            venueState = result.gameData.venue.location.stateAbbrev ?: "-"
-
-            awayTeamWins = result.gameData.teams.away.record.leagueRecord.wins ?: "-"
-            awayTeamLosses = result.gameData.teams.away.record.leagueRecord.losses ?: "-"
-            homeTeamWins = result.gameData.teams.home.record.leagueRecord.wins ?: "-"
-            homeTeamLosses = result.gameData.teams.home.record.leagueRecord.losses ?: "-"
-
-            awayRecord = " (${awayTeamWins} - ${awayTeamLosses})"
-            homeRecord = " (${homeTeamWins} - ${homeTeamLosses})"
 
             state.gameStatus = result.gameData.status.abstractGameState
-            lastUpdated = new Date().format('MM-dd-yyyy  h:mm:ss a', location.timeZone)
-
+            lastUpdated = new Date().format('h:mm:ss a', location.timeZone)
+            
             if(state.gameStatus == "Preview") {
                 inningHalf = " - "
                 currentInning = "- "
@@ -552,7 +557,7 @@ def checkLiveGameStatsHandler(resp, data) {
                 totalAwayErrors = "0"
                 totalAwayLeftOnBase = "0"
 
-                lastPlay = "Game starts at ${state.todaysGameTime}"
+                latestPlay = "Game starts at ${state.todaysGameTime}"
             } else {
                 currentInning = liveData.linescore.currentInningOrdinal ?: "-"
                 inningHalf = liveData.linescore.inningHalf
@@ -616,47 +621,45 @@ def checkLiveGameStatsHandler(resp, data) {
                 totalAwayErrors = liveData.linescore.teams.away.errors ?: "0"
                 totalAwayLeftOnBase = liveData.linescore.teams.away.leftOnBase ?: "0"
 
-                theLastPlay = liveData.plays.currentPlay.result.description ?: "Waiting..."
-                if(theLastPlay) {
-                    lastPlay = theLastPlay.take(150)
-                } else {
-                    lastPlay = "Not Available"
-                }
+                latestPlay = liveData.plays.currentPlay.result.description ?: " - "
             }
 
-            scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>"       
+            scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>"   
+            
             scoreBoard += "<table width=100%>"
-            scoreBoard += "<tr style='text-align:center;font-weight:bold'><td>Welcome to ${venueName}"
-            scoreBoard += "<tr style='text-align:center'><td>${venueCity}, ${venueState}"
+            scoreBoard += "<tr style='text-align:center;font-weight:bold'>"
+            scoreBoard += "<td><img src='https://${state.awayLogo}' width=40 height=40>"
+            scoreBoard += "<td>${venueName}<br><small>${lastUpdated}</small>"
+            scoreBoard += "<td><img src='https://${state.homeLogo}' width=40 height=40>"
             scoreBoard += "</table>"
 
             scoreBoard += "<tr style='text-align:center;font-weight:bold'><td width=40%>Teams<td>1<td>2<td>3<td>4<td>5<td>6<td>7<td>8<td>9<td>R<td>H<td>E"
 
-            scoreBoard += "<tr style='text-align:center'><td><b>${awayTeam}</b> ${awayRecord}<td>${statsAwayRuns1}<td>${statsAwayRuns2}<td>${statsAwayRuns3}<td>${statsAwayRuns4}<td>${statsAwayRuns5}<td>${statsAwayRuns6}<td>${statsAwayRuns7}<td>${statsAwayRuns8}<td>${statsAwayRuns9}<td>${state.totalAwayRuns}<td>${totalAwayHits}<td>${totalAwayErrors}"
+            scoreBoard += "<tr style='text-align:center'><td><b>${state.awayTeam}</b> ${state.awayRecord}<td>${statsAwayRuns1}<td>${statsAwayRuns2}<td>${statsAwayRuns3}<td>${statsAwayRuns4}<td>${statsAwayRuns5}<td>${statsAwayRuns6}<td>${statsAwayRuns7}<td>${statsAwayRuns8}<td>${statsAwayRuns9}<td>${state.totalAwayRuns}<td>${totalAwayHits}<td>${totalAwayErrors}"
 
-            scoreBoard += "<tr style='text-align:center'><td><b>${homeTeam}</b> ${homeRecord}<td>${statsHomeRuns1}<td>${statsHomeRuns2}<td>${statsHomeRuns3}<td>${statsHomeRuns4}<td>${statsHomeRuns5}<td>${statsHomeRuns6}<td>${statsHomeRuns7}<td>${statsHomeRuns8}<td>${statsHomeRuns9}<td>${state.totalHomeRuns}<td>${totalHomeHits}<td>${totalHomeErrors}"
+            scoreBoard += "<tr style='text-align:center'><td><b>${state.homeTeam}</b> ${state.homeRecord}<td>${statsHomeRuns1}<td>${statsHomeRuns2}<td>${statsHomeRuns3}<td>${statsHomeRuns4}<td>${statsHomeRuns5}<td>${statsHomeRuns6}<td>${statsHomeRuns7}<td>${statsHomeRuns8}<td>${statsHomeRuns9}<td>${state.totalHomeRuns}<td>${totalHomeHits}<td>${totalHomeErrors}"
 
-            scoreBoard += "<tr><td colspan=13 style='text-align:center'>"
-            scoreBoard += "<table width=100%>"
+            scoreBoard += "</table>"
+            
+            theLastPlay = "<table width=100%>"
             if(state.gameStatus == "Final") {
                 wPitcher = liveData.decisions.winner.fullName
                 lPitcher = liveData.decisions.loser.fullName
-                scoreBoard += "<tr><td style='text-align:center'><b>Game is Final</b>"
-                scoreBoard += "<tr><td><b>Winning Pitcher:</b> ${wPitcher} - <b>Lossing Pitcher:</b> ${lPitcher}"
-                scoreBoard += "<tr><td><br><small><b>Last Updated:</b> ${lastUpdated}</small>"
+                theLastPlay += "<tr><td style='text-align:center'><b>Game is Final</b>"
+                theLastPlay += "<tr><td><b>Winning Pitcher:</b> ${wPitcher} - <b>Lossing Pitcher:</b> ${lPitcher}"
             } else {
-                scoreBoard += "<tr><td style='text-align:center'><b>Inning:</b> ${inningHalf} of the ${currentInning} | <b>At Bat:</b> ${atBat} | <b>Balls:</b> ${balls} | <b>Strikes:</b> ${strikes} | <b>Outs:</b> ${outs}"        
-                scoreBoard += "<tr><td><b>Last Play:</b> ${lastPlay}"
-                scoreBoard += "<tr><td><br><small><b>Last Updated:</b> ${lastUpdated}</small>"
+                theLastPlay += "<tr style='text-align:center'><td><b>Inning:</b> ${inningHalf} of the ${currentInning} | <b>At Bat:</b> ${atBat} | <b>Balls:</b> ${balls} | <b>Strikes:</b> ${strikes} | <b>Outs:</b> ${outs}"
             }
-            scoreBoard += "</table>"
-            scoreBoard += "</table>"
-
+            theLastPlay += "<tr style='text-align:left'><td><b>Description:</b> ${latestPlay}"
+            theLastPlay += "</table>"
+         
             if(dataDevice) {
                 dataDevice.liveScoreboard(scoreBoard)
-                gameStats = "${awayTeam};${homeTeam};${state.totalAwayRuns};${state.totalHomeRuns};${currentInning}"
+                gameStats = "${state.awayTeam};${state.homeTeam};${state.totalAwayRuns};${state.totalHomeRuns};${currentInning}"
                 dataDevice.gameStats(gameStats)
-                if(logEnable) log.debug "In checkLiveGameStatsHandler - Data sent"
+                dataDevice.lastPlay(theLastPlay)
+                charCount = scoreBoard.length()
+                if(logEnable) log.debug "In checkLiveGameStatsHandler - Data sent - charCount: ${charCount}"
             }
 
             if(state.gameStatus == "Preview") {
@@ -900,7 +903,7 @@ def createDataChildDevice() {
 // ********** Normal Stuff **********
 
 def setDefaults() {
-    // nothing here
+    state.homeTeam = null
 }
 
 def getImage(type) {					// Modified from @Stephack Code
