@@ -151,6 +151,13 @@
          "tags": [ "Misc. Devices", "Tools & Utilities" ]
    	},
       {
+   		"name": "MLB Game Day Live",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/MLB%20Game%20Day%20Live/packageManifest.json",
+   		"description": "Follow your favorite MLB team's Game Day Live",
+         "tags": [ "Dashboards", "Monitoring", "Notifications" ]
+   	},
+      {
    		"name": "One at a Time",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/packageManifest.json",
