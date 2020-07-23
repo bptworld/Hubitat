@@ -69,6 +69,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-magic
 <b>Marine Weather</b> (Driver) - This driver formats the Marine Weather - Storm Glass data to be used with Hubitat.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-marine-weather/13826" target="_blank">Go Here</a>
 <br><br>
+<b>MLB Game Day Live</b> - Follow your favorite MLB teams Game Day Live.<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-mlb-game-day-live-follow-your-favorite-teams-game-day-live/45559" target="_blank">Go Here</a>
+<br><br>
 <b>One at a Time</b> - Designed to allow only one switch, in a group of switches, to be on at a time.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-one-at-a-time/7063" target="_blank">Go Here</a>
 <br><br>
