@@ -2,7 +2,7 @@
  *  **************** MLB Game Day Live Child App  ****************
  *
  *  Design Usage:
- *  Follow your favorite MLB team's Game Day Live, put a Scoreboard right on your Dashboard!
+ *  Follow your favorite MLB teams Game Day Live, put a Scoreboard right on your Dashboard!
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  * 
@@ -53,13 +53,13 @@ definition(
     name: "MLB Game Day Live Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Follow your favorite MLB team's Game Day Live, put a Scoreboard right on your Dashboard!",
+    description: "Follow your favorite MLB teams Game Day Live, put a Scoreboard right on your Dashboard!",
     category: "Convenience",
 	parent: "BPTWorld:MLB Game Day Live",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/MLB%20Game%20Day%20Live/MGDL-child.groovy",
 )
 
 preferences {
@@ -73,7 +73,7 @@ def pageConfig() {
 		display() 
         section("${getImage('instructions')} <b>Instructions:</b>", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Follow your favorite MLB team's Game Day Live, put a Scoreboard right on your Dashboard!"
+    		paragraph "Follow your favorite MLB teams Game Day Live, put a Scoreboard right on your Dashboard!"
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Virtual Device")) {
             paragraph "Each child app needs a virtual device to store the game data."
