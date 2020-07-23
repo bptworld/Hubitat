@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.1 - 07/23/20 - Added lastPlay attribute
  *  V1.0.0 - 07/21/20 - Initial release.
  */
 
@@ -47,13 +48,15 @@ metadata {
         command "liveScoreboard", ["string"]
         command "gameSchedule", ["string"]
         command "gameStats", ["string"]
+        command "lastPlay", ["string"]
         
         attribute "bpt-liveScoreboard", "string"
         attribute "awayTeam", "string"
         attribute "homeTeam", "string"
         attribute "totalAwayRuns", "string"
         attribute "totalHomeRuns", "string"
-        attribute "currentInning", "string"       
+        attribute "currentInning", "string" 
+        attribute "bpt-lastPlay", "string"
                
         attribute "bpt-gameSchedule", "string"
         attribute "gameScheduleCount", "number"
@@ -86,3 +89,9 @@ def gameStats(data) {
     sendEvent(name: "totalHomeRuns", value: theData[3], isStateChange: true)
     sendEvent(name: "currentInning", value: theData[4], isStateChange: true)
 }
+
+def lastPlay(data){
+    if(logEnable) log.debug "In lastPlay - Received new data!"
+    sendEvent(name: "bpt-lastPlay", value: data, isStateChange: true)
+}
+
