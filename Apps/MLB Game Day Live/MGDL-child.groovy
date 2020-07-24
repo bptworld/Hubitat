@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 07/23/20 - Fixed typo with inning 6 on scoreboard
  *  1.0.1 - 07/23/20 - Restructured liveScoreboard tile, added lastPlay tile, other adjustments
  *  1.0.0 - 07/21/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -595,6 +596,7 @@ def checkLiveGameStatsHandler(resp, data) {
                     statsAwayRuns3 = liveData.linescore.innings[2].away.runs ?: "0"
                     statsAwayRuns4 = liveData.linescore.innings[3].away.runs ?: "0"
                     statsAwayRuns5 = liveData.linescore.innings[4].away.runs ?: "0"
+                    statsAwayRuns6 = liveData.linescore.innings[5].away.runs ?: "0"
                     statsAwayRuns7 = liveData.linescore.innings[6].away.runs ?: "0"
                     statsAwayRuns8 = liveData.linescore.innings[7].away.runs ?: "0"
                     statsAwayRuns9 = liveData.linescore.innings[8].away.runs ?: "0"
