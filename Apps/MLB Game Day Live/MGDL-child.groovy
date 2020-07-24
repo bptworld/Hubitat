@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 07/24/20 - Added code for Rain Delays, other adjustments
  *  1.0.2 - 07/23/20 - Fixed typo with inning 6 on scoreboard
  *  1.0.1 - 07/23/20 - Restructured liveScoreboard tile, added lastPlay tile, other adjustments
  *  1.0.0 - 07/21/20 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -406,7 +407,8 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
 
     if(resp.status == 200) {
         def result = resp.data
-
+        state.homeTeam = null
+        
         for(date in result.dates) {
             for(game in date.games) {
                 isGameDay = true
@@ -440,7 +442,7 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
                 break
             }
         } 
-        if(state.homeTeam == null) {
+        if(isGameDay == false) {
             if(logEnable) log.debug "In checkIfGameDayHandler - No Game Today"
             lastUpdated = new Date().format('MM-dd-yyyy  h:mm:ss a', location.timeZone)
             scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>" 
@@ -701,8 +703,18 @@ def checkLiveGameStatsHandler(resp, data) {
             messageHandler(postgameMessage)
             notificationHandler()
         } else {
-            if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
-            runIn(10, checkLiveGameStats)
+            log.warn "gameStatus: ${state.gameStatus}"
+            if(latestPlay.contains("Delayed: Rain")) {
+                log.info "MLB Game Day Live - Game under rain delay, will check again in 10 minutes."
+                rainMessage = "Rain Delay"
+                messageHandler(rainMessage)
+                if(useSpeech) letsTalk()
+                if(pushMessage) pushNow()
+                runIn(600, checkLiveGameStats)
+            } else {              
+                if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
+                runIn(10, checkLiveGameStats)
+            }
         }
     }
 }
@@ -824,7 +836,6 @@ def getScheduleHandler(resp, data) {
         
         state.list1 = []
         for(x=0;x < howManyGames;x++) {
-
             theDate = result.dates[x].games[0].gameDate
             gameStart = Date.parse("yyyy-MM-dd'T'HH:mm:ssX", theDate)
             
