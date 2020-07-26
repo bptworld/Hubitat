@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.0 - 07/26/20 - Add push notifications to special tracking
  *  2.2.9 - 07/09/20 - Fixed reports again...
  *  2.2.8 - 07/09/20 - Fixed reports
  *  2.2.7 - 05/20/20 - Typo!
@@ -47,7 +48,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.2.9"
+	state.version = "2.3.0"
 }
 
 definition(
@@ -145,9 +146,10 @@ def pageConfig() {
             paragraph "Push messages will only go out when Time and/or Switch options are choosen and triggered. This way you can view as many manual reports as needed to troubleshoot your system without being flooded with push notifications."
 			input "sendPushMessage", "capability.notification", title: "Send a Pushover notification", multiple:true, required:false, submitOnChange:true
             if(sendPushMessage) {
-                input "activityPush", "bool", title: "Send Activity Report", defaultValue:false, submitOnChange:true, width:4
-                input "batteryPush", "bool", title: "Send Battery Report", defaultValue:false, submitOnChange:true, width:4
-                input "statusPush", "bool", title: "Send Status Report", defaultValue:false, submitOnChange:true, width:4
+                input "activityPush", "bool", title: "Send Activity Report", defaultValue:false, submitOnChange:true, width:6
+                input "batteryPush", "bool", title: "Send Battery Report", defaultValue:false, submitOnChange:true, width:6
+                input "statusPush", "bool", title: "Send Status Report", defaultValue:false, submitOnChange:true, width:6
+                input "specialTrackingPush", "bool", title: "Send Special Tracking Report", defaultValue:false, submitOnChange:true, width:6
                 
                 input "pushAll", "bool", title: "Only send Push if there is something to actually report", description: "Push", defaultValue:false, submitOnChange:true
             }
@@ -748,6 +750,7 @@ def activityHandler(evt) {
 	if(isDataActivityDevice) isThereData()
 	if(isDataBatteryDevice) isThereData()
 	if(isDataStatusDevice) isThereData()
+    if(isDataSpecialDevice) isThereData()
 	if(sendPushMessage) pushNow()
     if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
 }	
@@ -1588,6 +1591,15 @@ def isThereData(){
             isDataStatusDevice.off()
         }
     }
+    
+    if(isDataSpecialDevice) {
+        if(logEnable) log.debug "In isThereData - Special Tracking - ${state.specialCount}"
+        if(state.specialCount >= 1) {
+            isDataSpecialDevice.on()
+        } else {
+            isDataSpecialDevice.off()
+        }
+    }
 }
 
 def pushNow(){
@@ -1639,6 +1651,23 @@ def pushNow(){
                 emptyStatusPhone = "Nothing to report."
                 if(logEnable) log.debug "In pushNow - Sending message: ${emptyStatusPhone}"
                 sendPushMessage.deviceNotification(emptyStatusPhone)
+            }
+        }	
+    }
+    
+    if(specialTrackingPush) {
+        if(logEnable) log.debug "In pushNow - Special Tracking - ${state.specialCount}"
+        if(state.specialCount >= 1) {
+            specialPhone = "${state.specialMapPhoneS}"
+            if(logEnable) log.debug "In pushNow - Sending message: ${specialPhone}"
+            sendPushMessage.deviceNotification(specialPhone)
+        } else {
+            if(pushAll == true) {
+                if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
+            } else {
+                emptySpecialPhone = "Nothing to report."
+                if(logEnable) log.debug "In pushNow - Sending message: ${emptySpecialPhone}"
+                sendPushMessage.deviceNotification(emptySpecialPhone)
             }
         }	
     }
