@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.2 - 07/29/20 - Fixed typo with Battery
  *  2.3.1 - 07/29/20 - Disabled devices will no longer show in reports, other adjustments
  *  2.3.0 - 07/26/20 - Add push notifications to special tracking
  *  2.2.9 - 07/09/20 - Fixed reports again...
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.1"
+	state.version = "2.3.2"
 }
 
 definition(
@@ -914,44 +915,44 @@ def myBatteryHandler() {
                         }
                     }
                 }
-            }
 
-            if(data) {
-                state.batteryCount = state.batteryCount + 1
-                def lastActivity = it.getLastActivity()
-                if(lastActivity) {
-                    dateFormatHandler(lastActivity)
-                    // Handler Returns newDate
-                } else {
-                    newDate = "No Data"
-                }
-
-                theName = it.displayName              
-                if(filter1) { theName = theName.replace("${bFilter1}", "") }
-                if(filter2) { theName = theName.replace("${bFilter2}", "") }
-                if(filter3) { theName = theName.replace("${bFilter3}", "") }
-                if(filter4) { theName = theName.replace("${bFilter4}", "") }
-                
-                line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
-                batteryMapPhone += "${theName} - ${cv} - ${newDate}\n"
-
-                totalLength = tbl.length() + line.length()
-                if(logEnable) log.debug "In myBatteryHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-                
-                if (totalLength < 1007) {
-                    tbl += line
-                } else {
-                    tbl += "</table></div>"
-                    if(logEnable) log.debug "${tbl}"
-                    if(watchdogTileDevice) {
-                        if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
-                        sending = "${tileCount}::${tbl}"
-                        watchdogTileDevice.sendWatchdogBatteryMap(sending)
-                        tileCount = tileCount + 1
+                if(data) {
+                    state.batteryCount = state.batteryCount + 1
+                    def lastActivity = it.getLastActivity()
+                    if(lastActivity) {
+                        dateFormatHandler(lastActivity)
+                        // Handler Returns newDate
+                    } else {
+                        newDate = "No Data"
                     }
-                    tbl = tblhead + line 
+
+                    theName = it.displayName              
+                    if(filter1) { theName = theName.replace("${bFilter1}", "") }
+                    if(filter2) { theName = theName.replace("${bFilter2}", "") }
+                    if(filter3) { theName = theName.replace("${bFilter3}", "") }
+                    if(filter4) { theName = theName.replace("${bFilter4}", "") }
+
+                    line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
+                    batteryMapPhone += "${theName} - ${cv} - ${newDate}\n"
+
+                    totalLength = tbl.length() + line.length()
+                    if(logEnable) log.debug "In myBatteryHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+
+                    if (totalLength < 1007) {
+                        tbl += line
+                    } else {
+                        tbl += "</table></div>"
+                        if(logEnable) log.debug "${tbl}"
+                        if(watchdogTileDevice) {
+                            if(logEnable) log.debug "In myBatteryHandler - Sending new Battery Watchdog data to Tiles (${tileCount})"
+                            sending = "${tileCount}::${tbl}"
+                            watchdogTileDevice.sendWatchdogBatteryMap(sending)
+                            tileCount = tileCount + 1
+                        }
+                        tbl = tblhead + line 
+                    }
+                    data = false
                 }
-                data = false
             }
         }
 
