@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Watchdog/DW-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.3.1"
+			"version": "2.3.2"
 		}
 	],
 	"drivers" : [
