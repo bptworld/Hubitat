@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.1 - 07/29/20 - Disabled devices will no longer show in reports
  *  2.3.0 - 07/26/20 - Add push notifications to special tracking
  *  2.2.9 - 07/09/20 - Fixed reports again...
  *  2.2.8 - 07/09/20 - Fixed reports
@@ -48,7 +49,7 @@ import groovy.time.TimeCategory
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.0"
+	state.version = "2.3.1"
 }
 
 definition(
@@ -781,63 +782,65 @@ def myActivityHandler() {
         theDevices = activityDevices.sort { a, b -> a.displayName <=> b.displayName }    
 
         theDevices.each { it ->
-            getTimeDiff(it)
-            if(state.since != null) {
-                if(logEnable) log.debug "In myActivityHandler - ${it.displayName} totalHours: ${state.totalHours} vs timeAllowed: ${timeAllowed}"
-                if(state.totalHours > timeAllowed) {
-                    if(!activityBadORgood) {
-                        state.activityCount = state.activityCount + 1
-                        if(logEnable) log.debug "In myActivityHandler - ${it.displayName} hasn't checked in since ${state.theDuration} ago."                   
-                        data = true
+            if(!it.isDisabled()) {
+                getTimeDiff(it)
+                if(state.since != null) {
+                    if(logEnable) log.debug "In myActivityHandler - ${it.displayName} totalHours: ${state.totalHours} vs timeAllowed: ${timeAllowed}"
+                    if(state.totalHours > timeAllowed) {
+                        if(!activityBadORgood) {
+                            state.activityCount = state.activityCount + 1
+                            if(logEnable) log.debug "In myActivityHandler - ${it.displayName} hasn't checked in since ${state.theDuration} ago."                   
+                            data = true
+                        }
+                    } else {
+                        if(activityBadORgood) {
+                            if(logEnable) log.debug "In myActivityHandler - ${it.displayName} last checked in ${state.theDuration} ago."
+                            data = true
+                        }
                     }
                 } else {
-                    if(activityBadORgood) {
-                        if(logEnable) log.debug "In myActivityHandler - ${it.displayName} last checked in ${state.theDuration} ago."
-                        data = true
+                    log.warn "${app.displayName} - ${it.displayName} has no activity. It will not show up in the reports."
+                    data = false
+                } 
+
+                if(data) {
+                    if(!laDisplay) {
+                        getTimeDiff(it)
+                        lastAct = state.theDuration
+                    } else {
+                        theDate = it.getLastActivity()
+                        dateFormatHandler(theDate)
+                        lastAct = newDate
+                    }
+
+                    theName = it.displayName              
+                    if(filter1) { theName = theName.replace("${aFilter1}", "") }
+                    if(filter2) { theName = theName.replace("${aFilter2}", "") }
+                    if(filter3) { theName = theName.replace("${aFilter3}", "") }
+                    if(filter4) { theName = theName.replace("${aFilter4}", "") }
+
+                    line = "<tr><td>${theName}<td>${lastAct}"
+                    activityMapPhone += "${theName} - ${lastAct} \n"
+
+                    totalLength = tbl.length() + line.length()
+                    if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+
+                    if (totalLength < 1007) {
+                        tbl += line
+                    } else {
+                        tbl += "</table></div>"
+                        if(logEnable) log.debug "${tbl}"
+                        if(watchdogTileDevice) {
+                            if(logEnable) log.debug "In myActivityHandler - Sending new Activity Watchdog data to Tiles (${tileCount})"
+                            sending = "${tileCount}::${tbl}"
+                            watchdogTileDevice.sendWatchdogActivityMap(sending)
+                            tileCount = tileCount + 1
+                        }
+                        tbl = tblhead + line 
                     }
                 }
-            } else {
-                log.warn "${app.displayName} - ${it.displayName} has no activity. It will not show up in the reports."
                 data = false
-            } 
-
-            if(data) {
-                if(!laDisplay) {
-                    getTimeDiff(it)
-                    lastAct = state.theDuration
-                } else {
-                    theDate = it.getLastActivity()
-                    dateFormatHandler(theDate)
-                    lastAct = newDate
-                }
-                
-                theName = it.displayName              
-                if(filter1) { theName = theName.replace("${aFilter1}", "") }
-                if(filter2) { theName = theName.replace("${aFilter2}", "") }
-                if(filter3) { theName = theName.replace("${aFilter3}", "") }
-                if(filter4) { theName = theName.replace("${aFilter4}", "") }
-                
-                line = "<tr><td>${theName}<td>${lastAct}"
-                activityMapPhone += "${theName} - ${lastAct} \n"
-
-                totalLength = tbl.length() + line.length()
-                if(logEnable) log.debug "In myActivityHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-
-                if (totalLength < 1007) {
-                    tbl += line
-                } else {
-                    tbl += "</table></div>"
-                    if(logEnable) log.debug "${tbl}"
-                    if(watchdogTileDevice) {
-                        if(logEnable) log.debug "In myActivityHandler - Sending new Activity Watchdog data to Tiles (${tileCount})"
-                        sending = "${tileCount}::${tbl}"
-                        watchdogTileDevice.sendWatchdogActivityMap(sending)
-                        tileCount = tileCount + 1
-                    }
-                    tbl = tblhead + line 
-                }
             }
-            data = false
         }
 
         if (tbl != tblhead) {
@@ -888,22 +891,26 @@ def myBatteryHandler() {
         data = false
         theDevices = batteryDevices.sort { a, b -> a.displayName <=> b.displayName }
 
+        // is device disabled?  it.isDisabled()
+        
         theDevices.each { it ->
-            def cv = it.currentValue("battery")
-            if(cv == null) cv = -999  //RayzurMod
-            if(cv <= batteryThreshold && cv > -999) { //RayzurMod
-                if(!batteryBadORgood) {
-                    if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv} less than ${batteryThreshold} threshold"
-                    data = true
-                }
-            } else {
-                if(batteryBadORgood && cv > -999) { //RayzurMod 
-                    if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv}, over ${batteryThreshold} threshold"
-                    data = true
-                } else {
-                    if (cv == -999) { //RayzurMod
-                        if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery hasn't reported in." //RayzurMod
+            if(!it.isDisabled()) {
+                def cv = it.currentValue("battery")
+                if(cv == null) cv = -999  //RayzurMod
+                if(cv <= batteryThreshold && cv > -999) { //RayzurMod
+                    if(!batteryBadORgood) {
+                        if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv} less than ${batteryThreshold} threshold"
                         data = true
+                    }
+                } else {
+                    if(batteryBadORgood && cv > -999) { //RayzurMod 
+                        if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery is ${cv}, over ${batteryThreshold} threshold"
+                        data = true
+                    } else {
+                        if (cv == -999) { //RayzurMod
+                            if(logEnable) log.debug "In myBatteryHandler - ${it.displayName} battery hasn't reported in." //RayzurMod
+                            data = true
+                        }
                     }
                 }
             }
@@ -995,224 +1002,226 @@ def myStatusHandler() {
         sortedMap = statusDevices.sort { a, b -> a.displayName <=> b.displayName }
 
         sortedMap.each { it ->
-            deviceStatus = null
-            if(logEnable) log.debug "In myStatusHandler - Working on: ${it.displayName}"
-            if(it.hasAttribute("accelerationSensor")) {
-                deviceStatus = it.currentValue("accelerationSensor")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "inactive") { dStatus = "<div style='color:${parent.colorInactive}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "active") { dStatus = "<div style='color:${parent.colorActive}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("alarm")) {
-                deviceStatus = it.currentValue("alarm")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "off") { dStatus = "<div style='color:${parent.colorOff}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "siren") { dStatus = "<div style='color:${parent.colorSiren}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "strobe") { dStatus = "<div style='color:${parent.colorStrobe}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "both") { dStatus = "<div style='color:${parent.colorBoth}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("battery")) {
-                deviceStatus = it.currentValue("battery")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("carbonMonoxideDetector")) {
-                deviceStatus = it.currentValue("carbonMonoxideDetector")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("energyMeter")) {
-                deviceStatus = it.currentValue("energyMeter")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("illuminanceMeasurement")) {
-                deviceStatus = it.currentValue("illuminanceMeasurement")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("lock")) {
-                deviceStatus = it.currentValue("lock")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "locked") { dStatus = "<div style='color:${parent.colorLocked}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "unlocked") { dStatus = "<div style='color:red'>${${parent.colorUnlocked}}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("powerMeter")) {
-                deviceStatus = it.currentValue("powerMeter")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("presence")) {
-                deviceStatus = it.currentValue("presence")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "present") { dStatus = "<div style='color:${parent.colorPresent}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "not present") { dStatus = "<div style='color:${parent.colorNotPresent}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("pushed")) {
-                deviceStatus = it.currentValue("pushed")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("relativeHumidityMeasurement")) {
-                deviceStatus = it.currentValue("relativeHumidityMeasurement")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("smokeDetector")) {
-                deviceStatus = it.currentValue("smokeDetector")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "clear") { dStatus = "<div style='color:${parent.colorClear}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "detected") { dStatus = "<div style='color:${parent.colorDetected}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("switchLevel")) {
-                deviceStatus = it.currentValue("switchLevel")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("temperatureMeasurement")) {
-                deviceStatus = it.currentValue("temperatureMeasurement")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("valve")) {
-                deviceStatus = it.currentValue("valve")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "open") { dStatus = "<div style='color:${parent.colorOpen}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "closed") { dStatus = "<div style='color:${parent.colorClosed}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("voltageMeasurement")) {
-                deviceStatus = it.currentValue("voltageMeasurement")
-                if(colorCodeStatus) {
-                    dStatus = deviceStatus
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("waterSensor")) {
-                deviceStatus = it.currentValue("waterSensor")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "wet") { dStatus = "<div style='color:${parent.colorWet}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "dry") { dStatus = "<div style='color:${parent.colorDry}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-
-            if(it.hasAttribute("motion")) {
-                deviceStatus = it.currentValue("motion")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "active") { dStatus = "<div style='color:${parent.colorActive}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "inactive") { dStatus = "<div style='color:${parent.colorInactive}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-            if(it.hasAttribute("contact")) {
-                deviceStatus = it.currentValue("contact")
-                if(colorCodeStatus) {
-                    if(deviceStatus == "open") { dStatus = "<div style='color:${parent.colorOpen}'>${deviceStatus}</div>" }
-                    if(deviceStatus == "closed") { dStatus = "<div style='color:${parent.colorClosed}'>${deviceStatus}</div>" }
-                } else {
-                    dStatus = deviceStatus
-                }
-            }
-
-            if(deviceStatus == null || deviceStatus == "") {
-                if(it.hasAttribute("switch")) {
-                    deviceStatus = it.currentValue("switch")
+            if(!it.isDisabled()) {
+                deviceStatus = null
+                if(logEnable) log.debug "In myStatusHandler - Working on: ${it.displayName}"
+                if(it.hasAttribute("accelerationSensor")) {
+                    deviceStatus = it.currentValue("accelerationSensor")
                     if(colorCodeStatus) {
-                        if(deviceStatus == "on") { dStatus = "<div style='color:${parent.colorOn}'>${deviceStatus}</div>" }
-                        if(deviceStatus == "off") { dStatus = "<div style='color:${parent.colorOff}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "inactive") { dStatus = "<div style='color:${parent.colorInactive}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "active") { dStatus = "<div style='color:${parent.colorActive}'>${deviceStatus}</div>" }
                     } else {
                         dStatus = deviceStatus
                     }
+                }
+                if(it.hasAttribute("alarm")) {
+                    deviceStatus = it.currentValue("alarm")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "off") { dStatus = "<div style='color:${parent.colorOff}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "siren") { dStatus = "<div style='color:${parent.colorSiren}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "strobe") { dStatus = "<div style='color:${parent.colorStrobe}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "both") { dStatus = "<div style='color:${parent.colorBoth}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("battery")) {
+                    deviceStatus = it.currentValue("battery")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("carbonMonoxideDetector")) {
+                    deviceStatus = it.currentValue("carbonMonoxideDetector")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("energyMeter")) {
+                    deviceStatus = it.currentValue("energyMeter")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("illuminanceMeasurement")) {
+                    deviceStatus = it.currentValue("illuminanceMeasurement")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("lock")) {
+                    deviceStatus = it.currentValue("lock")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "locked") { dStatus = "<div style='color:${parent.colorLocked}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "unlocked") { dStatus = "<div style='color:red'>${${parent.colorUnlocked}}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("powerMeter")) {
+                    deviceStatus = it.currentValue("powerMeter")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("presence")) {
+                    deviceStatus = it.currentValue("presence")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "present") { dStatus = "<div style='color:${parent.colorPresent}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "not present") { dStatus = "<div style='color:${parent.colorNotPresent}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("pushed")) {
+                    deviceStatus = it.currentValue("pushed")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("relativeHumidityMeasurement")) {
+                    deviceStatus = it.currentValue("relativeHumidityMeasurement")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("smokeDetector")) {
+                    deviceStatus = it.currentValue("smokeDetector")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "clear") { dStatus = "<div style='color:${parent.colorClear}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "detected") { dStatus = "<div style='color:${parent.colorDetected}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("switchLevel")) {
+                    deviceStatus = it.currentValue("switchLevel")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("temperatureMeasurement")) {
+                    deviceStatus = it.currentValue("temperatureMeasurement")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("valve")) {
+                    deviceStatus = it.currentValue("valve")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "open") { dStatus = "<div style='color:${parent.colorOpen}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "closed") { dStatus = "<div style='color:${parent.colorClosed}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("voltageMeasurement")) {
+                    deviceStatus = it.currentValue("voltageMeasurement")
+                    if(colorCodeStatus) {
+                        dStatus = deviceStatus
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("waterSensor")) {
+                    deviceStatus = it.currentValue("waterSensor")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "wet") { dStatus = "<div style='color:${parent.colorWet}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "dry") { dStatus = "<div style='color:${parent.colorDry}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+
+                if(it.hasAttribute("motion")) {
+                    deviceStatus = it.currentValue("motion")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "active") { dStatus = "<div style='color:${parent.colorActive}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "inactive") { dStatus = "<div style='color:${parent.colorInactive}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+                if(it.hasAttribute("contact")) {
+                    deviceStatus = it.currentValue("contact")
+                    if(colorCodeStatus) {
+                        if(deviceStatus == "open") { dStatus = "<div style='color:${parent.colorOpen}'>${deviceStatus}</div>" }
+                        if(deviceStatus == "closed") { dStatus = "<div style='color:${parent.colorClosed}'>${deviceStatus}</div>" }
+                    } else {
+                        dStatus = deviceStatus
+                    }
+                }
+
+                if(deviceStatus == null || deviceStatus == "") {
+                    if(it.hasAttribute("switch")) {
+                        deviceStatus = it.currentValue("switch")
+                        if(colorCodeStatus) {
+                            if(deviceStatus == "on") { dStatus = "<div style='color:${parent.colorOn}'>${deviceStatus}</div>" }
+                            if(deviceStatus == "off") { dStatus = "<div style='color:${parent.colorOff}'>${deviceStatus}</div>" }
+                        } else {
+                            dStatus = deviceStatus
+                        }
+                    } else {
+                        deviceStatus = "unavailable"
+                    }
+                }
+
+                def lastActivity = it.getLastActivity()
+                if(lastActivity) {
+                    dateFormatHandler(lastActivity)
+                    // Handler Returns newDate
                 } else {
-                    deviceStatus = "unavailable"
+                    newDate = "No Data"
                 }
-            }
 
-            def lastActivity = it.getLastActivity()
-            if(lastActivity) {
-                dateFormatHandler(lastActivity)
-                // Handler Returns newDate
-            } else {
-                newDate = "No Data"
-            }
+                if(logEnable) log.debug "In myStatusHandler - device: ${it.displayName} - myStatus: ${dStatus} - last checked: ${newDate}"
 
-            if(logEnable) log.debug "In myStatusHandler - device: ${it.displayName} - myStatus: ${dStatus} - last checked: ${newDate}"
+                state.statusCount = state.statusCount + 1
 
-            state.statusCount = state.statusCount + 1
-            
-            theName = it.displayName              
-            if(filter1) { theName = theName.replace("${sFilter1}", "") }
-            if(filter2) { theName = theName.replace("${sFilter2}", "") }
-            if(filter3) { theName = theName.replace("${sFilter3}", "") }
-            if(filter4) { theName = theName.replace("${sFilter4}", "") }
+                theName = it.displayName              
+                if(filter1) { theName = theName.replace("${sFilter1}", "") }
+                if(filter2) { theName = theName.replace("${sFilter2}", "") }
+                if(filter3) { theName = theName.replace("${sFilter3}", "") }
+                if(filter4) { theName = theName.replace("${sFilter4}", "") }
 
-            line = "<tr><td>${theName}<td>${dStatus}<td>${newDate}"
-            statusMapPhone += "${theName} \n"
-            statusMapPhone += "${dStatus} - ${newDate} \n"
+                line = "<tr><td>${theName}<td>${dStatus}<td>${newDate}"
+                statusMapPhone += "${theName} \n"
+                statusMapPhone += "${dStatus} - ${newDate} \n"
 
-            totalLength = tbl.length() + line.length()
-            if(logEnable) log.debug "In myStatusHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-            
-            if (totalLength < 1007) {
-                tbl += line
-            } else {
-                tbl += "</table></div>"
-                if(logEnable) log.debug "${tbl}"
-                if(watchdogTileDevice) {
-                    if(logEnable) log.debug "In myStatusHandler - Sending new Status Watchdog data to Tiles (${tileCount})"
-                    sending = "${tileCount}::${tbl}"
-                    watchdogTileDevice.sendWatchdogStatusMap(sending)
-                    tileCount = tileCount + 1
+                totalLength = tbl.length() + line.length()
+                if(logEnable) log.debug "In myStatusHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+
+                if (totalLength < 1007) {
+                    tbl += line
+                } else {
+                    tbl += "</table></div>"
+                    if(logEnable) log.debug "${tbl}"
+                    if(watchdogTileDevice) {
+                        if(logEnable) log.debug "In myStatusHandler - Sending new Status Watchdog data to Tiles (${tileCount})"
+                        sending = "${tileCount}::${tbl}"
+                        watchdogTileDevice.sendWatchdogStatusMap(sending)
+                        tileCount = tileCount + 1
+                    }
+                    tbl = tblhead + line 
                 }
-                tbl = tblhead + line 
             }
         }
 
@@ -1282,54 +1291,56 @@ def myActivityAttHandler() {
         theDevices = activityAttDevices.sort { a, b -> a.displayName <=> b.displayName }    
 
         theDevices.each { it ->
-            if(!laDisplay) {
-                getTimeDiff(it)
-                lastAct = state.theDuration
-            } else {
-                theDate = it.getLastActivity()
-                dateFormatHandler(theDate)
-                lastAct = newDate
-            }
-            
-            if(state.since != null) {
-                if(att1) att1Value = it.currentValue("${att1}")
-                if(att2) att2Value = it.currentValue("${att2}")
-                if(att3) att3Value = it.currentValue("${att3}")
-                if(att4) att4Value = it.currentValue("${att4}")
-
-                if(att1Value == null) att1Value = "-"
-                if(att2Value == null) att2Value = "-"
-                if(att3Value == null) att3Value = "-"
-                if(att4Value == null) att4Value = "-"
-                
-                theName = it.displayName              
-                if(filter1) { theName = theName.replace("${filter1}", "") }
-                if(filter2) { theName = theName.replace("${filter2}", "") }
-                if(filter3) { theName = theName.replace("${filter3}", "") }
-                if(filter4) { theName = theName.replace("${filter4}", "") }
-
-                if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}<td>${lastAct}"
-                if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${lastAct}"
-                if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${lastAct}"
-                if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${lastAct}"
-
-                activityAttMapPhone += "${it.displayName} - ${lastAct} \n"
-
-                totalLength = tbl.length() + line.length()
-                if(logEnable) log.debug "In myActivityAttributeHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
-                
-                if (totalLength < 1007) {
-                    tbl += line
+            if(!it.isDisabled()) {
+                if(!laDisplay) {
+                    getTimeDiff(it)
+                    lastAct = state.theDuration
                 } else {
-                    tbl += "</table></div>"
-                    if(logEnable) log.debug "${tbl}"
-                    if(watchdogTileDevice) {
-                        if(logEnable) log.debug "In myActivityAttributeHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
-                        sending = "${tileCount}::${tbl}"
-                        watchdogTileDevice.sendWatchdogActivityAttMap(sending)
-                        tileCount = tileCount + 1
+                    theDate = it.getLastActivity()
+                    dateFormatHandler(theDate)
+                    lastAct = newDate
+                }
+
+                if(state.since != null) {
+                    if(att1) att1Value = it.currentValue("${att1}")
+                    if(att2) att2Value = it.currentValue("${att2}")
+                    if(att3) att3Value = it.currentValue("${att3}")
+                    if(att4) att4Value = it.currentValue("${att4}")
+
+                    if(att1Value == null) att1Value = "-"
+                    if(att2Value == null) att2Value = "-"
+                    if(att3Value == null) att3Value = "-"
+                    if(att4Value == null) att4Value = "-"
+
+                    theName = it.displayName              
+                    if(filter1) { theName = theName.replace("${filter1}", "") }
+                    if(filter2) { theName = theName.replace("${filter2}", "") }
+                    if(filter3) { theName = theName.replace("${filter3}", "") }
+                    if(filter4) { theName = theName.replace("${filter4}", "") }
+
+                    if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}<td>${lastAct}"
+                    if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${lastAct}"
+                    if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${lastAct}"
+                    if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}<td>${lastAct}"
+
+                    activityAttMapPhone += "${it.displayName} - ${lastAct} \n"
+
+                    totalLength = tbl.length() + line.length()
+                    if(logEnable) log.debug "In myActivityAttributeHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+
+                    if (totalLength < 1007) {
+                        tbl += line
+                    } else {
+                        tbl += "</table></div>"
+                        if(logEnable) log.debug "${tbl}"
+                        if(watchdogTileDevice) {
+                            if(logEnable) log.debug "In myActivityAttributeHandler - Sending new Activity Att Watchdog data to Tiles (${tileCount})"
+                            sending = "${tileCount}::${tbl}"
+                            watchdogTileDevice.sendWatchdogActivityAttMap(sending)
+                            tileCount = tileCount + 1
+                        }
+                        tbl = tblhead + line 
                     }
-                    tbl = tblhead + line 
                 }
             }
         }
@@ -1400,68 +1411,70 @@ def specialTrackingHandler() {
         theDevices = specialDevices1.sort { a, b -> a.displayName <=> b.displayName }    
 
         theDevices.each { it ->
-            if(att1) att1Value = it.currentValue("${att1}")
-            if(att2) att2Value = it.currentValue("${att2}")
-            if(att3) att3Value = it.currentValue("${att3}")
-            if(att4) att4Value = it.currentValue("${att4}")
-            
-            if(att1Value == null) att1Value = "-"
-            if(att2Value == null) att2Value = "-"
-            if(att3Value == null) att3Value = "-"
-            if(att4Value == null) att4Value = "-"
-            
-            if(att1 && att1Value == stAttTValue1) { 
-                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att1.capitalize()} EQUALS ${stAttTValue1}"
-                data = true
-            }
-            
-            if(att2 && att2Value == stAttTValue2) { 
-                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att2.capitalize()} EQUALS ${stAttTValue2}"
-                data = true
-            }
-            
-            if(att3 && att3Value == stAttTValue3) { 
-                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att3.capitalize()} EQUALS ${stAttTValue3}"
-                data = true
-            }
-            
-            if(att4 && att4Value == stAttTValue4) { 
-                if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att4.capitalize()} EQUALS ${stAttTValue4}"
-                data = true
-            }
-        
-            if(data) {
-                theName = it.displayName              
-                if(stFilter1) { theName = theName.replace("${stFilter1}", "") }
-                if(stFilter2) { theName = theName.replace("${stFilter2}", "") }
-                if(stFilter3) { theName = theName.replace("${stFilter3}", "") }
-                if(stFilter4) { theName = theName.replace("${stFilter4}", "") }
+            if(!it.isDisabled()) {
+                if(att1) att1Value = it.currentValue("${att1}")
+                if(att2) att2Value = it.currentValue("${att2}")
+                if(att3) att3Value = it.currentValue("${att3}")
+                if(att4) att4Value = it.currentValue("${att4}")
 
-                if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}"
-                if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}"
-                if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}"
-                if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}"
+                if(att1Value == null) att1Value = "-"
+                if(att2Value == null) att2Value = "-"
+                if(att3Value == null) att3Value = "-"
+                if(att4Value == null) att4Value = "-"
 
-                if(optionSize == 1) specialMapPhone += "${it.displayName} - ${att1Value} \n"
-                if(optionSize == 2) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} \n"
-                if(optionSize == 3) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} - ${att3Value} \n"
-                if(optionSize == 4) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} - ${att3Value} - ${att4Value} \n"
+                if(att1 && att1Value == stAttTValue1) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att1.capitalize()} EQUALS ${stAttTValue1}"
+                    data = true
+                }
 
-                totalLength = tbl.length() + line.length()
-                if(logEnable) log.debug "In specialTrackingHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+                if(att2 && att2Value == stAttTValue2) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att2.capitalize()} EQUALS ${stAttTValue2}"
+                    data = true
+                }
 
-                if (totalLength < 1007) {
-                    tbl += line
-                } else {
-                    tbl += "</table></div>"
-                    if(logEnable) log.debug "${tbl}"
-                    if(watchdogTileDevice) {
-                        if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"
-                        sending = "${tileCount}::${tbl}"
-                        watchdogTileDevice.sendWatchdogSpecialMap(sending)
-                        tileCount = tileCount + 1
+                if(att3 && att3Value == stAttTValue3) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att3.capitalize()} EQUALS ${stAttTValue3}"
+                    data = true
+                }
+
+                if(att4 && att4Value == stAttTValue4) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att4.capitalize()} EQUALS ${stAttTValue4}"
+                    data = true
+                }
+
+                if(data) {
+                    theName = it.displayName              
+                    if(stFilter1) { theName = theName.replace("${stFilter1}", "") }
+                    if(stFilter2) { theName = theName.replace("${stFilter2}", "") }
+                    if(stFilter3) { theName = theName.replace("${stFilter3}", "") }
+                    if(stFilter4) { theName = theName.replace("${stFilter4}", "") }
+
+                    if(optionSize == 1) line = "<tr><td>${theName}<td>${att1Value}"
+                    if(optionSize == 2) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}"
+                    if(optionSize == 3) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}"
+                    if(optionSize == 4) line = "<tr><td>${theName}<td>${att1Value}<td>${att2Value}<td>${att3Value}<td>${att4Value}"
+
+                    if(optionSize == 1) specialMapPhone += "${it.displayName} - ${att1Value} \n"
+                    if(optionSize == 2) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} \n"
+                    if(optionSize == 3) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} - ${att3Value} \n"
+                    if(optionSize == 4) specialMapPhone += "${it.displayName} - ${att1Value} - ${att2Value} - ${att3Value} - ${att4Value} \n"
+
+                    totalLength = tbl.length() + line.length()
+                    if(logEnable) log.debug "In specialTrackingHandler - tbl Count: ${tbl.length()} - line Count: ${line.length()} - Total Count: ${totalLength}"
+
+                    if (totalLength < 1007) {
+                        tbl += line
+                    } else {
+                        tbl += "</table></div>"
+                        if(logEnable) log.debug "${tbl}"
+                        if(watchdogTileDevice) {
+                            if(logEnable) log.debug "In specialTrackingHandler - Sending new Special Tracking Watchdog data to Tiles (${tileCount})"
+                            sending = "${tileCount}::${tbl}"
+                            watchdogTileDevice.sendWatchdogSpecialMap(sending)
+                            tileCount = tileCount + 1
+                        }
+                        tbl = tblhead + line 
                     }
-                    tbl = tblhead + line 
                 }
             }
         }
@@ -1502,6 +1515,7 @@ def refreshDevices(devices) {
     devices.each { it ->
         if(logEnable) log.debug "---------- ---------- --------- --------- Trying to REFRESH ---------- --------- --------- ---------- ---------"
         getTimeDiff(it)
+
         if(state.totalHours >= maxTimeDiff) {
             if(it.hasCommand("refresh")) {
                 it.refresh()
