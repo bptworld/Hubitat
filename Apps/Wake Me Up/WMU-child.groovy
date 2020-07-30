@@ -189,6 +189,7 @@ def pageConfig() {
             }
 
             section(getFormat("header-green", "${getImage("Blank")}"+" Control Switches")) {
+                paragraph "Alarm Switch is required anytime speech and/or push are involved. This is how you will stop the alarm from either going off or from the repeating message from continuing. Just like a regular alarm clock, except this one can be controlled with voice assistants, dashboards, etc.!"
                 input "controlSwitch", "capability.switch", title: "Turn the Alarm on or off with this switch", required: true, multiple: false
                 input "snoozeSwitch", "capability.switch", title: "Snooze Switch - Get a few extra minutes when activating this switch", required: false
                 if(snoozeSwitch) {
