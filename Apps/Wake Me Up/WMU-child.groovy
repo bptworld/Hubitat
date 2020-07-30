@@ -33,7 +33,8 @@
  *
  *  Changes:
  *
- *  1.0.0 - 07/29/20 - Initial release.
+ *  1.0.1 - 07/30/20 - Fixed push 
+ *  1.0.0 - 07/29/20 - Initial release
  *
  */
 
@@ -42,7 +43,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -71,6 +72,7 @@ def pageConfig() {
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" BETA")) {
             paragraph "This is an early Beta preview version. Use with caution and please report your findings on the HE Forums. Remember to always include a log with your report. Screenshots work best for screenshots. Also, it's important to show me what led up to the error/problem, not just one line of the log! Thanks and good luck!"
+            paragraph "HE Link: <a href='https://community.hubitat.com/t/beta-wake-me-up/46148' target='_blank'>Click here to report issues</a>."
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
@@ -542,7 +544,7 @@ def pushHandler(){
 		if(logEnable) log.debug "In pushNow (${state.version})"
 		theMessage = "${app.label} - ${state.theMsg}"
 		if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
-    	sendPushMessage.deviceNotification(theMessage)
+    	pushMessage.deviceNotification(theMessage)
 		count = count + 1
 	}
 }
