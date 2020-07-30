@@ -262,6 +262,13 @@
    		"description": "Create a tile with multiple devices with control.",
          "tags": [ "Dashboards", "Monitoring", "Tools & Utilities" ]
    	},
+      {
+   		"name": "Wake Me Up",
+   		"category": "Control",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Wake%20Me%20Up/packageManifest.json",
+   		"description": "BETA - An alarm clock that knows your schedule, creating a better way to wake up. With slowly rising light levels, random announcements and more.",
+         "tags": [ "Lights & Switches", "Notifications", "Timers", "Tools & Utilities" ]
+   	},
    	{
    		"name": "Weather Dot Gov",
    		"category": "Integrations",
