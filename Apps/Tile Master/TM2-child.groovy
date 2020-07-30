@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.1 - 07/30/20 - Fixed a typo, added todays Sunset/Sunrise to wildcards
  *  2.4.0 - 05/21/20 - Fixed a typo
  *  2.3.9 - 04/27/20 - Cosmetic changes
  *  2.3.8 - 04/16/20 - Cosmetic changes
@@ -50,9 +51,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.0"
+	state.version = "2.4.1"
 }
 
 definition(
@@ -216,6 +220,8 @@ def pageConfig() {
                         wildcards += "- %lastAct% = Use in any text field. Will be replaced with the selected devices Last Activity date/time<br>"
                         wildcards += "- %currDate% = Display the current date<br>"
                         wildcards += "- %currTime% = Display the current time (static display, does not update unless the page is updated)<br>"
+                        wildcards += "- %sunset% = Display todays sunset time<br>"
+                        wildcards += "- %sunrise% = Display todays sunrise time<br>"
                         wildcards += "- %wLink% = Displays a clickable web link<br>"
                         
                         paragraph "${wildcards}"
@@ -723,10 +729,10 @@ def pageConfig() {
                                     if(useBitlyb) {
                                         paragraph "--------------------------------------------------------------------"
                                         paragraph "Please use the URLs provided with Bitly."
-                                        if(controlOnb) paragraph "On - http://${controlOnb}"
-                                        if(controlOffb) paragraph "Off - http://${controlOffb}"
-                                        if(controlLockb) paragraph "Lock - http://${controlLockb}"
-                                        if(controlUnlockb) paragraph "Unlock - http://${controlUnlockb}"
+                                        if(controlOnb) paragraph "On - ${controlOnb}"
+                                        if(controlOffb) paragraph "Off - ${controlOffb}"
+                                        if(controlLockb) paragraph "Lock - ${controlLockb}"
+                                        if(controlUnlockb) paragraph "Unlock - ${controlUnlockb}"
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
@@ -893,12 +899,24 @@ def pageConfig() {
                    wordsBEFa && wordsBEFa.contains("%currTime%") ||
                    wordsAFTa && wordsAFTa.contains("%currTime%") ||
                    wordsBEFb && wordsBEFb.contains("%currTime%") ||
-                   wordsAFTb && wordsAFTb.contains("%currTime%")) {
+                   wordsAFTb && wordsAFTb.contains("%currTime%") ||
+                   wordsBEF && wordsBEF.contains("%sunrise%") ||
+                   wordsAFT && wordsAFT.contains("%sunrise%") ||
+                   wordsBEFa && wordsBEFa.contains("%sunrise%") ||
+                   wordsAFTa && wordsAFTa.contains("%sunrise%") ||
+                   wordsBEFb && wordsBEFb.contains("%sunrise%") ||
+                   wordsAFTb && wordsAFTb.contains("%sunrise%") ||
+                   wordsBEF && wordsBEF.contains("%sunset%") ||
+                   wordsAFT && wordsAFT.contains("%sunset%") ||
+                   wordsBEFa && wordsBEFa.contains("%sunset%") ||
+                   wordsAFTa && wordsAFTa.contains("%sunset%") ||
+                   wordsBEFb && wordsBEFb.contains("%sunset%") ||
+                   wordsAFTb && wordsAFTb.contains("%sunset%")) {
                     input "cTimeFormat", "enum", title: "Select Formatting", required: true, multiple: false, submitOnChange: true, options: [
                         ["ct1":"h:mm:ss a (12 hour)"],
                         ["ct2":"HH:mm:ss (24 hour)"],
                         ["ct3":"h:mm a (12 hour)"],
-                        ["ct4":"HH:mm a (24 hour)"],
+                        ["ct4":"HH:mm (24 hour)"],
                     ], width:6
                 } else {
                     paragraph "No Time formatting required.", width:6
@@ -1765,13 +1783,45 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
             if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
             if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
             if(cTimeFormat == "ct3") ctFormat = "h:mm a"
-            if(cTimeFormat == "ct4") ctFormat = "HH:mm a"
+            if(cTimeFormat == "ct4") ctFormat = "HH:mm"
                  
             theDate = new Date()
             tDate = theDate.format("${ctFormat}")
              
             if(logEnable) log.debug "In makeTileLine - tDate: ${tDate}"
             if(tDate) {words = words.replace("%currTime%","${tDate}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    if(words.toLowerCase().contains("%sunset%")) {
+        try {
+            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+            if(cTimeFormat == "ct4") ctFormat = "HH:mm"
+           
+            def ssDate = location.sunset.format("${ctFormat}")
+            
+            if(logEnable) log.debug "In makeTileLine - ssDate: ${ssDate}"
+            if(ssDate) {words = words.replace("%sunset%","${ssDate}")}
+        } catch (e) {
+            log.error e
+        }
+    }
+    
+    if(words.toLowerCase().contains("%sunrise%")) {
+        try {
+            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+            if(cTimeFormat == "ct4") ctFormat = "HH:mm"
+
+            def srDate = location.sunrise.format("${ctFormat}")
+
+            if(logEnable) log.debug "In makeTileLine - srDate: ${srDate}"
+            if(srDate) {words = words.replace("%sunrise%","${srDate}")}
         } catch (e) {
             log.error e
         }
@@ -2121,25 +2171,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
