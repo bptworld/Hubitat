@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 07/29/20 - Added using contact sensors as an option
  *  1.0.0 - 06/20/20 - Initial release.
  *
  */
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Direction Alerter"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -59,7 +60,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Direction%20Alerter/DA-child.groovy",
 )
 
 preferences {
@@ -93,9 +94,20 @@ def pageConfig() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Options")) {
-            paragraph "If motion 1 triggers before motion 2 - Direction is considered <b>Right</b><br>If motion 2 triggers before motion 1 - Direction is considered <b>Left</b>"
-            input "motion1", "capability.motionSensor", title: "Motion Sensor 1", mulitple:false, required:true, submitOnChange:true
-            input "motion2", "capability.motionSensor", title: "Motion Sensor 2", mulitple:false, required:true, submitOnChange:true
+            paragraph "If device 1 triggers before device 2 - Direction is considered <b>Right</b><br>If device 2 triggers before device 1 - Direction is considered <b>Left</b>"
+            input "theType1", "bool", title: "Device 1: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
+            if(theType1) {
+                input "device1", "capability.contactSensor", title: "Contact Sensor 1", mulitple:false, required:true, submitOnChange:true
+            } else {
+                input "device1", "capability.motionSensor", title: "Motion Sensor 1", mulitple:false, required:true, submitOnChange:true
+            } 
+                
+            input "theType2", "bool", title: "Device 2: Use Motion Sensor (off) or Contact Sensor (on)", defaultValue:false, submitOnChange:true
+            if(theType2) {
+                input "device2", "capability.contactSensor", title: "Contact Sensor 2", mulitple:false, required:true, submitOnChange:true
+            } else {
+                input "device2", "capability.motionSensor", title: "Motion Sensor 2", mulitple:false, required:true, submitOnChange:true
+            }
             paragraph "Note: If the wrong direction is reported, simply reverse the two motion inputs."
             
             if(fmSpeaker) {
@@ -104,6 +116,24 @@ def pageConfig() {
                 href "speechOptions", title:"${getImage("optionsRed")} Select Notification options", description:"Click here for Options"
             }
         }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this child app", required: false, submitOnChange:true
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue:false, submitOnChange:true
@@ -191,27 +221,65 @@ private removeChildDevices(delete) {
 }
 
 def initialize() {
-    setDefaults()
-    subscribe(motion1, "motion.active", motionOneHandler)
-    subscribe(motion1, "motion.inactive", inactiveOneHandler)
-    subscribe(motion2, "motion.active", motionTwoHandler)
-    subscribe(motion2, "motion.inactive", inactiveTwoHandler)
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "Direction Alerter is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(theType1) {
+            subscribe(device1, "contact.open", activeOneHandler)
+            subscribe(device1, "contact.close", inactiveOneHandler)
+        } else {
+            subscribe(device1, "motion.active", activeOneHandler)
+            subscribe(device1, "motion.inactive", inactiveOneHandler)
+        }
+
+        if(theType2) {
+            subscribe(device2, "contact.open", activeTwoHandler)
+            subscribe(device2, "contact.close", inactiveTwoHandler)
+        } else {
+            subscribe(device2, "motion.active", activeTwoHandler)
+            subscribe(device2, "motion.inactive", inactiveTwoHandler)
+        }
+    }
 }
 
-def motionOneHandler(evt) {
-    if(logEnable) log.debug "In motionOneHandler (${state.version})"
-    if(atomicState.first != "two") { atomicState.first = "one" } 
-    atomicState.motionOneActive = true
-    if(logEnable) log.debug "In motion One Handler - first: ${atomicState.first}"
-    if(atomicState.first == "two") activeHandler()
+def checkEnableHandler() {
+    eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { eSwitch = true }
+        }
+    }
+    return eSwitch
 }
 
-def motionTwoHandler(evt) {
-    if(logEnable) log.debug "In motionTwoHandler (${state.version})"
-    if(atomicState.first != "one") { atomicState.first = "two" }
-    atomicState.motionTwoActive = true
-    if(logEnable) log.debug "In motion Two Handler - first: ${atomicState.first}"
-    if(atomicState.first == "one") activeHandler()
+def activeOneHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "Direction Alerter is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In activeOneHandler (${state.version})"
+        if(atomicState.first != "two") { atomicState.first = "one" } 
+        atomicState.motionOneActive = true
+        if(logEnable) log.debug "In activeOneHandler - first: ${atomicState.first}"
+        if(atomicState.first == "two") activeHandler()
+    }
+}
+
+def activeTwoHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "Direction Alerter is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In activeTwoHandler (${state.version})"
+        if(atomicState.first != "one") { atomicState.first = "two" }
+        atomicState.motionTwoActive = true
+        if(logEnable) log.debug "In activeTwoHandler - first: ${atomicState.first}"
+        if(atomicState.first == "one") activeHandler()
+    }
 }
 
 def activeHandler() {
@@ -360,7 +428,7 @@ private flashLights() {    // Modified from ST documents
 		numFlashes.times {
 			if(logEnable) log.debug "In flashLights - Switch on after $delay milliseconds"
 			switchesToFlash.eachWithIndex {s, i ->
-				if (initialActionOn[i]) {
+				if(initialActionOn[i]) {
                     pauseExecution(delay)
 					s.on()
 				}
@@ -371,7 +439,7 @@ private flashLights() {    // Modified from ST documents
 			}
 			if(logEnable) log.debug "In flashLights - Switch off after $delay milliseconds"
 			switchesToFlash.eachWithIndex {s, i ->
-				if (initialActionOn[i]) {
+				if(initialActionOn[i]) {
                     pauseExecution(delay)
 					s.off()
 				}
