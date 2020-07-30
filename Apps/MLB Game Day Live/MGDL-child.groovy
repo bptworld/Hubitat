@@ -275,7 +275,7 @@ def updated() {
 def initialize() {
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
         urlSetup()
@@ -391,7 +391,7 @@ def getTeamInfo() {  // Modified from code by Eric Luttmann
 def startGameDay() {  // Modified from code by Eric Luttmann
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startGameDay (${state.version})"
         if(checkIfGameDay()) {
@@ -444,7 +444,7 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
 def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkIfGameDayHandler (${state.version})"
         def isGameDay = false
@@ -532,7 +532,7 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
 def checkLiveGameStats() {
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStats (${state.version})"
         try {
@@ -558,7 +558,7 @@ def checkLiveGameStats() {
 def checkLiveGameStatsHandler(resp, data) {
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStatsHandler (${state.version})"
         if(resp.status == 200) {        
@@ -760,7 +760,7 @@ def checkLiveGameStatsHandler(resp, data) {
         } else {
             //log.warn "gameStatus: ${state.gameStatus}"
             if(latestPlay.contains("Delayed: Rain")) {
-                log.info "MLB Game Day Live - Game under rain delay, will check again in 10 minutes."
+                log.info "${app.label} - Game under rain delay, will check again in 10 minutes."
                 rainMessage = "Rain Delay"
                 messageHandler(rainMessage)
                 if(useSpeech) letsTalk()
@@ -883,7 +883,7 @@ def letsTalk() {
 def pregameMessageHandler() {
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(pregameMessage) {
             messageHandler(pregameMessage)
@@ -931,7 +931,7 @@ def pushNow() {
 def checkSchedule() {
     checkEnableHandler()
     if(pauseApp || eSwitch) {
-        log.info "MLB Game Day Live is Paused or Disabled"
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkSchedule"
         // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=07/20/2020&endDate=08/01/2020&teamId=111
