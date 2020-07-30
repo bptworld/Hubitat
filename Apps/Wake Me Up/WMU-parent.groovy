@@ -51,6 +51,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Wake%20Me%20Up/WMU-parent.groovy",
 )
 
 preferences {
