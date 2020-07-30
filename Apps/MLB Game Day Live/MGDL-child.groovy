@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 07/29/20 - Added light notification when score/final, other adjustments
  *  1.0.3 - 07/24/20 - Added code for Rain Delays, other adjustments
  *  1.0.2 - 07/23/20 - Fixed typo with inning 6 on scoreboard
  *  1.0.1 - 07/23/20 - Restructured liveScoreboard tile, added lastPlay tile, other adjustments
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -108,18 +109,20 @@ def pageConfig() {
         }
     
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains(" (Paused)")) app.updateLabel(app.label + " (Paused)")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
                 }
             } else {
                 if(app.label) {
-                    if(app.label.contains(" (Paused)")) app.updateLabel(app.label - " (Paused)")
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -127,6 +130,7 @@ def pageConfig() {
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
             label title: "Enter a name for this automation", required:false, submitOnChange:true
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
+            //input "testButton", "button", title: "Test Stuff"
 		}
 		display2()
 	}
@@ -212,6 +216,36 @@ def notificationOptions(){
             }
         }
         
+        section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
+            input "switchesOnMyTeam", "capability.switch", title: "Turn this switch ON when My Team Scores", required: false, submitOnChange: true
+            if(switchesOnMyTeam) {    
+                if(switchesOnMyTeam.hasCommand('setColor')) {                   
+                    input "colorMT", "enum", title: "Color", required: true, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                }
+            }
+            
+            input "switchesOnOtherTeam", "capability.switch", title: "Turn this switch ON when the Other Team Scores", required: false, submitOnChange: true
+            if(switchesOnOtherTeam) {
+                if(switchesOnOtherTeam.hasCommand('setColor')) {
+                    input "colorOT", "enum", title: "Color", required: true, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                }
+            }         
+            paragraph "<small>* Light will turn on for 10 seconds, then automatically reset.</small>"
+            
+            input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true
+            if(onFinal) paragraph "<small>* Light will stay on until manually turned off.</small>"
+        }
+                
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
@@ -239,8 +273,9 @@ def updated() {
 }
 
 def initialize() {
-    if(pauseApp) {
-        log.info "App - MLB Game Day Live is Paused"
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
     } else {
         setDefaults()
         urlSetup()
@@ -261,12 +296,12 @@ private removeChildDevices(delete) {
 }
 
 def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
-        edSwitch.each { it ->
+    eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = false }
+            if(eSwitch == "on") { eSwitch = true }
         }
     }
     return eSwitch
@@ -354,28 +389,33 @@ def getTeamInfo() {  // Modified from code by Eric Luttmann
 }
 
 def startGameDay() {  // Modified from code by Eric Luttmann
-    if(logEnable) log.debug "In startGameDay (${state.version})"
-    if(checkIfGameDay()) {
-        gameStart = Date.parse("yyyy-MM-dd'T'HH:mm:ssX", state.gameDate)
-
-        if(gameStart) {
-            def now = new Date()
-            def gameTime = new Date(gameStart.getTime())           
-            
-            // check for pregame message
-            if(pregameMessage) {
-                def minutesBefore = 15
-	            def pregameTime = new Date(gameStart.getTime() - ((minutesBefore * 60) * 1000))
-                if(logEnable) log.debug "In startGameDay - Schedule pregame message for ${app.label} at ${pregameTime.format('h:mm:ss a', location.timeZone)}"
-                runOnce(pregameTime, pregameMessageHandler, [overwrite: false])
-            }
-            state.todaysGameTime = "${gameTime.format('h:mm:ss a', location.timeZone)}"
-            runOnce(gameTime, checkLiveGameStats, [overwrite: false])
-        } else {
-            if(logEnable) log.debug "In startGameDay - Unable to retrieve game time from ${app.label}"
-        }
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In startGameDay - Today is not a gameday for the ${settings.mlbTeam}"
+        if(logEnable) log.debug "In startGameDay (${state.version})"
+        if(checkIfGameDay()) {
+            gameStart = Date.parse("yyyy-MM-dd'T'HH:mm:ssX", state.gameDate)
+
+            if(gameStart) {
+                def now = new Date()
+                def gameTime = new Date(gameStart.getTime())           
+
+                // check for pregame message
+                if(pregameMessage) {
+                    def minutesBefore = 15
+                    def pregameTime = new Date(gameStart.getTime() - ((minutesBefore * 60) * 1000))
+                    if(logEnable) log.debug "In startGameDay - Schedule pregame message for ${app.label} at ${pregameTime.format('h:mm:ss a', location.timeZone)}"
+                    runOnce(pregameTime, pregameMessageHandler, [overwrite: false])
+                }
+                state.todaysGameTime = "${gameTime.format('h:mm:ss a', location.timeZone)}"
+                runOnce(gameTime, checkLiveGameStats, [overwrite: false])
+            } else {
+                if(logEnable) log.debug "In startGameDay - Unable to retrieve game time from ${app.label}"
+            }
+        } else {
+            if(logEnable) log.debug "In startGameDay - Today is not a gameday for the ${settings.mlbTeam}"
+        }
     }
 }
 
@@ -402,88 +442,97 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
 }
 
 def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
-    if(logEnable) log.debug "In checkIfGameDayHandler (${state.version})"
-    def isGameDay = false
-
-    if(resp.status == 200) {
-        def result = resp.data
-        state.homeTeam = null
-        
-        for(date in result.dates) {
-            for(game in date.games) {
-                isGameDay = true
-                state.gameLink = game.link
-                state.gameDate = game.gameDate               
-                if(logEnable) log.info "A game is scheduled for ${gDate} - ${game.teams.away.team.name} vs ${game.teams.home.team.name}"
-
-                if(dataDevice) {        // NEW - only in BPTWorld's Hubitat version!                                  
-                    state.homeTeam = "${game.teams.home.team.name}"
-                    state.awayTeam = "${game.teams.away.team.name}"
-                    
-                    if(state.awayTeam == game.teams.away.team.name) state.myTeamIs = "away"
-                    if(state.homeTeam == game.teams.home.team.name) state.myTeamIs = "home"
-                    
-                    state.awayLogo = "www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.away.team.id}.svg"
-                    state.homeLogo = "www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.home.team.id}.svg"
-                    
-                    awayTeamWins = game.teams.away.leagueRecord.wins ?: "0"
-                    awayTeamLosses = game.teams.away.leagueRecord.losses ?: "0"
-                    homeTeamWins = game.teams.home.leagueRecord.wins ?: "0"
-                    homeTeamLosses = game.teams.home.leagueRecord.losses ?: "0"
-
-                    state.awayRecord = " (${awayTeamWins} - ${awayTeamLosses})"
-                    state.homeRecord = " (${homeTeamWins} - ${homeTeamLosses})"
-
-                    gameStats = "${state.awayTeam};${state.homeTeam};0;0;1"
-                    checkLiveGameStats()
-                    
-                    if(logEnable) log.debug "In checkIfGameDayHandler - Game Day! - My Team is ${state.myTeamIs}"
-                }
-                break
-            }
-        } 
-        if(isGameDay == false) {
-            if(logEnable) log.debug "In checkIfGameDayHandler - No Game Today"
-            lastUpdated = new Date().format('MM-dd-yyyy  h:mm:ss a', location.timeZone)
-            scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>" 
-            
-            scoreBoard += "<table width=100%>"
-            scoreBoard += "<tr style='text-align:center;font-weight:bold'>"
-            scoreBoard += "<td> - "
-            scoreBoard += "<td>No Game Today<br><small>${lastUpdated}</small>"
-            scoreBoard += "<td> - "
-            scoreBoard += "</table>"
-
-            scoreBoard += "<tr style='text-align:center;font-weight:bold'><td width=40%>Teams<td> 1 <td> 2 <td> 3 <td> 4 <td> 5 <td> 6 <td> 7 <td> 8 <td> 9 <td> R <td> H <td> E "
-
-            scoreBoard += "<tr style='text-align:center'><td><b> - </b> -<td> - <td>-<td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - "
-
-            scoreBoard += "<tr style='text-align:center'><td><b> - </b>  - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - "
-
-            scoreBoard += "</table>"
-            
-            theLastPlay = "<table width=100%>"
-            theLastPlay += "<tr><td style='text-align:center'><b>Inning:</b> - of the - | <b>At Bat:</b> - | <b>Balls:</b> - | <b>Strikes:</b> - | <b>Outs:</b> -"
-            theLastPlay += "<tr style='text-align:left'><td><b>Description:</b> No Game Today"
-            theLastPlay += "</table>"
-            
-            if(dataDevice) {
-                dataDevice.liveScoreboard(scoreBoard)
-                gameStats = "-;-;-;-;-"
-                dataDevice.gameStats(gameStats)
-                dataDevice.lastPlay(theLastPlay)
-                if(logEnable) log.debug "In checkLiveGameStatsHandler - Data sent"
-            }
-        }
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
     } else {
-        if(logEnable) log.error "${app.label}: resp.status = ${resp.status}"
+        if(logEnable) log.debug "In checkIfGameDayHandler (${state.version})"
+        def isGameDay = false
+
+        if(resp.status == 200) {
+            def result = resp.data
+            state.homeTeam = null
+
+            for(date in result.dates) {
+                for(game in date.games) {
+                    isGameDay = true
+                    state.gameLink = game.link
+                    state.gameDate = game.gameDate               
+                    if(logEnable) log.info "A game is scheduled for ${gDate} - ${game.teams.away.team.name} vs ${game.teams.home.team.name}"
+
+                    if(dataDevice) {        // NEW - only in BPTWorld's Hubitat version!                                  
+                        state.homeTeam = "${game.teams.home.team.name}"
+                        state.awayTeam = "${game.teams.away.team.name}"
+                        
+                        if(state.awayTeam.contains(state.Team.teamName)) {
+                            state.myTeamIs = "away"
+                        } else {
+                            state.myTeamIs = "home"
+                        }
+
+                        state.awayLogo = "www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.away.team.id}.svg"
+                        state.homeLogo = "www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.home.team.id}.svg"
+
+                        awayTeamWins = game.teams.away.leagueRecord.wins ?: "0"
+                        awayTeamLosses = game.teams.away.leagueRecord.losses ?: "0"
+                        homeTeamWins = game.teams.home.leagueRecord.wins ?: "0"
+                        homeTeamLosses = game.teams.home.leagueRecord.losses ?: "0"
+
+                        state.awayRecord = " (${awayTeamWins} - ${awayTeamLosses})"
+                        state.homeRecord = " (${homeTeamWins} - ${homeTeamLosses})"
+
+                        gameStats = "${state.awayTeam};${state.homeTeam};0;0;1"
+                        checkLiveGameStats()
+
+                        if(logEnable) log.debug "In checkIfGameDayHandler - Game Day! - My Team is ${state.myTeamIs}"
+                    }
+                    break
+                }
+            } 
+            if(isGameDay == false) {
+                if(logEnable) log.debug "In checkIfGameDayHandler - No Game Today"
+                lastUpdated = new Date().format('MM-dd-yyyy  h:mm:ss a', location.timeZone)
+                scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>" 
+
+                scoreBoard += "<table width=100%>"
+                scoreBoard += "<tr style='text-align:center;font-weight:bold'>"
+                scoreBoard += "<td> - "
+                scoreBoard += "<td>No Game Today<br><small>${lastUpdated}</small>"
+                scoreBoard += "<td> - "
+                scoreBoard += "</table>"
+
+                scoreBoard += "<tr style='text-align:center;font-weight:bold'><td width=40%>Teams<td> 1 <td> 2 <td> 3 <td> 4 <td> 5 <td> 6 <td> 7 <td> 8 <td> 9 <td> R <td> H <td> E "
+
+                scoreBoard += "<tr style='text-align:center'><td><b> - </b> -<td> - <td>-<td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - "
+
+                scoreBoard += "<tr style='text-align:center'><td><b> - </b>  - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - <td> - "
+
+                scoreBoard += "</table>"
+
+                theLastPlay = "<table width=100%>"
+                theLastPlay += "<tr><td style='text-align:center'><b>Inning:</b> - of the - | <b>At Bat:</b> - | <b>Balls:</b> - | <b>Strikes:</b> - | <b>Outs:</b> -"
+                theLastPlay += "<tr style='text-align:left'><td><b>Description:</b> No Game Today"
+                theLastPlay += "</table>"
+
+                if(dataDevice) {
+                    dataDevice.liveScoreboard(scoreBoard)
+                    gameStats = "-;-;-;-;-"
+                    dataDevice.gameStats(gameStats)
+                    dataDevice.lastPlay(theLastPlay)
+                    if(logEnable) log.debug "In checkLiveGameStatsHandler - Data sent"
+                }
+            }
+        } else {
+            if(logEnable) log.error "${app.label}: resp.status = ${resp.status}"
+        }
+        return isGameDay
     }
-    return isGameDay
 }
 
 def checkLiveGameStats() {
-    if(pauseApp) {
-        log.info "App - MLB Game Day Live is Paused"
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStats (${state.version})"
         try {
@@ -507,8 +556,9 @@ def checkLiveGameStats() {
 }
 
 def checkLiveGameStatsHandler(resp, data) {
-    if(pauseApp) {
-        log.info "App - MLB Game Day Live is Paused"
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStatsHandler (${state.version})"
         if(resp.status == 200) {        
@@ -671,25 +721,29 @@ def checkLiveGameStatsHandler(resp, data) {
             } else {              
             //    if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScores} VS ${tate.totalAwayRuns} - home: ${state.homeScores} VS ${state.totalHomeRuns}"
                 if(state.awayScores != state.totalAwayRuns) {
-                    if(logEnable) log.debug "In checkLiveGameStatsHandler - Away Team Scores!"
+                    log.info "In checkLiveGameStatsHandler - Away Team Scores!"
                     state.awayScores = state.totalAwayRuns
                     if(state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
+                        data = "myTeam"
                     } else {
                         messageHandler(otherTeamScore)
+                        data = "otherTeam"
                     }
-                    notificationHandler()
+                    notificationHandler(data)
                 }
 
                 if(state.homeScores != state.totalHomeRuns) {
-                    if(logEnable) log.debug "In checkLiveGameStatsHandler - Home Team Scores!"
+                    log.info "In checkLiveGameStatsHandler - Home Team Scores!"
                     state.homeScores = state.totalHomeRuns
                     if(state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
+                        data = "myTeam"
                     } else {
                         messageHandler(otherTeamScore)
+                        data = "otherTeam"
                     }
-                    notificationHandler()
+                    notificationHandler(data)
                 }
             }
         } else {
@@ -701,9 +755,10 @@ def checkLiveGameStatsHandler(resp, data) {
         } else if(state.gameStatus == "Final") {
             if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
             messageHandler(postgameMessage)
-            notificationHandler()
+            data = "nothing"
+            notificationHandler(data)
         } else {
-            log.warn "gameStatus: ${state.gameStatus}"
+            //log.warn "gameStatus: ${state.gameStatus}"
             if(latestPlay.contains("Delayed: Rain")) {
                 log.info "MLB Game Day Live - Game under rain delay, will check again in 10 minutes."
                 rainMessage = "Rain Delay"
@@ -719,22 +774,61 @@ def checkLiveGameStatsHandler(resp, data) {
     }
 }
 
-def notificationHandler() {
+def notificationHandler(data) {
+    def theTeam = "${data}"
+    
     if(useSpeech) letsTalk()
     if(pushMessage) pushNow()
     
+    doIt = false
+    if(state.gameStatus != "Final") {
+        doIt = true
+    } else if(state.gameStatus == "Final" && onFinal) {
+        doIt = true
+    }
+    
+    if((switchesOnMyTeam || switchesOnOtherTeam) && doIt) {
+        if(theTeam == "myTeam") {
+            if(colorMT) {
+                if(switchesOnMyTeam) {
+                    hue = switchesOnMyTeam.currentValue("hue")
+                    level = switchesOnMyTeam.currentValue("level")
+                    saturation = switchesOnMyTeam.currentValue("saturation")
+                    setLevelandColorHandler("myTeam")
+                    
+                    switchesOnMyTeam.setColor(lightValue)
+                }
+            } else {
+                if(switchesOnMyTeam) switchesOnMyTeam.on()
+            }
+        } else {
+            if(colorOT) {
+                if(switchesOnOtherTeam) {
+                    hue = switchesOnMyTeam.currentValue("hue")
+                    level = switchesOnMyTeam.currentValue("level")
+                    saturation = switchesOnMyTeam.currentValue("saturation")
+                    setLevelandColorHandler("otherTeam")
+                    
+                    switchesOnOtherTeam.setColor(lightValue)
+                }
+            } else {
+                if(switchesOnOtherTeam) switchesOnOtherTeam.on()
+            }
+        }
+        
+        if(state.gameStatus != "Final") {
+            theData = "${hue};${level};${saturation}"
+            runIn(10, resetScoringSwitches, [data: theData])
+        }
+    }
+    
     if(useTheFlasher && state.gameStatus != "Final") {
-        if(state.myTeamIs == "home") {
+        if(theTeam == "myTeam") {
             flashData = "Preset::${flashMyTeamScorePreset}"
-        } else if(useTheFlasher && state.myTeamIs == "away") {
+        } else if(useTheFlasher && theTeam == "otherTeam") {
             flashData = "Preset::${flashOtherTeamScorePreset}"
         }
     
-        if(state.myTeamIs == "away") {
-            flashData = "Preset::${flashMyTeamScorePreset}"
-        } else if(useTheFlasher && state.myTeamIs == "away" && state.gameStatus != "Final") {
-            flashData = "Preset::${flashOtherTeamScorePreset}"
-        }
         theFlasherDevice.sendPreset(flashData)
     }
     
@@ -758,6 +852,26 @@ def notificationHandler() {
     }
 }
 
+def resetScoringSwitches(data) {
+    if(data) {
+        def (theHue, theSaturation, theLevel) = data.split(";")
+        if(theHue == null) theHue = 52
+        if(theSaturation == null) theSaturation = 19
+        if(theLevel == null) theLevel = 100
+        
+        state.lightValue = [switch: "off", hue: theHue, saturation: theSaturation, level: theLevel]
+    }
+    
+    if(switchesOnMyTeam) {
+        if(switchesOnMyTeam.hasCommand('setColor')) switchesOnMyTeam.setColor(state.lightValue)
+        switchesOnMyTeam.off()
+    }
+    if(switchesOnOtherTeam) {
+        if(switchesOnOtherTeam.hasCommand('setColor')) switchesOnOtherTeam.setColor(state.lightValue)
+        switchesOnOtherTeam.off()
+    }
+}
+
 def letsTalk() {
     if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
     if(useSpeech && fmSpeaker) {
@@ -767,10 +881,15 @@ def letsTalk() {
 }
 
 def pregameMessageHandler() {
-    if(pregameMessage) {
-        messageHandler(pregameMessage)
-        if(useSpeech) letsTalk()
-        if(pushMessage) pushNow()
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
+    } else {
+        if(pregameMessage) {
+            messageHandler(pregameMessage)
+            if(useSpeech) letsTalk()
+            if(pushMessage) pushNow()
+        }
     }
 }
 
@@ -810,16 +929,21 @@ def pushNow() {
 }
 
 def checkSchedule() {
-    if(logEnable) log.debug "In checkSchedule"
-    // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=07/20/2020&endDate=08/01/2020&teamId=111
-    
-    def now = new Date().format("MM/dd/yyyy")
-    def days7 = new Date().plus(10).format("MM/dd/yyyy")
+    checkEnableHandler()
+    if(pauseApp || eSwitch) {
+        log.info "MLB Game Day Live is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In checkSchedule"
+        // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=07/20/2020&endDate=08/01/2020&teamId=111
 
-    if(logEnable) log.debug "In checkSchedule - Checking for data between - now: ${now} - days7: ${days7}"
-    
-    def params = [uri: "http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=${now}&endDate=${days7}&teamId=${state.Team.id}"]
-    asynchttpGet("getScheduleHandler", params)
+        def now = new Date().format("MM/dd/yyyy")
+        def days7 = new Date().plus(10).format("MM/dd/yyyy")
+
+        if(logEnable) log.debug "In checkSchedule - Checking for data between - now: ${now} - days7: ${days7}"
+
+        def params = [uri: "http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=${now}&endDate=${days7}&teamId=${state.Team.id}"]
+        asynchttpGet("getScheduleHandler", params)
+    }
 }
 
 def getScheduleHandler(resp, data) {
@@ -897,6 +1021,63 @@ def makeScheduleListHandler() {
     }
 }
 
+def setLevelandColorHandler(data) {
+    if(logEnable) log.debug "In setLevelandColorHandler (${state.version})"
+    log.trace "In setLevelandColorHandler - data: ${data}"
+    if(data == "myTeam") fColor = colorMT
+    if(data == "otherTeam") fColor = colorOT
+    
+    def hueColor = 0
+    def saturation = 100
+	int onLevel = 100
+    
+    switch(fColor) {
+            case "White":
+            hueColor = 52
+            saturation = 19
+            break;
+        case "Daylight":
+            hueColor = 53
+            saturation = 91
+            break;
+        case "Soft White":
+            hueColor = 23
+            saturation = 56
+            break;
+        case "Warm White":
+            hueColor = 20
+            saturation = 80
+            break;
+        case "Blue":
+            hueColor = 70
+            break;
+        case "Green":
+            hueColor = 39
+            break;
+        case "Yellow":
+            hueColor = 25
+            break;
+        case "Orange":
+            hueColor = 10
+            break;
+        case "Purple":
+            hueColor = 75
+            break;
+        case "Pink":
+            hueColor = 83
+            break;
+        case "Red":
+            hueColor = 100
+            break;
+    }
+    
+    log.debug "In setLevelandColorHandler - fColor: ${fColor} | hueColor: ${hueColor} | saturation: ${saturation} | level: ${onLevel}"
+    
+	state.lightValue = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    log.debug "In setLevelandColorHandler - lightValue: $state.lightValue"
+    state.lightValue
+}
+
 def createDataChildDevice() {    
     if(logEnable) log.debug "In createDataChildDevice (${state.version})"
     statusMessageD = ""
@@ -913,10 +1094,34 @@ def createDataChildDevice() {
     return statusMessageD
 }
 
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
+    
+    if(state.whichButton == "testButton"){
+        log.debug "In testButtonHandler - Testing Stuff"
+        data = "otherTeam"
+        hue = switchesOnMyTeam.currentValue("hue")
+        level = switchesOnMyTeam.currentValue("level")
+        saturation = switchesOnMyTeam.currentValue("saturation")
+        setLevelandColorHandler("otherTeam")
+
+        log.debug "In testButtonHandler - switchesOnOtherTeam: ${switchesOnOtherTeam}"
+        log.debug "In testButtonHandler - lightValue: ${state.lightValue}"
+        switchesOnOtherTeam.setColor(state.lightValue)
+    
+        theData = "${hue};${level};${saturation}"
+        runIn(10, resetScoringSwitches, [data: theData])
+    
+    
+    }
+}
+
 // ********** Normal Stuff **********
 
 def setDefaults() {
     state.homeTeam = null
+    state.awayTeam = null
 }
 
 def getImage(type) {					// Modified from @Stephack Code
