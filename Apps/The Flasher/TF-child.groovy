@@ -36,18 +36,11 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 07/31/20 - Adding level to setColor, other adjustments
  *  1.1.2 - 06/20/20 - Fixed Preset 1
  *  1.1.1 - 06/19/20 - Presets, can now be controlled by outside apps
  *  1.1.0 - 04/27/20 - Cosmetic changes
- *  1.0.9 - 04/27/20 - Added indefinite flashing with Control Switch
- *  1.0.8 - 04/26/20 - Small change to flash handler
- *  1.0.7 - 04/26/20 - Changes to flash handler
- *  1.0.6 - 04/25/20 - Cosmetic changes to flash options, set min and max to flash rate
- *  1.0.5 - 04/25/20 - Added moisture trigger, days restriction
- *  1.0.4 - 01/12/20 - Add Mode restriction
- *  1.0.3 - 01/10/20 - Fixed setup error
- *  1.0.2 - 01/09/20 - Added color to Flash options
- *  1.0.1 - 01/08/20 - Added button as a trigger
+ *  ---
  *  1.0.0 - 01/01/20 - Initial release
  *
  */
@@ -57,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -114,6 +107,7 @@ def pageConfig() {
                     input "delay1", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch1) {
                         if(theSwitch1.hasCommand('setColor')) {
+                            input "level1", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                             input "fColor1", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -144,6 +138,7 @@ def pageConfig() {
                     input "delay2", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch2) {
                         if(theSwitch2.hasCommand('setColor')) {
+                            input "level2", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                             input "fColor2", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -174,6 +169,7 @@ def pageConfig() {
                     input "delay3", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch3) {
                         if(theSwitch3.hasCommand('setColor')) {
+                            input "level3", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                             input "fColor3", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -204,6 +200,7 @@ def pageConfig() {
                     input "delay4", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch4) {
                         if(theSwitch4.hasCommand('setColor')) {
+                            input "level4", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                             input "fColor4", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -234,6 +231,7 @@ def pageConfig() {
                     input "delay5", "number", title: "Milliseconds for lights to be on/off<br>(1000=1 sec)", range:'1000..5000', required: false, submitOnChange:true, width: 6
                     if(theSwitch5) {
                         if(theSwitch5.hasCommand('setColor')) {
+                            input "level5", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                             input "fColor5", "enum", title: "Color", required: false, multiple:false, options: [
                                 ["Soft White":"Soft White - Default"],
                                 ["White":"White - Concentrate"],
@@ -299,6 +297,7 @@ def pageConfig() {
                 input "delay", "number", title: "Milliseconds for lights to be on/off<br>(default: 1500 - 1000=1 sec)", range:'1000..5000', required: false, width: 6
                 if(theSwitch) {
                     if(theSwitch.hasCommand('setColor')) {
+                        input "level", "number", title: "Set Level to X before flash (1..99)", range: '1..99', defaultValue: 99, submitOnchange:true
                         input "fColor", "enum", title: "Color", required: false, multiple:false, options: [
                             ["Soft White":"Soft White - Default"],
                             ["White":"White - Concentrate"],
@@ -383,37 +382,46 @@ def runPresetHandler(evt) {
         numFlashes = numFlashes1
         delay = delay1
         fColor = fColor1
+        level = level1
         state.presetMatch = true
     } else if(thePreset == "2" && theSwitch2) {
         theSwitch = theSwitch2
         numFlashes = numFlashes2
         delay = delay2
         fColor = fColor2
+        level = level2
         state.presetMatch = true
     } else if(thePreset == "3" && theSwitch3) {
         theSwitch = theSwitch3
         numFlashes = numFlashes3
         delay = delay3
         fColor = fColor3
+        level = level3
         state.presetMatch = true
     } else if(thePreset == "4" && theSwitch4) {
         theSwitch = theSwitch4
         numFlashes = numFlashes4
         delay = delay4
         fColor = fColor4
+        level = level4
         state.presetMatch = true
     } else if(thePreset == "5" && theSwitch5) {
         theSwitch = theSwitch5
         numFlashes = numFlashes5
         delay = delay5
         fColor = fColor5
+        level = level5
         state.presetMatch = true
     } else {
         if(logEnable) log.debug "In runPresetHandler - Preset NOT found (${thePreset})"
         state.presetMatch = false
     }
     
-    if(state.presetMatch) flashLights()
+    data = "${theSwitch};${numFlashes};${delay};${fColor};${level}"
+    if(state.presetMatch) {
+        if(logEnable) log.debug "In runPresetHandler - Preset found (${thePreset}) - ${data}"
+        flashLights(data)
+    }
 }
 
 def accelerationHandler(evt) {
@@ -496,7 +504,7 @@ def checkMode() {
     if(logEnable) log.debug "In checkMode - modeMatch: ${state.modeMatch}"
 }
 
-def flashLights() {
+def flashLights(data) {
     if(logEnable) log.debug "******************* Start - The Flasher *******************"
     if(logEnable) log.debug "In flashLights (${state.version})"
     checkTime()
@@ -506,6 +514,14 @@ def flashLights() {
     if(state.timeBetween) {
         if(state.modeMatch) {
             if(state.daysMatch) {
+                if(data) { def (theSwitch,numFlashes,delay,fColor,level) = data.split(";") }
+                if(theSwitch == null) theSwitch = app.theSwitch
+                if(numFlashes == null) numFlashes = app.numFlashes
+                if(delay == null) delay = app.delay
+                if(fColor == null) fColor = app.fColor
+                if(level == null) level = app.level
+                if(logEnable) log.debug "In flashLights - theSwitch: ${theSwitch} | numFlashes: ${numFlashes} | delay: ${delay} | fColor: ${fColor} | level: ${level}"
+                
                 def doFlash = true
                 def delay = delay ?: 1500
                 def numFlashes = numFlashes ?: 2
@@ -536,7 +552,10 @@ def flashLights() {
                             state.oldValue = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
 
                             if(logEnable) log.debug "In flashLights - setColor - saving oldValue: $state.oldValue"
-                            setLevelandColorHandler()
+                            
+                            theData = "${fColor};${level}"
+                            if(logEnable) log.debug "In flashLights - Sending to setLevelandColorHandler - theData: $theData"
+                            setLevelandColorHandler(theData)
                         }
                     }
 
@@ -614,12 +633,23 @@ def flashLights() {
     if(logEnable) log.debug "******************* Finished - The Flasher *******************"
 }
 
-def setLevelandColorHandler() {
-    if(logEnable) log.debug "In setLevelandColorHandler (${state.version}) - fColor: ${fColor}"
-    def hueColor = 0
+def setLevelandColorHandler(data) {
+    if(logEnable) log.debug "In setLevelandColorHandler (${state.version})"
+    if(data) { 
+        if(logEnable) log.debug "In setLevelandColorHandler - Recieved Data: ${data}"
+        def (theColor, theLevel) = data.split(";") 
+        state.theColor = theColor
+        state.theLevel = theLevel
+        if(logEnable) log.warn "In setLevelandColorHandler - theColor: ${state.theColor} | theLevel: ${state.theLevel}"
+    }
+    
+    if(state.theColor == null) state.theColor = "White"
+    if(state.theLevel == null) state.theLevel = 99
+    
+    def hueColor = 52
     def saturation = 100
-	int onLevel = 99
-    switch(fColor) {
+    
+    switch(state.theColor) {
             case "White":
             hueColor = 52
             saturation = 19
@@ -658,7 +688,7 @@ def setLevelandColorHandler() {
             hueColor = 100
             break;
     }
-    state.value = [hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    state.value = [hue: hueColor, saturation: saturation, level: state.theLevel as Integer ?: 100]
     if(logEnable) log.debug "In setLevelandColorHandler - value: ${state.value}"
 }
 
