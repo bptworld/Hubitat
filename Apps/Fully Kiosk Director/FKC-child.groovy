@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- *  2.0.2 - 07/31/20 - Adjustments to Time restriction
+ *  2.0.2 - 07/31/20 - Adjustments to Time restriction, added mode to triggers
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  1.0.3 - 06/08/19 - Added Time Delay to triggers
@@ -81,8 +81,10 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Triggers")) {
 			input "myContact", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
+            input "myMode", "mode", title: "Select the mode to activate the event", multiple: true
 			input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the event", required: false, multiple: true
 			input "mySwitch", "capability.switch", title: "Select the switch to activate the event", required: false, multiple: true
+            input "myLux", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
 			input "timeToRun", "time", title: "Select time to activate the event", required: false
 			input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: false, range: '1..60'
 		}
@@ -169,6 +171,7 @@ def updated() {
 def initialize() {
     setDefaults()
 	if(myContact) subscribe(myContact, "contact", contactSensorHandler)
+    if(myMode) subscribe(location, "mode", modeHandler)
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
 	if(timeToRun) schedule(timeToRun, timeHandler)
@@ -188,6 +191,19 @@ def contactSensorHandler(evt) {
 	}
 }
 
+def modeHandler(evt) {
+    if(logEnable) log.debug "In modeHandler..."
+	state.modeStatus = evt.value
+	if(myMode.contains(location.mode)) {
+        if(logEnable) log.debug "In modeHandler - mode is active"
+		beginHandler()
+		if(triggerORTime) runIn(pTime,endHandler)
+    } else {
+		if(logEnable) log.debug "In modeHandler - mode is Not active"
+		if(!triggerORTime) endHandler()
+	}
+}                                               
+                         
 def motionSensorHandler(evt) {
 	if(logEnable) log.debug "In motionSensorHandler..."
 	state.motionStatus = evt.value
