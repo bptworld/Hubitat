@@ -158,6 +158,13 @@
          "tags": [ "Dashboards", "Monitoring", "Notifications" ]
    	},
       {
+   		"name": "NHL Game Day Live",
+   		"category": "Integrations",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/NHL%20Game%20Day%20Live/packageManifest.json",
+   		"description": "Follow your favorite NHL team's Game Day Live, put a Scoreboard right on your Dashboard!",
+         "tags": [ "Dashboards", "Monitoring", "Notifications" ]
+   	},
+      {
    		"name": "One at a Time",
    		"category": "Control",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/One%20at%20a%20Time/packageManifest.json",
