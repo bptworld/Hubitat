@@ -37,8 +37,8 @@
  *
  *  Changes:
  *
- *  1.0.1 - 07/05/20 - Adjustments
- *  1.0.0 - 06/17/20 - Initial release
+ *  V1.0.1 - 07/31/20 - Adjustments
+ *  V1.0.0 - 06/17/20 - Initial release
  */
 
 metadata {
