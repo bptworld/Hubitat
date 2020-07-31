@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- *  2.0.2 - 07/31/20 - Adjustments to Time restriction, added mode to triggers
+ *  2.0.2 - 07/31/20 - Adjustments to Time restriction, added mode and lux to triggers
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  1.0.3 - 06/08/19 - Added Time Delay to triggers
@@ -81,10 +81,17 @@ def pageConfig() {
 		}
 		section(getFormat("header-green", "${getImage("Blank")}"+" Triggers")) {
 			input "myContact", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
-            input "myMode", "mode", title: "Select the mode to activate the event", multiple: true
 			input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the event", required: false, multiple: true
 			input "mySwitch", "capability.switch", title: "Select the switch to activate the event", required: false, multiple: true
-            //input "myLux", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
+            input "myMode", "mode", title: "Select the mode to activate the event", multiple: true
+            input "luxRestriction", "bool", title: "Use Lux Restriction", description: "lux", defaultValue:false, submitOnChange:true   
+            if(luxRestriction) {
+                input "lightSensor", "capability.illuminanceMeasurement", title: "Considered Dark only when illuminance on this light sensor..."
+                input "lightLevel", "number", title: "...is equal to or below this illuminance level"
+            } else {
+                app.removeSetting("lightSensor")
+                app.removeSetting("lightLevel")    
+            }
 			input "timeToRun", "time", title: "Select time to activate the event", required: false
 			input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: false, range: '1..60'
 		}
@@ -171,6 +178,7 @@ def updated() {
 def initialize() {
     setDefaults()
 	if(myContact) subscribe(myContact, "contact", contactSensorHandler)
+    if(lightSensor) subscribe(lightSensor, "illuminance", luxLevelHandler)
     if(myMode) subscribe(location, "mode", modeHandler)
 	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
 	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
@@ -229,7 +237,25 @@ def switchHandler(evt) {
 		if(!triggerORTime) endHandler()
 	}
 }
-						  
+			
+def luxLevelHandler(evt) {
+    if(logEnable) log.debug "In luxLevelHandler (${state.version})"
+    if(lightSensor != null) {
+		if(lightLevel == null) {lightLevel = 0}
+        state.curLev = lightSensor.currentValue("illuminance").toInteger()
+        if (state.curLev >= lightLevel.toInteger()) {
+            if(logEnable) log.debug "In luxLevelHandler...Current Light Level: ${state.curLev} is greater than lightValue: ${lightLevel} - isItDark: false"
+			state.isItDark = false
+            if(!triggerORTime) endHandler()
+        } else {
+            if(logEnable) log.debug "In luxLevelHandler...Current Light Level: ${state.curLev} is less than lightValue: ${lightLevel} - isItDark: true"
+			state.isItDark = true
+            beginHandler()
+		    if(triggerORTime) runIn(pTime,endHandler)
+        }
+    }
+}
+
 def timeHandler() {
 	if(logEnable) log.debug "In timeHandler..."
 	beginHandler()
