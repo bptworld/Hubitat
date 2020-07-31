@@ -84,7 +84,7 @@ def pageConfig() {
             input "myMode", "mode", title: "Select the mode to activate the event", multiple: true
 			input "myMotion", "capability.motionSensor", title: "Select the motion sensor to activate the event", required: false, multiple: true
 			input "mySwitch", "capability.switch", title: "Select the switch to activate the event", required: false, multiple: true
-            input "myLux", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
+            //input "myLux", "capability.contactSensor", title: "Select the contact sensor to activate the event", required: false, multiple: true
 			input "timeToRun", "time", title: "Select time to activate the event", required: false
 			input "timeDelay", "number", title: "Every X Minutes (1 to 60)", required: false, range: '1..60'
 		}
