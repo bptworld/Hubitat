@@ -36,7 +36,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *
+ * 
+ *  V1.0.1 - 08/02/20 - Minor adjustments
  *  V1.0.0 - 07/30/20 - Initial release.
  */
 
@@ -82,12 +83,11 @@ metadata {
 	
 def gameData(data) {
     if(logEnable) log.debug "In gameStats - Received new data!"
-    // ${gDate};${game.teams.away.team.name};${game.teams.home.team.name};${hVenue}
+    // ${gDate};${game.teams.away.team.name};${game.teams.home.team.name}
     theData = data.split(";")
     sendEvent(name: "gameDate", value: theData[0], isStateChange: true)
     sendEvent(name: "homeTeam", value: theData[1], isStateChange: true)
     sendEvent(name: "awayTeam", value: theData[2], isStateChange: true)
-    sendEvent(name: "venue", value: theData[4], isStateChange: true)
 }
              
 def liveScoreboard(data) {
