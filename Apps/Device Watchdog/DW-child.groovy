@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.3 - 08/02/20 - Fixed typo with locks
  *  2.3.2 - 07/29/20 - Fixed typo with Battery
  *  2.3.1 - 07/29/20 - Disabled devices will no longer show in reports, other adjustments
  *  2.3.0 - 07/26/20 - Add push notifications to special tracking
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.2"
+	state.version = "2.3.3"
 }
 
 definition(
