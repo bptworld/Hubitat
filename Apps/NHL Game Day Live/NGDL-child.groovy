@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 08/02/20 - Added Score Testing buttons, other adjustments
  *  1.0.0 - 07/30/20 - Initial release.
  *
  */
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -98,9 +99,9 @@ def pageConfig() {
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             if(useSpeech || pushMessage) {
-                href "notificationOptions", title:"${getImage("checkMarkGreen")} Run Notifications", description:"Click here for options"
+                href "notificationOptions", title:"${getImage("checkMarkGreen")} Notifications", description:"Click here for options"
             } else {
-                href "notificationOptions", title:"Run Notifications", description:"Click here for options"
+                href "notificationOptions", title:"Score Notifications", description:"Click here for options"
             }
         }
     
@@ -125,8 +126,11 @@ def pageConfig() {
             input "serviceStartTime", "time", title: "Check for Games Daily at", required: false
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
             label title: "Enter a name for this automation", required:false, submitOnChange:true
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
-            //input "testButton", "button", title: "Test Stuff"
+            input "logEnable","bool", title: "Enable Debug Logging and Test Buttons", description: "Debugging", defaultValue: false, submitOnChange: true
+            if(logEnable) {
+                input "testOtherScore", "button", title: "Test otherTeam Score", width:4
+                input "testMyTeamScore", "button", title: "Test myTeam Score", width:4
+            }
 		}
 		display2()
 	}
@@ -600,12 +604,13 @@ def checkLiveGameStatsHandler(resp, data) {
 
                 lastPlay = "Game starts at ${state.todaysGameTime}"
             } else {
+                cPeriod = liveData.linescore.currentPeriod
                 currentPeriod = liveData.linescore.currentPeriodOrdinal ?: "-"
                 timeRemaining = liveData.linescore.currentPeriodTimeRemaining ?: "-"
-
+                
                 statsHomeGoals1 = liveData.linescore.periods[0].home.goals ?: "0"
-                statsHomeGoals2 = liveData.linescore.periods[1].home.goals ?: "0"
-                statsHomeGoals3 = liveData.linescore.periods[2].home.goals ?: "0"
+                if(cPeriod >=2) statsHomeGoals2 = liveData.linescore.periods[1].home.goals ?: "0"
+                if(cPeriod >=3) statsHomeGoals3 = liveData.linescore.periods[2].home.goals ?: "0"
                 if(liveData.linescore.periods[3]) {
                     statsHomeGoals4 = liveData.linescore.periods[3].home.goals ?: "-"
                 } else {
@@ -613,8 +618,8 @@ def checkLiveGameStatsHandler(resp, data) {
                 }
 
                 statsAwayGoals1 = liveData.linescore.periods[0].away.goals ?: "0"
-                statsAwayGoals2 = liveData.linescore.periods[1].away.goals ?: "0"
-                statsAwayGoals3 = liveData.linescore.periods[2].away.goals ?: "0"
+                if(cPeriod >=2) statsAwayGoals2 = liveData.linescore.periods[1].away.goals ?: "0"
+                if(cPeriod >=3) statsAwayGoals3 = liveData.linescore.periods[2].away.goals ?: "0"
                 if(liveData.linescore.periods[3]) {
                     statsAwayGoals4 = liveData.linescore.periods[3].away.goals ?: "-"
                 } else {
@@ -729,7 +734,7 @@ def notificationHandler(data) {
                     saturation = switchesOnMyTeam.currentValue("saturation")
                     setLevelandColorHandler("myTeam")
                     
-                    switchesOnMyTeam.setColor(lightValue)
+                    switchesOnMyTeam.setColor(state.lightValue)
                 }
             } else {
                 if(switchesOnMyTeam) switchesOnMyTeam.on()
@@ -742,7 +747,7 @@ def notificationHandler(data) {
                     saturation = switchesOnMyTeam.currentValue("saturation")
                     setLevelandColorHandler("otherTeam")
                     
-                    switchesOnOtherTeam.setColor(lightValue)
+                    switchesOnOtherTeam.setColor(state.lightValue)
                 }
             } else {
                 if(switchesOnOtherTeam) switchesOnOtherTeam.on()
@@ -1009,7 +1014,6 @@ def setLevelandColorHandler(data) {
     
 	state.lightValue = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
     log.debug "In setLevelandColorHandler - lightValue: $state.lightValue"
-    state.lightValue
 }
 
 def createDataChildDevice() {    
@@ -1032,25 +1036,66 @@ def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     
-    if(state.whichButton == "testButton"){
-        log.debug "In testButtonHandler - Testing Stuff"
+    if(state.whichButton == "testOtherScore"){
+        log.debug "In appButtonHandler - testOtherScore - other Team"
         data = "otherTeam"
-        //hue = switchesOnMyTeam.currentValue("hue")
-        //level = switchesOnMyTeam.currentValue("level")
-        //saturation = switchesOnMyTeam.currentValue("saturation")
-        //setLevelandColorHandler("otherTeam")
+        if(useSpeech) {
+            messageHandler(otherTeamScore)
+            letsTalk()
+        }
         
-        //log.debug "In testButtonHandler - switchesOnOtherTeam: ${switchesOnOtherTeam}"
-        //log.debug "In testButtonHandler - lightValue: ${state.lightValue}"
-        //switchesOnOtherTeam.setColor(state.lightValue)
+        if(colorOT) {
+            if(switchesOnOtherTeam) {
+                hue = switchesOnOtherTeam.currentValue("hue")
+                level = switchesOnOtherTeam.currentValue("level")
+                saturation = switchesOnOtherTeam.currentValue("saturation")
+                setLevelandColorHandler("otherTeam")
+
+                log.debug "In testOtherScore - switchesOnOtherTeam: ${switchesOnOtherTeam}"
+                log.debug "In testOtherScore - lightValue: ${state.lightValue}"
+                switchesOnOtherTeam.setColor(state.lightValue)
+            }
+        } else {
+            if(switchesOnOtherTeam) switchesOnOtherTeam.on()
+        }
     
-        //theData = "${hue};${level};${saturation}"
-        //runIn(10, resetScoringSwitches, [data: theData])
+        theData = "${hue};${level};${saturation}"
+        runIn(10, resetScoringSwitches, [data: theData])
+
+        if(useTheFlasher) {
+            flashData = "Preset::${flashOtherTeamScorePreset}"
+            theFlasherDevice.sendPreset(flashData)
+        }
+    } else if(state.whichButton == "testMyTeamScore"){
+        log.debug "In appButtonHandler - testMyTeamGoal - My Team"
+        data = "myTeam"
+        if(useSpeech) {
+            messageHandler(myTeamScore)
+            letsTalk()
+        }
+        
+        if(colorOT) {
+            if(switchesOnMyTeam) {
+                hue = switchesOnMyTeam.currentValue("hue")
+                level = switchesOnMyTeam.currentValue("level")
+                saturation = switchesOnMyTeam.currentValue("saturation")
+                setLevelandColorHandler("myTeam")
+
+                log.debug "In testMyTeamScore - switchesOnMyTeam: ${switchesOnMyTeam}"
+                log.debug "In testMyTeamScore - lightValue: ${state.lightValue}"
+                switchesOnMyTeam.setColor(state.lightValue)
+            }
+        } else {
+            if(switchesOnMyTeam) switchesOnMyTeam.on()
+        }
     
-        flashData = "Preset::${flashMyTeamScorePreset}"
-        //flashData = "Preset::${flashOtherTeamScorePreset}"
-        theFlasherDevice.sendPreset(flashData)
-    
+        theData = "${hue};${level};${saturation}"
+        runIn(10, resetScoringSwitches, [data: theData])
+
+        if(useTheFlasher) {
+            flashData = "Preset::${flashMyTeamScorePreset}"
+            theFlasherDevice.sendPreset(flashData)
+        }
     }
 }
 
