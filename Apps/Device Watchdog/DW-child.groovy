@@ -1063,7 +1063,7 @@ def myStatusHandler() {
                     deviceStatus = it.currentValue("lock")
                     if(colorCodeStatus) {
                         if(deviceStatus == "locked") { dStatus = "<div style='color:${parent.colorLocked}'>${deviceStatus}</div>" }
-                        if(deviceStatus == "unlocked") { dStatus = "<div style='color:red'>${${parent.colorUnlocked}}</div>" }
+                        if(deviceStatus == "unlocked") { dStatus = "<div style='color:red'>${parent.colorUnlocked}</div>" }
                     } else {
                         dStatus = deviceStatus
                     }
