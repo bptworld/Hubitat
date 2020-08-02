@@ -99,9 +99,9 @@ def pageConfig() {
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             if(useSpeech || pushMessage) {
-                href "notificationOptions", title:"${getImage("checkMarkGreen")} Notifications", description:"Click here for options"
+                href "notificationOptions", title:"${getImage("checkMarkGreen")} Run Notifications", description:"Click here for options"
             } else {
-                href "notificationOptions", title:"Score Notifications", description:"Click here for options"
+                href "notificationOptions", title:"Run Notifications", description:"Click here for options"
             }
         }
     
@@ -126,6 +126,7 @@ def pageConfig() {
             input "serviceStartTime", "time", title: "Check for Games Daily at", required: false
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
             label title: "Enter a name for this automation", required:false, submitOnChange:true
+            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
             input "logEnable","bool", title: "Enable Debug Logging and Test Buttons", description: "Debugging", defaultValue: false, submitOnChange: true
             if(logEnable) {
                 input "testOtherScore", "button", title: "Test otherTeam Score", width:4
@@ -607,7 +608,7 @@ def checkLiveGameStatsHandler(resp, data) {
                 cPeriod = liveData.linescore.currentPeriod
                 currentPeriod = liveData.linescore.currentPeriodOrdinal ?: "-"
                 timeRemaining = liveData.linescore.currentPeriodTimeRemaining ?: "-"
-                
+
                 statsHomeGoals1 = liveData.linescore.periods[0].home.goals ?: "0"
                 if(cPeriod >=2) statsHomeGoals2 = liveData.linescore.periods[1].home.goals ?: "0"
                 if(cPeriod >=3) statsHomeGoals3 = liveData.linescore.periods[2].home.goals ?: "0"
@@ -734,7 +735,7 @@ def notificationHandler(data) {
                     saturation = switchesOnMyTeam.currentValue("saturation")
                     setLevelandColorHandler("myTeam")
                     
-                    switchesOnMyTeam.setColor(state.lightValue)
+                    switchesOnMyTeam.setColor(lightValue)
                 }
             } else {
                 if(switchesOnMyTeam) switchesOnMyTeam.on()
@@ -747,7 +748,7 @@ def notificationHandler(data) {
                     saturation = switchesOnMyTeam.currentValue("saturation")
                     setLevelandColorHandler("otherTeam")
                     
-                    switchesOnOtherTeam.setColor(state.lightValue)
+                    switchesOnOtherTeam.setColor(lightValue)
                 }
             } else {
                 if(switchesOnOtherTeam) switchesOnOtherTeam.on()
@@ -1014,6 +1015,7 @@ def setLevelandColorHandler(data) {
     
 	state.lightValue = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
     log.debug "In setLevelandColorHandler - lightValue: $state.lightValue"
+    state.lightValue
 }
 
 def createDataChildDevice() {    
