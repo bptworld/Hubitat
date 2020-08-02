@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 08/02/20 - On Score, lights can stay on for a user set time. Each message is now optional.
  *  1.0.1 - 08/02/20 - Added Score Testing buttons, other adjustments
  *  1.0.0 - 07/30/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -176,7 +177,7 @@ def notificationOptions(){
             section() {
                 paragraph "Wildcards:<br>%myTeam% - Will be replaced with MY Team Name<br>%otherTeam% - will be replaced with the OTHER Team Name<br>%myTeamScore% - will be replaced with MY Team Score<br>%otherTeamScore% - will be replaced with the OTHER Team Score"
                 paragraph "<hr>"
-                input "myTeamScore", "text", title: "Message when My Team scores - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
+                input "myTeamScore", "text", title: "Message when My Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                 input "myTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
                 if(myTeamScoreList) {
                     def myTeamList = "${myTeamScore}".split(";")
@@ -185,7 +186,7 @@ def notificationOptions(){
                     paragraph "${theListH}"
                 }
 
-                input "otherTeamScore", "text", title: "Message when the Other Team scores - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
+                input "otherTeamScore", "text", title: "Message when the Other Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                 input "otherTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
                 if(otherTeamScoreList) {
                     def otherList = "${otherTeamScore}".split(";")
@@ -240,8 +241,11 @@ def notificationOptions(){
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
                 }
-            }         
-            paragraph "<small>* Light will turn on for 10 seconds, then automatically reset.</small>"
+            }
+            
+            if(switchesOnMyTeam || switchesOnOtherTeam) {
+                input "howLongLightsOn", "number", title: "How long should the light stay on (in seconds)", defaultValue:10, requied: false, submitOnChange:true
+            }
             
             input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true
             if(onFinal) paragraph "<small>* Light will stay on until manually turned off.</small>"
@@ -465,7 +469,7 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
                     state.homeTeam = game.teams.home.team.name
 
                     if(dataDevice) {        // NEW - only in BPTWorld's Hubitat version!                                  
-                        gameData = "${gDate};${game.teams.away.team.name};${game.teams.home.team.name};${hVenue}"
+                        gameData = "${gDate};${game.teams.away.team.name};${game.teams.home.team.name}"
                         dataDevice.gameData(gameData)                   
 
                         hTeamWins = game.teams.home.leagueRecord.wins
@@ -610,8 +614,16 @@ def checkLiveGameStatsHandler(resp, data) {
                 timeRemaining = liveData.linescore.currentPeriodTimeRemaining ?: "-"
 
                 statsHomeGoals1 = liveData.linescore.periods[0].home.goals ?: "0"
-                if(cPeriod >=2) statsHomeGoals2 = liveData.linescore.periods[1].home.goals ?: "0"
-                if(cPeriod >=3) statsHomeGoals3 = liveData.linescore.periods[2].home.goals ?: "0"
+                if(cPeriod >=2) {
+                    statsHomeGoals2 = liveData.linescore.periods[1].home.goals ?: "0"
+                } else {
+                    statsHomeGoals2 = "-"
+                }    
+                if(cPeriod >=3) {
+                    statsHomeGoals3 = liveData.linescore.periods[2].home.goals ?: "0"
+                } else {
+                    statsHomeGoals3 = "-"
+                }    
                 if(liveData.linescore.periods[3]) {
                     statsHomeGoals4 = liveData.linescore.periods[3].home.goals ?: "-"
                 } else {
@@ -619,8 +631,16 @@ def checkLiveGameStatsHandler(resp, data) {
                 }
 
                 statsAwayGoals1 = liveData.linescore.periods[0].away.goals ?: "0"
-                if(cPeriod >=2) statsAwayGoals2 = liveData.linescore.periods[1].away.goals ?: "0"
-                if(cPeriod >=3) statsAwayGoals3 = liveData.linescore.periods[2].away.goals ?: "0"
+                if(cPeriod >=2) {
+                    statsAwayGoals2 = liveData.linescore.periods[1].away.goals ?: "0"
+                } else {
+                    statsAwayGoals2 = "-"
+                }
+                if(cPeriod >=3) {
+                    statsAwayGoals3 = liveData.linescore.periods[2].away.goals ?: "0"
+                } else {
+                    statsAwayGoals3 = "-"
+                }    
                 if(liveData.linescore.periods[3]) {
                     statsAwayGoals4 = liveData.linescore.periods[3].away.goals ?: "-"
                 } else {
@@ -756,8 +776,9 @@ def notificationHandler(data) {
         }
         
         if(state.gameStatus != "Final") {
+            howLong = howLongLightsOn ?: 10
             theData = "${hue};${level};${saturation}"
-            runIn(10, resetScoringSwitches, [data: theData])
+            runIn(howLong, resetScoringSwitches, [data: theData])
         }
     }
     
