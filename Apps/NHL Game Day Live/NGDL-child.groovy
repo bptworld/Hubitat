@@ -127,7 +127,6 @@ def pageConfig() {
             input "serviceStartTime", "time", title: "Check for Games Daily at", required: false
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
             label title: "Enter a name for this automation", required:false, submitOnChange:true
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
             input "logEnable","bool", title: "Enable Debug Logging and Test Buttons", description: "Debugging", defaultValue: false, submitOnChange: true
             if(logEnable) {
                 input "testOtherScore", "button", title: "Test otherTeam Score", width:4
