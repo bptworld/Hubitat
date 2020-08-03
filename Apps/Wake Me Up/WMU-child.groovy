@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 08/03/20 - More Adjustments
  *  1.0.4 - 08/03/20 - Adjustments
  *  1.0.3 - 08/02/20 - Added Start Level to dim up and dim down
  *  1.0.2 - 08/02/20 - Adjustments, If device is dimming and the device is turned off, dimming will stop.
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
