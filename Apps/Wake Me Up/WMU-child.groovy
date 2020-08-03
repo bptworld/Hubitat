@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 08/02/20 - Added Start Level to dim up and dim down
  *  1.0.2 - 08/02/20 - Adjustments, If device is dimming and the device is turned off, dimming will stop.
  *  1.0.1 - 07/30/20 - Fixed push, added more descriptions
  *  1.0.0 - 07/29/20 - Initial release
@@ -44,7 +45,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -70,7 +71,7 @@ def pageConfig() {
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
 			paragraph "An alarm clock that knows your schedule, creating a better way to wake up. With slowly rising light levels, random announcements and more."
-            paragraph "- This app is designed to work with Hue devices. while other brands may work, some options may display unexpected results."
+            paragraph "- This app is designed to work with Hue devices. while other brands may work, some options may have unexpected results."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" BETA")) {
             paragraph "This is an early Beta preview version. Use with caution and please report your findings on the HE Forums. Remember to always include a log with your report. Screenshots work best for logs. Also, it's important to show me what led up to the error/problem, not just one line of the log! Thanks and good luck!"
@@ -87,6 +88,7 @@ def pageConfig() {
             input "oSetLC", "bool", defaultValue: false, title: "<b>Turn Light On, Set Level and Color</b>", description: "Light On", submitOnChange: true, width: 6
             input "oDimUp", "bool", defaultValue: false, title: "<b>Slowly Dim Lighting UP</b>", description: "Dim Up", submitOnChange: true, width: 6
             input "oDimDn", "bool", defaultValue: false, title: "<b>Slowly Dim Lighting DOWN</b>", description: "Dim Down", submitOnChange: true
+            
             if(oSetLC) {
                 paragraph "<hr>"
                 paragraph "<b>Turn Light On, Set Level and Color</b>"
@@ -109,6 +111,7 @@ def pageConfig() {
                 paragraph "<b>Slowly Dim Lighting UP</b>"
                 input "slowDimmerUp", "capability.switchLevel", title: "Select dimmer devices to slowly rise", required: true, multiple: true
                 input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
+                input "startLevelHigh", "number", title: "Starting Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
                 input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
                 input "colorUp", "enum", title: "Color", required: true, multiple:false, options: [
                     ["Soft White":"Soft White - Default"],
@@ -121,6 +124,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("slowDimmerUp")
                 app.removeSetting("minutesUp")
+                app.removeSetting("startLevelHigh")
                 app.removeSetting("targetLevelHigh")
                 app.removeSetting("colorUp")
             }
@@ -130,6 +134,7 @@ def pageConfig() {
                 paragraph "<b>Slowly Dim Lighting DOWN</b>"
                 input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
                 input "minutesDn", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
+                input "startLevelLow", "number", title: "Starting Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
                 input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 0, range: '1..99'
                 input "dimDnOff", "bool", defaultValue: false, title: "<b>Turn dimmer off after target is reached?</b>", description: "Dim Off Options", submitOnChange: true
                 input "colorDn", "enum", title: "Color", required: true, multiple:false, options: [
@@ -141,6 +146,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("slowDimmerDn")
                 app.removeSetting("minutesDn")
+                app.removeSetting("startLevelLow")
                 app.removeSetting("targetLevelLow")
                 app.removeSetting("dimDnOff")
                 app.removeSetting("colorDn")
@@ -379,7 +385,7 @@ def slowOnHandler(evt) {
             if(logEnable) log.debug "In slowOnHandler (${state.version})"
             if(logEnable) log.debug "In slowOnHandler - Pause: ${pauseApp}"
             state.fromWhere = "slowOn"
-            state.onLevel = 1
+            state.onLevel = startLevelHigh ?: 1
             state.color = "${colorUp}"
             setLevelandColorHandler()
             state.currentLevel = slowDimmerUp.currentValue("level")
@@ -387,7 +393,7 @@ def slowOnHandler(evt) {
             seconds = minutesUp * 6
             state.dimStep = targetLevelHigh / seconds
             state.dimLevel = state.currentLevel
-            if(logEnable) log.debug "slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+            if(logEnable) log.debug "slowOnHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - onLevel: ${state.onLevel} - targetLevel: ${targetLevelHigh}"
             if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
 
             runIn(10,dimStepUp)
@@ -406,7 +412,7 @@ def slowOffHandler(evt) {
         if(state.controlSwitch == "on") {
             if(logEnable) log.debug "In slowOffHandler (${state.version})"
             state.fromWhere = "slowOff"
-            state.onLevel = 99
+            state.onLevel = startLevelLow ?: 99
             state.color = "${colorDn}"
             setLevelandColorHandler()
             state.currentLevel = slowDimmerDn.currentValue("level")
@@ -414,7 +420,7 @@ def slowOffHandler(evt) {
             seconds = minutesDn * 6
             state.dimStep1 = (targetLevelLow / seconds) * 100
             state.dimLevel = state.currentLevel
-            if(logEnable) log.debug "slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
+            if(logEnable) log.debug "slowoffHandler - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - onLevel: ${state.onLevel} - targetLevel: ${targetLevelLow}"
         } else {
             log.info "${app.label} - Control Switch is OFF - Child app is disabled."
         }
