@@ -73,7 +73,7 @@ def pageConfig() {
             paragraph "- This app is designed to work with Hue devices. while other brands may work, some options may display unexpected results."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" BETA")) {
-            paragraph "This is an early Beta preview version. Use with caution and please report your findings on the HE Forums. Remember to always include a log with your report. Screenshots work best for screenshots. Also, it's important to show me what led up to the error/problem, not just one line of the log! Thanks and good luck!"
+            paragraph "This is an early Beta preview version. Use with caution and please report your findings on the HE Forums. Remember to always include a log with your report. Screenshots work best for logs. Also, it's important to show me what led up to the error/problem, not just one line of the log! Thanks and good luck!"
             paragraph "HE Link: <a href='https://community.hubitat.com/t/beta-wake-me-up/46148' target='_blank'>Click here to report issues</a>."
         }
         
