@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 08/03/20 - Adjustments
  *  1.0.3 - 08/02/20 - Added Start Level to dim up and dim down
  *  1.0.2 - 08/02/20 - Adjustments, If device is dimming and the device is turned off, dimming will stop.
  *  1.0.1 - 07/30/20 - Fixed push, added more descriptions
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -109,7 +110,7 @@ def pageConfig() {
             if(oDimUp) {
                 paragraph "<hr>"
                 paragraph "<b>Slowly Dim Lighting UP</b>"
-                input "slowDimmerUp", "capability.switchLevel", title: "Select dimmer devices to slowly rise", required: true, multiple: true
+                input "slowDimmerUp", "capability.switchLevel", title: "Select dimmer device to slowly rise", required: true, multiple: false
                 input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
                 input "startLevelHigh", "number", title: "Starting Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
                 input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
@@ -132,7 +133,7 @@ def pageConfig() {
             if(oDimDn) {
                 paragraph "<hr>"
                 paragraph "<b>Slowly Dim Lighting DOWN</b>"
-                input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
+                input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer device to slowly dim", required: true, multiple: false
                 input "minutesDn", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
                 input "startLevelLow", "number", title: "Starting Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
                 input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 0, range: '1..99'
@@ -383,7 +384,6 @@ def slowOnHandler(evt) {
         controlSwitchHandler()
         if(state.controlSwitch == "on") {
             if(logEnable) log.debug "In slowOnHandler (${state.version})"
-            if(logEnable) log.debug "In slowOnHandler - Pause: ${pauseApp}"
             state.fromWhere = "slowOn"
             state.onLevel = startLevelHigh ?: 1
             state.color = "${colorUp}"
@@ -433,7 +433,8 @@ def dimStepUp() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         deviceOn = slowDimmerUp.currentValue("switch")
-        if(deviceOn != "off") {
+        if(logEnable) log.debug "In dimStepUp - deviceOn: ${deviceOn}"
+        if(deviceOn == "on") {
             if(logEnable) log.debug "In dimStepUp (${state.version})"
             controlSwitchHandler()
             if(state.controlSwitch == "on") {
@@ -463,7 +464,8 @@ def dimStepDown() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         deviceOn = slowDimmerDn.currentValue("switch")
-        if(deviceOn != "off") {
+        if(logEnable) log.debug "In dimStepUp - deviceOn: ${deviceOn}"
+        if(deviceOn == "on") {
             if(logEnable) log.debug "In dimStepDown (${state.version})"
             controlSwitchHandler()
             if(state.controlSwitch == "on") {
