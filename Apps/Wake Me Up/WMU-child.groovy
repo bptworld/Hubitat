@@ -617,7 +617,9 @@ def setLevelandColorHandler() {
             break;
     }
     
-	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+	//def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+    def value = [hue: hueColor, saturation: saturation, level: onLevel]
+    
     if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
     
 	if(state.fromWhere == "dimmerOn") {
