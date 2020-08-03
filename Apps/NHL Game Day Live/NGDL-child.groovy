@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 08/03/20 - Adjustments to testing
  *  1.0.2 - 08/02/20 - On Score, lights can stay on for a user set time. Each message is now optional.
  *  1.0.1 - 08/02/20 - Added Score Testing buttons, other adjustments
  *  1.0.0 - 07/30/20 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -1082,7 +1083,7 @@ def appButtonHandler(buttonPressed) {
         }
     
         theData = "${hue};${level};${saturation}"
-        runIn(10, resetScoringSwitches, [data: theData])
+        runIn(howLong, resetScoringSwitches, [data: theData])
 
         if(useTheFlasher) {
             flashData = "Preset::${flashOtherTeamScorePreset}"
@@ -1112,7 +1113,7 @@ def appButtonHandler(buttonPressed) {
         }
     
         theData = "${hue};${level};${saturation}"
-        runIn(10, resetScoringSwitches, [data: theData])
+        runIn(howLong, resetScoringSwitches, [data: theData])
 
         if(useTheFlasher) {
             flashData = "Preset::${flashMyTeamScorePreset}"
