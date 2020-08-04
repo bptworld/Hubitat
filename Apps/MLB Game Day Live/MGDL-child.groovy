@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 08/04/20 - Adjustments, fix for Disable switch, added code if game is Postponed.
  *  1.0.4 - 07/29/20 - Added light notification when score/final, other adjustments
  *  1.0.3 - 07/24/20 - Added code for Rain Delays, other adjustments
  *  1.0.2 - 07/23/20 - Fixed typo with inning 6 on scoreboard
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -175,7 +176,7 @@ def notificationOptions(){
             section() {
                 paragraph "Wildcards:<br>%myTeam% - Will be replaced with MY Team Name<br>%otherTeam% - will be replaced with the OTHER Team Name<br>%myTeamScore% - will be replaced with MY Team Score<br>%otherTeamScore% - will be replaced with the OTHER Team Score"
                 paragraph "<hr>"
-                input "myTeamScore", "text", title: "Message when My Team scores - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
+                input "myTeamScore", "text", title: "Message when My Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                 input "myTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
                 if(myTeamScoreList) {
                     def myTeamList = "${myTeamScore}".split(";")
@@ -184,7 +185,7 @@ def notificationOptions(){
                     paragraph "${theListH}"
                 }
 
-                input "otherTeamScore", "text", title: "Message when the Other Team scores - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
+                input "otherTeamScore", "text", title: "Message when the Other Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                 input "otherTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
                 if(otherTeamScoreList) {
                     def otherList = "${otherTeamScore}".split(";")
@@ -250,11 +251,11 @@ def notificationOptions(){
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
-                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
-                input "flashMyTeamScorePreset", "number", title: "Select the Preset to use when My Team scores (1..5)", required:true, submitOnChange:true
-                input "flashOtherTeamScorePreset", "number", title: "Select the Preset to use when the Other Team scores (1..5)", required:true, submitOnChange:true
-                input "flashMyTeamWinsPreset", "number", title: "Select the Preset to use when the My Team wins (1..5)", required:true, submitOnChange:true
-                input "flashOtherTeamWinsPreset", "number", title: "Select the Preset to use when the Other Team wins (1..5)", required:true, submitOnChange:true
+                input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:false, multiple:false
+                input "flashMyTeamScorePreset", "number", title: "Select the Preset to use when My Team scores (1..5)", required:false, submitOnChange:true
+                input "flashOtherTeamScorePreset", "number", title: "Select the Preset to use when the Other Team scores (1..5)", required:false, submitOnChange:true
+                input "flashMyTeamWinsPreset", "number", title: "Select the Preset to use when the My Team wins (1..5)", required:false, submitOnChange:true
+                input "flashOtherTeamWinsPreset", "number", title: "Select the Preset to use when the Other Team wins (1..5)", required:false, submitOnChange:true
             }
         }
     }
@@ -274,7 +275,7 @@ def updated() {
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
@@ -282,7 +283,8 @@ def initialize() {
         getTeamInfo()
 
         schedule(serviceStartTime, startGameDay, [overwrite: false])
-        schedule(serviceStartTime2, checkSchedule, [overwrite: false])       
+        schedule(serviceStartTime2, checkSchedule, [overwrite: false])
+        checkSchedule()
         startGameDay()
     }
 }
@@ -296,15 +298,14 @@ private removeChildDevices(delete) {
 }
 
 def checkEnableHandler() {
-    eSwitch = false
+    state.eSwitch = false
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = true }
+            theSwitch = it.currentValue("switch")
+            if(theSwitch == "on") { state.eSwitch = true }
         }
     }
-    return eSwitch
 }
 
 def urlSetup() {  // Modified from code by Eric Luttmann
@@ -390,7 +391,7 @@ def getTeamInfo() {  // Modified from code by Eric Luttmann
 
 def startGameDay() {  // Modified from code by Eric Luttmann
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startGameDay (${state.version})"
@@ -443,7 +444,7 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
 
 def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkIfGameDayHandler (${state.version})"
@@ -531,7 +532,7 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
 
 def checkLiveGameStats() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStats (${state.version})"
@@ -557,7 +558,7 @@ def checkLiveGameStats() {
 
 def checkLiveGameStatsHandler(resp, data) {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStatsHandler (${state.version})"
@@ -565,9 +566,10 @@ def checkLiveGameStatsHandler(resp, data) {
             def slurper = new groovy.json.JsonSlurper()
             def result = slurper.parseText(resp.getData())       
             liveData = result.liveData
-
+                
             venueName = result.gameData.venue.name ?: "-"
 
+            state.gameState = result.gameData.status.detailedState
             state.gameStatus = result.gameData.status.abstractGameState
             lastUpdated = new Date().format('h:mm:ss a', location.timeZone)
             
@@ -612,70 +614,74 @@ def checkLiveGameStatsHandler(resp, data) {
 
                 latestPlay = "Game starts at ${state.todaysGameTime}"
             } else {
-                currentInning = liveData.linescore.currentInningOrdinal ?: "-"
-                inningHalf = liveData.linescore.inningHalf
-                atBat = liveData.plays.currentPlay.matchup.batter.fullName ?: "Not Available"
-                balls = liveData.linescore.balls ?: "0"
-                strikes = liveData.linescore.strikes ?: "0"
-                outs = liveData.linescore.outs ?: "0"
+                if(state.gameState == "Postponed") {
+                    latestPlay = "Game has been ${state.gameState}"
+                } else {
+                    currentInning = liveData.linescore.currentInningOrdinal ?: "-"
+                    inningHalf = liveData.linescore.inningHalf
+                    atBat = liveData.plays.currentPlay.matchup.batter.fullName ?: "Not Available"
+                    balls = liveData.linescore.balls ?: "0"
+                    strikes = liveData.linescore.strikes ?: "0"
+                    outs = liveData.linescore.outs ?: "0"
 
-                try {
-                    statsHomeRuns1 = liveData.linescore.innings[0].home.runs ?: "0"
-                    statsHomeRuns2 = liveData.linescore.innings[1].home.runs ?: "0"
-                    statsHomeRuns3 = liveData.linescore.innings[2].home.runs ?: "0"
-                    statsHomeRuns4 = liveData.linescore.innings[3].home.runs ?: "0"
-                    statsHomeRuns5 = liveData.linescore.innings[4].home.runs ?: "0"
-                    statsHomeRuns6 = liveData.linescore.innings[5].home.runs ?: "0"
-                    statsHomeRuns7 = liveData.linescore.innings[6].home.runs ?: "0"
-                    statsHomeRuns8 = liveData.linescore.innings[7].home.runs ?: "0"
-                    statsHomeRuns9 = liveData.linescore.innings[8].home.runs ?: "0"
+                    try {
+                        statsHomeRuns1 = liveData.linescore.innings[0].home.runs ?: "0"
+                        statsHomeRuns2 = liveData.linescore.innings[1].home.runs ?: "0"
+                        statsHomeRuns3 = liveData.linescore.innings[2].home.runs ?: "0"
+                        statsHomeRuns4 = liveData.linescore.innings[3].home.runs ?: "0"
+                        statsHomeRuns5 = liveData.linescore.innings[4].home.runs ?: "0"
+                        statsHomeRuns6 = liveData.linescore.innings[5].home.runs ?: "0"
+                        statsHomeRuns7 = liveData.linescore.innings[6].home.runs ?: "0"
+                        statsHomeRuns8 = liveData.linescore.innings[7].home.runs ?: "0"
+                        statsHomeRuns9 = liveData.linescore.innings[8].home.runs ?: "0"
+                    }
+                    catch (e) {
+                        if(statsHomeRuns1 == null) statsHomeRuns1 = "-"
+                        if(statsHomeRuns2 == null) statsHomeRuns2 = "-"
+                        if(statsHomeRuns3 == null) statsHomeRuns3 = "-"
+                        if(statsHomeRuns4 == null) statsHomeRuns4 = "-"
+                        if(statsHomeRuns5 == null) statsHomeRuns5 = "-"
+                        if(statsHomeRuns6 == null) statsHomeRuns6 = "-"
+                        if(statsHomeRuns7 == null) statsHomeRuns7 = "-"
+                        if(statsHomeRuns8 == null) statsHomeRuns8 = "-"
+                        if(statsHomeRuns9 == null) statsHomeRuns9 = "-"
+                    }
+
+                    try {
+                        statsAwayRuns1 = liveData.linescore.innings[0].away.runs ?: "0"
+                        statsAwayRuns2 = liveData.linescore.innings[1].away.runs ?: "0"
+                        statsAwayRuns3 = liveData.linescore.innings[2].away.runs ?: "0"
+                        statsAwayRuns4 = liveData.linescore.innings[3].away.runs ?: "0"
+                        statsAwayRuns5 = liveData.linescore.innings[4].away.runs ?: "0"
+                        statsAwayRuns6 = liveData.linescore.innings[5].away.runs ?: "0"
+                        statsAwayRuns7 = liveData.linescore.innings[6].away.runs ?: "0"
+                        statsAwayRuns8 = liveData.linescore.innings[7].away.runs ?: "0"
+                        statsAwayRuns9 = liveData.linescore.innings[8].away.runs ?: "0"
+                    }
+                    catch (e) {
+                        if(statsAwayRuns1 == null) statsAwayRuns1 = "-"
+                        if(statsAwayRuns2 == null) statsAwayRuns2 = "-"
+                        if(statsAwayRuns3 == null) statsAwayRuns3 = "-"
+                        if(statsAwayRuns4 == null) statsAwayRuns4 = "-"
+                        if(statsAwayRuns5 == null) statsAwayRuns5 = "-"
+                        if(statsAwayRuns6 == null) statsAwayRuns6 = "-"
+                        if(statsAwayRuns7 == null) statsAwayRuns7 = "-"
+                        if(statsAwayRuns8 == null) statsAwayRuns8 = "-"
+                        if(statsAwayRuns9 == null) statsAwayRuns9 = "-"
+                    }
+
+                    state.totalHomeRuns = liveData.linescore.teams.home.runs ?: "0"
+                    totalHomeHits = liveData.linescore.teams.home.hits ?: "0"
+                    totalHomeErrors = liveData.linescore.teams.home.errors ?: "0"
+                    totalHomeLeftOnBase = liveData.linescore.teams.home.leftOnBase ?: "0"
+
+                    state.totalAwayRuns = liveData.linescore.teams.away.runs ?: "0"
+                    totalAwayHits = liveData.linescore.teams.away.hits ?: "0"
+                    totalAwayErrors = liveData.linescore.teams.away.errors ?: "0"
+                    totalAwayLeftOnBase = liveData.linescore.teams.away.leftOnBase ?: "0"
+
+                    latestPlay = liveData.plays.currentPlay.result.description ?: " - "
                 }
-                catch (e) {
-                    if(statsHomeRuns1 == null) statsHomeRuns1 = "-"
-                    if(statsHomeRuns2 == null) statsHomeRuns2 = "-"
-                    if(statsHomeRuns3 == null) statsHomeRuns3 = "-"
-                    if(statsHomeRuns4 == null) statsHomeRuns4 = "-"
-                    if(statsHomeRuns5 == null) statsHomeRuns5 = "-"
-                    if(statsHomeRuns6 == null) statsHomeRuns6 = "-"
-                    if(statsHomeRuns7 == null) statsHomeRuns7 = "-"
-                    if(statsHomeRuns8 == null) statsHomeRuns8 = "-"
-                    if(statsHomeRuns9 == null) statsHomeRuns9 = "-"
-                }
-
-                try {
-                    statsAwayRuns1 = liveData.linescore.innings[0].away.runs ?: "0"
-                    statsAwayRuns2 = liveData.linescore.innings[1].away.runs ?: "0"
-                    statsAwayRuns3 = liveData.linescore.innings[2].away.runs ?: "0"
-                    statsAwayRuns4 = liveData.linescore.innings[3].away.runs ?: "0"
-                    statsAwayRuns5 = liveData.linescore.innings[4].away.runs ?: "0"
-                    statsAwayRuns6 = liveData.linescore.innings[5].away.runs ?: "0"
-                    statsAwayRuns7 = liveData.linescore.innings[6].away.runs ?: "0"
-                    statsAwayRuns8 = liveData.linescore.innings[7].away.runs ?: "0"
-                    statsAwayRuns9 = liveData.linescore.innings[8].away.runs ?: "0"
-                }
-                catch (e) {
-                    if(statsAwayRuns1 == null) statsAwayRuns1 = "-"
-                    if(statsAwayRuns2 == null) statsAwayRuns2 = "-"
-                    if(statsAwayRuns3 == null) statsAwayRuns3 = "-"
-                    if(statsAwayRuns4 == null) statsAwayRuns4 = "-"
-                    if(statsAwayRuns5 == null) statsAwayRuns5 = "-"
-                    if(statsAwayRuns6 == null) statsAwayRuns6 = "-"
-                    if(statsAwayRuns7 == null) statsAwayRuns7 = "-"
-                    if(statsAwayRuns8 == null) statsAwayRuns8 = "-"
-                    if(statsAwayRuns9 == null) statsAwayRuns9 = "-"
-                }
-
-                state.totalHomeRuns = liveData.linescore.teams.home.runs ?: "0"
-                totalHomeHits = liveData.linescore.teams.home.hits ?: "0"
-                totalHomeErrors = liveData.linescore.teams.home.errors ?: "0"
-                totalHomeLeftOnBase = liveData.linescore.teams.home.leftOnBase ?: "0"
-
-                state.totalAwayRuns = liveData.linescore.teams.away.runs ?: "0"
-                totalAwayHits = liveData.linescore.teams.away.hits ?: "0"
-                totalAwayErrors = liveData.linescore.teams.away.errors ?: "0"
-                totalAwayLeftOnBase = liveData.linescore.teams.away.leftOnBase ?: "0"
-
-                latestPlay = liveData.plays.currentPlay.result.description ?: " - "
             }
 
             scoreBoard =  "<table align=center width=100%><tr align=center><td colspan=13>"   
@@ -759,8 +765,8 @@ def checkLiveGameStatsHandler(resp, data) {
             notificationHandler(data)
         } else {
             //log.warn "gameStatus: ${state.gameStatus}"
-            if(latestPlay.contains("Delayed: Rain")) {
-                log.info "${app.label} - Game under rain delay, will check again in 10 minutes."
+            if(latestPlay.contains("Delayed: Rain") || latestPlay.contains("Postponed")) {
+                log.info "${app.label} - Game under delay, will check again in 10 minutes."
                 rainMessage = "Rain Delay"
                 messageHandler(rainMessage)
                 if(useSpeech) letsTalk()
@@ -882,7 +888,7 @@ def letsTalk() {
 
 def pregameMessageHandler() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(pregameMessage) {
@@ -930,7 +936,7 @@ def pushNow() {
 
 def checkSchedule() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkSchedule"
@@ -1101,19 +1107,29 @@ def appButtonHandler(buttonPressed) {
     if(state.whichButton == "testButton"){
         log.debug "In testButtonHandler - Testing Stuff"
         data = "otherTeam"
+        
+        /*
         hue = switchesOnMyTeam.currentValue("hue")
         level = switchesOnMyTeam.currentValue("level")
         saturation = switchesOnMyTeam.currentValue("saturation")
         setLevelandColorHandler("otherTeam")
-
+        
         log.debug "In testButtonHandler - switchesOnOtherTeam: ${switchesOnOtherTeam}"
         log.debug "In testButtonHandler - lightValue: ${state.lightValue}"
         switchesOnOtherTeam.setColor(state.lightValue)
     
         theData = "${hue};${level};${saturation}"
         runIn(10, resetScoringSwitches, [data: theData])
-    
-    
+        */
+        
+        /*
+        //flashData = "Preset::${flashMyTeamScorePreset}"
+        flashData = "Preset::${flashOtherTeamScorePreset}"
+        log.warn "In testButtonHandler - theFlasherDevice: ${theFlasherDevice} | flashData: ${flashData}"
+        theFlasherDevice.sendPreset(flashData)
+        */
+        
+        log.warn "Sending Data Somewhere"
     }
 }
 
