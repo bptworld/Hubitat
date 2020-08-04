@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 08/04/20 - BAM - up and down work!
  *  1.0.7 - 08/04/20 - reworked some math
  *  1.0.6 - 08/04/20 - Try try again, found an error with dim down
  *  1.0.5 - 08/03/20 - More Adjustments
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -388,14 +389,14 @@ def slowOnHandler(evt) {
         if(state.controlSwitch == "on") {
             if(logEnable) log.debug "In slowOnHandler (${state.version})"
             state.fromWhere = "slowOn"
-            state.onLevel = startLevelHigh ?: 1
+            state.currentLevel = startLevelHigh ?: 1
             state.color = "${colorUp}"
             setLevelandColorHandler()
             if(minutesUp == 0) return
             seconds = (minutesUp * 60) - 10
-            difference = targetLevelHigh - state.onLevel
+            difference = targetLevelHigh - state.currentLevel
             state.dimStep = (difference / seconds) * 10
-            if(logEnable) log.debug "slowOnHandler - onLevel: ${state.onLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.color} - onLevel: ${state.onLevel}"
+            if(logEnable) log.debug "slowOnHandler - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.color}"
             if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
 
             runIn(5,dimStepUp)
@@ -414,14 +415,14 @@ def slowOffHandler(evt) {
         if(state.controlSwitch == "on") {
             if(logEnable) log.debug "In slowOffHandler (${state.version})"
             state.fromWhere = "slowOff"
-            state.onLevel = startLevelLow ?: 99
+            state.currentLevel = startLevelLow ?: 99
             state.color = "${colorDn}"
             setLevelandColorHandler()
             if(minutesDn == 0) return
             seconds = (minutesDn * 60) - 10           
-            difference = state.onLevel - targetLevelLow                
+            difference = state.currentLevel - targetLevelLow                
             state.dimStep1 = (difference / seconds) * 10
-            if(logEnable) log.debug "slowOffHandler - onLevel: ${state.onLevel} - dimStep1: ${state.dimStep1} - targetLevel: ${targetLevelLow} - color: ${state.color} - onLevel: ${state.onLevel}"
+            if(logEnable) log.debug "slowOffHandler - dimStep1: ${state.dimStep1} - targetLevel: ${targetLevelLow} - color: ${state.color}"
             
             runIn(5,dimStepDown)
         } else {
@@ -443,19 +444,19 @@ def dimStepUp() {
         if(deviceOn == "on") {
             controlSwitchHandler()
             if(state.controlSwitch == "on") {
-                atomicState.currentLevel = slowDimmerUp.currentValue("level")
-                if(logEnable) log.debug "In dimStepUp - Actual Level from Device: ${atomicState.currentLevel}"
-                if(atomicState.currentLevel < targetLevelHigh) {
-                    state.dimLevel = atomicState.currentLevel + state.dimStep
+                state.actualLevel = slowDimmerUp.currentValue("level")
+                if(logEnable) log.debug "In dimStepUp - Actual Level from Device: ${state.actualLevel}"
+                if(state.currentLevel < targetLevelHigh) {
+                    state.currentLevel = state.currentLevel + state.dimStep
                     
-                    if(state.dimLevel > targetLevelHigh) { state.dimLevel = targetLevelHigh }
+                    if(state.currentLevel > targetLevelHigh) { state.currentLevel = targetLevelHigh }
                     
-                    if(logEnable) log.debug "In dimStepUp - Setting dimLevel: ${state.dimLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
-                    slowDimmerUp.setLevel(state.dimLevel)
+                    if(logEnable) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+                    slowDimmerUp.setLevel(state.currentLevel)
                     runIn(10,dimStepUp)				
                 } else {
                     if(logEnable) log.debug "-------------------- End dimStepUp --------------------"
-                    if(logEnable) log.info "In dimStepUp - Current Level: ${atomicState.currentLevel} has reached targetLevel: ${targetLevelHigh}"
+                    if(logEnable) log.info "In dimStepUp - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelHigh}"
                 }
             } else {
                 if(logEnable) log.debug "-------------------- Stop dimStepUp --------------------"
@@ -481,21 +482,21 @@ def dimStepDown() {
             if(logEnable) log.debug "In dimStepDown (${state.version})"
             controlSwitchHandler()
             if(state.controlSwitch == "on") {
-                atomicState.currentLevel = slowDimmerDn.currentValue("level")
-                if(logEnable) log.debug "In dimStepDown - Actual Level from Device: ${atomicState.currentLevel} - targetLevel: ${targetLevelLow}"
+                state.actualLevel = slowDimmerDn.currentValue("level")
+                if(logEnable) log.debug "In dimStepDown - Actual Level from Device: ${state.actualLevel} - targetLevel: ${targetLevelLow}"
                 
-                if(atomicState.currentLevel > targetLevelLow) {
-                    state.dimLevel = atomicState.currentLevel - state.dimStep1
+                if(state.currentLevel > targetLevelLow) {
+                    state.currentLevel = state.currentLevel - state.dimStep1
                     
-                    if(state.dimLevel < targetLevelLow) { state.dimLevel = targetLevelLow }
+                    if(state.currentLevel < targetLevelLow) { state.currentLevel = targetLevelLow }
                     
-                    if(logEnable) log.debug "In dimStepDown - Setting dimLevel: ${state.dimLevel} - targetLevelLow: ${targetLevelLow}"
-                    slowDimmerDn.setLevel(state.dimLevel)
+                    if(logEnable) log.debug "In dimStepDown - Setting currentLevel: ${state.currentLevel} - targetLevelLow: ${targetLevelLow}"
+                    slowDimmerDn.setLevel(state.currentLevel)
                     runIn(10,dimStepDown)
                 } else {
                     if(dimDnOff) slowDimmerDn.off()
                     if(logEnable) log.debug "-------------------- End dimStepUp --------------------"
-                    if(logEnable) log.info "In dimStepDown - Current Level: ${atomicState.currentLevel} has reached targetLevel: ${targetLevelLow}"
+                    if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
                 } 
             } else{
                 if(logEnable) log.debug "-------------------- Stop dimStepDown --------------------"
