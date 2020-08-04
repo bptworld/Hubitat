@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 08/04/20 - reworked some math
  *  1.0.6 - 08/04/20 - Try try again, found an error with dim down
  *  1.0.5 - 08/03/20 - More Adjustments
  *  1.0.4 - 08/03/20 - Adjustments
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -391,12 +392,13 @@ def slowOnHandler(evt) {
             state.color = "${colorUp}"
             setLevelandColorHandler()
             if(minutesUp == 0) return
-            seconds = minutesUp * 6
-            state.dimStep = targetLevelHigh / seconds
+            seconds = (minutesUp * 60) - 10
+            difference = targetLevelHigh - state.onLevel
+            state.dimStep = (difference / seconds) * 10
             if(logEnable) log.debug "slowOnHandler - onLevel: ${state.onLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.color} - onLevel: ${state.onLevel}"
             if(oDelay) log.info "${app.label} - Will start talking in ${minutesUp} minutes (${state.realSeconds} seconds)"
 
-            runIn(10,dimStepUp)
+            runIn(5,dimStepUp)
         } else {
             log.info "${app.label} - Control Switch is OFF - Child app is disabled."
         }
@@ -416,11 +418,12 @@ def slowOffHandler(evt) {
             state.color = "${colorDn}"
             setLevelandColorHandler()
             if(minutesDn == 0) return
-            seconds = minutesDn * 6
-            state.dimStep1 = (targetLevelLow / seconds) * 100
+            seconds = (minutesDn * 60) - 10           
+            difference = state.onLevel - targetLevelLow                
+            state.dimStep1 = (difference / seconds) * 10
             if(logEnable) log.debug "slowOffHandler - onLevel: ${state.onLevel} - dimStep1: ${state.dimStep1} - targetLevel: ${targetLevelLow} - color: ${state.color} - onLevel: ${state.onLevel}"
             
-            runIn(10,dimStepDown)
+            runIn(5,dimStepDown)
         } else {
             log.info "${app.label} - Control Switch is OFF - Child app is disabled."
         }
@@ -483,7 +486,6 @@ def dimStepDown() {
                 
                 if(atomicState.currentLevel > targetLevelLow) {
                     state.dimLevel = atomicState.currentLevel - state.dimStep1
-                    if(logEnable) log.debug "In dimStepDown - XX - dimLevel: ${state.dimLevel} - targetLevel: ${targetLevelLow}"
                     
                     if(state.dimLevel < targetLevelLow) { state.dimLevel = targetLevelLow }
                     
