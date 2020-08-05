@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 08/05/20 - Lots of changes
  *  1.0.4 - 07/20/20 - Adjustments
  *  1.0.3 - 07/09/20 - Error trapping
  *  1.0.2 - 06/29/20 - Code improvements
@@ -141,12 +142,26 @@ def autoReconnectWebSocket() {
 def keywordInfo(keys) {
     if(traceEnable) log.trace "In keywordInfo"
     
-    def (keySet,keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";")
+    def (keySet,keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";").toLowerCase()
     
     state.keyValue = "${keySetType};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
-
-    if(traceEnable) log.trace "In keywordInfo - Recieved ${keySet}"
     if(traceEnable) log.trace "In keywordInfo - keyValue: ${state.keyValue}"
+
+    state.keySetType = keySetType
+    state.keyword = keyword1
+    state.skeyword1 = skeyword1
+    state.skeyword2 = skeyword2
+    state.skeyword3 = skeyword3
+    state.skeyword4 = skeyword4
+    state.nkeyword1 = nkeyword1
+    state.nkeyword2 = nkeyword2
+    
+    if(state.sKeyword1 == "-") state.sKeyword1 = null
+    if(state.sKeyword2 == "-") state.sKeyword2 = null
+    if(state.sKeyword3 == "-") state.sKeyword3 = null
+    if(state.sKeyword4 == "-") state.sKeyword4 = null
+    if(state.nKeyword1 == "-") state.nKeyword1 = null
+    if(state.nKeyword2 == "-") state.nKeyword2 = null
 }
 
 def parse(String description) {
@@ -161,43 +176,32 @@ def parse(String description) {
         
         // source, name, displayName,value, unit, deviceID, HubID, locationId, installedAppId, descriptionText
         
-        if(state.keyValue) {
-            def keyValue = state.keyValue.toLowerCase()
-            def (keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keyValue.split(";")
-        
+        if(state.keySetType) {          
             if(message.source) {
                 sourceV = message.source.toLowerCase()
                 //log.info "sourceV: ${sourceV}"
 
                 if(sourceV == "device") {
                     nameV = message.name.toLowerCase()
-                    //log.info "nameV: ${nameV}"
+                    //log.info "nameV: ${nameV} - keySetType: ${keySetType}"
+                    if(nameV == state.keyword) log.warn "YES"
+                } else {
+                    nameV = "-"
                 }
             }
 
-            if(keySetType == "d" || keySetType == "k") {
+            if(state.keySetType == "d" || state.keySetType == "k") {
                 if(message.descriptionText) {
                     msgCheck = message.descriptionText.toLowerCase()
                 }
-            } else if(keySetType == "e") {
-                if(message.descriptionText) {
-                    msgCheck = nameV
-                }
+            } else if(state.keySetType == "e") {
+                msgCheck = nameV.toLowerCase()
             }
             if(msgCheck == null) msgCheck = "-----"
-        }
-           
-        if(keyword1 == "-") keyword1 = ""
-        if(sKeyword1 == "-") sKeyword1 = null
-        if(sKeyword2 == "-") sKeyword2 = null
-        if(sKeyword3 == "-") sKeyword3 = null
-        if(sKeyword4 == "-") sKeyword4 = null
-        if(nKeyword1 == "-") nKeyword1 = null
-        if(nKeyword2 == "-") nKeyword2 = null      
-
-        if(keyword1) {
-            String keyword = keyword1
-            if(logEnable) log.debug "msgCheck: ${msgCheck} - keyword: ${keyword}"
+        }    
+        
+        if(state.keyword) {            
+            //log.debug "msgCheck: ${msgCheck} - keyword: ${state.keyword}"
 
             state.kCheck1 = false
             state.kCheck2 = true
@@ -205,39 +209,39 @@ def parse(String description) {
 
             try {
                 readyToGo = false
-                if(msgCheck.contains("${keyword}")) {
+                if(msgCheck.contains("${state.keyword}")) {
                     if(traceEnable) {
-                        keyword1a = keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        keyword1a = state.keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
                         log.trace "In keyword - Found msgCheck: ${keyword1a}"
                     }
                     readyToGo = true
                 }
 
                 if(readyToGo) {
-                    if(sKeyword1 || sKeyword2 || sKeyword3 || sKeyword4) {
-                        if(msgCheck.contains("${sKeyword1}")) {
-                            if(traceEnable) log.trace "In Secondary Keyword1 - ${sKeyword1} Found! That's GOOD!"
+                    if(state.sKeyword1 || state.sKeyword2 || state.sKeyword3 || state.sKeyword4) {
+                        if(msgCheck.contains("${state.sKeyword1}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1 - ${state.sKeyword1} Found! That's GOOD!"
                             state.kCheck1 = true
-                        } else if(msgCheck.contains("${sKeyword2}")) {
-                            if(traceEnable) log.trace "In Secondary Keyword2 - ${sKeyword2} Found! That's GOOD!"
+                        } else if(msgCheck.contains("${state.sKeyword2}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword2 - ${state.sKeyword2} Found! That's GOOD!"
                             state.kCheck1 = true
-                        } else if(msgCheck.contains("${sKeyword3}")) {
-                            if(traceEnable) log.trace "In Secondary Keyword1 - ${sKeyword3} Found! That's GOOD!"
+                        } else if(msgCheck.contains("${state.sKeyword3}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword1 - ${state.sKeyword3} Found! That's GOOD!"
                             state.kCheck1 = true
-                        } else if(msgCheck.contains("${sKeyword4}")) {
-                            if(traceEnable) log.trace "In Secondary Keyword4 - ${sKeyword4} Found! That's GOOD!"
+                        } else if(msgCheck.contains("${state.sKeyword4}")) {
+                            if(traceEnable) log.trace "In Secondary Keyword4 - ${state.sKeyword4} Found! That's GOOD!"
                             state.kCheck1 = true
                         }       
                     } else {
                         state.kCheck1 = true
                     }
 
-                    if(nKeyword1 || nKeyword2) {  
-                        if(msgCheck.contains("${nKeyword1}")) {
-                            if(traceEnable) log.trace "In Not Keyword1 - ${nKeyword1} found! That's BAD!"
+                    if(state.nKeyword1 || state.nKeyword2) {  
+                        if(msgCheck.contains("${state.nKeyword1}")) {
+                            if(traceEnable) log.trace "In Not Keyword1 - ${state.nKeyword1} found! That's BAD!"
                             state.kCheck2 = false
-                        } else if(msgCheck.contains("${nKeyword2}")) {
-                            if(traceEnable) log.trace "In Not Keyword2 - ${nKeyword2} found! That's BAD!"
+                        } else if(msgCheck.contains("${state.nKeyword2}")) {
+                            if(traceEnable) log.trace "In Not Keyword2 - ${state.nKeyword2} found! That's BAD!"
                             state.kCheck2 = false
                         }
                     }
@@ -312,7 +316,7 @@ def makeList(data) {
 
         sendEvent(name: "bpt-eventData", value: theData, displayed: true)
         sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
-        sendEvent(name: "bpt-lastEventMessage", value: msgValue, displayed: true)
+        sendEvent(name: "bpt-lastEventMessage", value: msgValue, isStateChange: true)
     }
     catch(e1) {
         log.error "Event Watchdog Driver - In makeList - Error to follow!"
@@ -333,7 +337,7 @@ def clearData(){
     state.list = []
     sendEvent(name: "bpt-eventData", value: state.list, displayed: true)
 	
-    sendEvent(name: "bpt-lastEventMessage", value: msgValue, displayed: true)
+    sendEvent(name: "bpt-lastEventMessage", value: msgValue, isStateChange: true)
     sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
 }
 
