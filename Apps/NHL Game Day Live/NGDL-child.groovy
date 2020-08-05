@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 08/05/20 - More Changes
  *  1.0.4 - 08/04/20 - Adjustments
  *  1.0.3 - 08/03/20 - Adjustments to testing
  *  1.0.2 - 08/02/20 - On Score, lights can stay on for a user set time. Each message is now optional.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -280,7 +281,7 @@ def updated() {
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
@@ -303,15 +304,14 @@ private removeChildDevices(delete) {
 }
 
 def checkEnableHandler() {
-    eSwitch = false
+    state.eSwitch = false
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = true }
+            theSwitch = it.currentValue("switch")
+            if(theSwitch == "on") { state.eSwitch = true }
         }
     }
-    return eSwitch
 }
 
 def urlSetup() {  // Modified from code by Eric Luttmann
@@ -397,7 +397,7 @@ def getTeamInfo() {  // Modified from code by Eric Luttmann
 
 def startGameDay() {  // Modified from code by Eric Luttmann
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startGameDay (${state.version})"
@@ -450,7 +450,7 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
 
 def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkIfGameDayHandler (${state.version})"
@@ -523,7 +523,7 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
 
                 if(dataDevice) {
                     dataDevice.liveScoreboard(scoreBoard)
-                    if(logEnable) log.debug "In checkLiveGameStatsHandler - Data sent"
+                    if(logEnable) log.debug "In checkIfGameDayHandler - Data sent"
                 }
             }
         } else {
@@ -535,7 +535,7 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
 
 def checkLiveGameStats() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStats (${state.version})"
@@ -559,6 +559,7 @@ def checkLiveGameStats() {
         
         if(state.gameStatus == "Preview") {
             if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
+            runIn(60, checkLiveGameStats)
         } else if(state.gameStatus == "Final") {
             if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
             messageHandler(postgameMessage)
@@ -566,14 +567,14 @@ def checkLiveGameStats() {
             notificationHandler(data)
         } else {
             if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
-            runIn(5, checkLiveGameStats)
+            runIn(10, checkLiveGameStats)
         }
     }
 }
 
 def checkLiveGameStatsHandler(resp, data) {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkLiveGameStatsHandler (${state.version})"
@@ -859,7 +860,7 @@ def letsTalk() {
 
 def pregameMessageHandler() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(pregameMessage) {
@@ -907,7 +908,7 @@ def pushNow() {
 
 def checkSchedule() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In checkSchedule"
@@ -961,7 +962,7 @@ def getScheduleHandler(resp, data) {
         }
         makeScheduleListHandler()
     } else {
-        log.debug "In checkLiveGameStatsHandler - Request Failed! Response: $resp.errorData"
+        log.debug "In getScheduleHandler - Request Failed! Response: $resp.errorData"
     }
 }
 
