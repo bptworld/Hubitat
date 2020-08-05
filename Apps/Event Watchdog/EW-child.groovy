@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 08/05/20 - Lots of changes
  *  1.0.2 - 07/20/20 - adjustments
  *  1.0.1 - 06/29/20 - Now auto connects
  *  1.0.0 - 06/27/20 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Watchdog"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
