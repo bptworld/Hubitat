@@ -102,24 +102,24 @@ def pageConfig() {
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
 		}
 
-/*
-		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains("pauseApp")) {
-                        app.updateLabel(app.label + " Paused")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
-            //paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            //input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-*/        
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
@@ -217,30 +217,14 @@ def updated() {
     unsubscribe()
 	initialize()
 }
-/*
-def initialize() {
-    if(app.label) {
-        if(app.label.contains("Paused")) {
-            app.updateLabel(app.label.replaceAll(" Paused",""))
-            app.updateLabel(app.label + " <font color='red'>Paused</font>")
-        }
-
-        if(!pauseApp) {
-            setDefaults()
-            subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
-            dataDevice.appStatus("active")
-            dataDevice.initialize()
-        } else {
-            dataDevice.appStatus("paused")
-        }
-    }
-}
-*/
 
 def initialize() {
-    setDefaults()
-    if(dataDevice) {
-        subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        subscribe(dataDevice, "bpt-lastEventMessage", theNotifyStuff)
         dataDevice.appStatus("active")
         dataDevice.initialize()
     }
@@ -255,25 +239,27 @@ private removeChildDevices(delete) {
 }
 
 def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            theSwitch = it.currentValue("switch")
+            if(theSwitch == "on") { state.eSwitch = true }
+        }
     }
-    return eSwitch
 }
 
 def sendToDevice() {
     if(logEnable) log.info "In sendToDriver (${state.version})"
     if(state.theData01) {
         dataDevice.keywordInfo(state.theData01) 
-        log.info "Event Watchdog - Sending theData01"
+        if(logEnable) log.debug "Event Watchdog - Sending theData01"
     }
 }
 
 def theNotifyStuff(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(!state.eSwitch) {
         if(logEnable) log.debug "In theNotifyStuff (${state.version})"
         if(sendPushMessage) pushHandler()
     }
@@ -281,7 +267,7 @@ def theNotifyStuff(evt) {
 
 def pushHandler(){
 	if(logEnable) log.debug "In pushNow (${state.version})"
-    theLastMsg = dataDevice.currentValue("bpt-lastLogMessage")
+    theLastMsg = dataDevice.currentValue("bpt-lastEventMessage")
 	theMessage = "${app.label} - ${theLastMsg}"
 	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
