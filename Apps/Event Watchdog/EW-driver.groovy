@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 08/06/20 - Added more logging
  *  1.0.6 - 08/06/20 - More changes
  *  1.0.5 - 08/05/20 - Lots of changes
  *  1.0.4 - 07/20/20 - Adjustments
@@ -258,11 +259,12 @@ def parse(String description) {
                 }
 
                 if(state.match) {
-                    if(traceEnable) log.warn "In keyword - ${keyword1a} - Everything Passed!"
+                    if(traceEnable) log.trace "In keyword - ${keyword1a} - Everything Passed!"
 
                     if(msgCheck == null || msgCheck == "null") {
                         if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
                     } else {
+                        if(traceEnagle) log.warn "In keyword - displayName: ${message.displayName} - descriptionText: ${message.descriptionText}"
                         if(traceEnable) log.warn "In keyword - Sending: ${message.descriptionText}"
                         makeList(message.descriptionText)
                     }
