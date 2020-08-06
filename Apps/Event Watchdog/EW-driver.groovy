@@ -264,8 +264,10 @@ def parse(String description) {
                     if(msgCheck == null || msgCheck == "null") {
                         if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
                     } else {
-                        if(traceEnagle) log.warn "In keyword - displayName: ${message.displayName} - descriptionText: ${message.descriptionText}"
-                        if(traceEnable) log.warn "In keyword - Sending: ${message.descriptionText}"
+                        if(traceEnable) {
+                            log.warn "In keyword - displayName: ${message.displayName} - descriptionText: ${message.descriptionText}"
+                            log.warn "In keyword - Sending: ${message.descriptionText}"
+                        }
                         makeList(message.descriptionText)
                     }
                 }
