@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 08/06/20 - More changes
  *  1.0.5 - 08/05/20 - Lots of changes
  *  1.0.4 - 07/20/20 - Adjustments
  *  1.0.3 - 07/09/20 - Error trapping
@@ -93,7 +94,7 @@ def updated() {
 def initialize() {
     log.info "In initialize"
     if(disableConnection) {
-        log.info "Event Watchdog Driver - webSocket Connection is Disabled in the Device"
+        log.info "Event Watchdog Driver - webSocket Connection is Disabled by the Device"
     } else {
         log.info "Event Watchdog Driver - Connecting webSocket"
         interfaces.webSocket.connect("ws://localhost:8080/eventsocket")
@@ -142,26 +143,28 @@ def autoReconnectWebSocket() {
 def keywordInfo(keys) {
     if(traceEnable) log.trace "In keywordInfo"
     
-    def (keySet,keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";").toLowerCase()
+    if(keys) {
+        def (keySet,keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";")
     
-    state.keyValue = "${keySetType};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
-    if(traceEnable) log.trace "In keywordInfo - keyValue: ${state.keyValue}"
+        state.keyValue = "${keySetType};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
+        if(traceEnable) log.trace "In keywordInfo - keyValue: ${state.keyValue}"
 
-    state.keySetType = keySetType
-    state.keyword = keyword1
-    state.skeyword1 = skeyword1
-    state.skeyword2 = skeyword2
-    state.skeyword3 = skeyword3
-    state.skeyword4 = skeyword4
-    state.nkeyword1 = nkeyword1
-    state.nkeyword2 = nkeyword2
-    
-    if(state.sKeyword1 == "-") state.sKeyword1 = null
-    if(state.sKeyword2 == "-") state.sKeyword2 = null
-    if(state.sKeyword3 == "-") state.sKeyword3 = null
-    if(state.sKeyword4 == "-") state.sKeyword4 = null
-    if(state.nKeyword1 == "-") state.nKeyword1 = null
-    if(state.nKeyword2 == "-") state.nKeyword2 = null
+        state.keySetType = keySetType.toLowerCase()
+        state.keyword = keyword1.toLowerCase()
+        if(skeyword1) state.skeyword1 = skeyword1.toLowerCase()
+        if(skeyword2) state.skeyword2 = skeyword2.toLowerCase()
+        if(skeyword3) state.skeyword3 = skeyword3.toLowerCase()
+        if(skeyword4) state.skeyword4 = skeyword4.toLowerCase()
+        if(nkeyword1) state.nkeyword1 = nkeyword1.toLowerCase()
+        if(nkeyword2) state.nkeyword2 = nkeyword2.toLowerCase()
+
+        if(state.sKeyword1 == "-") state.sKeyword1 = null
+        if(state.sKeyword2 == "-") state.sKeyword2 = null
+        if(state.sKeyword3 == "-") state.sKeyword3 = null
+        if(state.sKeyword4 == "-") state.sKeyword4 = null
+        if(state.nKeyword1 == "-") state.nKeyword1 = null
+        if(state.nKeyword2 == "-") state.nKeyword2 = null
+    }
 }
 
 def parse(String description) {
@@ -200,7 +203,7 @@ def parse(String description) {
             if(msgCheck == null) msgCheck = "-----"
         }    
         
-        if(state.keyword) {            
+        if(msgCheck != "-----") {            
             //log.debug "msgCheck: ${msgCheck} - keyword: ${state.keyword}"
 
             state.kCheck1 = false
