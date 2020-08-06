@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 08/06/20 - Still chasing the null
  *  1.0.7 - 08/06/20 - Added more logging
  *  1.0.6 - 08/06/20 - More changes
  *  1.0.5 - 08/05/20 - Lots of changes
@@ -97,7 +98,7 @@ def initialize() {
     if(disableConnection) {
         log.info "Event Watchdog Driver - webSocket Connection is Disabled by the Device"
     } else {
-        log.info "Event Watchdog Driver - Connecting webSocket"
+        log.info "Event Watchdog Driver - Connecting webSocket - (${state.version})"
         interfaces.webSocket.connect("ws://localhost:8080/eventsocket")
     }
 }
@@ -112,19 +113,20 @@ def close() {
 }
 
 def webSocketStatus(String socketStatus) {
+    state.version = "1.0.8"
     if(logEnabled) log.debug "In webSocketStatus - socketStatus: ${socketStatus}"
 	if(socketStatus.startsWith("status: open")) {
-		log.warn "Event Watchdog Driver - Connected"
+		log.warn "Event Watchdog Driver - Connected - (${state.version})"
         sendEvent(name: "status", value: "connected", displayed: true)
         pauseExecution(500)
         state.delay = null
         return
 	} else if(socketStatus.startsWith("status: closing")) {
-		log.warn "Event Watchdog Driver - Closing connection"
+		log.warn "Event Watchdog Driver - Closing connection - (${state.version})"
         sendEvent(name: "status", value: "disconnected")
         return
 	} else if(socketStatus.startsWith("failure:")) {
-		log.warn "Event Watchdog Driver - Connection has failed with error [${socketStatus}]."
+		log.warn "Event Watchdog Driver - Connection has failed with error [${socketStatus}]. - (${state.version})"
         sendEvent(name: "status", value: "disconnected", displayed: true)
         autoReconnectWebSocket()
 	} else {
@@ -137,7 +139,7 @@ def autoReconnectWebSocket() {
     state.delay = (state.delay ?: 0) + 30    
     if(state.delay > 600) state.delay = 600
 
-    log.warn "Event Watchdog Driver - Connection lost, will try to reconnect in ${state.delay} seconds"
+    log.warn "Event Watchdog Driver - Connection lost, will try to reconnect in ${state.delay} seconds - (${state.version})"
     runIn(state.delay, initialize)
 }
 
@@ -148,7 +150,7 @@ def keywordInfo(keys) {
         def (keySet,keySetType,keyword1,sKeyword1,sKeyword2,sKeyword3,sKeyword4,nKeyword1,nKeyword2) = keys.split(";")
     
         state.keyValue = "${keySetType};${keyword1};${sKeyword1};${sKeyword2};${sKeyword3};${sKeyword4};${nKeyword1};${nKeyword2}"
-        if(traceEnable) log.trace "In keywordInfo - keyValue: ${state.keyValue}"
+        if(traceEnable) log.trace "In keywordInfo (${state.version}) - keyValue: ${state.keyValue}"
 
         state.keySetType = keySetType.toLowerCase()
         state.keyword = keyword1.toLowerCase()
@@ -182,10 +184,13 @@ def parse(String description) {
         
         if(state.keySetType) {          
             if(message.source) {
+                displayName = message.displayName
+                nameV = message.name.toLowerCase()
                 sourceV = message.source.toLowerCase()
                 //log.info "sourceV: ${sourceV}"
 
                 if(sourceV == "device") {
+                    displayName = message.displayName
                     nameV = message.name.toLowerCase()
                     //log.info "nameV: ${nameV} - keySetType: ${keySetType}"
                     if(nameV == state.keyword) log.warn "YES"
@@ -204,7 +209,7 @@ def parse(String description) {
             if(msgCheck == null) msgCheck = "-----"
         }    
         
-        if(msgCheck != "-----") {            
+        if(msgCheck != null) {            
             //log.debug "msgCheck: ${msgCheck} - keyword: ${state.keyword}"
 
             state.kCheck1 = false
@@ -216,7 +221,7 @@ def parse(String description) {
                 if(msgCheck.contains("${state.keyword}")) {
                     if(traceEnable) {
                         keyword1a = state.keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
-                        log.trace "In keyword - Found msgCheck: ${keyword1a}"
+                        log.trace "In keyword (${state.version}) - Found msgCheck: ${keyword1a}"
                     }
                     readyToGo = true
                 }
@@ -259,7 +264,7 @@ def parse(String description) {
                 }
 
                 if(state.match) {
-                    if(traceEnable) log.trace "In keyword - ${keyword1a} - Everything Passed!"
+                    if(traceEnable) log.trace "In keyword (${state.version}) - ${keyword1a} - Everything Passed!"
 
                     if(msgCheck == null || msgCheck == "null") {
                         if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
@@ -268,7 +273,12 @@ def parse(String description) {
                             log.warn "In keyword - displayName: ${message.displayName} - descriptionText: ${message.descriptionText}"
                             log.warn "In keyword - Sending: ${message.descriptionText}"
                         }
-                        makeList(message.descriptionText)
+                        if(message.descriptionText.contains("${displayName}")) {
+                            newText = message.descriptionText
+                        } else {
+                            newText = "${displayName} - ${message.descriptionText}"
+                        }
+                        if(message.descriptionText != "null" && message.descriptionText != null) makeList(newText)
                     }
                 }
             } catch (e) {
@@ -281,7 +291,7 @@ def parse(String description) {
  
 def makeList(data) {
     def msgValue = data
-    if(traceEnable) log.trace "In makeList - working on - ${msgValue}"
+    if(traceEnable) log.trace "In makeList (${state.version}) - working on - ${msgValue}"
 
     try {
         if(state.list == null) state.list = []
