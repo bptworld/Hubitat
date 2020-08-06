@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Watchdog/EW-driver.groovy",
 			"required": true,
-			"version": "1.0.7"
+			"version": "1.0.8"
 		}
 	]
 }
