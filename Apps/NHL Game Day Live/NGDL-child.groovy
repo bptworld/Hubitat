@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 08/07/20 - Fixed a typo with resetScoringSwitches
  *  1.0.5 - 08/05/20 - More Changes
  *  1.0.4 - 08/04/20 - Adjustments
  *  1.0.3 - 08/03/20 - Adjustments to testing
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -779,9 +780,9 @@ def notificationHandler(data) {
             if(logEnable) log.debug "In notificationHandler - In otherTeam - switchesOnOtherTeam: ${switchesOnOtherTeam} - lightValue: ${state.lightValue}"
             if(colorOT) {
                 if(switchesOnOtherTeam) {
-                    hue = switchesOnMyTeam.currentValue("hue")
-                    level = switchesOnMyTeam.currentValue("level")
-                    saturation = switchesOnMyTeam.currentValue("saturation")
+                    oldHue = switchesOnMyTeam.currentValue("hue")
+                    oldLevel = switchesOnMyTeam.currentValue("level")
+                    oldSaturation = switchesOnMyTeam.currentValue("saturation")
                     setLevelandColorHandler("otherTeam")
                     
                     switchesOnOtherTeam.setColor(state.lightValue)
@@ -793,7 +794,7 @@ def notificationHandler(data) {
         
         if(state.gameStatus != "Final" || theStatus == "test") {
             howLong = howLongLightsOn ?: 10
-            theData = "${hue};${level};${saturation}"
+            theData = "${oldHue};${oldLevel};${oldSaturation}"
             runIn(howLong, resetScoringSwitches, [data: theData])
         }
     }
@@ -837,6 +838,7 @@ def resetScoringSwitches(data) {
         if(theLevel == null) theLevel = 100
         
         state.lightValue = [hue: theHue, saturation: theSaturation, level: theLevel as Integer]
+        if(logEnable) log.debug "In resetScoringSwitches - ${state.lightValue}"
     }
     
     if(switchesOnMyTeam) {
@@ -874,6 +876,7 @@ def pregameMessageHandler() {
 def messageHandler(data) {
     if(logEnable) log.debug "In messageHandler (${state.version})"
     state.theMsg = ""
+
     def theMessages = "${data}".split(";")
 	mSize = theMessages.size()
 	pickOne = mSize.toInteger()
@@ -1079,12 +1082,12 @@ def appButtonHandler(buttonPressed) {
     
     if(state.whichButton == "testOtherScore"){
         log.debug "In appButtonHandler - testOtherScore - other Team"
-        if(useSpeech) messageHandler(otherTeamScore)
+        if(useSpeech && otherTeamScore) messageHandler(otherTeamScore)
         data = "otherTeam;test"       
         notificationHandler(data)
     } else if(state.whichButton == "testMyTeamScore"){
         log.debug "In appButtonHandler - testMyTeamGoal - My Team"
-        if(useSpeech) messageHandler(myTeamScore)
+        if(useSpeech && myTeamScore) messageHandler(myTeamScore)
         data = "myTeam;test"
         notificationHandler(data)
     }
