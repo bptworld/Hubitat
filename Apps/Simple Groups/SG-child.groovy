@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 08/07/20 - Fixed switchOptions
  *  1.0.1 - 05/21/20 - Added more stuff
  *  1.0.0 - 05/20/20 - Initial release.
  *
@@ -44,7 +45,7 @@
 
 def setVersion(){
     state.name = "Simple Groups"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -211,8 +212,8 @@ def motionSensorOptions() {
     }
 }
 
-def switchesOptions() {
-    dynamicPage(name: "switchesOptions", title: "", install:false, uninstall:false) {
+def switchOptions() {
+    dynamicPage(name: "switchOptions", title: "", install:false, uninstall:false) {
         display()
 		section(getFormat("header-green", "${getImage("Blank")}"+" Switch Grouping Options")) {
             paragraph "Setup a group of Switches to report as one."
