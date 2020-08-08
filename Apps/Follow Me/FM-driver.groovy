@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.2.4 - 07/21/20 - Adjustments
  *  2.2.3 - 07/10/20 - Added user selectable Priority colors
  *  2.2.2 - 07/06/20 - Added Priority Speaker options
  *  2.2.1 - 06/22/20 - Adjustments
@@ -241,7 +242,8 @@ def speak(message) {
         latestMessageDate()
         populateMap(priority,lastSpoken)
     } else {
-        log.warn "Follow Me - speak - Something went Wrong, No message received. (${latestMessageFrom})"
+        lmf = device.currentValue("latestMessageFrom")
+        log.warn "Follow Me - speak - Something went Wrong, No message received. (${lmf})"
     }
 }
 
