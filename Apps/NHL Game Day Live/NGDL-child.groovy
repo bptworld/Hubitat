@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 08/07/20 - Really fixed the resetScoringSwitches
  *  1.0.6 - 08/07/20 - Fixed a typo with resetScoringSwitches
  *  1.0.5 - 08/05/20 - More Changes
  *  1.0.4 - 08/04/20 - Adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -766,9 +767,9 @@ def notificationHandler(data) {
             if(logEnable) log.debug "In notificationHandler - In myTeam - switchesOnmyTeam: ${switchesOnMyTeam} - lightValue: ${state.lightValue}"
             if(colorMT) {
                 if(switchesOnMyTeam) {
-                    hue = switchesOnMyTeam.currentValue("hue")
-                    level = switchesOnMyTeam.currentValue("level")
-                    saturation = switchesOnMyTeam.currentValue("saturation")
+                    oldHue = switchesOnMyTeam.currentValue("hue")
+                    oldLevel = switchesOnMyTeam.currentValue("level")
+                    oldSaturation = switchesOnMyTeam.currentValue("saturation")
                     setLevelandColorHandler("myTeam")
                     
                     switchesOnMyTeam.setColor(state.lightValue)
@@ -830,25 +831,35 @@ def notificationHandler(data) {
 }
 
 def resetScoringSwitches(data) {
-    if(logEnable) log.debug "In resetScoringSwitches (${state.version})"
-    if(data) {
+    if(logEnable) log.debug "In resetScoringSwitches (${state.version}) - data: ${data}"
+    if(!data.contains("null")) {
         def (theHue, theSaturation, theLevel) = data.split(";")
         if(theHue == null) theHue = 52
         if(theSaturation == null) theSaturation = 19
         if(theLevel == null) theLevel = 100
         
+        if(logEnable) log.debug "In resetScoringSwitches - theHue: ${theHue} - theSaturation: ${theSaturation} - theLevel: ${theLevel}"
         state.lightValue = [hue: theHue, saturation: theSaturation, level: theLevel as Integer]
         if(logEnable) log.debug "In resetScoringSwitches - ${state.lightValue}"
     }
     
     if(switchesOnMyTeam) {
-        if(switchesOnMyTeam.hasCommand('setColor')) switchesOnMyTeam.setColor(state.lightValue)
+        if(logEnable) log.debug "In resetScoringSwitches - Working on My Team"
+        if(colorMT) { 
+            if(switchesOnMyTeam.hasCommand('setColor')) switchesOnMyTeam.setColor(state.lightValue)
+        }
         switchesOnMyTeam.off()
     }
+    
     if(switchesOnOtherTeam) {
-        if(switchesOnOtherTeam.hasCommand('setColor')) switchesOnOtherTeam.setColor(state.lightValue)
+        if(logEnable) log.debug "In resetScoringSwitches - Working on Other Team"
+        if(colorOT) {
+            if(switchesOnOtherTeam.hasCommand('setColor')) switchesOnOtherTeam.setColor(state.lightValue) 
+        }
         switchesOnOtherTeam.off()
     }
+    
+    state.theMsg = ""
     if(logEnable) log.debug "In resetScoringSwitches - All done!"
 }
 
@@ -870,6 +881,7 @@ def pregameMessageHandler() {
             if(useSpeech) letsTalk()
             if(pushMessage) pushNow()
         }
+        state.theMsg = ""
     }
 }
 
