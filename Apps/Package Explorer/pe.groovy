@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 08/11/20 - Fixed an issue with category options
  *  1.0.6 - 06/03/20 - Added a Master List Option
  *  1.0.5 - 05/23/20 - Added What's New Option
  *  1.0.4 - 05/20/20 - Fix for HE update
@@ -59,7 +60,7 @@ import groovy.transform.Field
     
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -499,12 +500,13 @@ def performRepositoryRefresh() {        // Code by dman2306, mods by bptworld
                 tempList += "${pkgDetails.author}, "
                 allDevNames << pkgDetails.author
             }
-			if (!categories.contains(pkgDetails.category))
+			if (!categories.contains(pkgDetails.category) && pkgDetails.category != null && pkgDetails.category != "null")
 				categories << pkgDetails.category
 		}
 	}
     state.allPackages = allPackages.sort()
 	state.categories = categories.sort()
+    log.warn "categories: ${state.categories}"
     state.allDevNames = allDevNames.sort()    
     state.packCount = allPackages.size()
 }
