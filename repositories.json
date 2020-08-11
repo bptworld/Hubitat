@@ -64,7 +64,7 @@
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Device%20Check%20Plus/packageManifest.json",
    		"description": "Check selected devices, then warn you what's not in the right state.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
+         "tags": [ "Dashboards", "Doors & Windows", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
    		"name": "Device Sequencer",
