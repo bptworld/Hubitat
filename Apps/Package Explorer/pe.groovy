@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 08/11/20 - Added search by Tag option
  *  1.0.7 - 08/11/20 - Fixed an issue with category options
  *  1.0.6 - 06/03/20 - Added a Master List Option
  *  1.0.5 - 05/23/20 - Added What's New Option
@@ -60,7 +61,7 @@ import groovy.transform.Field
     
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -78,6 +79,7 @@ definition(
 preferences {
     page(name: "pageConfig")
     page(name: "searchOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "tagOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "categoryOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "developerOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "whatsNewOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
@@ -111,8 +113,10 @@ def pageConfig() {
                 
                 input "installedRepositories", "enum", title: "Available Repositories", options:state.reposToShow, multiple:true, required:true, submitOnChange:true     
                 //app.updateSetting("installedRepositories", state.reposToShow)
+                paragraph "<small>* Be sure to check for new Repositories in the dropdown!</small>"
 
                 href "categoryOptions", title:"Category Options", description:"See all Apps and Drivers the selected Category has to offer"
+                href "tagOptions", title:"Tag Options", description:"Search by Tags across all Developers and Categories"
                 href "developerOptions", title:"Developer Options", description:"See all Apps and Drivers the selected Developer has to offer"
                 href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an App or Driver across all Developers and Categories"
                 href "masterListOptions", title:"Master List Options", description:"Creates an alphabetical list of ALL packages. <i><b>This will take a minute to run! Please be patient.</b></i>"
@@ -151,6 +155,26 @@ def categoryOptions() {
         
         if(pkgCategory) {
             findPackagesByCategory()
+            section(getFormat("header-green", "${getImage("Blank")}"+" ${state.resultsTitle}")) {
+                paragraph appsList
+            }
+	    }
+    }
+}
+
+def tagOptions() {
+    dynamicPage(name: "tagOptions", title: "", install: false, uninstall:false){
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Tag Options")) {
+            input "pkgTag", "enum", title: "Choose a Tag To Explore", options:state.tags, required:false, submitOnChange:true
+            if(pkgTag) {
+                input "sortBy", "bool", title: "Sort packages by Name (off) or by Author (on)", description: "Sorting", defaultValue:false, submitOnChange:true
+            }
+            paragraph "<small>Note: It is up to each developer to maintain the tags to their packages. Not all developers utitlize the Tag option.</small>"
+        }
+        
+        if(pkgTag) {
+            findPackagesByTag()
             section(getFormat("header-green", "${getImage("Blank")}"+" ${state.resultsTitle}")) {
                 paragraph appsList
             }
@@ -215,7 +239,7 @@ def whatsNewOptions() {
     dynamicPage(name: "whatsNewOptions", title: "", install: false, uninstall:false){
         display()
 		
-        findPakcagesByDateAdded()
+        findPackagesByDateAdded()
 
         section(getFormat("header-green", "${getImage("Blank")}"+" ${state.resultsTitle}")) {
             paragraph appsList
@@ -228,7 +252,6 @@ def findPackagesByCategory() {
     if(logEnable) log.debug "In findPackagesByCategory (${state.version})"   
     if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name}
     if(sortBy) allPackages = state.allPackages.sort{ name-> name.author}    
-    state.packageCount = allPackages.size()
                 
     state.resultsTitle = "<b>Search Results for Category - ${pkgCategory}</b>"
     appsList = ""
@@ -252,22 +275,62 @@ def findPackagesByCategory() {
             }
             if(theLinks != "") theLinks += "|"               
                 
-            if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
+            if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
                         
-            if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}</div>"
+            if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
             theLinks = ""            
         }
     }
 }
     
+def findPackagesByTag() {
+    if(logEnable) log.debug "In findPackagesByTag (${state.version})"   
+    if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name}
+    if(sortBy) allPackages = state.allPackages.sort{ name-> name.author}    
+                
+    state.resultsTitle = "<b>Search Results for Tag - ${pkgTag}</b>"
+    appsList = ""
+    
+	for (pkg in allPackages) {
+        if(pkg.tags) {            
+            pkg.tags.each{ it ->
+                if (it == pkgTag) {      
+                    def info = getJSONFile(pkg.location)
+
+                    theLinks = ""            
+                    if(info.documentationLink) {
+                        theLinks += "| <a href='${info.documentationLink}' target='_blank'>Documentation</a> "
+                    }
+                    if(info.communityLink) {
+                        theLinks += "| <a href='${info.communityLink}' target='_blank'>Community Thread</a> "
+                    }
+                    if(pkg.gitHubUrl) {
+                        theLinks += "| <a href='${pkg.gitHubUrl}' target='_blank'>GitHub</a> "
+                    }
+                    if(pkg.payPalUrl) {
+                        theLinks += "| <a href='${pkg.payPalUrl}' target='_blank'>Donate</a> "
+                    }
+                    if(theLinks != "") theLinks += "|"               
+
+                    if(pkg.tags) {
+                        tags = pkg.tags
+                    } else tags = ""
+                    
+                    if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'><b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
+
+                    if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
+                    theLinks = ""            
+                }
+            }
+        }
+    }
+}
+
 def findPackagesByDeveloper() {
     if(logEnable) log.debug "In findPackagesByDeveloper (${state.version})"
     if(!sortBy) allPackages = state.allPackages.sort{ name-> name.name}
     if(sortBy) allPackages = state.allPackages.sort{ name-> name.category}
-    
-    //allPackages = state.allPackages.sort{ name-> name.author}    
-    state.packageCount = allPackages.size()
-            
+
     state.resultsTitle = "<b>Search Results for Developer - ${pkgAuthor}</b>"
     appsList = ""
     
@@ -292,7 +355,11 @@ def findPackagesByDeveloper() {
                 }
                 if(theLinks != "") theLinks += "|"               
                 
-                appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
+                if(pkg.tags) {
+                    tags = pkg.tags
+                } else tags = ""
+                
+                appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
             }
         }
     }
@@ -336,9 +403,13 @@ def findPackagesBySearch() {
                     if(theLinks != "") theLinks += "|"
                     //log.warn info
 
-                    if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
+                    if(pkg.tags) {
+                        tags = pkg.tags
+                    } else tags = ""
+                    
+                    if(!sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
 
-                    if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - (${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}</div>"
+                    if(sortBy) appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - (${pkg.author}) - <b>${pkg.name}</b><br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
                     theLinks = "" 
                 }
             }
@@ -349,7 +420,6 @@ def findPackagesBySearch() {
 def findAllPackages() {
     if(logEnable) log.debug "In findAllPackages (${state.version})"
     allPackages = state.allPackages.sort{ name-> name.name}   
-    state.packageCount = allPackages.size()
             
     state.resultsTitle = "<b>Search Results for All Packages</b>"
     appsList = ""
@@ -374,15 +444,18 @@ def findAllPackages() {
             }
             if(theLinks != "") theLinks += "|"               
 
-            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}</div>"
+            if(pkg.tags) {
+                tags = pkg.tags
+            } else tags = ""
+            
+            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>(${pkg.category}) - <b>${pkg.name}</b> - (${pkg.author})<br>${theLinks}<br>${pkg.description}<br><br>Tags: ${tags}</div>"
         }
     }
 }
 
-def findPakcagesByDateAdded() {
-    if(logEnable) log.debug "In findPakcagesByDateAdded (${state.version})"   
+def findPackagesByDateAdded() {
+    if(logEnable) log.debug "In findPackagesByDateAdded (${state.version})"   
     allPackages = state.allPackages.sort{ name-> name.name}
-    state.packageCount = allPackages.size()
                 
     state.resultsTitle = "<b>Search Results for New Packages</b>"
     appsList = ""
@@ -428,26 +501,33 @@ def findPakcagesByDateAdded() {
         if(days) {
             theDays = days.toInteger()
 
-            if(theDays <= 7) {
+            if(theDays <= 7 && pkg.description) {    
                 def mapInfo = [
                     cat: pkg.category,
                     name: pkg.name,
                     author: pkg.author,
                     theDays: theDays,
                     theLinks: theLinks,
-                    description: pkg.description
+                    description: pkg.description,
+                    tags: pkg.tags
                 ]
+                
                 allDays7 << mapInfo      
             }
         }
     }
+    
     sortedByDays = allDays7.sort{ stuff -> stuff.theDays }
 
     sortedByDays.each { data -> 
+        if(data.tags) {
+            tags = data.tags
+        } else tags = ""
+        
         if(data.theDays == 1) {
-            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>${data.theDays} day - <b>${data.name}</b> - ${data.cat} - ${data.author}<br>${data.theLinks}<br>${data.description}</div>"
+            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>${data.theDays} day - <b>${data.name}</b> - ${data.cat} - ${data.author}<br>${data.theLinks}<br>${data.description}<br><br>Tags: ${tags}</div>"
         } else {
-            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>${data.theDays} days - <b>${data.name}</b> - ${data.cat} - ${data.author}<br>${data.theLinks}<br>${data.description}</div>"
+            appsList += "<div style='background-color: white;width: 90%;border: 1px solid grey;border-radius: 5px;box-shadow: 3px 3px;padding: 20px;margin: 20px;'>${data.theDays} days - <b>${data.name}</b> - ${data.cat} - ${data.author}<br>${data.theLinks}<br>${data.description}<br><br>Tags: ${tags}</div>"
         }
     }
 
@@ -473,6 +553,7 @@ def performRepositoryRefresh() {        // Code by dman2306, mods by bptworld
     if(logEnable) log.debug "In performRepositoryRefresh (${state.version})"
 	allPackages = []
 	categories = []
+    tags = []
     allDevNames = []
     tempList = ""
     state.packCount = 0
@@ -493,20 +574,32 @@ def performRepositoryRefresh() {        // Code by dman2306, mods by bptworld
 				name: pkg.name,
 				description: pkg.description,
 				location: pkg.location,
-				category: pkg.category
+				category: pkg.category,
+                tags: pkg.tags
 			]
 			allPackages << pkgDetails
-            if(!tempList.contains("${pkgDetails.author}")) {
+            if(!tempList.contains("${pkgDetails.author}") && pkgDetails.author != null && pkgDetails.author != "null") {
                 tempList += "${pkgDetails.author}, "
                 allDevNames << pkgDetails.author
             }
-			if (!categories.contains(pkgDetails.category) && pkgDetails.category != null && pkgDetails.category != "null")
+            
+			if (!categories.contains(pkgDetails.category) && pkgDetails.category != null && pkgDetails.category != "null") {
 				categories << pkgDetails.category
+            }
+            
+            if (pkgDetails.tags && pkgDetails.tags != null && pkgDetails.tags != "null") {
+                def nTags = pkgDetails.tags
+                nTags.each{ it ->
+                    if(!tags.contains(it)) {
+                        tags << it
+                    }
+                }        
+            }
 		}
 	}
     state.allPackages = allPackages.sort()
 	state.categories = categories.sort()
-    log.warn "categories: ${state.categories}"
+    state.tags = tags.sort()
     state.allDevNames = allDevNames.sort()    
     state.packCount = allPackages.size()
 }
