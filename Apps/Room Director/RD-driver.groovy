@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 08/13/20 - Added Tile
  *  1.0.0 - 07/05/20 - Initial release
  */
 
@@ -45,9 +46,11 @@ metadata {
         capability "Switch"
 
         command "settingStatus", [[name: "settingStatus",type:"ENUM", description:"Room Status", constraints: ["occupied", "unoccupied", "sleep"]]]
+        command "createTile", ["string"]
         
         attribute "switch", "string"
         attribute "status", "string"
+        attribute "bpt-roomTile", "string"
 	}
 	preferences() {    	
         section(){
@@ -78,3 +81,8 @@ def settingStatus(data) {
         sendEvent(name: "status", value: "sleep", isStateChange: true)
     }
 } 
+
+def createTile(data) {
+    if(logEnable) log.info "In Room Director Driver - Creating Room Tile"
+    sendEvent(name: "bpt-roomTile", value: data, isStateChange: true) 
+}
