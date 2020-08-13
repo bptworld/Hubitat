@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/RD-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.1.8"
+			"version": "1.1.9"
 		}
 	],
 	"drivers" : [
@@ -35,7 +35,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Room%20Director/RD-driver.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.0"
+			"version": "1.0.1"
 		}
 	]
 }
