@@ -39,6 +39,7 @@ metadata {
 		//Updated 2019-08-09 - minor changes and improvements, onoff state reporting fixed
         	//Updated 2019-11-11 - minor changes
 		//Updated 2020-03-26 - Added attributes
+		//Updated 2020-08-12 - lenworthrose: Fixed parsing of version info
 	}
     
     preferences() {    	
@@ -355,21 +356,15 @@ private Map parseReportAttributeMessage(String description) {
 	else if (descMap.clusterInt == CLUSTER_BASIC && descMap.attrInt == BASIC_ATTR_SWBUILDID) {
 		resultMap.name = "version"
 		def versionString = descMap.value
+		def lastDot = versionString.lastIndexOf('.')
+		def currentMinorVersion = 0
 		
-		StringBuilder output = new StringBuilder("")
-		StringBuilder output2 = new StringBuilder("")
-		
-		for (int i = 0; i < versionString.length(); i += 2) {
-			String str = versionString.substring(i, i + 2)
-			output.append((char) (Integer.parseInt(str, 16)))   
-			if (i > 19) {
-				output2.append((char) (Integer.parseInt(str, 16)))
-			}
-		} 
-		
-		def current = Integer.parseInt(output2.toString())
-		state.currentVersion = current
-		resultMap.value = output.toString()   
+		if (lastDot > 0) {
+			currentMinorVersion = Integer.parseInt(versionString.substring(lastDot + 1))
+		}
+
+		state.currentVersion = currentMinorVersion
+		resultMap.value = versionString
 	}
 	else {
 		if(logEnable) log.debug "parseReportAttributeMessage() --- ignoring attribute"
