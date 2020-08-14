@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.0.2 - 06/15/20 - Added capability IlluminanceMeasurement - @rvrolyk
+ *  1.0.3 - 08/14/20 - Minor changes
+ *  1.0.2 - 06/15/20 - Added capability IlluminanceMeasurement
  *  1.0.1 - 06/10/20 - Lots of changes to match app
  *  1.0.0 - 05/25/20 - Initial release
  */
@@ -45,11 +46,21 @@
 metadata {
 	definition (name: "Averaging Plus Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/AP-driver.groovy") {
         capability "Actuator"
+        capability "Sensor"
         capability "Switch"
         capability "Contact Sensor"
         capability "Motion Sensor"
         capability "Water Sensor"
+        
+        capability "Battery"
+        capability "Energy Meter"
+        capability "Relative Humidity Measurement"
         capability "IlluminanceMeasurement"
+        capability "Switch Level"
+        capability "Power Meter"
+        capability "Temperature Measurement"
+        capability "Ultraviolet Index"
+		capability "Voltage Measurement"
 
         command "clearData"
         command "virtualAverage", ["string"]
@@ -83,19 +94,23 @@ metadata {
 }
 
 def virtualAverage(data) {
-    def (theType, theValue) = data.split(":")
-    if(logEnable) log.info "In Averaging Plus Driver - Recieved ${data}"
+    if(logEnable) log.info "In virtualAverage - Received ${data}"
+    try{
+        def (theType, theValue) = data.split(":")
 
-    sendEvent(name: "average", value: theValue, isStateChange: true)
-    if(theType == "battery") sendEvent(name: "battery", value: theValue, isStateChange: true)
-    if(theType == "energy") sendEvent(name: "energy", value: theValue, isStateChange: true)
-    if(theType == "humidity") sendEvent(name: "humidity", value: theValue, isStateChange: true)
-    if(theType == "illuminance") sendEvent(name: "illuminance", value: theValue, isStateChange: true)
-    if(theType == "level") sendEvent(name: "level", value: theValue, isStateChange: true)
-    if(theType == "power") sendEvent(name: "power", value: theValue, isStateChange: true)
-    if(theType == "temperature") sendEvent(name: "temperature", value: theValue, isStateChange: true)
-    if(theType == "ultravioletIndex") sendEvent(name: "ultravioletIndex", value: theValue, isStateChange: true)
-    if(theType == "voltage") sendEvent(name: "voltage", value: theValue, isStateChange: true)
+        sendEvent(name: "average", value: theValue, isStateChange: true)
+        if(theType == "battery") sendEvent(name: "battery", value: theValue, isStateChange: true)
+        if(theType == "energy") sendEvent(name: "energy", value: theValue, isStateChange: true)
+        if(theType == "humidity") sendEvent(name: "humidity", value: theValue, isStateChange: true)
+        if(theType == "illuminance") sendEvent(name: "illuminance", value: theValue, isStateChange: true)
+        if(theType == "level") sendEvent(name: "level", value: theValue, isStateChange: true)
+        if(theType == "power") sendEvent(name: "power", value: theValue, isStateChange: true)
+        if(theType == "temperature") sendEvent(name: "temperature", value: theValue, isStateChange: true)
+        if(theType == "ultravioletIndex") sendEvent(name: "ultravioletIndex", value: theValue, isStateChange: true)
+        if(theType == "voltage") sendEvent(name: "voltage", value: theValue, isStateChange: true)
+    } catch(e) {
+        if(logEnable) log.info "In virtualAverage - Invalid data received: ${data}"
+    }
 } 
 
 def todaysHigh(data) {
