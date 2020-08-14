@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Averaging%20Plus/AP-driver.groovy",
 			"required": true,
-			"version": "1.0.2"
+			"version": "1.0.3"
 		}
 	]
 }
