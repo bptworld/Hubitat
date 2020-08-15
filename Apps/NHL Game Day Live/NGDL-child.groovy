@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 08/15/20 - Fixed a typo with total score
  *  1.0.7 - 08/07/20 - Really fixed the resetScoringSwitches
  *  1.0.6 - 08/07/20 - Fixed a typo with resetScoringSwitches
  *  1.0.5 - 08/05/20 - More Changes
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -900,7 +901,7 @@ def messageHandler(data) {
         if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.homeTeam}" )}
         
         if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalAwayScore}" )}
-        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalHomescore}" )}
+        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalHomeScore}" )}
     }
     if(state.myTeamIs == "home") { 
         if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.homeTeam}" )}
