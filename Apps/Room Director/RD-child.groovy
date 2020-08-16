@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.2.1 - 08/15/20 - Reworked Permanent Dim
  *  1.2.0 - 08/15/20 - Added ability to use multiple triggers, Added Time and Sunset/Sunrise triggers, Added Permanent Dim
  *  1.1.9 - 08/13/20 - Added Time Delay to each Mode, Added Dashboard Room Tile, several fixes/improvements
  *  1.1.8 - 07/15/20 - Added Humidity and Power to secondary triggers. Added up to 3 secondary triggers.
@@ -63,7 +64,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.0"
+	state.version = "1.2.1"
 }
 
 definition(
@@ -261,7 +262,7 @@ def pageConfig() {
                 href "onConfig", title:"${getImage("optionsRed")} Select Device 'OCCUPIED' options here", description:"Click here for Options"
             }
             
-            if(unSwitchesOff || unSwitchesOn) {
+            if(unSwitchesOff || unSwitchesOn || permanentDim) {
                 href "offConfig", title:"${getImage("optionsGreen")} Select Device 'UNOCCUPIED' options here", description:"Click here for Options"
             } else {
                 href "offConfig", title:"${getImage("optionsRed")} Select Device 'UNOCCUPIED' options here", description:"Click here for Options"
@@ -668,8 +669,8 @@ def initialize() {
 	if(triggerMode4 == "Switch") subscribe(mySwitches4, "switch", primaryHandler)
     
     if(sunRestriction) {
-        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ssZ")
+        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ssZ")
     
         if(logEnable) log.debug "In initialize - sunrise: ${sunriseTime} - sunset: ${sunsetTime}"
         
@@ -940,24 +941,25 @@ def vacantHandler() {
     
     if(logEnable) log.debug "In vacantHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - timeDelayed: ${state.timeDelayed}"
     if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
-        if(permanentDim) {
-            if(oSwitchesOn1) theDevices = oSwitchesOn1
-            if(oSwitchesOn2) theDevices = oSwitchesOn2
-            if(oSwitchesOn3) theDevices = oSwitchesOn3
-            if(oSwitchesOn4) theDevices = oSwitchesOn4
-            if(oSwitchesOn5) theDevices = oSwitchesOn5
-            if(oSwitchesOn6) theDevices = oSwitchesOn6
-            if(oSwitchesOn7) theDevices = oSwitchesOn7
-            if(oSwitchesOn8) theDevices = oSwitchesOn8
-            if(oSwitchesOn9) theDevices = oSwitchesOn9
-            if(oSwitchesOn0) theDevices = oSwitchesOn0
+        if(logEnable) log.debug "In vacantHandler - permanentDim: ${permanentDim} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
+        if(permanentDim && state.sunRiseTosunSet) {
+            if(oDimmers1) theDevices = oDimmers1
+            if(oDimmers2) theDevices = oDimmers2
+            if(oDimmers3) theDevices = oDimmers3
+            if(oDimmers4) theDevices = oDimmers4
+            if(oDimmers5) theDevices = oDimmers5
+            if(oDimmers6) theDevices = oDimmers6
+            if(oDimmers7) theDevices = oDimmers7
+            if(oDimmers8) theDevices = oDimmers8
+            if(oDimmers9) theDevices = oDimmers9
+            if(oDimmers0) theDevices = oDimmers0
             
             if(theDevices) {
                 theDevices.each { it ->
                     if(it.hasCommand("setLevel")) {
-                        if(logEnable) log.debug "In roomWarningHandler - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"                     
-                        it.setLevel("${permanentDim}")
-                        if(logEnable) log.debug "In roomWarningHandler - working on ${it} - setLevel to: ${warnLevel}"
+                        if(logEnable) log.debug "In vacantHandler - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"                     
+                        it.setLevel("${permanentDimLvl}")
+                        if(logEnable) log.debug "In vacantHandler - working on ${it} - setLevel to: ${permanentDimLvl}"
                     }
                 }
             }
@@ -1020,21 +1022,28 @@ def lightsHandler() {
     
     if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleeping: ${state.sleeping}"
     
-    if(state.sleeping) {            
-        if(unSwitchesOff) {
-            unSwitchesOff.each { it ->
-                it.off()
+    if(permanentDim && !state.sunRiseTosunSet) {
+        if(oDimmers1) theDevices = oDimmers1
+        if(oDimmers2) theDevices = oDimmers2
+        if(oDimmers3) theDevices = oDimmers3
+        if(oDimmers4) theDevices = oDimmers4
+        if(oDimmers5) theDevices = oDimmers5
+        if(oDimmers6) theDevices = oDimmers6
+        if(oDimmers7) theDevices = oDimmers7
+        if(oDimmers8) theDevices = oDimmers8
+        if(oDimmers9) theDevices = oDimmers9
+        if(oDimmers0) theDevices = oDimmers0
+
+        if(theDevices) {
+            theDevices.each { it ->
+                if(it.hasCommand("setLevel")) {              
+                    it.off()
+                    if(logEnable) log.debug "In vacantHandler - permanentDim - Turning off ${it}"
+                }
             }
         }
-        if(unSwitchesOn) {
-            unSwitchesOn.each { it ->
-                it.on()
-            }
-        }
-        if(warningSwitches) warningSwitches.off()
-        if(useTile) { checkRoomTile("sleep") }
     } else {
-        if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
+        if(state.sleeping) {            
             if(unSwitchesOff) {
                 unSwitchesOff.each { it ->
                     it.off()
@@ -1046,16 +1055,31 @@ def lightsHandler() {
                 }
             }
             if(warningSwitches) warningSwitches.off()
-            int repeatTime
-            now = new Date()
-            use( TimeCategory ) {
-                newTime = now + repeatTime.seconds
-            }
-            runOnce(newTime, lightsHandler2)
-            if(useTile) { checkRoomTile("unoccupied") }
+            if(useTile) { checkRoomTile("sleep") }
         } else {
-            unschedule()
-            occupancyHandler()
+            if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
+                if(unSwitchesOff) {
+                    unSwitchesOff.each { it ->
+                        it.off()
+                    }
+                }
+                if(unSwitchesOn) {
+                    unSwitchesOn.each { it ->
+                        it.on()
+                    }
+                }
+                if(warningSwitches) warningSwitches.off()
+                int repeatTime
+                now = new Date()
+                use( TimeCategory ) {
+                    newTime = now + repeatTime.seconds
+                }
+                runOnce(newTime, lightsHandler2)
+                if(useTile) { checkRoomTile("unoccupied") }
+            } else {
+                unschedule()
+                occupancyHandler()
+            }
         }
     }
 }
@@ -1284,7 +1308,8 @@ def sunriseTimeHandler(evt) {
 
 def scheduleWithOffset(nextSunriseSunsetTime, offset, offsetDir, handlerName) {
     if(logEnable) log.debug "In scheduleWithOffset (${state.version}) - nextSunriseSunsetTime: ${nextSunriseSunsetTime} - offset: ${offset} - offsetDir: ${offsetDir}"
-    def nextSunriseSunsetTimeDate = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", nextSunriseSunsetTime)
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+    def nextSunriseSunsetTimeDate = dateFormat.parse("${nextSunriseSunsetTime}".replace("+00:00","+0000"))
     def offsetTime = new Date(nextSunriseSunsetTimeDate.time + getOffset(offset, offsetDir))
 
     if(logEnable) log.debug "In scheduleWithOffset - Scheduling Sunrise/Sunset for $offsetTime"
@@ -1295,6 +1320,7 @@ def sunriseHandler() {
     if(logEnable) log.debug "In sunriseHandler (${state.version})"
     if(sunRestriction) {
         state.sunRiseTosunSet = false
+        whatToDo()
     } else {
         state.sunRiseTosunSet = true
     }
@@ -1305,6 +1331,7 @@ def sunsetHandler() {
     if(logEnable) log.debug "In sunsetHandler (${state.version})"
     if(sunRestriction) {
         state.sunRiseTosunSet = true
+        whatToDo()
     } else {
         state.sunRiseTosunSet = true
     }
