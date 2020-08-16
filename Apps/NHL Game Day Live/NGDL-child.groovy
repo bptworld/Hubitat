@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 08/16/20 - Added an option to keep light on at final for a set amount of time (minutes)
  *  1.0.8 - 08/15/20 - Fixed a typo with total score
  *  1.0.7 - 08/07/20 - Really fixed the resetScoringSwitches
  *  1.0.6 - 08/07/20 - Fixed a typo with resetScoringSwitches
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -252,8 +253,16 @@ def notificationOptions(){
                 input "howLongLightsOn", "number", title: "How long should the light stay on (in seconds)", defaultValue:10, requied: false, submitOnChange:true
             }
             
-            input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true
-            if(onFinal) paragraph "<small>* Light will stay on until manually turned off.</small>"
+            input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true          
+            if(onFinal) {
+                input "leaveOn", "bool", title: "Turn off after set time (off) - Leave on until turned off manually (on)"
+                if(leaveOn) {
+                    paragraph "<small>* Light will stay on until manually turned off.</small>"
+                    app.removeSetting("leaveOnTime")
+                } else {
+                    input "leaveOnTime", "number", title: "Leave on for (minutes)", submitOnChange:true
+                }
+            }
         }
                 
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
@@ -796,6 +805,12 @@ def notificationHandler(data) {
         
         if(state.gameStatus != "Final" || theStatus == "test") {
             howLong = howLongLightsOn ?: 10
+            theData = "${oldHue};${oldLevel};${oldSaturation}"
+            runIn(howLong, resetScoringSwitches, [data: theData])
+        }
+        
+        if(state.gameStatus == "Final" || leaveOnTime) {
+            howLong = leaveOnTime ?: 60
             theData = "${oldHue};${oldLevel};${oldSaturation}"
             runIn(howLong, resetScoringSwitches, [data: theData])
         }
