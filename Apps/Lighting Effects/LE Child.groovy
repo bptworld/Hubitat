@@ -39,6 +39,7 @@
  *
  * Changes:
  *
+ *  2.0.3 - 08/16/20 - Added Light Level to Fast_Color_Changing & Slow_Color_Changing, other changes
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 04/12/20 - Major changes
  * ---
@@ -48,9 +49,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Lighting Effects"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -90,14 +94,40 @@ def pageConfig() {
 			paragraph "Remember that the more devices you add and the faster you send commands, the more you're flooding the network. If you see 'normal' devices not responded as quickly or not at all, be sure to scale back the lighting effects."
         }
 		section(getFormat("header-green", "${getImage("Blank")}"+" Setup")) {
-    		input "triggerMode", "enum", title: "Select Lights Type", submitOnChange: true,  options: ["Fast_Dimmer","Fast_Color_Changing","Slow_Color_Changing", "Slow_Off","Slow_On","Slow_Loop"], required: true, Multiple: false
+    		input "triggerMode", "enum", title: "Select Lights Type", submitOnChange: true,  options: ["Fast_Dimmer","Fast_Color_Changing","Slow_Color_Changing", "Slow_Off","Slow_On","Slow_Loop"], required: true, multiple: false
+            paragraph "<small>Note: When changing Light Type, all selections will be deleted.</small>"
+            
+            if(state.previousTrigger == null) state.previousTrigger = triggerMode
+            log.warn "previousTrigger: ${state.previousTrigger} - triggerMode: ${triggerMode}"
+            if(state.previousTrigger == triggerMode) {
+                // all good
+            } else {
+                app.removeSetting("dimmers")
+                app.removeSetting("sleepytime")
+                
+                app.removeSetting("lights")
+                app.removeSetting("sleepytime2")
+                app.removeSetting("sleepPattern")
+                app.removeSetting("seperate")
+                app.removeSetting("pattern")
+                app.removeSetting("colorSelection")
+                app.removeSetting("lightLevel")
+                
+                app.removeSetting("minutes")
+                app.removeSetting("targetLevelLow")
+                app.removeSetting("targetLevelHigh")
+                
+                state.previousTrigger = triggerMode
+            } 
         }
+        
         if(triggerMode == "Fast_Dimmer"){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Used to change colors between 5 sec and 5 minutes")) {
 				input "dimmers", "capability.switchLevel", title: "Select Dimmable Lights", required: false, multiple: true
 				input "sleepytime", "number", title: "Enter the delay between actions - Big number = Slow, Small number = Fast" , required: true, defaultValue: 6000
         	}
         }
+        
        	if(triggerMode == "Fast_Color_Changing"){
             section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
         		input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
@@ -112,8 +142,10 @@ def pageConfig() {
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"
                     ], required: true, multiple: true
-			}
+                input "lightLevel", "number", title: "Lighting Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
+            }
 		}
+        
 		if(triggerMode == "Slow_Color_Changing"){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Used to change colors between 5 minutes and 3 hours")) {
         		input "lights", "capability.colorControl", title: "Select Color Changing Bulbs", required: false, multiple:true
@@ -127,8 +159,10 @@ def pageConfig() {
                         ["Warm White":"Warm White - Relax"],
                         "Red","Green","Blue","Yellow","Orange","Purple","Pink"
                     ], required: true, multiple: true
+                input "lightLevel", "number", title: "Lighting Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
 			}
 		}
+        
     	if(triggerMode == "Slow_On"){
 			section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
             	input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
@@ -137,6 +171,7 @@ def pageConfig() {
 				tMode = "Slow_On"
 			}
    		}
+        
     	if(triggerMode == "Slow_Off"){
     		section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
             	input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
@@ -145,6 +180,7 @@ def pageConfig() {
 				tMode = "Slow_Off"
         	}
    		}
+        
     	if(triggerMode == "Slow_Loop"){
     		section(getFormat("header-green", "${getImage("Blank")}"+" Select your options")) {
         		input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
@@ -154,9 +190,11 @@ def pageConfig() {
             	tMode = "Slow_Loop"
        		}      
 		}
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Activate the Dimming/Color Changing when this switch is on")) {
 			input "switches", "capability.switch", title: "Switch", required: true, multiple: false
 		} 
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
         section() {
             input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "debugging", submitOnChange:true
@@ -426,6 +464,7 @@ def sendcolor(lights,color) {
     if(logEnable) log.debug "In sendcolor (${state.version})"
     def hueColor = 0
     def saturation = 100
+    if(lightLevel) onLevel = lightLevel
     switch(color) {
             case "White":
             hueColor = 52
@@ -513,25 +552,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
