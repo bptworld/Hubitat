@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.2.2 - 08/16/20 - Fix for sunset/sunrise
  *  1.2.1 - 08/15/20 - Reworked Permanent Dim
  *  1.2.0 - 08/15/20 - Added ability to use multiple triggers, Added Time and Sunset/Sunrise triggers, Added Permanent Dim
  *  1.1.9 - 08/13/20 - Added Time Delay to each Mode, Added Dashboard Room Tile, several fixes/improvements
@@ -64,7 +65,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.1"
+	state.version = "1.2.2"
 }
 
 definition(
@@ -674,12 +675,15 @@ def initialize() {
     
         if(logEnable) log.debug "In initialize - sunrise: ${sunriseTime} - sunset: ${sunsetTime}"
         
-        schedule("0 5 0 1/1 * ? *", sunriseTimeHandler)
-        schedule("0 5 0 1/1 * ? *", sunsetTimeHandler)
+        setPars = "${sunsetTime},${sunsetOffsetValue},${sunsetOffsetDir},sunsetHandler"
+        risePars = "${sunriseTime},${sunriseOffsetValue},${sunriseOffsetDir},sunriseHandler"
+     
+        schedule("0 01 00 1/1 * ? *", scheduleWithOffset, [overwrite: false, data: setPars])
+        schedule("10 01 00 1/1 * ? *", scheduleWithOffset, [overwrite: false, data: risePars])
         
         //Run today too
-        scheduleWithOffset(sunsetTime, sunsetOffsetValue, sunsetOffsetDir, "sunsetHandler")
-        scheduleWithOffset(sunriseTime, sunriseOffsetValue, sunriseOffsetDir, "sunriseHandler")
+        scheduleWithOffset(setPars)
+        scheduleWithOffset(risePars)
     }
     
     if(logEnable) log.debug "In initialize - Finished initialize"
@@ -1296,18 +1300,12 @@ def dayOfTheWeekHandler() {
 }
 
 // ** Start Sunset to Sunrise code - Modified from Smartthings docs
-def sunsetTimeHandler(evt) {
-    if(logEnable) log.debug "In sunsetTimeHandler (${state.version})"
-    scheduleWithOffset(evt.value, sunsetOffsetValue, sunsetOffsetDir, "sunsetHandler")
-}
-
-def sunriseTimeHandler(evt) {
-    if(logEnable) log.debug "In sunriseTimeHandler (${state.version})"
-    scheduleWithOffset(evt.value, sunriseOffsetValue, sunriseOffsetDir, "sunriseHandler")
-}
-
-def scheduleWithOffset(nextSunriseSunsetTime, offset, offsetDir, handlerName) {
-    if(logEnable) log.debug "In scheduleWithOffset (${state.version}) - nextSunriseSunsetTime: ${nextSunriseSunsetTime} - offset: ${offset} - offsetDir: ${offsetDir}"
+def scheduleWithOffset(theData) {
+    if(logEnable) log.debug "In scheduleWithOffset (${state.version}) - theData: ${thePars}"
+    def (nextSunriseSunsetTime, offset, offsetDir, handlerName) = theData.split(",")
+    
+    if(logEnable) log.debug "In scheduleWithOffset - nextSunriseSunsetTime: ${nextSunriseSunsetTime} - offset: ${offset} - offsetDir: ${offsetDir} - handlerName: ${handlerName}"
+    
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
     def nextSunriseSunsetTimeDate = dateFormat.parse("${nextSunriseSunsetTime}".replace("+00:00","+0000"))
     def offsetTime = new Date(nextSunriseSunsetTimeDate.time + getOffset(offset, offsetDir))
