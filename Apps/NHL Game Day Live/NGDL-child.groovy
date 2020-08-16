@@ -255,7 +255,7 @@ def notificationOptions(){
             
             input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true          
             if(onFinal) {
-                input "leaveOn", "bool", title: "Turn off after set time (off) - Leave on until turned off manually (on)"
+                input "leaveOn", "bool", title: "Turn off after set time (off) - Leave on until turned off manually (on)", defaultValue:false, submitOnChange:true
                 if(leaveOn) {
                     paragraph "<small>* Light will stay on until manually turned off.</small>"
                     app.removeSetting("leaveOnTime")
