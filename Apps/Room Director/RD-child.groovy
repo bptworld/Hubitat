@@ -674,8 +674,8 @@ def initialize() {
     
         if(logEnable) log.debug "In initialize - sunrise: ${sunriseTime} - sunset: ${sunsetTime}"
         
-        subscribe(location, "sunriseTime", sunriseTimeHandler)
-        subscribe(location, "sunsetTime", sunsetTimeHandler)
+        schedule("0 5 0 1/1 * ? *", sunriseTimeHandler)
+        schedule("0 5 0 1/1 * ? *", sunsetTimeHandler)
         
         //Run today too
         scheduleWithOffset(sunsetTime, sunsetOffsetValue, sunsetOffsetDir, "sunsetHandler")
