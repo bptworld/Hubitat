@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.2.3 - 08/17/2 - More adjustments to sunset/sunrise
  *  1.2.2 - 08/16/20 - Fix for sunset/sunrise
  *  1.2.1 - 08/15/20 - Reworked Permanent Dim
  *  1.2.0 - 08/15/20 - Added ability to use multiple triggers, Added Time and Sunset/Sunrise triggers, Added Permanent Dim
@@ -65,7 +66,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.2"
+	state.version = "1.2.3"
 }
 
 definition(
@@ -112,11 +113,8 @@ def pageConfig() {
             
             input "sunRestriction", "bool", title: "From Sunset to Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
             if(sunRestriction) {
-                input "sunsetOffsetValue", "text", title: "Sunset Offset (HH:MM)", required: true, defaultValue: "00:10", width: 6
-                input "sunsetOffsetDir", "enum", title: "Before or After", required: true, options: ["Before","After"], defaultValue: "Before", width: 6
-                
-                input "sunriseOffsetValue", "text", title: "Sunrise Offset (HH:MM)", required: true, defaultValue: "00:10", width: 6
-                input "sunriseOffsetDir", "enum", title: "Before or After", required: true, options: ["Before","After"], defaultValue: "After", width: 6
+                input "offsetSunset", "number", title: "Offset before Sunset (minutes)", width:6
+                input "offsetSunrise", "number", title: "Offset after Sunrise (minutes)", width:6
                 
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
@@ -126,10 +124,8 @@ def pageConfig() {
                 input "toTime", "time", title: "To", required: false, width: 6
                 input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
                 
-                app.removeSetting("sunriseOffsetValue")
-                app.removeSetting("sunriseOffsetDir") 
-                app.removeSetting("sunsetOffsetValue")
-                app.removeSetting("sunsetOffsetDir")
+                app.removeSetting("offsetSunset")
+                app.removeSetting("offsetSunrise") 
             }
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Helper Device (optional)")) {
@@ -670,24 +666,66 @@ def initialize() {
 	if(triggerMode4 == "Switch") subscribe(mySwitches4, "switch", primaryHandler)
     
     if(sunRestriction) {
-        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ssZ")
-        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ssZ")
-    
-        if(logEnable) log.debug "In initialize - sunrise: ${sunriseTime} - sunset: ${sunsetTime}"
+        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         
-        setPars = "${sunsetTime},${sunsetOffsetValue},${sunsetOffsetDir},sunsetHandler"
-        risePars = "${sunriseTime},${sunriseOffsetValue},${sunriseOffsetDir},sunriseHandler"
-     
-        schedule("0 01 00 1/1 * ? *", scheduleWithOffset, [overwrite: false, data: setPars])
-        schedule("10 01 00 1/1 * ? *", scheduleWithOffset, [overwrite: false, data: risePars])
+        subscribe(location, "sunsetTime", sunsetTimeHandler)
+        subscribe(location, "sunriseTime", sunriseTimeHandler)
         
-        //Run today too
-        scheduleWithOffset(setPars)
-        scheduleWithOffset(risePars)
+        // Run Today
+        scheduleTurnOn(sunsetTime)
+        scheduleTurnOff(sunriseTime)
+        checkTimeSun()
     }
     
     if(logEnable) log.debug "In initialize - Finished initialize"
 }
+
+// *********** Start sunRestriction ***********
+def sunsetTimeHandler(evt) {
+    if(logEnable) log.debug "In sunsetTimeHandler (${state.version}) - evt value: ${evt.value}"
+    scheduleTurnOn(evt.value)
+}
+
+def sunriseTimeHandler(evt) {
+    if(logEnable) log.debug "In sunriseTimeHandler (${state.version}) - evt value: ${evt.value}"
+    scheduleTurnOff(evt.value)
+}
+
+def scheduleTurnOn(sunsetString) {
+    if(logEnable) log.debug "In scheduleTurnOn (${state.version}) - sunsetString: ${sunsetString}"
+    def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
+    theOffset = offsetSunset ?: 5
+    def timeBeforeSunset = new Date(sunsetTime.time - (theOffset * 60 * 1000))
+    state.newSunset = timeBeforeSunset
+    if(logEnable) log.debug "In scheduleTurnOn - timeBeforeSunset: ${timeBeforeSunset} - Sunset: ${sunsetTime}"
+
+    runOnce(timeBeforeSunset, turnOnAtSunset)
+}
+
+def scheduleTurnOff(sunriseString) {
+    if(logEnable) log.debug "In scheduleTurnOff (${state.version}) - sunriseString: ${sunriseString}"
+    def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
+    theOffset = offsetSunrise ?: 5
+    def timeAfterSunrise = new Date(sunriseTime.time + (theOffset * 60 * 1000))
+    state.newSunrise = timeAfterSunrise
+    if(logEnable) log.debug "In scheduleTurnOff - timeAfterSunrise: ${timeAfterSunrise} - Sunrise: ${sunriseTime}"
+
+    runOnce(timeAfterSunrise, turnOffAtSunrise)
+}
+
+def turnOnAtSunset() {
+    if(logEnable) log.debug "In turnOnAtSunset (${state.version})"
+    state.sunRiseTosunSet = true
+    whatToDo()
+}
+
+def turnOffAtSunrise() {
+    if(logEnable) log.debug "In turnOffAtSunrise (${state.version})"
+    state.sunRiseTosunSet = false
+    whatToDo()
+}
+// *********** End sunRestriction ***********
 
 def uninstalled() {
 	removeChildDevices(getChildDevices())
@@ -830,8 +868,9 @@ def whatToDo() {
     dayOfTheWeekHandler()
     checkForSleep()
     checkTime()
+    //checkTimeSun()
     
-    if(logEnable) log.debug "In whatToDo - daysMatch: ${state.daysMatch} - sunRiseTosunSet: (${state.sunRiseTosunSet}) - timeBetween: ${state.timeBetween}"
+    if(logEnable) log.debug "In whatToDo - daysMatch: ${state.daysMatch} - sunRiseTosunSet: ${state.sunRiseTosunSet} - timeBetween: ${state.timeBetween}"
     
     if(state.daysMatch && state.sunRiseTosunSet && state.timeBetween) {
         if(state.sleeping) {
@@ -1299,72 +1338,29 @@ def dayOfTheWeekHandler() {
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
-// ** Start Sunset to Sunrise code - Modified from Smartthings docs
-def scheduleWithOffset(theData) {
-    if(logEnable) log.debug "In scheduleWithOffset (${state.version}) - theData: ${thePars}"
-    def (nextSunriseSunsetTime, offset, offsetDir, handlerName) = theData.split(",")
-    
-    if(logEnable) log.debug "In scheduleWithOffset - nextSunriseSunsetTime: ${nextSunriseSunsetTime} - offset: ${offset} - offsetDir: ${offsetDir} - handlerName: ${handlerName}"
-    
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-    def nextSunriseSunsetTimeDate = dateFormat.parse("${nextSunriseSunsetTime}".replace("+00:00","+0000"))
-    def offsetTime = new Date(nextSunriseSunsetTimeDate.time + getOffset(offset, offsetDir))
-
-    if(logEnable) log.debug "In scheduleWithOffset - Scheduling Sunrise/Sunset for $offsetTime"
-    runOnce(offsetTime, handlerName, [overwrite: false])
-}
-
-def sunriseHandler() {
-    if(logEnable) log.debug "In sunriseHandler (${state.version})"
+def checkTimeSun() {
+	if(logEnable) log.debug "In checkTimeSun (${state.version})"
     if(sunRestriction) {
-        state.sunRiseTosunSet = false
-        whatToDo()
-    } else {
-        state.sunRiseTosunSet = true
-    }
-    if(logEnable) log.debug "In sunriseHandler - sunRiseTosunSet: ${state.sunRiseTosunSet}"
-}
+        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        
+        nextSunrise = toDateTime(sunriseTime)+1
+        state.timeBetweenSun = timeOfDayIsBetween(toDateTime(sunsetTime), nextSunrise, new Date(), location.timeZone)
 
-def sunsetHandler() {
-    if(logEnable) log.debug "In sunsetHandler (${state.version})"
-    if(sunRestriction) {
-        state.sunRiseTosunSet = true
-        whatToDo()
-    } else {
-        state.sunRiseTosunSet = true
-    }
-    if(logEnable) log.debug "In sunsetHandler - sunRiseTosunSet: ${state.sunRiseTosunSet}"
+        if(logEnable) log.debug "In checkTimeSun - sunsetTime: ${sunsetTime} - nextSunrise: ${nextSunrise}"
+        
+		if(state.timeBetweenSun) {
+            if(logEnable) log.debug "In checkTimeSun - Time within range"
+			state.sunRiseTosunSet = true
+		} else {
+            if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+			state.sunRiseTosunSet = false
+		}
+  	} else {  
+		state.timeBetweenSun = true
+  	}
+	if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
 }
-
-private getOffset(String offsetValue, String offsetDir) {
-    def timeOffsetMillis = calculateTimeOffsetMillis(offsetValue)
-    if (offsetDir == "Before") {
-        return -timeOffsetMillis
-    }
-    return timeOffsetMillis
-}
-
-private calculateTimeOffsetMillis(String offset) {
-    def result = 0
-    if (!offset) {
-        return result
-    }
-    def before = offset.startsWith('-')
-    if (before || offset.startsWith('+')) {
-        offset = offset[1..-1]
-    }
-    if (offset.isNumber()) {
-        result = Math.round((offset as Double) * 60000L)
-    } else if (offset.contains(":")) {
-        def segs = offset.split(":")
-        result = (segs[0].toLong() * 3600000L) + (segs[1].toLong() * 60000L)
-    }
-    if (before) {
-        result = -result
-    }
-    result
-}
-// ** end Sunrise to Sunset code
 
 def checkTime() {
 	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
@@ -1531,7 +1527,6 @@ def setDefaults(){
     if(state.roStatus == null || state.roStatus == "") state.roStatus = false
     if(state.occupancy1 == null || state.occupancy1 == "") state.occupancy1 = "no"
     if(state.occupancy2 == null || state.occupancy2 == "") state.occupancy2 = "no"
-    if(state.sunRiseTosunSet == null || state.sunRiseTosunSet == "") state.sunRiseTosunSet = true
 }
 
 def getImage(type) {					// Modified from @Stephack Code
