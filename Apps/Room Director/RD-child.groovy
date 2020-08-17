@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- *  1.2.3 - 08/17/2 - More adjustments to sunset/sunrise
+ *  1.2.3 - 08/17/20 - More adjustments to sunset/sunrise
  *  1.2.2 - 08/16/20 - Fix for sunset/sunrise
  *  1.2.1 - 08/15/20 - Reworked Permanent Dim
  *  1.2.0 - 08/15/20 - Added ability to use multiple triggers, Added Time and Sunset/Sunrise triggers, Added Permanent Dim
