@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.2.4 - 08/17/20 - Getting closer!
  *  1.2.3 - 08/17/20 - More adjustments to sunset/sunrise
  *  1.2.2 - 08/16/20 - Fix for sunset/sunrise
  *  1.2.1 - 08/15/20 - Reworked Permanent Dim
@@ -66,7 +67,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.3"
+	state.version = "1.2.4"
 }
 
 definition(
@@ -695,7 +696,7 @@ def sunriseTimeHandler(evt) {
 def scheduleTurnOn(sunsetString) {
     if(logEnable) log.debug "In scheduleTurnOn (${state.version}) - sunsetString: ${sunsetString}"
     def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
-    theOffset = offsetSunset ?: 5
+    theOffset = offsetSunset ?: 1
     def timeBeforeSunset = new Date(sunsetTime.time - (theOffset * 60 * 1000))
     state.newSunset = timeBeforeSunset
     if(logEnable) log.debug "In scheduleTurnOn - timeBeforeSunset: ${timeBeforeSunset} - Sunset: ${sunsetTime}"
@@ -706,7 +707,7 @@ def scheduleTurnOn(sunsetString) {
 def scheduleTurnOff(sunriseString) {
     if(logEnable) log.debug "In scheduleTurnOff (${state.version}) - sunriseString: ${sunriseString}"
     def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
-    theOffset = offsetSunrise ?: 5
+    theOffset = offsetSunrise ?: 1
     def timeAfterSunrise = new Date(sunriseTime.time + (theOffset * 60 * 1000))
     state.newSunrise = timeAfterSunrise
     if(logEnable) log.debug "In scheduleTurnOff - timeAfterSunrise: ${timeAfterSunrise} - Sunrise: ${sunriseTime}"
@@ -984,6 +985,22 @@ def vacantHandler() {
     
     if(logEnable) log.debug "In vacantHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - timeDelayed: ${state.timeDelayed}"
     if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
+        int theTimeToDelay = state.timeDelayed ?: 5
+        timeD = theTimeToDelay * 60
+        runIn(timeD, roomWarningHandler)              
+        if(logEnable) log.debug "In vacantHandler - Room Warning has been scheduled in ${theTimeToDelay} minute(s) (timeD: ${timeD})"
+        if(useTile) { checkRoomTile("scheduled") }
+    } else {
+        unschedule()
+        occupancyHandler()
+    }
+}
+
+def roomWarningHandler() {
+    roomOverrideHandler()
+    
+    if(logEnable) log.debug "In roomWarningHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+    if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
         if(logEnable) log.debug "In vacantHandler - permanentDim: ${permanentDim} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
         if(permanentDim && state.sunRiseTosunSet) {
             if(oDimmers1) theDevices = oDimmers1
@@ -1007,37 +1024,24 @@ def vacantHandler() {
                 }
             }
         } else {
-            int theTimeToDelay = state.timeDelayed ?: 5
-            timeD = theTimeToDelay * 60
-            runIn(timeD, roomWarningHandler)              
-            if(logEnable) log.debug "In vacantHandler - Room Warning has been scheduled in ${theTimeToDelay} minute(s) (timeD: ${timeD})"
-            if(useTile) { checkRoomTile("scheduled") }
-        }
-    } else {
-        unschedule()
-        occupancyHandler()
-    }
-}
-
-def roomWarningHandler() {
-    roomOverrideHandler()
-    
-    if(logEnable) log.debug "In roomWarningHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
-    if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
-        if(unSwitchesOff) {
-            unSwitchesOff.each { it ->
-                if(logEnable) log.debug "In roomWarningHandler - working on ${it}"
-                if(it.currentValue("switch") == "on" || it.currentValue("switch") == "dim") {
-                    if(logEnable) log.debug "In roomWarningHandler - working on ${it} - value: ${it.currentValue("switch")}"
-                    if(it.hasCommand("setLevel")) {
-                        if(logEnable) log.debug "In roomWarningHandler - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"
-                        int currentLevel = it.currentValue("level")
-                        int warnLevel = currentLevel / 2                       
-                        it.setLevel("${warnLevel}")
-                        if(logEnable) log.debug "In roomWarningHandler - working on ${it} - setLevel to: ${warnLevel}"
+            if(unSwitchesOff) {
+                unSwitchesOff.each { it ->
+                    if(logEnable) log.debug "In roomWarningHandler - working on ${it}"
+                    if(it.currentValue("switch") == "on" || it.currentValue("switch") == "dim") {
+                        if(logEnable) log.debug "In roomWarningHandler - working on ${it} - value: ${it.currentValue("switch")}"
+                        if(it.hasCommand("setLevel")) {
+                            if(logEnable) log.debug "In roomWarningHandler - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"
+                            int currentLevel = it.currentValue("level")
+                            int warnLevel = currentLevel / 2                       
+                            it.setLevel("${warnLevel}")
+                            if(logEnable) log.debug "In roomWarningHandler - working on ${it} - setLevel to: ${warnLevel}"
+                        }
                     }
                 }
             }
+            runIn(30, lightsHandler)
+            if(useTile) { checkRoomTile("warning") }
+            if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
         }
         
         if(warningSwitches) warningSwitches.on()
@@ -1049,10 +1053,6 @@ def roomWarningHandler() {
             flashData = "Preset::${flashPreset}"
             theFlasherDevice.sendPreset(flashData)
         }
-        
-        if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
-        runIn(30, lightsHandler)
-        if(useTile) { checkRoomTile("warning") }
     } else {
         unschedule()
         occupancyHandler()
