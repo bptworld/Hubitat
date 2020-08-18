@@ -833,7 +833,6 @@ def whatToDo() {
     dayOfTheWeekHandler()
     checkForSleep()
     checkTime()
-    //checkTimeSun()
     
     if(logEnable) log.debug "In whatToDo - daysMatch: ${state.daysMatch} - sunRiseTosunSet: ${state.sunRiseTosunSet} - timeBetween: ${state.timeBetween}"
     
@@ -853,6 +852,9 @@ def whatToDo() {
             unschedule()
             occupancyHandler()
         }
+    } else {
+        if(logEnable) log.debug "In whatToDo - else - Going to vacantHandler"
+        vacantHandler()
     }
 }
 
@@ -1320,10 +1322,12 @@ def checkTimeSun() {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
 			state.sunRiseTosunSet = false
 		}
+        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
+        whatToDo()
   	} else {  
 		state.timeBetweenSun = true
+        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
   	}
-	if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
 }
 
 def checkTime() {
