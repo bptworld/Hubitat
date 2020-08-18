@@ -32,30 +32,13 @@
  *
  *  Changes:
  *
+ *  1.2.5 - 08/18/20 - Lets try something new!
  *  1.2.4 - 08/17/20 - Getting closer!
  *  1.2.3 - 08/17/20 - More adjustments to sunset/sunrise
  *  1.2.2 - 08/16/20 - Fix for sunset/sunrise
  *  1.2.1 - 08/15/20 - Reworked Permanent Dim
  *  1.2.0 - 08/15/20 - Added ability to use multiple triggers, Added Time and Sunset/Sunrise triggers, Added Permanent Dim
- *  1.1.9 - 08/13/20 - Added Time Delay to each Mode, Added Dashboard Room Tile, several fixes/improvements
- *  1.1.8 - 07/15/20 - Added Humidity and Power to secondary triggers. Added up to 3 secondary triggers.
- *  1.1.7 - 07/05/20 - Added optional Data device, New driver to support data device, Added Sleep options
- *  1.1.6 - 07/04/20 - Added more logging
- *  1.1.5 - 06/22/20 - Changes to letsTalk
- *  1.1.4 - 06/19/20 - Added The Flasher
- *  1.1.3 - 06/13/20 - Fixed typo with daysMatch, thanks @fourwhitehouse!
- *  1.1.2 - 06/11/20 - All speech now goes through Follow Me
- *  1.1.1 - 06/10/20 - Made a few changes
- *  1.1.0 - 05/22/20 - Override switch now supports multiple switches
- *  1.0.9 - 05/17/20 - Added Mode Override option
- *  1.0.8 - 05/02/20 - More changes to repeat option
- *  1.0.7 - 04/28/20 - Added a Switch option to Notifications
- *  1.0.6 - 04/27/20 - Cosmetic changes
- *  1.0.5 - 04/27/20 - Chasing a gremlin
- *  1.0.4 - 04/24/20 - Fixed lights not respecting new motion after warning
- *  1.0.3 - 04/16/20 - Fixed pause duration error
- *  1.0.2 - 02/24/20 - Attempt to fix sunrise/sunset settings
- *  1.0.1 - 12/10/19 - Cosmetic typo fix
+ *  ---
  *  1.0.0 - 11/12/19 - Initial release.
  *
  */
@@ -67,7 +50,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.4"
+	state.version = "1.2.5"
 }
 
 definition(
@@ -666,53 +649,32 @@ def initialize() {
     if(triggerMode4 == "Presence") subscribe(myPresence4, "presence", primaryHandler)
 	if(triggerMode4 == "Switch") subscribe(mySwitches4, "switch", primaryHandler)
     
-    if(sunRestriction) {
-        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        
-        subscribe(location, "sunsetTime", sunsetTimeHandler)
-        subscribe(location, "sunriseTime", sunriseTimeHandler)
-        
-        // Run Today
-        scheduleTurnOn(sunsetTime)
-        scheduleTurnOff(sunriseTime)
-        checkTimeSun()
-    }
+    if(sunRestriction) autoSunHandler()
     
     if(logEnable) log.debug "In initialize - Finished initialize"
 }
 
 // *********** Start sunRestriction ***********
-def sunsetTimeHandler(evt) {
-    if(logEnable) log.debug "In sunsetTimeHandler (${state.version}) - evt value: ${evt.value}"
-    scheduleTurnOn(evt.value)
-}
+def autoSunHandler() {
+    if(logEnable) log.debug "In autoSunHandler (${state.version})"
+    def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
-def sunriseTimeHandler(evt) {
-    if(logEnable) log.debug "In sunriseTimeHandler (${state.version}) - evt value: ${evt.value}"
-    scheduleTurnOff(evt.value)
-}
-
-def scheduleTurnOn(sunsetString) {
-    if(logEnable) log.debug "In scheduleTurnOn (${state.version}) - sunsetString: ${sunsetString}"
     def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
-    theOffset = offsetSunset ?: 1
-    def timeBeforeSunset = new Date(sunsetTime.time - (theOffset * 60 * 1000))
-    state.newSunset = timeBeforeSunset
-    if(logEnable) log.debug "In scheduleTurnOn - timeBeforeSunset: ${timeBeforeSunset} - Sunset: ${sunsetTime}"
-
-    runOnce(timeBeforeSunset, turnOnAtSunset)
-}
-
-def scheduleTurnOff(sunriseString) {
-    if(logEnable) log.debug "In scheduleTurnOff (${state.version}) - sunriseString: ${sunriseString}"
+    theOffsetSunset = offsetSunset ?: 1
+    def timeBeforeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+    
     def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
-    theOffset = offsetSunrise ?: 1
-    def timeAfterSunrise = new Date(sunriseTime.time + (theOffset * 60 * 1000))
-    state.newSunrise = timeAfterSunrise
-    if(logEnable) log.debug "In scheduleTurnOff - timeAfterSunrise: ${timeAfterSunrise} - Sunrise: ${sunriseTime}"
+    theOffsetSunrise = offsetSunrise ?: 1
+    def timeAfterSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
 
-    runOnce(timeAfterSunrise, turnOffAtSunrise)
+    if(logEnable) log.debug "In autoSunHandler - timeBeforeSunset: ${timeBeforeSunset} - timeAfterSunrise: ${timeAfterSunrise}"
+    
+    subscribe(location, "timeBeforeSunset", turnOnAtSunset)
+    subscribe(location, "timeAfterSunrise", turnOffAtSunrise)
+
+    // If between when saving
+    checkTimeSun()
 }
 
 def turnOnAtSunset() {
@@ -725,6 +687,8 @@ def turnOffAtSunrise() {
     if(logEnable) log.debug "In turnOffAtSunrise (${state.version})"
     state.sunRiseTosunSet = false
     whatToDo()
+    
+    runOnce(5, autoSunHandler)
 }
 // *********** End sunRestriction ***********
 
