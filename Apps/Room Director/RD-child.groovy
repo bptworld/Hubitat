@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.2.6 - 08/18/20 - Another set of changes
  *  1.2.5 - 08/18/20 - Lets try something new!
  *  1.2.4 - 08/17/20 - Getting closer!
  *  1.2.3 - 08/17/20 - More adjustments to sunset/sunrise
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.5"
+	state.version = "1.2.6"
 }
 
 definition(
@@ -670,8 +671,8 @@ def autoSunHandler() {
 
     if(logEnable) log.debug "In autoSunHandler - timeBeforeSunset: ${timeBeforeSunset} - timeAfterSunrise: ${timeAfterSunrise}"
     
-    subscribe(location, "timeBeforeSunset", turnOnAtSunset)
-    subscribe(location, "timeAfterSunrise", turnOffAtSunrise)
+    runOnce(timeBeforeSunset, turnOnAtSunset, [overright: false])
+    runOnce(timeAfterSunrise, turnOffAtSunrise, [overright: false])
 
     // If between when saving
     checkTimeSun()
