@@ -689,7 +689,7 @@ def turnOffAtSunrise() {
     state.sunRiseTosunSet = false
     whatToDo()
     
-    runOnce(5, autoSunHandler)
+    runOnce(10, autoSunHandler, [overright: false])
 }
 // *********** End sunRestriction ***********
 
