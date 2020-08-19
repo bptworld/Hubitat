@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.2.7 - 08/19/20 - Hey, how about some sunset/sunrise adjustments! 
  *  1.2.6 - 08/18/20 - Another set of changes
  *  1.2.5 - 08/18/20 - Lets try something new!
  *  1.2.4 - 08/17/20 - Getting closer!
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.6"
+	state.version = "1.2.7"
 }
 
 definition(
@@ -98,8 +99,13 @@ def pageConfig() {
             
             input "sunRestriction", "bool", title: "From Sunset to Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
             if(sunRestriction) {
-                input "offsetSunset", "number", title: "Offset before Sunset (minutes)", width:6
-                input "offsetSunrise", "number", title: "Offset after Sunrise (minutes)", width:6
+                paragraph "<b>Sunset Offset</b>"
+                input "setBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
+                input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                
+                paragraph "<b>Sunrise Offset</b>"
+                input "riseBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
+                input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                 
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
@@ -663,33 +669,43 @@ def autoSunHandler() {
 
     def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
     theOffsetSunset = offsetSunset ?: 1
-    def timeBeforeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+    
+    if(setBeforeAfter) {
+        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+    } else {
+        state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+    }
     
     def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
     theOffsetSunrise = offsetSunrise ?: 1
-    def timeAfterSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+    if(riseBeforeAfter) {
+        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+    } else {
+        state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+    }
 
-    if(logEnable) log.debug "In autoSunHandler - timeBeforeSunset: ${timeBeforeSunset} - timeAfterSunrise: ${timeAfterSunrise}"
+    if(logEnable) log.debug "In autoSunHandler - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
     
-    runOnce(timeBeforeSunset, turnOnAtSunset, [overright: false])
-    runOnce(timeAfterSunrise, turnOffAtSunrise, [overright: false])
+    runOnce(state.timeSunset, turnOnAtSunset, [overwrite: false])
+    runOnce(state.timeSunrise, turnOffAtSunrise, [overwrite: false])
 
     // If between when saving
     checkTimeSun()
 }
 
 def turnOnAtSunset() {
-    if(logEnable) log.debug "In turnOnAtSunset (${state.version})"
+    if(logEnable) log.debug "In turnOnAtSunset (${state.version}) - Setting sunRiseTosunSet to True"
     state.sunRiseTosunSet = true
     whatToDo()
 }
 
 def turnOffAtSunrise() {
-    if(logEnable) log.debug "In turnOffAtSunrise (${state.version})"
+    if(logEnable) log.debug "In turnOffAtSunrise (${state.version}) - Setting sunRiseTosunSet to False"
     state.sunRiseTosunSet = false
     whatToDo()
     
-    runOnce(10, autoSunHandler, [overright: false])
+    runOnce(10, autoSunHandler, [overwrite: false])
 }
 // *********** End sunRestriction ***********
 
