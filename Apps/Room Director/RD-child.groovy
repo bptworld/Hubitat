@@ -32,7 +32,7 @@
  *
  *  Changes:
  *
- * * 1.2.8 - 08/20/20 - Flip a coin - works or not...
+ *  1.2.8 - 08/20/20 - Flip a coin - works or not...
  *  1.2.7 - 08/19/20 - Hey, how about some sunset/sunrise adjustments! 
  *  1.2.6 - 08/18/20 - Another set of changes
  *  1.2.5 - 08/18/20 - Lets try something new!
