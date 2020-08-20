@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ * * 1.2.8 - 08/20/20 - Flip a coin - works or not...
  *  1.2.7 - 08/19/20 - Hey, how about some sunset/sunrise adjustments! 
  *  1.2.6 - 08/18/20 - Another set of changes
  *  1.2.5 - 08/18/20 - Lets try something new!
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.7"
+	state.version = "1.2.8"
 }
 
 definition(
@@ -670,25 +671,26 @@ def autoSunHandler() {
     def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
     theOffsetSunset = offsetSunset ?: 1
     if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
     
     if(setBeforeAfter) {
-        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
-    } else {
         state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+    } else {
+        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
     }
     
     def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
     theOffsetSunrise = offsetSunrise ?: 1
     if(riseBeforeAfter) {
-        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-    } else {
         state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+    } else {
+        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
     }
 
     if(logEnable) log.debug "In autoSunHandler - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
     
-    runOnce(state.timeSunset, turnOnAtSunset, [overwrite: false])
-    runOnce(state.timeSunrise, turnOffAtSunrise, [overwrite: false])
+    schedule(state.timeSunset, turnOnAtSunset, [overwrite: false])
+    schedule(state.timeSunrise, turnOffAtSunrise, [overwrite: false])
 
     // If between when saving
     checkTimeSun()
@@ -705,7 +707,7 @@ def turnOffAtSunrise() {
     state.sunRiseTosunSet = false
     whatToDo()
     
-    runOnce(10, autoSunHandler, [overwrite: false])
+    runIn(10, autoSunHandler, [overwrite: false])
 }
 // *********** End sunRestriction ***********
 
@@ -862,11 +864,13 @@ def whatToDo() {
             vacantHandler()
         } else if(state.occupancy1 == "no" && state.occupancy2 == "yes") {
             if(logEnable) log.debug "In whatToDo - Doing nothing"
-            unschedule()
+            unschedule(roomWarningHandler)
+            unschedule(lightsHandler)
         } else {
             if(logEnable) log.debug "In whatToDo - Going to occupancyHandler"
             if(warningSwitches) warningSwitches.off()
-            unschedule()
+            unschedule(roomWarningHandler)
+            unschedule(lightsHandler)
             occupancyHandler()
         }
     } else {
@@ -957,7 +961,8 @@ def occupancyHandler() {
                 modeHandler()
             }
         } else { // roomOverride is on
-            unschedule()
+            unschedule(roomWarningHandler)
+            unschedule(lightsHandler)
             if(logEnable) log.debug "In occupancyHandler - roomOverride is ON (${state.roStatus}), leaving room alone."
         }
     }
@@ -974,7 +979,8 @@ def vacantHandler() {
         if(logEnable) log.debug "In vacantHandler - Room Warning has been scheduled in ${theTimeToDelay} minute(s) (timeD: ${timeD})"
         if(useTile) { checkRoomTile("scheduled") }
     } else {
-        unschedule()
+        unschedule(roomWarningHandler)
+        unschedule(lightsHandler)
         occupancyHandler()
     }
 }
@@ -1037,7 +1043,8 @@ def roomWarningHandler() {
             theFlasherDevice.sendPreset(flashData)
         }
     } else {
-        unschedule()
+        unschedule(roomWarningHandler)
+        unschedule(lightsHandler)
         occupancyHandler()
     }
 }
@@ -1103,7 +1110,8 @@ def lightsHandler() {
                 runOnce(newTime, lightsHandler2)
                 if(useTile) { checkRoomTile("unoccupied") }
             } else {
-                unschedule()
+                unschedule(roomWarningHandler)
+                unschedule(lightsHandler)
                 occupancyHandler()
             }
         }
@@ -1128,7 +1136,8 @@ def lightsHandler2() {
         if(warningSwitches) warningSwitches.off()               
         if(useTile) { checkRoomTile("off") }
     } else {
-        unschedule()
+        unschedule(roomWarningHandler)
+        unschedule(lightsHandler)
         occupancyHandler()
     }
 }
@@ -1172,7 +1181,8 @@ def modeHandler(){
     
     if(logEnable) log.debug "In modeHandler - matchFound: ${state.matchFound}"
     if(state.matchFound) {
-        unschedule()
+        unschedule(roomWarningHandler)
+        unschedule(lightsHandler)
         setScene()
     } else {
         if(logEnable) log.debug "In modeHandler - No match found."
