@@ -32,7 +32,8 @@
  *
  *  Changes:
  *
- *  1.2.8 - 08/20/20 - Flip a coin - works or not...
+ *  1.2.9 - 08/21/20 - And now for something completely different 
+ *  1.2.8 - 08/19/20 - Flip a coin - works or not...
  *  1.2.7 - 08/19/20 - Hey, how about some sunset/sunrise adjustments! 
  *  1.2.6 - 08/18/20 - Another set of changes
  *  1.2.5 - 08/18/20 - Lets try something new!
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.8"
+	state.version = "1.2.9"
 }
 
 definition(
@@ -628,7 +629,7 @@ def updated() {
 }
 
 def initialize() {
-    if(logEnable) log.debug "In initialize (${state.version}) - triggerMode2: ${triggerMode2}"
+    if(logEnable) log.debug "In initialize (${state.version}) - ${app.label} - triggerMode2: ${triggerMode2}"
     setDefaults()    
     
 	if(myContacts) subscribe(myContacts, "contact", primaryHandler)
@@ -659,20 +660,18 @@ def initialize() {
     
     if(sunRestriction) autoSunHandler()
     
-    if(logEnable) log.debug "In initialize - Finished initialize"
+    if(logEnable) log.debug "In initialize - ${app.label} - Finished initialize"
 }
 
 // *********** Start sunRestriction ***********
 def autoSunHandler() {
-    if(logEnable) log.debug "In autoSunHandler (${state.version})"
+    // autoSunHandler - This is to trigger AT the exact times with offsets
+    if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
     def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
     def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
-    theOffsetSunset = offsetSunset ?: 1
-    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-    
+    int theOffsetSunset = offsetSunset ?: 1    
     if(setBeforeAfter) {
         state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
     } else {
@@ -680,34 +679,36 @@ def autoSunHandler() {
     }
     
     def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
-    theOffsetSunrise = offsetSunrise ?: 1
+    int theOffsetSunrise = offsetSunrise ?: 1
     if(riseBeforeAfter) {
         state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
     } else {
         state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
     }
 
-    if(logEnable) log.debug "In autoSunHandler - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
-    
-    schedule(state.timeSunset, turnOnAtSunset, [overwrite: false])
-    schedule(state.timeSunrise, turnOffAtSunrise, [overwrite: false])
+    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
 
-    // If between when saving
-    checkTimeSun()
+    // check for new sunset/sunrise times every day at 12:05 am
+    schedule("0 5 0 ? * * *", autoSunHandler)
+        
+    schedule(state.timeSunset, turnOnAtSunset)
+    schedule(state.timeSunrise, turnOffAtSunrise)
+    
+    whatToDo()
 }
 
 def turnOnAtSunset() {
-    if(logEnable) log.debug "In turnOnAtSunset (${state.version}) - Setting sunRiseTosunSet to True"
+    if(logEnable) log.debug "In turnOnAtSunset (${state.version}) - ${app.label} - Setting sunRiseTosunSet to True"
     state.sunRiseTosunSet = true
     whatToDo()
 }
 
 def turnOffAtSunrise() {
-    if(logEnable) log.debug "In turnOffAtSunrise (${state.version}) - Setting sunRiseTosunSet to False"
+    if(logEnable) log.debug "In turnOffAtSunrise (${state.version}) - ${app.label} - Setting sunRiseTosunSet to False"
     state.sunRiseTosunSet = false
     whatToDo()
-    
-    runIn(10, autoSunHandler, [overwrite: false])
 }
 // *********** End sunRestriction ***********
 
@@ -720,13 +721,13 @@ private removeChildDevices(delete) {
 }
 
 def primaryHandler(evt) {
-    if(logEnable) log.warn "********** Starting Room Director **********"
-	if(logEnable) log.debug "In primaryHandler (${state.version})"
+    if(logEnable) log.warn "********** Starting Room Director - ${app.label} **********"
+	if(logEnable) log.debug "In primaryHandler (${state.version}) - ${app.label}"
     state.occupancy1 = "no"
     
     myContacts.each { it ->
         status = it.currentValue("contact")
-        if(logEnable) log.debug "In primaryHandler - Contact: ${it} - value: ${status}"
+        if(logEnable) log.debug "In primaryHandler - ${app.label} - Contact: ${it} - value: ${status}"
         if(contactOption == "Closed") {
             if(status == "closed") {
                 state.occupancy1 = "yes"
@@ -741,7 +742,7 @@ def primaryHandler(evt) {
 
     myMotion.each { it ->
         status = it.currentValue("motion")
-        if(logEnable) log.debug "In primaryHandler - Motion Sensor: ${it} - value: ${status}"
+        if(logEnable) log.debug "In primaryHandler - ${app.label} - Motion Sensor: ${it} - value: ${status}"
         if(status == "active") {
             state.occupancy1 = "yes"
         }
@@ -749,7 +750,7 @@ def primaryHandler(evt) {
 
     myPresence.each { it ->
         status = it.currentValue("presence")
-        if(logEnable) log.debug "In primaryHandler - Presence: ${it} - value: ${status}"
+        if(logEnable) log.debug "In primaryHandler - ${app.label} - Presence: ${it} - value: ${status}"
         if(status == "present") {
             state.occupancy1 = "yes"
         }
@@ -757,25 +758,25 @@ def primaryHandler(evt) {
 
     mySwitches.each { it ->
         status = it.currentValue("switch")
-        if(logEnable) log.debug "In primaryHandler - Switch: ${it} - value: ${status}"
+        if(logEnable) log.debug "In primaryHandler - ${app.label} - Switch: ${it} - value: ${status}"
         if(status == "on") {
             state.occupancy1 = "yes" 
         }
     }
     
-    if(logEnable) log.debug "In primaryHandler - occupancy1: ${state.occupancy1}"
+    if(logEnable) log.debug "In primaryHandler - ${app.label} - occupancy1: ${state.occupancy1}"
     secondaryHandler()
 }
 
 def secondaryHandler() {
-    if(logEnable) log.debug "In secondaryHandler (${state.version}) - triggerMode2: ${triggerMode2}"
+    if(logEnable) log.debug "In secondaryHandler (${state.version}) - ${app.label} - triggerMode2: ${triggerMode2}"
     state.occupancy2 = "no"
     
     if(myContacts2 || myContacts3 || myContacts4) {
         allContacts = [myContacts2, myContacts3, myContacts4].flatten().findAll{it}
         allContacts.each { it ->
             status = it.currentValue("contact")
-            if(logEnable) log.debug "In secondaryHandler - Contact: ${it} - value: ${status}"
+            if(logEnable) log.debug "In secondaryHandler - ${app.label} - Contact: ${it} - value: ${status}"
             if(contactOption2 == "Closed") {
                 if(status == "closed") {
                     state.occupancy2 = "yes"
@@ -793,7 +794,7 @@ def secondaryHandler() {
         allHumidity = [myHumidity2, myHumidity3, myHumidity4].flatten().findAll{it}
         allHumidity.each { it ->
             status = it.currentValue("humidity")
-            if(logEnable) log.debug "In secondaryHandler - H Sensor: ${it} - value: ${status}"
+            if(logEnable) log.debug "In secondaryHandler - ${app.label} - H Sensor: ${it} - value: ${status}"
             if(status > myHumiditySP2) {
 		        state.occupancy2 = "yes"
             }
@@ -804,7 +805,7 @@ def secondaryHandler() {
         allMotion = [myMotion2, myMotion3, myMotion4].flatten().findAll{it}
         allMotion.each { it ->
             status = it.currentValue("motion")
-            if(logEnable) log.debug "In secondaryHandler - M Sensor: ${it} - value: ${status}"
+            if(logEnable) log.debug "In secondaryHandler - ${app.label} - M Sensor: ${it} - value: ${status}"
             if(status == "active") {
 		        state.occupancy2 = "yes"
             }
@@ -815,7 +816,7 @@ def secondaryHandler() {
         allPower = [myPower2, myPower3, myPower4].flatten().findAll{it}
         allPower.each { it ->
             status = it.currentValue("power")
-            if(logEnable) log.debug "In secondaryHandler - P Sensor: ${it} - value: ${status}"
+            if(logEnable) log.debug "In secondaryHandler - ${app.label} - P Sensor: ${it} - value: ${status}"
             if(status > myPowerSP2) {
 		        state.occupancy2 = "yes"
             }
@@ -826,7 +827,7 @@ def secondaryHandler() {
         allPresence = [myPresence2, myPresence3, myPresence4].flatten().findAll{it}
         allPresence.each { it ->
             status = it.currentValue("presence")
-            if(logEnable) log.debug "In secondaryHandler - Presence: ${it} - value: ${status}"
+            if(logEnable) log.debug "In secondaryHandler - ${app.label} - Presence: ${it} - value: ${status}"
             if(status == "present") {
 		        state.occupancy2 = "yes" 
             }
@@ -837,56 +838,64 @@ def secondaryHandler() {
         allSwitches = [mySwitches2, mySwitches3, mySwitches4].flatten().findAll{it}
         allSwitches.each { it ->
             status = it.currentValue("switch")
-            if(logEnable) log.debug "In secondaryHandler - Switch: ${it} - value: ${status}"
+            if(logEnable) log.debug "In secondaryHandler - ${app.label} - Switch: ${it} - value: ${status}"
             if(status == "on") {
 		        state.occupancy2 = "yes" 
             }
         }
     }
-    if(logEnable) log.trace "In secondaryHandler - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+    if(logEnable) log.trace "In secondaryHandler - ${app.label} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     whatToDo()
 }
 
 def whatToDo() {
-    if(logEnable) log.debug "In whatToDo (${state.version}) - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
+    if(logEnable) log.trace "********** Room Director - Starting What To Do - ${app.label} **********"
+    if(logEnable) log.debug "In whatToDo (${state.version}) - ${app.label} - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
     dayOfTheWeekHandler()
     checkForSleep()
     checkTime()
+    checkTimeSun()
     
-    if(logEnable) log.debug "In whatToDo - daysMatch: ${state.daysMatch} - sunRiseTosunSet: ${state.sunRiseTosunSet} - timeBetween: ${state.timeBetween}"
+    if(logEnable) log.debug "In whatToDo - ${app.label} - daysMatch: ${state.daysMatch} - sunRiseTosunSet: ${state.sunRiseTosunSet} - timeBetween: ${state.timeBetween}"
     
     if(state.daysMatch && state.sunRiseTosunSet && state.timeBetween) {
         if(state.sleeping) {
-            if(logEnable) log.debug "In whatToDo - Sleeping - Going to vacantHandler"
+            if(logEnable) log.debug "In whatToDo - ${app.label} - Sleeping - Going to vacantHandler"
             vacantHandler()
         } else if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
-            if(logEnable) log.debug "In whatToDo - Going to vacantHandler"
+            if(logEnable) log.debug "In whatToDo - ${app.label} - Going to vacantHandler"
             vacantHandler()
         } else if(state.occupancy1 == "no" && state.occupancy2 == "yes") {
-            if(logEnable) log.debug "In whatToDo - Doing nothing"
+            if(logEnable) log.debug "In whatToDo - ${app.label} - Doing nothing - Unscheduling (roomWarningHandler, LightsHandler)"
             unschedule(roomWarningHandler)
             unschedule(lightsHandler)
         } else {
-            if(logEnable) log.debug "In whatToDo - Going to occupancyHandler"
+            if(logEnable) log.debug "In whatToDo - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
             if(warningSwitches) warningSwitches.off()
             unschedule(roomWarningHandler)
             unschedule(lightsHandler)
             occupancyHandler()
         }
     } else {
-        if(logEnable) log.debug "In whatToDo - else - Going to vacantHandler"
-        vacantHandler()
+        if(sunRestriction) {
+            if(logEnable) log.debug "In whatToDo - ${app.label} - ELSE with sunRestriction - Going to lightsHandler"
+            lightsHandler()
+        } else {
+            if(logEnable) log.debug "In whatToDo - ${app.label} - ELSE with NO sunRestriction - Going to vacantHandler"
+            vacantHandler()
+        }
     }
+    if(logEnable) log.trace "********** Room Director - End What To Do - ${app.label} **********"
 }
 
 def checkForSleep() {
-    if(logEnable) log.debug "In checkForSleep (${state.version})"
+    if(logEnable) log.debug "In checkForSleep (${state.version}) - ${app.label}"
     state.sleeping = false
     
     if(sleepDeviceContact) {
         sleepDeviceContact.each { it ->
             status = it.currentValue("contact")
-            if(logEnable) log.debug "In checkForSleep - Contact: ${it} - value: ${status}"
+            if(logEnable) log.debug "In checkForSleep - ${app.label} - Contact: ${it} - value: ${status}"
             if(contactOptionSleep == "Closed") {
                 if(status == "closed") {
                     state.sleeping = true
@@ -903,7 +912,7 @@ def checkForSleep() {
     if(sleepDevicePresense) {       
         sleepDevicePresense.each { it ->
             status = it.currentValue("presence")
-            if(logEnable) log.debug "In sleepDevicePresense - Presence: ${it} - value: ${status}"
+            if(logEnable) log.debug "In sleepDevicePresense - ${app.label} - Presence: ${it} - value: ${status}"
             if(status == "present") {
 		        state.sleeping = true 
             }
@@ -913,25 +922,25 @@ def checkForSleep() {
     if(sleepDeviceSwitch) {
         sleepDeviceSwitch.each { it ->
             status = it.currentValue("switch")
-            if(logEnable) log.debug "In sleepDeviceSwitch - Switch: ${it} - value: ${status}"
+            if(logEnable) log.debug "In sleepDeviceSwitch - ${app.label} - Switch: ${it} - value: ${status}"
             if(status == "on") {
 		        state.sleeping = true 
             }
         }
     }
-    if(logEnable) log.debug "In sleepDeviceSwitch - sleeping: ${state.sleeping}"
+    if(logEnable) log.debug "In sleepDeviceSwitch - ${app.label} - sleeping: ${state.sleeping}"
 }
 
 def luxLevel() {
-    if(logEnable) log.debug "In luxLevel (${state.version})"
+    if(logEnable) log.debug "In luxLevel (${state.version}) - ${app.label}"
     if (lightSensor != null) {
 		if(lightLevel == null) {lightLevel = 0}
         state.curLev = lightSensor.currentValue("illuminance").toInteger()
         if (state.curLev >= lightLevel.toInteger()) {
-            if(logEnable) log.debug "In luxLevel...Current Light Level: ${state.curLev} is greater than lightValue: ${lightLevel}"
+            if(logEnable) log.debug "In luxLevel - ${app.label} - Current Light Level: ${state.curLev} is greater than lightValue: ${lightLevel}"
 			state.isItDark = false
         } else {
-            if(logEnable) log.debug "In luxLevel...Current Light Level: ${state.curLev} is less than lightValue: ${lightLevel}"
+            if(logEnable) log.debug "In luxLevel - ${app.label} - Current Light Level: ${state.curLev} is less than lightValue: ${lightLevel}"
 			state.isItDark = true
         }
     }
@@ -941,29 +950,30 @@ def occupancyHandler() {
     roomOverrideHandler()
     checkForSleep()
     
-    if(logEnable) log.debug "In occupancyHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleep: ${state.sleeping}"
+    if(logEnable) log.debug "In occupancyHandler (${state.version}) - ${app.label} - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleep: ${state.sleeping}"
     
     if(state.sleeping) {
-        if(logEnable) log.debug "In occupancyHandler - Sleeping (${state.sleeping}), leaving room alone."
+        if(logEnable) log.debug "In occupancyHandler - ${app.label} - Sleeping (${state.sleeping}), leaving room alone."
     } else {
         if(!state.roStatus) {
             if(luxRestriction) {
                 luxLevel()
-                if(logEnable) log.debug "In occupancyHandler - Using Lux Level: ${state.curLev} and isItDark: ${state.isItDark}"
+                if(logEnable) log.debug "In occupancyHandler - ${app.label} - Using Lux Level: ${state.curLev} and isItDark: ${state.isItDark}"
                 if(state.isItDark) {
-                    if(logEnable) log.debug "In occupancyHandler - It's dark, adjusting room."
+                    if(logEnable) log.debug "In occupancyHandler - ${app.label} - It's dark, adjusting room."
                     modeHandler()            
                 } else { // Too light in room
-                    if(logEnable) log.debug "In occupancyHandler - It's not dark, leaving room alone."
+                    if(logEnable) log.debug "In occupancyHandler - ${app.label} - It's not dark, leaving room alone."
                 }          
             } else {  // No lux restrictions
-                if(logEnable) log.debug "In occupancyHandler - Not using Lux, adjusting room."
+                if(logEnable) log.debug "In occupancyHandler - ${app.label} - Not using Lux, adjusting room."
                 modeHandler()
             }
         } else { // roomOverride is on
+            if(logEnable) log.debug "In occupancyHandler - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler)"
             unschedule(roomWarningHandler)
             unschedule(lightsHandler)
-            if(logEnable) log.debug "In occupancyHandler - roomOverride is ON (${state.roStatus}), leaving room alone."
+            if(logEnable) log.debug "In occupancyHandler - ${app.label} - roomOverride is ON (${state.roStatus}), leaving room alone."
         }
     }
 }
@@ -971,14 +981,15 @@ def occupancyHandler() {
 def vacantHandler() {
     roomOverrideHandler()
     
-    if(logEnable) log.debug "In vacantHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - timeDelayed: ${state.timeDelayed}"
+    if(logEnable) log.debug "In vacantHandler (${state.version}) - ${app.label} - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - timeDelayed: ${state.timeDelayed}"
     if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
         int theTimeToDelay = state.timeDelayed ?: 5
         timeD = theTimeToDelay * 60
         runIn(timeD, roomWarningHandler)              
-        if(logEnable) log.debug "In vacantHandler - Room Warning has been scheduled in ${theTimeToDelay} minute(s) (timeD: ${timeD})"
+        if(logEnable) log.debug "In vacantHandler - ${app.label} - Room Warning has been scheduled in ${theTimeToDelay} minute(s) (timeD: ${timeD})"
         if(useTile) { checkRoomTile("scheduled") }
     } else {
+        if(logEnable) log.debug "In vacantHandler - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
         unschedule(roomWarningHandler)
         unschedule(lightsHandler)
         occupancyHandler()
@@ -988,49 +999,54 @@ def vacantHandler() {
 def roomWarningHandler() {
     roomOverrideHandler()
     
-    if(logEnable) log.debug "In roomWarningHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+    if(logEnable) log.debug "In roomWarningHandler (${state.version}) - ${app.label} - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
-        if(logEnable) log.debug "In vacantHandler - permanentDim: ${permanentDim} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
-        if(permanentDim && state.sunRiseTosunSet) {
-            if(oDimmers1) theDevices = oDimmers1
-            if(oDimmers2) theDevices = oDimmers2
-            if(oDimmers3) theDevices = oDimmers3
-            if(oDimmers4) theDevices = oDimmers4
-            if(oDimmers5) theDevices = oDimmers5
-            if(oDimmers6) theDevices = oDimmers6
-            if(oDimmers7) theDevices = oDimmers7
-            if(oDimmers8) theDevices = oDimmers8
-            if(oDimmers9) theDevices = oDimmers9
-            if(oDimmers0) theDevices = oDimmers0
-            
-            if(theDevices) {
-                theDevices.each { it ->
-                    if(it.hasCommand("setLevel")) {
-                        if(logEnable) log.debug "In vacantHandler - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"                     
-                        it.setLevel("${permanentDimLvl}")
-                        if(logEnable) log.debug "In vacantHandler - working on ${it} - setLevel to: ${permanentDimLvl}"
+        if(logEnable) log.debug "In vacantHandler - ${app.label} - permanentDim: ${permanentDim} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
+        if(permanentDim) {
+            if(state.sunRiseTosunSet) {
+                if(logEnable) log.debug "In vacantHandler - ${app.label} - permanentDim"
+                if(oDimmers1) theDevices = oDimmers1
+                if(oDimmers2) theDevices = oDimmers2
+                if(oDimmers3) theDevices = oDimmers3
+                if(oDimmers4) theDevices = oDimmers4
+                if(oDimmers5) theDevices = oDimmers5
+                if(oDimmers6) theDevices = oDimmers6
+                if(oDimmers7) theDevices = oDimmers7
+                if(oDimmers8) theDevices = oDimmers8
+                if(oDimmers9) theDevices = oDimmers9
+                if(oDimmers0) theDevices = oDimmers0
+
+                if(theDevices) {
+                    theDevices.each { it ->
+                        if(it.hasCommand("setLevel")) {
+                            if(logEnable) log.debug "In vacantHandler - ${app.label} - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"                     
+                            it.setLevel("${permanentDimLvl}")
+                            if(logEnable) log.debug "In vacantHandler - ${app.label} - working on ${it} - setLevel to: ${permanentDimLvl}"
+                        }
                     }
                 }
+            } else {
+                runIn(30, lightsHandler)
             }
         } else {
             if(unSwitchesOff) {
                 unSwitchesOff.each { it ->
-                    if(logEnable) log.debug "In roomWarningHandler - working on ${it}"
+                    if(logEnable) log.debug "In roomWarningHandler - ${app.label} - working on ${it}"
                     if(it.currentValue("switch") == "on" || it.currentValue("switch") == "dim") {
-                        if(logEnable) log.debug "In roomWarningHandler - working on ${it} - value: ${it.currentValue("switch")}"
+                        if(logEnable) log.debug "In roomWarningHandler - ${app.label} - working on ${it} - value: ${it.currentValue("switch")}"
                         if(it.hasCommand("setLevel")) {
-                            if(logEnable) log.debug "In roomWarningHandler - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"
+                            if(logEnable) log.debug "In roomWarningHandler - ${app.label} - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"
                             int currentLevel = it.currentValue("level")
                             int warnLevel = currentLevel / 2                       
                             it.setLevel("${warnLevel}")
-                            if(logEnable) log.debug "In roomWarningHandler - working on ${it} - setLevel to: ${warnLevel}"
+                            if(logEnable) log.debug "In roomWarningHandler - ${app.label} - working on ${it} - setLevel to: ${warnLevel}"
                         }
                     }
                 }
             }
             runIn(30, lightsHandler)
             if(useTile) { checkRoomTile("warning") }
-            if(logEnable) log.debug "In roomWarningHandler - Going to lightsHandler in 30 seconds"
+            if(logEnable) log.debug "In roomWarningHandler - ${app.label} - Going to lightsHandler in 30 seconds"
         }
         
         if(warningSwitches) warningSwitches.on()
@@ -1038,11 +1054,12 @@ def roomWarningHandler() {
         if(omessage) messageHandler()
 
         if(useTheFlasher) {
-            if(logEnable) log.debug "In roomWarningHandler - Sending Preset: ${flashPreset} to The Flasher device (${theFlasherDevice.displayName})"
+            if(logEnable) log.debug "In roomWarningHandler - ${app.label} - Sending Preset: ${flashPreset} to The Flasher device (${theFlasherDevice.displayName})"
             flashData = "Preset::${flashPreset}"
             theFlasherDevice.sendPreset(flashData)
         }
     } else {
+        if(logEnable) log.debug "In roomWarningHandler - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
         unschedule(roomWarningHandler)
         unschedule(lightsHandler)
         occupancyHandler()
@@ -1053,9 +1070,10 @@ def lightsHandler() {
     roomOverrideHandler()    
     checkForSleep()
     
-    if(logEnable) log.debug "In lightsHandler (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleeping: ${state.sleeping}"
+    if(logEnable) log.debug "In lightsHandler (${state.version}) - ${app.label} - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleeping: ${state.sleeping}"
     
-    if(permanentDim && !state.sunRiseTosunSet) {
+    if(permanentDim) {
+        if(logEnable) log.debug "In vacantHandler - ${app.label} - permanentDim"
         if(oDimmers1) theDevices = oDimmers1
         if(oDimmers2) theDevices = oDimmers2
         if(oDimmers3) theDevices = oDimmers3
@@ -1069,10 +1087,8 @@ def lightsHandler() {
 
         if(theDevices) {
             theDevices.each { it ->
-                if(it.hasCommand("setLevel")) {              
-                    it.off()
-                    if(logEnable) log.debug "In vacantHandler - permanentDim - Turning off ${it}"
-                }
+                if(logEnable) log.debug "In vacantHandler - ${app.label} - working on ${it} - turning Off"                     
+                it.off()
             }
         }
     } else {
@@ -1110,6 +1126,7 @@ def lightsHandler() {
                 runOnce(newTime, lightsHandler2)
                 if(useTile) { checkRoomTile("unoccupied") }
             } else {
+                if(logEnable) log.debug "In lightsHandler - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
                 unschedule(roomWarningHandler)
                 unschedule(lightsHandler)
                 occupancyHandler()
@@ -1121,7 +1138,7 @@ def lightsHandler() {
 def lightsHandler2() {
     roomOverrideHandler()
     
-    if(logEnable) log.debug "In lightsHandler2 (${state.version}) - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+    if(logEnable) log.debug "In lightsHandler2 (${state.version}) - ${app.label} - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
     if(!state.roStatus && state.occupancy1 == "no" && state.occupancy2 == "no") {
         if(unSwitchesOff) {
             unSwitchesOff.each { it ->
@@ -1136,6 +1153,7 @@ def lightsHandler2() {
         if(warningSwitches) warningSwitches.off()               
         if(useTile) { checkRoomTile("off") }
     } else {
+        if(logEnable) log.debug "In lightsHandler2 - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
         unschedule(roomWarningHandler)
         unschedule(lightsHandler)
         occupancyHandler()
@@ -1143,7 +1161,7 @@ def lightsHandler2() {
 }
 
 def modeHandler(){
-    if(logEnable) log.debug "In modeHandler (${state.version}) - Mode: ${location.mode}"
+    if(logEnable) log.debug "In modeHandler (${state.version}) - ${app.label} - Mode: ${location.mode}"
     if(modeOverride) {
         moStatus = modeOverride.currentValue("switch")
         if(moStatus == "on") {
@@ -1169,28 +1187,29 @@ def modeHandler(){
         if(x == 9) modeName = modeName9
         
         modeName.each { it ->
-            if(logEnable) log.debug "In modeHandler ${x} - Checking if ${state.modeNow} contains ${it}"
+            if(logEnable) log.debug "In modeHandler ${x} - ${app.label} - Checking if ${state.modeNow} contains ${it}"
             if(state.modeNow.contains(it)){
                 state.currentMode = "${x}"
                 state.matchFound = true
-                if(logEnable) log.debug "In modeHandler ${x} - Match Found - modeNow: ${state.modeNow}"
+                if(logEnable) log.debug "In modeHandler ${x} - ${app.label} - Match Found - modeNow: ${state.modeNow}"
             }
         }
-        if(!state.matchFound) if(logEnable) log.debug "In modeHandler ${x} - No Match Found"
+        if(!state.matchFound) if(logEnable) log.debug "In modeHandler ${x} - ${app.label} - No Match Found"
     }
     
-    if(logEnable) log.debug "In modeHandler - matchFound: ${state.matchFound}"
+    if(logEnable) log.debug "In modeHandler - ${app.label} - matchFound: ${state.matchFound}"
     if(state.matchFound) {
+        if(logEnable) log.debug "In modeHandler - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to setScene"
         unschedule(roomWarningHandler)
         unschedule(lightsHandler)
         setScene()
     } else {
-        if(logEnable) log.debug "In modeHandler - No match found."
+        if(logEnable) log.debug "In modeHandler - ${app.label} - No match found."
     }
 }
 
 def setScene() {
-	if(logEnable) log.debug "In setScene (${state.version}) - Mode is ${state.currentMode} - Mode: ${state.modeNow}"    
+	if(logEnable) log.debug "In setScene (${state.version}) - ${app.label} - Mode is ${state.currentMode} - Mode: ${state.modeNow}"    
 
     if(state.currentMode == "1"){
         if(logEnable) log.debug "In setScene - 1: currentMode: ${state.currentMode}"
@@ -1263,54 +1282,54 @@ def setScene() {
         if(oDimmers0) oDimmers0.setLevel(dimLevel0)
         if(timeDelayed0) state.timeDelayed = timeDelayed0
     } else if(state.currentMode == "NONE"){
-        if(logEnable) log.debug "In setScene - Something went wrong, no Mode matched!"
+        if(logEnable) log.debug "In setScene - ${app.label} - Something went wrong, no Mode matched!"
     }
     
-    if(logEnable) log.debug "In setScene - currentMode: ${state.currentMode} - timeDelayed: ${state.timeDelayed}"
+    if(logEnable) log.debug "In setScene - ${app.label} - currentMode: ${state.currentMode} - timeDelayed: ${state.timeDelayed}"
     if(useTile) { checkRoomTile("occupied") }
 }
 
 def messageHandler() {
-	if(logEnable) log.debug "In messageHandler (${state.version})"
+	if(logEnable) log.debug "In messageHandler (${state.version}) - ${app.label}"
 	def ovalues = "${omessage}".split(";")
 	ovSize = ovalues.size()
 	ocount = ovSize.toInteger()
     def orandomKey = new Random().nextInt(ocount)
 
 	theMessage = ovalues[orandomKey]
-	if(logEnable) log.debug "In messageHandler - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}"
+	if(logEnable) log.debug "In messageHandler - ${app.label} - Random - ovSize: ${ovSize}, orandomKey: ${orandomKey}"
 	
-    if(logEnable) log.debug "In messageHandler - going to letsTalk and/or pushNow with: ${theMessage}"
+    if(logEnable) log.debug "In messageHandler - ${app.label} - going to letsTalk and/or pushNow with: ${theMessage}"
     if(sendPushMessage) pushNow(theMessage)
     if(omessage) letsTalk(theMessage)
 }
 
 def letsTalk(msg) {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    if(logEnable) log.debug "In letsTalk (${state.version}) - ${app.label} - Sending the message to Follow Me - msg: ${msg}"
     if(useSpeech && fmSpeaker) {
         fmSpeaker.latestMessageFrom(state.name)
         fmSpeaker.speak(theMsg)
     }
-    if(logEnable) log.debug "In letsTalk - *** Finished ***"
+    if(logEnable) log.debug "In letsTalk - ${app.label} - *** Finished ***"
 }
 
 def rulesHandler(rules) {
-    if(logEnable) log.debug "In rulesHandler - rules: ${rules}"
+    if(logEnable) log.debug "In rulesHandler - ${app.label} - rules: ${rules}"
     RMUtils.sendAction(rules, "runRule", app.label)
 }
 
 def pushNow(msg) {
-	if(logEnable) log.debug "In pushNow (${state.version})"
+	if(logEnable) log.debug "In pushNow (${state.version}) - ${app.label}"
 	if(sendPushMessage) {
 		pushMessage = "${app.label} \n"
 		pushMessage += msg
-		if(logEnable) log.debug "In pushNow - Sending message: ${pushMessage}"
+		if(logEnable) log.debug "In pushNow - ${app.label} - Sending message: ${pushMessage}"
         sendPushMessage.deviceNotification(pushMessage)
 	}	
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"
+	if(logEnable) log.debug "In dayOfTheWeek (${state.version}) - ${app.label}"
     state.daysMatch = false
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
@@ -1319,28 +1338,48 @@ def dayOfTheWeekHandler() {
         def dayCheck = days.contains(day)
 
         if(dayCheck) {
-            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+            if(logEnable) log.debug "In dayOfTheWeekHandler - ${app.label} - Days of the Week Passed"
             state.daysMatch = true
         } else {
-            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+            if(logEnable) log.debug "In dayOfTheWeekHandler - ${app.label} - Days of the Week Check Failed"
             state.daysMatch = false
         }
     } else {
         state.daysMatch = true
     }
-    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
+    if(logEnable) log.debug "In dayOfTheWeekHandler - ${app.label} - daysMatch: ${state.daysMatch}"
 }
 
 def checkTimeSun() {
-	if(logEnable) log.debug "In checkTimeSun (${state.version})"
-    if(sunRestriction) {
+    // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
+	if(logEnable) log.debug "In checkTimeSun (${state.version}) - ${app.label}"
+    if(sunRestriction) {    
         def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         
+        nextSunset = toDateTime(sunsetTime)
         nextSunrise = toDateTime(sunriseTime)+1
-        state.timeBetweenSun = timeOfDayIsBetween(toDateTime(sunsetTime), nextSunrise, new Date(), location.timeZone)
+        
+        int theOffsetSunset = offsetSunset ?: 1    
+        if(setBeforeAfter) {
+            use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
+        } else {
+            use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
+        }
+        
+        int theOffsetSunrise = offsetSunrise ?: 1
+        if(riseBeforeAfter) {
+            use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
+        } else {
+            use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
+        }
 
-        if(logEnable) log.debug "In checkTimeSun - sunsetTime: ${sunsetTime} - nextSunrise: ${nextSunrise}"
+        if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
+        if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
+        
+        state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
+
+        if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
         
 		if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
@@ -1350,7 +1389,6 @@ def checkTimeSun() {
 			state.sunRiseTosunSet = false
 		}
         if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
-        whatToDo()
   	} else {  
 		state.timeBetweenSun = true
         if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
@@ -1358,7 +1396,7 @@ def checkTimeSun() {
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
+	if(logEnable) log.debug "In checkTime (${state.version}) - ${app.label} - ${fromTime} - ${toTime}"
 	if(fromTime) {
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
@@ -1366,21 +1404,21 @@ def checkTime() {
 		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
 		if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - Time within range - Don't Speak"
+            if(logEnable) log.debug "In checkTime - ${app.label} - Time within range - Don't Speak"
 			state.timeBetween = true
 		} else {
-            if(logEnable) log.debug "In checkTime - Time outside of range - Can Speak"
+            if(logEnable) log.debug "In checkTime - ${app.label} - Time outside of range - Can Speak"
 			state.timeBetween = false
 		}
   	} else {  
-        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
+        if(logEnable) log.debug "In checkTime - ${app.label} - NO Time Restriction Specified"
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+	if(logEnable) log.debug "In checkTime - ${app.label} - timeBetween: ${state.timeBetween}"
 }
 
 def roomOverrideHandler() {
-    if(logEnable) log.debug "In roomOverrideHandler (${state.version})"
+    if(logEnable) log.debug "In roomOverrideHandler (${state.version}) - ${app.label}"
     state.roStatus = false
     if(roomOverride) {
         roomOverride.each { it ->
@@ -1388,63 +1426,63 @@ def roomOverrideHandler() {
             if(roStat == "on") state.roStatus = true
         }
     }
-    if(logEnable) log.debug "In roomOverrideHandler - roStatus: ${state.roStatus}"
+    if(logEnable) log.debug "In roomOverrideHandler - ${app.label} - roStatus: ${state.roStatus}"
 }
 
 def checkRoomTile(data) {
     if(useTile) {
-        if(logEnable) log.trace "In checkRoomTile (${state.version}) - data: ${data}"
+        if(logEnable) log.trace "In checkRoomTile (${state.version}) - ${app.label} - data: ${data}"
 
         if(data == "scheduled") {
             state.lightingStatus = "scheduled"
             now = new Date()
             int theTimeToDelay = state.timeDelayed ?: 5
             use( TimeCategory ) { theDate = now + theTimeToDelay.minutes }
-            if(logEnable) log.trace "In checkRoomTile - Scheduled - ${theTimeToDelay} from now - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Scheduled - ${theTimeToDelay} from now - theDate: ${theDate}"
             makeTileHandler(theDate)
         } else if(data == "warning") {
             state.lightingStatus = "warning"
             now = new Date()
             int thirty = 30
             use( TimeCategory ) { theDate = now + thirty.seconds }
-            if(logEnable) log.trace "In checkRoomTile - Warning - 30 seconds from now - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Warning - 30 seconds from now - theDate: ${theDate}"
             makeTileHandler(theDate)
         } else if(data == "sleep") {
             dataDevice.settingStatus("sleep")
             if(sleepDeviceContact) theDate = new Date()
             if(sleepDevicePresense) theDate = new Date()
             if(sleepDeviceSwitch) theDate = new Date()
-            if(logEnable) log.trace "In checkRoomTile - Sleeping - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Sleeping - theDate: ${theDate}"
         } else if(data == "unoccupied") {
             state.roomStatus = "unoccupied"
             dataDevice.settingStatus("unoccupied")
             theDate = new Date()
-            if(logEnable) log.trace "In checkRoomTile - Unoccupied - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Unoccupied - theDate: ${theDate}"
             makeTileHandler(theDate)
         } else if(data == "off") {
             state.roomStatus = "unoccupied"
             state.lightingStatus = "off"
             theDate = new Date()
-            if(logEnable) log.trace "In checkRoomTile - Off - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Off - theDate: ${theDate}"
             makeTileHandler(theDate)
         } else if(data == "occupied") {
             state.roomStatus = "occupied"
             state.lightingStatus = "on"
             dataDevice.settingStatus("occupied")
             theDate = new Date()
-            if(logEnable) log.trace "In checkRoomTile - Occupied - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Occupied - theDate: ${theDate}"
             makeTileHandler(theDate)
         } else {
             state.roomStatus = "unknown"
             theDate = new Date()
-            if(logEnable) log.trace "In checkRoomTile - Unknown - theDate: ${theDate}"
+            if(logEnable) log.trace "In checkRoomTile - ${app.label} - Unknown - theDate: ${theDate}"
             makeTileHandler(theDate)
         }
     }
 }
 
 def makeTileHandler(theDate) {
-    if(logEnable) log.trace "In makeTileHandler (${state.version}) - theDate: ${theDate}"
+    if(logEnable) log.trace "In makeTileHandler (${state.version}) - ${app.label} - theDate: ${theDate}"
     roomOverrideHandler()
 
     if(roomTemp) {
