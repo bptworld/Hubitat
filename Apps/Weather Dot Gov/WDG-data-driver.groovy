@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 08/21/20 - Each section now tries 3 times to get data
  *  1.1.7 - 07/19/20 - Changed up Alerts to remove from app as Weather.gov removes them from their website
  *  1.1.6 - 06/13/20 - Changed 'No Data' to 0 for current weather values as requested
  *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
@@ -250,6 +251,7 @@ def getPointsData() {
 	getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Points Data...")
 
+    if(state.triesPoints == null) state.triesPoints = 1
     lat1 = device.currentValue('lat')
     lng1 = device.currentValue('lng')
 	pointsURL = "https://api.weather.gov/points/${lat1},${lng1}"
@@ -307,9 +309,16 @@ def getPointsData() {
 
                 def pointsGridY = response.data.properties.gridY
                 sendEvent(name: "pointsGridY", value: pointsGridY)
+                
+                state.triesPoints = 1
             } else {
-                if(logEnable) log.debug "In getPointsData - Bad Request - ${response.status} - Something went wrong, please try again."
-                runOnce(1,getPointsData)
+                if(state.triesPoints < 4) {
+                    runIn(5, getPointsData)
+                    state.triesPoints = triesPoints.tries + 1
+                    if(logEnable) log.debug "In getPointsData - Bad Request - Will try again in 5 seconds (${state.triesPoints})"
+                } else {
+                    if(logEnable) log.debug "In getPointsData - Bad Request - ${response.status} - Something went wrong, please try again."
+                }
             }
             getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
@@ -322,11 +331,18 @@ def getPointsData() {
 	}
     
     catch (e) {
-        log.warn "In getPointsData - ${e}"
-        theError = "${e}"
-        def reason = theError.split(':')
-        getCurrentDate()
-        sendEvent(name: "responseStatus", value: reason[1])
+        if(state.triesPoints < 4) {
+            runIn(5, getPointsData)
+            state.triesPoints = triesPoints.tries + 1
+            if(logEnable) log.debug "In getPointsData - Bad Request - Will try again in 5 seconds (${state.triesPoints})"
+        } else {        
+            if(logEnable) log.debug "In getPointsData - Bad Request - ${response.status} - Something went wrong, please try again. (${state.triesPoints})"
+            log.warn "In getPointsData - Catch - ${e}"
+            theError = "${e}"
+            def reason = theError.split(':')
+            getCurrentDate()
+            sendEvent(name: "responseStatus", value: reason[1])
+        }
     }
 }
 
@@ -338,12 +354,12 @@ def getWeeklyData() {
     gridOffice = device.currentValue('pointsOffice')
     pointsGridX = device.currentValue('pointsGridX')
     pointsGridY = device.currentValue('pointsGridY')
+    if(state.triesWeekly == null) state.triesWeekly = 1
     
     if(pointsGridX == null || pointsGridY == null) getPointsData()
     
 	forecastURL = "https://api.weather.gov/gridpoints/${gridOffice}/${pointsGridX},${pointsGridY}/forecast"
 	if(logEnable) log.debug "In getWeeklyData - forecastURL: ${forecastURL}"
-    log.info "forecastURL: ${forecastURL}"
 	def requestParams =
 		[
 			uri: forecastURL,
@@ -373,10 +389,17 @@ def getWeeklyData() {
                     sendEvent(name: "zforecast_$y", value: forcast)
                     if(x == 0) sendEvent(name: "todaysHigh", value: temperature)
                     if(x == 1) sendEvent(name: "todaysLow", value: temperature)
+                    
+                    state.triesWeekly = 1
                 }
             } else {
-                if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
-                runOnce(1,getWeeklyData)
+                if(state.triesWeekly < 4) {
+                    runIn(5, getWeeklyData)
+                    state.triesWeekly = state.triesWeekly + 1
+                    if(logEnable) log.debug "In getWeeklyData - Bad Request - Will try again in 5 seconds (${state.triesWeekly})"
+                } else {
+                    if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again."
+                }
             }
             getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
@@ -389,11 +412,18 @@ def getWeeklyData() {
 	}
     
     catch (e) {
-        log.warn "In getWeeklyData - ${e}"
-        theError = "${e}"
-        def reason = theError.split(':')
-        getCurrentDate()
-        sendEvent(name: "responseStatus", value: reason[1])
+        if(state.triesWeekly < 4) {
+            runIn(5, getWeeklyData)
+            state.triesWeekly = state.triesWeekly + 1
+            if(logEnable) log.debug "In getWeeklyData - Bad Request - Will try again in 5 seconds (${state.triesWeekly})"     
+        } else {
+            if(logEnable) log.debug "In getWeeklyData - Bad Request - ${response.status} - Something went wrong, please try again. (${state.triesWeekly})"
+            log.warn "In getWeeklyData - Catch - ${e}"
+            theError = "${e}"
+            def reason = theError.split(':')
+            getCurrentDate()
+            sendEvent(name: "responseStatus", value: reason[1])
+        }
     }
 }
 
@@ -402,6 +432,7 @@ def getWeatherData() {
     getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Weather Data...")
     
+    if(state.triesWeather == null) state.triesWeather = 1
     unitFormat1 = device.currentValue('unitFormat')
     station1 = device.currentValue('station')
     forecastURL = "https://api.weather.gov/stations/${station1}/observations/latest"
@@ -679,10 +710,15 @@ def getWeatherData() {
                 if(xHowItFeels == null) xHowItFeels = "0"
                 if(logEnable) log.debug "In getWeatherData - howItFeels: ${xHowItFeels}"
                 sendEvent(name: "howItFeels", value: xHowItFeels)
-                   
+                state.triesWeather = 1
             } else {
-                if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again."
-                runOnce(1,getWeatherData)
+                if(state.triesWeather < 4) {
+                    runIn(5, getWeatherData)
+                    state.triesWeather = state.triesWeather + 1
+                    if(logEnable) log.debug "In getWeatherData - Bad Request - Will try again in 5 seconds (${state.triesWeather})"
+                } else {
+                    if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again. (${state.triesWeather})"
+                }
             }
             getCurrentDate()
             sendEvent(name: "responseStatus", value: response.status)
@@ -695,11 +731,18 @@ def getWeatherData() {
 	}
     
     catch (e) {
-        log.warn "In getWeatherData - Either WDG website is having issues (probably) or double check your Station ID in the Weather Dot Gov app."
-        theError = "${e}"
-        def reason = theError.split(':')
-        getCurrentDate()
-        sendEvent(name: "responseStatus", value: reason[1])
+        if(state.triesWeather < 4) {
+            runIn(5, getWeatherData)
+            state.triesWeather = state.triesWeather + 1
+            if(logEnable) log.debug "In getWeatherData - Bad Request - Will try again in 5 seconds (${state.triesWeather})"
+        } else {
+            if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again."
+            log.warn "In getWeatherData - Catch - Either WDG website is having issues (probably) or double check your Station ID in the Weather Dot Gov app.  (${state.triesWeather})"
+            theError = "${e}"
+            def reason = theError.split(':')
+            getCurrentDate()
+            sendEvent(name: "responseStatus", value: reason[1])
+        }
     }
 }
 
@@ -709,6 +752,7 @@ def getAlertData() {
 	getCurrentDate()
     sendEvent(name: "responseStatus", value: "Getting Alert Data...")
     
+    if(state.triesAlert == null) state.triesAlert = 1
     zone = device.currentValue('pointsForecastZone')
     
     // For testing purposes
@@ -804,7 +848,9 @@ def getAlertData() {
 
                         if(alertInstruction == null) alertInstruction = "No Data"
                         if(logEnable) log.info "In getAlertData - alertInstruction: ${alertInstruction}"
-                        sendEvent(name: "alertInstruction_$x", value: alertInstruction)            
+                        sendEvent(name: "alertInstruction_$x", value: alertInstruction)   
+                        
+                        state.triesAlert = 1
                     }
                 } catch (e) {
                     //if(logEnable) log.error "In getAlertData - ${e}"
@@ -835,8 +881,13 @@ def getAlertData() {
                     }
                 }
             } else {
-                if(logEnable) log.debug "In getAlertData - Bad Request - ${response.status} - Something went wrong, please try again."
-                runOnce(1,getAlertData)
+                if(state.triesAlert < 4) {
+                    runIn(5, getAlertData)
+                    state.triesAlert = state.triesAlert + 1
+                    if(logEnable) log.debug "In getWeatherData - Bad Request - Will try again in 5 seconds (${state.triesAlert})"
+                } else {
+                    if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again."
+                }
             }
             
             getCurrentDate()
@@ -850,11 +901,18 @@ def getAlertData() {
 	}
     
     catch (e) {
-        log.warn "In getAlertData - ${e}"
-        theError = "${e}"
-        def reason = theError.split(':')
-        getCurrentDate()
-        sendEvent(name: "responseStatus", value: reason[1])
+        if(state.triesAlert < 4) {
+            runIn(5, getAlertData)
+            state.triesAlert = state.triesAlert + 1
+            if(logEnable) log.debug "In getWeatherData - Bad Request - Will try again in 5 seconds (${state.triesAlert})"
+        } else {
+            if(logEnable) log.debug "In getWeatherData - Bad Request - ${response.status} - Something went wrong, please try again. (${state.triesAlert})"
+            log.warn "In getAlertData - Catch - ${e}"
+            theError = "${e}"
+            def reason = theError.split(':')
+            getCurrentDate()
+            sendEvent(name: "responseStatus", value: reason[1])
+        }
     }
 }
 
