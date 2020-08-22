@@ -33,15 +33,8 @@
  *
  *  Changes:
  *
- *  1.0.9 - 08/04/20 - Can now choose multiple lights with slow up/down
- *  1.0.8 - 08/04/20 - BAM - Slow up/down now work!
- *  1.0.7 - 08/04/20 - Reworked some math
- *  1.0.6 - 08/04/20 - Try try again, found an error with dim down
- *  1.0.5 - 08/03/20 - More Adjustments
- *  1.0.4 - 08/03/20 - Adjustments
- *  1.0.3 - 08/02/20 - Added Start Level to dim up and dim down
- *  1.0.2 - 08/02/20 - Adjustments, If device is dimming and the device is turned off, dimming will stop.
- *  1.0.1 - 07/30/20 - Fixed push, added more descriptions
+ *  1.1.0 - 08/22/20 - Added sunRestrictions and onDemand to Triggers, other adjustments
+ *  ---
  *  1.0.0 - 07/29/20 - Initial release
  *
  */
@@ -51,7 +44,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -80,13 +73,33 @@ def pageConfig() {
             paragraph "- This app is designed to work with Hue devices. while other brands may work, some options may have unexpected results."
 		}
         section(getFormat("header-green", "${getImage("Blank")}"+" BETA")) {
-            paragraph "This is an early Beta preview version. Use with caution and please report your findings on the HE Forums. Remember to always include a log with your report. Screenshots work best for logs. Also, it's important to show me what led up to the error/problem, not just one line of the log! Thanks and good luck!"
+            paragraph "This is a Beta preview version. Please report your findings on the HE Forums. Remember to always include a log with your report. Screenshots work best for logs. Also, it's important to show me what led up to the error/problem, not just one line of the log! Thanks and good luck!"
             paragraph "HE Link: <a href='https://community.hubitat.com/t/beta-wake-me-up/46148' target='_blank'>Click here to report issues</a>."
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
-            input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: true, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-            input "startTime", "time", title: "Time to activate", description: "Time", required: true
+            input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+            input "sunRestriction", "bool", title: "Use Sunset or Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
+            if(sunRestriction) { 
+                input "setRise", "bool", title: "Sunrise (off) or Sunset (on)", description: "sun", defaultValue:false, submitOnChange:true 
+                app.removeSetting("startTime")
+                if(setRise) {
+                    paragraph "<b>Sunset Offset</b>"
+                    input "setBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                    app.removeSetting("offsetSunrise") 
+                } else { 
+                    paragraph "<b>Sunrise Offset</b>"
+                    input "riseBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunrise", "number", title: "Offset (minutes)", width:6
+                    app.removeSetting("offsetSunset")
+                }
+            } else {
+                input "startTime", "time", title: "Time to activate", description: "Time", required: false
+                app.removeSetting("sunRestriction") 
+            }
+            input "onDemand", "capability.switch", title: "Run anytime this Switch is turned On", required: false, multiple: false
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Lighting Options")) {
@@ -205,7 +218,7 @@ def pageConfig() {
 
             section(getFormat("header-green", "${getImage("Blank")}"+" Control Switches")) {
                 paragraph "Alarm Switch is required anytime speech and/or push are involved. This is how you will stop the alarm from either going off or from the repeating message from continuing. Just like a regular alarm clock, except this one can be controlled with voice assistants, dashboards, etc.!"
-                input "controlSwitch", "capability.switch", title: "Turn the Alarm on or off with this switch", required: true, multiple: false
+                input "controlSwitch", "capability.switch", title: "Set the Alarm to on or off with this switch", required: true, multiple: false
                 input "snoozeSwitch", "capability.switch", title: "Snooze Switch - Get a few extra minutes when activating this switch", required: false
                 if(snoozeSwitch) {
                     paragraph "Set the snooze time (in minutes)"
@@ -264,49 +277,68 @@ def updated() {
 }
 
 def initialize() {
-    if(pauseApp) {
-        if(logEnable) log.info "${app.label} - App is Paused"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
 
         if(controlSwitch) subscribe(controlSwitch, "switch", magicHappensHandler)
         if(snoozeSwitch) subscribe(snoozeSwitch, "switch", snoozeHandler)
-        if(startTime) schedule(startTime, dayOfTheWeekHandler)
+        if(startTime) schedule(startTime, magicHappensHandler)
+        if(sunRestriction) autoSunHandler()
+        if(onDemand) subscribe(onDemand, "switch.on", magicHappensHandler)
     }
 }
 
-def logsOff() {
-    log.info "${app.label} - Debug logging auto disabled"
-    app?.updateSetting("logEnable",[value:"false",type:"bool"])
-}
+// *********** Start sunRestriction ***********
+def autoSunHandler() {
+    // autoSunHandler - This is to trigger AT the exact times with offsets
+    if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
+    if(state.sunRiseTosunSet == null) state.sunRiseTosunSet = false
+    
+    def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
-def checkEnableHandler() {
-    eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = true }
-        }
-    }
-    return eSwitch
-}
-
-def disableSwitchHandler() {
-    state.disableSwitch = "off"
-    if(disableSwitch) {
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") {
-                state.disableSwitch = "On"
-            }
-        }
+    def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
+    int theOffsetSunset = offsetSunset ?: 1    
+    if(setBeforeAfter) {
+        state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
     } else {
-        state.disableSwitch = "off"
+        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
     }
-    if(logEnable) log.debug "In disableSwitchHandler - Enabler Switch is set to ${state.disableSwitch}."
+    
+    def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
+    int theOffsetSunrise = offsetSunrise ?: 1
+    if(riseBeforeAfter) {
+        state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+    } else {
+        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+    }
+
+    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+
+    // check for new sunset/sunrise times every day at 12:05 am
+    schedule("0 5 0 ? * * *", autoSunHandler)
+        
+    schedule(state.timeSunset, turnOnAtSunset)
+    schedule(state.timeSunrise, turnOffAtSunrise)
 }
+
+def turnOnAtSunset() {
+    if(logEnable) log.debug "In turnOnAtSunset (${state.version}) - ${app.label} - Setting sunRiseTosunSet to True"
+    state.sunRiseTosunSet = true
+    magicHappensHandler()
+}
+
+def turnOffAtSunrise() {
+    if(logEnable) log.debug "In turnOffAtSunrise (${state.version}) - ${app.label} - Setting sunRiseTosunSet to False"
+    state.sunRiseTosunSet = false
+    magicHappensHandler()
+}
+// *********** End sunRestriction ***********
 
 def controlSwitchHandler(evt) {
 	if(controlSwitch) {
@@ -338,11 +370,12 @@ def magicHappensHandler() {
 	if(logEnable) log.debug "In magicHappensHandler (${state.version}) - CS: ${state.controlSwitch}"
     
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        dayOfTheWeekHandler()
         controlSwitchHandler()        
-        if(state.controlSwitch == "on") {
+        if(state.controlSwitch == "on" && state.daysMatch) {
             if((oDelay) && (state.snoozeSwitch == "off")) {
                 if(logEnable) log.debug "In magicHappensHandler - oDelay - Waiting ${minutesUp} minutes before notifications - snoozeSwitch: ${state.snoozeSwitch} - CS: ${state.controlSwitch}"
                 if(minutesUp) state.realSeconds = minutesUp * 60
@@ -383,7 +416,7 @@ def magicHappensHandler() {
 
 def slowOnHandler(evt) {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         controlSwitchHandler()
@@ -409,14 +442,14 @@ def slowOnHandler(evt) {
 
 def slowOffHandler(evt) {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         controlSwitchHandler()
         if(state.controlSwitch == "on") {
             if(logEnable) log.debug "In slowOffHandler (${state.version})"
             state.fromWhere = "slowOff"
-            state.currentLevel = startLevelLow ?: 99
+            state.currentLevel = startLevelLow ?: 99           
             state.color = "${colorDn}"
             setLevelandColorHandler()
             if(minutesDn == 0) return
@@ -434,7 +467,7 @@ def slowOffHandler(evt) {
 
 def dimStepUp() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "-------------------- dimStepUp --------------------"
@@ -472,9 +505,71 @@ def dimStepUp() {
     }
 }
 
+// ****** START - New dimStepDownPlus ******
+def dimStepDownPlus() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "-------------------- dimStepDownPlus --------------------"
+        if(logEnable) log.debug "In dimStepDown (${state.version})"
+
+        slowDimmerDn.each { it->
+            controlSwitchHandler()
+            if(state.controlSwitch == "on") {
+                if(state.haveTime[it] == false || state.haveTime[it] == null) {
+                    state.fromWhere = "slowOff"
+                    currentLevel = it.currentValue("level")           
+                    color = "${colorDn}"
+                    theData = "${currentLevel}::${color}"
+                    setLevelandColorHandler(theData)
+                    if(minutesDn == 0) return
+                    seconds = (minutesDn * 60) - 10           
+                    difference = state.currentLevel - targetLevelLow                
+                    state.dimStep1 = (difference / seconds) * 10
+                    if(logEnable) log.debug "slowOffHandler - dimStep1: ${state.dimStep1} - targetLevel: ${targetLevelLow} - color: ${state.color}"
+                    atLeastOneDnOn = false
+                    state.haveTime[it] = true
+                }
+                
+                state.currentLevel = it.currentValue("level")
+                
+                if(state.currentLevel > targetLevelLow) {
+                    state.newLevel = state.currentLevel - state.dimStep1                   
+                    if(state.newLevel < targetLevelLow) { state.newLevel = targetLevelLow }                   
+                    if(logEnable) log.debug "In dimStepDownPlus - Setting newLevel: ${state.newLevel} - targetLevelLow: ${targetLevelLow}"
+
+
+                    deviceOn = it.currentValue("switch")
+                    if(logEnable) log.debug "In dimStepDownPlus - ${it} is: ${deviceOn}"
+                    if(deviceOn == "on") {
+                        atLeastOneDnOn = true
+                        it.setLevel(state.newLevel)
+                    }
+
+                    if(atLeastOneDnOn) {
+                        runIn(10,dimStepDownPlus)
+                    } else {
+                        log.info "${app.label} - All devices are turned off"
+                    }    
+                } else {
+                    if(dimDnOff) slowDimmerDn.off()
+                    if(logEnable) log.debug "-------------------- End dimStepDownPlus --------------------"
+                    if(logEnable) log.info "In dimStepDownPlus - Current Level: ${state.newLevel} has reached targetLevel: ${targetLevelLow}"
+                } 
+            } else {
+                if(logEnable) log.debug "-------------------- Stop dimStepDownPlus --------------------"
+                log.info "${app.label} - Control Switch is OFF - Child app is disabled."
+            }	
+        } 
+    }
+    state.haveTime = false
+}
+// ****** END - New dimStepDownPlus ******
+
 def dimStepDown() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
+    if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "-------------------- dimStepDown --------------------"
@@ -503,7 +598,7 @@ def dimStepDown() {
                 }    
             } else {
                 if(dimDnOff) slowDimmerDn.off()
-                if(logEnable) log.debug "-------------------- End dimStepUp --------------------"
+                if(logEnable) log.debug "-------------------- End dimStepDown --------------------"
                 if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
             } 
         } else{
@@ -579,7 +674,6 @@ def dayOfTheWeekHandler() {
         state.daysMatch = true
     }
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
-    if(state.daysMatch) magicHappensHandler()
 }
 
 def pushHandler(){
@@ -593,13 +687,14 @@ def pushHandler(){
 	}
 }
 
-def setLevelandColorHandler() {
-	if(logEnable) log.debug "In setLevelandColorHandler (${state.version}) - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}"
+def setLevelandColorHandler(data) {
+    if(data) def (theLvl, theColor) = data.split("::")
+	if(logEnable) log.debug "In setLevelandColorHandler (${state.version}) - fromWhere: ${state.fromWhere}, onLevel: ${theLvl}, color: ${theColor}"
     def hueColor = 0
     def saturation = 100
-	int onLevel = state.onLevel
+	int onLevel = theLvl
     
-    switch(state.color) {
+    switch(theColor) {
             case "White":
             hueColor = 52
             saturation = 19
@@ -639,7 +734,6 @@ def setLevelandColorHandler() {
             break;
     }
     
-	//def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
     def value = [hue: hueColor, saturation: saturation, level: onLevel]
     
     if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
@@ -693,6 +787,21 @@ def setLevelandColorHandler() {
 }
 
 // ********** Normal Stuff **********
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(state.enablerSwitch == null){state.enablerSwitch = "off"}
