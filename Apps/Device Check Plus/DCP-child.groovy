@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.7 - 08/23/20 - No wrong state devices is now optional
  *  1.1.6 - 06/22/20 - Changes to letsTalk
  *  1.1.5 - 06/13/20 - Fixed letsTalk typo
  *  1.1.4 - 06/13/20 - Cosmetic changes
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -336,7 +337,7 @@ def notificationOptions() {
 			paragraph "<hr>"
             paragraph "Receive device notifications with voice and push options. Each of the following messages will only be spoken if necessary."
 			
-			input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)",  required:true, submitOnChange:true
+			input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
 			input "oPreList", "bool", defaultValue:false, title: "Show a list view of the random pre messages?", description: "List View", submitOnChange:true
 			if(oPreList) {
 				def valuesPre = "${preMsg}".split(";")
@@ -358,7 +359,7 @@ def notificationOptions() {
             }
             
             paragraph "<hr>"
-			input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)",  required: true, submitOnChange:true
+			input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange:true
 			input "oPostList", "bool", defaultValue:false, title: "Show a list view of the random post messages?", description: "List View", submitOnChange:true
 			if(oPostList) {
 				def valuesPost = "${postMsg}".split(";")
@@ -370,14 +371,17 @@ def notificationOptions() {
         section(getFormat("header-green", "${getImage("Blank")}"+" No Devices found Notification Options")) {
             paragraph "Receive notifications with voice and push options. This will only notify if there are no devices in the wrong state."
 			
-			input "noDeviceMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)",  required:true, submitOnChange:true
-			input "oNoList", "bool", defaultValue:false, title: "Show a list view of the random pre messages?", description: "List View", submitOnChange:true
-			if(oNoList) {
-				def valuesNo = "${noDeviceMsg}".split(";")
-				listMapNo = ""
-    			valuesNo.each { itemNo -> listMapNo += "${itemNo}<br>" }
-				paragraph "${listMapNo}"
-			}
+            input "useNoDeviceMsg", "bool", title: "Use No wrong state device notifications", defaultValue:false, submitOnChange:true
+            if(useNoDeviceMsg) {
+                input "noDeviceMsg", "text", title: "Random Message - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
+                input "oNoList", "bool", defaultValue:false, title: "Show a list view of the random pre messages?", description: "List View", submitOnChange:true
+                if(oNoList) {
+                    def valuesNo = "${noDeviceMsg}".split(";")
+                    listMapNo = ""
+                    valuesNo.each { itemNo -> listMapNo += "${itemNo}<br>" }
+                    paragraph "${listMapNo}"
+                }
+            }
         }
     }
 }
@@ -931,14 +935,16 @@ def messageHandler() {
     state.theMsg = ""
     
     if(state.isData == "no") {
-	    def valuesNo = "${noDeviceMsg}".split(";")
-	    vSizeNo = valuesNo.size()
-		countNo = vSizeNo.toInteger()
-    	def randomKeyNo = new Random().nextInt(countNo)
-		state.noMsg = valuesNo[randomKeyNo]
-		if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizeNo}, randomKey: ${randomKeyNo}, noMsg: ${state.noMsg}"
-        
-        state.theMsg = "${state.noMsg}"
+        if(useNoDeviceMsg) {
+	        def valuesNo = "${noDeviceMsg}".split(";")
+            vSizeNo = valuesNo.size()
+            countNo = vSizeNo.toInteger()
+            def randomKeyNo = new Random().nextInt(countNo)
+            state.noMsg = valuesNo[randomKeyNo]
+            if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizeNo}, randomKey: ${randomKeyNo}, noMsg: ${state.noMsg}"
+
+            state.theMsg = "${state.noMsg}"
+        }
     }
       
     if(state.isData == "yes") {
