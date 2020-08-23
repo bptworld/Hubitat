@@ -53,7 +53,7 @@ SWITCH_MODE=0
 # mode : SWITCH_MODE = One update per status change / REPEAT_MODE = continuous # updating the RSSI every 3 seconds
 
 TAG_DATA = [
-            ["Bryan_TicWatch","9b:28:a6:d4:8e:ce",30,0,"BTLE",SWITCH_MODE],
+            ["Bryan_TicWatch","98:28:a6:d4:8e:ce",30,0,"BTLE",SWITCH_MODE],
             ["Test_Beacon","dd:33:0a:11:18:1d",30,0,"BTLE",REPEAT_MODE]
            ]
 
