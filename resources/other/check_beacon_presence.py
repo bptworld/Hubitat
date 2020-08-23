@@ -35,7 +35,7 @@
 # 
 # Configuration :
 # Change your IP and Port here :  
-URL_HUBITAT = 'http://192.168.86.81/apps/api/1788/location/?user=PARAM_NAME&location=PARAM_IDX&cmd=PARAM_CMD&access_token=4fae6f24-aeed-xxxxx'
+URL_HUBITAT = 'http://192.168.86.81/apps/api/1788/location/?user=PARAM_NAME&location=PARAM_IDX&cmd=PARAM_CMD&access_token=4fae6f24-aeed-4461-ad42-09f0cc23dca0'
 # leave empty if you don't require auth.
 HUBITAT_USER=''
 HUBITAT_PASS=''
@@ -53,7 +53,7 @@ SWITCH_MODE=0
 # mode : SWITCH_MODE = One update per status change / REPEAT_MODE = continuous # updating the RSSI every 3 seconds
 
 TAG_DATA = [
-            ["Bryan TicWatch","9b:28:a6:d4:8e:ce",30,0,"BTLE",SWITCH_MODE],
+            ["Bryan_TicWatch","9b:28:a6:d4:8e:ce",30,0,"BTLE",SWITCH_MODE],
             ["Amy","c8:ae:c6:e0:xx:xx",30,0,"Home",SWITCH_MODE]
            ]
 
