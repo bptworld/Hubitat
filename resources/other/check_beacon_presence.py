@@ -35,7 +35,7 @@
 # 
 # Configuration :
 # Change your IP and Port here :  
-URL_HUBITAT = 'http://192.168.86.81/apps/api/1788/location/?user=PARAM_NAME&location=PARAM_IDX&cmd=PARAM_CMD&access_token=4fae0cc23dca0'
+URL_HUBITAT = 'http://192.168.86.81/apps/api/1788/location/?user=PARAM_NAME&location=PARAM_IDX&cmd=PARAM_CMD&access_token=4fae6f24--ad42-09f0cc23dca0'
 # leave empty if you don't require auth.
 HUBITAT_USER=''
 HUBITAT_PASS=''
