@@ -35,7 +35,7 @@
 # 
 # Configuration :
 # Change your IP and Port here :  
-URL_HUBITAT = 'http://192.168.86.81/apps/api/1788/location/?user=PARAM_NAME&location=PARAM_IDX&cmd=PARAM_CMD&access_token=4fae6f24-aeed-'
+URL_HUBITAT = 'http://192.168.86.81/apps/api/1788/location/?user=PARAM_NAME&location=PARAM_IDX&cmd=PARAM_CMD&access_token=4fae6f24-aeed-4461-ad42-09f0cc23dca0'
 # leave empty if you don't require auth.
 HUBITAT_USER=''
 HUBITAT_PASS=''
@@ -54,7 +54,7 @@ SWITCH_MODE=0
 
 TAG_DATA = [
             ["Bryan_TicWatch","9b:28:a6:d4:8e:ce",30,0,"BTLE",SWITCH_MODE],
-            ["Test_Beacon","dd:33:0a:11:18:1d","BTLE",REPEAT_MODE]
+            ["Test_Beacon","dd:33:0a:11:18:1d",30,0,"BTLE",REPEAT_MODE]
            ]
 
            
