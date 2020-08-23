@@ -54,7 +54,7 @@ SWITCH_MODE=0
 
 TAG_DATA = [
             ["Bryan_TicWatch","9b:28:a6:d4:8e:ce",30,0,"BTLE",SWITCH_MODE],
-            ["Amy","c8:ae:c6:e0:xx:xx",30,0,"Home",SWITCH_MODE]
+            ["Test_Beacon","dd:33:0a:11:18:1d","BTLE",REPEAT_MODE]
            ]
 
            
