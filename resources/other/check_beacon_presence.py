@@ -1,4 +1,4 @@
-!/usr/bin/python
+#!/usr/bin/python
 #   File : check_beacon_presence.py
 #   Author: jmleglise
 #   Date: 10-Nov-2016
