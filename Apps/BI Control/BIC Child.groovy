@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.0 - 08/24/20 - Added Motion as trigger, added Reboot command
  *  2.0.9 - 07/09/20 - Fixed Disable switch
  *  2.0.8 - 06/26/20 - Fixed a typo
  *  2.0.7 - 06/25/20 - Add App Control options
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.0.9"
+	state.version = "2.1.0"
 }
 
 definition(
@@ -91,7 +92,7 @@ def pageConfig() {
         
 		if(triggerType == "Profile"){
             section() {
-    			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch or Contact"], required: true, Multiple: false
+    			input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch_Contact_Motion"], required: true, Multiple: false
             }
 			if(triggerMode == "Mode"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Profile based on HE Mode")) {
@@ -104,13 +105,14 @@ def pageConfig() {
 					input "biProfile7", "mode", title: "Profile 7 Mode(s)", required: false, multiple: true, width:3
 				}
             }
-			if(triggerMode == "Switch or Contact"){
-				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Profile using a Switch or Contact")) {
+			if(triggerMode == "Switch_Contact_Motion"){
+				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Profile using a Switch, Contact or Motion")) {
 					paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Mode change", required: false, multiple: true
+                    input "motions", "capability.motionSensor", title: "Select motion sensor to trigger Mode change", required: false, multiple: true
                     
 					input "switchProfileOn", "enum", title: "Profile to change to when switch is On", options: [
 						[Pon1:"Profile 1"],
@@ -127,7 +129,7 @@ def pageConfig() {
 
 		if(triggerType == "Schedule"){
             section() {
-    		    input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch or Contact"], required: true, Multiple: false
+    		    input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Mode","Switch_Contact_Motion"], required: true, Multiple: false
             }
 			if(triggerMode == "Mode"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change BI Schedule based on HE Mode")) {
@@ -146,13 +148,14 @@ def pageConfig() {
 				}
 			}
                 
-			if(triggerMode == "Switch or Contact"){
-				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Schedule using a Switch or Contact")) {
+			if(triggerMode == "Switch_Contact_Motion"){
+				section(getFormat("header-green", "${getImage("Blank")}"+" Ability to change the BI Schedule using a Switch, Contact or Motion")) {
 					paragraph "Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Mode change", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Mode change", required: false, multiple: true
+                    input "motions", "capability.motionSensor", title: "Select motion sensor to trigger Mode change", required: false, multiple: true
                     
                    	input "biScheduleSwitch", "text", title: "Schedule Name", description: "The exact name of the BI schedule to trigger with the switch"
                 }
@@ -161,15 +164,16 @@ def pageConfig() {
         
 		if(triggerType == "Camera"){
             section() {
-			    input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ"], required: true, Multiple: false
+			    input "triggerMode", "enum", title: "Select Trigger Type", submitOnChange: true, options: ["Camera_Preset","Camera_Snapshot","Camera_Trigger","Camera_PTZ","Camera_Reboot"], required: true, Multiple: false
             }
 			if(triggerMode == "Camera_Preset"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Preset")) {
-					paragraph "<b>Ability to move a camera to a Preset using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to move a camera to a Preset using a Switch, Contact or Motion.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Camera Preset", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Preset", required: false, multiple: true
+                    input "motions", "capability.motionSensor", title: "Select motion sensor to trigger Camera Preset", required: false, multiple: true
                     
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 					input "biCameraPreset", "enum", title: "Preset number", options: [
@@ -184,11 +188,12 @@ def pageConfig() {
             
 			if(triggerMode == "Camera_Snapshot"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Snapshot")) {
-					paragraph "<b>Ability to get a Camera Snapshot using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to get a Camera Snapshot using a Switch, Contact or Motion.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
                 section(){
 					input "switches", "capability.switch", title: "Select switch to trigger Camera Snapshot", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera Snapshot", required: false, multiple: true
+                    input "motions", "capability.motionSensor", title: "Select motion sensor to trigger Camera Snapshot", required: false, multiple: true
                     
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 				}
@@ -196,11 +201,12 @@ def pageConfig() {
             
 			if(triggerMode == "Camera_Trigger"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Trigger")) {
-					paragraph "<b>Ability to start or stop manual recording on camera using a Switch or Contact.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
+					paragraph "<b>Ability to start or stop manual recording on camera using a Switch, Contact or Motion.</b><br>This ability uses both the On and Off so no need to set 'Enable auto off'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to Trigger Camera", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger Camera", required: false, multiple: true
+                    input "motions", "capability.motionSensor", title: "Select motion sensor to trigger Camera", required: false, multiple: true
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
                     
                     paragraph "Camera Trigger can use two methods. If one doesn't work for you, please try the other."
@@ -210,11 +216,12 @@ def pageConfig() {
             
 			if(triggerMode == "Camera_PTZ"){
 				section(getFormat("header-green", "${getImage("Blank")}"+" Camera PTZ")) {
-					paragraph "<b>Ability to use PTZ commands using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+					paragraph "<b>Ability to use PTZ commands using a Switch, Contact or Motion.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
 				}
 				section(){
 					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: false, multiple: true
                     input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger PTZ command", required: false, multiple: true
+                    input "motions", "capability.motionSensor", title: "Select motion sensor to trigger PTZ command", required: false, multiple: true
                     
 					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
 					input "biCameraPTZ", "enum", title: "PTZ Command", options: [
@@ -228,6 +235,18 @@ def pageConfig() {
 					], required: true, multiple: false
 				}
 			}
+            
+            if(triggerMode == "Camera_Reboot"){
+				section(getFormat("header-green", "${getImage("Blank")}"+" Camera Reboot")) {
+					paragraph "<b>Ability to reboot camers using a Switch or Contact.</b><br>Be sure to set 'Enable auto off' within the Virtual Device to '1s'."
+				}
+				section(){
+					input "switches", "capability.switch", title: "Select switch to trigger PTZ command", required: false, multiple: true
+                    input "contacts", "capability.contactSensor", title: "Select contact sensor to trigger PTZ command", required: false, multiple: true
+                    
+					input "biCamera", "text", title: "Camera Name (use short name from BI, MUST BE EXACT)", required: true, multiple: false
+				}
+			}
 		}
         if(triggerType) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
@@ -236,20 +255,20 @@ def pageConfig() {
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains("pauseApp")) {
-                        app.updateLabel(app.label + " Paused")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
@@ -269,68 +288,68 @@ def updated() {
 	log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    if(logEnable) log.debug "In initialize - Initializing (${state.version})"
-    
-    if(app.label) {
-        if(app.label.contains("Paused")) {
-            app.updateLabel(app.label.replaceAll(" Paused",""))
-            app.updateLabel(app.label + " <font color='red'>Paused</font>")
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In initialize - Initializing (${state.version})"
+
+        if(app.label) {
+            if(app.label.contains("Paused")) {
+                app.updateLabel(app.label.replaceAll(" Paused",""))
+                app.updateLabel(app.label + " <font color='red'>Paused</font>")
+            }
         }
-    }
-    
-    if(!pauseApp) {
+
         if(logEnable) log.debug "In initialize - triggerMode: ${triggerMode}"
         if(triggerType == "Profile") {
             if(triggerMode == "Mode"){subscribe(location, "mode", profileModeChangeHandler)}
-            if(triggerMode == "Switch or Contact") {
+            if(triggerMode == "Switch_Contact_Motion") {
                 if(switches) { subscribe(switches, "switch", profileSwitchHandler) }
                 if(contacts) { subscribe(contacts, "contact", profileSwitchHandler) }
+                if(motions) { subscribe(motions, "motion", profileSwitchHandler) }
             }
         } else if (triggerType == "Schedule") {
             if(triggerMode == "Mode"){subscribe(location, "mode", scheduleModeChangeHandler)}
-            if(triggerMode == "Switch or Contact") {
+            if(triggerMode == "Switch_Contact_Motion") {
                 if(switches) { subscribe(switches, "switch", scheduleSwitchHandler) }
                 if(contacts) { subscribe(contacts, "contact", scheduleSwitchHandler) }
+                if(motions) { subscribe(motions, "motion", scheduleSwitchHandler) }
             }
         }
         if(triggerMode == "Camera_Preset") {
             if(switches) { subscribe(switches, "switch", cameraPresetHandler) }
-            if(contacts) { subscribe(contacts, "contact", cameraPresetHandler) }   
+            if(contacts) { subscribe(contacts, "contact", cameraPresetHandler) }  
+            if(motions) { subscribe(motions, "motion", cameraPresetHandler) }
         }
         if(triggerMode == "Camera_Snapshot") {
             if(switches) { subscribe(switches, "switch", cameraSnapshotHandler) }
             if(contacts) { subscribe(contacts, "contact", cameraSnapshotHandler) }
+            if(motions) { subscribe(motions, "motion", cameraSnapshotHandler) }
         }
         if(triggerMode == "Camera_Trigger") {
             if(switches) { subscribe(switches, "switch", cameraTriggerHandler) }
             if(contacts) { subscribe(contacts, "contact", cameraTriggerHandler) }
+            if(motions) { subscribe(motions, "motion", cameraTriggerHandler) }
         }
         if(triggerMode == "Camera_PTZ") {
             if(switches) { subscribe(switches, "switch", cameraPTZHandler) }
             if(contacts) { subscribe(contacts, "contact", cameraPTZHandler) }
+            if(motions) { subscribe(motions, "motion", cameraPTZHandler) }
         }
     }
-}
-
-def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
-        edSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = false }
-        }
-    }
-    return eSwitch
 }
 
 def profileModeChangeHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-modeChangeHandler (${state.version})"
         if(logEnable) log.debug "Mode changed to ${evt.value}"
 
@@ -374,7 +393,9 @@ def profileModeChangeHandler(evt) {
 
 def profileSwitchHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-switchChangeHandler (${state.version})"
         if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
@@ -410,7 +431,9 @@ def profileSwitchHandler(evt) {
 
 def scheduleModeChangeHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-modeChangeHandler (${state.version})"
         if(logEnable) log.debug "Mode changed to ${evt.value}"
 
@@ -443,7 +466,9 @@ def scheduleModeChangeHandler(evt) {
 
 def scheduleSwitchHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-switchChangeHandler (${state.version})"
         if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
@@ -458,7 +483,9 @@ def scheduleSwitchHandler(evt) {
 
 def cameraPresetHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-cameraPresetHandler (${state.version})"
         if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
@@ -488,7 +515,9 @@ def cameraPresetHandler(evt) {
 
 def cameraSnapshotHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-cameraSnapshotHandler (${state.version})"
         if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
@@ -504,7 +533,9 @@ def cameraSnapshotHandler(evt) {
 
 def cameraTriggerHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-cameraTriggerHandler (${state.version})"
         if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
@@ -524,7 +555,9 @@ def cameraTriggerHandler(evt) {
 
 def cameraPTZHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "BI Control-cameraPTZHandler (${state.version})"
         if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
 
@@ -566,33 +599,39 @@ def biChangeProfile(num) {
 	if(triggerMode == "Mode") {
 		if(logEnable) log.debug "I'm in Mode"
 		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-	} else
-	if(triggerMode == "Switch or Contact") {
-		if(logEnable) log.debug "I'm in Switch or Contact"
-		biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-	} else
-	if(triggerMode == "Camera_Preset") {
-		if(logEnable) log.debug "I'm in Camera_Preset"
-		biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-		// /admin?camera=x&preset=x
-		} else
-	if(triggerMode == "Camera_Snapshot") {
-		if(logEnable) log.debug "I'm in Camera_Snapshot"
-		biRawCommand = "/admin?camera=${biCamera}&snapshot&user=${parent.biUser}&pw=${parent.biPass}"
-		// /admin?camera=x&snapshot
-	} else
-	if(triggerMode == "Camera_Trigger") {
-		if(logEnable) log.debug "I'm in Camera_Trigger"
-		if(!useMethod) biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
-		if(useMethod) biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
-		// NOTE: if this Command doesn't work for you, try the second one instead
-		// /admin?camera=x&manrec=1
-	} else
-	if(triggerMode == "Camera_PTZ") {
-		if(logEnable) log.debug "I'm in Camera_PTZ"
-		biRawCommand = "/cam/${biCamera}/pos=${num}"
-		// /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
-	}
+        
+    } else if(triggerMode == "Switch_Contact_Motion") {
+        if(logEnable) log.debug "I'm in Switch, Contact or Motion"
+        biRawCommand = "/admin?profile=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+        
+    } else if(triggerMode == "Camera_Preset") {
+        if(logEnable) log.debug "I'm in Camera_Preset"
+        biRawCommand = "/admin?camera=${biCamera}&preset=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+        
+        // /admin?camera=x&preset=x
+    } else if(triggerMode == "Camera_Snapshot") {
+        if(logEnable) log.debug "I'm in Camera_Snapshot"
+        biRawCommand = "/admin?camera=${biCamera}&snapshot&user=${parent.biUser}&pw=${parent.biPass}"
+        
+        // /admin?camera=x&snapshot
+    } else if(triggerMode == "Camera_Trigger") {
+        if(logEnable) log.debug "I'm in Camera_Trigger"
+        if(!useMethod) biRawCommand = "/admin?camera=${biCamera}&manrec=${num}&user=${parent.biUser}&pw=${parent.biPass}"
+        if(useMethod) biRawCommand = "/admin?camera=${biCamera}&trigger&user=${parent.biUser}&pw=${parent.biPass}"
+        
+        // NOTE: if this Command doesn't work for you, try the second one instead
+        // /admin?camera=x&manrec=1
+    } else if(triggerMode == "Camera_PTZ") {
+        if(logEnable) log.debug "I'm in Camera_PTZ"
+        biRawCommand = "/cam/${biCamera}/pos=${num}"
+        
+        // /cam/{cam-short-name}/pos=x Performs a PTZ command on the specified camera, where x= 0=left, 1=right, 2=up, 3=down, 4=home, 5=zoom in, 6=zoom out
+    } else if(triggerMode == "Camera_Reboot") {
+        if(logEnable) log.debug "I'm in Camera_Reboot"
+        biRawCommand = "/admin?camera=${biCamera}&reboot&user=${parent.biUser}&pw=${parent.biPass}"
+
+        // /admin?camera=x&reboot
+    }
 
 	if(logEnable) log.debug "sending GET to URL http://${biHost}${biRawCommand}"
 	if(logEnable) log.debug "biUser: ${parent.biUser} - biPass: ${parent.biPass} - num: ${num}"
@@ -662,10 +701,34 @@ def checkSwitchesContacts() {
             }
         }
     }
+    
+    if(motions) { 
+        motions.each { it3 ->
+            if(it3.currentValue("motion") == "active") {
+                contin = true
+            }
+        }
+    }
+    
     return contin
 }
 
 // ********** Normal Stuff **********
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults (${state.version})"
