@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.1.0 - 08/24/20 - Seperate options for devices on when Score and/or Final
+ *  1.1.0 - 08/24/20 - Separate options for devices on when Score and/or Final
  *  1.0.9 - 08/16/20 - Added an option to keep light on at final for a set amount of time (minutes)
  *  1.0.8 - 08/15/20 - Fixed a typo with total score
  *  1.0.7 - 08/07/20 - Really fixed the resetScoringSwitches
