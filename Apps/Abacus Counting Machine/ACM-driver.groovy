@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 08/19/20 - Added Acceleration
  *  1.0.0 - 06/20/20 - Initial release
  */
 
@@ -44,11 +45,16 @@ metadata {
 	definition (name: "Abacus Counting Machine Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Abacus%20Counting%20Machine/ACM-driver.groovy") {
    		capability "Actuator"
 
+        command "sendAccelerationMap", ["string"]
         command "sendContactMap", ["string"]
  		command "sendMotionMap", ["string"]
 		command "sendSwitchMap", ["string"]		
 		command "sendThermostatMap", ["string"]
 		
+        attribute "bpt-abacusAcceleration1", "string"
+		attribute "bpt-abacusAcceleration2", "string"
+		attribute "bpt-abacusAcceleration3", "string"
+        
         attribute "bpt-abacusContact1", "string"
 		attribute "bpt-abacusContact2", "string"
 		attribute "bpt-abacusContact3", "string"
@@ -64,6 +70,10 @@ metadata {
 		attribute "bpt-abacusThermostat1", "string"
         attribute "bpt-abacusThermostat2", "string"
         attribute "bpt-abacusThermostat3", "string"
+        
+        attribute "abacusAccelerationCount1", "string"
+		attribute "abacusAccelerationCount2", "string"
+		attribute "abacusAccelerationCount3", "string"
         
         attribute "abacusContactCount1", "string"
 		attribute "abacusContactCount2", "string"
@@ -85,6 +95,29 @@ metadata {
         section(""){
             input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: true
         }
+    }
+}
+
+def sendAccelerationMap(data) {
+    if(logEnable) log.debug "In Abacus Counting Machine Driver - Acceleration - Received new data!"
+    def (whichMap, theData) = data.split('::')
+	count = theData.length()
+	if(count <= 1024) {
+		if(logEnable) log.debug "In Abacus Counting Machine Driver - Acceleration - Map has ${count} Characters"
+	} else {
+		theData = "Too many characters to display on Dashboard (${count})"
+	}
+    if(whichMap == "1") {
+	    sendEvent(name: "bpt-abacusAcceleration1", value: theData, displayed: true)
+        sendEvent(name: "abacusAccelerationCount1", value: count, displayed: true)
+    }
+    if(whichMap == "2") {
+	    sendEvent(name: "bpt-abacusAcceleration2", value: theData, displayed: true)
+        sendEvent(name: "abacusAccelerationCount2", value: count, displayed: true)
+    }
+    if(whichMap == "3") {
+	    sendEvent(name: "bpt-abacusAcceleration3", value: theData, displayed: true)
+        sendEvent(name: "abacusAccelerationCount3", value: count, displayed: true)
     }
 }
 
