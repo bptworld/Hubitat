@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 08/19/20 - Added accelerationSensor to triggers
  *  1.0.3 - 07/09/20 - Fixed Disable switch
  *  1.0.2 - 06/25/20 - Added App Control options
  *  1.0.1 - 06/21/20 - Fixed Reset Counts
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Abacus Counting Machine"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -97,6 +98,7 @@ def pageConfig() {
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Most Common Devices")) {
+            input "accelerationEvent", "capability.accelerationSensor", title: "Acceleration Sensor(s) to count", submitOnChange: true, required: false, multiple: true
             input "contactEvent", "capability.contactSensor", title: "Contact Sensor(s) to count", submitOnChange: true, required: false, multiple: true			
 			input "motionEvent", "capability.motionSensor", title: "Motion sensor(s) to count", submitOnChange: true, required: false, multiple: true
 			input "switchEvent", "capability.switch", title: "Switch Device(s) to count", submitOnChange: true, required: false, multiple: true
@@ -117,20 +119,20 @@ def pageConfig() {
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains("pauseApp")) {
-                        app.updateLabel(app.label + " Paused")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -145,6 +147,48 @@ def pageConfig() {
 def pageCounts() {
 	dynamicPage(name: "pageCounts", title: "", install:false, uninstall:false) {
         display()
+        section(getFormat("header-green", "${getImage("Blank")}"+" Acceleration Sensor Counts")) {
+            if(accelerationEvent) {
+                accelerationMap1 = dataDevice.currentValue("bpt-abacusAcceleration1")
+                accelerationMap2 = dataDevice.currentValue("bpt-abacusAcceleration2")
+                accelerationMap3 = dataDevice.currentValue("bpt-abacusAcceleration3")
+
+                accelerationMapCount1 = dataDevice.currentValue("abacusAccelerationCount1")
+                accelerationMapCount2 = dataDevice.currentValue("abacusAccelerationCount2")
+                accelerationMapCount3 = dataDevice.currentValue("abacusAccelerationCount3")
+
+                if(accelerationMapCount1) a1 = accelerationMapCount1.toInteger()
+                if(accelerationMapCount2) a2 = accelerationMapCount2.toInteger()
+                if(accelerationMapCount3) a3 = accelerationMapCount3.toInteger()
+
+                if(logEnable) log.debug "In reportHandler - acceleration - a1: ${a1} - a2: ${a2} - a3: ${a3}"
+
+                if(a1 >= 42) {
+                    paragraph "${accelerationMap1}"
+                    if(a1 <= 1024) paragraph "Tile Count: <span style='color:green'>${a1}</span>"
+                    if(a1 > 1024) paragraph "<span style='color:red'>Tile Count: ${a1}</span>"
+                    paragraph "<hr>"
+                }
+                if(a2 >= 42) {
+                    paragraph "${accelerationMap2}"
+                    if(a2 <= 1024) paragraph "Tile Count: <span style='color:green'>${a2}</span>"
+                    if(a2 > 1024) paragraph "<span style='color:red'>Tile Count: ${a2}</span>"
+                    paragraph "<hr>"
+                }
+                if(a3 >= 42) {
+                    paragraph "${accelerationMap3}"
+                    if(a3 <= 1024) paragraph "Tile Count: <span style='color:green'>${a3}</span>"
+                    if(a3 > 1024) paragraph "<span style='color:red'>Tile Count: ${a3}</span>"
+                }
+
+                if(a1 < 42 && a2 < 42 && a3 < 42) {
+                    paragraph "<div style='font-size:${fontSize}px'>Acceleration Report<br>Nothing to report</div>"
+                }
+            } else {
+                paragraph "No devices have been selected for this option."
+            }
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Contact Sensor Counts")) {
             if(contactEvent) {
                 contactMap1 = dataDevice.currentValue("bpt-abacusContact1")
@@ -323,6 +367,7 @@ def resetCounts() {
             input "resetAllCounts", "bool", title: "Reset ALL Counts", description: "Reset All", defaultValue:false, submitOnChange:true
             if(resetAllCounts) {
 	            state.clear()
+                state.accelerationMap = [:]
                 state.contactMap = [:]
                 state.motionMap = [:]
                 state.switchMap = [:]
@@ -350,24 +395,23 @@ def updated() {
 	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
     unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    if(app.label) {
-        if(app.label.contains("Paused")) {
-            app.updateLabel(app.label.replaceAll(" Paused",""))
-            app.updateLabel(app.label + " <font color='red'>Paused</font>")
-        }
-    }
-
-    if(!pauseApp) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In initialize (${state.version})"
         setDefaults()
-        subscribe(contactEvent, "contact.open", contactHandler)
-        subscribe(motionEvent, "motion.active", motionHandler)
-        subscribe(switchEvent, "switch.on", switchHandler)
-        subscribe(thermostatEvent, "thermostatOperatingState", thermostatHandler)
+        
+        subscribe(accelerationEvent, "acceleration.active", triggerHandler)
+        subscribe(contactEvent, "contact.open", triggerHandler)
+        subscribe(motionEvent, "motion.active", triggerHandler)
+        subscribe(switchEvent, "switch.on", triggerHandler)
+        subscribe(thermostatEvent, "thermostatOperatingState", triggerHandler)
 
         schedule("0 57 23 1/1 * ? *", resetDayHandler, [data: "D"])
         schedule("0 58 23 ? * SAT *", resetWeekHandler, [data: "W"])
@@ -392,183 +436,139 @@ def resetYearHandler(data) {
     resetCountsHandler(data)
 }
 
-def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
-        edSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = false }
-        }
-    }
-    return eSwitch
-}
-
-def contactHandler(evt) {
+def triggerHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
-        if(logEnable) log.debug "In contactHandler (${state.version})"
-        if(state.contactMap == null) state.contactMap = [:]
-
-        contactEvent.each { it ->
-            String theEvent = evt.displayName
-            String theName = it
-
-            if(logEnable) log.debug "In contactHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-            if(theEvent == theName) { 
-                if(logEnable) log.debug "In contactHandler - MATCH!"
-                theCounts = state.contactMap.get(it.displayName)
-
-                if(theCounts) {     
-                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                    if(logEnable) log.debug "In contactHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-
-                    newDay = theDay.toInteger() + 1
-                    newWeek = theWeek.toInteger() + 1
-                    newMonth = theMonth.toInteger() + 1
-                    newYear = theYear.toInteger() + 1
-
-                    if(logEnable) log.debug "In contactHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.contactMap.put(theName, newValues)
-
-                    if(logEnable) log.debug "In contactHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                } else {
-                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.contactMap.put(theName, newValues)                
-                    if(logEnable) log.debug "In contactHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In triggerHandler (${state.version}) - evt: ${evt.displayName}"
+        
+        state.matchFound = false
+        state.theDevices = null
+        String evtName = evt.displayName
+        
+        if(accelerationEvent) {
+            accelerationEvent.each { it ->
+                String theName = it
+                if(logEnable) log.debug "In triggerHandler - Comparing theName: ${theName} vs evtName: ${evtName}"
+                if(theName == evtName) { 
+                    if(logEnable) log.debug "In triggerHandler - Found Match in Acceleration Devices"
+                    if(state.accelerationMap == null) state.accelerationMap = [:]
+                    state.theDevices = accelerationEvent
+                    state.type = "acceleration"
+                    state.matchFound = true
                 }
-            }     
+            }
         }
-        comingFrom = "Contact Sensor"
-        buildMaps(comingFrom)
-    }
-}
-
-def motionHandler(evt) {
-    checkEnableHandler()
-    if(eSwitch) {
-        if(logEnable) log.debug "In motionHandler (${state.version})"
-        if(state.motionMap == null) state.motionMap = [:]
-
-        motionEvent.each { it ->
-            String theEvent = evt.displayName
-            String theName = it
-
-            if(logEnable) log.debug "In motionHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-            if(theEvent == theName) { 
-                if(logEnable) log.debug "In motionHandler - MATCH!"
-                theCounts = state.motionMap.get(it.displayName)
-
-                if(theCounts) {     
-                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                    if(logEnable) log.debug "In motionHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-
-                    newDay = theDay.toInteger() + 1
-                    newWeek = theWeek.toInteger() + 1
-                    newMonth = theMonth.toInteger() + 1
-                    newYear = theYear.toInteger() + 1
-
-                    if(logEnable) log.debug "In motionHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.motionMap.put(theName, newValues)
-
-                    if(logEnable) log.debug "In motionHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                } else {
-                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.motionMap.put(theName, newValues)                
-                    if(logEnable) log.debug "In motionHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+        
+        if(contactEvent) {
+            contactEvent.each { it ->
+                String theName = it
+                if(theName == evtName) {  
+                    if(logEnable) log.debug "In triggerHandler - Found Match in Contact Devices"
+                    if(state.contactMap == null) state.contactMap = [:]
+                    state.theDevices = contactEvent
+                    state.type = "contact"
+                    state.matchFound = true
                 }
-            }     
+            }
         }
-        comingFrom = "Motion Sensor"
-        buildMaps(comingFrom)
-    }
-}
-
-def switchHandler(evt) {
-    checkEnableHandler()
-    if(eSwitch) {
-        if(logEnable) log.debug "In switchHandler (${state.version})"
-        if(state.switchMap == null) state.switchMap = [:]
-
-        switchEvent.each { it ->
-            String theEvent = evt.displayName
-            String theName = it
-
-            if(logEnable) log.debug "In switchHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-            if(theEvent == theName) { 
-                if(logEnable) log.debug "In switchHandler - MATCH!"
-                theCounts = state.switchMap.get(it.displayName)
-
-                if(theCounts) {     
-                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                    if(logEnable) log.debug "In switchHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-
-                    newDay = theDay.toInteger() + 1
-                    newWeek = theWeek.toInteger() + 1
-                    newMonth = theMonth.toInteger() + 1
-                    newYear = theYear.toInteger() + 1
-
-                    if(logEnable) log.debug "In switchHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.switchMap.put(theName, newValues)
-
-                    if(logEnable) log.debug "In switchHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                } else {
-                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.switchMap.put(theName, newValues)                
-                    if(logEnable) log.debug "In switchHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+        
+        if(motionEvent) {
+            motionEvent.each { it ->
+                String theName = it
+                if(theName == evtName) {  
+                    if(logEnable) log.debug "In triggerHandler - Found Match in Motion Devices"
+                    if(state.motionMap == null) state.motionMap = [:]
+                    state.theDevices = motionEvent
+                    state.type = "motion"
+                    state.matchFound = true
                 }
-            }     
-        }
-        comingFrom = "Switch"
-        buildMaps(comingFrom)
-    }
-}
-
-def thermostatHandler(evt) {
-    checkEnableHandler()
-    if(eSwitch) {
-        if(logEnable) log.debug "In thermostatHandler (${state.version})"
-        if(state.thermostatMap == null) state.thermostatMap = [:]
-
-        thermostatEvent.each { it ->
-            String theEvent = evt.displayName
-            String theName = it
-
-            if(logEnable) log.debug "In thermostatHandler - Comparing theEvent: ${theEvent} vs ${theName}"
-            if(theEvent == theName) { 
-                if(logEnable) log.debug "In thermostatHandler - MATCH!"
-                theCounts = state.thermostatMap.get(it.displayName)
-
-                if(theCounts) {     
-                    def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
-                    if(logEnable) log.debug "In thermostatHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
-
-                    newDay = theDay.toInteger() + 1
-                    newWeek = theWeek.toInteger() + 1
-                    newMonth = theMonth.toInteger() + 1
-                    newYear = theYear.toInteger() + 1
-
-                    if(logEnable) log.debug "In thermostatHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.thermostatMap.put(theName, newValues)
-
-                    if(logEnable) log.debug "In thermostatHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
-                } else {
-                    newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
-                    newValues = "${newDay},${newWeek},${newMonth},${newYear}"
-                    state.thermostatMap.put(theName, newValues)                
-                    if(logEnable) log.debug "In thermostatHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+            }
+        } 
+        
+        if(switchEvent) {
+            switchEvent.each { it ->
+                String theName = it
+                if(theName == evtName) { 
+                    if(logEnable) log.debug "In triggerHandler - Found Match in Switch Devices"
+                    if(state.switchMap == null) state.switchMap = [:] 
+                    state.theDevices = switchEvent
+                    state.type = "switch"
+                    state.matchFound = true
                 }
-            }     
+            }
         }
-        comingFrom = "Thermostat"
-        buildMaps(comingFrom)
+        
+        if(thermostatEvent) {
+            thermostatEvent.each { it ->
+                String theName = it
+                if(theName == evtName) { 
+                    if(logEnable) log.debug "In triggerHandler - Found Match in Thermostat Devices"
+                    if(state.thermostatMap == null) state.thermostatMap = [:]
+                    state.theDevices = thermostatEvent
+                    state.type = "thermostat"
+                    state.matchFound = true
+                }
+            }
+        }
+        
+        if(state.matchFound == false) {
+            if(logEnable) log.debug "In triggerHandler - NO MATCH FOUND"
+            state.theDevices = null
+        }
+           
+        if(state.theDevices) {
+            state.theDevices.each { it ->
+                String theEvent = evt.displayName
+                String theName = it
+
+                if(logEnable) log.debug "In triggerHandler - Comparing theEvent: ${theEvent} vs ${theName}"
+                if(theEvent == theName) { 
+                    if(logEnable) log.debug "In triggerHandler - MATCH!"
+
+                    if(state.type == "acceleration") theCounts = state.accelerationMap.get(it.displayName)
+                    if(state.type == "contact") theCounts = state.contactMap.get(it.displayName)
+                    if(state.type == "motion") theCounts = state.motionMap.get(it.displayName)
+                    if(state.type == "switch") theCounts = state.switchMap.get(it.displayName)
+                    if(state.type == "thermostat") theCounts = state.thermostatMap.get(it.displayName)
+
+                    if(theCounts) {     
+                        def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")               
+                        if(logEnable) log.debug "In triggerHandler - BEFORE - ${theName} - day: ${theDay} - week: ${theWeek} - month: ${theMonth} - year: ${theYear}"
+
+                        newDay = theDay.toInteger() + 1
+                        newWeek = theWeek.toInteger() + 1
+                        newMonth = theMonth.toInteger() + 1
+                        newYear = theYear.toInteger() + 1
+
+                        if(logEnable) log.debug "In triggerHandler - AFTER - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                        newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+
+                        if(state.type == "acceleration") state.accelerationMap.put(theName, newValues)
+                        if(state.type == "contact") state.contactMap.put(theName, newValues)
+                        if(state.type == "motion") state.motionMap.put(theName, newValues)
+                        if(state.type == "switch") state.switchMap.put(theName, newValues)
+                        if(state.type == "thermostat") state.thermostatMap.put(theName, newValues)
+
+                        if(logEnable) log.debug "In triggerHandler - UPDATED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                    } else {
+                        newDay = 1;newWeek = 1;newMonth = 1;newYear = 1               
+                        newValues = "${newDay},${newWeek},${newMonth},${newYear}"
+
+                        if(state.type == "acceleration") state.accelerationMap.put(theName, newValues)
+                        if(state.type == "contact") state.contactMap.put(theName, newValues)  
+                        if(state.type == "motion") state.motionMap.put(theName, newValues)
+                        if(state.type == "switch") state.switchMap.put(theName, newValues)
+                        if(state.type == "thermostat") state.thermostatMap.put(theName, newValues)
+
+                        if(logEnable) log.debug "In triggerHandler - ADDED - ${theName} - day: ${newDay} - week: ${newWeek} - month: ${newMonth} - year: ${newYear}"
+                    }
+                }     
+            }      
+            if(logEnable) log.debug "In triggerHandler - Going to buildMaps with type: ${state.type}"
+            buildMaps("${state.type}")
+        }
     }
 }
 
@@ -576,7 +576,24 @@ def resetCountsHandler(data) {
     if(logEnable) log.debug "In resetCountsHandler (${state.version})"
     dataValue = data
     
-    if(logEnable) log.debug "In resetCountsHandler - Resetting Contact - dataValue: ${dataValue}"    
+    if(logEnable) log.debug "In resetCountsHandler - Resetting Acceleration - dataValue: ${dataValue}"    
+    accelerationEvent.each { it ->
+        String theName = it       
+        theCounts = state.accelerationMap.get(it.displayName)
+        if(theCounts) {     
+            def (theDay,theWeek,theMonth,theYear) = theCounts.split(",")
+            theZero = 0
+            if(dataValue == "D") newValues = "${theZero},${theWeek},${theMonth},${theYear}"
+            if(dataValue == "W") newValues = "${theZero},${theZero},${theMonth},${theYear}"
+            if(dataValue == "M") newValues = "${theZero},${theZero},${theZero},${theYear}"
+            if(dataValue == "Y") newValues = "${theZero},${theZero},${theZero},${theZero}"
+            if(logEnable) log.debug "In resetCountsHandler - Contact Sensor - ${theName} - newValues: ${newValues}"
+            state.accelerationMap.put(theName, newValues)
+        }
+    }
+    if(accelerationEvent) { buildMaps("acceleration") }
+    
+    if(logEnable) log.debug "In resetCountsHandler - Resetting Contact - dataValue: ${dataValue}" 
     contactEvent.each { it ->
         String theName = it       
         theCounts = state.contactMap.get(it.displayName)
@@ -591,7 +608,7 @@ def resetCountsHandler(data) {
             state.contactMap.put(theName, newValues)
         }
     }
-    if(contactEvent) { buildMaps("Contact Sensor") }
+    if(contactEvent) { buildMaps("contact") }
     
     if(logEnable) log.debug "In resetCountsHandler - Resetting Motion - dataValue: ${dataValue}"
     motionEvent.each { it ->
@@ -608,7 +625,7 @@ def resetCountsHandler(data) {
             state.motionMap.put(theName, newValues)
         }
     }
-    if(motionEvent) { buildMaps("Motion Sensor") }
+    if(motionEvent) { buildMaps("motion") }
     
     if(logEnable) log.debug "In resetCountsHandler - Resetting Switch - dataValue: ${dataValue}"
     switchEvent.each { it ->
@@ -625,7 +642,7 @@ def resetCountsHandler(data) {
             state.switchMap.put(theName, newValues)
         }
     }
-    if(switchEvent) { buildMaps("Switch") }
+    if(switchEvent) { buildMaps("switch") }
     
     if(logEnable) log.debug "In resetCountsHandler - Resetting Thermostat - dataValue: ${dataValue}"
     thermostatEvent.each { it ->
@@ -642,23 +659,27 @@ def resetCountsHandler(data) {
             state.thermostatMap.put(theName, newValues)
         }
     }
-    if(thermostatEvent) { buildMaps("Thermostat") }
+    if(thermostatEvent) { buildMaps("thermostat") }
 }
 
-def buildMaps(data) {
-    if(logEnable) log.debug "In buildMaps (${state.version}) - ${data}"
+def buildMaps(theData) {
+    state.data = theData
+    if(logEnable) log.debug "------------------------------- Start ${state.data} -------------------------------"
+    if(logEnable) log.debug "In buildMaps (${state.version}) - ${state.data}"
     
-    if(data == "Contact Sensor") {
+    if(state.data == "acceleration") {
+        reportMap = state.accelerationMap
+    } else if(state.data == "contact") {
         reportMap = state.contactMap
-    } else if(data == "Motion Sensor") {
+    } else if(state.data == "motion") {
         reportMap = state.motionMap
-    } else if(data == "Switch") {
+    } else if(state.data == "switch") {
         reportMap = state.switchMap
-    } else if(data == "Thermostat") {
+    } else if(state.data == "thermostat") {
         reportMap = state.thermostatMap
     }
-
-    def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>${data}</b><td><b>Day</b><td><b>Week</b><td><b>Month</b><td><b>Year</b>"
+    
+    def tblhead = "<div style='overflow:auto;height:90%'><table style='width:100%;line-height:1.00;font-size:${fontSize}px;text-align:left'><tr><td><b>${state.data}</b><td><b>Day</b><td><b>Week</b><td><b>Month</b><td><b>Year</b>"
 
     def line = "" 
     def tbl = tblhead
@@ -685,10 +706,12 @@ def buildMaps(data) {
                 if(dataDevice) {
                     if(logEnable) log.debug "In buildMaps - Sending new data to Tiles (${tileCount})"
                     sending = "${tileCount}::${tbl}"
-                    if(data == "Contact Sensor") dataDevice.sendContactMap(sending)
-                    if(data == "Motion Sensor") dataDevice.sendMotionMap(sending)
-                    if(data == "Switch") dataDevice.sendSwitchMap(sending)
-                    if(data == "Thermostat") dataDevice.sendThermostatMap(sending)
+                    
+                    if(state.data == "acceleration") dataDevice.sendAccelerationMap(sending)
+                    if(state.data == "contact") dataDevice.sendContactMap(sending)
+                    if(state.data == "motion") dataDevice.sendMotionMap(sending)
+                    if(state.data == "switch") dataDevice.sendSwitchMap(sending)
+                    if(state.data == "thermostat") dataDevice.sendThermostatMap(sending)
                     tileCount = tileCount + 1
                 }
                 tbl = tblhead + line 
@@ -701,32 +724,47 @@ def buildMaps(data) {
             if(dataDevice) {
                 if(logEnable) log.debug "In buildMaps - Sending new data to Tiles (${tileCount})"
                 sending = "${tileCount}::${tbl}"
-                if(data == "Contact Sensor") dataDevice.sendContactMap(sending)
-                if(data == "Motion Sensor") dataDevice.sendMotionMap(sending)
-                if(data == "Switch") dataDevice.sendSwitchMap(sending)
-                if(data == "Thermostat") dataDevice.sendThermostatMap(sending)
+                
+                if(state.data == "acceleration") dataDevice.sendAccelerationMap(sending)
+                if(state.data == "contact") dataDevice.sendContactMap(sending)
+                if(state.data == "motion") dataDevice.sendMotionMap(sending)
+                if(state.data == "switch") dataDevice.sendSwitchMap(sending)
+                if(state.data == "thermostat") dataDevice.sendThermostatMap(sending)
                 tileCount = tileCount + 1
             }
         }
 
         for(x=tileCount;x<4;x++) {
             sending = "${x}::<div style='font-size:${fontSize}px'>No Data</div>"
-            if(data == "Contact Sensor") dataDevice.sendContactMap(sending)
-            if(data == "Motion Sensor") dataDevice.sendMotionMap(sending)
-            if(data == "Switch") dataDevice.sendSwitchMap(sending)
-            if(data == "Thermostat") dataDevice.sendThermostatMap(sending)
+            if(state.data == "acceleration") dataDevice.sendAccelerationMap(sending)
+            if(state.data == "contact") dataDevice.sendContactMap(sending)
+            if(state.data == "motion") dataDevice.sendMotionMap(sending)
+            if(state.data == "switch") dataDevice.sendSwitchMap(sending)
+            if(state.data == "thermostat") dataDevice.sendThermostatMap(sending)
         }	
     } else {
-        log.warn "data: ${data} - reportMap: ${reportMap}"
+        log.warn "data: ${state.data} - reportMap: ${reportMap}"
     }
+    if(logEnable) log.debug "------------------------------- End ${state.data} -------------------------------"
 }
 
 def removeOrphanedDevices() {
     if(logEnable) log.debug "In removeOrphanedDevices (${state.version})"
+    
+    state.newAccelerationMap = [:]
     state.newContactMap = [:]
     state.newMotionMap = [:]
     state.newSwitchMap = [:]
     state.newThermostatMap = [:]
+    
+    accelerationEvent.each { it ->
+        String theName = it        
+        theCounts = state.accelerationMap.get(it.displayName)
+        if(theCounts) { state.newAccelerationMap.put(theName, theCounts) }
+    }
+    state.accelerationMap = [:]
+    state.accelerationMap = state.newAccelerationMap.clone()
+    if(state.accelerationMap) buildMaps("acceleration")
     
     contactEvent.each { it ->
         String theName = it        
@@ -735,7 +773,7 @@ def removeOrphanedDevices() {
     }
     state.contactMap = [:]
     state.contactMap = state.newContactMap.clone()
-    if(state.contactMap) buildMaps("Contact Sensor")
+    if(state.contactMap) buildMaps("contact")
     
     motionEvent.each { it ->
         String theName = it        
@@ -744,7 +782,7 @@ def removeOrphanedDevices() {
     }
     state.motionMap = [:]
     state.motionMap = state.newMotionMap.clone()
-    if(state.motionMap) buildMaps("Motion Sensor")
+    if(state.motionMap) buildMaps("motion")
     
     switchEvent.each { it ->
         String theName = it        
@@ -753,7 +791,7 @@ def removeOrphanedDevices() {
     }
     state.switchMap = [:]
     state.switchMap = state.newSwitchMap.clone()
-    if(state.switchMap) buildMaps("Switch")
+    if(state.switchMap) buildMaps("switch")
     
     thermostatEvent.each { it ->
         String theName = it        
@@ -762,7 +800,7 @@ def removeOrphanedDevices() {
     }
     state.thermostatMap = [:]
     state.thermostatMap = state.newThermostatMap.clone()
-    if(state.thermostatMap) buildMaps("Thermostat")
+    if(state.thermostatMap) buildMaps("thermostat")
     
     if(logEnable) log.debug "In removeOrphanedDevices - Maps Cleaned"
 }
@@ -784,9 +822,25 @@ def createDataChildDevice() {
 }
 
 // ********** Normal Stuff **********
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
+    if(state.accelerationMap == null) state.accelerationMap = [:]
     if(state.contactMap == null) state.contactMap = [:]
     if(state.motionMap == null) state.motionMap = [:]
     if(state.switchMap == null) state.switchMap = [:]
