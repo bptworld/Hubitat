@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 08/24/20 - Seperate options for devices on when Score and/or Final
  *  1.0.9 - 08/16/20 - Added an option to keep light on at final for a set amount of time (minutes)
  *  1.0.8 - 08/15/20 - Fixed a typo with total score
  *  1.0.7 - 08/07/20 - Really fixed the resetScoringSwitches
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -225,35 +226,12 @@ def notificationOptions(){
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            input "switchesOnMyTeam", "capability.switch", title: "Turn this switch ON when My Team Scores", required: false, submitOnChange: true
-            if(switchesOnMyTeam) {    
-                if(switchesOnMyTeam.hasCommand('setColor')) {                   
-                    input "colorMT", "enum", title: "Color", required: true, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
-                }
-            }
-            
-            input "switchesOnOtherTeam", "capability.switch", title: "Turn this switch ON when the Other Team Scores", required: false, submitOnChange: true
-            if(switchesOnOtherTeam) {
-                if(switchesOnOtherTeam.hasCommand('setColor')) {
-                    input "colorOT", "enum", title: "Color", required: true, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
-                }
-            }
-            
-            if(switchesOnMyTeam || switchesOnOtherTeam) {
+            input "onScore", "bool", title: "Turn devices on for Score", description: "onScore", defaultValue:false, submitOnChange:true
+            if(onScore) {
                 input "howLongLightsOn", "number", title: "How long should the light stay on (in seconds)", defaultValue:10, requied: false, submitOnChange:true
             }
             
-            input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true          
+            input "onFinal", "bool", title: "Turn devices on for Final", description: "onFinal", defaultValue:false, submitOnChange:true          
             if(onFinal) {
                 input "leaveOn", "bool", title: "Turn off after set time (off) - Leave on until turned off manually (on)", defaultValue:false, submitOnChange:true
                 if(leaveOn) {
@@ -261,6 +239,32 @@ def notificationOptions(){
                     app.removeSetting("leaveOnTime")
                 } else {
                     input "leaveOnTime", "number", title: "Leave on for (minutes)", submitOnChange:true
+                }
+            }
+            
+            if(onScore || onFinal) {
+                input "switchesOnMyTeam", "capability.switch", title: "Turn this switch ON when My Team Scores/Wins", required: false, submitOnChange: true
+                if(switchesOnMyTeam) {    
+                    if(switchesOnMyTeam.hasCommand('setColor')) {                   
+                        input "colorMT", "enum", title: "Color", required: true, multiple:false, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    }
+                }
+
+                input "switchesOnOtherTeam", "capability.switch", title: "Turn this switch ON when the Other Team Scores/Wins", required: false, submitOnChange: true
+                if(switchesOnOtherTeam) {
+                    if(switchesOnOtherTeam.hasCommand('setColor')) {
+                        input "colorOT", "enum", title: "Color", required: true, multiple:false, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    }
                 }
             }
         }
@@ -439,25 +443,30 @@ def startGameDay() {  // Modified from code by Eric Luttmann
 }
 
 def checkIfGameDay() {  // Modified from code by Eric Luttmann
-    if(logEnable) log.debug "In checkIfGameDay (${state.version})"
-	def isGameDay = false
-    try {  // Today
-        def todayDate = new Date().format('yyyy-MM-dd', location.timeZone)
-        // http://statsapi.web.nhl.com/api/v1/schedule?teamId=6&date=2020-07-30
-        def params = [uri: "${state.MLB_API_URL}/schedule?teamId=${state.Team.id}&date=${todayDate}"] 
-            
-        def tDate = new Date().format('MM-dd-yyyy', location.timeZone)
-        if(logEnable) log.debug "In checkIfGameDay - Determine if it's a game day for the ${settings.mlbTeam}, requesting game day schedule for ${tDate}"
-        httpGet(params) { resp ->
-            isGameDay = checkIfGameDayHandler(resp,tDate)
-        }
-    } catch (e) {
-        if(logEnable) log.warn "In checkIfGameDay - Something went wrong, error to follow"
-        log.error e
-    }
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In checkIfGameDay (${state.version})"
+        def isGameDay = false
+        try {  // Today
+            def todayDate = new Date().format('yyyy-MM-dd', location.timeZone)
+            // http://statsapi.web.nhl.com/api/v1/schedule?teamId=6&date=2020-07-30
+            def params = [uri: "${state.MLB_API_URL}/schedule?teamId=${state.Team.id}&date=${todayDate}"] 
 
-    if(logEnable) log.debug "In checkIfGameDay - isGameDay: ${isGameDay}"
-    return isGameDay
+            def tDate = new Date().format('MM-dd-yyyy', location.timeZone)
+            if(logEnable) log.debug "In checkIfGameDay - Determine if it's a game day for the ${settings.mlbTeam}, requesting game day schedule for ${tDate}"
+            httpGet(params) { resp ->
+                isGameDay = checkIfGameDayHandler(resp,tDate)
+            }
+        } catch (e) {
+            if(logEnable) log.warn "In checkIfGameDay - Something went wrong, error to follow"
+            log.error e
+        }
+
+        if(logEnable) log.debug "In checkIfGameDay - isGameDay: ${isGameDay}"
+        return isGameDay
+    }
 }
 
 def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
@@ -762,7 +771,7 @@ def notificationHandler(data) {
     if(pushMessage) pushNow()
     
     doIt = false
-    if(state.gameStatus != "Final") {
+    if(state.gameStatus != "Final" && onScore) {
         doIt = true
     } else if(state.gameStatus == "Final" && onFinal) {
         doIt = true
