@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 08/24/20 - Separate options for devices on when Score and/or Final, other enhancements
  *  1.0.5 - 08/04/20 - Adjustments, fix for Disable switch, added code if game is Postponed.
  *  1.0.4 - 07/29/20 - Added light notification when score/final, other adjustments
  *  1.0.3 - 07/24/20 - Added code for Rain Delays, other adjustments
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -131,7 +132,10 @@ def pageConfig() {
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
             label title: "Enter a name for this automation", required:false, submitOnChange:true
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
-            //input "testButton", "button", title: "Test Stuff"
+            if(logEnable) {
+                input "testOtherScore", "button", title: "Test otherTeam Score", width:4
+                input "testMyTeamScore", "button", title: "Test myTeam Score", width:4
+            }
 		}
 		display2()
 	}
@@ -218,33 +222,47 @@ def notificationOptions(){
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Device Options")) {
-            input "switchesOnMyTeam", "capability.switch", title: "Turn this switch ON when My Team Scores", required: false, submitOnChange: true
-            if(switchesOnMyTeam) {    
-                if(switchesOnMyTeam.hasCommand('setColor')) {                   
-                    input "colorMT", "enum", title: "Color", required: true, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+            input "onScore", "bool", title: "Turn devices on for Score", description: "onScore", defaultValue:false, submitOnChange:true
+            if(onScore) {
+                input "howLongLightsOn", "number", title: "How long should the light stay on (in seconds)", defaultValue:10, requied: false, submitOnChange:true
+            }
+            
+            input "onFinal", "bool", title: "Turn devices on for Final", description: "onFinal", defaultValue:false, submitOnChange:true          
+            if(onFinal) {
+                input "leaveOn", "bool", title: "Turn off after set time (off) - Leave on until turned off manually (on)", defaultValue:false, submitOnChange:true
+                if(leaveOn) {
+                    paragraph "<small>* Light will stay on until manually turned off.</small>"
+                    app.removeSetting("leaveOnTime")
+                } else {
+                    input "leaveOnTime", "number", title: "Leave on for (minutes)", submitOnChange:true
                 }
             }
             
-            input "switchesOnOtherTeam", "capability.switch", title: "Turn this switch ON when the Other Team Scores", required: false, submitOnChange: true
-            if(switchesOnOtherTeam) {
-                if(switchesOnOtherTeam.hasCommand('setColor')) {
-                    input "colorOT", "enum", title: "Color", required: true, multiple:false, options: [
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+            if(onScore || onFinal) {
+                input "switchesOnMyTeam", "capability.switch", title: "Turn this switch ON when My Team Scores/Wins", required: false, submitOnChange: true
+                if(switchesOnMyTeam) {    
+                    if(switchesOnMyTeam.hasCommand('setColor')) {                   
+                        input "colorMT", "enum", title: "Color", required: true, multiple:false, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    }
                 }
-            }         
-            paragraph "<small>* Light will turn on for 10 seconds, then automatically reset.</small>"
-            
-            input "onFinal", "bool", title: "Also turn on for final", description: "onFinal", defaultValue:false, submitOnChange:true
-            if(onFinal) paragraph "<small>* Light will stay on until manually turned off.</small>"
+
+                input "switchesOnOtherTeam", "capability.switch", title: "Turn this switch ON when the Other Team Scores/Wins", required: false, submitOnChange: true
+                if(switchesOnOtherTeam) {
+                    if(switchesOnOtherTeam.hasCommand('setColor')) {
+                        input "colorOT", "enum", title: "Color", required: true, multiple:false, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    }
+                }         
+            }
         }
                 
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
@@ -766,12 +784,12 @@ def checkLiveGameStatsHandler(resp, data) {
         } else {
             //log.warn "gameStatus: ${state.gameStatus}"
             if(latestPlay.contains("Delayed: Rain") || latestPlay.contains("Postponed")) {
-                log.info "${app.label} - Game under delay, will check again in 10 minutes."
+                log.info "${app.label} - Game under delay, will check again in 20 minutes."
                 rainMessage = "Rain Delay"
                 messageHandler(rainMessage)
                 if(useSpeech) letsTalk()
                 if(pushMessage) pushNow()
-                runIn(600, checkLiveGameStats)
+                runIn(1200, checkLiveGameStats)
             } else {              
                 if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
                 runIn(10, checkLiveGameStats)
@@ -787,7 +805,7 @@ def notificationHandler(data) {
     if(pushMessage) pushNow()
     
     doIt = false
-    if(state.gameStatus != "Final") {
+    if(state.gameStatus != "Final" && onScore) {
         doIt = true
     } else if(state.gameStatus == "Final" && onFinal) {
         doIt = true
@@ -822,9 +840,16 @@ def notificationHandler(data) {
             }
         }
         
-        if(state.gameStatus != "Final") {
-            theData = "${hue};${level};${saturation}"
-            runIn(10, resetScoringSwitches, [data: theData])
+        if(state.gameStatus != "Final" || theStatus == "test") {
+            howLong = howLongLightsOn ?: 10
+            theData = "${oldHue};${oldLevel};${oldSaturation}"
+            runIn(howLong, resetScoringSwitches, [data: theData])
+        }
+        
+        if(state.gameStatus == "Final" || leaveOnTime) {
+            howLong = leaveOnTime ?: 60
+            theData = "${oldHue};${oldLevel};${oldSaturation}"
+            runIn(howLong, resetScoringSwitches, [data: theData])
         }
     }
     
@@ -1104,32 +1129,16 @@ def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     
-    if(state.whichButton == "testButton"){
-        log.debug "In testButtonHandler - Testing Stuff"
-        data = "otherTeam"
-        
-        /*
-        hue = switchesOnMyTeam.currentValue("hue")
-        level = switchesOnMyTeam.currentValue("level")
-        saturation = switchesOnMyTeam.currentValue("saturation")
-        setLevelandColorHandler("otherTeam")
-        
-        log.debug "In testButtonHandler - switchesOnOtherTeam: ${switchesOnOtherTeam}"
-        log.debug "In testButtonHandler - lightValue: ${state.lightValue}"
-        switchesOnOtherTeam.setColor(state.lightValue)
-    
-        theData = "${hue};${level};${saturation}"
-        runIn(10, resetScoringSwitches, [data: theData])
-        */
-        
-        /*
-        //flashData = "Preset::${flashMyTeamScorePreset}"
-        flashData = "Preset::${flashOtherTeamScorePreset}"
-        log.warn "In testButtonHandler - theFlasherDevice: ${theFlasherDevice} | flashData: ${flashData}"
-        theFlasherDevice.sendPreset(flashData)
-        */
-        
-        log.warn "Sending Data Somewhere"
+    if(state.whichButton == "testOtherScore"){
+        log.debug "In appButtonHandler - testOtherScore - other Team"
+        if(useSpeech && otherTeamScore) messageHandler(otherTeamScore)
+        data = "otherTeam;test"       
+        notificationHandler(data)
+    } else if(state.whichButton == "testMyTeamScore"){
+        log.debug "In appButtonHandler - testMyTeamGoal - My Team"
+        if(useSpeech && myTeamScore) messageHandler(myTeamScore)
+        data = "myTeam;test"
+        notificationHandler(data)
     }
 }
 
