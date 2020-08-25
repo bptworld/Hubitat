@@ -46,6 +46,7 @@
  *
  *  Changes:
  *
+ *  2.0.7 - 08/25/20 - Added more error catching
  *  2.0.6 - 06/01/20 - Added code to remove devices if app is uninstalled
  *  2.0.5 - 04/27/20 - Cosmetic changes
  *  2.0.4 - 04/15/20 - Code adjustments, container driver no longer used. New devices need to be created.
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-	state.version = "2.0.6"
+	state.version = "2.0.7"
 }
 
 definition(
@@ -541,87 +542,92 @@ def cmdHandler(resp, data) {
     	    def externalId = "${app.id}.${memberId}"
    	        def member = state.members.find{it.id==memberId}
 
-	        // find the appropriate child device based on my app id and the device network id
+            try {
+                // find the appropriate child device based on my app id and the device network id
 
-            def deviceWrapper = getChildDevice("${externalId}") 
-            def address1
-            def address2
-            def speed
-            def speedMetric
-            def speedMiles
-            def speedKm
-            def xplaces
-            def lastUpdated
+                def deviceWrapper = getChildDevice("${externalId}") 
+                def address1
+                def address2
+                def speed
+                def speedMetric
+                def speedMiles
+                def speedKm
+                def xplaces
+                def lastUpdated
 
-            thePlaces = state.places.sort { a, b -> a.name <=> b.name }
-            xplaces = "${thePlaces.name}".replaceAll(", ",",")
-            lastUpdated = new Date()
-        
-            if (member.avatar != null){
-                avatar = member.avatar
-                avatarHtml =  "<img src= \"${avatar}\">"
-            } else {
-                avatar = "not set"
-                avatarHtml = "not set"
-            }
-                  
-            if(member.location.address1 == null || member.location.address1 == "")
+                thePlaces = state.places.sort { a, b -> a.name <=> b.name }
+                xplaces = "${thePlaces.name}".replaceAll(", ",",")
+                lastUpdated = new Date()
+
+                if (member.avatar != null){
+                    avatar = member.avatar
+                    avatarHtml =  "<img src= \"${avatar}\">"
+                } else {
+                    avatar = "not set"
+                    avatarHtml = "not set"
+                }
+
+                if(member.location.address1 == null || member.location.address1 == "")
                 address1 = "No Data"
-            else
-                address1 = member.location.address1
+                else
+                    address1 = member.location.address1
 
-            if(member.location.address2 == null || member.location.address2 == "")
+                if(member.location.address2 == null || member.location.address2 == "")
                 address2 = "No Data"
-            else
-                address2 = member.location.address2
+                else
+                    address2 = member.location.address2
 
-            //Covert 0 1 to False True	
-            def charging = member.location.charge == "0" ? "false" : "true"
-            def moving = member.location.inTransit == "0" ? "false" : "true"
-            def driving = member.location.isDriving == "0" ? "false" : "true"
-            def wifi = member.location.wifiState == "0" ? "false" : "true"
+                //Covert 0 1 to False True	
+                def charging = member.location.charge == "0" ? "false" : "true"
+                def moving = member.location.inTransit == "0" ? "false" : "true"
+                def driving = member.location.isDriving == "0" ? "false" : "true"
+                def wifi = member.location.wifiState == "0" ? "false" : "true"
 
-            //Fix Iphone -1 speed 
-            if(member.location.speed.toFloat() == -1){
-                speed = 0
-                speed = speed.toFloat()}
-            else
-                speed = member.location.speed.toFloat()
+                //Fix Iphone -1 speed 
+                if(member.location.speed.toFloat() == -1){
+                    speed = 0
+                    speed = speed.toFloat()}
+                else
+                    speed = member.location.speed.toFloat()
 
-            if(speed > 0 ) {
-                speedMetric = speed.toDouble().round(2)
-                speedMiles = speedMetric.toFloat() * 2.23694
-                speedMiles = speedMiles.toDouble().round(2)
-                speedKm = speedMetric.toFloat() * 3.6
-                speedKm = speedKm.toDouble().round(2)
-            } else {
-                speedMetric = 0
-                speedMiles = 0
-                speedKm = 0
-            }
-                
-            def battery = Math.round(member.location.battery.toDouble())
-            def latitude = member.location.latitude.toFloat()
-            def longitude = member.location.longitude.toFloat()
-            //if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charging | Last Checkin = $member.location.endTimestamp | Moving = $moving | Driving = $driving | Latitude = $latitude | Longitude = $longitude | Since = $member.location.since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifi"
-            deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi,xplaces,avatar,avatarHtml,lastUpdated)
+                if(speed > 0 ) {
+                    speedMetric = speed.toDouble().round(2)
+                    speedMiles = speedMetric.toFloat() * 2.23694
+                    speedMiles = speedMiles.toDouble().round(2)
+                    speedKm = speedMetric.toFloat() * 3.6
+                    speedKm = speedKm.toDouble().round(2)
+                } else {
+                    speedMetric = 0
+                    speedMiles = 0
+                    speedKm = 0
+                }
 
-            def place = state.places.find{it.id==settings.place}
-            if (place) {
-                def memberLatitude = new Float (member.location.latitude)
-                def memberLongitude = new Float (member.location.longitude)
-                def memberAddress1 = member.location.address1
-                def memberLocationName = member.location.name
-                def placeLatitude = new Float (place.latitude)
-                def placeLongitude = new Float (place.longitude)
-                def placeRadius = new Float (place.radius)
-                def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude)*1000 // in meters
+                def battery = Math.round(member.location.battery.toDouble())
+                def latitude = member.location.latitude.toFloat()
+                def longitude = member.location.longitude.toFloat()
+                //if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charging | Last Checkin = $member.location.endTimestamp | Moving = $moving | Driving = $driving | Latitude = $latitude | Longitude = $longitude | Since = $member.location.since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifi"
+                deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi,xplaces,avatar,avatarHtml,lastUpdated)
 
-                boolean isPresent = (distanceAway <= placeRadius)
+                def place = state.places.find{it.id==settings.place}
+                if (place) {
+                    def memberLatitude = new Float (member.location.latitude)
+                    def memberLongitude = new Float (member.location.longitude)
+                    def memberAddress1 = member.location.address1
+                    def memberLocationName = member.location.name
+                    def placeLatitude = new Float (place.latitude)
+                    def placeLongitude = new Float (place.longitude)
+                    def placeRadius = new Float (place.radius)
+                    def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude)*1000 // in meters
 
-                if(logEnable) log.info "Life360 Update member ($member.firstName): ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
+                    boolean isPresent = (distanceAway <= placeRadius)
 
-                deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
+                    if(logEnable) log.info "Life360 Update member ($member.firstName): ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
+
+                    deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
+                }
+            } catch(e) {
+                if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
+                if(logEnable) log.debug e
             }
         }     
     }
