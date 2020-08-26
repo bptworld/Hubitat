@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.7 - 08/26/20 - Cosmetic changes
  *  2.1.6 - 08/25/20 - Added notifications when website is available again, other enhancements
  *  2.1.5 - 07/17/20 - Added auto logs off after 1 hour
  *  2.1.4 - 07/17/20 - Adjustments
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion() {
     state.name = "Web Pinger"
-	state.version = "2.1.6"
+	state.version = "2.1.7"
 }
 
 definition(
@@ -93,20 +94,21 @@ def pageConfig() {
             input "sendPingSwitch", "capability.switch", title: "Turn this switch 'on' to send a new 'ping' at any time", required:false, submitOnChange:true
         }
     
-        section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) ON if URL is not available, OFF if everything is good.")) {
-            input "switches1", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
-        }
-        
-        section(getFormat("header-green", "${getImage("Blank")}"+" Turn Switch(es) OFF if URL is not available, ON if everything is good.")) {
-            input "switches2", "capability.switch", title: "Control these switches", multiple: true, required: false, submitOnChange: true
-        }
-        
-		section(getFormat("header-green", "${getImage("Blank")}"+" Options")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Actions")) {
+            paragraph "<b>The following is two different groups. You should NOT use the same switch in both groups. Bad things WILL happen.</b>"
+            input "switches1", "capability.switch", title: "Turn Switch(es) ON if URL is not available, OFF if everything is good.", multiple: true, required: false, submitOnChange: true
+
+            input "switches2", "capability.switch", title: "Turn Switch(es) OFF if URL is not available, ON if everything is good.", multiple: true, required: false, submitOnChange: true
+            paragraph "<hr>"
             input "resetSwitches", "bool", defaultValue:false, title: "Auto reset Switches?", description: "Auto reset Switches", submitOnChange: true
-            if(resetSwitches) input(name: "resetTime", title:"Reset swtiches after (seconds) even if website is still down", type: "number", required: true, defaultValue:60)
+            if(resetSwitches) {
+                paragraph "<small>This will change the switch(es) back to their previous state. ie. If on, they will turn off. If off, they will turn on.</small>"
+                input(name: "resetTime", title:"Reset swtiches after (seconds) even if website is still down", type: "number", required: true, defaultValue:60)
+            }
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {       
+        section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {     
+            paragraph "Remember: If your internet is truly down, Push notifications will not work."
 			input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
 			if(sendPushMessage) {
 				paragraph "Enter in a custom message you would like sent when website is not available.<br>ie. Web Pinger: Web Request failed to Google"
