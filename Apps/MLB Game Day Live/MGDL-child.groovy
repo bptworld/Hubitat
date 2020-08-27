@@ -37,12 +37,9 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 08/27/20 - Lots of little changes
  *  1.0.6 - 08/24/20 - Separate options for devices on when Score and/or Final, other enhancements
- *  1.0.5 - 08/04/20 - Adjustments, fix for Disable switch, added code if game is Postponed.
- *  1.0.4 - 07/29/20 - Added light notification when score/final, other adjustments
- *  1.0.3 - 07/24/20 - Added code for Rain Delays, other adjustments
- *  1.0.2 - 07/23/20 - Fixed typo with inning 6 on scoreboard
- *  1.0.1 - 07/23/20 - Restructured liveScoreboard tile, added lastPlay tile, other adjustments
+ *  ---
  *  1.0.0 - 07/21/20 - Initial release.
  *
  */
@@ -52,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -131,7 +128,7 @@ def pageConfig() {
             input "serviceStartTime", "time", title: "Check for Games Daily at", required: false
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
             label title: "Enter a name for this automation", required:false, submitOnChange:true
-            input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
+            input "logEnable","bool", title: "Enable Debug Logging and Test Buttons", description: "Debugging", defaultValue: false, submitOnChange: true
             if(logEnable) {
                 input "testOtherScore", "button", title: "Test otherTeam Score", width:4
                 input "testMyTeamScore", "button", title: "Test myTeam Score", width:4
@@ -315,17 +312,6 @@ private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            theSwitch = it.currentValue("switch")
-            if(theSwitch == "on") { state.eSwitch = true }
-        }
-    }
-}
-
 def urlSetup() {  // Modified from code by Eric Luttmann
     if(logEnable) log.debug "Initialize static states"
 
@@ -439,25 +425,30 @@ def startGameDay() {  // Modified from code by Eric Luttmann
 }
 
 def checkIfGameDay() {  // Modified from code by Eric Luttmann
-    if(logEnable) log.debug "In checkIfGameDay (${state.version})"
-	def isGameDay = false
-    try {  // Today
-        def todayDate = new Date().format('yyyy-MM-dd', location.timeZone)
-        // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=111&date=07/23/2020
-        def params = [uri: "${state.MLB_API_URL}/schedule/games/?sportId=1&teamId=${state.Team.id}&date=${todayDate}"] 
-            
-        def tDate = new Date().format('MM-dd-yyyy', location.timeZone)
-        if(logEnable) log.debug "In checkIfGameDay - Determine if it's a game day for the ${settings.mlbTeam}, requesting game day schedule for ${tDate}"
-        httpGet(params) { resp ->
-            isGameDay = checkIfGameDayHandler(resp,tDate)
-        }
-    } catch (e) {
-        if(logEnable) log.warn "In checkIfGameDay - Something went wrong, error to follow"
-        log.error e
-    }
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In checkIfGameDay (${state.version})"
+        def isGameDay = false
+        try {  // Today
+            def todayDate = new Date().format('yyyy-MM-dd', location.timeZone)
+            // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=111&date=07/23/2020
+            def params = [uri: "${state.MLB_API_URL}/schedule/games/?sportId=1&teamId=${state.Team.id}&date=${todayDate}"] 
 
-    if(logEnable) log.debug "In checkIfGameDay - isGameDay: ${isGameDay}"
-    return isGameDay
+            def tDate = new Date().format('MM-dd-yyyy', location.timeZone)
+            if(logEnable) log.debug "In checkIfGameDay - Determine if it's a game day for the ${settings.mlbTeam}, requesting game day schedule for ${tDate}"
+            httpGet(params) { resp ->
+                isGameDay = checkIfGameDayHandler(resp,tDate)
+            }
+        } catch (e) {
+            if(logEnable) log.warn "In checkIfGameDay - Something went wrong, error to follow"
+            log.error e
+        }
+
+        if(logEnable) log.debug "In checkIfGameDay - isGameDay: ${isGameDay}"
+        return isGameDay
+    }
 }
 
 def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
@@ -570,6 +561,28 @@ def checkLiveGameStats() {
         } catch (e) {
             if(logEnable) log.warn "In checkLiveGameStats - Something went wrong, error to follow"
             log.error e
+        }
+        
+        if(state.gameStatus == "Preview") {
+            if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
+            runIn(60, checkLiveGameStats)
+        } else if(state.gameStatus == "Final") {
+            if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
+            messageHandler(postgameMessage)
+            data = "final;final"
+            notificationHandler(data)
+        } else {
+            if(latestPlay.contains("Delayed: Rain") || latestPlay.contains("Postponed")) {
+                log.info "${app.label} - Game under delay, will check again in 20 minutes."
+                rainMessage = "Rain Delay"
+                messageHandler(rainMessage)
+                if(useSpeech) letsTalk()
+                if(pushMessage) pushNow()
+                runIn(1200, checkLiveGameStats)
+            } else {              
+                if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
+                runIn(10, checkLiveGameStats)
+            }
         }
     }
 }
@@ -743,18 +756,27 @@ def checkLiveGameStatsHandler(resp, data) {
             if(state.gameStatus == "Preview") {
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - Pregame"
             } else {              
-            //    if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScores} VS ${tate.totalAwayRuns} - home: ${state.homeScores} VS ${state.totalHomeRuns}"
+                if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScores} VS ${tate.totalAwayRuns} - home: ${state.homeScores} VS ${state.totalHomeRuns}"
+                
                 if(state.awayScores != state.totalAwayRuns) {
                     log.info "In checkLiveGameStatsHandler - Away Team Scores!"
                     state.awayScores = state.totalAwayRuns
                     if(state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
-                        data = "myTeam"
+                        data = "myTeam;live"
                     } else {
                         messageHandler(otherTeamScore)
-                        data = "otherTeam"
+                        data = "otherTeam;live"
                     }
                     notificationHandler(data)
+                    
+                    if(useTheFlasher && state.myTeamIs == "away") {
+                        flashData = "Preset::${flashMyTeamScorePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    } else if(useTheFlasher && state.myTeamIs == "away") {
+                        flashData = "Preset::${flashOtherTeamScorePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
                 }
 
                 if(state.homeScores != state.totalHomeRuns) {
@@ -762,44 +784,35 @@ def checkLiveGameStatsHandler(resp, data) {
                     state.homeScores = state.totalHomeRuns
                     if(state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
-                        data = "myTeam"
+                        data = "myTeam;live"
                     } else {
                         messageHandler(otherTeamScore)
-                        data = "otherTeam"
+                        data = "otherTeam;live"
                     }
                     notificationHandler(data)
+                    
+                    if(useTheFlasher && state.myTeamIs == "home") {
+                        flashData = "Preset::${flashMyTeamScorePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    } else if(useTheFlasher && state.myTeamIs == "away") {
+                        flashData = "Preset::${flashOtherTeamScorePreset}"
+                        theFlasherDevice.sendPreset(flashData)
+                    }
                 }
             }
-        } else {
-            if(logEnable) log.debug "In checkLiveGameStatsHandler - Request Failed! Response: $resp.errorData"
-        }
-
-        if(state.gameStatus == "Preview") {
-            if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
-        } else if(state.gameStatus == "Final") {
-            if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
-            messageHandler(postgameMessage)
-            data = "nothing"
-            notificationHandler(data)
-        } else {
-            //log.warn "gameStatus: ${state.gameStatus}"
-            if(latestPlay.contains("Delayed: Rain") || latestPlay.contains("Postponed")) {
-                log.info "${app.label} - Game under delay, will check again in 20 minutes."
-                rainMessage = "Rain Delay"
-                messageHandler(rainMessage)
-                if(useSpeech) letsTalk()
-                if(pushMessage) pushNow()
-                runIn(1200, checkLiveGameStats)
-            } else {              
-                if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
-                runIn(10, checkLiveGameStats)
-            }
+            
+            //update Scores
+            state.awayScore = state.totalAwayScore
+            state.homeScore = state.totalHomeScore
         }
     }
 }
 
 def notificationHandler(data) {
-    def theTeam = "${data}"
+    if(logEnable) log.debug "In notificationHandler (${state.version})"
+    
+    def (theTeam, theStatus) = data.split(";")
+    if(logEnable) log.debug "In notificationHandler - theTeam: ${theTeam} - theStatus: ${theStatus}"
     
     if(useSpeech) letsTalk()
     if(pushMessage) pushNow()
@@ -1143,6 +1156,17 @@ def appButtonHandler(buttonPressed) {
 }
 
 // ********** Normal Stuff **********
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            theSwitch = it.currentValue("switch")
+            if(theSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults() {
     state.homeTeam = null
