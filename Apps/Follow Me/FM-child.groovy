@@ -276,6 +276,23 @@ def pageConfig() {
 			}
 		}
         
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
 		// both Speakers and Push
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this child app", required: false
@@ -385,22 +402,28 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-	subscribe(gvDevice, "latestMessage", startHandler)
-	if(triggerMode == "Contact_Sensor") subscribe(myContacts, "contact", contactSensorHandler)
-	if(triggerMode == "Motion_Sensor") subscribe(myMotion, "motion", motionSensorHandler)
-    if(triggerMode == "Presence_Sensor") subscribe(myPresence, "presence", presenceSensorHandler)
-	if(triggerMode == "Switch") subscribe(mySwitches, "switch", switchHandler)
-	if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
-	if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler2)
-	if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler3)
-	if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
-	if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
-	if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        subscribe(gvDevice, "latestMessage", startHandler)
+        if(triggerMode == "Contact_Sensor") subscribe(myContacts, "contact", contactSensorHandler)
+        if(triggerMode == "Motion_Sensor") subscribe(myMotion, "motion", motionSensorHandler)
+        if(triggerMode == "Presence_Sensor") subscribe(myPresence, "presence", presenceSensorHandler)
+        if(triggerMode == "Switch") subscribe(mySwitches, "switch", switchHandler)
+        if(presenceSensor1) subscribe(presenceSensor1, "presence", presenceSensorHandler1)
+        if(presenceSensor2) subscribe(presenceSensor2, "presence", presenceSensorHandler2)
+        if(presenceSensor3) subscribe(presenceSensor3, "presence", presenceSensorHandler3)
+        if(presenceSensor4) subscribe(presenceSensor4, "presence", presenceSensorHandler4)
+        if(presenceSensor5) subscribe(presenceSensor5, "presence", presenceSensorHandler5)
+        if(gInitRepeat) runIn(gInitRepeat,initializeSpeaker)
+    }
 }
 
 def uninstalled() {
@@ -412,144 +435,194 @@ private removeChildDevices(delete) {
 }
 
 def presenceSensorHandler1(evt){
-	state.presenceSensorValue1 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler1 (${state.version}) - Presence Sensor: ${state.presenceSensorValue1}"
-    if(state.presenceSensorValue1 == "not present"){
-    	if(logEnable) log.debug "Presence Sensor 1 is not present."
-		state.IH1 = "no"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-		if(logEnable) log.debug "Presence Sensor 1 is present."
-		state.IH1 = "yes"
+        state.presenceSensorValue1 = evt.value
+        if(logEnable) log.debug "In presenceSensorHandler1 (${state.version}) - Presence Sensor: ${state.presenceSensorValue1}"
+        if(state.presenceSensorValue1 == "not present"){
+            if(logEnable) log.debug "Presence Sensor 1 is not present."
+            state.IH1 = "no"
+        } else {
+            if(logEnable) log.debug "Presence Sensor 1 is present."
+            state.IH1 = "yes"
+        }
     }
 }
 
 def presenceSensorHandler2(evt){
-	state.presenceSensorValue2 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler2 (${state.version}) - Presence Sensor: ${state.presenceSensorValue2}"
-    if(state.presenceSensorValue2 == "not present"){
-    	if(logEnable) log.debug "Presence Sensor 2 is not present."
-		state.IH2 = "no"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-		if(logEnable) log.debug "Presence Sensor 2 is present."
-		state.IH2 = "yes"
+        state.presenceSensorValue2 = evt.value
+        if(logEnable) log.debug "In presenceSensorHandler2 (${state.version}) - Presence Sensor: ${state.presenceSensorValue2}"
+        if(state.presenceSensorValue2 == "not present"){
+            if(logEnable) log.debug "Presence Sensor 2 is not present."
+            state.IH2 = "no"
+        } else {
+            if(logEnable) log.debug "Presence Sensor 2 is present."
+            state.IH2 = "yes"
+        }
     }
 }
 
 def presenceSensorHandler3(evt){
-	state.presenceSensorValue3 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler3 (${state.version}) - Presence Sensor: ${state.presenceSensorValue3}"
-    if(state.presenceSensorValue3 == "not present"){
-    	if(logEnable) log.debug "Presence Sensor 3 is not present."
-		state.IH3 = "no"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-		if(logEnable) log.debug "Presence Sensor 3 is present."
-		state.IH3 = "yes"
+        state.presenceSensorValue3 = evt.value
+        if(logEnable) log.debug "In presenceSensorHandler3 (${state.version}) - Presence Sensor: ${state.presenceSensorValue3}"
+        if(state.presenceSensorValue3 == "not present"){
+            if(logEnable) log.debug "Presence Sensor 3 is not present."
+            state.IH3 = "no"
+        } else {
+            if(logEnable) log.debug "Presence Sensor 3 is present."
+            state.IH3 = "yes"
+        }
     }
 }
 
 def presenceSensorHandler4(evt){
-	state.presenceSensorValue4 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler4 (${state.version}) - Presence Sensor: ${state.presenceSensorValue4}"
-    if(state.presenceSensorValue4 == "not present"){
-    	if(logEnable) log.debug "Presence Sensor 4 is not present."
-		state.IH4 = "no"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-		if(logEnable) log.debug "Presence Sensor 4 is present."
-		state.IH4 = "yes"
+        state.presenceSensorValue4 = evt.value
+        if(logEnable) log.debug "In presenceSensorHandler4 (${state.version}) - Presence Sensor: ${state.presenceSensorValue4}"
+        if(state.presenceSensorValue4 == "not present"){
+            if(logEnable) log.debug "Presence Sensor 4 is not present."
+            state.IH4 = "no"
+        } else {
+            if(logEnable) log.debug "Presence Sensor 4 is present."
+            state.IH4 = "yes"
+        }
     }
 }
 
 def presenceSensorHandler5(evt){
-	state.presenceSensorValue5 = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler5 (${state.version}) - Presence Sensor: ${state.presenceSensorValue5}"
-    if(state.presenceSensorValue5 == "not present"){
-    	if(logEnable) log.debug "Presence Sensor 5 is not present."
-		state.IH5 = "no"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-		if(logEnable) log.debug "Presence Sensor 5 is present."
-		state.IH5 = "yes"
+        state.presenceSensorValue5 = evt.value
+        if(logEnable) log.debug "In presenceSensorHandler5 (${state.version}) - Presence Sensor: ${state.presenceSensorValue5}"
+        if(state.presenceSensorValue5 == "not present"){
+            if(logEnable) log.debug "Presence Sensor 5 is not present."
+            state.IH5 = "no"
+        } else {
+            if(logEnable) log.debug "Presence Sensor 5 is present."
+            state.IH5 = "yes"
+        }
     }
 }
 
 def alwaysOnHandler() {
-	if(logEnable) log.debug "In alwaysOnHandler (${state.version}) - setting sZone to true"
-	state.sZone = true
-	speakerStatus = "${app.label}:${state.sZone}"
-	gvDevice.sendFollowMeSpeaker(speakerStatus)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In alwaysOnHandler (${state.version}) - setting sZone to true"
+        state.sZone = true
+        speakerStatus = "${app.label}:${state.sZone}"
+        gvDevice.sendFollowMeSpeaker(speakerStatus)
+    }
 }
 
 def contactSensorHandler(evt) {
-	state.contactStatus = evt.value
-	if(logEnable) log.debug "In contactSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.contactStatus}"
-	if(contactOption == "Closed") {
-		if(state.contactStatus == "closed") {
-			if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
-			state.sZone = true
-			speakerStatus = "${app.label}:${state.sZone}"
-			gvDevice.sendFollowMeSpeaker(speakerStatus)
-		}
-		if(state.contactStatus == "open") {
-			sOff = sZoneWaiting * 60
-			runIn(sOff,zoneOffHandler)
-		}
-	}
-	if(contactOption == "Open") {
-		if(state.contactStatus == "open") {
-			if(logEnable) log.debug "In contactSensorHandler (${state.version}) - setting sZone to true"
-			state.sZone = true
-			speakerStatus = "${app.label}:${state.sZone}"
-			gvDevice.sendFollowMeSpeaker(speakerStatus)
-		}
-		if(state.contactStatus == "closed") {
-			sOff = sZoneWaiting * 60
-			runIn(sOff,zoneOffHandler)
-		}
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        state.contactStatus = evt.value
+        if(logEnable) log.debug "In contactSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.contactStatus}"
+        if(contactOption == "Closed") {
+            if(state.contactStatus == "closed") {
+                if(logEnable) log.debug "In contactSensorHandler - setting sZone to true"
+                state.sZone = true
+                speakerStatus = "${app.label}:${state.sZone}"
+                gvDevice.sendFollowMeSpeaker(speakerStatus)
+            }
+            if(state.contactStatus == "open") {
+                sOff = sZoneWaiting * 60
+                runIn(sOff,zoneOffHandler)
+            }
+        }
+        if(contactOption == "Open") {
+            if(state.contactStatus == "open") {
+                if(logEnable) log.debug "In contactSensorHandler (${state.version}) - setting sZone to true"
+                state.sZone = true
+                speakerStatus = "${app.label}:${state.sZone}"
+                gvDevice.sendFollowMeSpeaker(speakerStatus)
+            }
+            if(state.contactStatus == "closed") {
+                sOff = sZoneWaiting * 60
+                runIn(sOff,zoneOffHandler)
+            }
+        }
+    }
 }
 
 def motionSensorHandler(evt) {
-	state.motionStatus = evt.value
-	if(logEnable) log.debug "In motionSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.motionStatus}"
-	if(state.motionStatus == "active") {
-		if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
-		state.sZone = true
-		speakerStatus = "${app.label}:${state.sZone}"
-		gvDevice.sendFollowMeSpeaker(speakerStatus)
-	}
-	if(state.motionStatus == "inactive") {
-		sOff = sZoneWaiting * 60
-		runIn(sOff,zoneOffHandler)
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        state.motionStatus = evt.value
+        if(logEnable) log.debug "In motionSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.motionStatus}"
+        if(state.motionStatus == "active") {
+            if(logEnable) log.debug "In motionSensorHandler - setting sZone to true"
+            state.sZone = true
+            speakerStatus = "${app.label}:${state.sZone}"
+            gvDevice.sendFollowMeSpeaker(speakerStatus)
+        }
+        if(state.motionStatus == "inactive") {
+            sOff = sZoneWaiting * 60
+            runIn(sOff,zoneOffHandler)
+        }
+    }
 }
 
 def presenceSensorHandler(evt) {
-	state.presenceStatus = evt.value
-	if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.presenceStatus}"
-	if(state.presenceStatus == "present") {
-		if(logEnable) log.debug "In presenceSensorHandler - setting sZone to true"
-		state.sZone = true
-		speakerStatus = "${app.label}:${state.sZone}"
-		gvDevice.sendFollowMeSpeaker(speakerStatus)
-	}
-	if(state.presenceStatus == "not present") {
-		sOff = sZoneWaiting * 60
-		runIn(sOff,zoneOffHandler)
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        state.presenceStatus = evt.value
+        if(logEnable) log.debug "In presenceSensorHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.presenceStatus}"
+        if(state.presenceStatus == "present") {
+            if(logEnable) log.debug "In presenceSensorHandler - setting sZone to true"
+            state.sZone = true
+            speakerStatus = "${app.label}:${state.sZone}"
+            gvDevice.sendFollowMeSpeaker(speakerStatus)
+        }
+        if(state.presenceStatus == "not present") {
+            sOff = sZoneWaiting * 60
+            runIn(sOff,zoneOffHandler)
+        }
+    }
 }
 
 def switchHandler(evt) {
-	state.switchStatus = evt.value
-	if(logEnable) log.debug "In switchHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.switchStatus}"
-	if(state.switchStatus == "on") {
-		if(logEnable) log.debug "In switchHandler - setting sZone to true"
-		state.sZone = true
-		speakerStatus = "${app.label}:${state.sZone}"
-		gvDevice.sendFollowMeSpeaker(speakerStatus)
-	}
-	if(state.switchStatus == "off") {
-		sOff = sZoneWaiting * 60
-		runIn(sOff,zoneOffHandler)
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        state.switchStatus = evt.value
+        if(logEnable) log.debug "In switchHandler (${state.version}) - sZone: ${state.sZone} - Status: ${state.switchStatus}"
+        if(state.switchStatus == "on") {
+            if(logEnable) log.debug "In switchHandler - setting sZone to true"
+            state.sZone = true
+            speakerStatus = "${app.label}:${state.sZone}"
+            gvDevice.sendFollowMeSpeaker(speakerStatus)
+        }
+        if(state.switchStatus == "off") {
+            sOff = sZoneWaiting * 60
+            runIn(sOff,zoneOffHandler)
+        }
+    }
 }
 
 def prioritySpeaker(data) {
@@ -695,11 +768,16 @@ def prioritySpeaker(data) {
 }
 
 def startHandler(evt) { 
-	if(logEnable) log.debug "**********  Follow Me (${state.version}) - Start Talking  **********"
-    
-    if(logEnable) log.debug "In startHandler (${state.version})"
-    if(messageDest == "Speakers") letsTalkQueue(evt)
-	if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "**********  Follow Me (${state.version}) - Start Talking  **********"
+
+        if(logEnable) log.debug "In startHandler (${state.version})"
+        if(messageDest == "Speakers") letsTalkQueue(evt)
+        if(messageDest == "Push" || messageDest == "Queue") pushOrQueue(evt)
+    }
 }
 
 def zoneOffHandler() {
@@ -716,10 +794,15 @@ def zoneOffHandler() {
 }
 
 def initializeSpeaker() {
-	if(logEnable) log.debug "In initializeSpeaker (${state.version}) - Initializing ${speakerSS}"
-	speakerSS.initialize()
-	if(gInitRepeat) repeat = gInitRepeat * 60
-	if(gInitRepeat) runIn(repeat,initializeSpeaker)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In initializeSpeaker (${state.version}) - Initializing ${speakerSS}"
+        speakerSS.initialize()
+        if(gInitRepeat) repeat = gInitRepeat * 60
+        if(gInitRepeat) runIn(repeat,initializeSpeaker)
+    }
 }
 
 // **********  Start code modified from @djgutheinz  **********
@@ -1335,6 +1418,22 @@ def createDataChildDevice() {
 
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
 	if(logEnable == null) {logEnable = false}
@@ -1425,4 +1524,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
