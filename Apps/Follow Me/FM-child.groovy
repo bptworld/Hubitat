@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.8 - 08/27/20 - Working on Priority Speaker
  *  2.2.7 - 08/08/20 - Working on the Queue, changes to playing sounds
  *  2.2.6 - 07/07/20 - Sounds Setup now in Parent App
  *  2.2.5 - 07/06/20 - Push upgrades, Added Priority Speaker features
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.7"   
+	state.version = "2.2.8"   
 }
 
 definition(
@@ -554,6 +555,7 @@ def switchHandler(evt) {
 def prioritySpeaker(data) {
     if(logEnable) log.debug "In prioritySpeaker (${state.version})"
     prioritySpeaker = null
+    state.priMatch = false
     
     try {
         def thePriority = data.split(":")
@@ -591,89 +593,102 @@ def prioritySpeaker(data) {
     
     if(prioritySpeaker != "X") {
         state.speakers.each { it ->
-            def theSpeaker = "${it.displayName}"
+            String theSpeaker = "${it.displayName}"
             
             if(prioritySpeaker == "1") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 1: ${prioritySpeaker1}"
-                if(theSpeaker == "${prioritySpeaker1}") {
-                    if(logEnable) log.debug "In prioritySpeaker - MATCH!"
+                String ps1 = prioritySpeaker1
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 1: ${sp1}"
+                if(theSpeaker == ps1) {
+                    if(logEnable) log.debug "In prioritySpeaker 1 - MATCH!"
                     priSpeaker = prioritySpeaker1
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "2") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 2: ${prioritySpeaker2}"
-                if(theSpeaker == "${prioritySpeaker2}") {
+            } else if(prioritySpeaker == "2") {
+                String ps2 = prioritySpeaker2
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 2: ${ps2}"
+                if(theSpeaker == ps2) {
+                    if(logEnable) log.debug "In prioritySpeaker 2 - MATCH!"
                     priSpeaker = prioritySpeaker2
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "3") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 3: ${prioritySpeaker3}"
-                if(theSpeaker == "${prioritySpeaker3}") {
+            } else if(prioritySpeaker == "3") {
+                String ps3 = prioritySpeaker3
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 3: ${ps3}"
+                if(theSpeaker == ps3) {
+                    if(logEnable) log.debug "In prioritySpeaker 3 - MATCH!"
                     priSpeaker = prioritySpeaker3
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "4") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 4: ${prioritySpeaker4}"
-                if(theSpeaker == "${prioritySpeaker4}") {
+            } else if(prioritySpeaker == "4") {
+                String ps4 = prioritySpeaker4
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 4: ${ps4}"
+                if(theSpeaker == ps4) {
+                    if(logEnable) log.debug "In prioritySpeaker 4 - MATCH!"
                     priSpeaker = prioritySpeaker4
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "5") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 5: ${prioritySpeaker5}"
-                if(theSpeaker == "${prioritySpeaker5}") {
+            } else if(prioritySpeaker == "5") {
+                String ps5 = prioritySpeaker5
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 5: ${ps5}"
+                if(theSpeaker == ps5) {
+                    if(logEnable) log.debug "In prioritySpeaker 5 - MATCH!"
                     priSpeaker = prioritySpeaker5
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "6") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 6: ${prioritySpeaker6}"
-                if(theSpeaker == "${prioritySpeaker6}") {
+            } else if(prioritySpeaker == "6") {
+                String ps6 = prioritySpeaker6
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 6: ${ps6}"
+                if(theSpeaker == ps6) {
+                    if(logEnable) log.debug "In prioritySpeaker 6 - MATCH!"
                     priSpeaker = prioritySpeaker6
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "7") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 7: ${prioritySpeaker7}"
-                if(theSpeaker == "${prioritySpeaker7}") {
+            } else if(prioritySpeaker == "7") {
+                String ps7 = prioritySpeaker7
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 7: ${ps7}"
+                if(theSpeaker == ps7) {
+                    if(logEnable) log.debug "In prioritySpeaker 7 - MATCH!"
                     priSpeaker = prioritySpeaker7
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "8") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 8: ${prioritySpeaker8}"
-                if(theSpeaker == "${prioritySpeaker8}") {
+            } else if(prioritySpeaker == "8") {
+                String ps8 = prioritySpeaker8
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 8: ${ps8}"
+                if(theSpeaker == ps8) {
+                    if(logEnable) log.debug "In prioritySpeaker 8 - MATCH!"
                     priSpeaker = prioritySpeaker8
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "9") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 9: ${prioritySpeaker9}"
-                if(theSpeaker == "${prioritySpeaker9}") {
+            } else if(prioritySpeaker == "9") {
+                String ps9 = prioritySpeaker9
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 9: ${ps9}"
+                if(theSpeaker == ps9) {
+                    if(logEnable) log.debug "In prioritySpeaker 9 - MATCH!"
                     priSpeaker = prioritySpeaker9
+                    state.priMatch = true
                     state.sZone = true
                 }
-            }
-            
-            if(prioritySpeaker == "10") {
-                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 10: ${prioritySpeaker10}"
-                if(theSpeaker == "${prioritySpeaker10}") {
+            } else if(prioritySpeaker == "10") {
+                String ps10 = prioritySpeaker10
+                if(logEnable) log.debug "In prioritySpeaker - Checking for Priority Speaker - theSpeaker: ${theSpeaker} vs 10: ${ps10}"
+                if(theSpeaker == ps10) {
+                    if(logEnable) log.debug "In prioritySpeaker 10 - MATCH!"
                     priSpeaker = prioritySpeaker10
+                    state.priMatch = true
                     state.sZone = true
                 }
             }
         }
+    } else {
+        state.priMatch = true
     }
     if(logEnable) log.debug "In prioritySpeaker - priSpeaker: ${priSpeaker}"
     return priSpeaker
@@ -740,17 +755,20 @@ def processQueue() {
 def letsTalk(msg) {
     if(logEnable) log.debug "In letsTalk - msg: ${msg}"
     def message =  new JsonSlurper().parseText(msg)
+    state.speakers = null
 
     prioritySpeaker(message.priority)
     
     if(priSpeaker) {
-        theSpeakers = priSpeaker
+        state.speakers = priSpeaker
+        if(logEnable) log.debug "In letsTalk - priSpeaker - speakers: ${state.speakers}"
     } else {
-        theSpeakers = state.speakers
+        state.speakers = state.speakers
+        if(logEnable) log.debug "In letsTalk - state.speakers - speakers: ${state.speakers}"
     }
                    
 	if(triggerMode == "Always_On") alwaysOnHandler()
-	if(state.sZone){
+	if(state.sZone && state.priMatch){
 		checkTime()            
         checkPriority(priorityValue)
         checkVol()
@@ -767,9 +785,12 @@ def letsTalk(msg) {
 		        duration = 10
 			}
             theDuration = duration * 1000
-       
-            theSpeakers.each { it ->
-                priorityVoicesHandler(it,priorityVoice,theMessage)               
+            
+            if(logEnable) log.debug "In letsTalk - **** Last check **** - speakers: ${state.speakers}"
+            state.speakers.each { it ->
+                if(logEnable) log.debug "In letsTalk - Sending to priorityVoicesHandler - it: ${it} - priorityVoice: ${priorityVoice} - theMessage: ${theMessage}" 
+                priorityVoicesHandler(it,priorityVoice,theMessage)
+                
                 if(!defaultSpeak) {    
                     switch(message.method) {        // Code modified from @storageanarchy
                         case 'deviceNotification':
@@ -1022,7 +1043,8 @@ def checkPriority(priorityValue) {
     }
 }
 
-def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
+def priorityVoicesHandler(speaker,priorityVoice,lastSpoken) {
+    if(logEnable) log.debug "In priorityVoicesHandler - Received - speaker: ${speaker} - priorityVoice: ${priorityVoice} - lastSpoken: ${lastSpoken}"
     if(lastSpoken == ".") lastSpoken = ""
     if(priorityVoice == "0") {
         if(logEnable) log.debug "In priorityVoicesHandler (${state.version}) - priorityVoice: ${priorityVoice}, so skipping"
@@ -1035,7 +1057,7 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
 	    def tts = textToSpeech(lastSpoken,state.voiceSelected)
 	    def uriMessage = "${tts.get('uri')}"
         try {
-            if(it.hasCommand('playTrack')) {
+            if(speaker.hasCommand('playTrack')) {
                 state.sound = ""
                 if(priorityVoice.contains("X")) {
                     state.sound = ""
@@ -1121,7 +1143,7 @@ def priorityVoicesHandler(it,priorityVoice,lastSpoken) {
         }
         state.uriMessage = uriMessage
     }
-    if(logEnable) log.debug "In priorityVoicesHandler - Speaker: ${it} - priorityVoice: ${priorityVoice} - Voice: ${state.voiceSelected} - Message: ${lastSpoken} - uriMessage: ${state.uriMessage}"
+    if(logEnable) log.debug "In priorityVoicesHandler - Speaker: ${speaker} - priorityVoice: ${priorityVoice} - Voice: ${state.voiceSelected} - Message: ${lastSpoken} - uriMessage: ${state.uriMessage}"
 }
 
 def pushOrQueue(evt) {
