@@ -37,16 +37,9 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 08/27/20 - Lots of little changes
  *  1.1.0 - 08/24/20 - Separate options for devices on when Score and/or Final
- *  1.0.9 - 08/16/20 - Added an option to keep light on at final for a set amount of time (minutes)
- *  1.0.8 - 08/15/20 - Fixed a typo with total score
- *  1.0.7 - 08/07/20 - Really fixed the resetScoringSwitches
- *  1.0.6 - 08/07/20 - Fixed a typo with resetScoringSwitches
- *  1.0.5 - 08/05/20 - More Changes
- *  1.0.4 - 08/04/20 - Adjustments
- *  1.0.3 - 08/03/20 - Adjustments to testing
- *  1.0.2 - 08/02/20 - On Score, lights can stay on for a user set time. Each message is now optional.
- *  1.0.1 - 08/02/20 - Added Score Testing buttons, other adjustments
+ *  ---
  *  1.0.0 - 07/30/20 - Initial release.
  *
  */
@@ -56,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -317,17 +310,6 @@ def uninstalled() {
 
 private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
-}
-
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            theSwitch = it.currentValue("switch")
-            if(theSwitch == "on") { state.eSwitch = true }
-        }
-    }
 }
 
 def urlSetup() {  // Modified from code by Eric Luttmann
@@ -713,8 +695,10 @@ def checkLiveGameStatsHandler(resp, data) {
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - Pregame"
             } else {
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScore} VS ${state.totalAwayScore} - home: ${state.homeScore} VS ${state.totalHomeScore}"
-                if(state.awayScore < state.totalAwayScore) {
+                
+                if(state.awayScore != state.totalAwayScore) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Away Team Scores!"
+                    state.awayScores = state.totalAwayRuns
                     if (state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
@@ -722,10 +706,8 @@ def checkLiveGameStatsHandler(resp, data) {
                         messageHandler(otherTeamScore)
                         data = "otherTeam;live"
                     }
-                    
                     notificationHandler(data)
-                    if(useSpeech) letsTalk()
-                    if(pushMessage) pushNow()
+                    
                     if(useTheFlasher && state.myTeamIs == "away") {
                         flashData = "Preset::${flashMyTeamScorePreset}"
                         theFlasherDevice.sendPreset(flashData)
@@ -735,15 +717,18 @@ def checkLiveGameStatsHandler(resp, data) {
                     }
                 }
 
-                if(state.homeScores < state.totalHomeScores) {
+                if(state.homeScores != state.totalHomeScores) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Home Team Scores!"
+                    state.homeScores = state.totalHomeRuns
                     if (state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
+                        data = "myTeam;live"
                     } else {
                         messageHandler(otherTeamScore)
+                        data = "otherTeam;live"
                     }
-                    if(useSpeech) letsTalk()
-                    if(pushMessage) pushNow()
+                    notificationHandler(data)
+                    
                     if(useTheFlasher && state.myTeamIs == "home") {
                         flashData = "Preset::${flashMyTeamScorePreset}"
                         theFlasherDevice.sendPreset(flashData)
@@ -1131,6 +1116,17 @@ def appButtonHandler(buttonPressed) {
 }
 
 // ********** Normal Stuff **********
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            theSwitch = it.currentValue("switch")
+            if(theSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults() {
     state.homeTeam = null
