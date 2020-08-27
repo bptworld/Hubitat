@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 08/27/20 - Adjusted sunset/sunrise triggers
  *  1.1.1 - 08/25/20 - Added a staggered dim where it will start with the highest value and then each light will join in as its level is reached.
  *  1.1.0 - 08/22/20 - Added sunRestrictions and onDemand to Triggers, other adjustments
  *  ---
@@ -45,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -77,11 +78,11 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Trigger Type")) {
             input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-            input "sunRestriction", "bool", title: "Use Sunset or Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
+            input "sunRestriction", "bool", title: "Use Sunset or Sunrise?", description: "sun", defaultValue:false, submitOnChange:true, width:6
             if(sunRestriction) { 
-                input "setRise", "bool", title: "Sunrise (off) or Sunset (on)", description: "sun", defaultValue:false, submitOnChange:true 
+                input "riseSet", "bool", title: "Sunrise (off) or Sunset (on)", description: "sun", defaultValue:false, submitOnChange:true, width:6
                 app.removeSetting("startTime")
-                if(setRise) {
+                if(riseSet) {
                     paragraph "<b>Sunset Offset</b>"
                     input "setBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunset", "number", title: "Offset (minutes)", width:6
@@ -93,7 +94,7 @@ def pageConfig() {
                     app.removeSetting("offsetSunset")
                 }
             } else {
-                input "startTime", "time", title: "Time to activate", description: "Time", required: false
+                input "startTime", "time", title: "Time to activate", description: "Time", required: false, width:12
                 app.removeSetting("sunRestriction") 
             }
             input "onDemand", "capability.switch", title: "Run anytime this Switch is turned On", required: false, multiple: false
@@ -300,7 +301,6 @@ def initialize() {
 def autoSunHandler() {
     // autoSunHandler - This is to trigger AT the exact times with offsets
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    if(state.sunRiseTosunSet == null) state.sunRiseTosunSet = false
     
     def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
@@ -328,19 +328,17 @@ def autoSunHandler() {
     // check for new sunset/sunrise times every day at 12:05 am
     schedule("0 5 0 ? * * *", autoSunHandler)
         
-    schedule(state.timeSunset, turnOnAtSunset)
-    schedule(state.timeSunrise, turnOffAtSunrise)
+    if(riseSet) { schedule(state.timeSunset, runAtSunset) }
+    if(!riseSet) { schedule(state.timeSunrise, runAtSunrise) }
 }
 
-def turnOnAtSunset() {
-    if(logEnable) log.debug "In turnOnAtSunset (${state.version}) - ${app.label} - Setting sunRiseTosunSet to True"
-    state.sunRiseTosunSet = true
+def runAtSunset() {
+    if(logEnable) log.debug "In runAtSunset (${state.version}) - ${app.label} - Starting"
     magicHappensHandler()
 }
 
-def turnOffAtSunrise() {
-    if(logEnable) log.debug "In turnOffAtSunrise (${state.version}) - ${app.label} - Setting sunRiseTosunSet to False"
-    state.sunRiseTosunSet = false
+def runAtSunrise() {
+    if(logEnable) log.debug "In runAtSunrise (${state.version}) - ${app.label} - Starting"
     magicHappensHandler()
 }
 // *********** End sunRestriction ***********
