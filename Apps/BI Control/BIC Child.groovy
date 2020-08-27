@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.1 - 08/27/20 - Round 2 on Reboot command
  *  2.1.0 - 08/24/20 - Added Motion as trigger, added Reboot command
  *  2.0.9 - 07/09/20 - Fixed Disable switch
  *  2.0.8 - 06/26/20 - Fixed a typo
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "BI Control"
-	state.version = "2.1.0"
+	state.version = "2.1.1"
 }
 
 definition(
@@ -297,16 +298,8 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In initialize - Initializing (${state.version})"
+        if(logEnable) log.debug "In initialize - Initializing (${state.version}) - triggerMode: ${triggerMode}"
 
-        if(app.label) {
-            if(app.label.contains("Paused")) {
-                app.updateLabel(app.label.replaceAll(" Paused",""))
-                app.updateLabel(app.label + " <font color='red'>Paused</font>")
-            }
-        }
-
-        if(logEnable) log.debug "In initialize - triggerMode: ${triggerMode}"
         if(triggerType == "Profile") {
             if(triggerMode == "Mode"){subscribe(location, "mode", profileModeChangeHandler)}
             if(triggerMode == "Switch_Contact_Motion") {
@@ -341,6 +334,10 @@ def initialize() {
             if(switches) { subscribe(switches, "switch", cameraPTZHandler) }
             if(contacts) { subscribe(contacts, "contact", cameraPTZHandler) }
             if(motions) { subscribe(motions, "motion", cameraPTZHandler) }
+        }
+        if(triggerMode == "Camera_Reboot") {
+            if(switches) { subscribe(switches, "switch", cameraRebootHandler) }
+            if(contacts) { subscribe(contacts, "contact", cameraRebootHandler) }
         }
     }
 }
@@ -588,6 +585,24 @@ def cameraPTZHandler(evt) {
                 biChangeProfile(setPreset)
             }
         }	
+    }
+}
+
+def cameraRebootHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "BI Control-cameraRebootHandler (${state.version})"
+        if(logEnable) log.debug "Switch on/off - $evt.device : $evt.value"
+
+        checkSwitchesContacts()
+
+        if(contin) {
+            if(logEnable) log.debug "cameraRebootHandler - Nothing"
+            def setPreset = "0"
+            biChangeProfile(setPreset)
+        }
     }
 }
 
