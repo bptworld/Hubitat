@@ -39,6 +39,7 @@
  *
  * Changes:
  *
+ *  2.0.4 - 08/28/20 - Added App Control options
  *  2.0.3 - 08/16/20 - Added Light Level to Fast_Color_Changing & Slow_Color_Changing, other changes
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 04/12/20 - Major changes
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Lighting Effects"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -195,8 +196,25 @@ def pageConfig() {
 			input "switches", "capability.switch", title: "Switch", required: true, multiple: false
 		} 
         
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue: false, title: "Enable Debug Logging", description: "debugging", submitOnChange:true
 		}
 		display2()
@@ -212,252 +230,293 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    if(triggerMode == "Fast_Dimmer"){subscribe(switches, "switch", fastDimmerHandler)}
-    if(triggerMode == "Fast_Color_Changing"){
-        subscribe(switches, "switch", changeHandler)
-    	state.colorOffset=0
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(triggerMode == "Fast_Dimmer"){subscribe(switches, "switch", fastDimmerHandler)}
+        if(triggerMode == "Fast_Color_Changing"){
+            subscribe(switches, "switch", changeHandler)
+            state.colorOffset=0
+        }
+        if(triggerMode == "Slow_Color_Changing"){
+            subscribe(switches, "switch", slowChangeHandler)
+            state.colorOffset=0
+        }
+        if(triggerMode == "Slow_On"){subscribe(switches, "switch", slowonHandler)}
+        if(triggerMode == "Slow_Off"){subscribe(switches, "switch", slowoffHandler)}
+        if(triggerMode == "Slow_Loop"){subscribe(switches, "switch", slowonHandler)}
     }
-	if(triggerMode == "Slow_Color_Changing"){
-        subscribe(switches, "switch", slowChangeHandler)
-    	state.colorOffset=0
-    }
-    if(triggerMode == "Slow_On"){subscribe(switches, "switch", slowonHandler)}
-    if(triggerMode == "Slow_Off"){subscribe(switches, "switch", slowoffHandler)}
-    if(triggerMode == "Slow_Loop"){subscribe(switches, "switch", slowonHandler)}
 }
 
 def fastDimmerHandler(evt) {
-    if(logEnable) log.debug "In fastDimmerHandler (${state.version})"				
-	if(switches.currentValue("switch") == "on") {
-        if(triggerMode == "Dimmer") {
-            for (dimmer in dimmers) {                
-                def lowLevel= Math.abs(new Random().nextInt() % 20) + 30
-            	dimmer.setLevel(lowLevel)
-                
-                sTime = Math.abs(new Random().nextInt() % sleepytime)
-        		pauseExecution(sTime)
-                
-                def upLevel= Math.abs(new Random().nextInt() % 75) + 24
-            	dimmer.setLevel(upLevel)
-                
-                sTime = Math.abs(new Random().nextInt() % sleepytime)
-            	pauseExecution(sTime)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In fastDimmerHandler (${state.version})"				
+        if(switches.currentValue("switch") == "on") {
+            if(triggerMode == "Dimmer") {
+                for (dimmer in dimmers) {                
+                    def lowLevel= Math.abs(new Random().nextInt() % 20) + 30
+                    dimmer.setLevel(lowLevel)
+
+                    sTime = Math.abs(new Random().nextInt() % sleepytime)
+                    pauseExecution(sTime)
+
+                    def upLevel= Math.abs(new Random().nextInt() % 75) + 24
+                    dimmer.setLevel(upLevel)
+
+                    sTime = Math.abs(new Random().nextInt() % sleepytime)
+                    pauseExecution(sTime)
+                }
             }
+            runIn(10, fastDimmerHandler)
+        } else if(switches.currentValue("switch") == "off") {
+            dimmers.off()
+            unschedule()
         }
-    	runIn(10, fastDimmerHandler)
-    } else if(switches.currentValue("switch") == "off") {
-		dimmers.off()
-		unschedule()
-	}							
+    }
 }
     
 def changeHandler(evt) {            // Modified code from ST - Kristopher Kubicki
-	if(logEnable) log.debug "In changeHandler (${state.version})"				
-    if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "In changeHandler - Color Selection = ${colorSelection}"
-        lights.on()
-		if(logEnable) log.debug " - - - - - - - - - - In changeHandler - triggerMode = ${triggerMode}"
-        	if(triggerMode == "Fast_Color_Changing"){
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In changeHandler (${state.version})"				
+        if(switches.currentValue("switch") == "on") {
+            if(logEnable) log.debug "In changeHandler - Color Selection = ${colorSelection}"
+            lights.on()
+            if(logEnable) log.debug " - - - - - - - - - - In changeHandler - triggerMode = ${triggerMode}"
+            if(triggerMode == "Fast_Color_Changing"){
                 for (numberoflights in lights) {
-					if(logEnable) log.debug " - - - - - - - - - - sleepPattern = ${sleepPattern}"
-					if(sleepPattern == "random"){
-                    	slTime = Math.abs(new Random().nextInt() % sleepytime2)
-						if(logEnable) log.debug " - - - - - - - - - - In random - slTime: ${slTime}"
-					} else{
-                    	slTime = sleepytime2
-						if(logEnable) log.debug " - - - - - - - - - - In constant - slTime: ${slTime}"
-					}
-        			def colors = []
-                	colors = colorSelection
-					if(logEnable) log.debug "In changeHandler - Colors: ${colors}"
-				
-                	def offLights = lights.findAll { light -> light.currentSwitch == "off" }
-                	if(logEnable) log.debug "In changeHandler - offLights: ${offLights}"
-                
-                	def onLights = lights.findAll { light -> light.currentSwitch == "on" }
-                	if(logEnable) log.debug "In changeHandler - onLights: ${onLights}"
-    	    		def numberon = onLights.size()
-					def numcolors = colors.size()
-        			
-					if(logEnable) log.debug "In changeHandler - pattern = ${pattern}"
+                    if(logEnable) log.debug " - - - - - - - - - - sleepPattern = ${sleepPattern}"
+                    if(sleepPattern == "random"){
+                        slTime = Math.abs(new Random().nextInt() % sleepytime2)
+                        if(logEnable) log.debug " - - - - - - - - - - In random - slTime: ${slTime}"
+                    } else{
+                        slTime = sleepytime2
+                        if(logEnable) log.debug " - - - - - - - - - - In constant - slTime: ${slTime}"
+                    }
+                    def colors = []
+                    colors = colorSelection
+                    if(logEnable) log.debug "In changeHandler - Colors: ${colors}"
+
+                    def offLights = lights.findAll { light -> light.currentSwitch == "off" }
+                    if(logEnable) log.debug "In changeHandler - offLights: ${offLights}"
+
+                    def onLights = lights.findAll { light -> light.currentSwitch == "on" }
+                    if(logEnable) log.debug "In changeHandler - onLights: ${onLights}"
+                    def numberon = onLights.size()
+                    def numcolors = colors.size()
+
+                    if(logEnable) log.debug "In changeHandler - pattern = ${pattern}"
                     if (pattern == 'randomize') {
-                    	randOffset = Math.abs(new Random().nextInt()%numcolors)
-                    	if(logEnable) log.debug "In changeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
-                		if (seperate == 'combined') {
-                        	sendcolor(onLights,colors[randOffset])
-                		} else {
-           					for(def i=0;i<numberon;i++) {
-                            	sendcolor(onLights[i],colors[(randOffset + i) % numcolors])
-                			}
-            			}
-                	} else if (pattern == 'cycle') {
-                       	if (onLights.size() > 0) {
-							if (state.colorOffset >= numcolors) {
-            					state.colorOffset = 0
-            				}
-							if (seperate == 'combined') {
-								sendcolor(onLights,colors[state.colorOffset])
-								if(logEnable) log.debug "In changeHandler - cycle-combined - onLighgts: ${onLights}, Colors: ${colors[state.colorOffset]}"
-							} else {
-           						for(def i=0;i<numberon;i++) {
-                					sendcolor(onLights[i],colors[(state.colorOffset + i) % numcolors])
-									if(logEnable) log.debug "In changeHandler - cycle-randomize - onLighgts: ${onLights[i]}, Colors: ${colors[(state.colorOffset + i) % numcolors]}"
-                				}
-            				}
-            				state.colorOffset = state.colorOffset + 1
+                        randOffset = Math.abs(new Random().nextInt()%numcolors)
+                        if(logEnable) log.debug "In changeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
+                        if (seperate == 'combined') {
+                            sendcolor(onLights,colors[randOffset])
+                        } else {
+                            for(def i=0;i<numberon;i++) {
+                                sendcolor(onLights[i],colors[(randOffset + i) % numcolors])
+                            }
                         }
-     				}
+                    } else if (pattern == 'cycle') {
+                        if (onLights.size() > 0) {
+                            if (state.colorOffset >= numcolors) {
+                                state.colorOffset = 0
+                            }
+                            if (seperate == 'combined') {
+                                sendcolor(onLights,colors[state.colorOffset])
+                                if(logEnable) log.debug "In changeHandler - cycle-combined - onLighgts: ${onLights}, Colors: ${colors[state.colorOffset]}"
+                            } else {
+                                for(def i=0;i<numberon;i++) {
+                                    sendcolor(onLights[i],colors[(state.colorOffset + i) % numcolors])
+                                    if(logEnable) log.debug "In changeHandler - cycle-randomize - onLighgts: ${onLights[i]}, Colors: ${colors[(state.colorOffset + i) % numcolors]}"
+                                }
+                            }
+                            state.colorOffset = state.colorOffset + 1
+                        }
+                    }
                 }
             }
-			if(logEnable) log.debug "In changeHandler - slTime: ${slTime}"
-        	runIn(slTime, changeHandler)
-	} else if(switches.currentValue("switch") == "off") {
-		lights.off()
-		unschedule()
-	}
+            if(logEnable) log.debug "In changeHandler - slTime: ${slTime}"
+            runIn(slTime, changeHandler)
+        } else if(switches.currentValue("switch") == "off") {
+            lights.off()
+            unschedule()
+        }
+    }
 }
 
 def slowChangeHandler(evt) {        // Modified code from ST - Kristopher Kubicki
-	if(logEnable) log.debug "In slowChangeHandler (${state.version})"				
-    if(switches.currentValue("switch") == "on") {
-		if(logEnable) log.debug "In slowChangeHandler - Color Selection: ${colorSelection}"
-        lights.on()
-        	if(triggerMode == "Slow_Color_Changing"){
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In slowChangeHandler (${state.version})"				
+        if(switches.currentValue("switch") == "on") {
+            if(logEnable) log.debug "In slowChangeHandler - Color Selection: ${colorSelection}"
+            lights.on()
+            if(triggerMode == "Slow_Color_Changing"){
                 for (numberoflights in lights) {
                     slpTime = (sleepytime2*60)
-        			def colors = []
-                	colors = colorSelection
-					if(logEnable) log.debug "In slowChangeHandler - Colors: ${colors}"
-				
-                	def offLights = lights.findAll { light -> light.currentSwitch == "off"}
-                	if(logEnable) log.debug "In slowChangeHandler - offLights: ${offLights}"
-                
-                	def onLights = lights.findAll { light -> light.currentSwitch == "on"}
-                	if(logEnable) log.debug "In slowChangeHandler - onLights: ${onLights}"
-    	    		def numberon = onLights.size()
-					def numcolors = colors.size()
-        			
-					if(logEnable) log.debug "In slowChangeHandler - pattern: ${pattern}"
+                    def colors = []
+                    colors = colorSelection
+                    if(logEnable) log.debug "In slowChangeHandler - Colors: ${colors}"
+
+                    def offLights = lights.findAll { light -> light.currentSwitch == "off"}
+                    if(logEnable) log.debug "In slowChangeHandler - offLights: ${offLights}"
+
+                    def onLights = lights.findAll { light -> light.currentSwitch == "on"}
+                    if(logEnable) log.debug "In slowChangeHandler - onLights: ${onLights}"
+                    def numberon = onLights.size()
+                    def numcolors = colors.size()
+
+                    if(logEnable) log.debug "In slowChangeHandler - pattern: ${pattern}"
                     if (pattern == 'randomize') {
-                    	randOffset = Math.abs(new Random().nextInt()%numcolors)
-                    	if(logEnable) log.debug "In slowChangeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
-                		if (seperate == 'combined') {
-                        	sendcolor(onLights,colors[randOffset])
-                		} else {
-           					for(def i=0;i<numberon;i++) {
-                            	sendcolor(onLights[i],colors[(randOffset + i) % numcolors])
-                			}
-            			}
-                	} else if (pattern == 'cycle') {
-                       	if (onLights.size() > 0) {
-							if (state.colorOffset >= numcolors ) {
-            					state.colorOffset = 0
-            				}
-							if (seperate == 'combined') {
-								sendcolor(onLights,colors[state.colorOffset])
-								if(logEnable) log.debug "In slowChangeHandler - cycle-combined - onLighgts: ${onLights}, Colors: ${colors[state.colorOffset]}"
-							} else {
-           						for(def i=0;i<numberon;i++) {
-                					sendcolor(onLights[i],colors[(state.colorOffset + i) % numcolors])
-									if(logEnable) log.debug "In slowChangeHandler - cycle-randomize - onLighgts: ${onLights[i]}, Colors: ${colors[(state.colorOffset + i) % numcolors]}"
-                				}
-            				}
-            				state.colorOffset = state.colorOffset + 1
+                        randOffset = Math.abs(new Random().nextInt()%numcolors)
+                        if(logEnable) log.debug "In slowChangeHandler - Pattern: ${pattern} - Offset: ${randOffset}"
+                        if (seperate == 'combined') {
+                            sendcolor(onLights,colors[randOffset])
+                        } else {
+                            for(def i=0;i<numberon;i++) {
+                                sendcolor(onLights[i],colors[(randOffset + i) % numcolors])
+                            }
                         }
-     				}
+                    } else if (pattern == 'cycle') {
+                        if (onLights.size() > 0) {
+                            if (state.colorOffset >= numcolors ) {
+                                state.colorOffset = 0
+                            }
+                            if (seperate == 'combined') {
+                                sendcolor(onLights,colors[state.colorOffset])
+                                if(logEnable) log.debug "In slowChangeHandler - cycle-combined - onLighgts: ${onLights}, Colors: ${colors[state.colorOffset]}"
+                            } else {
+                                for(def i=0;i<numberon;i++) {
+                                    sendcolor(onLights[i],colors[(state.colorOffset + i) % numcolors])
+                                    if(logEnable) log.debug "In slowChangeHandler - cycle-randomize - onLighgts: ${onLights[i]}, Colors: ${colors[(state.colorOffset + i) % numcolors]}"
+                                }
+                            }
+                            state.colorOffset = state.colorOffset + 1
+                        }
+                    }
                 }
             }
-			if(logEnable) log.debug "In slowChangeHandler - slpTime: ${slpTime}"
-        	runIn(slpTime, slowChangeHandler)
-	} else if(switches.currentValue("switch") == "off"){
-		lights.off()
-		unschedule()
-	}
+            if(logEnable) log.debug "In slowChangeHandler - slpTime: ${slpTime}"
+            runIn(slpTime, slowChangeHandler)
+        } else if(switches.currentValue("switch") == "off"){
+            lights.off()
+            unschedule()
+        }
+    }
 }
 
 def slowonHandler(evt) {                // Modified code from @Bravenel
-	if(logEnable) log.debug "In slowonHandler (${state.version})"							
-    if(dimmers[0].currentSwitch == "off") {
-        dimmers.setLevel(0)
-        state.currentLevel = 0
-    } else{
-        state.currentLevel = dimmers[0].currentLevel
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In slowonHandler (${state.version})"							
+        if(dimmers[0].currentSwitch == "off") {
+            dimmers.setLevel(0)
+            state.currentLevel = 0
+        } else{
+            state.currentLevel = dimmers[0].currentLevel
+        }
+        if(minutes == 0) return
+        seconds = minutes * 6
+        state.dimStep = targetLevelHigh / seconds
+        state.dimLevel = state.currentLevel
+        if(logEnable) log.debug "In slowonHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+        dimStepUp()	
     }
-    if(minutes == 0) return
-    seconds = minutes * 6
-    state.dimStep = targetLevelHigh / seconds
-    state.dimLevel = state.currentLevel
-    if(logEnable) log.debug "In slowonHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
-    dimStepUp()			
 }
 
 def dimStepUp() {                        // Modified code from @Bravenel
-	if(logEnable) log.debug "In dimStepUp (${state.version})"			
-    if(switches.currentValue("switch") == "on") {
-    	if(state.currentLevel < targetLevelHigh) {
-        	state.dimLevel = state.dimLevel + state.dimStep
-            if(state.dimLevel > targetLevelHigh) {state.dimLevel = targetLevelHigh}
-        	state.currentLevel = state.dimLevel.toInteger()
-    		dimmers.setLevel(state.currentLevel)
-            if(logEnable) log.debug "dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
-        	runIn(10,dimStepUp)
-    	} else{
-            if(logEnable) log.debug "dimStepUp - tMode = ${tMode}"
-            if(tMode == "Slow_Loop") {
-                runIn(1,slowoffHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In dimStepUp (${state.version})"			
+        if(switches.currentValue("switch") == "on") {
+            if(state.currentLevel < targetLevelHigh) {
+                state.dimLevel = state.dimLevel + state.dimStep
+                if(state.dimLevel > targetLevelHigh) {state.dimLevel = targetLevelHigh}
+                state.currentLevel = state.dimLevel.toInteger()
+                dimmers.setLevel(state.currentLevel)
+                if(logEnable) log.debug "dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+                runIn(10,dimStepUp)
             } else{
-            	switches.off()
-        		if(logEnable) log.debug "dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelHigh} - Target Level Reached"
+                if(logEnable) log.debug "dimStepUp - tMode = ${tMode}"
+                if(tMode == "Slow_Loop") {
+                    runIn(1,slowoffHandler)
+                } else{
+                    switches.off()
+                    if(logEnable) log.debug "dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelHigh} - Target Level Reached"
+                }
             }
-    	}
-    } else{
-        if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"					
-	}
+        } else{
+            if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"					
+        }
+    }
 }
 
 def slowoffHandler(evt) {                        // Modified code from @Bravenel
-	if(logEnable) log.debug "In slowoffHandler (${state.version})"			
-    if(dimmers[0].currentSwitch == "off") {
-        dimmers.setLevel(99)
-        state.currentLevel = 99
-    } else{
-        state.currentLevel = dimmers[0].currentLevel
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In slowoffHandler (${state.version})"			
+        if(dimmers[0].currentSwitch == "off") {
+            dimmers.setLevel(99)
+            state.currentLevel = 99
+        } else{
+            state.currentLevel = dimmers[0].currentLevel
+        }
+        if(minutes == 0) return
+        seconds = minutes * 6
+        state.dimStep1 = (targetLevelLow / seconds) * 100
+        state.dimLevel = state.currentLevel
+        if(logEnable) log.debug "In slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
+        dimStepDown()
     }
-    if(minutes == 0) return
-    seconds = minutes * 6
-    state.dimStep1 = (targetLevelLow / seconds) * 100
-    state.dimLevel = state.currentLevel
-    if(logEnable) log.debug "In slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
-    dimStepDown()
 }
 
 def dimStepDown() {                            // Modified code from @Bravenel
-	if(logEnable) log.debug "In dimStepDown (${state.version})"		
-    if(switches.currentValue("switch") == "on") {
-    	if(state.currentLevel > targetLevelLow) {
-            state.dimStep = state.dimStep1
-        	state.dimLevel = state.dimLevel - state.dimStep
-            if(state.dimLevel < targetLevelLow) {state.dimLevel = targetLevelLow}
-        	state.currentLevel = state.dimLevel.toInteger()
-    		dimmers.setLevel(state.currentLevel)
-            if(logEnable) log.debug "In dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
-        	runIn(10,dimStepDown)
-    	} else{
-            if(logEnable) log.debug "In dimStepDown - tMode = ${tMode}"
-            if(tMode == "Slow_Loop") {
-                runIn(1,slowonHandler)
-            } else {
-            	switches.off()
-        		if(logEnable) log.debug "In dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelLow} - Target Level Reached"
-    		}
-        }    
-    } else{
-        if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"
-    }						
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In dimStepDown (${state.version})"		
+        if(switches.currentValue("switch") == "on") {
+            if(state.currentLevel > targetLevelLow) {
+                state.dimStep = state.dimStep1
+                state.dimLevel = state.dimLevel - state.dimStep
+                if(state.dimLevel < targetLevelLow) {state.dimLevel = targetLevelLow}
+                state.currentLevel = state.dimLevel.toInteger()
+                dimmers.setLevel(state.currentLevel)
+                if(logEnable) log.debug "In dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
+                runIn(10,dimStepDown)
+            } else{
+                if(logEnable) log.debug "In dimStepDown - tMode = ${tMode}"
+                if(tMode == "Slow_Loop") {
+                    runIn(1,slowonHandler)
+                } else {
+                    switches.off()
+                    if(logEnable) log.debug "In dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelLow} - Target Level Reached"
+                }
+            }    
+        } else{
+            if(logEnable) log.debug "Current Level: ${state.currentLevel} - Control Switch turned Off"
+        }
+    }
 }
 
 def sendcolor(lights,color) {
@@ -510,6 +569,22 @@ def sendcolor(lights,color) {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){									
     if(logEnable) log.debug "Initialising defaults..."
