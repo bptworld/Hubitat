@@ -57,6 +57,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-home-
 <b>Hub Watchdog</b> - Simple way to monitor if your hub is slowing down or not.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-hub-watchdog-simple-way-to-monitor-if-your-hub-is-slowing-down-or-not/23371" target="_blank">Go Here!</a>
 <br><br>
+<b>Life360 with States</b> - Life360 with all States Included<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-life360-with-states-track-all-attributes-with-app-and-driver-also-supports-rm4-and-dashboards/18274" target="_blank">Go Here</a>
+<br><br>
 <b>Lighting Effects</b> - Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-lighting-effects/4330" target="_blank">Go Here</a>
 <br><br>
