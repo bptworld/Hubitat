@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 08/28/20 - Fixed a typo
  *  1.0.7 - 08/27/20 - Lots of little changes
  *  1.0.6 - 08/24/20 - Separate options for devices on when Score and/or Final, other enhancements
  *  ---
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -431,11 +432,13 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
     } else {
         if(logEnable) log.debug "In checkIfGameDay (${state.version})"
         def isGameDay = false
-        try {  // Today
+        try {
             def todayDate = new Date().format('yyyy-MM-dd', location.timeZone)
             // http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&teamId=111&date=07/23/2020
+            log.trace "todayDate: ${todayDate}"
             def params = [uri: "${state.MLB_API_URL}/schedule/games/?sportId=1&teamId=${state.Team.id}&date=${todayDate}"] 
-
+            if(logEnable) log.debug "In checkIfGameDay - ${params}"
+            
             def tDate = new Date().format('MM-dd-yyyy', location.timeZone)
             if(logEnable) log.debug "In checkIfGameDay - Determine if it's a game day for the ${settings.mlbTeam}, requesting game day schedule for ${tDate}"
             httpGet(params) { resp ->
@@ -473,6 +476,9 @@ def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
                     if(dataDevice) {        // NEW - only in BPTWorld's Hubitat version!                                  
                         state.homeTeam = "${game.teams.home.team.name}"
                         state.awayTeam = "${game.teams.away.team.name}"
+                        
+                        if(logEnable) log.info "In checkIfGameDayHandler - awayTeam: ${state.awayTeam} vs homeTeam: ${state.homeTeam}"
+                        if(logEnable) log.info "In checkIfGameDayHandler - state.Team.teamName: ${state.Team.teamName}"
                         
                         if(state.awayTeam.contains(state.Team.teamName)) {
                             state.myTeamIs = "away"
@@ -572,13 +578,18 @@ def checkLiveGameStats() {
             data = "final;final"
             notificationHandler(data)
         } else {
-            if(latestPlay.contains("Delayed: Rain") || latestPlay.contains("Postponed")) {
-                log.info "${app.label} - Game under delay, will check again in 20 minutes."
-                rainMessage = "Rain Delay"
-                messageHandler(rainMessage)
-                if(useSpeech) letsTalk()
-                if(pushMessage) pushNow()
-                runIn(1200, checkLiveGameStats)
+            if(latestPlay) {
+                if(latestPlay.contains("Delayed: Rain") || latestPlay.contains("Postponed")) {
+                    log.info "${app.label} - Game under delay, will check again in 20 minutes."
+                    rainMessage = "Rain Delay"
+                    messageHandler(rainMessage)
+                    if(useSpeech) letsTalk()
+                    if(pushMessage) pushNow()
+                    runIn(1200, checkLiveGameStats)
+                } else {              
+                    if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
+                    runIn(10, checkLiveGameStats)
+                }
             } else {              
                 if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
                 runIn(10, checkLiveGameStats)
@@ -756,7 +767,7 @@ def checkLiveGameStatsHandler(resp, data) {
             if(state.gameStatus == "Preview") {
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - Pregame"
             } else {              
-                if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScores} VS ${tate.totalAwayRuns} - home: ${state.homeScores} VS ${state.totalHomeRuns}"
+                //if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScores} VS ${tate.totalAwayRuns} - home: ${state.homeScores} VS ${state.totalHomeRuns}"
                 
                 if(state.awayScores != state.totalAwayRuns) {
                     log.info "In checkLiveGameStatsHandler - Away Team Scores!"
