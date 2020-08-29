@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 08/28/20 - Fixed a typo
  *  1.1.1 - 08/27/20 - Lots of little changes
  *  1.1.0 - 08/24/20 - Separate options for devices on when Score and/or Final
  *  ---
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -694,11 +695,11 @@ def checkLiveGameStatsHandler(resp, data) {
             if(state.gameStatus == "Preview") {
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - Pregame"
             } else {
-                if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScore} VS ${state.totalAwayScore} - home: ${state.homeScore} VS ${state.totalHomeScore}"
+                //if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScore} VS ${state.totalAwayScore} - home: ${state.homeScore} VS ${state.totalHomeScore}"
                 
                 if(state.awayScore != state.totalAwayScore) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Away Team Scores!"
-                    state.awayScores = state.totalAwayRuns
+                    state.awayScores = state.totalAwayScore
                     if (state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
@@ -719,7 +720,7 @@ def checkLiveGameStatsHandler(resp, data) {
 
                 if(state.homeScores != state.totalHomeScores) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Home Team Scores!"
-                    state.homeScores = state.totalHomeRuns
+                    state.homeScores = state.totalHomeScores
                     if (state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
