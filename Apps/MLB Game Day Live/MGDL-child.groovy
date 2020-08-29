@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 08/29/20 - Fixed push for when there is no message
  *  1.0.8 - 08/28/20 - Fixed a typo
  *  1.0.7 - 08/27/20 - Lots of little changes
  *  1.0.6 - 08/24/20 - Separate options for devices on when Score and/or Final, other enhancements
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -587,11 +588,11 @@ def checkLiveGameStats() {
                     if(pushMessage) pushNow()
                     runIn(1200, checkLiveGameStats)
                 } else {              
-                    if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
+                    if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScore} (${state.totalHomeScore})- Away: ${state.awayScore} (${state.totalAwayScore})"           
                     runIn(10, checkLiveGameStats)
                 }
             } else {              
-                if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScores} (${state.totalHomeRuns})- Away: ${state.awayScores} (${state.totalAwayRuns})"           
+                if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScore} (${state.totalHomeScore})- Away: ${state.awayScore} (${state.totalAwayScore})"           
                 runIn(10, checkLiveGameStats)
             }
         }
@@ -622,34 +623,34 @@ def checkLiveGameStatsHandler(resp, data) {
                 balls = "0"
                 strikes = "0"
                 outs = "0"
-                statsHomeRuns1 = "-"
-                statsHomeRuns2 = "-"
-                statsHomeRuns3 = "-"
-                statsHomeRuns4 = "-"
-                statsHomeRuns5 = "-"
-                statsHomeRuns6 = "-"
-                statsHomeRuns7 = "-"
-                statsHomeRuns8 = "-"
-                statsHomeRuns9 = "-"
+                statsHomeScore1 = "-"
+                statsHomeScore2 = "-"
+                statsHomeScore3 = "-"
+                statsHomeScore4 = "-"
+                statsHomeScore5 = "-"
+                statsHomeScore6 = "-"
+                statsHomeScore7 = "-"
+                statsHomeScore8 = "-"
+                statsHomeScore9 = "-"
 
-                statsAwayRuns1 = "-"
-                statsAwayRuns2 = "-"
-                statsAwayRuns3 = "-"
-                statsAwayRuns4 = "-"
-                statsAwayRuns5 = "-"
-                statsAwayRuns6 = "-"
-                statsAwayRuns7 = "-"
-                statsAwayRuns8 = "-"
-                statsAwayRuns9 = "-"
+                statsAwayScore1 = "-"
+                statsAwayScore2 = "-"
+                statsAwayScore3 = "-"
+                statsAwayScore4 = "-"
+                statsAwayScore5 = "-"
+                statsAwayScore6 = "-"
+                statsAwayScore7 = "-"
+                statsAwayScore8 = "-"
+                statsAwayScore9 = "-"
 
-                state.homeScores = "0"
-                state.totalHomeRuns = "0"
+                state.homeScore = "0"
+                state.totalHomeScore = "0"
                 totalHomeHits = "0"
                 totalHomeErrors = "0"          
                 totalHomeLeftOnBase = "0"
 
-                state.awayScores = "0"
-                state.totalAwayRuns = "0"
+                state.awayScore = "0"
+                state.totalAwayScore = "0"
                 totalAwayHits = "0"
                 totalAwayErrors = "0"
                 totalAwayLeftOnBase = "0"
@@ -667,57 +668,57 @@ def checkLiveGameStatsHandler(resp, data) {
                     outs = liveData.linescore.outs ?: "0"
 
                     try {
-                        statsHomeRuns1 = liveData.linescore.innings[0].home.runs ?: "0"
-                        statsHomeRuns2 = liveData.linescore.innings[1].home.runs ?: "0"
-                        statsHomeRuns3 = liveData.linescore.innings[2].home.runs ?: "0"
-                        statsHomeRuns4 = liveData.linescore.innings[3].home.runs ?: "0"
-                        statsHomeRuns5 = liveData.linescore.innings[4].home.runs ?: "0"
-                        statsHomeRuns6 = liveData.linescore.innings[5].home.runs ?: "0"
-                        statsHomeRuns7 = liveData.linescore.innings[6].home.runs ?: "0"
-                        statsHomeRuns8 = liveData.linescore.innings[7].home.runs ?: "0"
-                        statsHomeRuns9 = liveData.linescore.innings[8].home.runs ?: "0"
+                        statsHomeScore1 = liveData.linescore.innings[0].home.runs ?: "0"
+                        statsHomeScore2 = liveData.linescore.innings[1].home.runs ?: "0"
+                        statsHomeScore3 = liveData.linescore.innings[2].home.runs ?: "0"
+                        statsHomeScore4 = liveData.linescore.innings[3].home.runs ?: "0"
+                        statsHomeScore5 = liveData.linescore.innings[4].home.runs ?: "0"
+                        statsHomeScore6 = liveData.linescore.innings[5].home.runs ?: "0"
+                        statsHomeScore7 = liveData.linescore.innings[6].home.runs ?: "0"
+                        statsHomeScore8 = liveData.linescore.innings[7].home.runs ?: "0"
+                        statsHomeScore9 = liveData.linescore.innings[8].home.runs ?: "0"
                     }
                     catch (e) {
-                        if(statsHomeRuns1 == null) statsHomeRuns1 = "-"
-                        if(statsHomeRuns2 == null) statsHomeRuns2 = "-"
-                        if(statsHomeRuns3 == null) statsHomeRuns3 = "-"
-                        if(statsHomeRuns4 == null) statsHomeRuns4 = "-"
-                        if(statsHomeRuns5 == null) statsHomeRuns5 = "-"
-                        if(statsHomeRuns6 == null) statsHomeRuns6 = "-"
-                        if(statsHomeRuns7 == null) statsHomeRuns7 = "-"
-                        if(statsHomeRuns8 == null) statsHomeRuns8 = "-"
-                        if(statsHomeRuns9 == null) statsHomeRuns9 = "-"
+                        if(statsHomeScore1 == null) statsHomeScore1 = "-"
+                        if(statsHomeScore2 == null) statsHomeScore2 = "-"
+                        if(statsHomeScore3 == null) statsHomeScore3 = "-"
+                        if(statsHomeScore4 == null) statsHomeScore4 = "-"
+                        if(statsHomeScore5 == null) statsHomeScore5 = "-"
+                        if(statsHomeScore6 == null) statsHomeScore6 = "-"
+                        if(statsHomeScore7 == null) statsHomeScore7 = "-"
+                        if(statsHomeScore8 == null) statsHomeScore8 = "-"
+                        if(statsHomeScore9 == null) statsHomeScore9 = "-"
                     }
 
                     try {
-                        statsAwayRuns1 = liveData.linescore.innings[0].away.runs ?: "0"
-                        statsAwayRuns2 = liveData.linescore.innings[1].away.runs ?: "0"
-                        statsAwayRuns3 = liveData.linescore.innings[2].away.runs ?: "0"
-                        statsAwayRuns4 = liveData.linescore.innings[3].away.runs ?: "0"
-                        statsAwayRuns5 = liveData.linescore.innings[4].away.runs ?: "0"
-                        statsAwayRuns6 = liveData.linescore.innings[5].away.runs ?: "0"
-                        statsAwayRuns7 = liveData.linescore.innings[6].away.runs ?: "0"
-                        statsAwayRuns8 = liveData.linescore.innings[7].away.runs ?: "0"
-                        statsAwayRuns9 = liveData.linescore.innings[8].away.runs ?: "0"
+                        statsAwayScore1 = liveData.linescore.innings[0].away.runs ?: "0"
+                        statsAwayScore2 = liveData.linescore.innings[1].away.runs ?: "0"
+                        statsAwayScore3 = liveData.linescore.innings[2].away.runs ?: "0"
+                        statsAwayScore4 = liveData.linescore.innings[3].away.runs ?: "0"
+                        statsAwayScore5 = liveData.linescore.innings[4].away.runs ?: "0"
+                        statsAwayScore6 = liveData.linescore.innings[5].away.runs ?: "0"
+                        statsAwayScore7 = liveData.linescore.innings[6].away.runs ?: "0"
+                        statsAwayScore8 = liveData.linescore.innings[7].away.runs ?: "0"
+                        statsAwayScore9 = liveData.linescore.innings[8].away.runs ?: "0"
                     }
                     catch (e) {
-                        if(statsAwayRuns1 == null) statsAwayRuns1 = "-"
-                        if(statsAwayRuns2 == null) statsAwayRuns2 = "-"
-                        if(statsAwayRuns3 == null) statsAwayRuns3 = "-"
-                        if(statsAwayRuns4 == null) statsAwayRuns4 = "-"
-                        if(statsAwayRuns5 == null) statsAwayRuns5 = "-"
-                        if(statsAwayRuns6 == null) statsAwayRuns6 = "-"
-                        if(statsAwayRuns7 == null) statsAwayRuns7 = "-"
-                        if(statsAwayRuns8 == null) statsAwayRuns8 = "-"
-                        if(statsAwayRuns9 == null) statsAwayRuns9 = "-"
+                        if(statsAwayScore1 == null) statsAwayScore1 = "-"
+                        if(statsAwayScore2 == null) statsAwayScore2 = "-"
+                        if(statsAwayScore3 == null) statsAwayScore3 = "-"
+                        if(statsAwayScore4 == null) statsAwayScore4 = "-"
+                        if(statsAwayScore5 == null) statsAwayScore5 = "-"
+                        if(statsAwayScore6 == null) statsAwayScore6 = "-"
+                        if(statsAwayScore7 == null) statsAwayScore7 = "-"
+                        if(statsAwayScore8 == null) statsAwayScore8 = "-"
+                        if(statsAwayScore9 == null) statsAwayScore9 = "-"
                     }
 
-                    state.totalHomeRuns = liveData.linescore.teams.home.runs ?: "0"
+                    state.totalHomeScore = liveData.linescore.teams.home.runs ?: "0"
                     totalHomeHits = liveData.linescore.teams.home.hits ?: "0"
                     totalHomeErrors = liveData.linescore.teams.home.errors ?: "0"
                     totalHomeLeftOnBase = liveData.linescore.teams.home.leftOnBase ?: "0"
 
-                    state.totalAwayRuns = liveData.linescore.teams.away.runs ?: "0"
+                    state.totalAwayScore = liveData.linescore.teams.away.runs ?: "0"
                     totalAwayHits = liveData.linescore.teams.away.hits ?: "0"
                     totalAwayErrors = liveData.linescore.teams.away.errors ?: "0"
                     totalAwayLeftOnBase = liveData.linescore.teams.away.leftOnBase ?: "0"
@@ -737,9 +738,9 @@ def checkLiveGameStatsHandler(resp, data) {
 
             scoreBoard += "<tr style='text-align:center;font-weight:bold'><td width=40%>Teams<td>1<td>2<td>3<td>4<td>5<td>6<td>7<td>8<td>9<td>R<td>H<td>E"
 
-            scoreBoard += "<tr style='text-align:center'><td><b>${state.awayTeam}</b> ${state.awayRecord}<td>${statsAwayRuns1}<td>${statsAwayRuns2}<td>${statsAwayRuns3}<td>${statsAwayRuns4}<td>${statsAwayRuns5}<td>${statsAwayRuns6}<td>${statsAwayRuns7}<td>${statsAwayRuns8}<td>${statsAwayRuns9}<td>${state.totalAwayRuns}<td>${totalAwayHits}<td>${totalAwayErrors}"
+            scoreBoard += "<tr style='text-align:center'><td><b>${state.awayTeam}</b> ${state.awayRecord}<td>${statsAwayScore1}<td>${statsAwayScore2}<td>${statsAwayScore3}<td>${statsAwayScore4}<td>${statsAwayScore5}<td>${statsAwayScore6}<td>${statsAwayScore7}<td>${statsAwayScore8}<td>${statsAwayScore9}<td>${state.totalAwayScore}<td>${totalAwayHits}<td>${totalAwayErrors}"
 
-            scoreBoard += "<tr style='text-align:center'><td><b>${state.homeTeam}</b> ${state.homeRecord}<td>${statsHomeRuns1}<td>${statsHomeRuns2}<td>${statsHomeRuns3}<td>${statsHomeRuns4}<td>${statsHomeRuns5}<td>${statsHomeRuns6}<td>${statsHomeRuns7}<td>${statsHomeRuns8}<td>${statsHomeRuns9}<td>${state.totalHomeRuns}<td>${totalHomeHits}<td>${totalHomeErrors}"
+            scoreBoard += "<tr style='text-align:center'><td><b>${state.homeTeam}</b> ${state.homeRecord}<td>${statsHomeScore1}<td>${statsHomeScore2}<td>${statsHomeScore3}<td>${statsHomeScore4}<td>${statsHomeScore5}<td>${statsHomeScore6}<td>${statsHomeScore7}<td>${statsHomeScore8}<td>${statsHomeScore9}<td>${state.totalHomeScore}<td>${totalHomeHits}<td>${totalHomeErrors}"
 
             scoreBoard += "</table>"
             
@@ -757,7 +758,7 @@ def checkLiveGameStatsHandler(resp, data) {
          
             if(dataDevice) {
                 dataDevice.liveScoreboard(scoreBoard)
-                gameStats = "${state.awayTeam};${state.homeTeam};${state.totalAwayRuns};${state.totalHomeRuns};${currentInning}"
+                gameStats = "${state.awayTeam};${state.homeTeam};${state.totalAwayScore};${state.totalHomeScore};${currentInning}"
                 dataDevice.gameStats(gameStats)
                 dataDevice.lastPlay(theLastPlay)
                 charCount = scoreBoard.length()
@@ -765,13 +766,13 @@ def checkLiveGameStatsHandler(resp, data) {
             }
 
             if(state.gameStatus == "Preview") {
-                if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - Pregame"
+                if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Score - Pregame"
             } else {              
-                //if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScores} VS ${tate.totalAwayRuns} - home: ${state.homeScores} VS ${state.totalHomeRuns}"
+                //if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Score - away: ${state.awayScore} VS ${tate.totalAwayScore} - home: ${state.homeScore} VS ${state.totalHomeScore}"
                 
-                if(state.awayScores != state.totalAwayRuns) {
-                    log.info "In checkLiveGameStatsHandler - Away Team Scores!"
-                    state.awayScores = state.totalAwayRuns
+                if(state.awayScore != state.totalAwayScore) {
+                    log.info "In checkLiveGameStatsHandler - Away Team Score!"
+                    state.awayScore = state.totalAwayScore
                     if(state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
@@ -790,9 +791,9 @@ def checkLiveGameStatsHandler(resp, data) {
                     }
                 }
 
-                if(state.homeScores != state.totalHomeRuns) {
-                    log.info "In checkLiveGameStatsHandler - Home Team Scores!"
-                    state.homeScores = state.totalHomeRuns
+                if(state.homeScore != state.totalHomeScore) {
+                    log.info "In checkLiveGameStatsHandler - Home Team Score!"
+                    state.homeScore = state.totalHomeScore
                     if(state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
@@ -812,7 +813,7 @@ def checkLiveGameStatsHandler(resp, data) {
                 }
             }
             
-            //update Scores
+            //update Score
             state.awayScore = state.totalAwayScore
             state.homeScore = state.totalHomeScore
         }
@@ -889,7 +890,7 @@ def notificationHandler(data) {
     
     if(useTheFlasher && state.gameStatus == "Final") {
         if(state.myTeamIs == "away") {
-            if(state.awayScores > state.homeScores) {
+            if(state.awayScore > state.homeScore) {
                 flashData = "Preset::${flashMyTeamWinsPreset}"
             } else {
                 flashData = "Preset::${flashOtherTeamWinsPreset}"
@@ -897,7 +898,7 @@ def notificationHandler(data) {
         }
         
         if(state.myTeamIs == "home") {
-            if(state.homeScores > state.awayScores) {
+            if(state.homeScore > state.awayScore) {
                 flashData = "Preset::${flashMyTeamWinsPreset}"
             } else {
                 flashData = "Preset::${flashOtherTeamWinsPreset}"
@@ -961,26 +962,28 @@ def messageHandler(data) {
         if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.awayTeam}" )}
         if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.homeTeam}" )}
         
-        if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalAwayRuns}" )}
-        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalHomeRuns}" )}
+        if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalAwayScore}" )}
+        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalHomeScore}" )}
     }
     if(state.myTeamIs == "home") { 
         if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.homeTeam}" )}
         if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.awayTeam}" )}
         
-        if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalHomeRuns}" )}
-        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalAwayRuns}" )}
+        if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalHomeScore}" )}
+        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalAwayScore}" )}
     }
 
     if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
 }
 
 def pushNow() {
-    if(logEnable) log.debug "In pushNow (${state.version})"
-    thePushMessage = "${app.label} \n"
-    thePushMessage += state.theMsg
-    if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
-    pushMessage.deviceNotification(thePushMessage)
+    if(state.theMsg) {
+        if(logEnable) log.debug "In pushNow (${state.version})"
+        thePushMessage = "${app.label} \n"
+        thePushMessage += state.theMsg
+        if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
+        pushMessage.deviceNotification(thePushMessage)
+    }
 }
 
 def checkSchedule() {
