@@ -119,7 +119,7 @@ def mainPage() {
             }
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-                paragraph "If you want to use Icons with your devices - Complete the 'Select Icons' section below<br>If you want to be able to control devices - Complete the 'Maker API' section below"
+                paragraph "If you want to use Icons with your devices - Complete the 'Select Icons' section<br>If you want to be able to control devices - Complete the 'Maker API' section"
 				app(name: "anyOpenApp", appName: "Tile Master 2 Child", namespace: "BPTWorld", title: "<b>Add a new 'Tile Master 2' child</b>", multiple: true)
 			}
             
@@ -391,8 +391,8 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
+        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
