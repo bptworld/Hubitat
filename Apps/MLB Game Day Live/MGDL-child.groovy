@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.0.9 - 08/29/20 - Fixed push for when there is no message
+ *  1.1.0 - 08/31/20 - Added more debug messages
+ *  1.0.9 - 08/29/20 - Attempt push for when there is no message
  *  1.0.8 - 08/28/20 - Fixed a typo
  *  1.0.7 - 08/27/20 - Lots of little changes
  *  1.0.6 - 08/24/20 - Separate options for devices on when Score and/or Final, other enhancements
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -287,6 +288,7 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -584,8 +586,6 @@ def checkLiveGameStats() {
                     log.info "${app.label} - Game under delay, will check again in 20 minutes."
                     rainMessage = "Rain Delay"
                     messageHandler(rainMessage)
-                    if(useSpeech) letsTalk()
-                    if(pushMessage) pushNow()
                     runIn(1200, checkLiveGameStats)
                 } else {              
                     if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}. Updated score: Home: ${state.homeScore} (${state.totalHomeScore})- Away: ${state.awayScore} (${state.totalAwayScore})"           
@@ -776,11 +776,12 @@ def checkLiveGameStatsHandler(resp, data) {
                     if(state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
+                        notificationHandler(data)
                     } else {
                         messageHandler(otherTeamScore)
                         data = "otherTeam;live"
+                        notificationHandler(data)
                     }
-                    notificationHandler(data)
                     
                     if(useTheFlasher && state.myTeamIs == "away") {
                         flashData = "Preset::${flashMyTeamScorePreset}"
@@ -797,11 +798,12 @@ def checkLiveGameStatsHandler(resp, data) {
                     if(state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
+                        notificationHandler(data)
                     } else {
                         messageHandler(otherTeamScore)
                         data = "otherTeam;live"
+                        notificationHandler(data)
                     }
-                    notificationHandler(data)
                     
                     if(useTheFlasher && state.myTeamIs == "home") {
                         flashData = "Preset::${flashMyTeamScorePreset}"
@@ -821,13 +823,10 @@ def checkLiveGameStatsHandler(resp, data) {
 }
 
 def notificationHandler(data) {
-    if(logEnable) log.debug "In notificationHandler (${state.version})"
+    if(logEnable) log.debug "In notificationHandler (${state.version}) - data: ${data}"
     
     def (theTeam, theStatus) = data.split(";")
     if(logEnable) log.debug "In notificationHandler - theTeam: ${theTeam} - theStatus: ${theStatus}"
-    
-    if(useSpeech) letsTalk()
-    if(pushMessage) pushNow()
     
     doIt = false
     if(state.gameStatus != "Final" && onScore) {
@@ -943,14 +942,12 @@ def pregameMessageHandler() {
     } else {
         if(pregameMessage) {
             messageHandler(pregameMessage)
-            if(useSpeech) letsTalk()
-            if(pushMessage) pushNow()
         }
     }
 }
 
 def messageHandler(data) {
-    if(logEnable) log.debug "In messageHandler (${state.version})"
+    if(logEnable) log.debug "In messageHandler (${state.version}) - data: ${data}"
     state.theMsg = ""
     def theMessages = "${data}".split(";")
 	mSize = theMessages.size()
@@ -974,11 +971,14 @@ def messageHandler(data) {
     }
 
     if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+    
+    if(useSpeech) letsTalk()
+    if(pushMessage) pushNow()
 }
 
 def pushNow() {
-    if(state.theMsg) {
-        if(logEnable) log.debug "In pushNow (${state.version})"
+    if(state.theMsg != null || state.theMsg != "") {
+        if(logEnable) log.debug "In pushNow (${state.version}) - theMsg: ${state.theMsg}"
         thePushMessage = "${app.label} \n"
         thePushMessage += state.theMsg
         if(logEnable) log.debug "In pushNow - Sending message: ${thePushMessage}"
@@ -1081,7 +1081,7 @@ def makeScheduleListHandler() {
 
 def setLevelandColorHandler(data) {
     if(logEnable) log.debug "In setLevelandColorHandler (${state.version})"
-    log.trace "In setLevelandColorHandler - data: ${data}"
+    //log.trace "In setLevelandColorHandler - data: ${data}"
     if(data == "myTeam") fColor = colorMT
     if(data == "otherTeam") fColor = colorOT
     
@@ -1170,6 +1170,11 @@ def appButtonHandler(buttonPressed) {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
 
 def checkEnableHandler() {
     state.eSwitch = false
