@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 08/31/20 - Minor updates
  *  1.1.3 - 08/29/20 - Fixed another typo
  *  1.1.2 - 08/28/20 - Fixed a typo
  *  1.1.1 - 08/27/20 - Lots of little changes
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.2"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -287,6 +288,7 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -749,13 +751,10 @@ def checkLiveGameStatsHandler(resp, data) {
 }
 
 def notificationHandler(data) {
-    if(logEnable) log.debug "In notificationHandler (${state.version})"
+    if(logEnable) log.debug "In notificationHandler (${state.version}) - data: ${data}"
     
     def (theTeam, theStatus) = data.split(";")
     if(logEnable) log.debug "In notificationHandler - theTeam: ${theTeam} - theStatus: ${theStatus}"
-    
-    if(useSpeech) letsTalk()
-    if(pushMessage) pushNow()
     
     doIt = false
     if(state.gameStatus != "Final" && onScore) {
@@ -898,7 +897,7 @@ def pregameMessageHandler() {
 }
 
 def messageHandler(data) {
-    if(logEnable) log.debug "In messageHandler (${state.version})"
+    if(logEnable) log.debug "In messageHandler (${state.version}) - data: ${data}"
     state.theMsg = ""
 
     def theMessages = "${data}".split(";")
@@ -923,6 +922,9 @@ def messageHandler(data) {
     }
 
     if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+    
+    if(useSpeech) letsTalk()
+    if(pushMessage) pushNow()
 }
 
 def pushNow() {
@@ -1118,6 +1120,11 @@ def appButtonHandler(buttonPressed) {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
 
 def checkEnableHandler() {
     state.eSwitch = false
