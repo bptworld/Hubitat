@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 08/30/20 - lots of cosmetic updates
  *  1.1.1 - 07/11/20 - Added user selectable 'Max number of times it can fail'
  *  1.1.0 - 07/10/20 - Added Maintenance Override Options
  *  1.0.9 - 05/16/20 - Logging changes
@@ -49,10 +50,12 @@
  */
 
 import hubitat.helper.RMUtils
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -81,8 +84,30 @@ def pageConfig() {
 			paragraph "<b>Notes:</b>"
 			paragraph "- You can use any type of 'switched' device you want to test. Virtual, Zwave or Zigbee<br>- Remember, any device used will turn off after 5 seconds to test.<br>- Best to use an extra plugin module for testing."
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {
+            paragraph "Each child app needs a virtual device to store the data."
+            input "useExistingDevice", "bool", title: "Use existing device (off) or have Hub Watchdog create a new one for you (on)", defaultValue:false, submitOnChange:true
+            if(useExistingDevice) {
+			    input "dataName", "text", title: "Enter a name for this Data Device (ie. 'HW - Virtual Data')", required:true, submitOnChange:true
+                paragraph "<b>A device will automaticaly be created for you as soon as you click outside of this field.</b>"
+                if(dataName) createDataChildDevice()
+                if(statusMessageD == null) statusMessageD = "Waiting on status message..."
+                paragraph "${statusMessageD}"
+            }
+            input "dataDevice", "capability.actuator", title: "Virtual Device to send the data to", required:true, multiple:false
+            if(!useExistingDevice) {
+                app.removeSetting("dataName")
+                paragraph "<small>* Device must use the 'Hub Watchdog Driver'.</small>"
+            }
+            if(dataDevice) {
+                paragraph "<i><b>Be sure to visit the device and fill in the options!</b></i>"
+            }
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Device to watch")) {
-            input(name: "watchDevice", type: "capability.switch", title: "Device", required: true, multiple: false)
+            paragraph "This is the actual device (virtual, zigbee or zwave) that will turn on and off for testing."
+            input "watchDevice", "capability.switch", title: "Device", required: true, multiple: false, submitOnChange:true
             input "maxDelay", "text", title: "Max delay allowed (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".500", submitOnChange: true
             input "warnValue", "text", title: "Get a warning in over this value (in milliseconds, ie. .200, .500, etc.)", required: true, defaultValue: ".400", submitOnChange: true
             paragraph "<small>* This will not send a notification but rather color code the value in the report so it stands out.</small>"
@@ -90,72 +115,86 @@ def pageConfig() {
             paragraph "If delay is over the max delay, it will automaticaly rerun the test in 1 minute. If x tests fail in a row, it will then use the Notification and RM options as set below."
             input "maxFail", "number", title: "Max number of times it can fail before taking actions (range: 1 to 20)", range: "1..20", required: true, defaultValue: 3, submitOnChange:true
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
-			input "isDataDevice", "capability.switch", title: "Turn this device on", required: false, multiple: false         
-			input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple: true, required: false, submitOnChange: true
-            if(sendPushMessage) {
-                input(name: "pushAll", type: "bool", defaultValue: "false", title: "Sometimes you may want to get ALL reading pushed. Turn this option 'ON' to receive all readings. <small><b>* Warning: depending on your settings, this could be a lot of messages!</b></small>", description: "Push All", submitOnChange: "true")
-                
-                paragraph "<u>Optional wildcards:</u><br>%adelay% - returns the Actual Delay value<br>%mdelay% - returns the Max Delay value"
-                input(name: "nRandom", type: "bool", defaultValue: "false", title: "Random message?", description: "Random", submitOnChange: "true")
-                if(!nRandom) input "nMessage", "text", title: "Message to be spoken - Single message",  required: true, defaultValue: "Hub Watchdog is reporting a delay of %adelay%, which is OVER the max delay of %mdelay%"
-                if(nRandom) {
-				    input "nMessage", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
-				    input(name: "nMsgList", type: "bool", defaultValue: "true", title: "Show a list view of the messages?", description: "List View", submitOnChange: "true")
-				    if(nMsgList) {
-					    def nvalues = "${nMessage}".split(";")
-					    nlistMap = ""
-    			        nvalues.each { item -> nlistMap += "${item}<br>"}
-					    paragraph "${nlistMap}"
-                    }
-				}
-            }
-		}
-        section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
-            def rules = RMUtils.getRuleList()
-		    paragraph "Perform an action with Rule Machine."
-			input "rmRule", "enum", title: "Select which rules", multiple: true, options: rules
-			input "rmAction", "enum", title: "Action", multiple: false, options: [
-                ["runRuleAct":"Run"],
-                ["stopRuleAct":"Stop"],
-                ["pauseRule":"Pause"],
-                ["resumeRule":"Resume"],
-                ["runRule":"Evaluate"],
-                ["setRuleBooleanTrue":"Set Boolean True"],
-                ["setRuleBooleanFalse":"Set Boolean False"]
-            ]
-		}
+        
+        if(watchDevice && maxDelay && warnValue && triggerMode && maxFail) {
+            section(getFormat("header-green", "${getImage("Blank")}"+" Notifications")) {
+                input "isDataDevice", "capability.switch", title: "Turn this device on", required: false, multiple: false         
+                input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple: true, required: false, submitOnChange: true
+                if(sendPushMessage) {
+                    input "pushAll", "bool", title: "Sometimes you may want to get ALL reading pushed. Turn this option 'ON' to receive all readings. <small><b>* Warning: depending on your settings, this could be a lot of messages!</b></small>", description: "Push All", defaultValue:false, submitOnChange:true
 
-        section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance Override Options")) {
-            paragraph "Sometimes there is a period that you don't want this to run. ie. During the nightly maintenance period."
-            input "maintTime", "bool", title: "Use Maintenance Override", defaultValue:false, submitOnChange:true
-            if(maintTime) {
-                input "QfromTime", "time", title: "Maintenance Time Start", required: false, width: 6
-                input "QtoTime", "time", title: "Maintenance Time End", required: false, width: 6
-                input "midnightCheckQ", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
-            } else {
-                app.removeSetting("QfromTime")
-                app.removeSetting("QtoTime")
-                app.removeSetting("midnightCheckQ")
+                    paragraph "<u>Optional wildcards:</u><br>%adelay% - returns the Actual Delay value<br>%mdelay% - returns the Max Delay value"
+                    input "nRandom", "bool", title: "Random message?", description: "Random", defaultValue:false, submitOnChange:true
+                    if(!nRandom) input "nMessage", "text", title: "Message to be spoken - Single message",  required: true, defaultValue: "Hub Watchdog is reporting a delay of %adelay%, which is OVER the max delay of %mdelay%"
+                    if(nRandom) {
+                        input "nMessage", "text", title: "Message to be spoken - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
+                        input "nMsgList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:true, submitOnChange:true
+                        if(nMsgList) {
+                            def nvalues = "${nMessage}".split(";")
+                            nlistMap = ""
+                            nvalues.each { item -> nlistMap += "${item}<br>"}
+                            paragraph "${nlistMap}"
+                        }
+                    }
+                }
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Rule Machine Options")) {
+                def rules = RMUtils.getRuleList()
+                paragraph "Perform an action with Rule Machine."
+                input "rmRule", "enum", title: "Select which rules", multiple: true, options: rules
+                input "rmAction", "enum", title: "Action", multiple: false, options: [
+                    ["runRuleAct":"Run"],
+                    ["stopRuleAct":"Stop"],
+                    ["pauseRule":"Pause"],
+                    ["resumeRule":"Resume"],
+                    ["runRule":"Evaluate"],
+                    ["setRuleBooleanTrue":"Set Boolean True"],
+                    ["setRuleBooleanFalse":"Set Boolean False"]
+                ]
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance Override Options")) {
+                paragraph "Sometimes there is a period that you don't want this to run. ie. During the nightly maintenance period."
+                input "maintTime", "bool", title: "Use Maintenance Override", defaultValue:false, submitOnChange:true
+                if(maintTime) {
+                    input "QfromTime", "time", title: "Maintenance Time Start", required: false, width: 6
+                    input "QtoTime", "time", title: "Maintenance Time End", required: false, width: 6
+                    input "midnightCheckQ", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                } else {
+                    app.removeSetting("QfromTime")
+                    app.removeSetting("QtoTime")
+                    app.removeSetting("midnightCheckQ")
+                }
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Manual Run")) {
+                paragraph "Hub Watchdog is set to run once an hour. To run now, click this button<br><small>* Remember to save any changes before running the test.</small>"
+                input "testBtn1", "button", title: "Run Test Now"
+            }
+
+            section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
+                href "reportOptions", title: "Reports", description: "Click here to view the Data Reports."
             }
         }
-    
-        section(getFormat("header-green", "${getImage("Blank")}"+" Data Device")) {}
-		section("Instructions for Data Device:", hideable: true, hidden: true) {
-            paragraph "<b>** This is where the data is stored for the reports **</b>"
-			paragraph " - Create a new 'Virtual Device'<br> - Name it something catchy like: 'Hub Watchdog Tile'<br> - Use our 'Hub Watchdog Driver' as the Driver<br> - Then select this new device below"
-			paragraph "Now all you have to do is add this device to one of your dashboards to see your data on a tile!"
-			}
-		section() {
-			input(name: "sendToDevice", type: "capability.actuator", title: "Virtual Device created to send the data to:", submitOnChange: true)
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Manual Run")) {
-            paragraph "Hub Watchdog is set to run once an hour. To run now, click this button<br>Remember to save any changes before running the test."
-            input "testBtn1", "button", title: "Run Test Now"
-        }
-        section(getFormat("header-green", "${getImage("Blank")}"+" Reports")) {
-			href "reportOptions", title: "Reports", description: "Click here to view the Data Reports."
-		}
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "debugging", submitOnChange:true
@@ -168,23 +207,23 @@ def reportOptions(){
     dynamicPage(name: "reportOptions", title: "Report Data", install: false, uninstall:false){
         section(getFormat("header-green", "${getImage("Blank")}"+" Report Data")) { 
             if(logEnable) log.debug "In bringOverResults (${state.version})"
-            theReadings = sendToDevice.currentValue("readings1")
-            theDataPoints1 = sendToDevice.currentValue("dataPoints1")
-            theDataPoints2 = sendToDevice.currentValue("dataPoints2")
-            theDataPoints3 = sendToDevice.currentValue("dataPoints3")
-            theDataPoints4 = sendToDevice.currentValue("dataPoints4")
-            theDataPoints5 = sendToDevice.currentValue("dataPoints5")
-            theDataPoints6 = sendToDevice.currentValue("dataPoints6")
-            theDataPoints7 = sendToDevice.currentValue("dataPoints7")
-            theDataPoints8 = sendToDevice.currentValue("dataPoints8")
-            readingsSize1 = sendToDevice.currentValue("readingsSize1")
-            listSizeB = sendToDevice.currentValue("listSizeB")
-            listSizeW = sendToDevice.currentValue("listSizeW")
+            theReadings = dataDevice.currentValue("readings1")
+            theDataPoints1 = dataDevice.currentValue("dataPoints1")
+            theDataPoints2 = dataDevice.currentValue("dataPoints2")
+            theDataPoints3 = dataDevice.currentValue("dataPoints3")
+            theDataPoints4 = dataDevice.currentValue("dataPoints4")
+            theDataPoints5 = dataDevice.currentValue("dataPoints5")
+            theDataPoints6 = dataDevice.currentValue("dataPoints6")
+            theDataPoints7 = dataDevice.currentValue("dataPoints7")
+            theDataPoints8 = dataDevice.currentValue("dataPoints8")
+            readingsSize1 = dataDevice.currentValue("readingsSize1")
+            listSizeB = dataDevice.currentValue("listSizeB")
+            listSizeW = dataDevice.currentValue("listSizeW")
             
-            meanD = sendToDevice.currentValue("meanD")
-            medianD = sendToDevice.currentValue("medianD")
-            minimumD = sendToDevice.currentValue("minimumD")
-            maximumD = sendToDevice.currentValue("maximumD")
+            meanD = dataDevice.currentValue("meanD")
+            medianD = dataDevice.currentValue("medianD")
+            minimumD = dataDevice.currentValue("minimumD")
+            maximumD = dataDevice.currentValue("maximumD")
             
             rangeD = "${minimumD} - ${maximumD}"
             
@@ -214,69 +253,90 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-    subscribe(watchDevice, "switch.on", startTimeHandler)
-    subscribe(watchDevice, "switch.off", endTimeHandler)
-    
-    if(triggerMode == "1_Min") runEvery1Minute(testingDevice)
-    if(triggerMode == "5_Min") runEvery5Minutes(testingDevice)
-    if(triggerMode == "10_Min") runEvery10Minutes(testingDevice)
-    if(triggerMode == "15_Min") runEvery15Minutes(testingDevice)
-    if(triggerMode == "30_Min") runEvery30Minutes(testingDevice)
-	if(triggerMode == "1_Hour") runEvery1Hour(testingDevice)
-    if(triggerMode == "3_Hour") runEvery3Hours(testingDevice)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        subscribe(watchDevice, "switch.on", startTimeHandler)
+        subscribe(watchDevice, "switch.off", endTimeHandler)
+
+        if(triggerMode == "1_Min") runEvery1Minute(testingDevice)
+        if(triggerMode == "5_Min") runEvery5Minutes(testingDevice)
+        if(triggerMode == "10_Min") runEvery10Minutes(testingDevice)
+        if(triggerMode == "15_Min") runEvery15Minutes(testingDevice)
+        if(triggerMode == "30_Min") runEvery30Minutes(testingDevice)
+        if(triggerMode == "1_Hour") runEvery1Hour(testingDevice)
+        if(triggerMode == "3_Hour") runEvery3Hours(testingDevice)
+    }
 }
 
 def testingDevice() {  
-    maintHandler()
-    if(isMaintTime) {
-        if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
-        watchDevice.off()
-        pauseExecution(5000)
-        log.trace "Hub Watchdog - ***** Starting Test *****"
-        if(logEnable) log.debug "In testingDevice - Turning Device On"
-        state.testInProgress = "no"
-        watchDevice.on()
+        maintHandler()
+        if(isMaintTime) {
+            if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
+        } else {
+            if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
+            watchDevice.off()
+            pauseExecution(5000)
+            log.trace "Hub Watchdog - ***** Starting Test *****"
+            if(logEnable) log.debug "In testingDevice - Turning Device On"
+            state.testInProgress = "no"
+            watchDevice.on()
+        }
     }
 }
 
 def startTimeHandler(evt) {
-    if(logEnable) log.debug "In startTimeHandler (${state.version})"
-    cStatus = watchDevice.currentValue("switch")
-    if(cStatus == "on") {
-        prevLastActivity = watchDevice.getLastActivity()
-        if(logEnable) log.debug "In startTimeHandler - prevLastActivity: ${prevLastActivity}" 
-        long unxPrev = prevLastActivity.getTime()
-        unxPrev = unxPrev
-        state.unxPrev = unxPrev
-        state.testInProgress = "yes"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In startTimeHandler - Device wasn't on! - device: ${cStatus}"
+        if(logEnable) log.debug "In startTimeHandler (${state.version})"
+        cStatus = watchDevice.currentValue("switch")
+        if(cStatus == "on") {
+            prevLastActivity = watchDevice.getLastActivity()
+            if(logEnable) log.debug "In startTimeHandler - prevLastActivity: ${prevLastActivity}" 
+            long unxPrev = prevLastActivity.getTime()
+            unxPrev = unxPrev
+            state.unxPrev = unxPrev
+            state.testInProgress = "yes"
+        } else {
+            if(logEnable) log.debug "In startTimeHandler - Device wasn't on! - device: ${cStatus}"
+        }
+        if(logEnable) log.debug "In startTimeHandler - Turning device off AFTER 5 seconds"
+        pauseExecution(5000)
+        watchDevice.off()
     }
-    if(logEnable) log.debug "In startTimeHandler - Turning device off AFTER 5 seconds"
-    pauseExecution(5000)
-    watchDevice.off()
 }
     
 def endTimeHandler(evt) {
-    if(logEnable) log.debug "In endTimeHandler (${state.version})"
-    cStatus = watchDevice.currentValue("switch")
-    if(cStatus == "off" && state.testInProgress == "yes") {
-        newLastActivity = watchDevice.getLastActivity()
-        if(logEnable) log.debug "In startTimeHandler - newLastActivity: ${newLastActivity}"  
-        long timeDiff
-        long unxNow = newLastActivity.getTime()
-        unxNow = unxNow
-        state.unxNow = unxNow
-        runIn(1, lookingAtData)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In endTimeHandler - Device wasn't off or testInProgress was no! - device: ${cStatus} - testInProgress: ${state.testInProgress}"
+        if(logEnable) log.debug "In endTimeHandler (${state.version})"
+        cStatus = watchDevice.currentValue("switch")
+        if(cStatus == "off" && state.testInProgress == "yes") {
+            newLastActivity = watchDevice.getLastActivity()
+            if(logEnable) log.debug "In startTimeHandler - newLastActivity: ${newLastActivity}"  
+            long timeDiff
+            long unxNow = newLastActivity.getTime()
+            unxNow = unxNow
+            state.unxNow = unxNow
+            runIn(1, lookingAtData)
+        } else {
+            if(logEnable) log.debug "In endTimeHandler - Device wasn't off or testInProgress was no! - device: ${cStatus} - testInProgress: ${state.testInProgress}"
+        }
     }
 }
 
@@ -301,11 +361,11 @@ def lookingAtData() {
 
 def sendNotification() {
     if(logEnable) log.debug "In sendNotification (${state.version})"
-    if(sendToDevice) {
-        if(logEnable) log.debug "In sendNotification - Sending data: ${state.timeDiffMs} to ${sendToDevice}"
-        sendToDevice.maxDelay(maxDelay)
-        sendToDevice.warnValue(warnValue)
-        sendToDevice.dataPoint1(state.timeDiffMs)
+    if(dataDevice) {
+        if(logEnable) log.debug "In sendNotification - Sending data: ${state.timeDiffMs} to ${dataDevice}"
+        dataDevice.maxDelay(maxDelay)
+        dataDevice.warnValue(warnValue)
+        dataDevice.dataPoint1(state.timeDiffMs)
     }
     
     def timeDiff = state.timeDiffMs.toFloat()
@@ -366,7 +426,7 @@ def pushHandler() {
 
 def pushNow(msg) {
 	if(logEnable) log.debug "In pushNow (${state.version})"
-	if(sendPushMessage) {
+	if(sendPushMessage && msg) {
 		pushMessage = "${app.label} \n"
 		pushMessage += msg
 		if(logEnable) log.debug "In pushNow - Sending message: ${pushMessage}"
@@ -405,7 +465,39 @@ def appButtonHandler(buttonPressed) {
     }
 }
     
+def createDataChildDevice() {    
+    if(logEnable) log.debug "In createDataChildDevice (${state.version})"
+    statusMessageD = ""
+    if(!getChildDevice(dataName)) {
+        if(logEnable) log.debug "In createDataChildDevice - Child device not found - Creating device: ${dataName}"
+        try {
+            addChildDevice("BPTWorld", "Hub Watchdog Driver", dataName, 1234, ["name": "${dataName}", isComponent: false])
+            if(logEnable) log.debug "In createDataChildDevice - Child device has been created! (${dataName})"
+            statusMessageD = "<b>Device has been been created. (${dataName})</b>"
+        } catch (e) { if(logEnable) log.debug "${app.label}: Unable to create the data device - ${e}" }
+    } else {
+        statusMessageD = "<b>Device Name (${dataName}) already exists.</b>"
+    }
+    return statusMessageD
+}
+
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
@@ -449,25 +541,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
