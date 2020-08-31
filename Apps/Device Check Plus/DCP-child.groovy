@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.1.7 - 08/23/20 - No wrong state devices is now optional
+ *  1.1.8 - 08/30/20 - Fixed a typo, other changes
+ *  1.1.7 - 08/23/20 - No wrong state device Notification is now optional
  *  1.1.6 - 06/22/20 - Changes to letsTalk
  *  1.1.5 - 06/13/20 - Fixed letsTalk typo
  *  1.1.4 - 06/13/20 - Cosmetic changes
@@ -63,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -135,6 +136,24 @@ def pageConfig() {
                 href "speechOptions", title:"${getImage("optionsRed")} Select Speech options", description:"Click here for Options"
             }
         }
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
 		}
@@ -410,6 +429,7 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -422,175 +442,195 @@ private removeChildDevices(delete) {
 }
 
 def initialize() {
-    setDefaults()
-	if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", checkDeviceHandler)
-    if(triggerType1 == "xDay" && timeToRun) schedule(timeToRun, checkDeviceHandler)
-    if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
-    if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
-    if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
-    if(triggerType1 == "xTherm" && thermostats && thermOption == false) subscribe(contactsOpen, "contact", thermostatModeHandler)
-    if(triggerType1 == "xTherm" && thermostats && thermOption == false) subscribe(contactsClosed, "contact", thermostatModeHandler)
-    if(triggerType1 == "xPower" && powerEvent) subscribe(powerEvent, "power", setPointHandler)
-    if(triggerType1 == "xHumidity" && humidityEvent) subscribe(humidityEvent, "humidity", setPointHandler)
-    if(triggerType1 == "xTemp" && tempEvent) subscribe(tempEvent, "temperature", setPointHandler)
-    
-    if(useTime) {
-        if(contactsOpen) subscribe(contactsOpen, "contact", checkTimeInState)
-        if(contactsClosed) subscribe(contactsClosed, "contact", checkTimeInState)
-        
-        if(switchesOn) subscribe(switchesOn, "switch", checkTimeInState)
-        if(switchesOff) subscribe(switchesOff, "switch", checkTimeInState)
-        
-        if(locksLocked) subscribe(locksLocked, "lock", checkTimeInState)
-        if(locksUnlocked) subscribe(locksUnlocked, "lock", checkTimeInState)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(triggerType1 == "xOnDemand" && onDemandSwitch) subscribe(onDemandSwitch, "switch.on", checkDeviceHandler)
+        if(triggerType1 == "xDay" && timeToRun) schedule(timeToRun, checkDeviceHandler)
+        if(triggerType1 == "xMode" && modeName) subscribe(location, "mode", modeHandler)
+        if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.heating", thermostatHandler)
+        if(triggerType1 == "xTherm" && thermostats && thermOption == true) subscribe(thermostats, "thermostatOperatingState.cooling", thermostatHandler) 
+        if(triggerType1 == "xTherm" && thermostats && thermOption == false) subscribe(contactsOpen, "contact", thermostatModeHandler)
+        if(triggerType1 == "xTherm" && thermostats && thermOption == false) subscribe(contactsClosed, "contact", thermostatModeHandler)
+        if(triggerType1 == "xPower" && powerEvent) subscribe(powerEvent, "power", setPointHandler)
+        if(triggerType1 == "xHumidity" && humidityEvent) subscribe(humidityEvent, "humidity", setPointHandler)
+        if(triggerType1 == "xTemp" && tempEvent) subscribe(tempEvent, "temperature", setPointHandler)
+
+        if(useTime) {
+            if(contactsOpen) subscribe(contactsOpen, "contact", checkTimeInState)
+            if(contactsClosed) subscribe(contactsClosed, "contact", checkTimeInState)
+
+            if(switchesOn) subscribe(switchesOn, "switch", checkTimeInState)
+            if(switchesOff) subscribe(switchesOff, "switch", checkTimeInState)
+
+            if(locksLocked) subscribe(locksLocked, "lock", checkTimeInState)
+            if(locksUnlocked) subscribe(locksUnlocked, "lock", checkTimeInState)
+        }
     }
 }
 
 def checkDeviceHandler(evt) {
-    if(logEnable) log.debug "In checkDeviceHandler (${state.version})"
-    state.wrongSwitchesMSG = ""
-    state.wrongLocksMSG = ""
-    maxCheck = 3
-    if(state.round == null) state.round = 1
-    int x = state.round
-    
-    if(!tryToFix) { x=maxCheck }
-    somethingWrong = false
-    if(logEnable) log.info "Pass: ${x} - round: ${state.round}"
-    
-    if(switchesOn) {
-        switchesOn.each { sOn -> 
-            switchName = sOn.displayName
-            switchStatus = sOn.currentValue("switch")
-            if(logEnable) log.debug "In checkDeviceHandler - Switch On - CHECKING - ${switchName} - ${switchStatus}"
-            if(switchStatus == "off") {
-                if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
-                if(x < maxCheck && tryToFix) {
-                    sOn.on()
-                    somethingWrong = true
-                    if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is in the wrong state, will try to fix."
-                }
-            } else {
-                if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is good!"
-            }
-        }
-    }
-    
-    if(switchesOff) {
-        switchesOff.each { sOff -> 
-            switchName = sOff.displayName
-            switchStatus = sOff.currentValue("switch")
-            if(logEnable) log.debug "In checkDeviceHandler - Switch Off - ${switchName} - ${switchStatus}"
-            if(switchStatus == "on") {
-                if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
-                if(x < maxCheck && tryToFix) {
-                    sOn.off()
-                    somethingWrong = true
-                    if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is in the wrong state, will try to fix."
-                }
-            } else {
-                if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is good!"
-            }
-        }
-    }
-    
-    if(locksUnlocked) {
-        locksUnlocked.each { lUnlocked ->
-            def lockName = lUnlocked.displayName
-            def lockStatus = lUnlocked.currentValue("lock")
-            if(logEnable) log.debug "In checkDeviceHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
-            if(lockStatus == "locked") {
-                if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
-                if(x <= maxCheck && tryToFix) {
-                    lUnlocked.unlock()
-                    somethingWrong = true
-                    if(logEnable) log.debug "In checkDeviceHandler - Lock: ${lockName} is in the wrong state, will try to fix."
-                }
-            }
-        }
-    }
-    
-    if(locksLocked) {
-        locksLocked.each { lLocked ->
-            def lockName = lLocked.displayName
-            def lockStatus = lLocked.currentValue("lock")
-            if(logEnable) log.debug "In checkDeviceHandler - Locks Locked - ${lockName} - ${lockStatus}"
-            if(lockStatus == "unlocked") {
-                if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
-                if(x <= maxCheck && tryToFix) {
-                    lLocked.lock()
-                    somethingWrong = true
-                    if(logEnable) log.debug "In checkDeviceHandler - Lock: ${lockName} is in the wrong state, will try to fix."
-                }
-            }
-        }
-    }
-    
-    if(somethingWrong && x < maxCheck) {
-        if(logEnable) log.debug "In checkDeviceHandler - Device was in wrong state.  Please wait..."
-        x=x+1
-        state.round = x
-        runIn(5,checkDeviceHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        state.round = null
-        checkContactHandler()
+        if(logEnable) log.debug "In checkDeviceHandler (${state.version})"
+        state.wrongSwitchesMSG = ""
+        state.wrongLocksMSG = ""
+        maxCheck = 3
+        if(state.round == null) state.round = 1
+        int x = state.round
+
+        if(!tryToFix) { x=maxCheck }
+        somethingWrong = false
+        if(logEnable) log.info "Pass: ${x} - round: ${state.round}"
+
+        if(switchesOn) {
+            switchesOn.each { sOn -> 
+                switchName = sOn.displayName
+                switchStatus = sOn.currentValue("switch")
+                if(logEnable) log.debug "In checkDeviceHandler - Switch On - CHECKING - ${switchName} - ${switchStatus}"
+                if(switchStatus == "off") {
+                    if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
+                    if(x < maxCheck && tryToFix) {
+                        sOn.on()
+                        somethingWrong = true
+                        if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is in the wrong state, will try to fix."
+                    }
+                } else {
+                    if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is good!"
+                }
+            }
+        }
+
+        if(switchesOff) {
+            switchesOff.each { sOff -> 
+                switchName = sOff.displayName
+                switchStatus = sOff.currentValue("switch")
+                if(logEnable) log.debug "In checkDeviceHandler - Switch Off - ${switchName} - ${switchStatus}"
+                if(switchStatus == "on") {
+                    if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
+                    if(x < maxCheck && tryToFix) {
+                        sOff.off()
+                        somethingWrong = true
+                        if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is in the wrong state, will try to fix."
+                    }
+                } else {
+                    if(logEnable) log.debug "In checkDeviceHandler - Device: ${switchName} is good!"
+                }
+            }
+        }
+
+        if(locksUnlocked) {
+            locksUnlocked.each { lUnlocked ->
+                def lockName = lUnlocked.displayName
+                def lockStatus = lUnlocked.currentValue("lock")
+                if(logEnable) log.debug "In checkDeviceHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
+                if(lockStatus == "locked") {
+                    if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
+                    if(x <= maxCheck && tryToFix) {
+                        lUnlocked.unlock()
+                        somethingWrong = true
+                        if(logEnable) log.debug "In checkDeviceHandler - Lock: ${lockName} is in the wrong state, will try to fix."
+                    }
+                }
+            }
+        }
+
+        if(locksLocked) {
+            locksLocked.each { lLocked ->
+                def lockName = lLocked.displayName
+                def lockStatus = lLocked.currentValue("lock")
+                if(logEnable) log.debug "In checkDeviceHandler - Locks Locked - ${lockName} - ${lockStatus}"
+                if(lockStatus == "unlocked") {
+                    if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
+                    if(x <= maxCheck && tryToFix) {
+                        lLocked.lock()
+                        somethingWrong = true
+                        if(logEnable) log.debug "In checkDeviceHandler - Lock: ${lockName} is in the wrong state, will try to fix."
+                    }
+                }
+            }
+        }
+
+        if(somethingWrong && x < maxCheck) {
+            if(logEnable) log.debug "In checkDeviceHandler - Device was in wrong state.  Please wait..."
+            x=x+1
+            state.round = x
+            runIn(5,checkDeviceHandler)
+        } else {
+            state.round = null
+            checkContactHandler()
+        }
     }
 }
 
 def checkContactHandler() {
-    if(logEnable) log.debug "In checkContactHandler (${state.version})"
-    state.wrongContactsMSG = ""
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In checkContactHandler (${state.version})"
+        state.wrongContactsMSG = ""
 
-    if(contactsOpen) {
-		contactsOpen.each { cOpen ->
-			def contactName = cOpen.displayName
-			def contactStatus = cOpen.currentValue("contact")
-			if(logEnable) log.debug "In checkContactHandler - Contact Open - ${contactName} - ${contactStatus}"
-            if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
-		}
-	}
-	if(contactsClosed) {
-		contactsClosed.each { cClosed ->
-			def contactName = cClosed.displayName
-			def contactStatus = cClosed.currentValue("contact")
-			if(logEnable) log.debug "In checkContactHandler - Contact Closed - ${contactName} - ${contactStatus}"
-			if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
+        if(contactsOpen) {
+            contactsOpen.each { cOpen ->
+                def contactName = cOpen.displayName
+                def contactStatus = cOpen.currentValue("contact")
+                if(logEnable) log.debug "In checkContactHandler - Contact Open - ${contactName} - ${contactStatus}"
+                if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
+            }
         }
-	}
-    
-// Is there Data
-    if((state.wrongSwitchesMSG != "") || (state.wrongContactsMSG != "") || (state.wrongLocksMSG != "")) {
-        if(isDataDevice) { isDataDevice.on() }
-        state.isData = "yes"
-        deviceTriggeredHandler()
+        if(contactsClosed) {
+            contactsClosed.each { cClosed ->
+                def contactName = cClosed.displayName
+                def contactStatus = cClosed.currentValue("contact")
+                if(logEnable) log.debug "In checkContactHandler - Contact Closed - ${contactName} - ${contactStatus}"
+                if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
+            }
+        }
+
+        // Is there Data
+        if((state.wrongSwitchesMSG != "") || (state.wrongContactsMSG != "") || (state.wrongLocksMSG != "")) {
+            if(isDataDevice) { isDataDevice.on() }
+            state.isData = "yes"
+            deviceTriggeredHandler()
+        }
+        if((state.wrongSwitchesMSG == "") && (state.wrongContactsMSG == "") && (state.wrongLocksMSG == "")) {
+            if(isDataDevice) { isDataDevice.off() }
+            state.isData = "no"
+            deviceNotTriggeredHandler()
+        }
+        messageHandler()
     }
-    if((state.wrongSwitchesMSG == "") && (state.wrongContactsMSG == "") && (state.wrongLocksMSG == "")) {
-        if(isDataDevice) { isDataDevice.off() }
-        state.isData = "no"
-        deviceNotTriggeredHandler()
-    }
-    messageHandler()
 }
     
 def deviceTriggeredHandler() {
-    if(logEnable) log.debug "In deviceTriggeredHandler (${state.version})"
-    if(switchesToTurnOn) {
-        switchesToTurnOn.each { it ->
-		    if(logEnable) log.debug "In deviceTriggeredHandler - Turning on ${it}"
-		    it.on()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In deviceTriggeredHandler (${state.version})"
+        if(switchesToTurnOn) {
+            switchesToTurnOn.each { it ->
+                if(logEnable) log.debug "In deviceTriggeredHandler - Turning on ${it}"
+                it.on()
+            }
         }
-	}
-    
-    if(switchesToTurnOff) {
-        switchesToTurnOff.each { it ->
-		    if(logEnable) log.debug "In deviceTriggeredHandler - Turning off ${it}"
-		    it.off()
+
+        if(switchesToTurnOff) {
+            switchesToTurnOff.each { it ->
+                if(logEnable) log.debug "In deviceTriggeredHandler - Turning off ${it}"
+                it.off()
+            }
         }
-	}
-    
-    if(switchesToFlash) {
-        flashLights()
-	}
+
+        if(switchesToFlash) {
+            flashLights()
+        }
+    }
 }
 
 def deviceNotTriggeredHandler() {
@@ -747,186 +787,211 @@ def letsTalk(msg) {
 }
 
 def modeHandler(evt) {
-	if(logEnable) log.debug "In modeHandler (${state.version})"
-	state.modeNow = location.mode
-    state.matchFound = false
-    
-    if(modeName) {
-        modeName.each { it ->
-            if(logEnable) log.debug "In modeHandler - Checking if ${state.modeNow} contains ${it}"
-            if(state.modeNow.contains(it)) {
-                state.matchFound = true
-			    if(logEnable) log.debug "In modeHandler - Match Found - modeName: ${modeName} - modeNow: ${state.modeNow}"
-		    }
-        }
-        if(state.matchFound) {
-            checkDeviceHandler()
-        } else {
-            if(logEnable) log.debug "In modeHandler - No Match Found"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In modeHandler (${state.version})"
+        state.modeNow = location.mode
+        state.matchFound = false
+
+        if(modeName) {
+            modeName.each { it ->
+                if(logEnable) log.debug "In modeHandler - Checking if ${state.modeNow} contains ${it}"
+                if(state.modeNow.contains(it)) {
+                    state.matchFound = true
+                    if(logEnable) log.debug "In modeHandler - Match Found - modeName: ${modeName} - modeNow: ${state.modeNow}"
+                }
+            }
+            if(state.matchFound) {
+                checkDeviceHandler()
+            } else {
+                if(logEnable) log.debug "In modeHandler - No Match Found"
+            }
         }
     }
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"  
-    state.daysMatch = false
-    if(days) {
-        def df = new java.text.SimpleDateFormat("EEEE")
-        df.setTimeZone(location.timeZone)
-        def day = df.format(new Date())
-        def dayCheck = days.contains(day)
-
-        if(dayCheck) {
-            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
-            state.daysMatch = true
-        } else {
-            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
-            state.daysMatch = false
-        }
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        state.daysMatch = true
+        if(logEnable) log.debug "In dayOfTheWeek (${state.version})"  
+        state.daysMatch = false
+        if(days) {
+            def df = new java.text.SimpleDateFormat("EEEE")
+            df.setTimeZone(location.timeZone)
+            def day = df.format(new Date())
+            def dayCheck = days.contains(day)
+
+            if(dayCheck) {
+                if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
+                state.daysMatch = true
+            } else {
+                if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
+                state.daysMatch = false
+            }
+        } else {
+            state.daysMatch = true
+        }
+        if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
     }
-    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 def thermostatHandler(evt) {
-    if(logEnable) log.debug "In thermostatHandler (${state.version})"
-    state.thermFound = false
-    if(thermostats) {
-        thermostats.each { therm ->
-            def thermName = therm.displayName
-			def thermStatus = therm.currentValue("thermostatOperatingState")
-            if(thermStatus != "idle") {
-                state.thermFound = true
-			    if(logEnable) log.debug "In thermostatHandler - Match Found - thermName: ${thermName} - thermStatus: ${thermStatus}"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In thermostatHandler (${state.version})"
+        state.thermFound = false
+        if(thermostats) {
+            thermostats.each { therm ->
+                def thermName = therm.displayName
+                def thermStatus = therm.currentValue("thermostatOperatingState")
+                if(thermStatus != "idle") {
+                    state.thermFound = true
+                    if(logEnable) log.debug "In thermostatHandler - Match Found - thermName: ${thermName} - thermStatus: ${thermStatus}"
+                }
             }
-		}
-        if(state.thermFound) {
-            checkDeviceHandler()
-        } else {
-            if(logEnable) log.debug "In thermostatHandler - No Match Found"
+            if(state.thermFound) {
+                checkDeviceHandler()
+            } else {
+                if(logEnable) log.debug "In thermostatHandler - No Match Found"
+            }
         }
     }
 }
 
 def thermostatModeHandler(evt) {
-    if(logEnable) log.debug "In thermostatModeHandler (${state.version})"
-    state.thermModeFound = false
-    if(thermostats) {
-        thermostats.each { thermMode ->
-            def thermModeName = thermMode.displayName
-			def thermModeStatus = thermMode.currentValue("thermostatMode")
-            if(thermModeStatus != "off") {
-                state.thermModeFound = true
-			    if(logEnable) log.debug "In thermostatModeHandler - Match Found - thermModeName: ${thermModeName} - thermMStatus: ${thermModeStatus}"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In thermostatModeHandler (${state.version})"
+        state.thermModeFound = false
+        if(thermostats) {
+            thermostats.each { thermMode ->
+                def thermModeName = thermMode.displayName
+                def thermModeStatus = thermMode.currentValue("thermostatMode")
+                if(thermModeStatus != "off") {
+                    state.thermModeFound = true
+                    if(logEnable) log.debug "In thermostatModeHandler - Match Found - thermModeName: ${thermModeName} - thermMStatus: ${thermModeStatus}"
+                }
             }
-		}
-        if(state.thermModeFound) {
-            checkDeviceHandler()
-        } else {
-            if(logEnable) log.debug "In thermostatModeHandler - No Match Found"
-        }
-    } 
+            if(state.thermModeFound) {
+                checkDeviceHandler()
+            } else {
+                if(logEnable) log.debug "In thermostatModeHandler - No Match Found"
+            }
+        } 
+    }
 }
 
 def setPointHandler(evt) {
-	state.setPointDevice = evt.displayName
-	setPointValue = evt.value	
-    state.setPointMSG = ""
-    
-	setPointValue1 = setPointValue.toDouble()
-	if(logEnable) log.debug "In setPointHandler - Device: ${state.setPointDevice}, setPointHigh: ${setPointHigh}, setPointLow: ${setPointLow}, Acutal value: ${setPointValue1} - setPointHighOK: ${state.setPointHighOK}, setPointLowOK: ${state.setPointLowOK}"
-	// *** setPointHigh ***
-	if(oSetPointHigh && !oSetPointLow) {
-		if(setPointValue1 > setPointHigh) {
-			if(state.setPointHighOK != "no") {
-				if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
-				state.setPointHighOK = "no"
-				state.isData = "yes"
-                state.setPointMSG += "${state.setPointDevice}, "
-			} else {
-				if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-		if(setPointValue1 < setPointHigh) {
-			if(state.setPointHighOK == "no") {
-				if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${setPointHigh}"
-				state.setPointHighOK = "yes"
-				state.isData = "no"
-			} else {
-				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-	}
-	// *** setPointLow ***
-	if(oSetPointLow && !oSetPointHigh) {
-		if(setPointValue1 < setPointLow) {
-			if(state.setPointLowOK != "no") {
-				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
-				state.setPointLowOK = "no"
-				state.isData = "yes"
-                state.setPointMSG += "${state.setPointDevice}, "
-			} else {
-				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-		if(setPointValue1 > setPointLow) {
-			if(state.setPointLowOK == "no") {
-				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${setPointLow}"
-				state.setPointLowOK = "yes"
-				state.isData = "no"
-			} else {
-				if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-	}
-	// *** Inbetween ***
-	if(oSetPointHigh && oSetPointLow) {
-		if(setPointValue1 > setPointHigh) {
-			if(state.setPointHighOK != "no") {
-				if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
-				state.setPointHighOK = "no"
-				state.isData = "yes"
-                state.setPointMSG += "${state.setPointDevice}, "
-			} else {
-				if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-		if(setPointValue1 < setPointLow) {
-			if(state.setPointLowOK != "no") {
-				if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
-				state.setPointLowOK = "no"
-				state.isData = "yes"
-                state.setPointMSG += "${state.setPointDevice}, "
-			} else {
-				if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-		if((setPointValue1 <= setPointHigh) && (setPointValue1 >= setPointLow)) {
-			if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
-				if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${setPointHigh} and setPointLow: ${setPointLow}"
-				state.setPointHighOK = "yes"
-				state.setPointLowOK = "yes"
-				state.isData = "no"
-			} else {
-				if(logEnable) log.debug "In setPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
-			}
-		}
-	}
-    if(state.isData == "yes") {
-        if(logEnable) log.debug "In setPointHandler - Data Found"
-        if(notifyDelay) {
-            state.notifyDel = notifyDelay * 60
-            runIn(state.notifyDel,deviceTriggeredHandler)
-            runIn(state.notifyDel,messageHandler)
-        } else {
-            deviceTriggeredHandler()
-            messageHandler()
-        }
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In setPointHandler - No Data Found"
-        deviceNotTriggeredHandler()
-        unschedule
+        state.setPointDevice = evt.displayName
+        setPointValue = evt.value	
+        state.setPointMSG = ""
+
+        setPointValue1 = setPointValue.toDouble()
+        if(logEnable) log.debug "In setPointHandler - Device: ${state.setPointDevice}, setPointHigh: ${setPointHigh}, setPointLow: ${setPointLow}, Acutal value: ${setPointValue1} - setPointHighOK: ${state.setPointHighOK}, setPointLowOK: ${state.setPointLowOK}"
+        // *** setPointHigh ***
+        if(oSetPointHigh && !oSetPointLow) {
+            if(setPointValue1 > setPointHigh) {
+                if(state.setPointHighOK != "no") {
+                    if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
+                    state.setPointHighOK = "no"
+                    state.isData = "yes"
+                    state.setPointMSG += "${state.setPointDevice}, "
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+            if(setPointValue1 < setPointHigh) {
+                if(state.setPointHighOK == "no") {
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${setPointHigh}"
+                    state.setPointHighOK = "yes"
+                    state.isData = "no"
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+        }
+        // *** setPointLow ***
+        if(oSetPointLow && !oSetPointHigh) {
+            if(setPointValue1 < setPointLow) {
+                if(state.setPointLowOK != "no") {
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
+                    state.setPointLowOK = "no"
+                    state.isData = "yes"
+                    state.setPointMSG += "${state.setPointDevice}, "
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+            if(setPointValue1 > setPointLow) {
+                if(state.setPointLowOK == "no") {
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${setPointLow}"
+                    state.setPointLowOK = "yes"
+                    state.isData = "no"
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+        }
+        // *** Inbetween ***
+        if(oSetPointHigh && oSetPointLow) {
+            if(setPointValue1 > setPointHigh) {
+                if(state.setPointHighOK != "no") {
+                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
+                    state.setPointHighOK = "no"
+                    state.isData = "yes"
+                    state.setPointMSG += "${state.setPointDevice}, "
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+            if(setPointValue1 < setPointLow) {
+                if(state.setPointLowOK != "no") {
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
+                    state.setPointLowOK = "no"
+                    state.isData = "yes"
+                    state.setPointMSG += "${state.setPointDevice}, "
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+            if((setPointValue1 <= setPointHigh) && (setPointValue1 >= setPointLow)) {
+                if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
+                    if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${setPointHigh} and setPointLow: ${setPointLow}"
+                    state.setPointHighOK = "yes"
+                    state.setPointLowOK = "yes"
+                    state.isData = "no"
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Both) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                }
+            }
+        }
+        if(state.isData == "yes") {
+            if(logEnable) log.debug "In setPointHandler - Data Found"
+            if(notifyDelay) {
+                state.notifyDel = notifyDelay * 60
+                runIn(state.notifyDel,deviceTriggeredHandler)
+                runIn(state.notifyDel,messageHandler)
+            } else {
+                deviceTriggeredHandler()
+                messageHandler()
+            }
+        } else {
+            if(logEnable) log.debug "In setPointHandler - No Data Found"
+            deviceNotTriggeredHandler()
+            unschedule
+        }
     }
 }
 
@@ -1067,6 +1132,22 @@ def createChildDevice() {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
