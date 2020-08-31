@@ -45,10 +45,6 @@
  *  1.0.1 - 09/25/19 - Added a lot of data points
  *  1.0.0 - 09/24/19 - Initial release
  */
-    
-def setVersion(){
-	version = "1.1.0" 
-}
 
 metadata {
 	definition (name: "Hub Watchdog Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Hub%20Watchdog/HW-driver.groovy") {
@@ -387,10 +383,12 @@ def makeList(theMessage) {
                 midNumber = (int)(numberItems/2)
                 med = numberItems %2 != 0 ? state.readings1[midNumber] : (state.readings1[midNumber] + state.readings1[midNumber-1])/2
                 median = med.toFloat().round(3)
-                minimum = Collections.min(state.readings1)
-                maximum = Collections.max(state.readings1)
+                minimum = state.readings1.min()
+                maximum = state.readings1.max()
+                //log.trace "min: ${minimum} - max: ${maximum}"
             } catch(e) {
-                log.error "Hub Watchdog Driver - ${e}"  
+                log.error "Hub Watchdog Driver - error to follow"
+                log.error e
             }
             
     // *** end From
@@ -410,14 +408,17 @@ def makeList(theMessage) {
 def installed(){
     log.info "Hub Watchdog Driver has been Installed"
     clearData1()
+    initialize()
 }
 
 def updated() {
     log.info "Hub Watchdog Driver has been Updated"
+    initialize()
 }
 
 def initialize() {
     log.info "In initialize"
+    
 }
 
 def getDateTime() {
