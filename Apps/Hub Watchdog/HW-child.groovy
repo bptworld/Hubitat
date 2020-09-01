@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 09/01/20 - Changes for only 40 data points
  *  1.1.2 - 08/30/20 - lots of cosmetic updates
  *  1.1.1 - 07/11/20 - Added user selectable 'Max number of times it can fail'
  *  1.1.0 - 07/10/20 - Added Maintenance Override Options
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -210,12 +211,6 @@ def reportOptions(){
             theReadings = dataDevice.currentValue("readings1")
             theDataPoints1 = dataDevice.currentValue("dataPoints1")
             theDataPoints2 = dataDevice.currentValue("dataPoints2")
-            theDataPoints3 = dataDevice.currentValue("dataPoints3")
-            theDataPoints4 = dataDevice.currentValue("dataPoints4")
-            theDataPoints5 = dataDevice.currentValue("dataPoints5")
-            theDataPoints6 = dataDevice.currentValue("dataPoints6")
-            theDataPoints7 = dataDevice.currentValue("dataPoints7")
-            theDataPoints8 = dataDevice.currentValue("dataPoints8")
             readingsSize1 = dataDevice.currentValue("readingsSize1")
             listSizeB = dataDevice.currentValue("listSizeB")
             listSizeW = dataDevice.currentValue("listSizeW")
@@ -234,9 +229,8 @@ def reportOptions(){
             
             paragraph "<table width='100%'><tr><td width='45%'>${reportStats1}</td><td width='10%'> </td><td width='45%'>${reportStats2}</td></tr></table>"
             paragraph "<hr>"
-            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='4'><b>Raw Data - Last 80 Readings</b></a></td></tr>"
-            report1+= "<tr><td width='25%'>${theDataPoints1}</td><td width='25%'>${theDataPoints2}</td><td width='25%'>${theDataPoints3}</td><td width='25%'>${theDataPoints4}</td></tr>"
-            report1+= "<tr><td>${theDataPoints5}</td><td>${theDataPoints6}</td><td>${theDataPoints7}</td><td>${theDataPoints8}</td></tr>"
+            report1 = "<table width='100%' align='center' border='1'><tr><td colspan='4'><b>Raw Data - Readings</b></a></td></tr>"
+            report1+= "<tr><td width='25%'>${theDataPoints1}</td><td width='25%'>${theDataPoints2}</td></tr>"
             report1+= "</table>"
             paragraph "${report1}"
             paragraph "<hr>"
