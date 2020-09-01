@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 09/01/20 - Now only holds 40 max data points, Changed short names.
  *  1.1.0 - 05/01/20 - Removed some old code
  *  1.0.9 - 04/30/20 - Fixed a bug
  *  1.0.8 - 09/30/19 - Lots of little changes
@@ -55,21 +56,11 @@ metadata {
         attribute "readings1", "string"
     	attribute "dataPoints1", "string"
         attribute "dataPoints2", "string"
-        attribute "dataPoints3", "string"
-        attribute "dataPoints4", "string"
-        attribute "dataPoints5", "string"
-        attribute "dataPoints6", "string"
-        attribute "dataPoints7", "string"
-        attribute "dataPoints8", "string"
+
         attribute "lastDataPoint1", "string"
         attribute "numOfCharacters1", "string"
         attribute "numOfCharacters2", "string"
-        attribute "numOfCharacters3", "string"
-        attribute "numOfCharacters4", "string"
-        attribute "numOfCharacters5", "string"
-        attribute "numOfCharacters6", "string"
-        attribute "numOfCharacters7", "string"
-        attribute "numOfCharacters8", "string"
+        
         attribute "maxDelay", "number"
         attribute "warnValue", "number"
         attribute "readingsSize1", "number"
@@ -81,6 +72,7 @@ metadata {
         attribute "minimumD", "number"
         attribute "maximumD", "number"
         attribute "list1", "string"
+        attribute "theListSize", "number"
         attribute "lastUpdated", "string"
         
         command "dataPoint1"
@@ -96,7 +88,7 @@ metadata {
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
             input("warnColor", "text", title: "Change color for 'Close to Threshold' readings", required: true, defaultValue: "orange")
             input("overColor", "text", title: "Change color for 'Over Threshold' readings", required: true, defaultValue: "red")
-            input("uniqueID", "text", title: "Unique Identifier (Virt, Zwav, Zigb or Other)", required: true)
+            input("uniqueID", "text", title: "Unique Identifier (Vt, Zw, Zb or O)", required: true)
 			input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
     }
@@ -131,223 +123,66 @@ def makeList(theMessage) {
             state.readings1.add(0,theMessage) 
             
             if(state.readings1) readingsSize1 = state.readings1.size()
-            if(readingsSize1 > 80) state.readings1.removeAt(80)
+            if(readingsSize1 > 40) state.readings1.removeAt(40)
             
             getDateTime()
             
             if(theMessage >= maxDelay) {
-                nMessage1 = "${newdate} - <span style='color: ${overColor}'>${theMessage}</span> - ${uniqueID}"
+                nMessage1 = "${newdate} - <span style='color: ${overColor}'>${theMessage}</span> ${uniqueID}"
                 if(state.listSizeB == null) state.listSizeB = 0
                 state.listSizeB = state.listSizeB + 1
             } else if(theMessage >= warnValue) {
-                nMessage1 = "${newdate} - <span style='color: ${warnColor}'>${theMessage}</span> - ${uniqueID}"
+                nMessage1 = "${newdate} - <span style='color: ${warnColor}'>${theMessage}</span> ${uniqueID}"
                 if(state.listSizeW == null) state.listSizeW = 0
                 state.listSizeW = state.listSizeW + 1
             } else {
-                nMessage1 = "${newdate} - ${theMessage} - ${uniqueID}"
+                nMessage1 = "${newdate} - ${theMessage} ${uniqueID}"
             }
-            if(state.list1 == null) state.list1 = []
-            state.list1.add(0,nMessage1)  
+            if(state.list1 == null) state.list1 = []          
+            state.list1.add(0,nMessage1)
 
             if(state.list1) {
-                listSize1 = state.list1.size()
+                int listSize1 = state.list1.size()
+                keepListUnder()
             } else {
-                listSize1 = 0
+                int listSize1 = 0
             }
-            
-            if(listSize1 > 80) state.list1.removeAt(80)
 
+            int listSizeLines = state.list1.size()
             String result1 = state.list1.join(";")
             def lines1 = result1.split(";")
             
-            if(logEnable) log.trace "In makeList - All - listSize1: ${listSize1}"
             theData1 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 1) theData1 += "${lines1[0]}<br>"
-            if(listSize1 >= 2) theData1 += "${lines1[1]}<br>"
-            if(listSize1 >= 3) theData1 += "${lines1[2]}<br>"
-            if(listSize1 >= 4) theData1 += "${lines1[3]}<br>"
-            if(listSize1 >= 5) theData1 += "${lines1[4]}<br>"
-            if(listSize1 >= 6) theData1 += "${lines1[5]}<br>"
-            if(listSize1 >= 7) theData1 += "${lines1[6]}<br>"
-            if(listSize1 >= 8) theData1 += "${lines1[7]}<br>"
-            if(listSize1 >= 9) theData1 += "${lines1[8]}<br>"
-            if(listSize1 >= 10) theData1 += "${lines1[9]}<br>"
+            for(x=0;x < listSizeLines;x++) {
+                if(x > 0 && x <= 19) {
+                    theData1 += "${lines1[x]}<br>"
+                }
+            }
             theData1 += "</div></td></tr></table>"
-            
-            dataCharCount1 = theData1.length()
-	        if(dataCharCount1 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints1 - ${dataCharCount1} Characters"
-	        } else {
-                theData1 = "Too many characters to display on Dashboard (${dataCharCount1})"
-	        }
+            numOfCharacters1 = theData1.size()
             
             theData2 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 11) theData2 += "${lines1[10]}<br>"
-            if(listSize1 >= 12) theData2 += "${lines1[11]}<br>"
-            if(listSize1 >= 13) theData2 += "${lines1[12]}<br>"
-            if(listSize1 >= 14) theData2 += "${lines1[13]}<br>"
-            if(listSize1 >= 15) theData2 += "${lines1[14]}<br>"
-            if(listSize1 >= 16) theData2 += "${lines1[15]}<br>"
-            if(listSize1 >= 17) theData2 += "${lines1[16]}<br>"
-            if(listSize1 >= 18) theData2 += "${lines1[17]}<br>"
-            if(listSize1 >= 19) theData2 += "${lines1[18]}<br>"
-            if(listSize1 >= 20) theData2 += "${lines1[19]}"
+            for(x=19;x < listSize1;x++) {
+                if(x > 19 && x <= 39) {
+                    theData2 += "${lines1[x]}<br>"
+                }
+            }
             theData2 += "</div></td></tr></table>"
-    
-            dataCharCount2 = theData2.length()
-	        if(dataCharCount2 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints2 - ${dataCharCount2} Characters"
-	        } else {
-                theData2 = "Too many characters to display on Dashboard (${dataCharCount2})"
-	        }
-            
-            theData3 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 21) theData3 += "${lines1[20]}<br>"
-            if(listSize1 >= 22) theData3 += "${lines1[21]}<br>"
-            if(listSize1 >= 23) theData3 += "${lines1[22]}<br>"
-            if(listSize1 >= 24) theData3 += "${lines1[23]}<br>"
-            if(listSize1 >= 25) theData3 += "${lines1[24]}<br>"
-            if(listSize1 >= 26) theData3 += "${lines1[25]}<br>"
-            if(listSize1 >= 27) theData3 += "${lines1[26]}<br>"
-            if(listSize1 >= 28) theData3 += "${lines1[27]}<br>"
-            if(listSize1 >= 29) theData3 += "${lines1[28]}<br>"
-            if(listSize1 >= 30) theData3 += "${lines1[29]}"
-            theData3 += "</div></td></tr></table>"
-    
-            dataCharCount3 = theData3.length()
-	        if(dataCharCount3 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints3 - ${dataCharCount3} Characters"
-	        } else {
-                theData3 = "Too many characters to display on Dashboard (${dataCharCount3})"
-	        }
-            
-            theData4 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 31) theData4 += "${lines1[30]}<br>"
-            if(listSize1 >= 32) theData4 += "${lines1[31]}<br>"
-            if(listSize1 >= 33) theData4 += "${lines1[32]}<br>"
-            if(listSize1 >= 34) theData4 += "${lines1[33]}<br>"
-            if(listSize1 >= 35) theData4 += "${lines1[34]}<br>"
-            if(listSize1 >= 36) theData4 += "${lines1[35]}<br>"
-            if(listSize1 >= 37) theData4 += "${lines1[36]}<br>"
-            if(listSize1 >= 38) theData4 += "${lines1[37]}<br>"
-            if(listSize1 >= 39) theData4 += "${lines1[38]}<br>"
-            if(listSize1 >= 40) theData4 += "${lines1[39]}"
-            theData4 += "</div></td></tr></table>"
-    
-            dataCharCount4 = theData4.length()
-	        if(dataCharCount4 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints4 - ${dataCharCount4} Characters"
-	        } else {
-                theData4 = "Too many characters to display on Dashboard (${dataCharCount4})"
-	        }
-            
-            theData5 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 41) theData5 += "${lines1[40]}<br>"
-            if(listSize1 >= 42) theData5 += "${lines1[41]}<br>"
-            if(listSize1 >= 43) theData5 += "${lines1[42]}<br>"
-            if(listSize1 >= 44) theData5 += "${lines1[43]}<br>"
-            if(listSize1 >= 45) theData5 += "${lines1[44]}<br>"
-            if(listSize1 >= 46) theData5 += "${lines1[45]}<br>"
-            if(listSize1 >= 47) theData5 += "${lines1[46]}<br>"
-            if(listSize1 >= 48) theData5 += "${lines1[47]}<br>"
-            if(listSize1 >= 49) theData5 += "${lines1[48]}<br>"
-            if(listSize1 >= 50) theData5 += "${lines1[49]}"
-            theData5 += "</div></td></tr></table>"
-    
-            dataCharCount5 = theData5.length()
-	        if(dataCharCount5 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints5 - ${dataCharCount5} Characters"
-	        } else {
-                theData5 = "Too many characters to display on Dashboard (${dataCharCount5})"
-	        }
-            
-            theData6 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 51) theData6 += "${lines1[50]}<br>"
-            if(listSize1 >= 52) theData6 += "${lines1[51]}<br>"
-            if(listSize1 >= 53) theData6 += "${lines1[52]}<br>"
-            if(listSize1 >= 54) theData6 += "${lines1[53]}<br>"
-            if(listSize1 >= 55) theData6 += "${lines1[54]}<br>"
-            if(listSize1 >= 56) theData6 += "${lines1[55]}<br>"
-            if(listSize1 >= 57) theData6 += "${lines1[56]}<br>"
-            if(listSize1 >= 58) theData6 += "${lines1[57]}<br>"
-            if(listSize1 >= 59) theData6 += "${lines1[58]}<br>"
-            if(listSize1 >= 60) theData6 += "${lines1[59]}"
-            theData6 += "</div></td></tr></table>"
-    
-            dataCharCount6 = theData6.length()
-	        if(dataCharCount6 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints6 - ${dataCharCount6} Characters"
-	        } else {
-                theData6 = "Too many characters to display on Dashboard (${dataCharCount6})"
-	        }
-            
-            theData7 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 61) theData7 += "${lines1[60]}<br>"
-            if(listSize1 >= 62) theData7 += "${lines1[61]}<br>"
-            if(listSize1 >= 63) theData7 += "${lines1[62]}<br>"
-            if(listSize1 >= 64) theData7 += "${lines1[63]}<br>"
-            if(listSize1 >= 65) theData7 += "${lines1[64]}<br>"
-            if(listSize1 >= 66) theData7 += "${lines1[65]}<br>"
-            if(listSize1 >= 67) theData7 += "${lines1[66]}<br>"
-            if(listSize1 >= 68) theData7 += "${lines1[67]}<br>"
-            if(listSize1 >= 69) theData7 += "${lines1[68]}<br>"
-            if(listSize1 >= 70) theData7 += "${lines1[69]}"
-            theData7 += "</div></td></tr></table>"
-    
-            dataCharCount7 = theData7.length()
-	        if(dataCharCount7 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints7 - ${dataCharCount7} Characters"
-	        } else {
-                theData7 = "Too many characters to display on Dashboard (${dataCharCount7})"
-	        }
-            
-            theData8 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            if(listSize1 >= 71) theData8 += "${lines1[70]}<br>"
-            if(listSize1 >= 72) theData8 += "${lines1[71]}<br>"
-            if(listSize1 >= 73) theData8 += "${lines1[72]}<br>"
-            if(listSize1 >= 74) theData8 += "${lines1[73]}<br>"
-            if(listSize1 >= 75) theData8 += "${lines1[74]}<br>"
-            if(listSize1 >= 76) theData8 += "${lines1[75]}<br>"
-            if(listSize1 >= 77) theData8 += "${lines1[76]}<br>"
-            if(listSize1 >= 78) theData8 += "${lines1[77]}<br>"
-            if(listSize1 >= 79) theData8 += "${lines1[78]}<br>"
-            if(listSize1 >= 80) theData8 += "${lines1[79]}"
-            theData8 += "</div></td></tr></table>"
-    
-            dataCharCount8 = theData8.length()
-	        if(dataCharCount8 <= 1024) {
-	        	if(logEnable) log.debug "Hub Watchdog Driver - dataPoints8 - ${dataCharCount8} Characters"
-	        } else {
-                theData8 = "Too many characters to display on Dashboard (${dataCharCount8})"
-	        }
+            numOfCharacters2 = theData2.size()            
             
 	        sendEvent(name: "dataPoints1", value: theData1, displayed: true)
-            sendEvent(name: "numOfCharacters1", value: dataCharCount1, displayed: true)
+            sendEvent(name: "numOfCharacters1", value: numOfCharacters1, displayed: true)
             
             sendEvent(name: "dataPoints2", value: theData2, displayed: true)
-            sendEvent(name: "numOfCharacters2", value: dataCharCount2, displayed: true)
-            
-            sendEvent(name: "dataPoints3", value: theData3, displayed: true)
-            sendEvent(name: "numOfCharacters3", value: dataCharCount3, displayed: true)
-            
-            sendEvent(name: "dataPoints4", value: theData4, displayed: true)
-            sendEvent(name: "numOfCharacters4", value: dataCharCount4, displayed: true)
-            
-            sendEvent(name: "dataPoints5", value: theData5, displayed: true)
-            sendEvent(name: "numOfCharacters5", value: dataCharCount5, displayed: true)
-            
-            sendEvent(name: "dataPoints6", value: theData6, displayed: true)
-            sendEvent(name: "numOfCharacters6", value: dataCharCount6, displayed: true)
-            
-            sendEvent(name: "dataPoints7", value: theData7, displayed: true)
-            sendEvent(name: "numOfCharacters7", value: dataCharCount7, displayed: true)
-            
-            sendEvent(name: "dataPoints8", value: theData8, displayed: true)
-            sendEvent(name: "numOfCharacters8", value: dataCharCount8, displayed: true)
+            sendEvent(name: "numOfCharacters2", value: numOfCharacters2, displayed: true)
             
             sendEvent(name: "readings1", value: state.readings1, displayed: true)
             
-            sendEvent(name: "list1", value: state.list1, displayed: true, isStateChange:true)
+            String result = state.list1.join(",")
+            theListSize = result.size()
+            sendEvent(name: "theListSize", value: theListSize, displayed: true)
+            sendEvent(name: "list1", value: state.list1, displayed: true, isStateChange:true)           
+            
             sendEvent(name: "listSizeB", value: state.listSizeB, displayed: true)
             sendEvent(name: "listSizeW", value: state.listSizeW, displayed: true)
             
@@ -385,7 +220,6 @@ def makeList(theMessage) {
                 median = med.toFloat().round(3)
                 minimum = state.readings1.min()
                 maximum = state.readings1.max()
-                //log.trace "min: ${minimum} - max: ${maximum}"
             } catch(e) {
                 log.error "Hub Watchdog Driver - error to follow"
                 log.error e
@@ -419,6 +253,22 @@ def updated() {
 def initialize() {
     log.info "In initialize"
     
+}
+
+def keepListUnder() {    
+    int listSizeLines = state.list1.size()
+    
+    String result = state.list1.join(",")
+    int listSizeCharacters = result.size()
+    
+    if(logEnable) log.debug "In keepListUnder - listSizeLines: ${listSizeLines} - listSizeCharacters: ${listSizeCharacters}"
+    
+    if(listSizeCharacters > 1024) {
+        state.list1.remove(listSizeLines - 1)
+        runIn(1, keepListUnder)
+    } else {
+        if(logEnable) log.debug "In keepListUnder - All good!"
+    }
 }
 
 def getDateTime() {
@@ -457,24 +307,6 @@ def clearData1() {
     sendEvent(name: "dataPoints2", value: "-", displayed: true)
     sendEvent(name: "numOfCharacters2", value: 0, displayed: true)
     
-    sendEvent(name: "dataPoints3", value: "-", displayed: true)
-    sendEvent(name: "numOfCharacters3", value: 0, displayed: true)
-    
-    sendEvent(name: "dataPoints4", value: "-", displayed: true)
-    sendEvent(name: "numOfCharacters4", value: 0, displayed: true)
-    
-    sendEvent(name: "dataPoints5", value: "-", displayed: true)
-    sendEvent(name: "numOfCharacters5", value: 0, displayed: true)
-    
-    sendEvent(name: "dataPoints6", value: "-", displayed: true)
-    sendEvent(name: "numOfCharacters6", value: 0, displayed: true)
-    
-    sendEvent(name: "dataPoints7", value: "-", displayed: true)
-    sendEvent(name: "numOfCharacters7", value: 0, displayed: true)
-    
-    sendEvent(name: "dataPoints8", value: "-", displayed: true)
-    sendEvent(name: "numOfCharacters8", value: 0, displayed: true)
-    
     sendEvent(name: "readings1", value: state.readings1, displayed: true)
     sendEvent(name: "readingsSize1", value: 0, displayed: true)
     sendEvent(name: "listSizeB", value: 0, displayed: true)
@@ -487,4 +319,11 @@ def clearData1() {
     sendEvent(name: "medianD", value: 0, displayed: true)
     sendEvent(name: "minimumD", value: 0, displayed: true)
     sendEvent(name: "maximumD", value: 0, displayed: true)
+    
+    state.clear()
+    
+    if(uniqueID == "Virt") { app?.updateSetting("uniqueID",[value:"Vt",type:"text"]) }
+    if(uniqueID == "Zwav") { app?.updateSetting("uniqueID",[value:"Zw",type:"text"]) }
+    if(uniqueID == "Zigb") { app?.updateSetting("uniqueID",[value:"Zb",type:"text"]) }
+    if(uniqueID == "Other") { app?.updateSetting("uniqueID",[value:"O",type:"text"]) }
 }
