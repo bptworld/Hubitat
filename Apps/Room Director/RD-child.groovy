@@ -32,16 +32,8 @@
  *
  *  Changes:
  *
- *  1.2.9 - 08/21/20 - And now for something completely different 
- *  1.2.8 - 08/19/20 - Flip a coin - works or not...
- *  1.2.7 - 08/19/20 - Hey, how about some sunset/sunrise adjustments! 
- *  1.2.6 - 08/18/20 - Another set of changes
- *  1.2.5 - 08/18/20 - Lets try something new!
- *  1.2.4 - 08/17/20 - Getting closer!
- *  1.2.3 - 08/17/20 - More adjustments to sunset/sunrise
- *  1.2.2 - 08/16/20 - Fix for sunset/sunrise
- *  1.2.1 - 08/15/20 - Reworked Permanent Dim
- *  1.2.0 - 08/15/20 - Added ability to use multiple triggers, Added Time and Sunset/Sunrise triggers, Added Permanent Dim
+ *  1.3.1 - 09/01/20 - Cosmetic changes, more options
+ *  1.3.0 - 08/22/20 - Working on notifications
  *  ---
  *  1.0.0 - 11/12/19 - Initial release.
  *
@@ -54,7 +46,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.2.9"
+	state.version = "1.3.1"
 }
 
 definition(
@@ -77,6 +69,8 @@ preferences {
     page(name: "sleepConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "speechOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig")
     page(name: "examples", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "occupancyConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
+    page(name: "helperConfig", title: "", install: false, uninstall: true, nextPage: "pageConfig")
 }
 
 def pageConfig() {
@@ -90,149 +84,23 @@ def pageConfig() {
 	    section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Trigger")) {
             paragraph "This is what will trigger the room to be occupied."
     		
-            input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the room", required:false, multiple:true, submitOnChange:true
-            if(myContacts) input "contactOption", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
-
-            input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the room", required:false, multiple:true
-
-            input "myPresence", "capability.presenceSensor", title: "Select the Presence Sensor(s) to activate the room", required:false, multiple:true
-
-            input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the room", required: false, multiple:true
-            
-            input "sunRestriction", "bool", title: "From Sunset to Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
-            if(sunRestriction) {
-                paragraph "<b>Sunset Offset</b>"
-                input "setBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
-                input "offsetSunset", "number", title: "Offset (minutes)", width:6
-                
-                paragraph "<b>Sunrise Offset</b>"
-                input "riseBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
-                input "offsetSunrise", "number", title: "Offset(minutes)", width:6
-                
-                app.removeSetting("fromTime")
-                app.removeSetting("toTime")
-                app.removeSetting("midnightCheckR")
+            if(myContacts || myMotion || myPresence || mySwitches) {
+                href "occupancyConfig", title:"${getImage("optionsGreen")} Setup Occupany Triggers", description:"Click here for Options"
             } else {
-                input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
-                input "toTime", "time", title: "To", required: false, width: 6
-                input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
-                
-                app.removeSetting("offsetSunset")
-                app.removeSetting("offsetSunrise") 
+                href "occupancyConfig", title:"${getImage("optionsRed")} Setup Occupany Triggers", description:"Click here for Options"
             }
 		}
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Helper Device (optional)")) {
-            paragraph "This will help the room stay occupied but not trigger the room to be active."
+            paragraph "This will help the room stay occupied but not trigger the room to be active on its own."
             href "examples", title:"${getImage("instructions")} Find Examples of Secondary Trigger use here", description:"Click here for examples"
-            paragraph "<hr>"
-            input "useHelper2", "bool", title: "Use Helper?", defaultValue:false, submitOnChange:true
-            if(useHelper2) {
-                input "triggerMode2", "enum", title: "Select room helper Type", submitOnChange: true, options: ["Contact", "Humidity", "Motion", "Power", "Presence", "Switch"], required: false
-                if(triggerMode2 == "Contact"){
-                    input "myContacts2", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
-                    input "contactOption2", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
-                }
-                if(triggerMode2 == "Humidity"){
-                    input "myHumidity2", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
-                    input "myHumiditySP2", "number", title: "Select humidity breakpoint - if above then Occupied, below is Unoccupied", required:false
-                }
-                if(triggerMode2 == "Motion"){
-                    input "myMotion2", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
-                }
-                if(triggerMode2 == "Power"){
-                    input "myPower2", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
-                    input "myPowerSP2", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
-                }
-                if(triggerMode2 == "Presence"){
-                    input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
-                }
-                if(triggerMode2 == "Switch"){
-                    input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
-                }
+            
+            if(myContacts2 || myHumidity2 || myMotion2 || myPower2 || myPresence2 || mySwitches2) {
+                href "helperConfig", title:"${getImage("optionsGreen")} Setup Helper Triggers", description:"Click here for Options"
             } else {
-                app.removeSetting("triggerMode2")
-                app.removeSetting("myContacts2")
-                app.removeSetting("myHumidity2")
-                app.removeSetting("myMotion2")
-                app.removeSetting("myPower2")
-                app.removeSetting("myPresence2")
-                app.removeSetting("mySwitches2")
-            }
-            
-            if(useHelper2) {
-                paragraph "<hr>"
-                input "useHelper3", "bool", title: "Use another Helper?", defaultValue:false, submitOnChange:true
-                if(useHelper3) {
-                    input "triggerMode3", "enum", title: "Select room helper 2 Type", submitOnChange: true, options: ["Contact", "Humidity", "Motion", "Presence", "Switch"], required: false
-                    if(triggerMode3 == "Contact"){
-                        input "myContacts3", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
-                        input "contactOption3", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
-                    }
-                    if(triggerMode3 == "Humidity"){
-                        input "myHumidity3", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
-                        input "myHumiditySP3", "number", title: "Select humidity breakpoint - if above then bad, below is good", required:false
-                    }
-                    if(triggerMode3 == "Motion"){
-                        input "myMotion3", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
-                    }
-                    if(triggerMode3 == "Power"){
-                        input "myPower3", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
-                        input "myPowerSP3", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
-                    }
-                    if(triggerMode3 == "Presence"){
-                        input "myPresence3", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
-                    }
-                    if(triggerMode3 == "Switch"){
-                        input "mySwitches3", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
-                    }
-                } else {
-                    app.removeSetting("triggerMode3")
-                    app.removeSetting("myContacts3")
-                    app.removeSetting("myHumidity3")
-                    app.removeSetting("myMotion3")
-                    app.removeSetting("myPower3")
-                    app.removeSetting("myPresence3")
-                    app.removeSetting("mySwitches3")
-                }
-            }
-            
-            if(useHelper3) {
-                paragraph "<hr>"
-                input "useHelper4", "bool", title: "Use another Helper?", defaultValue:false, submitOnChange:true
-                if(useHelper4) {
-                    input "triggerMode4", "enum", title: "Select room helper 3 Type", submitOnChange: true, options: ["Contact", "Humidity", "Motion", "Presence", "Switch"], required: false
-                    if(triggerMode4 == "Contact"){
-                        input "myContacts4", "capability.contactSensor", title: "Select the Contact Sensor(s) to help keep the room occupied", required: false, multiple:true
-                        input "contactOption4", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
-                    }
-                    if(triggerMode4 == "Humidity"){
-                        input "myHumidity4", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
-                        input "myHumiditySP4", "number", title: "Select humidity breakpoint - if above then bad, below is good", required:false
-                    }
-                    if(triggerMode4 == "Motion"){
-                        input "myMotion4", "capability.motionSensor", title: "Select the Motion Sensor(s) to help keep the room occupied", required:false, multiple:true
-                    }
-                    if(triggerMode4 == "Power"){
-                        input "myPower4", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
-                        input "myPowerSP4", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
-                    }
-                    if(triggerMode4 == "Presence"){
-                        input "myPresence4", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
-                    }
-                    if(triggerMode4 == "Switch"){
-                        input "mySwitches4", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required:false, multiple:true
-                    }
-                } else {
-                    app.removeSetting("triggerMode4")
-                    app.removeSetting("myContacts4")
-                    app.removeSetting("myHumidity4")
-                    app.removeSetting("myMotion4")
-                    app.removeSetting("myPower4")
-                    app.removeSetting("myPresence4")
-                    app.removeSetting("mySwitches4")
-                }
-            }
-		}
+                href "helperConfig", title:"${getImage("optionsRed")} Setup Helper Triggers", description:"Click here for Options"
+            }  
+        }  
 
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Options")) {
             paragraph "<b>Room Override</b>, If this device is On, Room Director events will NOT happen for this child app."
@@ -277,6 +145,7 @@ def pageConfig() {
                 app.removeSetting("lightLevel")    
             }
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
             if(fmSpeaker || usePush || useRule || useSwitch || useTheFlasher) {
                 href "speechOptions", title:"${getImage("optionsGreen")} Notification Options", description:"Click here to setup the Notification Options"
@@ -305,7 +174,6 @@ def pageConfig() {
             if(dataDevice) {
                 input "useTile", "bool", title: "Create Informational Room Tile for Dashboards", defaultValue:false, submitOnChange:true
                 if(useTile) {
-                    paragraph "<small>* Devices can be a single device or a device created with 'Average Plus'</small>"
                     input "tileName", "text", title: "Enter a Room Name to use on the Tile", required:false, submitOnChange:true
                     input "roomTemp", "capability.temperatureMeasurement", title: "Room Temperature Device", required:false, multiple:false, submitOnChange:true
                     input "roomHumidity", "capability.relativeHumidityMeasurement", title: "Room Humidity Device", required:false, multiple:false, submitOnChange:true 
@@ -317,12 +185,100 @@ def pageConfig() {
             }
         }  
         
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
 		}
 		display2()
 	}
+}
+
+def occupancyConfig() {
+    dynamicPage(name: "occupancyConfig", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Occupancy Config")) {
+            input "myContacts", "capability.contactSensor", title: "Select the contact sensor(s) to activate the room", required:false, multiple:true, submitOnChange:true
+            if(myContacts) input "contactOption", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
+
+            input "myMotion", "capability.motionSensor", title: "Select the motion sensor(s) to activate the room", required:false, multiple:true
+
+            input "myPresence", "capability.presenceSensor", title: "Select the Presence Sensor(s) to activate the room", required:false, multiple:true
+
+            input "mySwitches", "capability.switch", title: "Select Switch(es) to activate the room", required: false, multiple:true
+            
+            input "sunRestriction", "bool", title: "From Sunset to Sunrise?", description: "sun", defaultValue:false, submitOnChange:true
+            if(sunRestriction) {
+                paragraph "<b>Sunset Offset</b>"
+                input "setBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
+                input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                
+                paragraph "<b>Sunrise Offset</b>"
+                input "riseBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
+                input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                
+                app.removeSetting("fromTime")
+                app.removeSetting("toTime")
+                app.removeSetting("midnightCheckR")
+            } else {
+                input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
+                input "toTime", "time", title: "To", required: false, width: 6
+                input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                
+                app.removeSetting("offsetSunset")
+                app.removeSetting("offsetSunrise") 
+            }
+        }
+    }
+}
+
+def helperConfig() {
+    dynamicPage(name: "helperConfig", title: "", install:false, uninstall:false) {
+        display()
+		section(getFormat("header-green", "${getImage("Blank")}"+" Helper Config")) {
+            input "useHelper2", "bool", title: "Use Helper?", defaultValue:false, submitOnChange:true
+            if(useHelper2) {
+                input "myContacts2", "capability.contactSensor", title: "Select the contact sensor(s) to help keep the room occupied", required:false, multiple:true, submitOnChange:true
+                if(myContacts2) input "contactOption2", "enum", title: "Select contact option - If (option), Room is occupied", options: ["Open","Closed"], required:true
+
+                input "myHumidity2", "capability.relativeHumidityMeasurement", title: "Select the Humidity Sensor(s) to help keep the room occupied", required: false, multiple:true
+                if(myHumidity2) input "myHumiditySP2", "number", title: "Select humidity breakpoint - if above then Occupied, below is Unoccupied", required:false
+
+                input "myMotion2", "capability.motionSensor", title: "Select the motion sensor(s) to activate the room", required:false, multiple:true
+
+                input "myPower2", "capability.powerMeter", title: "Select the Power Sensor(s) to help keep the room occupied", required: false, multiple:true
+                if(myPower2) input "myPowerSP2", "number", title: "Select power breakpoint - if above then Occupied, below is Unoccupied", required:false
+
+                input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the room occupied", required:false, multiple:true
+
+                input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the room occupied", required: false, multiple:true
+            } else {
+                app.removeSetting("triggerMode2")
+                app.removeSetting("myContacts2")
+                app.removeSetting("myHumidity2")
+                app.removeSetting("myMotion2")
+                app.removeSetting("myPower2")
+                app.removeSetting("myPresence2")
+                app.removeSetting("mySwitches2")
+            }
+        }
+    }
 }
 
 def onConfig() {
@@ -625,78 +581,75 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
     unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    if(logEnable) log.debug "In initialize (${state.version}) - ${app.label} - triggerMode2: ${triggerMode2}"
-    setDefaults()    
-    
-	if(myContacts) subscribe(myContacts, "contact", primaryHandler)
-	if(myMotion) subscribe(myMotion, "motion", primaryHandler)
-    if(myPresence) subscribe(myPresence, "presence", primaryHandler)
-	if(mySwitches) subscribe(mySwitches, "switch", primaryHandler)
-	
-    if(triggerMode2 == "Contact") subscribe(myContacts2, "contact", primaryHandler)
-    if(triggerMode2 == "Humidity") subscribe(myHumidity2, "humidity", primaryHandler)
-	if(triggerMode2 == "Motion") subscribe(myMotion2, "motion", primaryHandler)
-    if(triggerMode2 == "Power") subscribe(myPower2, "power", primaryHandler)
-    if(triggerMode2 == "Presence") subscribe(myPresence2, "presence", primaryHandler)
-	if(triggerMode2 == "Switch") subscribe(mySwitches2, "switch", primaryHandler)
-    
-    if(triggerMode3 == "Contact") subscribe(myContacts3, "contact", primaryHandler)
-    if(triggerMode3 == "Humidity") subscribe(myHumidity3, "humidity", primaryHandler)
-	if(triggerMode3 == "Motion") subscribe(myMotion3, "motion", primaryHandler)
-    if(triggerMode3 == "Power") subscribe(myPower3, "power", primaryHandler)
-    if(triggerMode3 == "Presence") subscribe(myPresence3, "presence", primaryHandler)
-	if(triggerMode3 == "Switch") subscribe(mySwitches3, "switch", primaryHandler)
-    
-    if(triggerMode4 == "Contact") subscribe(myContacts4, "contact", primaryHandler)
-    if(triggerMode4 == "Humidity") subscribe(myHumidity4, "humidity", primaryHandler)
-	if(triggerMode4 == "Motion") subscribe(myMotion4, "motion", primaryHandler)
-    if(triggerMode4 == "Power") subscribe(myPower4, "power", primaryHandler)
-    if(triggerMode4 == "Presence") subscribe(myPresence4, "presence", primaryHandler)
-	if(triggerMode4 == "Switch") subscribe(mySwitches4, "switch", primaryHandler)
-    
-    if(sunRestriction) autoSunHandler()
-    
-    if(logEnable) log.debug "In initialize - ${app.label} - Finished initialize"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In initialize (${state.version}) - ${app.label} - triggerMode2: ${triggerMode2}"
+        setDefaults()    
+
+        if(myContacts) subscribe(myContacts, "contact", primaryHandler)
+        if(myMotion) subscribe(myMotion, "motion", primaryHandler)
+        if(myPresence) subscribe(myPresence, "presence", primaryHandler)
+        if(mySwitches) subscribe(mySwitches, "switch", primaryHandler)
+
+        if(myContacts2) subscribe(myContacts2, "contact", primaryHandler)
+        if(myHumidity2) subscribe(myHumidity2, "humidity", primaryHandler)
+        if(myMotion2) subscribe(myMotion2, "motion", primaryHandler)
+        if(myPower2) subscribe(myPower2, "power", primaryHandler)
+        if(myPresence2) subscribe(myPresence2, "presence", primaryHandler)
+        if(mySwitches2) subscribe(mySwitches2, "switch", primaryHandler)
+
+        if(sunRestriction) autoSunHandler()
+
+        if(logEnable) log.debug "In initialize - ${app.label} - Finished initialize"
+    }
 }
 
 // *********** Start sunRestriction ***********
 def autoSunHandler() {
-    // autoSunHandler - This is to trigger AT the exact times with offsets
-    if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-
-    def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
-    int theOffsetSunset = offsetSunset ?: 1    
-    if(setBeforeAfter) {
-        state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
-    }
-    
-    def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
-    int theOffsetSunrise = offsetSunrise ?: 1
-    if(riseBeforeAfter) {
-        state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
-    } else {
-        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-    }
+        // autoSunHandler - This is to trigger AT the exact times with offsets
+        if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
+        def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
-    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+        def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
+        int theOffsetSunset = offsetSunset ?: 1    
+        if(setBeforeAfter) {
+            state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+        } else {
+            state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+        }
 
-    // check for new sunset/sunrise times every day at 12:05 am
-    schedule("0 5 0 ? * * *", autoSunHandler)
-        
-    schedule(state.timeSunset, turnOnAtSunset)
-    schedule(state.timeSunrise, turnOffAtSunrise)
-    
-    whatToDo()
+        def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
+        int theOffsetSunrise = offsetSunrise ?: 1
+        if(riseBeforeAfter) {
+            state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+        } else {
+            state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+        }
+
+        if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+        if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+        if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+
+        // check for new sunset/sunrise times every day at 12:05 am
+        schedule("0 5 0 ? * * *", autoSunHandler)
+
+        schedule(state.timeSunset, turnOnAtSunset)
+        schedule(state.timeSunrise, turnOffAtSunrise)
+
+        whatToDo()
+    }
 }
 
 def turnOnAtSunset() {
@@ -721,171 +674,180 @@ private removeChildDevices(delete) {
 }
 
 def primaryHandler(evt) {
-    if(logEnable) log.warn "********** Starting Room Director - ${app.label} **********"
-	if(logEnable) log.debug "In primaryHandler (${state.version}) - ${app.label}"
-    state.occupancy1 = "no"
-    
-    myContacts.each { it ->
-        status = it.currentValue("contact")
-        if(logEnable) log.debug "In primaryHandler - ${app.label} - Contact: ${it} - value: ${status}"
-        if(contactOption == "Closed") {
-            if(status == "closed") {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.warn "********** Starting Room Director - ${app.label} **********"
+        if(logEnable) log.debug "In primaryHandler (${state.version}) - ${app.label}"
+        state.occupancy1 = "no"
+
+        myContacts.each { it ->
+            status = it.currentValue("contact")
+            if(logEnable) log.debug "In primaryHandler - ${app.label} - Contact: ${it} - value: ${status}"
+            if(contactOption == "Closed") {
+                if(status == "closed") {
+                    state.occupancy1 = "yes"
+                }
+            }
+            if(contactOption == "Open") {
+                if(status == "open") {
+                    state.occupancy1 = "yes" 
+                }
+            }
+        }
+
+        myMotion.each { it ->
+            status = it.currentValue("motion")
+            if(logEnable) log.debug "In primaryHandler - ${app.label} - Motion Sensor: ${it} - value: ${status}"
+            if(status == "active") {
                 state.occupancy1 = "yes"
             }
         }
-        if(contactOption == "Open") {
-            if(status == "open") {
+
+        myPresence.each { it ->
+            status = it.currentValue("presence")
+            if(logEnable) log.debug "In primaryHandler - ${app.label} - Presence: ${it} - value: ${status}"
+            if(status == "present") {
+                state.occupancy1 = "yes"
+            }
+        }
+
+        mySwitches.each { it ->
+            status = it.currentValue("switch")
+            if(logEnable) log.debug "In primaryHandler - ${app.label} - Switch: ${it} - value: ${status}"
+            if(status == "on") {
                 state.occupancy1 = "yes" 
             }
         }
-    }
 
-    myMotion.each { it ->
-        status = it.currentValue("motion")
-        if(logEnable) log.debug "In primaryHandler - ${app.label} - Motion Sensor: ${it} - value: ${status}"
-        if(status == "active") {
-            state.occupancy1 = "yes"
-        }
+        if(logEnable) log.debug "In primaryHandler - ${app.label} - occupancy1: ${state.occupancy1}"
+        secondaryHandler()
     }
-
-    myPresence.each { it ->
-        status = it.currentValue("presence")
-        if(logEnable) log.debug "In primaryHandler - ${app.label} - Presence: ${it} - value: ${status}"
-        if(status == "present") {
-            state.occupancy1 = "yes"
-        }
-    }
-
-    mySwitches.each { it ->
-        status = it.currentValue("switch")
-        if(logEnable) log.debug "In primaryHandler - ${app.label} - Switch: ${it} - value: ${status}"
-        if(status == "on") {
-            state.occupancy1 = "yes" 
-        }
-    }
-    
-    if(logEnable) log.debug "In primaryHandler - ${app.label} - occupancy1: ${state.occupancy1}"
-    secondaryHandler()
 }
 
 def secondaryHandler() {
-    if(logEnable) log.debug "In secondaryHandler (${state.version}) - ${app.label} - triggerMode2: ${triggerMode2}"
-    state.occupancy2 = "no"
-    
-    if(myContacts2 || myContacts3 || myContacts4) {
-        allContacts = [myContacts2, myContacts3, myContacts4].flatten().findAll{it}
-        allContacts.each { it ->
-            status = it.currentValue("contact")
-            if(logEnable) log.debug "In secondaryHandler - ${app.label} - Contact: ${it} - value: ${status}"
-            if(contactOption2 == "Closed") {
-                if(status == "closed") {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In secondaryHandler (${state.version}) - ${app.label}"
+        state.occupancy2 = "no"
+
+        if(myContacts2) {
+            myContacts2.each { it ->
+                status = it.currentValue("contact")
+                if(logEnable) log.debug "In secondaryHandler - ${app.label} - Contact: ${it} - value: ${status}"
+                if(contactOption2 == "Closed") {
+                    if(status == "closed") {
+                        state.occupancy2 = "yes"
+                    }
+                }
+                if(contactOption2 == "Open") {
+                    if(status == "open") {
+                        state.occupancy2 = "yes" 
+                    }
+                }
+            }
+        }
+
+        if(myHumidity2) {
+            myHumidity2.each { it ->
+                status = it.currentValue("humidity")
+                if(logEnable) log.debug "In secondaryHandler - ${app.label} - H Sensor: ${it} - value: ${status}"
+                if(status > myHumiditySP2) {
                     state.occupancy2 = "yes"
                 }
-	        }
-	        if(contactOption2 == "Open") {
-                if(status == "open") {
+            }
+        }
+
+        if(myMotion2) {
+            myMotion2.each { it ->
+                status = it.currentValue("motion")
+                if(logEnable) log.debug "In secondaryHandler - ${app.label} - M Sensor: ${it} - value: ${status}"
+                if(status == "active") {
+                    state.occupancy2 = "yes"
+                }
+            }
+        }
+
+        if(myPower2) {
+            myPower2.each { it ->
+                status = it.currentValue("power")
+                if(logEnable) log.debug "In secondaryHandler - ${app.label} - P Sensor: ${it} - value: ${status}"
+                if(status > myPowerSP2) {
+                    state.occupancy2 = "yes"
+                }
+            }
+        }
+
+        if(myPresence2) {
+            myPresence2.each { it ->
+                status = it.currentValue("presence")
+                if(logEnable) log.debug "In secondaryHandler - ${app.label} - Presence: ${it} - value: ${status}"
+                if(status == "present") {
                     state.occupancy2 = "yes" 
                 }
-		    }
-        }
-	}
-    
-    if(myHumidity2 || myHumidity3 || myHumidity4) {
-        allHumidity = [myHumidity2, myHumidity3, myHumidity4].flatten().findAll{it}
-        allHumidity.each { it ->
-            status = it.currentValue("humidity")
-            if(logEnable) log.debug "In secondaryHandler - ${app.label} - H Sensor: ${it} - value: ${status}"
-            if(status > myHumiditySP2) {
-		        state.occupancy2 = "yes"
             }
         }
-    }
-    
-    if(myMotion2 || myMotion3 || myMotion4) {
-        allMotion = [myMotion2, myMotion3, myMotion4].flatten().findAll{it}
-        allMotion.each { it ->
-            status = it.currentValue("motion")
-            if(logEnable) log.debug "In secondaryHandler - ${app.label} - M Sensor: ${it} - value: ${status}"
-            if(status == "active") {
-		        state.occupancy2 = "yes"
-            }
-        }
-    }
 
-    if(myPower2 || myPower3 || myPower4) {
-        allPower = [myPower2, myPower3, myPower4].flatten().findAll{it}
-        allPower.each { it ->
-            status = it.currentValue("power")
-            if(logEnable) log.debug "In secondaryHandler - ${app.label} - P Sensor: ${it} - value: ${status}"
-            if(status > myPowerSP2) {
-		        state.occupancy2 = "yes"
+        if(mySwitches2) {
+            mySwitches2.each { it ->
+                status = it.currentValue("switch")
+                if(logEnable) log.debug "In secondaryHandler - ${app.label} - Switch: ${it} - value: ${status}"
+                if(status == "on") {
+                    state.occupancy2 = "yes" 
+                }
             }
         }
+        if(logEnable) log.trace "In secondaryHandler - ${app.label} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
+        whatToDo()
     }
-    
-    if(myPresence2 || myPresence3 || myPresence4) {
-        allPresence = [myPresence2, myPresence3, myPresence4].flatten().findAll{it}
-        allPresence.each { it ->
-            status = it.currentValue("presence")
-            if(logEnable) log.debug "In secondaryHandler - ${app.label} - Presence: ${it} - value: ${status}"
-            if(status == "present") {
-		        state.occupancy2 = "yes" 
-            }
-        }
-    }
-    
-    if(mySwitches2 || mySwitches3 || mySwitches4) {
-        allSwitches = [mySwitches2, mySwitches3, mySwitches4].flatten().findAll{it}
-        allSwitches.each { it ->
-            status = it.currentValue("switch")
-            if(logEnable) log.debug "In secondaryHandler - ${app.label} - Switch: ${it} - value: ${status}"
-            if(status == "on") {
-		        state.occupancy2 = "yes" 
-            }
-        }
-    }
-    if(logEnable) log.trace "In secondaryHandler - ${app.label} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2}"
-    whatToDo()
 }
 
 def whatToDo() {
-    if(logEnable) log.trace "********** Room Director - Starting What To Do - ${app.label} **********"
-    if(logEnable) log.debug "In whatToDo (${state.version}) - ${app.label} - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
-    dayOfTheWeekHandler()
-    checkForSleep()
-    checkTime()
-    checkTimeSun()
-    
-    if(logEnable) log.debug "In whatToDo - ${app.label} - daysMatch: ${state.daysMatch} - sunRiseTosunSet: ${state.sunRiseTosunSet} - timeBetween: ${state.timeBetween}"
-    
-    if(state.daysMatch && state.sunRiseTosunSet && state.timeBetween) {
-        if(state.sleeping) {
-            if(logEnable) log.debug "In whatToDo - ${app.label} - Sleeping - Going to vacantHandler"
-            vacantHandler()
-        } else if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
-            if(logEnable) log.debug "In whatToDo - ${app.label} - Going to vacantHandler"
-            vacantHandler()
-        } else if(state.occupancy1 == "no" && state.occupancy2 == "yes") {
-            if(logEnable) log.debug "In whatToDo - ${app.label} - Doing nothing - Unscheduling (roomWarningHandler, LightsHandler)"
-            unschedule(roomWarningHandler)
-            unschedule(lightsHandler)
-        } else {
-            if(logEnable) log.debug "In whatToDo - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
-            if(warningSwitches) warningSwitches.off()
-            unschedule(roomWarningHandler)
-            unschedule(lightsHandler)
-            occupancyHandler()
-        }
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        if(sunRestriction) {
-            if(logEnable) log.debug "In whatToDo - ${app.label} - ELSE with sunRestriction - Going to lightsHandler"
-            lightsHandler()
+        if(logEnable) log.trace "********** Room Director - Starting What To Do - ${app.label} **********"
+        if(logEnable) log.debug "In whatToDo (${state.version}) - ${app.label} - occ1: ${state.occupancy1} - occ2: ${state.occupancy2} - sunRiseTosunSet: ${state.sunRiseTosunSet}"
+        dayOfTheWeekHandler()
+        checkForSleep()
+        checkTime()
+        checkTimeSun()
+
+        if(logEnable) log.debug "In whatToDo - ${app.label} - daysMatch: ${state.daysMatch} - sunRiseTosunSet: ${state.sunRiseTosunSet} - timeBetween: ${state.timeBetween}"
+
+        if(state.daysMatch && state.sunRiseTosunSet && state.timeBetween) {
+            if(state.sleeping) {
+                if(logEnable) log.debug "In whatToDo - ${app.label} - Sleeping - Going to vacantHandler"
+                vacantHandler()
+            } else if(state.occupancy1 == "no" && state.occupancy2 == "no") { 
+                if(logEnable) log.debug "In whatToDo - ${app.label} - Going to vacantHandler"
+                vacantHandler()
+            } else if(state.occupancy1 == "no" && state.occupancy2 == "yes") {
+                if(logEnable) log.debug "In whatToDo - ${app.label} - Doing nothing - Unscheduling (roomWarningHandler, LightsHandler)"
+                unschedule(roomWarningHandler)
+                unschedule(lightsHandler)
+            } else {
+                if(logEnable) log.debug "In whatToDo - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
+                if(warningSwitches) warningSwitches.off()
+                unschedule(roomWarningHandler)
+                unschedule(lightsHandler)
+                occupancyHandler()
+            }
         } else {
-            if(logEnable) log.debug "In whatToDo - ${app.label} - ELSE with NO sunRestriction - Going to vacantHandler"
-            vacantHandler()
+            if(sunRestriction) {
+                if(logEnable) log.debug "In whatToDo - ${app.label} - ELSE with sunRestriction - Going to lightsHandler"
+                lightsHandler()
+            } else {
+                if(logEnable) log.debug "In whatToDo - ${app.label} - ELSE with NO sunRestriction - Going to vacantHandler"
+                vacantHandler()
+            }
         }
+        if(logEnable) log.trace "********** Room Director - End What To Do - ${app.label} **********"
     }
-    if(logEnable) log.trace "********** Room Director - End What To Do - ${app.label} **********"
 }
 
 def checkForSleep() {
@@ -1028,6 +990,7 @@ def roomWarningHandler() {
             } else {
                 runIn(30, lightsHandler)
             }
+            notificationsHandler()
         } else {
             if(unSwitchesOff) {
                 unSwitchesOff.each { it ->
@@ -1045,24 +1008,28 @@ def roomWarningHandler() {
                 }
             }
             runIn(30, lightsHandler)
+            notificationsHandler()
             if(useTile) { checkRoomTile("warning") }
             if(logEnable) log.debug "In roomWarningHandler - ${app.label} - Going to lightsHandler in 30 seconds"
-        }
-        
-        if(warningSwitches) warningSwitches.on()
-        if(rMachine) rulesHandler(rMachine)
-        if(omessage) messageHandler()
-
-        if(useTheFlasher) {
-            if(logEnable) log.debug "In roomWarningHandler - ${app.label} - Sending Preset: ${flashPreset} to The Flasher device (${theFlasherDevice.displayName})"
-            flashData = "Preset::${flashPreset}"
-            theFlasherDevice.sendPreset(flashData)
         }
     } else {
         if(logEnable) log.debug "In roomWarningHandler - ${app.label} - Unscheduling (roomWarningHandler, LightsHandler) - Going to occupancyHandler"
         unschedule(roomWarningHandler)
         unschedule(lightsHandler)
         occupancyHandler()
+    }
+}
+
+def notificationsHandler() {
+    if(logEnable) log.debug "In notificationsHandler - ${app.label} - Working on Warning Switches, Rules, Messages and Flasher."
+    if(warningSwitches) warningSwitches.on()
+    if(rMachine) rulesHandler(rMachine)
+    if(omessage) messageHandler()
+
+    if(useTheFlasher) {
+        if(logEnable) log.debug "In notificationsHandler - ${app.label} - Sending Preset: ${flashPreset} to The Flasher device (${theFlasherDevice.displayName})"
+        flashData = "Preset::${flashPreset}"
+        theFlasherDevice.sendPreset(flashData)
     }
 }
 
@@ -1554,6 +1521,22 @@ def createDataChildDevice() {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults (${state.version})"
