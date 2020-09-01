@@ -282,7 +282,7 @@ def testingDevice() {
             if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
             watchDevice.off()
             pauseExecution(5000)
-            log.trace "Hub Watchdog - ***** Starting Test *****"
+            if(logEnable) log.trace "Hub Watchdog - ***** Starting Test *****"
             if(logEnable) log.debug "In testingDevice - Turning Device On"
             state.testInProgress = "no"
             watchDevice.on()
@@ -349,7 +349,7 @@ def lookingAtData() {
         log.warn "Something went wrong - ${e}"
     }
     state.testInProgress = "no"
-    log.trace "Hub Watchdog - ***** Ending Test *****"
+    if(logEnable) log.trace "Hub Watchdog - ***** Ending Test *****"
     sendNotification()
 }
 
