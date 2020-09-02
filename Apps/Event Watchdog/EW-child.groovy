@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 09/02/20 - Cosmetic changes
  *  1.0.3 - 08/05/20 - Lots of changes
  *  1.0.2 - 07/20/20 - adjustments
  *  1.0.1 - 06/29/20 - Now auto connects
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Watchdog"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -216,6 +217,7 @@ def updated() {
     sendToDevice()
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -237,17 +239,6 @@ def uninstalled() {
 
 private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
-}
-
-def checkEnableHandler() {
-    state.eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            theSwitch = it.currentValue("switch")
-            if(theSwitch == "on") { state.eSwitch = true }
-        }
-    }
 }
 
 def sendToDevice() {
@@ -322,6 +313,22 @@ def createDataChildDevice() {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
