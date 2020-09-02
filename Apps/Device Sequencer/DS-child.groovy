@@ -33,6 +33,7 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
+ *  2.0.3 - 08/02/20 - Cosmetic changes
  *  2.0.2 - 06/11/20 - Bug fixes
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Sequencer"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -118,9 +119,27 @@ def pageConfig() {
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
 			input "controlSwitch", "capability.switch", title: "Select the switch to control the sequence (on/off)", required: true, multiple: false 
 		} 
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "true", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:true, title: "Enable Debug Logging", description: "Enable extra logging for debugging."
 		}
 		display2()
 	}
@@ -134,117 +153,149 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-	subscribe(controlSwitch, "switch.on", deviceOnHandler)
-	subscribe(controlSwitch, "switch.off", deviceOffHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        subscribe(controlSwitch, "switch.on", deviceOnHandler)
+        subscribe(controlSwitch, "switch.off", deviceOffHandler)
+    }
 }
 
 def deviceOnHandler(evt) {
-	if(g1Switches) { 
-		int delay1 = timeToPause1 * 1000
-   		g1Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
-        	device.on()
-			pauseExecution(delay1)
-    	}
-		int delay1a = timeToPause1a * 1000
-		pauseExecution(delay1a)
-	}
-	if(g2Switches) { 
-		int delay2 = timeToPause2 * 1000	
-		g2Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}"
-        	device.on()
-			pauseExecution(delay2)
-    	}
-		int delay2a = timeToPause2a * 1000
-		pauseExecution(delay2a)
-	}
-	if(g3Switches) { 
-		int delay3 = timeToPause3 * 1000
-		g3Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}"
-        	device.on()
-			pauseExecution(delay3)
-    	}
-		int delay3a = timeToPause3a * 1000
-		pauseExecution(delay3a)
-	}
-	if(g4Switches) { 
-		int delay4 = timeToPause4 * 1000
-		g4Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}"
-        	device.on()
-			pauseExecution(delay4)
-    	}
-		int delay4a = timeToPause4a * 1000
-		pauseExecution(delay4a)
-	}
-	if(g5Switches) { 
-		int delay5 = timeToPause5 * 1000
-		g5Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}"
-        	device.on()
-			pauseExecution(delay5)
-    	}
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(g1Switches) { 
+            int delay1 = timeToPause1 * 1000
+            g1Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
+                device.on()
+                pauseExecution(delay1)
+            }
+            int delay1a = timeToPause1a * 1000
+            pauseExecution(delay1a)
+        }
+        if(g2Switches) { 
+            int delay2 = timeToPause2 * 1000	
+            g2Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 2...turning on ${device}"
+                device.on()
+                pauseExecution(delay2)
+            }
+            int delay2a = timeToPause2a * 1000
+            pauseExecution(delay2a)
+        }
+        if(g3Switches) { 
+            int delay3 = timeToPause3 * 1000
+            g3Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 3...turning on ${device}"
+                device.on()
+                pauseExecution(delay3)
+            }
+            int delay3a = timeToPause3a * 1000
+            pauseExecution(delay3a)
+        }
+        if(g4Switches) { 
+            int delay4 = timeToPause4 * 1000
+            g4Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 4...turning on ${device}"
+                device.on()
+                pauseExecution(delay4)
+            }
+            int delay4a = timeToPause4a * 1000
+            pauseExecution(delay4a)
+        }
+        if(g5Switches) { 
+            int delay5 = timeToPause5 * 1000
+            g5Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 5...turning on ${device}"
+                device.on()
+                pauseExecution(delay5)
+            }
+        }
+    }
 }
 
 def deviceOffHandler(evt) {
-	if(g1Switches) { 
-		int delay1 = timeToPause1 * 1000
-   		g1Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
-        	device.off()
-			pauseExecution(delay1)
-    	}
-		int delay1a = timeToPause1a * 1000
-		pauseExecution(delay1a)
-	}
-	if(g2Switches) { 
-		int delay2 = timeToPause2 * 1000	
-		g2Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 2...turning off ${device}"
-        	device.off()
-			pauseExecution(delay2)
-    	}
-		int delay2a = timeToPause2a * 1000
-		pauseExecution(delay2a)
-	}
-	if(g3Switches) { 
-		int delay3 = timeToPause3 * 1000
-		g3Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 3...turning off ${device}"
-        	device.off()
-			pauseExecution(delay3)
-    	}
-		int delay3a = timeToPause3a * 1000
-		pauseExecution(delay3a)
-	}
-	if(g4Switches) { 
-		int delay4 = timeToPause4 * 1000
-		g4Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 4...turning off ${device}"
-        	device.off()
-			pauseExecution(delay4)
-    	}
-		int delay4a = timeToPause4a * 1000
-		pauseExecution(delay4a)
-	}
-	if(g5Switches) { 
-		int delay5 = timeToPause5 * 1000
-		g5Switches.each { device ->
-			if(logEnable) log.debug "In deviceOnHandler 5...turning off ${device}"
-        	device.off()
-			pauseExecution(delay5)
-    	}
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(g1Switches) { 
+            int delay1 = timeToPause1 * 1000
+            g1Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
+                device.off()
+                pauseExecution(delay1)
+            }
+            int delay1a = timeToPause1a * 1000
+            pauseExecution(delay1a)
+        }
+        if(g2Switches) { 
+            int delay2 = timeToPause2 * 1000	
+            g2Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 2...turning off ${device}"
+                device.off()
+                pauseExecution(delay2)
+            }
+            int delay2a = timeToPause2a * 1000
+            pauseExecution(delay2a)
+        }
+        if(g3Switches) { 
+            int delay3 = timeToPause3 * 1000
+            g3Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 3...turning off ${device}"
+                device.off()
+                pauseExecution(delay3)
+            }
+            int delay3a = timeToPause3a * 1000
+            pauseExecution(delay3a)
+        }
+        if(g4Switches) { 
+            int delay4 = timeToPause4 * 1000
+            g4Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 4...turning off ${device}"
+                device.off()
+                pauseExecution(delay4)
+            }
+            int delay4a = timeToPause4a * 1000
+            pauseExecution(delay4a)
+        }
+        if(g5Switches) { 
+            int delay5 = timeToPause5 * 1000
+            g5Switches.each { device ->
+                if(logEnable) log.debug "In deviceOnHandler 5...turning off ${device}"
+                device.off()
+                pauseExecution(delay5)
+            }
+        }
+    }
 }
 
 // ***** Normal Stuff *****
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def getImage(type) {					// Modified from @Stephack Code
     def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
