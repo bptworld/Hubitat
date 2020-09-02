@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 08/02/20 - Cosmetic Changes
  *  1.0.1 - 07/09/20 - Fixed Disable switch
  *  1.0.0 - 06/26/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Abacus Time Traveler"
-	state.version = "1.0.0"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -115,20 +116,20 @@ def pageConfig() {
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains("pauseApp")) {
-                        app.updateLabel(app.label + " Paused")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -348,20 +349,16 @@ def updated() {
 	if(logEnable) log.debug "Updated with settings: ${settings}"
 	unsubscribe()
     unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
 	if(logEnable) log.debug "In initialize (${state.version})"
-    
-    if(app.label) {
-        if(app.label.contains("Paused")) {
-            app.updateLabel(app.label.replaceAll(" Paused",""))
-            app.updateLabel(app.label + " <font color='red'>Paused</font>")
-        }
-    }
-    
-    if(!pauseApp) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         setDefaults()
         subscribe(contactEvent, "contact", contactHandler)
         subscribe(motionEvent, "motion", motionHandler)
@@ -391,21 +388,11 @@ def resetYearHandler(data) {
     resetCountsHandler(data)
 }
 
-def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
-        edSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = false }
-        }
-    }
-    return eSwitch
-}
-
 def contactHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In contactHandler (${state.version})"
         state.contactStatus = evt.value
         if(state.contactPrevMap == null) state.contactPrevMap = [:]
@@ -470,7 +457,9 @@ def contactHandler(evt) {
 
 def motionHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In motionHandler (${state.version})"
         state.motionStatus = evt.value
         if(state.motionPrevMap == null) state.motionPrevMap = [:]
@@ -535,7 +524,9 @@ def motionHandler(evt) {
 
 def switchHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In switchHandler (${state.version})"
         state.switchStatus = evt.value
         if(state.switchPrevMap == null) state.switchPrevMap = [:]
@@ -600,7 +591,9 @@ def switchHandler(evt) {
 
 def thermostatHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In thermostatHandler (${state.version})"
         state.thermostatStatus = evt.value
         if(state.thermostatPrevMap == null) state.thermostatPrevMap = [:]
@@ -915,6 +908,22 @@ def createDataChildDevice() {
 }
     
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults() {
 	if(logEnable == null){logEnable = false}
