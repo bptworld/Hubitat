@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.0 - 09/02/20 - Cosmetic changes
  *  2.0.9 - 06/22/20 - Changes to letsTalk
  *  2.0.8 - 06/19/20 - added The Flasher
  *  2.0.7 - 06/18/20 - Major Changes. Going at it a different way
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.0.9"
+	state.version = "2.1.0"
 }
 
 definition(
@@ -226,6 +227,24 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Extra Options")) {           
             href "alertsConfig", title: "Alerts", description: "Phone Battery - Places Not Allowed"
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging"
@@ -273,127 +292,153 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-    subscribe(presenceDevice, "address1", userHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        subscribe(presenceDevice, "address1", userHandler)
+    }
 }
 
 def userHandler(evt) {
-    if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - ${state.version} ----------"
-    whereAmI()
-    alertBattHandler()
-    
-    state.match = false
-    state.placeToMatch = ""
-    if(trackSpecific2 == null) trackSpecific2 = "NoData"
-    
-    trackSpecific2.each { it ->
-        if(it == state.address1Value) {
-            state.match = true
-            placeNotAllowedHandler(it) 
-        }
-    } 
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "---------- Start Log - Life360 Tracker Child - ${state.version} ----------"
+        whereAmI()
+        alertBattHandler()
 
-    trackSpecific.each { it ->
-        if(it == state.address1Value) {
-            if(it.toLowerCase() == "home") {
+        state.match = false
+        state.placeToMatch = ""
+        if(trackSpecific2 == null) trackSpecific2 = "NoData"
+
+        trackSpecific2.each { it ->
+            if(it == state.address1Value) {
                 state.match = true
-                homeArrivedHandler(it)
-            } else {
-                state.match = true
-                arrivedHandler(it) 
+                placeNotAllowedHandler(it) 
             }
-        } else if(it == state.address1Prev) {
-            if(it.toLowerCase() == "home") {
-                state.match = true
-                homeDepartedHandler(it)
-            } else {
-                state.match = true
-                departedHandler(it) 
+        } 
+
+        trackSpecific.each { it ->
+            if(it == state.address1Value) {
+                if(it.toLowerCase() == "home") {
+                    state.match = true
+                    homeArrivedHandler(it)
+                } else {
+                    state.match = true
+                    arrivedHandler(it) 
+                }
+            } else if(it == state.address1Prev) {
+                if(it.toLowerCase() == "home") {
+                    state.match = true
+                    homeDepartedHandler(it)
+                } else {
+                    state.match = true
+                    departedHandler(it) 
+                }
             }
         }
-    }
 
-    if(state.match == false) {
-        if(logEnable) log.debug "In userHandler - No Match Found, Going to movingHandler - match: ${state.match}"
-        movingHandler(state.address1Value)
+        if(state.match == false) {
+            if(logEnable) log.debug "In userHandler - No Match Found, Going to movingHandler - match: ${state.match}"
+            movingHandler(state.address1Value)
+        }
+
+        if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - ${state.version} ----------"
     }
-     
-    if(logEnable) log.debug "---------- End Log - Life360 Tracker Child - ${state.version} ----------"
 }
 
 // Start Tracking
 
 def arrivedHandler(aPlace) {
-    if(logEnable) log.debug "********* In arrivedHandler (${state.version}) *********"
-    if(aPlace == null) aPlace = state.address1Value
-    msg = ""
-    
-    if(logEnable) log.debug "In arrivedHandler - ${friendlyName} is near ${aPlace}"
-    int timeHere = timeConsideredHere * 60
-    getTimeDiff()
-    def theTimeDiff = timeDiff
-    if(logEnable) log.debug "In arrivedHandler - timeDiff: ${theTimeDiff} vs timeHere: ${timeHere}" 
-    if(timeDiff >= timeHere) {
-        if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
-        msg = "${messageAT}"
-        where = "arrived"
-        messageHandler(where,msg,aPlace)
-        if(isDataDevice) isDataDevice.on()
-        state.sMove = null
-    } else {  // ***  timeDiff is NOT GREATER THAN timeHere ***
-        if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS NOT greater than: ${timeHere}"
-        if(isDataDevice) isDataDevice.off()
-        runIn(30, arrivedHandler, [overwrite: false]) 
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "********* In arrivedHandler (${state.version}) *********"
+        if(aPlace == null) aPlace = state.address1Value
+        msg = ""
+
+        if(logEnable) log.debug "In arrivedHandler - ${friendlyName} is near ${aPlace}"
+        int timeHere = timeConsideredHere * 60
+        getTimeDiff()
+        def theTimeDiff = timeDiff
+        if(logEnable) log.debug "In arrivedHandler - timeDiff: ${theTimeDiff} vs timeHere: ${timeHere}" 
+        if(timeDiff >= timeHere) {
+            if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
+            msg = "${messageAT}"
+            where = "arrived"
+            messageHandler(where,msg,aPlace)
+            if(isDataDevice) isDataDevice.on()
+            state.sMove = null
+        } else {  // ***  timeDiff is NOT GREATER THAN timeHere ***
+            if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS NOT greater than: ${timeHere}"
+            if(isDataDevice) isDataDevice.off()
+            runIn(30, arrivedHandler, [overwrite: false]) 
+        }
+        if(logEnable) log.debug "********* In arrivedHandler - End *********"
     }
-    if(logEnable) log.debug "********* In arrivedHandler - End *********"
 }
 
 def departedHandler(dPlace) {
-    if(logEnable) log.debug "********* In departedHandler (${state.version}) *********"
-    if(dPlace == null) dPlace = state.address1Prev
-    msg = ""
-    
-    if(logEnable) log.debug "In departedHandler - ${friendlyName} has departed from ${dPlace}"
-    where = "departed"
-    msg = "${messageDEP}"
-    messageHandler(where,msg,dPlace)
-    if(isDataDevice) isDataDevice.off()
-    if(logEnable) log.debug "********* In departedHandler - End *********"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "********* In departedHandler (${state.version}) *********"
+        if(dPlace == null) dPlace = state.address1Prev
+        msg = ""
+
+        if(logEnable) log.debug "In departedHandler - ${friendlyName} has departed from ${dPlace}"
+        where = "departed"
+        msg = "${messageDEP}"
+        messageHandler(where,msg,dPlace)
+        if(isDataDevice) isDataDevice.off()
+        if(logEnable) log.debug "********* In departedHandler - End *********"
+    }
 }
 
 def movingHandler(mPlace) {
-    if(logEnable) log.debug "********* In movingHandler (${state.version}) *********"
-    if(!timeMove) timeMove = 5
-    int timeMoving = timeMove * 60
-    if(mPlace == null) mPlace = state.address1Value
-    msg = ""
-    
-    getTimeMoving()   
-    if(logEnable) log.debug "In arrivedHandler - movingDiff: ${movingDiff} vs timeMoving: ${timeMoving}" 
-    if(movingDiff >= timeMoving) {
-        state.sMove = null
-        if(state.movePrevPlace == mPlace) {
-            if(logEnable) log.debug "In movingHandler - ${friendlyName} has stopped near ${mPlace}"
-            msg = "${messageMOVEStopped}"
-            where = "moving"
-            messageHandler(where,msg,mPlace)
-            state.movePrevPlace = mPlace
-        } else {           
-            msg = "${messageMOVE}"
-            where = "moving"
-            messageHandler(where,msg,mPlace)
-            if(logEnable) log.debug "In movingHandler - ${friendlyName} is near ${mPlace}"
-        }
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In movingHandler - ${friendlyName} has been here less than ${timeMove} minutes but is near ${mPlace}"
-        if(state.movePrevPlace == null) { state.movePrevPlace = mPlace }
-    }     
-    if(isDataDevice) isDataDevice.off()
-    if(logEnable) log.debug "********* In movingHandler - End *********"
+        if(logEnable) log.debug "********* In movingHandler (${state.version}) *********"
+        if(!timeMove) timeMove = 5
+        int timeMoving = timeMove * 60
+        if(mPlace == null) mPlace = state.address1Value
+        msg = ""
+
+        getTimeMoving()   
+        if(logEnable) log.debug "In arrivedHandler - movingDiff: ${movingDiff} vs timeMoving: ${timeMoving}" 
+        if(movingDiff >= timeMoving) {
+            state.sMove = null
+            if(state.movePrevPlace == mPlace) {
+                if(logEnable) log.debug "In movingHandler - ${friendlyName} has stopped near ${mPlace}"
+                msg = "${messageMOVEStopped}"
+                where = "moving"
+                messageHandler(where,msg,mPlace)
+                state.movePrevPlace = mPlace
+            } else {           
+                msg = "${messageMOVE}"
+                where = "moving"
+                messageHandler(where,msg,mPlace)
+                if(logEnable) log.debug "In movingHandler - ${friendlyName} is near ${mPlace}"
+            }
+        } else {
+            if(logEnable) log.debug "In movingHandler - ${friendlyName} has been here less than ${timeMove} minutes but is near ${mPlace}"
+            if(state.movePrevPlace == null) { state.movePrevPlace = mPlace }
+        }     
+        if(isDataDevice) isDataDevice.off()
+        if(logEnable) log.debug "********* In movingHandler - End *********"
+    }
 }
 
 // *** Track Home ***
@@ -833,6 +878,22 @@ def buildMyPlacesList() {
 
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults(){
 	if(logEnable == null) {logEnable = false}
     if(state.address1Value == null) {state.address1Value = presenceDevice.currentValue("address1")}
@@ -917,4 +978,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
