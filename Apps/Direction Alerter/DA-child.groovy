@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 09/02/20 - Cosmetic changes
  *  1.0.1 - 07/29/20 - Added using contact sensors as an option
  *  1.0.0 - 06/20/20 - Initial release.
  *
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Direction Alerter"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
@@ -209,6 +210,7 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -222,8 +224,8 @@ private removeChildDevices(delete) {
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
-        log.info "Direction Alerter is Paused or Disabled"
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
         if(theType1) {
@@ -244,22 +246,10 @@ def initialize() {
     }
 }
 
-def checkEnableHandler() {
-    eSwitch = false
-    if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
-        disableSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = true }
-        }
-    }
-    return eSwitch
-}
-
 def activeOneHandler(evt) {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
-        log.info "Direction Alerter is Paused or Disabled"
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In activeOneHandler (${state.version})"
         if(atomicState.first != "two") { atomicState.first = "one" } 
@@ -271,8 +261,8 @@ def activeOneHandler(evt) {
 
 def activeTwoHandler(evt) {
     checkEnableHandler()
-    if(pauseApp || eSwitch) {
-        log.info "Direction Alerter is Paused or Disabled"
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In activeTwoHandler (${state.version})"
         if(atomicState.first != "one") { atomicState.first = "two" }
@@ -469,6 +459,22 @@ def createDataChildDevice() {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
