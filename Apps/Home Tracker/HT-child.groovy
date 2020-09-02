@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.4.0 - 08/02/20 - Cosmetic changes
  *  2.3.9 - 06/29/20 - Changed how greetings are handled
  *  2.3.8 - 06/22/20 - Changes to letsTalk
  *  2.3.7 - 06/19/20 - Removed internal Flash Lights and added The Flasher
@@ -63,7 +64,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.3.9"
+	state.version = "2.4.0"
 }
 
 definition(
@@ -128,8 +129,26 @@ def pageConfig() {
             
             href "ruleMachineOptions", title:"Rule Machine Options", description:"Click here to setup the Rule Machine options"
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue: true, title: "Enable Debug Logging", description: "Enable extra logging"
 		}
 		display2()
@@ -366,225 +385,241 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-    subscribe(parent.presenceSensors, "presence", presenceSensorHandler)
-    subscribe(parent.locks, "lock", lockPresenceHandler)
-    
-    if(welcomeHome) {
-	    if(triggerMode == "Door_Lock"){subscribe(parent.locks, "lock", lockHandler)}
-	    if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
-	    if(triggerMode == "Motion_Sensor"){subscribe(motionSensor, "motion", motionSensorHandler)}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        subscribe(parent.presenceSensors, "presence", presenceSensorHandler)
+        subscribe(parent.locks, "lock", lockPresenceHandler)
+
+        if(welcomeHome) {
+            if(triggerMode == "Door_Lock"){subscribe(parent.locks, "lock", lockHandler)}
+            if(triggerMode == "Contact_Sensor"){subscribe(contactSensor, "contact", contactSensorHandler)}
+            if(triggerMode == "Motion_Sensor"){subscribe(motionSensor, "motion", motionSensorHandler)}
+        }
+
+        // setup initial values
+        presenceSensorHandler()
+        lockPresenceHandler()
     }
-    
-    // setup initial values
-    presenceSensorHandler()
-    lockPresenceHandler()
 }
 
 def presenceSensorHandler(evt){
-    if(logEnable) log.warn "In presenceSensorHandler - ********************  Starting Home Tracker 2 - Presense Sensors (${state.version})  ********************"
-    theGvDevice = parent.gvDevice
-    
-    if(parent.presenceSensors) {
-        state.pSensorsSize = parent.presenceSensors.size()
-        if(logEnable) log.debug "In presenceSensorHandler - presenceSensors: ${parent.presenceSensors}" 
-        for(x=0;x < state.pSensorsSize.toInteger();x++) {
-            if(logEnable) log.debug " --------------------  presenceSensorHandler - sensor ${x}  --------------------"
-            pSensor = parent.presenceSensors[x].currentValue("presence")           
-            getTimeDiff(x)
-            timeDiff = Math.round(timeDiffSecs/60)    // Minutes
-            
-            name = "sensor" + x + "Name"
-            tempName = theGvDevice.currentValue("${name}")
-            tempNames = tempName.split(";")
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.warn "In presenceSensorHandler - ********************  Starting Home Tracker 2 - Presense Sensors (${state.version})  ********************"
+        theGvDevice = parent.gvDevice
 
-            if(tempNames[2] != "null") {
-                fName="${tempNames[2]}"
-            } else {
-                fName="${tempNames[1]}"
-            }
-            
-            sensor = "sensor" + x + "BH"
-            globalStatus = theGvDevice.currentValue("${sensor}")
-            if(globalStatus == null || globalStatus == "") {
-                globalStatus = "${x};notSet"
-                status = globalStatus.split(";")
-            } else {
-                status = globalStatus.split(";")
-            }
-            
-            if(logEnable) log.debug "In presenceSensorHandler - fName: ${fName} - globalStatus: ${globalStatus} - status0: ${status[0]} - status1: ${status[1]}"
-         
-            if(pSensor == "present") {
-                if(logEnable) log.debug "In presenceSensorHandler (${x}) - Working On: ${parent.presenceSensors[x]} - fName: ${fName} - pSensor: ${pSensor} - status: ${status[1]} - TtimeDiffSecs: ${timeDiffSecs} - timeDiff: ${timeDiff}"
-                if(timeDiffSecs < 20) {
-                    if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${timeDiff}"
-                    if(useTheFlasher && flashOnHome) {
-                        flashData = "Preset::${flashOnHomePreset}"
-                        theFlasherDevice.sendPreset(flashData)
-                    }
-                    if(homeNow) {
-                        if(useTheFlasher) {
+        if(parent.presenceSensors) {
+            state.pSensorsSize = parent.presenceSensors.size()
+            if(logEnable) log.debug "In presenceSensorHandler - presenceSensors: ${parent.presenceSensors}" 
+            for(x=0;x < state.pSensorsSize.toInteger();x++) {
+                if(logEnable) log.debug " --------------------  presenceSensorHandler - sensor ${x}  --------------------"
+                pSensor = parent.presenceSensors[x].currentValue("presence")           
+                getTimeDiff(x)
+                timeDiff = Math.round(timeDiffSecs/60)    // Minutes
+
+                name = "sensor" + x + "Name"
+                tempName = theGvDevice.currentValue("${name}")
+                tempNames = tempName.split(";")
+
+                if(tempNames[2] != "null") {
+                    fName="${tempNames[2]}"
+                } else {
+                    fName="${tempNames[1]}"
+                }
+
+                sensor = "sensor" + x + "BH"
+                globalStatus = theGvDevice.currentValue("${sensor}")
+                if(globalStatus == null || globalStatus == "") {
+                    globalStatus = "${x};notSet"
+                    status = globalStatus.split(";")
+                } else {
+                    status = globalStatus.split(";")
+                }
+
+                if(logEnable) log.debug "In presenceSensorHandler - fName: ${fName} - globalStatus: ${globalStatus} - status0: ${status[0]} - status1: ${status[1]}"
+
+                if(pSensor == "present") {
+                    if(logEnable) log.debug "In presenceSensorHandler (${x}) - Working On: ${parent.presenceSensors[x]} - fName: ${fName} - pSensor: ${pSensor} - status: ${status[1]} - TtimeDiffSecs: ${timeDiffSecs} - timeDiff: ${timeDiff}"
+                    if(timeDiffSecs < 20) {
+                        if(logEnable) log.debug "In whosHomeHandler - Welcome Now - (${x}) - ${fName} just got here! Time Diff: ${timeDiff}"
+                        if(useTheFlasher && flashOnHome) {
                             flashData = "Preset::${flashOnHomePreset}"
                             theFlasherDevice.sendPreset(flashData)
                         }
-                        addNameToPresenceMap(fName)
-                        messageHomeNow()
-                    }
-                    globalStatus = "${x};justArrived"
-                } else {
-                    if(timeDiff < timeHome) { 
-                        if(status[1] == "justArrived") { 
-		                    if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${timeDiff}"
+                        if(homeNow) {
+                            if(useTheFlasher) {
+                                flashData = "Preset::${flashOnHomePreset}"
+                                theFlasherDevice.sendPreset(flashData)
+                            }
                             addNameToPresenceMap(fName)
+                            messageHomeNow()
+                        }
+                        globalStatus = "${x};justArrived"
+                    } else {
+                        if(timeDiff < timeHome) { 
+                            if(status[1] == "justArrived") { 
+                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${timeDiff}"
+                                addNameToPresenceMap(fName)
+                            } else {
+                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Welcome Home announcement was already made."
+                            }
                         } else {
-                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Welcome Home announcement was already made."
+                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${timeDiff}). No home announcements needed."
+                        }
+                        globalStatus = "${x};beenHome"
+                    }
+                }
+
+                if(pSensor == "not present") {
+                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Time Diff: ${timeDiff} - pSensor: ${pSensor}"            
+                    if(timeDiff < 20) {
+                        if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${timeDiff}"   
+                        if(useTheFlasher && flashOnDep) {
+                            flashData = "Preset::${flashOnDepPreset}"
+                            theFlasherDevice.sendPreset(flashData)
+                        }
+                        if(departedNow) {
+                            if(useTheFlasher) {
+                                flashData = "Preset::${flashOnHomePreset}"
+                                theFlasherDevice.sendPreset(flashData)
+                            }
+                            addNameToPresenceMap(fName)
+                            messageDeparted()
+                        }                   
+                        if(departedDelayed) {
+                            if(logEnable) log.debug "In whosAwayHandler - Will announce departure after a 2 minutes wait"
+                            addNameToPresenceMap(fName)
+                            runIn(120, messageDeparted)
                         }
                     } else {
-                        if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${timeDiff}). No home announcements needed."
-                    }
-                    globalStatus = "${x};beenHome"
+                        if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Gone too long (${timeDiff}). No away announcements needed."
+                    }  
+                    globalStatus = "${x};notHome"
                 }
+                if(logEnable) log.debug "In presenceSensorHandler - Sending globalStatus: ${globalStatus}"
+                theGvDevice.sendDataMap(globalStatus)
             }
-     
-            if(pSensor == "not present") {
-                if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Time Diff: ${timeDiff} - pSensor: ${pSensor}"            
-                if(timeDiff < 20) {
-                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} just left home! Time Diff: ${timeDiff}"   
-                    if(useTheFlasher && flashOnDep) {
-                        flashData = "Preset::${flashOnDepPreset}"
-                        theFlasherDevice.sendPreset(flashData)
-                    }
-                    if(departedNow) {
-                        if(useTheFlasher) {
-                            flashData = "Preset::${flashOnHomePreset}"
-                            theFlasherDevice.sendPreset(flashData)
-                        }
-                        addNameToPresenceMap(fName)
-                        messageDeparted()
-                    }                   
-                    if(departedDelayed) {
-                        if(logEnable) log.debug "In whosAwayHandler - Will announce departure after a 2 minutes wait"
-                        addNameToPresenceMap(fName)
-                        runIn(120, messageDeparted)
-                    }
-                } else {
-                    if(logEnable) log.debug "In whosAwayHandler (${x}) - ${fName} - Gone too long (${timeDiff}). No away announcements needed."
-                }  
-                globalStatus = "${x};notHome"
-            }
-            if(logEnable) log.debug "In presenceSensorHandler - Sending globalStatus: ${globalStatus}"
-            theGvDevice.sendDataMap(globalStatus)
         }
+        if(logEnable) log.debug "In presenceSensorHandler - Finished (Presence)"
     }
-    if(logEnable) log.debug "In presenceSensorHandler - Finished (Presence)"
 }
 
 def lockPresenceHandler(evt){
-    if(logEnable) log.warn "In lockPresenceHandler - ********************  Starting Home Tracker 2 - Lock as Presence Sensors  ********************"
-    theGvDevice = parent.gvDevice
- 
-    if(evt) {
-        lockdata = evt.data
-	    lockStatus = evt.value
-	    lockName = evt.displayName
-	    if(logEnable) log.trace "In lockHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
-	    if(lockStatus == "unlocked") {
-            if(logEnable) log.trace "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
-            if(theLocks) {
-                //if(logEnable) log.trace "In lockHandler - lockdata: ${lockdata}"
-                if (lockdata && !lockdata[0].startsWith("{")) {
-                    lockdata = decrypt(lockdata)
-                    //log.trace "Lock Data: ${lockdata}"
-                    if (lockdata == null) {
-                        log.debug "Unable to decrypt lock code from device: ${lockName}"
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.warn "In lockPresenceHandler - ********************  Starting Home Tracker 2 - Lock as Presence Sensors  ********************"
+        theGvDevice = parent.gvDevice
+
+        if(evt) {
+            lockdata = evt.data
+            lockStatus = evt.value
+            lockName = evt.displayName
+            if(logEnable) log.trace "In lockHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
+            if(lockStatus == "unlocked") {
+                if(logEnable) log.trace "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
+                if(theLocks) {
+                    //if(logEnable) log.trace "In lockHandler - lockdata: ${lockdata}"
+                    if (lockdata && !lockdata[0].startsWith("{")) {
+                        lockdata = decrypt(lockdata)
+                        //log.trace "Lock Data: ${lockdata}"
+                        if (lockdata == null) {
+                            log.debug "Unable to decrypt lock code from device: ${lockName}"
+                            return
+                        }
+                    }
+                    def codeMap = parseJson(lockdata ?: "{}").find{ it }
+                    //if(logEnable) log.trace "In lockHandler - codeMap: ${codeMap}"
+                    if (!codeMap) {
+                        if(logEnable) log.trace "In lockHandler - Lock Code not available."
                         return
                     }
+                    codeName = "${codeMap?.value?.name}"         
+                    if(logEnable) log.trace "In lockHandler - ${lockName} was unlocked by ${fName}"	
                 }
-                def codeMap = parseJson(lockdata ?: "{}").find{ it }
-                //if(logEnable) log.trace "In lockHandler - codeMap: ${codeMap}"
-                if (!codeMap) {
-                    if(logEnable) log.trace "In lockHandler - Lock Code not available."
-                    return
-                }
-                codeName = "${codeMap?.value?.name}"         
-	            if(logEnable) log.trace "In lockHandler - ${lockName} was unlocked by ${fName}"	
             }
         }
-    }
-       
-    if(codeName) {
-        state.locksSize = parent.locks.size()
-        if(logEnable) log.trace "In lockPresenceHandler - codeName: ${codeName}"
-        for(x=0;x < state.locksSize.toInteger();x++) {
-            if(logEnable) log.trace " --------------------  lockPresenceHandler - sensor ${x}  --------------------"
-            state.lock = parent.locks[x].currentValue("lock")
-            getTimeDiff(x)
-            timeDiff = Math.round(timeDiffSecs/60)    // Minutes
-            
-            name = "lock" + x + "Name"
-            tempName = theGvDevice.currentValue("${name}")
-            tempNames = tempName.split(";")
-            if(tempNames[2] != "null") {
-                fName="${tempNames[2]}"
-            } else {
-                fName="${tempNames[1]}"
-            }
-        
-            lock = "lock" + x + "BH"
-            globalStatus = theGvDevice.currentValue("${lock}")
-            if(globalStatus == null || globalStatus == "") {
-                globalStatus = "${x};notSet"
-                status = globalStatus.split(";")
-            } else {
-                status = globalStatus.split(";")
-            }
-            
-            if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 1 - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock}"
-        
-            if(state.lock == "unlocked") {            
-                if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 2 - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock} - status: ${status[1]}"
-                if(timeDiffSecs < 20) {
-                    if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${timeDiff}"
-                    if(useTheFlasher && flashOnHome) {
-                        flashData = "Preset::${flashOnHomePreset}"
-                        theFlasherDevice.sendPreset(flashData)
-                    }
-                    if(homeNow) {
-                        if(useTheFlasher) {
+
+        if(codeName) {
+            state.locksSize = parent.locks.size()
+            if(logEnable) log.trace "In lockPresenceHandler - codeName: ${codeName}"
+            for(x=0;x < state.locksSize.toInteger();x++) {
+                if(logEnable) log.trace " --------------------  lockPresenceHandler - sensor ${x}  --------------------"
+                state.lock = parent.locks[x].currentValue("lock")
+                getTimeDiff(x)
+                timeDiff = Math.round(timeDiffSecs/60)    // Minutes
+
+                name = "lock" + x + "Name"
+                tempName = theGvDevice.currentValue("${name}")
+                tempNames = tempName.split(";")
+                if(tempNames[2] != "null") {
+                    fName="${tempNames[2]}"
+                } else {
+                    fName="${tempNames[1]}"
+                }
+
+                lock = "lock" + x + "BH"
+                globalStatus = theGvDevice.currentValue("${lock}")
+                if(globalStatus == null || globalStatus == "") {
+                    globalStatus = "${x};notSet"
+                    status = globalStatus.split(";")
+                } else {
+                    status = globalStatus.split(";")
+                }
+
+                if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 1 - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock}"
+
+                if(state.lock == "unlocked") {            
+                    if(logEnable) log.trace "In lockPresenceHandler (${x}) - Locks 2 - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock} - status: ${status[1]}"
+                    if(timeDiffSecs < 20) {
+                        if(logEnable) log.debug "In whosHomeHandler - Home Now - (${x}) - ${fName} just unlocked the door! Time Diff: ${timeDiff}"
+                        if(useTheFlasher && flashOnHome) {
                             flashData = "Preset::${flashOnHomePreset}"
                             theFlasherDevice.sendPreset(flashData)
                         }
-                        addNameToPresenceMap(fName)
-                        messageHomeNow()
-                    }
-                    globalStatus = "${x};justArrived"
-                } else {
-                    if(timeDiff < timeHome) { 
-                        if(status[1] == "justArrived") { 
-		                    if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${timeDiff}"
+                        if(homeNow) {
+                            if(useTheFlasher) {
+                                flashData = "Preset::${flashOnHomePreset}"
+                                theFlasherDevice.sendPreset(flashData)
+                            }
                             addNameToPresenceMap(fName)
-                        } else {
-                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Welcome Home announcement was already made."
+                            messageHomeNow()
                         }
+                        globalStatus = "${x};justArrived"
                     } else {
-                       if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${timeDiff}). No home announcements needed."
+                        if(timeDiff < timeHome) { 
+                            if(status[1] == "justArrived") { 
+                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} is now home! Time Diff: ${timeDiff}"
+                                addNameToPresenceMap(fName)
+                            } else {
+                                if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Welcome Home announcement was already made."
+                            }
+                        } else {
+                            if(logEnable) log.debug "In whosHomeHandler - Welcome Home - (${x}) - ${fName} - Home too long (${timeDiff}). No home announcements needed."
+                        }
+                        globalStatus = "${x};beenHome"
                     }
-                    globalStatus = "${x};beenHome"
+                } else if(state.lock == "locked") {
+                    globalStatus = "${x};notHome"
+                    if(logEnable) log.trace "In lockPresenceHandler (${x}) - Lock - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock}"
                 }
-            } else if(state.lock == "locked") {
-                globalStatus = "${x};notHome"
-                if(logEnable) log.trace "In lockPresenceHandler (${x}) - Lock - Working On: ${parent.locks[x]} - fName: ${fName} - lock: ${state.lock}"
+                if(logEnable) log.debug "In lockPresenceHandler - Sending globalStatus: ${globalStatus}"
+                theGvDevice.sendDataMapLock(globalStatus)
             }
-            if(logEnable) log.debug "In lockPresenceHandler - Sending globalStatus: ${globalStatus}"
-            theGvDevice.sendDataMapLock(globalStatus)
         }
+        if(logEnable) log.debug "In lockPresenceHandler - Finished (Lock)"
     }
-    if(logEnable) log.debug "In lockPresenceHandler - Finished (Lock)"
 }
 
 def addNameToPresenceMap(fName) {
@@ -596,45 +631,60 @@ def addNameToPresenceMap(fName) {
 }
 
 def lockHandler(evt) {
-	lockStatus = evt.value
-	lockName = evt.displayName
-	if(logEnable) log.trace "In lockHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
-	if(lockStatus == "unlocked") {
-        if(logEnable) log.trace "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
-        presenceSensorHandler()
-	    if(state.presenceMap) messageWelcomeHome()
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        lockStatus = evt.value
+        lockName = evt.displayName
+        if(logEnable) log.trace "In lockHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
+        if(lockStatus == "unlocked") {
+            if(logEnable) log.trace "In lockHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
+            presenceSensorHandler()
+            if(state.presenceMap) messageWelcomeHome()
+        }
+    }
 }
 
 def contactSensorHandler(evt) {
-	state.contactStatus = evt.value
-	state.contactName = evt.displayName
-	if(logEnable) log.debug "In contactSensorHandler (${state.version}) - Contact: ${state.contactName} - Status: ${state.contactStatus}"
-	if(csOpenClosed == "Open") {
-		if(state.contactStatus == "open") {
-			if(logEnable) log.debug "In contactSensorHandler - open"
-            presenceSensorHandler()
-			if(state.presenceMap) messageWelcomeHome()
-		}
-	}
-	if(csOpenClosed == "Closed") {
-		if(state.contactStatus == "closed") {
-			if(logEnable) log.debug "In contactSensorHandler - closed"
-            presenceSensorHandler()
-			if(state.presenceMap) messageWelcomeHome()
-		}
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        state.contactStatus = evt.value
+        state.contactName = evt.displayName
+        if(logEnable) log.debug "In contactSensorHandler (${state.version}) - Contact: ${state.contactName} - Status: ${state.contactStatus}"
+        if(csOpenClosed == "Open") {
+            if(state.contactStatus == "open") {
+                if(logEnable) log.debug "In contactSensorHandler - open"
+                presenceSensorHandler()
+                if(state.presenceMap) messageWelcomeHome()
+            }
+        }
+        if(csOpenClosed == "Closed") {
+            if(state.contactStatus == "closed") {
+                if(logEnable) log.debug "In contactSensorHandler - closed"
+                presenceSensorHandler()
+                if(state.presenceMap) messageWelcomeHome()
+            }
+        }
+    }
 }
 
 def motionSensorHandler(evt) {
-	state.motionStatus = evt.value
-	state.motionName = evt.displayName
-	if(logEnable) log.debug "In motionSensorHandler (${state.version}) - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
-	if(state.motionStatus == "active") {
-		if(logEnable) log.debug "In motionSensorHandler - active"
-        presenceSensorHandler()
-        if(state.presenceMap) messageWelcomeHome()
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        state.motionStatus = evt.value
+        state.motionName = evt.displayName
+        if(logEnable) log.debug "In motionSensorHandler (${state.version}) - Motion Name: ${state.motionName} - Status: ${state.motionStatus}"
+        if(state.motionStatus == "active") {
+            if(logEnable) log.debug "In motionSensorHandler - active"
+            presenceSensorHandler()
+            if(state.presenceMap) messageWelcomeHome()
+        }
+    }
 }
 
 def getTimeDiff(x) {
@@ -837,6 +887,22 @@ def pushNow(msg) {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	clearPresenceMap()
