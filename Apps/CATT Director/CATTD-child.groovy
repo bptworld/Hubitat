@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.0.4 - 09/02/20 - More Cosmetic changes
  *  2.0.3 - 04/27/20 - Cosmetic changes
  *  2.0.2 - 04/18/20 - Adjustments
  *  2.0.1 - 09/09/19 - Fixed typo
@@ -40,9 +41,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "CATT Director"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -406,13 +410,32 @@ def pageConfig() {
                 input "testBtn3", "button", title: "Test", width: 2
             }
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Test")) {
             paragraph "After entering in the options above, click here to test the sequence", width: 8
             input "testBtnSequence", "button", title: "Test the Sequence", width: 4
         }
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging."
 		}
 		display2()
 	}
@@ -426,334 +449,380 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-	if(myContact) subscribe(myContact, "contact", contactSensorHandler)
-	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
-	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
-	if(timeToRun) schedule(timeToRun, startTimeHandler)
-    if(timeToStop) schedule(timeToStop, stopTimeHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(myContact) subscribe(myContact, "contact", contactSensorHandler)
+        if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
+        if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
+        if(timeToRun) schedule(timeToRun, startTimeHandler)
+        if(timeToStop) schedule(timeToStop, stopTimeHandler)
+    }
 }
 
 def contactSensorHandler(evt) {
-	if(logEnable) log.debug "In contactSensorHandler..."
-	state.contactStatus = evt.value
-	if(state.contactStatus == "open") {
-		if(logEnable) log.debug "In contactSensorHandler - open"
-		firstHandler()
-        if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
-	} else {
-		if(logEnable) log.debug "In contactSensorHandler - closed"
-        runIn(triggerDelayEnd, stopTimeHandler)
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In contactSensorHandler..."
+        state.contactStatus = evt.value
+        if(state.contactStatus == "open") {
+            if(logEnable) log.debug "In contactSensorHandler - open"
+            firstHandler()
+            if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
+        } else {
+            if(logEnable) log.debug "In contactSensorHandler - closed"
+            runIn(triggerDelayEnd, stopTimeHandler)
+        }
+    }
 }
 
 def motionSensorHandler(evt) {
-	if(logEnable) log.debug "In motionSensorHandler..."
-	state.motionStatus = evt.value
-	if(state.motionStatus == "active") {
-		if(logEnable) log.debug "In motionSensorHandler - active"
-		firstHandler()
-        if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
-	} else {
-		if(logEnable) log.debug "In motionSensorHandler - Not active"
-		runIn(triggerDelayEnd, stopTimeHandler)
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In motionSensorHandler..."
+        state.motionStatus = evt.value
+        if(state.motionStatus == "active") {
+            if(logEnable) log.debug "In motionSensorHandler - active"
+            firstHandler()
+            if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
+        } else {
+            if(logEnable) log.debug "In motionSensorHandler - Not active"
+            runIn(triggerDelayEnd, stopTimeHandler)
+        }
+    }
 }
 
 def switchHandler(evt) {
-	if(logEnable) log.debug "In switchHandler..."
-	state.switchStatus = evt.value
-	if(state.switchStatus == "on") {
-		if(logEnable) log.debug "In switchHandler - on"
-		firstHandler()
-        if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
-	} else {
-		if(logEnable) log.debug "In switchHandler - off"
-		runIn(triggerDelayEnd, stopTimeHandler)
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In switchHandler..."
+        state.switchStatus = evt.value
+        if(state.switchStatus == "on") {
+            if(logEnable) log.debug "In switchHandler - on"
+            firstHandler()
+            if(triggerAutoEnd != 0) runIn(triggerAutoEnd, stopTimeHandler)
+        } else {
+            if(logEnable) log.debug "In switchHandler - off"
+            runIn(triggerDelayEnd, stopTimeHandler)
+        }
+    }
 }
 						  
 def startTimeHandler() {
-	if(logEnable) log.debug "In startTimeHandler..."
-	firstHandler()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In startTimeHandler..."
+        firstHandler()
+    }
 }
 
 def stopTimeHandler() {
-	if(logEnable) log.debug "In stopTimeHandler..."
-	cattDevice.stop()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In stopTimeHandler..."
+        cattDevice.stop()
+    }
 }
 
 def firstHandler() {
-    thePause = secToPause1to2 * 1000
-	if(logEnable) log.debug "In firstHandler - pause between commands: ${thePause}"
-	if(add1) {
-		cattDevice.add(castAdd1)
-		pauseExecution(thePause)
-	}
-	if(cast1) {
-		cattDevice.cast(castURL1)
-	    pauseExecution(thePause)
-	}
-	if(cast_site1) {
-		cattDevice.on(castWebsite1)
-		pauseExecution(thePause)
-	}
-    if(clear1) {
-		cattDevice.clear()
-		pauseExecution(thePause)
-	}
-	if(ffwd1) {
-		cattDevice.ffwd(castFfwd1)
-		pauseExecution(thePause)
-	}
-	if(info1) {
-		cattDevice.info()
-		pauseExecution(thePause)
-	}
-	if(pause1) {
-		cattDevice.pause()
-		pauseExecution(thePause)
-	}
-	if(play1) {
-		cattDevice.play()
-		pauseExecution(thePause)
-	}
-	if(remove1) {
-		cattDevice.remove(castRemove1)
-		pauseExecution(thePause)
-	}
-	if(restore1) {
-		cattDevice.restore()
-		pauseExecution(thePause)
-	}
-	if(rewind1) {
-		cattDevice.rewind(castRewind1)
-		pauseExecution(thePause)
-	}
-	if(save1) {
-		cattDevice.save()
-		pauseExecution(thePause)
-	}
-	if(scan1) {
-		cattDevice.scan()
-		pauseExecution(thePause)
-	}
-	if(seek1) {
-		cattDevice.seek()
-		pauseExecution(thePause)
-	}
-	if(skip1) {
-		cattDevice.skip()
-		pauseExecution(thePause)
-	}
-	if(status1) {
-		cattDevice.status()
-		pauseExecution(thePause)
-	}
-	if(stop1) {
-		cattDevice.off()
-		pauseExecution(thePause)
-	}
-	if(volume1) {
-		cattDevice.volume(castVolume1)
-		pauseExecution(thePause)
-	}
-	if(volumedown1) {
-		cattDevice.volumeDown(castVolumeDown1)
-		pauseExecution(thePause)
-	}
-	if(volumeup1) {
-		cattDevice.volumeUp(castVolumeUp1)
-		pauseExecution(thePause)
-	}
-    if(write_config1) {
-		cattDevice.write_config(castWrite_config1)
-		pauseExecution(thePause)
-	}
-    secondHandler()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        thePause = secToPause1to2 * 1000
+        if(logEnable) log.debug "In firstHandler - pause between commands: ${thePause}"
+        if(add1) {
+            cattDevice.add(castAdd1)
+            pauseExecution(thePause)
+        }
+        if(cast1) {
+            cattDevice.cast(castURL1)
+            pauseExecution(thePause)
+        }
+        if(cast_site1) {
+            cattDevice.on(castWebsite1)
+            pauseExecution(thePause)
+        }
+        if(clear1) {
+            cattDevice.clear()
+            pauseExecution(thePause)
+        }
+        if(ffwd1) {
+            cattDevice.ffwd(castFfwd1)
+            pauseExecution(thePause)
+        }
+        if(info1) {
+            cattDevice.info()
+            pauseExecution(thePause)
+        }
+        if(pause1) {
+            cattDevice.pause()
+            pauseExecution(thePause)
+        }
+        if(play1) {
+            cattDevice.play()
+            pauseExecution(thePause)
+        }
+        if(remove1) {
+            cattDevice.remove(castRemove1)
+            pauseExecution(thePause)
+        }
+        if(restore1) {
+            cattDevice.restore()
+            pauseExecution(thePause)
+        }
+        if(rewind1) {
+            cattDevice.rewind(castRewind1)
+            pauseExecution(thePause)
+        }
+        if(save1) {
+            cattDevice.save()
+            pauseExecution(thePause)
+        }
+        if(scan1) {
+            cattDevice.scan()
+            pauseExecution(thePause)
+        }
+        if(seek1) {
+            cattDevice.seek()
+            pauseExecution(thePause)
+        }
+        if(skip1) {
+            cattDevice.skip()
+            pauseExecution(thePause)
+        }
+        if(status1) {
+            cattDevice.status()
+            pauseExecution(thePause)
+        }
+        if(stop1) {
+            cattDevice.off()
+            pauseExecution(thePause)
+        }
+        if(volume1) {
+            cattDevice.volume(castVolume1)
+            pauseExecution(thePause)
+        }
+        if(volumedown1) {
+            cattDevice.volumeDown(castVolumeDown1)
+            pauseExecution(thePause)
+        }
+        if(volumeup1) {
+            cattDevice.volumeUp(castVolumeUp1)
+            pauseExecution(thePause)
+        }
+        if(write_config1) {
+            cattDevice.write_config(castWrite_config1)
+            pauseExecution(thePause)
+        }
+        secondHandler()
+    }
 }
 
 def secondHandler() {
-	thePause = secToPause2to3 * 1000
-	if(logEnable) log.debug "In secondHandler - pause between commands: ${thePause}"
-	if(add2) {
-		cattDevice.add(castAdd2)
-		pauseExecution(thePause)
-	}
-	if(cast2) {
-		cattDevice.cast(castURL2)
-	    pauseExecution(thePause)
-	}
-	if(cast_site2) {
-		cattDevice.on(castWebsite2)
-		pauseExecution(thePause)
-	}
-    if(clear2) {
-		cattDevice.clear()
-		pauseExecution(thePause)
-	}
-	if(ffwd2) {
-		cattDevice.ffwd(castFfwd2)
-		pauseExecution(thePause)
-	}
-	if(info2) {
-		cattDevice.info()
-		pauseExecution(thePause)
-	}
-	if(pause2) {
-		cattDevice.pause()
-		pauseExecution(thePause)
-	}
-	if(play2) {
-		cattDevice.play()
-		pauseExecution(thePause)
-	}
-	if(remove2) {
-		cattDevice.remove(castRemove2)
-		pauseExecution(thePause)
-	}
-	if(restore2) {
-		cattDevice.restore()
-		pauseExecution(thePause)
-	}
-	if(rewind2) {
-		cattDevice.rewind(castRewind2)
-		pauseExecution(thePause)
-	}
-	if(save2) {
-		cattDevice.save()
-		pauseExecution(thePause)
-	}
-	if(scan2) {
-		cattDevice.scan()
-		pauseExecution(thePause)
-	}
-	if(seek2) {
-		cattDevice.seek()
-		pauseExecution(thePause)
-	}
-	if(skip2) {
-		cattDevice.skip()
-		pauseExecution(thePause)
-	}
-	if(status2) {
-		cattDevice.status()
-		pauseExecution(thePause)
-	}
-	if(stop2) {
-		cattDevice.off()
-		pauseExecution(thePause)
-	}
-	if(volume2) {
-		cattDevice.volume(castVolume2)
-		pauseExecution(thePause)
-	}
-	if(volumedown2) {
-		cattDevice.volumeDown(castVolumeDown2)
-		pauseExecution(thePause)
-	}
-	if(volumeup2) {
-		cattDevice.volumeUp(castVolumeUp2)
-		pauseExecution(thePause)
-	}
-    if(write_config2) {
-		cattDevice.write_config(castWrite_config2)
-		pauseExecution(thePause)
-	}
-    thirdHandler()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        thePause = secToPause2to3 * 1000
+        if(logEnable) log.debug "In secondHandler - pause between commands: ${thePause}"
+        if(add2) {
+            cattDevice.add(castAdd2)
+            pauseExecution(thePause)
+        }
+        if(cast2) {
+            cattDevice.cast(castURL2)
+            pauseExecution(thePause)
+        }
+        if(cast_site2) {
+            cattDevice.on(castWebsite2)
+            pauseExecution(thePause)
+        }
+        if(clear2) {
+            cattDevice.clear()
+            pauseExecution(thePause)
+        }
+        if(ffwd2) {
+            cattDevice.ffwd(castFfwd2)
+            pauseExecution(thePause)
+        }
+        if(info2) {
+            cattDevice.info()
+            pauseExecution(thePause)
+        }
+        if(pause2) {
+            cattDevice.pause()
+            pauseExecution(thePause)
+        }
+        if(play2) {
+            cattDevice.play()
+            pauseExecution(thePause)
+        }
+        if(remove2) {
+            cattDevice.remove(castRemove2)
+            pauseExecution(thePause)
+        }
+        if(restore2) {
+            cattDevice.restore()
+            pauseExecution(thePause)
+        }
+        if(rewind2) {
+            cattDevice.rewind(castRewind2)
+            pauseExecution(thePause)
+        }
+        if(save2) {
+            cattDevice.save()
+            pauseExecution(thePause)
+        }
+        if(scan2) {
+            cattDevice.scan()
+            pauseExecution(thePause)
+        }
+        if(seek2) {
+            cattDevice.seek()
+            pauseExecution(thePause)
+        }
+        if(skip2) {
+            cattDevice.skip()
+            pauseExecution(thePause)
+        }
+        if(status2) {
+            cattDevice.status()
+            pauseExecution(thePause)
+        }
+        if(stop2) {
+            cattDevice.off()
+            pauseExecution(thePause)
+        }
+        if(volume2) {
+            cattDevice.volume(castVolume2)
+            pauseExecution(thePause)
+        }
+        if(volumedown2) {
+            cattDevice.volumeDown(castVolumeDown2)
+            pauseExecution(thePause)
+        }
+        if(volumeup2) {
+            cattDevice.volumeUp(castVolumeUp2)
+            pauseExecution(thePause)
+        }
+        if(write_config2) {
+            cattDevice.write_config(castWrite_config2)
+            pauseExecution(thePause)
+        }
+        thirdHandler()
+    }
 }
 
 def thirdHandler() {
-	thePause = 1000
-	if(logEnable) log.debug "In thirdHandler - pause between commands: ${thePause}"
-	if(add3) {
-		cattDevice.add(castAdd3)
-		pauseExecution(thePause)
-	}
-	if(cast3) {
-		cattDevice.cast(castURL3)
-	    pauseExecution(thePause)
-	}
-	if(cast_site3) {
-		cattDevice.on(castWebsite3)
-		pauseExecution(thePause)
-	}
-    if(clear3) {
-		cattDevice.clear()
-		pauseExecution(thePause)
-	}
-	if(ffwd3) {
-		cattDevice.ffwd(castFfwd3)
-		pauseExecution(thePause)
-	}
-	if(info3) {
-		cattDevice.info()
-		pauseExecution(thePause)
-	}
-	if(pause3) {
-		cattDevice.pause()
-		pauseExecution(thePause)
-	}
-	if(play3) {
-		cattDevice.play()
-		pauseExecution(thePause)
-	}
-	if(remove3) {
-		cattDevice.remove(castRemove3)
-		pauseExecution(thePause)
-	}
-	if(restore3) {
-		cattDevice.restore()
-		pauseExecution(thePause)
-	}
-	if(rewind3) {
-		cattDevice.rewind(castRewind3)
-		pauseExecution(thePause)
-	}
-	if(save3) {
-		cattDevice.save()
-		pauseExecution(thePause)
-	}
-	if(scan3) {
-		cattDevice.scan()
-		pauseExecution(thePause)
-	}
-	if(seek3) {
-		cattDevice.seek()
-		pauseExecution(thePause)
-	}
-	if(skip3) {
-		cattDevice.skip()
-		pauseExecution(thePause)
-	}
-	if(status3) {
-		cattDevice.status()
-		pauseExecution(thePause)
-	}
-	if(stop3) {
-		cattDevice.off()
-		pauseExecution(thePause)
-	}
-	if(volume3) {
-		cattDevice.volume(castVolume3)
-		pauseExecution(thePause)
-	}
-	if(volumedown3) {
-		cattDevice.volumeDown(castVolumeDown3)
-		pauseExecution(thePause)
-	}
-	if(volumeup3) {
-		cattDevice.volumeUp(castVolumeUp3)
-		pauseExecution(thePause)
-	}
-    if(write_config3) {
-		cattDevice.write_config(castWrite_config3)
-		pauseExecution(thePause)
-	}	
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        thePause = 1000
+        if(logEnable) log.debug "In thirdHandler - pause between commands: ${thePause}"
+        if(add3) {
+            cattDevice.add(castAdd3)
+            pauseExecution(thePause)
+        }
+        if(cast3) {
+            cattDevice.cast(castURL3)
+            pauseExecution(thePause)
+        }
+        if(cast_site3) {
+            cattDevice.on(castWebsite3)
+            pauseExecution(thePause)
+        }
+        if(clear3) {
+            cattDevice.clear()
+            pauseExecution(thePause)
+        }
+        if(ffwd3) {
+            cattDevice.ffwd(castFfwd3)
+            pauseExecution(thePause)
+        }
+        if(info3) {
+            cattDevice.info()
+            pauseExecution(thePause)
+        }
+        if(pause3) {
+            cattDevice.pause()
+            pauseExecution(thePause)
+        }
+        if(play3) {
+            cattDevice.play()
+            pauseExecution(thePause)
+        }
+        if(remove3) {
+            cattDevice.remove(castRemove3)
+            pauseExecution(thePause)
+        }
+        if(restore3) {
+            cattDevice.restore()
+            pauseExecution(thePause)
+        }
+        if(rewind3) {
+            cattDevice.rewind(castRewind3)
+            pauseExecution(thePause)
+        }
+        if(save3) {
+            cattDevice.save()
+            pauseExecution(thePause)
+        }
+        if(scan3) {
+            cattDevice.scan()
+            pauseExecution(thePause)
+        }
+        if(seek3) {
+            cattDevice.seek()
+            pauseExecution(thePause)
+        }
+        if(skip3) {
+            cattDevice.skip()
+            pauseExecution(thePause)
+        }
+        if(status3) {
+            cattDevice.status()
+            pauseExecution(thePause)
+        }
+        if(stop3) {
+            cattDevice.off()
+            pauseExecution(thePause)
+        }
+        if(volume3) {
+            cattDevice.volume(castVolume3)
+            pauseExecution(thePause)
+        }
+        if(volumedown3) {
+            cattDevice.volumeDown(castVolumeDown3)
+            pauseExecution(thePause)
+        }
+        if(volumeup3) {
+            cattDevice.volumeUp(castVolumeUp3)
+            pauseExecution(thePause)
+        }
+        if(write_config3) {
+            cattDevice.write_config(castWrite_config3)
+            pauseExecution(thePause)
+        }	
+    }
 }
 
 def appButtonHandler(buttonPressed) {
@@ -846,6 +915,22 @@ def appButtonHandler(buttonPressed) {
 
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
 	if(logEnable == null){logEnable = false}
@@ -887,25 +972,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
