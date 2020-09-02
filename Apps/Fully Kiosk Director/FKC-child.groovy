@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 09/02/20 - Cosmetic changes
  *  2.0.2 - 07/31/20 - Adjustments to Time restriction, added mode and lux to triggers
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Fully Kiosk Director"
-	state.version = "2.0.2"
+	state.version = "2.0.3"
 }
 
 definition(
@@ -156,9 +157,27 @@ def pageConfig() {
         	input "toTime", "time", title: "To", required: false
             input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
 		}
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {label title: "Enter a name for this automation", required: false}
-        section() {
-            input(name: "logEnable", type: "bool", defaultValue: "false", title: "Enable Debug Logging", description: "Enable extra logging for debugging.")
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
+		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            label title: "Enter a name for this automation", required: false
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging."
 		}
 		display2()
 	}
@@ -172,86 +191,117 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-	if(myContact) subscribe(myContact, "contact", contactSensorHandler)
-    if(lightSensor) subscribe(lightSensor, "illuminance", luxLevelHandler)
-    if(myMode) subscribe(location, "mode", modeHandler)
-	if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
-	if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
-	if(timeToRun) schedule(timeToRun, timeHandler)
-	if(timeDelay) runIn(timeDelay,timeDelayHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(myContact) subscribe(myContact, "contact", contactSensorHandler)
+        if(lightSensor) subscribe(lightSensor, "illuminance", luxLevelHandler)
+        if(myMode) subscribe(location, "mode", modeHandler)
+        if(myMotion) subscribe(myMotion, "motion", motionSensorHandler)
+        if(mySwitch) subscribe(mySwitch, "switch", switchHandler)
+        if(timeToRun) schedule(timeToRun, timeHandler)
+        if(timeDelay) runIn(timeDelay,timeDelayHandler)
+    }
 }
 
 def contactSensorHandler(evt) {
-	if(logEnable) log.debug "In contactSensorHandler..."
-	state.contactStatus = evt.value
-	if(state.contactStatus == "open") {
-		if(logEnable) log.debug "In contactSensorHandler - open"
-		beginHandler()
-		if(triggerORTime) runIn(pTime,endHandler)
-	} else {
-		if(logEnable) log.debug "In contactSensorHandler - closed"
-		if(!triggerORTime) endHandler()
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In contactSensorHandler..."
+        state.contactStatus = evt.value
+        if(state.contactStatus == "open") {
+            if(logEnable) log.debug "In contactSensorHandler - open"
+            beginHandler()
+            if(triggerORTime) runIn(pTime,endHandler)
+        } else {
+            if(logEnable) log.debug "In contactSensorHandler - closed"
+            if(!triggerORTime) endHandler()
+        }
+    }
 }
 
 def modeHandler(evt) {
-    if(logEnable) log.debug "In modeHandler..."
-	state.modeStatus = evt.value
-	if(myMode.contains(location.mode)) {
-        if(logEnable) log.debug "In modeHandler - mode is active"
-		beginHandler()
-		if(triggerORTime) runIn(pTime,endHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
     } else {
-		if(logEnable) log.debug "In modeHandler - mode is Not active"
-		if(!triggerORTime) endHandler()
-	}
+        if(logEnable) log.debug "In modeHandler..."
+        state.modeStatus = evt.value
+        if(myMode.contains(location.mode)) {
+            if(logEnable) log.debug "In modeHandler - mode is active"
+            beginHandler()
+            if(triggerORTime) runIn(pTime,endHandler)
+        } else {
+            if(logEnable) log.debug "In modeHandler - mode is Not active"
+            if(!triggerORTime) endHandler()
+        }
+    }
 }                                               
                          
 def motionSensorHandler(evt) {
-	if(logEnable) log.debug "In motionSensorHandler..."
-	state.motionStatus = evt.value
-	if(state.motionStatus == "active") {
-		if(logEnable) log.debug "In motionSensorHandler - active"
-		beginHandler()
-		if(triggerORTime) runIn(pTime,endHandler)
-	} else {
-		if(logEnable) log.debug "In motionSensorHandler - Not active"
-		if(!triggerORTime) endHandler()
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In motionSensorHandler..."
+        state.motionStatus = evt.value
+        if(state.motionStatus == "active") {
+            if(logEnable) log.debug "In motionSensorHandler - active"
+            beginHandler()
+            if(triggerORTime) runIn(pTime,endHandler)
+        } else {
+            if(logEnable) log.debug "In motionSensorHandler - Not active"
+            if(!triggerORTime) endHandler()
+        }
+    }
 }
 
 def switchHandler(evt) {
-	if(logEnable) log.debug "In switchHandler..."
-	state.switchStatus = evt.value
-	if(state.switchStatus == "on") {
-		if(logEnable) log.debug "In switchHandler - on"
-		beginHandler()
-		if(triggerORTime) runIn(pTime,endHandler)
-	} else {
-		if(logEnable) log.debug "In switchHandler - off"
-		if(!triggerORTime) endHandler()
-	}
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In switchHandler..."
+        state.switchStatus = evt.value
+        if(state.switchStatus == "on") {
+            if(logEnable) log.debug "In switchHandler - on"
+            beginHandler()
+            if(triggerORTime) runIn(pTime,endHandler)
+        } else {
+            if(logEnable) log.debug "In switchHandler - off"
+            if(!triggerORTime) endHandler()
+        }
+    }
 }
 			
 def luxLevelHandler(evt) {
-    if(logEnable) log.debug "In luxLevelHandler (${state.version})"
-    if(lightSensor != null) {
-		if(lightLevel == null) {lightLevel = 0}
-        state.curLev = lightSensor.currentValue("illuminance").toInteger()
-        if (state.curLev >= lightLevel.toInteger()) {
-            if(logEnable) log.debug "In luxLevelHandler...Current Light Level: ${state.curLev} is greater than lightValue: ${lightLevel} - isItDark: false"
-			state.isItDark = false
-            if(!triggerORTime) endHandler()
-        } else {
-            if(logEnable) log.debug "In luxLevelHandler...Current Light Level: ${state.curLev} is less than lightValue: ${lightLevel} - isItDark: true"
-			state.isItDark = true
-            beginHandler()
-		    if(triggerORTime) runIn(pTime,endHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In luxLevelHandler (${state.version})"
+        if(lightSensor != null) {
+            if(lightLevel == null) {lightLevel = 0}
+            state.curLev = lightSensor.currentValue("illuminance").toInteger()
+            if (state.curLev >= lightLevel.toInteger()) {
+                if(logEnable) log.debug "In luxLevelHandler...Current Light Level: ${state.curLev} is greater than lightValue: ${lightLevel} - isItDark: false"
+                state.isItDark = false
+                if(!triggerORTime) endHandler()
+            } else {
+                if(logEnable) log.debug "In luxLevelHandler...Current Light Level: ${state.curLev} is less than lightValue: ${lightLevel} - isItDark: true"
+                state.isItDark = true
+                beginHandler()
+                if(triggerORTime) runIn(pTime,endHandler)
+            }
         }
     }
 }
@@ -465,6 +515,22 @@ def checkTime() {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable) log.debug "In setDefaults..."
