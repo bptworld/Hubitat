@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 07/18/20 - Added 'Off' options to setpoints, cosmetic changes
  *  1.1.0 - 07/09/20 - Fixed Disable switch
  *  1.0.9 - 07/05/20 - Adjustments
  *  1.0.8 - 06/25/20 - Added App Control options
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -100,7 +101,7 @@ def pageConfig() {
             input "dataDevice", "capability.actuator", title: "Virtual Device specified above", required:true, multiple:false
             if(!useExistingDevice) {
                 app.removeSetting("dataName")
-                paragraph "<small>* Device must use the 'Simple Averaging' Driver.</small>"
+                paragraph "<small>* Device must use the 'Simple Averaging Driver'.</small>"
             }
         }      
         
@@ -171,22 +172,22 @@ def pageConfig() {
                 }
             }
         }
-        
+
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains("pauseApp")) {
-                        app.updateLabel(app.label + " Paused")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
@@ -201,12 +202,17 @@ def lowSetpointConfig() {
 	dynamicPage(name: "lowSetpointConfig", title: "", install:false, uninstall:false) {
         display()
         section(getFormat("header-green", "${getImage("Blank")}"+" Average Too Low Options")) {
-            input "spLowDevices", "capability.switch", title: "Turn on Device(s)", required:false, multiple:true, submitOnChange:true
+            input "spLowDevices", "capability.switch", title: "Turn on OR off Device(s)", required:false, multiple:true, submitOnChange:true
             if(spLowDevices) {
-                input "lowTimesOn", "number", title: "How many 'Too Low Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
-                input "lowDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
-                if(lowDeviceAutoOff) {
-                    input "lowTimesOff", "number", title: "How many 'Normal Averages' required in a row to turn switch Off", defaultValue:3, submitOnChange:true
+                input "offORonLow", "bool", title: "Turn devices Off (off) or On (on)", defaultValue:false, submitOnChange:true
+                if(!offORonLow) {
+                    input "lowTimesOff", "number", title: "How many 'Too Low Averages' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
+                } else {
+                    input "lowTimesOn", "number", title: "How many 'Too Low Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                    input "lowDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+                    if(lowDeviceAutoOff) {
+                        input "lowTimesOff", "number", title: "How many 'Normal Averages' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
+                    }
                 }
             }
             
@@ -219,12 +225,17 @@ def highSetpointConfig() {
 	dynamicPage(name: "highSetpointConfig", title: "", install:false, uninstall:false) {
         display()
         section(getFormat("header-green", "${getImage("Blank")}"+" Average Too High Options")) {
-            input "spHighDevices", "capability.switch", title: "Turn on Device(s)", required:false, multiple:true, submitOnChange:true
+            input "spHighDevices", "capability.switch", title: "Turn on OR off Device(s)", required:false, multiple:true, submitOnChange:true
             if(spHighDevices) {
-                input "highTimes", "number", title: "How many 'Too High Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
-                input "highDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
-                if(highDeviceAutoOff) {
-                    input "highTimesOff", "number", title: "How many 'Normal Averages' required in a row to turn switch Off", defaultValue:3, submitOnChange:true
+                input "offORonHigh", "bool", title: "Turn devices Off (off) or On (on)", defaultValue:false, submitOnChange:true
+                if(!offORonHigh) {
+                    input "highTimesOff", "number", title: "How many 'Too High Averages' required in a row to turn switch Off", defaultValue:2, submitOnChange:true
+                } else {                    
+                    input "highTimesOn", "number", title: "How many 'Too High Averages' required in a row to turn switch On", defaultValue:2, submitOnChange:true
+                    input "highDeviceAutoOff", "bool", title: "Automatically turn the devices off when return to normal range", defaultValue:false, required:false, submitOnChange:true
+                    if(highDeviceAutoOff) {
+                        input "highTimesOff", "number", title: "How many 'Normal Averages' required in a row to automatically turn switch Off", defaultValue:3, submitOnChange:true
+                    }
                 }
             }
             
@@ -268,18 +279,15 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    if(app.label) {
-        if(app.label.contains("Paused")) {
-            app.updateLabel(app.label.replaceAll(" Paused",""))
-            app.updateLabel(app.label + " <font color='red'>Paused</font>")
-        }
-    }
-    
-    if(!pauseApp) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         setDefaults()
         if(theDevices && attrib) {
             if(triggerMode == "1_Min") runEvery1Minute(averageHandler)
@@ -304,18 +312,6 @@ private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
-def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - edSwitch: ${edSwitch}"
-        edSwitch.each { it ->
-            eSwitch = it.currentValue("switch")
-            if(eSwitch == "on") { eSwitch = false }
-        }
-    }
-    return eSwitch
-}
-
 def resetHandler() {
     if(logEnable) log.debug "In zeroHandler (${state.version})"
     if(theDevices) {
@@ -336,7 +332,9 @@ def weeklyResetHandler() {
 
 def averageHandler(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In averageHandler (${state.version})"
         if(theDevices) {
             if(logEnable) log.debug "     - - - - - Start (Averaging) - - - - -     "
@@ -392,9 +390,14 @@ def averageHandler(evt) {
                 
                 if(state.lTimes == null) state.lTimes = 0
                 state.lTimes = state.lTimes + 1
+                
                 if(spLowDevices) {
                     spLowDevices.each {
-                        it.on()
+                        if(offORonLow) {
+                            it.on()
+                        } else {
+                            it.off()
+                        }
                     }
                 }
                 if(pushMessage && !state.sentPush) {
@@ -412,9 +415,14 @@ def averageHandler(evt) {
                 
                 if(state.hTimes == null) state.hTimes = 0
                 state.hTimes = state.hTimes + 1
+                
                 if(spHighDevices) {
                     spHighDevices.each {
-                        it.on()
+                        if(offORonHigh) {
+                            it.on()
+                        } else {
+                            it.off()
+                        }
                     }
                 }
                 if(pushMessage && !state.sentPush) {
@@ -519,6 +527,22 @@ def dayOfTheWeekHandler() {
 
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults() {
 	if(logEnable == null){logEnable = false}
     state.nTimes = 0
@@ -602,4 +626,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
