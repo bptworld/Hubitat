@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.4 - 09/02/20 - Cosmetic changes
  *  2.3.3 - 08/02/20 - Fixed typo with locks
  *  2.3.2 - 07/29/20 - Fixed typo with Battery
  *  2.3.1 - 07/29/20 - Disabled devices will no longer show in reports, other adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.3"
+	state.version = "2.3.4"
 }
 
 definition(
@@ -167,6 +168,23 @@ def pageConfig() {
             input "mmddyy", "bool", title: "Time Format - mm dd, yy=OFF - dd mm, yy=ON", description: "Time Format", defaultValue:false, submitOnChange:true
             input "includeDate", "bool", title: "Include Timestamp on Report", description: "Timestamp", defaultValue:false, submitOnChange:true
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required:false, submitOnChange:true
@@ -725,13 +743,19 @@ def updated() {
    	if(logEnable) log.info "Updated with settings: ${settings}"
     unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-	setDefaults()
-	if(timeToRun) schedule(timeToRun, activityHandler)
-	if(runReportSwitch) subscribe(runReportSwitch, "switch.on", activityHandler)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(timeToRun) schedule(timeToRun, activityHandler)
+        if(runReportSwitch) subscribe(runReportSwitch, "switch.on", activityHandler)
+    }
 }
 
 def uninstalled() {
@@ -743,20 +767,25 @@ private removeChildDevices(delete) {
 }
 
 def activityHandler(evt) {
-	clearMaps()
-	if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
-	if(activityDevices) myActivityHandler()
-	if(batteryDevices) myBatteryHandler()
-	if(statusDevices) myStatusHandler()
-    if(activityAttDevices) myActivityAttHandler()
-    if(specialDevices1) specialTrackingHandler()
-			
-	if(isDataActivityDevice) isThereData()
-	if(isDataBatteryDevice) isThereData()
-	if(isDataStatusDevice) isThereData()
-    if(isDataSpecialDevice) isThereData()
-	if(sendPushMessage) pushNow()
-    if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        clearMaps()
+        if(logEnable) log.debug "     * * * * * * * * Starting ${app.label} * * * * * * * *     "
+        if(activityDevices) myActivityHandler()
+        if(batteryDevices) myBatteryHandler()
+        if(statusDevices) myStatusHandler()
+        if(activityAttDevices) myActivityAttHandler()
+        if(specialDevices1) specialTrackingHandler()
+
+        if(isDataActivityDevice) isThereData()
+        if(isDataBatteryDevice) isThereData()
+        if(isDataStatusDevice) isThereData()
+        if(isDataSpecialDevice) isThereData()
+        if(sendPushMessage) pushNow()
+        if(logEnable) log.debug "     * * * * * * * * End ${app.label} * * * * * * * *     "
+    }
 }	
 
 def myActivityHandler() {
@@ -1715,6 +1744,22 @@ def dateFormatHandler(theDate) {
 }
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            state.eSwitch = it.currentValue("switch")
+            if(state.eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults(){
 	setupNewStuff()
 	if(logEnable == null){logEnable = false}
@@ -1798,4 +1843,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
