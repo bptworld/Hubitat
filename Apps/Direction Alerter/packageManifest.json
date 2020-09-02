@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Direction%20Alerter/DA-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.1"
+			"version": "1.0.2"
 		}
 	],
 	"drivers" : [
