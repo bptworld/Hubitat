@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 09/02/20 - Another attempt to stop push when there is no message
  *  1.1.0 - 08/31/20 - Added more debug messages
  *  1.0.9 - 08/29/20 - Attempt push for when there is no message
  *  1.0.8 - 08/28/20 - Fixed a typo
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -948,32 +949,40 @@ def pregameMessageHandler() {
 
 def messageHandler(data) {
     if(logEnable) log.debug "In messageHandler (${state.version}) - data: ${data}"
-    state.theMsg = ""
-    def theMessages = "${data}".split(";")
-	mSize = theMessages.size()
-	pickOne = mSize.toInteger()
-    def whichMessage = new Random().nextInt(pickOne)
-    state.theMsg = theMessages[whichMessage]
-    
-    if(state.myTeamIs == "away") { 
-        if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.awayTeam}" )}
-        if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.homeTeam}" )}
-        
-        if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalAwayScore}" )}
-        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalHomeScore}" )}
-    }
-    if(state.myTeamIs == "home") { 
-        if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.homeTeam}" )}
-        if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.awayTeam}" )}
-        
-        if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalHomeScore}" )}
-        if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalAwayScore}" )}
-    }
+    if(data == null) {
+        state.theMsg = ""
+        def theMessages = "${data}".split(";")
+        mSize = theMessages.size()
+        pickOne = mSize.toInteger()
+        def whichMessage = new Random().nextInt(pickOne)
+        state.theMsg = theMessages[whichMessage]
 
-    if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
-    
-    if(useSpeech) letsTalk()
-    if(pushMessage) pushNow()
+        if(state.myTeamIs == "away") { 
+            if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.awayTeam}" )}
+            if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.homeTeam}" )}
+
+            if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalAwayScore}" )}
+            if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalHomeScore}" )}
+        }
+        if(state.myTeamIs == "home") { 
+            if(state.theMsg.contains("%myTeam%")) {state.theMsg = state.theMsg.replace('%myTeam%', "${state.homeTeam}" )}
+            if(state.theMsg.contains("%otherTeam%")) {state.theMsg = state.theMsg.replace('%otherTeam%', "${state.awayTeam}" )}
+
+            if(state.theMsg.contains("%myTeamScore%")) {state.theMsg = state.theMsg.replace('%myTeamScore%', "${state.totalHomeScore}" )}
+            if(state.theMsg.contains("%otherTeamScore%")) {state.theMsg = state.theMsg.replace('%otherTeamScore%', "${state.totalAwayScore}" )}
+        }
+
+        if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
+
+        if(state.theMsg == null) {
+            if(logEnable) log.debug "In messageHandler - No theMsg found, moving on"
+        } else {
+            if(useSpeech) letsTalk()
+            if(pushMessage) pushNow()
+        }
+    } else {
+        if(logEnable) log.debug "In messageHandler - No data found, moving on"
+    }
 }
 
 def pushNow() {
