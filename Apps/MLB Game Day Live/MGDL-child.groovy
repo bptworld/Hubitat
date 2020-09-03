@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 09/03/20 - Seperated all speech elements
  *  1.1.1 - 09/02/20 - Another attempt to stop push when there is no message
  *  1.1.0 - 08/31/20 - Added more debug messages
  *  1.0.9 - 08/29/20 - Attempt push for when there is no message
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -134,8 +135,14 @@ def pageConfig() {
             label title: "Enter a name for this automation", required:false, submitOnChange:true
             input "logEnable","bool", title: "Enable Debug Logging and Test Buttons", description: "Debugging", defaultValue: false, submitOnChange: true
             if(logEnable) {
-                input "testOtherScore", "button", title: "Test otherTeam Score", width:4
-                input "testMyTeamScore", "button", title: "Test myTeam Score", width:4
+                if(speakPreGame) input "testPreGame", "button", title: "Test Pre-Game Message", width:6
+                if(speakPostGame) input "testPostGame", "button", title: "Test Post-Game Message", width:6
+                
+                if(speakOtherTeamScore) input "testOtherScore", "button", title: "Test otherTeam Score", width:6
+                if(speakMyTeamScore) input "testMyTeamScore", "button", title: "Test myTeam Score", width:6
+                
+                if(speakOtherTeamWin) input "testOtherWin", "button", title: "Test otherTeam Wins", width:6
+                if(speakMyTeamWin) input "testMyTeamWin", "button", title: "Test myTeam Wins", width:6
             }
 		}
 		display2()
@@ -181,43 +188,99 @@ def notificationOptions(){
             section() {
                 paragraph "Wildcards:<br>%myTeam% - Will be replaced with MY Team Name<br>%otherTeam% - will be replaced with the OTHER Team Name<br>%myTeamScore% - will be replaced with MY Team Score<br>%otherTeamScore% - will be replaced with the OTHER Team Score"
                 paragraph "<hr>"
-                input "myTeamScore", "text", title: "Message when My Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                input "myTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
-                if(myTeamScoreList) {
-                    def myTeamList = "${myTeamScore}".split(";")
-                    theListH = ""
-                    myTeamList.each { item -> theListH += "${item}<br>"}
-                    paragraph "${theListH}"
+                
+                input "speakPreGame", "bool", title: "Speak/Push Pre-Game Message", defaultValue:false, submitOnChange:true, width:6
+                input "speakPostGame", "bool", title: "Speak/Push Post-Game Message", defaultValue:false, submitOnChange:true, width:6
+                
+                input "speakMyTeamScore", "bool", title: "Speak/Push when My Team Scores", defaultValue:false, submitOnChange:true, width:6
+                input "speakOtherTeamScore", "bool", title: "Speak/Push when Other Team Scores", defaultValue:false, submitOnChange:true, width:6
+                
+                input "speakMyTeamWin", "bool", title: "Speak/Push when My Team Wins", defaultValue:false, submitOnChange:true, width:6
+                input "speakOtherTeamWin", "bool", title: "Speak/Push when Other Team Wins", defaultValue:false, submitOnChange:true, width:6
+                
+                if(speakPreGame) {
+                    paragraph "<hr>"
+                    input "pregameMessage", "text", title: "Pregame message (optional) - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    paragraph "<small>* Message will be spoken/pushed 15 minutes prior to game time</small>"
+                    input "pregameList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
+                    if(pregameList) {
+                        def pList = "${pregameMessage}".split(";")
+                        theListP = ""
+                        pList.each { item -> theListP += "${item}<br>"}
+                        paragraph "${theListP}"
+                    }
+                } else {
+                    app.removeSetting("pregameMessage")
+                }    
+                
+                if(speakPostGame) {
+                    paragraph "<hr>"
+                    input "postgameMessage", "text", title: "Postgame message (optional) - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "postgameList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
+                    if(postgameList) {
+                        def ptList = "${postgameMessage}".split(";")
+                        theListPt = ""
+                        ptList.each { item -> theListPt += "${item}<br>"}
+                        paragraph "${theListPt}"
+                    }
+                } else {
+                    app.removeSetting("postgameMessage")
+                }  
+                
+                if(speakMyTeamScore) {
+                    paragraph "<hr>"
+                    input "myTeamScore", "text", title: "Message when My Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "myTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
+                    if(myTeamScoreList) {
+                        def myTeamList = "${myTeamScore}".split(";")
+                        theListH = ""
+                        myTeamList.each { item -> theListH += "${item}<br>"}
+                        paragraph "${theListH}"
+                    }
+                } else {
+                    app.removeSetting("myTeamScore")
                 }
 
-                input "otherTeamScore", "text", title: "Message when the Other Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                input "otherTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
-                if(otherTeamScoreList) {
-                    def otherList = "${otherTeamScore}".split(";")
-                    theListA = ""
-                    otherList.each { item -> theListA += "${item}<br>"}
-                    paragraph "${theListA}"
+                if(speakOtherTeamScore) {
+                    paragraph "<hr>"
+                    input "otherTeamScore", "text", title: "Message when the Other Team scores - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "otherTeamScoreList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
+                    if(otherTeamScoreList) {
+                        def otherList = "${otherTeamScore}".split(";")
+                        theListA = ""
+                        otherList.each { item -> theListA += "${item}<br>"}
+                        paragraph "${theListA}"
+                    }
+                } else {
+                    app.removeSetting("otherTeamScore")
+                }
+
+                if(speakMyTeamWin) {
+                    paragraph "<hr>"
+                    input "myTeamWin", "text", title: "Message when My Team wins - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "myTeamWinList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
+                    if(myTeamWinList) {
+                        def myTeamListW = "${myTeamWin}".split(";")
+                        theListW = ""
+                        myTeamListW.each { item -> theListW += "${item}<br>"}
+                        paragraph "${theListW}"
+                    }
+                } else {
+                    app.removeSetting("myTeamWin")
                 }
                 
-                paragraph "<hr>"
-                input "pregameMessage", "text", title: "Pregame message (optional) - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                paragraph "<small>* Message will be spoken/pushed 15 minutes prior to game time</small>"
-                input "pregameList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
-                if(pregameList) {
-                    def pList = "${pregameMessage}".split(";")
-                    theListP = ""
-                    pList.each { item -> theListP += "${item}<br>"}
-                    paragraph "${theListP}"
-                }
-                
-                paragraph "<hr>"
-                input "postgameMessage", "text", title: "Postgame message (optional) - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                input "postgameList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
-                if(postgameList) {
-                    def ptList = "${postgameMessage}".split(";")
-                    theListPt = ""
-                    ptList.each { item -> theListPt += "${item}<br>"}
-                    paragraph "${theListPt}"
+                if(speakOtherTeamWin) {
+                    paragraph "<hr>"
+                    input "otherTeamWin", "text", title: "Message when Other Team wins - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "otherTeamWinList", "bool", title: "Show a list view of the messages?", description: "List View", defaultValue:false, submitOnChange:true
+                    if(otherTeamWinList) {
+                        def otherTeamListW = "${otherTeamWin}".split(";")
+                        theListOW = ""
+                        otherTeamListW.each { item -> theListOW += "${item}<br>"}
+                        paragraph "${theListOW}"
+                    }
+                } else {
+                    app.removeSetting("otherTeamWin")
                 }
             }
         }
@@ -412,7 +475,7 @@ def startGameDay() {  // Modified from code by Eric Luttmann
                 def gameTime = new Date(gameStart.getTime())           
 
                 // check for pregame message
-                if(pregameMessage) {
+                if(speakPreGame) {
                     def minutesBefore = 15
                     def pregameTime = new Date(gameStart.getTime() - ((minutesBefore * 60) * 1000))
                     if(logEnable) log.debug "In startGameDay - Schedule pregame message for ${app.label} at ${pregameTime.format('h:mm:ss a', location.timeZone)}"
@@ -578,7 +641,7 @@ def checkLiveGameStats() {
             runIn(60, checkLiveGameStats)
         } else if(state.gameStatus == "Final") {
             if(logEnable) log.debug "In checkLiveGameStats - Game status: ${state.gameStatus}."
-            messageHandler(postgameMessage)
+            if(speakPostGame) messageHandler(postgameMessage)
             data = "final;final"
             notificationHandler(data)
         } else {
@@ -775,11 +838,11 @@ def checkLiveGameStatsHandler(resp, data) {
                     log.info "In checkLiveGameStatsHandler - Away Team Score!"
                     state.awayScore = state.totalAwayScore
                     if(state.myTeamIs == "away") {
-                        messageHandler(myTeamScore)
+                        if(speakMyTeamScore) messageHandler(myTeamScore)
                         data = "myTeam;live"
                         notificationHandler(data)
                     } else {
-                        messageHandler(otherTeamScore)
+                        if(speakOtherTeamScore) messageHandler(otherTeamScore)
                         data = "otherTeam;live"
                         notificationHandler(data)
                     }
@@ -797,11 +860,11 @@ def checkLiveGameStatsHandler(resp, data) {
                     log.info "In checkLiveGameStatsHandler - Home Team Score!"
                     state.homeScore = state.totalHomeScore
                     if(state.myTeamIs == "home") {
-                        messageHandler(myTeamScore)
+                        if(speakMyTeamScore) messageHandler(myTeamScore)
                         data = "myTeam;live"
                         notificationHandler(data)
                     } else {
-                        messageHandler(otherTeamScore)
+                        if(speakOtherTeamScore) messageHandler(otherTeamScore)
                         data = "otherTeam;live"
                         notificationHandler(data)
                     }
@@ -928,28 +991,18 @@ def resetScoringSwitches(data) {
     }
 }
 
-def letsTalk() {
-    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
-    if(useSpeech && fmSpeaker) {
-        fmSpeaker.latestMessageFrom(state.name)
-        fmSpeaker.speak(state.theMsg)
-    }
-}
-
 def pregameMessageHandler() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(pregameMessage) {
-            messageHandler(pregameMessage)
-        }
+        if(speakPreGame) { messageHandler(pregameMessage) }
     }
 }
 
 def messageHandler(data) {
     if(logEnable) log.debug "In messageHandler (${state.version}) - data: ${data}"
-    if(data == null) {
+    if(data) {
         state.theMsg = ""
         def theMessages = "${data}".split(";")
         mSize = theMessages.size()
@@ -985,8 +1038,18 @@ def messageHandler(data) {
     }
 }
 
+def letsTalk() {
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - theMsg: ${state.theMsg}"
+    if(useSpeech && fmSpeaker) {
+        fmSpeaker.latestMessageFrom(state.name)
+        fmSpeaker.speak(state.theMsg)
+    }
+}
+
 def pushNow() {
-    if(state.theMsg != null || state.theMsg != "") {
+    if(state.theMsg == null || state.theMsg == "") {
+        // Do nothing
+    } else {
         if(logEnable) log.debug "In pushNow (${state.version}) - theMsg: ${state.theMsg}"
         thePushMessage = "${app.label} \n"
         thePushMessage += state.theMsg
@@ -1165,14 +1228,32 @@ def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     
-    if(state.whichButton == "testOtherScore"){
+    if(state.whichButton == "testPreGame"){
+        log.debug "In appButtonHandler - testPreGame"
+        if(speakPreGame) messageHandler(pregameMessage)
+
+    } else if(state.whichButton == "testPostGame"){
+        log.debug "In appButtonHandler - testPostGame"
+        if(speakPostGame) messageHandler(postgameMessage)
+
+    } else if(state.whichButton == "testOtherScore"){
         log.debug "In appButtonHandler - testOtherScore - other Team"
-        if(useSpeech && otherTeamScore) messageHandler(otherTeamScore)
+        if(speakOtherTeamScore) messageHandler(otherTeamScore)
         data = "otherTeam;test"       
         notificationHandler(data)
     } else if(state.whichButton == "testMyTeamScore"){
         log.debug "In appButtonHandler - testMyTeamGoal - My Team"
-        if(useSpeech && myTeamScore) messageHandler(myTeamScore)
+        if(speakMyTeamScore) messageHandler(myTeamScore)
+        data = "myTeam;test"
+        notificationHandler(data)
+    } else if(state.whichButton == "testOtherWin"){
+        log.debug "In appButtonHandler - testOtherWin - other Team"
+        if(speakOtherTeamWin) messageHandler(otherTeamWin)
+        data = "otherTeam;test"
+        notificationHandler(data)
+    } else if(state.whichButton == "testMyTeamWin"){
+        log.debug "In appButtonHandler - testMyTeamWin - My Team"
+        if(speakMyTeamWin) messageHandler(myTeamWin)
         data = "myTeam;test"
         notificationHandler(data)
     }
