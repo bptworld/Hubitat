@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ * * 1.1.3 - 09/04/20 - Minor changes
  *  1.1.2 - 09/03/20 - Seperated all speech elements
  *  1.1.1 - 09/02/20 - Another attempt to stop push when there is no message
  *  1.1.0 - 08/31/20 - Added more debug messages
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "MLB Game Day Live"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -996,7 +997,7 @@ def pregameMessageHandler() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(speakPreGame) { messageHandler(pregameMessage) }
+        messageHandler(pregameMessage)
     }
 }
 
@@ -1027,7 +1028,7 @@ def messageHandler(data) {
 
         if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
 
-        if(state.theMsg == null) {
+        if(state.theMsg == null || state.theMsg == "") {
             if(logEnable) log.debug "In messageHandler - No theMsg found, moving on"
         } else {
             if(useSpeech) letsTalk()
