@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.3.2 - 09/03/20 - Attempt to fix Permanent Dim without sun restriction
  *  1.3.1 - 09/01/20 - Cosmetic changes, more options
  *  1.3.0 - 08/22/20 - Working on notifications
  *  ---
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.3.1"
+	state.version = "1.3.2"
 }
 
 definition(
@@ -174,6 +175,7 @@ def pageConfig() {
             if(dataDevice) {
                 input "useTile", "bool", title: "Create Informational Room Tile for Dashboards", defaultValue:false, submitOnChange:true
                 if(useTile) {
+                    paragraph "<small>* Devices can be a single device or a device created with 'Average Plus'</small>"
                     input "tileName", "text", title: "Enter a Room Name to use on the Tile", required:false, submitOnChange:true
                     input "roomTemp", "capability.temperatureMeasurement", title: "Room Temperature Device", required:false, multiple:false, submitOnChange:true
                     input "roomHumidity", "capability.relativeHumidityMeasurement", title: "Room Humidity Device", required:false, multiple:false, submitOnChange:true 
@@ -605,7 +607,11 @@ def initialize() {
         if(myPresence2) subscribe(myPresence2, "presence", primaryHandler)
         if(mySwitches2) subscribe(mySwitches2, "switch", primaryHandler)
 
-        if(sunRestriction) autoSunHandler()
+        if(sunRestriction) {
+            autoSunHandler()
+        } else {
+            state.sunRiseTosunSet = true
+        }
 
         if(logEnable) log.debug "In initialize - ${app.label} - Finished initialize"
     }
@@ -1356,7 +1362,7 @@ def checkTimeSun() {
 			state.sunRiseTosunSet = false
 		}
         if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
-  	} else {  
+  	} else {
 		state.timeBetweenSun = true
         if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
   	}
