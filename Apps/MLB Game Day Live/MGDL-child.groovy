@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- * * 1.1.3 - 09/04/20 - Minor changes
+ *  1.1.3 - 09/04/20 - Minor changes
  *  1.1.2 - 09/03/20 - Seperated all speech elements
  *  1.1.1 - 09/02/20 - Another attempt to stop push when there is no message
  *  1.1.0 - 08/31/20 - Added more debug messages
