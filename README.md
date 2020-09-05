@@ -42,6 +42,9 @@ Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-devic
 <b>Direction Alerter</b> - Get notified on the direction something is moving in. Great for a Driveway Alert with direction.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-direction-alerter-get-notified-on-the-direction-something-is-moving-in/45128" target="_blank">Go Here</a>
 <br><br>
+<b>Event Control</b> - Automatically control devices and events using multiple triggers!<br>
+Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/beta-event-control-automatically-control-devices-and-events-using-multiple-triggers/49727" target="_blank">Go Here</a>
+<br><br>
 <b>Event Watchdog</b> - Keep an eye on what's important in the Event log.<br>
 Hubitat Forum Discussion: <a href="https://community.hubitat.com/t/release-event-watchdog-keep-an-eye-on-whats-important-in-the-event-log/44284" target="_blank">Go Here</a>
 <br><br>
