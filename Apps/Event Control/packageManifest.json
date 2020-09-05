@@ -4,7 +4,7 @@
 	"author": "BPTWorld",
 	"dateReleased": "2020-09-05",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "",
+	"communityLink": "https://community.hubitat.com/t/beta-event-control-automatically-control-devices-and-events-using-multiple-triggers/49727",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
