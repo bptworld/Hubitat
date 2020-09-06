@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.1 - 09/06/20 - Made Contact, Motion and Switch Triggers 'and' or 'or'
  *  1.0.0 - 09/05/20 - Initial release.
  *
  */
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.0"
+	state.version = "1.0.1"
 }
 
 definition(
@@ -77,7 +78,7 @@ def pageConfig() {
 		}
 		
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
-            input "triggerType", "enum", title: "Trigger Type (Each trigger will be considered an 'AND')", options: [
+            input "triggerType", "enum", title: "Trigger Type", options: [
                 ["xDays":"Time/Days"],
                 ["xContact":"Contact Sensors"],
                 ["xHumidity":"Humidity Setpoint"],
@@ -163,7 +164,13 @@ def pageConfig() {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required: false, multiple: true, submitOnChange: true
                 if(contactEvent) {
-                    input "csOpenClosed", "bool", defaultValue:false, title: "<b>Trigger when Closed or Opened? (off=Closed, on=Open)</b>", description: "Contact status", submitOnChange:true
+                    input "csOpenClosed", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact status", defaultValue:false, submitOnChange:true
+                    input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(contactANDOR) {
+                        paragraph "Trigger will fire when <b>any</b> device is true"
+                    } else {
+                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                    }
                 }
                 paragraph "<hr>"
             } else {
@@ -174,9 +181,9 @@ def pageConfig() {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
                 if(humidityEvent) {
-                    input "oSetPointHigh", "bool", defaultValue:false, title: "<b>Trigger when Humidity is too High?</b>", description: "Humidity High", submitOnChange:true
+                    input "oSetPointHigh", "bool", defaultValue:false, title: "Trigger when Humidity is too High?", description: "Humidity High", submitOnChange:true
                     if(oSetPointHigh) input "setPointHigh", "number", title: "Humidity High Setpoint", required: true, defaultValue: 75, submitOnChange: true
-                    input "oSetPointLow", "bool", defaultValue:false, title: "<b>Trigger when Humidity is too Low?</b>", description: "Humidity Low", submitOnChange:true
+                    input "oSetPointLow", "bool", defaultValue:false, title: "Trigger when Humidity is too Low?", description: "Humidity Low", submitOnChange:true
                     if(oSetPointLow) input "setPointLow", "number", title: "Humidity Low Setpoint", required:true, defaultValue: 30, submitOnChange:true
 
                     if(oSetPointHigh) paragraph "You will receive notifications if Humidity reading is above ${setPointHigh}"
@@ -191,9 +198,9 @@ def pageConfig() {
                 paragraph "<b>Mode</b>"
                 input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
                 if(modeEvent) {
-                    input "modeOnOff", "bool", defaultValue: false, title: "<b>Mode Inactive or Active? (off=Inactive, on=Active)</b>", description: "Mode status", submitOnChange:true
-                    if(modeOnOff) paragraph "You will receive notifications if any of the modes are on."
-                    if(!modeOnOff) paragraph "You will receive notifications if any of the modes are off."
+                    input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode status", submitOnChange:true
+                    if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
+                    if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
                 }
                 paragraph "<hr>"
             } else {
@@ -204,9 +211,13 @@ def pageConfig() {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
-                    input "meOnOff", "bool", defaultValue:false, title: "<b>Motion Inactive or Active? (off=Inactive, on=Active)</b>", description: "Motion status", submitOnChange:true
-                    if(meOnOff) paragraph "You will receive notifications if any of the sensors are on."
-                    if(!meOnOff) paragraph "You will receive notifications if any of the sensors are off."
+                    input "meOnOff", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion status", submitOnChange:true
+                    input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(motionANDOR) {
+                        paragraph "Trigger will fire when <b>any</b> device is true"
+                    } else {
+                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                    }
                 }
                 paragraph "<hr>"
             } else {
@@ -217,9 +228,9 @@ def pageConfig() {
                 paragraph "<b>Power</b>"
                 input "powerEvent", "capability.powerMeter", title: "By Power Setpoints", required:false, multiple:true, submitOnChange:true
                 if(powerEvent) {
-                    input "oSetPointHigh", "bool", defaultValue: "false", title: "<b>Trigger when Power is too High?</b>", description: "Power High", submitOnChange:true
+                    input "oSetPointHigh", "bool", defaultValue: "false", title: "Trigger when Power is too High?", description: "Power High", submitOnChange:true
                     if(oSetPointHigh) input "setPointHigh", "number", title: "Power High Setpoint", required: true, defaultValue: 75, submitOnChange: true
-                    input "oSetPointLow", "bool", defaultValue:false, title: "<b>Trigger when Power is too Low?</b>", description: "Power Low", submitOnChange:true
+                    input "oSetPointLow", "bool", defaultValue:false, title: "Trigger when Power is too Low?", description: "Power Low", submitOnChange:true
                     if(oSetPointLow) input "setPointLow", "number", title: "Power Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
 
                     if(oSetPointHigh) paragraph "You will receive notifications if Power reading is above ${setPointHigh}"
@@ -234,9 +245,13 @@ def pageConfig() {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
-                    input "seOnOff", "bool", defaultValue:false, title: "<b>Switch Off or On? (off=Off, on=On)</b>", description: "Switch status", submitOnChange:true
-                    if(seOnOff) paragraph "You will receive notifications if any of the switches are on."
-                    if(!seOnOff) paragraph "You will receive notifications if any of the switches are off."
+                    input "seOnOff", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch status", submitOnChange:true
+                    input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(switchANDOR) {
+                        paragraph "Trigger will fire when <b>any</b> device is true"
+                    } else {
+                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                    }
                 }
                 paragraph "<hr>"
             } else {
@@ -247,9 +262,9 @@ def pageConfig() {
                 paragraph "<b>Temperature</b>"
                 input "tempEvent", "capability.temperatureMeasurement", title: "By Temperature Setpoints", required:false, multiple:true, submitOnChange:true
                 if(tempEvent) {
-                    input "oSetPointHigh", "bool", defaultValue:false, title: "<b>Trigger when Temperature is too High?</b>", description: "Temp High", submitOnChange:true
+                    input "oSetPointHigh", "bool", defaultValue:false, title: "Trigger when Temperature is too High?", description: "Temp High", submitOnChange:true
                     if(oSetPointHigh) input "setPointHigh", "number", title: "Temperature High Setpoint", required: true, defaultValue: 75, submitOnChange: true
-                    input "oSetPointLow", "bool", defaultValue:false, title: "<b>Trigger when Temperature is too Low?</b>", description: "Temp Low", submitOnChange:true
+                    input "oSetPointLow", "bool", defaultValue:false, title: "Trigger when Temperature is too Low?", description: "Temp Low", submitOnChange:true
                     if(oSetPointLow) input "setPointLow", "number", title: "Temperature Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
 
                     if(oSetPointHigh) paragraph "You will receive notifications if Temperature reading is above ${setPointHigh}"
@@ -269,7 +284,7 @@ def pageConfig() {
             }
         }
         
-        section(getFormat("header-green", "${getImage("Blank")}"+" Actions")) {
+        section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform", options: [
                 ["aHSM":"Hubitat Safety Monitor"],
                 ["aNotification":"Notifications (speech/push/flash)"],
@@ -631,16 +646,20 @@ def contactHandler(evt) {
         
         contactEvent.each {
             theValue = it.currentValue("contact")
-            if(logEnable) log.debug "In contactSensorHandler - Checking: ${it.displayName} - value: ${contactValue}"
+            if(logEnable) log.debug "In contactSensorHandler - Checking: ${it.displayName} - value: ${theValue}"
             if(csOpenClosed) {
-                if(theValue == "open") { deviceTrue = deviceTrue + 1 }
+                if(theValue == "open") { deviceTrue = deviceTrue + 1 }              
             }
             if(!csOpenClosed) {
                 if(theValue == "closed") { deviceTrue = deviceTrue + 1 }
             }
         }
         if(logEnable) log.debug "In contactSensorHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
-        if(deviceTrue == theCount) { state.contactStatus = true }
+        if(contactANDOR) {
+            if(deviceTrue >= 1) { state.contactStatus = true }           // OR
+        } else {
+            if(deviceTrue == theCount) { state.contactStatus = true }    // AND
+        }
     } else {
         state.contactStatus = true
     }
@@ -649,13 +668,13 @@ def contactHandler(evt) {
 def switchHandler(evt) {
     if(switchEvent) {
         if(logEnable) log.debug "In switchHandler (${state.version})"
-        state.contactStatus = false
+        state.switchStatus = false
         deviceTrue = 0
         theCount = switchEvent.size()
         
         switchEvent.each {
             theValue = it.currentValue("switch")
-            if(logEnable) log.debug "In switchHandler - Checking: ${it.displayName} - value: ${switchValue}"
+            if(logEnable) log.debug "In switchHandler - Checking: ${it.displayName} - value: ${theValue}"
             if(seOnOff) {
                 if(theValue == "on") { deviceTrue = deviceTrue + 1 }
             }
@@ -664,7 +683,11 @@ def switchHandler(evt) {
             }
         }
         if(logEnable) log.debug "In switchHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
-        if(deviceTrue == theCount) { state.switchStatus = true }
+        if(switchANDOR) {
+            if(deviceTrue >= 1) { state.switchStatus = true }           // OR
+        } else {
+            if(deviceTrue == theCount) { state.switchStatus = true }    // AND
+        }
     } else {
         state.switchStatus = true
     }
@@ -677,7 +700,7 @@ def modeHandler(evt) {
         
         modeEvent.each { it ->
             theValue = location.mode
-            if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${modeValue}"
+            if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
             
             if(modeValue.contains(it)){
                 if(modeOnOff) {
@@ -704,7 +727,7 @@ def motionHandler(evt) {
         
         motionEvent.each {
             theValue = it.currentValue("motion")
-            if(logEnable) log.debug "In motionHandler - Checking: ${it.displayName} - value: ${motionValue}"
+            if(logEnable) log.debug "In motionHandler - Checking: ${it.displayName} - value: ${theValue}"
             if(meOnOff) {
                 if(theValue == "active") { deviceTrue = deviceTrue + 1 }
             }         
@@ -713,7 +736,11 @@ def motionHandler(evt) {
             }
         }
         if(logEnable) log.debug "In motionHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
-        if(deviceTrue == theCount) { state.motionStatus = true }
+        if(motionANDOR) {
+            if(deviceTrue >= 1) { state.motionStatus = true }           // OR
+        } else {
+            if(deviceTrue == theCount) { state.motionStatus = true }    // AND
+        }
     } else {
         state.motionStatus = true
     }
