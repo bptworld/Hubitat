@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.6 - 09/07/20 - Logs Time Off is now selectable from 1 to 5 hours.
  *  1.0.5 - 09/07/20 - Reworked Time/Days trigger, added Sunset to Sunrise option.
  *  1.0.4 - 09/07/20 - Fixed NASTY bug in Actions
  *  1.0.3 - 09/07/20 - Fixed typo with Modes. Added Locks and Garage Door to Triggers/Actions. Can add in premade periodic expressions.
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.5"
+	state.version = "1.0.6"
 }
 
 definition(
@@ -534,7 +535,10 @@ def pageConfig() {
         
 		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this automation", required: false
-            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging."
+            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required: false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
+            }
 		}
 		display2()
 	}
@@ -1086,7 +1090,11 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
-    if(logEnable) runIn(3600, logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite: false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite: false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite: false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite: false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite: false])
 	initialize()
 }
 
