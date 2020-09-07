@@ -63,7 +63,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Control/EC-child.groovy",
 )
 
 preferences {
@@ -455,7 +455,7 @@ def pageConfig() {
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
                 input "switchesOffAction", "capability.switch", title: "Switches to turn Off", multiple:true, submitOnChange:true
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
-                
+
                 input "switchesLCAction", "bool", title: "Turn Light On, Set Level and/or Color", description: "Light OLC", defaultValue:false, submitOnChange:true
                 if(switchesLCAction) {
 					input "setOnLC", "capability.switchLevel", title: "Select dimmer to set", required: false, multiple: true
