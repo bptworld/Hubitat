@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.3 - 09/07/20 - Fixed typo with Modes. Added Locks and Garage Door to Triggers/Actions. Can add in premade periodic expressions.
  *  1.0.2 - 09/06/20 - Added Periodic Options, minor adjustments
  *  1.0.1 - 09/06/20 - Made Contact, Motion and Switch Triggers 'and' or 'or'
  *  1.0.0 - 09/05/20 - Initial release.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.2"
+	state.version = "1.0.3"
 }
 
 definition(
@@ -84,7 +85,9 @@ def pageConfig() {
                 ["xPeriodic":"Periodic"],
                 ["xDays":"Time/Days"],
                 ["xContact":"Contact Sensors"],
+                ["xGarageDoor":"Garage Doors"],
                 ["xHumidity":"Humidity Setpoint"],
+                ["xLock":"Locks"],
                 ["xMode":"Mode"],
                 ["xMotion":"Motion Sensors"],
                 ["xPower":"Power Setpoint"],
@@ -96,14 +99,29 @@ def pageConfig() {
             if(triggerType == null) triggerType = ""
             
             if(triggerType.contains("xPeriodic")) {
-                href "periodicOptions", title:"Periodic Schedule Options", description:"Click here for options"
+                input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
                 
-                if(state.inEnglish) {
-                    paragraph "${state.inEnglish}<br><small>${state.theSchedule}</small>"
+                href "periodicOptions", title:"Create your own Periodic Schedule Options", description:"Click here for options"
+                
+                paragraph "<hr>"
+                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Format and spacing is critical, only enter if you know this is correct."
+                
+                if(preMadePeriodic) {
+                    state.remove("theSchedule")
+                    state.remove("inEnglish")
+                    state.theSchedule = preMadePeriodic
+                } else {
+                    if(state.inEnglish) { paragraph "${state.inEnglish}" }
+                    app.removeSetting("preMadePeriodic")
                 }
+                
+                if(state.theSchedule) { paragraph "Using: <small>${state.theSchedule}</small>" }
                 paragraph "<hr>"
             } else {
-                //if(state.theSchedule) clearState(theSchedule)
+                if(state.theSchedule || state.inEnglish) {
+                    state.remove("theSchedule")
+                    state.remove("inEnglish")
+                }
             }
             
             if(triggerType.contains("xDays")) {
@@ -178,7 +196,7 @@ def pageConfig() {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required: false, multiple: true, submitOnChange: true
                 if(contactEvent) {
-                    input "csOpenClosed", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact status", defaultValue:false, submitOnChange:true
+                    input "csOpenClosed", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
                     input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -191,6 +209,23 @@ def pageConfig() {
                 app.removeSetting("contactEvent")
             }
 
+            if(triggerType.contains("xGarageDoor")) {
+                paragraph "<b>Garage Door</b>"
+                input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required: false, multiple: true, submitOnChange: true
+                if(garageDoorEvent) {
+                    input "gdOpenClose", "bool", title: "Trigger when Open (off) or Closed (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(garageDoorANDOR) {
+                        paragraph "Trigger will fire when <b>any</b> device is true"
+                    } else {
+                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                    }
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("garageDoorEvent")
+            }
+            
             if(triggerType.contains("xHumidity")) {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
@@ -208,11 +243,28 @@ def pageConfig() {
                 app.removeSetting("humidityEvent")
             }
 
+            if(triggerType.contains("xLock")) {
+                paragraph "<b>Lock</b>"
+                input "lockEvent", "capability.lock", title: "By Lock", required: false, multiple: true, submitOnChange: true
+                if(lockEvent) {
+                    input "lUnlockedLocked", "bool", title: "Trigger when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
+                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(lockANDOR) {
+                        paragraph "Trigger will fire when <b>any</b> device is true"
+                    } else {
+                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                    }
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("lockEvent")
+            }
+            
             if(triggerType.contains("xMode")) {
                 paragraph "<b>Mode</b>"
                 input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
                 if(modeEvent) {
-                    input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode status", submitOnChange:true
+                    input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
                     if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
                     if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
                 }
@@ -225,7 +277,7 @@ def pageConfig() {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
-                    input "meOnOff", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion status", submitOnChange:true
+                    input "meOnOff", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
                     input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -259,7 +311,7 @@ def pageConfig() {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
-                    input "seOnOff", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch status", submitOnChange:true
+                    input "seOnOff", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -298,11 +350,15 @@ def pageConfig() {
             }
         }
         
+// ********** Start Actions **********
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform", options: [
+                ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
-                ["aNotification":"Notifications (speech/push/flash)"],
-                ["aMode":"Mode"],
+                ["aLock":"Locks"],
+                ["aMode":"Modes"],
+                ["aNotification":"Notifications (speech/push/flash)"],               
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
                 ["aSwitch":"Switches"]
@@ -311,12 +367,58 @@ def pageConfig() {
             paragraph "<hr>"
             if(actionType == null) actionType = " "
             
+            if(actionType.contains("aGarageDoor")) {
+                paragraph "<b>Garage Door</b>"
+                input "garageDoorClosedAction", "capability.garageDoorControl", title: "Close Devices", multiple:true, submitOnChange:true
+                input "garageDoorOpenAction", "capability.garageDoorControl", title: "Open Devices", multiple:true, submitOnChange:true
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("garageDoorClosedAction")
+                app.removeSetting("garageDoorOpenAction")
+            }
+            
+            if(actionType.contains("aHSM")) {
+                paragraph "<b>HSM</b>"
+                input "setHSM", "enum", title: "Set HSM state", required: false, multiple:false, options: [
+                    ["armAway":"Arm Away"],
+                    ["armHome":"Arm Home"],
+                    ["armNight":"Arm Night"],
+                    ["disarm":"Disarm"],
+                    ["disarmAll":"Disarm All"],
+                    ["armAll":"Arm Monitor Rules"],
+                    ["CancelAlerts":"Cancel Alerts"]
+                ]
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("setHSM")
+            }
+            
+            if(actionType.contains("aLock")) {
+                paragraph "<b>Lock</b>"
+                input "lockAction", "capability.lock", title: "Lock Devices", multiple:true, submitOnChange:true
+                input "unlockAction", "capability.lock", title: "Unlock Devices", multiple:true, submitOnChange:true
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("lockAction")
+                app.removeSetting("unlockAction")
+            }
+            
             if(actionType.contains("aMode")) {
                 paragraph "<b>Mode</b>"
                 input "modeAction", "mode", title: "Change Mode to", multiple:false, submitOnChange:true
                 paragraph "<hr>"
             } else {
                 app.removeSetting("modeAction")
+            }
+            
+            if(actionType.contains("aNotification")) {
+                section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
+                    if(useSpeech || sendPushMessage || useTheFlasher) {
+                        href "notificationOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here for options"
+                    } else {
+                        href "notificationOptions", title:"Notification Options", description:"Click here for options"
+                    }
+                }
             }
             
             if(actionType.contains("aRefresh")) {
@@ -346,22 +448,6 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("rmRule")
-            }
-            
-            if(actionType.contains("aHSM")) {
-                paragraph "<b>HSM</b>"
-                input "setHSM", "enum", title: "Set HSM state", required: false, multiple:false, options: [
-                    ["armAway":"Arm Away"],
-                    ["armHome":"Arm Home"],
-                    ["armNight":"Arm Night"],
-                    ["disarm":"Disarm"],
-                    ["disarmAll":"Disarm All"],
-                    ["armAll":"Arm Monitor Rules"],
-                    ["CancelAlerts":"Cancel Alerts"]
-                ]
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("setHSM")
             }
             
             if(actionType.contains("aSwitch")) {
@@ -399,16 +485,9 @@ def pageConfig() {
                 app.removeSetting("switchesLCAction")
             }
 		}
-        if(actionType.contains("aNotification")) {
-            section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-                if(useSpeech || sendPushMessage || useTheFlasher) {
-                    href "notificationOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here for options"
-                } else {
-                    href "notificationOptions", title:"Notification Options", description:"Click here for options"
-                }
-            }
-        }
-    
+       
+// ********** End Actions **********
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
@@ -994,7 +1073,9 @@ def initialize() {
         if(startTime) schedule(startTime, startTheProcess)
         if(restriction) autoSunHandler()
         if(contactEvent) subscribe(contactEvent, "contact", startTheProcess)
+        if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
         if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
+        if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
         if(modeEvent) subscribe(modeEvent, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
         if(powerEvent) subscribe(powerEvent, "power", startTheProcess)
@@ -1039,14 +1120,15 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         checkTime()
-        dayOfTheWeekHandler()
         contactHandler()
-        switchHandler()
+        dayOfTheWeekHandler()
+        garageDoorHandler()
         modeHandler()
         motionHandler()
         setPointHandler()
-
-        if(logEnable) log.debug "In startTheProcess - timeBetween: ${state.timeBetween} - daysMatch: ${state.daysMatch} - contactStatus: ${state.contactStatus} - switchStatus: ${state.switchStatus} - modeStatus: ${state.modeStatus} - motionStatus: ${state.motionStatus} - setPointStatus: ${state.setPointStatus}"
+        switchHandler()
+        
+        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - contactStatus: ${state.contactStatus} - daysMatch: ${state.daysMatch} - garageDoor: ${state.garageDoorStatus} - modeStatus: ${state.modeStatus} - motionStatus: ${state.motionStatus} - setPointStatus: ${state.setPointStatus} - switchStatus: ${state.switchStatus}"
         
         if(state.daysMatch && state.contactStatus && state.switchStatus && state.modeStatus && state.motionStatus && state.setPointStatus) {            
             if(logEnable) log.debug "In startTheProcess - Everything is GOOD"
@@ -1057,6 +1139,10 @@ def startTheProcess(evt) {
                 runIn(theDelay, startTheProcess)
             } else {     
                 if(actionType == null) actionType = ""
+                
+                if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                
                 if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnHandler() }
                 if(actionType.contains("aSwitch") && switchesOffAction) { switchesOffHandler() }
                 if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleHandler() }
@@ -1064,7 +1150,7 @@ def startTheProcess(evt) {
 
 
                 if(setHSM) hsmChangeHandler()
-                if(modeEvent) modeChangeHandler()
+                if(modeAction) modeChangeHandler()
                 if(devicesToRefresh) devicesToRefreshHandler()
                 if(rmRule) ruleMachineHandler()
                 
@@ -1156,31 +1242,31 @@ def contactHandler(evt) {
     }
 }
 
-def switchHandler(evt) {
-    if(switchEvent) {
-        if(logEnable) log.debug "In switchHandler (${state.version})"
-        state.switchStatus = false
+def garageDoorHandler(evt) {
+    if(garageDoorEvent) {
+        if(logEnable) log.debug "In garageDoorHandler (${state.version})"
+        state.garageDoorStatus = false
         deviceTrue = 0
-        theCount = switchEvent.size()
+        theCount = garageDoorEvent.size()
         
-        switchEvent.each {
-            theValue = it.currentValue("switch")
-            if(logEnable) log.debug "In switchHandler - Checking: ${it.displayName} - value: ${theValue}"
-            if(seOnOff) {
-                if(theValue == "on") { deviceTrue = deviceTrue + 1 }
-            }
-            if(!seOnOff) {
-                if(theValue == "off") { deviceTrue = deviceTrue + 1 }
+        garageDoorEvent.each {
+            theValue = it.currentValue("door")
+            if(logEnable) log.debug "In garageDoorHandler - Checking: ${it.displayName} - value: ${theValue}"
+            if(gdOpenClosed) {
+                if(theValue == "closed") { deviceTrue = deviceTrue + 1 }
+            }         
+            if(!gdOpenClosed) {
+                if(theValue == "open") { deviceTrue = deviceTrue + 1 }
             }
         }
-        if(logEnable) log.debug "In switchHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
-        if(switchANDOR) {
-            if(deviceTrue >= 1) { state.switchStatus = true }           // OR
+        if(logEnable) log.debug "In garageDoorHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
+        if(garageDoorANDOR) {
+            if(deviceTrue >= 1) { state.garageDoorStatus = true }           // OR
         } else {
-            if(deviceTrue == theCount) { state.switchStatus = true }    // AND
+            if(deviceTrue == theCount) { state.garageDoorStatus = true }    // AND
         }
     } else {
-        state.switchStatus = true
+        state.garageDoorStatus = true
     }
 }
 
@@ -1188,11 +1274,11 @@ def modeHandler(evt) {
     if(modeEvent) {
         if(logEnable) log.debug "In modeHandler (${state.version})"
         state.modeStatus = false
-        
+
         modeEvent.each { it ->
             theValue = location.mode
             if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
-            
+
             if(modeValue.contains(it)){
                 if(modeOnOff) {
                     if(theValue) { state.modeStatus = true }
@@ -1207,6 +1293,34 @@ def modeHandler(evt) {
         state.modeStatus = true
     }
     if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus}"
+}
+
+def lockHandler(evt) {
+    if(lockEvent) {
+        if(logEnable) log.debug "In lockHandler (${state.version})"
+        state.lockStatus = false
+        deviceTrue = 0
+        theCount = lockEvent.size()
+        
+        lockEvent.each {
+            theValue = it.currentValue("lock")
+            if(logEnable) log.debug "In lockHandler - Checking: ${it.displayName} - value: ${theValue}"
+            if(lUnlockedLocked) {
+                if(theValue == "locked") { deviceTrue = deviceTrue + 1 }
+            }         
+            if(!lUnlockedLocked) {
+                if(theValue == "unlocked") { deviceTrue = deviceTrue + 1 }
+            }
+        }
+        if(logEnable) log.debug "In lockHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
+        if(lockANDOR) {
+            if(deviceTrue >= 1) { state.lockStatus = true }           // OR
+        } else {
+            if(deviceTrue == theCount) { state.lockStatus = true }    // AND
+        }
+    } else {
+        state.lockStatus = true
+    }
 }
 
 def motionHandler(evt) {
@@ -1330,6 +1444,33 @@ def setPointHandler(evt) {
     }
 }
 
+def switchHandler(evt) {
+    if(switchEvent) {
+        if(logEnable) log.debug "In switchHandler (${state.version})"
+        state.switchStatus = false
+        deviceTrue = 0
+        theCount = switchEvent.size()
+        
+        switchEvent.each {
+            theValue = it.currentValue("switch")
+            if(logEnable) log.debug "In switchHandler - Checking: ${it.displayName} - value: ${theValue}"
+            if(seOnOff) {
+                if(theValue == "on") { deviceTrue = deviceTrue + 1 }
+            }
+            if(!seOnOff) {
+                if(theValue == "off") { deviceTrue = deviceTrue + 1 }
+            }
+        }
+        if(logEnable) log.debug "In switchHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
+        if(switchANDOR) {
+            if(deviceTrue >= 1) { state.switchStatus = true }           // OR
+        } else {
+            if(deviceTrue == theCount) { state.switchStatus = true }    // AND
+        }
+    } else {
+        state.switchStatus = true
+    }
+}
 
 
 // ********** Start Actions **********
@@ -1356,9 +1497,43 @@ def devicesToRefreshHandler() {
     }
 }
 
+def garageDoorHandler() {
+    if(logEnable) log.debug "In garageDoorHandler (${state.version})"
+    if(garageDoorClosedAction) {
+        garageDoorClosedAction.each { it ->
+            if(logEnable) log.debug "In garageDoorHandler - Closing ${it}"
+            it.close()
+        }
+    }
+    
+    if(garageDoorOpenAction) {
+        garageDoorClosedAction.each { it ->
+            if(logEnable) log.debug "In garageDoorHandler - Open ${it}"
+            it.open()
+        }
+    }
+}
+
 def hsmChangeHandler() {
     if(logEnable) log.debug "In hsmChangeHandler (${state.version}) - Setting to ${setHSM}"
     sendLocationEvent (name: "hsmSetArm", value: "${setHSM}")
+}
+
+def lockActionHandler() {
+    if(logEnable) log.debug "In lockActionHandler (${state.version})"
+    if(lockAction) {
+        lockAction.each { it ->
+            if(logEnable) log.debug "In lockActionHandler - Locking ${it}"
+            it.lock()
+        }
+    }
+    
+    if(unlockAction) {
+        unlockAction.each { it ->
+            if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}"
+            it.unlock()
+        }
+    }
 }
 
 def modeChangeHandler() {
