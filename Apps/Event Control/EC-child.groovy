@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.4 - 09/07/20 - Fixed NASTY bug in Actions
  *  1.0.3 - 09/07/20 - Fixed typo with Modes. Added Locks and Garage Door to Triggers/Actions. Can add in premade periodic expressions.
  *  1.0.2 - 09/06/20 - Added Periodic Options, minor adjustments
  *  1.0.1 - 09/06/20 - Made Contact, Motion and Switch Triggers 'and' or 'or'
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.3"
+	state.version = "1.0.4"
 }
 
 definition(
@@ -412,12 +413,11 @@ def pageConfig() {
             }
             
             if(actionType.contains("aNotification")) {
-                section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) {
-                    if(useSpeech || sendPushMessage || useTheFlasher) {
-                        href "notificationOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here for options"
-                    } else {
-                        href "notificationOptions", title:"Notification Options", description:"Click here for options"
-                    }
+                paragraph "<b>Notification</b>"
+                if(useSpeech || sendPushMessage || useTheFlasher) {
+                    href "notificationOptions", title:"${getImage("checkMarkGreen")} Notification Options", description:"Click here for options"
+                } else {
+                    href "notificationOptions", title:"Notification Options", description:"Click here for options"
                 }
             }
             
