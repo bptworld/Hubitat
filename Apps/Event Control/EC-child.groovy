@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.5 - 09/07/20 - Reworked Time/Days trigger, added Sunset to Sunrise option.
  *  1.0.4 - 09/07/20 - Fixed NASTY bug in Actions
  *  1.0.3 - 09/07/20 - Fixed typo with Modes. Added Locks and Garage Door to Triggers/Actions. Can add in premade periodic expressions.
  *  1.0.2 - 09/06/20 - Added Periodic Options, minor adjustments
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -84,7 +85,7 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
                 ["xPeriodic":"Periodic"],
-                ["xDays":"Time/Days"],
+                ["xTimeDays":"Time/Days"],
                 ["xContact":"Contact Sensors"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xHumidity":"Humidity Setpoint"],
@@ -125,53 +126,30 @@ def pageConfig() {
                 }
             }
             
-            if(triggerType.contains("xDays")) {
-                paragraph "<b>Day/Time</b>"
-                input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            if(triggerType.contains("xTimeDays")) {
+                paragraph "<b>Time/Days</b>"
+                input "timeDaysType", "enum", title: "Trigger Type", options: [
+                    ["tDays":"By Days"],
+                    ["tTime":"Certain Time"],
+                    ["tBetween":"Between Two Times"],
+                    ["tSunsetSunrise":"Sunrise to Sunset"],                  
+                    ["tSunrise":"Just Sunrise"],
+                    ["tSunset":"Just Sunset"],
+                ], required: true, multiple:true, submitOnChange:true
+                
+                paragraph "<hr>"
+                if(timeDaysType == null) timeDaysType = ""
+                
+                if(timeDaysType.contains("tDays")) {
+                    paragraph "<b>By Days</b>"
+                    input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    paragraph "<hr>"
+                } else {
+                    app.removeSetting("days")
+                }
 
-                if(!sunRestriction) {
-                    input "betweenTimes", "bool", title: "Between two times?", description: "between times", defaultValue:false, submitOnChange:true, width:12
-                } else {
-                    app?.updateSetting("betweenTimes",[value:"false",type:"bool"])
-                }
-                
-                if(!betweenTimes) {
-                    input "sunRestriction", "bool", title: "Use Sunset or Sunrise?", description: "sun", defaultValue:false, submitOnChange:true, width:12
-                } else {
-                    app?.updateSetting("sunRestriction",[value:"false",type:"bool"])
-                }
-                
-                if(betweenTimes) {
-                    input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
-                    input "toTime", "time", title: "To", required: false, width: 6
-                    input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
-                } else {
-                    app.removeSetting("fromTime")
-                    app.removeSetting("toTime")
-                    app.removeSetting("midnightCheckR")
-                }
-             
-                if(sunRestriction) { 
-                    input "riseSet", "bool", title: "Sunrise (off) or Sunset (on)", description: "sun", defaultValue:false, submitOnChange:true, width:12
-                    app.removeSetting("startTime")
-                    if(riseSet) {
-                        paragraph "<b>Sunset Offset</b>"
-                        input "setBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunset", "number", title: "Offset (minutes)", width:6
-                        app.removeSetting("offsetSunrise") 
-                    } else { 
-                        paragraph "<b>Sunrise Offset</b>"
-                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on)", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunrise", "number", title: "Offset (minutes)", width:6
-                        app.removeSetting("offsetSunset")
-                    }
-                } else {
-                    app.removeSetting("offsetSunrise")
-                    app.removeSetting("offsetSunset")
-                    app.removeSetting("sunRestriction")
-                }
-                
-                if(!betweenTimes && !sunRestriction) {
+                if(timeDaysType.contains("tTime")) {
+                    paragraph "<b>Certain Time</b>"
                     input "startTime", "time", title: "Time to activate", description: "Time", required: false, width:12
                     input "repeat", "bool", title: "Repeat?", description: "Repeat", defaultValue:false, submitOnChange:true
                     if(repeat) {
@@ -185,14 +163,63 @@ def pageConfig() {
                             ["r3hour":"3 Hours"]
                         ], required:true, multiple:true, submitOnChange:true
                     }
+                    paragraph "<hr>"
+                } else {
+                    app.removeSetting("startTime")
+                    app.removeSetting("repeat")
+                    app.removeSetting("repeatType")
                 }
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("startTime")
-                app.removeSetting("repeat")
-                app.removeSetting("repeatType")
+                
+                if(timeDaysType.contains("tBetween")) {
+                    paragraph "<b>Between two times</b>"
+                    input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
+                    input "toTime", "time", title: "To", required: false, width: 6
+                    input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                    paragraph "<hr>"
+                } else {
+                    app.removeSetting("fromTime")
+                    app.removeSetting("toTime")
+                    app.removeSetting("midnightCheckR")
+                }
+                
+                if(timeDaysType.contains("tSunsetSunrise")) {
+                    paragraph "<b>Sunset to Sunrise</b>"                   
+                    paragraph "Sunset"
+                    input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunset", "number", title: "Offset (minutes)", width:6
+
+                    paragraph "Sunrise"
+                    input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                    paragraph "<hr>"
+                } else {
+                    app.removeSetting("setBeforeAfter")
+                    app.removeSetting("offsetSunset")
+                    app.removeSetting("riseBeforeAfter")
+                    app.removeSetting("offsetSunrise")
+                }
+           
+                if(timeDaysType.contains("tSunrise")) {
+                    paragraph "<b>Just Sunrise</b>"
+                    input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunrise", "number", title: "Offset (minutes)", width:6
+                    paragraph "<hr>"
+                } else {
+                    app.removeSetting("riseBeforeAfter")
+                    app.removeSetting("offsetSunrise")
+                }
+                 
+                if(timeDaysType.contains("tSunset")) {
+                    paragraph "<b>Just Sunset</b>"
+                    input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                    paragraph "<hr>"
+                } else { 
+                    app.removeSetting("setBeforeAfter")
+                    app.removeSetting("offsetSunset")
+                }
             }
-            
+
             if(triggerType.contains("xContact")) {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required: false, multiple: true, submitOnChange: true
@@ -1120,6 +1147,7 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         checkTime()
+        checkTimeSun()
         contactHandler()
         dayOfTheWeekHandler()
         garageDoorHandler()
@@ -1128,9 +1156,9 @@ def startTheProcess(evt) {
         setPointHandler()
         switchHandler()
         
-        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - contactStatus: ${state.contactStatus} - daysMatch: ${state.daysMatch} - garageDoor: ${state.garageDoorStatus} - modeStatus: ${state.modeStatus} - motionStatus: ${state.motionStatus} - setPointStatus: ${state.setPointStatus} - switchStatus: ${state.switchStatus}"
+        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun}- contactStatus: ${state.contactStatus} - daysMatch: ${state.daysMatch} - garageDoor: ${state.garageDoorStatus} - modeStatus: ${state.modeStatus} - motionStatus: ${state.motionStatus} - setPointStatus: ${state.setPointStatus} - switchStatus: ${state.switchStatus}"
         
-        if(state.daysMatch && state.contactStatus && state.switchStatus && state.modeStatus && state.motionStatus && state.setPointStatus) {            
+        if(state.daysMatch && state.timeBetweenSun && state.timeBetween && state.contactStatus && state.switchStatus && state.modeStatus && state.motionStatus && state.setPointStatus) {            
             if(logEnable) log.debug "In startTheProcess - Everything is GOOD"
             
             if(notifyDelay && state.hasntDelayedYet) {
@@ -1643,9 +1671,53 @@ def currentDateTime() {
 	if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
 }
 
+def checkTimeSun() {
+    // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
+	if(logEnable) log.debug "In checkTimeSun (${state.version}) - ${app.label}"
+    if(sunRestriction) {    
+        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        
+        nextSunset = toDateTime(sunsetTime)
+        nextSunrise = toDateTime(sunriseTime)+1
+        
+        int theOffsetSunset = offsetSunset ?: 1    
+        if(setBeforeAfter) {
+            use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
+        } else {
+            use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
+        }
+        
+        int theOffsetSunrise = offsetSunrise ?: 1
+        if(riseBeforeAfter) {
+            use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
+        } else {
+            use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
+        }
+
+        if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
+        if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
+        
+        state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
+
+        if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
+        
+		if(state.timeBetweenSun) {
+            if(logEnable) log.debug "In checkTimeSun - Time within range"
+			state.timeBetweenSun = true
+		} else {
+            if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+			state.timeBetweenSun = false
+		}
+        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
+  	} else {
+		state.timeBetweenSun = true
+        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
+  	}
+}
+
 def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${fromTime} - ${toTime}"
-    state.timeBetween = false
+	if(logEnable) log.debug "In checkTime (${state.version}) - ${app.label} - ${fromTime} - ${toTime}"
 	if(fromTime) {
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
@@ -1653,17 +1725,17 @@ def checkTime() {
 		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
 		if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - Time within range - Don't run"
+            if(logEnable) log.debug "In checkTime - ${app.label} - Time within range - Don't Speak"
 			state.timeBetween = true
 		} else {
-            if(logEnable) log.debug "In checkTime - Time outside of range - Can run"
+            if(logEnable) log.debug "In checkTime - ${app.label} - Time outside of range - Can Speak"
 			state.timeBetween = false
 		}
   	} else {  
-        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
+        if(logEnable) log.debug "In checkTime - ${app.label} - NO Time Restriction Specified"
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+	if(logEnable) log.debug "In checkTime - ${app.label} - timeBetween: ${state.timeBetween}"
 }
 
 def dayOfTheWeekHandler() {
@@ -1802,7 +1874,6 @@ def setDefaults(){
 	if(logEnable == null){logEnable = false}
 	if(state.daysMatch == null){state.daysMatch = false}
 	if(state.msg == null){state.msg = ""}
-    if(state.sunRiseTosunSet == null) state.sunRiseTosunSet = false
 }
 
 def getImage(type) {					// Modified from @Stephack Code
