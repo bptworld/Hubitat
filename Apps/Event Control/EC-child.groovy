@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.0 - 09/08/20 - Minor changes
  *  1.0.9 - 09/08/20 - Typos
  *  1.0.8 - 09/08/20 - Fixed issues with selecting Sunset/Sunrise settings, Added Illuminance, Acceleration, Water and Presence to Triggers.
  *  1.0.7 - 09/08/20 - Fixed typo in Modes, typo in Sunset to Sunrise name.
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.9"
+	state.version = "1.1.0"
 }
 
 definition(
@@ -1285,6 +1286,9 @@ def startTheProcess(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
+        state.setPointGood = true
+        state.areWeGood = true
+        
         checkTime()
         checkTimeSun()
         accelerationHandler()
