@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 09/08/20 - Fixed typo in Modes, typo in Sunset to Sunrise name.
  *  1.0.6 - 09/07/20 - Logs Time Off is now selectable from 1 to 5 hours.
  *  1.0.5 - 09/07/20 - Reworked Time/Days trigger, added Sunset to Sunrise option.
  *  1.0.4 - 09/07/20 - Fixed NASTY bug in Actions
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.6"
+	state.version = "1.0.7"
 }
 
 definition(
@@ -85,8 +86,8 @@ def pageConfig() {
 		
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
-                ["xPeriodic":"Periodic"],
-                ["xTimeDays":"Time/Days"],
+                ["xPeriodic":"Periodic -The ultimate time/day based scheduling system"],
+                ["xTimeDays":"Time/Days - Sub-Menu"],
                 ["xContact":"Contact Sensors"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xHumidity":"Humidity Setpoint"],
@@ -128,12 +129,12 @@ def pageConfig() {
             }
             
             if(triggerType.contains("xTimeDays")) {
-                paragraph "<b>Time/Days</b>"
+                paragraph "<b>Time/Days - Sub-Menu</b>"
                 input "timeDaysType", "enum", title: "Trigger Type", options: [
                     ["tDays":"By Days"],
                     ["tTime":"Certain Time"],
                     ["tBetween":"Between Two Times"],
-                    ["tSunsetSunrise":"Sunrise to Sunset"],                  
+                    ["tSunsetSunrise":"Sunset to Sunrise"],                  
                     ["tSunrise":"Just Sunrise"],
                     ["tSunset":"Just Sunset"],
                 ], required: true, multiple:true, submitOnChange:true
@@ -1315,7 +1316,7 @@ def modeHandler(evt) {
             theValue = location.mode
             if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
 
-            if(modeValue.contains(it)){
+            if(theValue.contains(it)){
                 if(modeOnOff) {
                     if(theValue) { state.modeStatus = true }
                 }
