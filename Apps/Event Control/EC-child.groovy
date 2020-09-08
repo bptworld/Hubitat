@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 09/08/20 - Typos
  *  1.0.8 - 09/08/20 - Fixed issues with selecting Sunset/Sunrise settings, Added Illuminance, Acceleration, Water and Presence to Triggers.
  *  1.0.7 - 09/08/20 - Fixed typo in Modes, typo in Sunset to Sunrise name.
  *  1.0.6 - 09/07/20 - Logs Time Off is now selectable from 1 to 5 hours.
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -239,7 +240,7 @@ def pageConfig() {
                 if(accelerationEvent) {
                     input "asInactiveActive", "bool", title: "Trigger when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
                     input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
-                    if(contactANDOR) {
+                    if(accelerationANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
                     } else {
                         paragraph "Trigger will fire when <b>all</b> devices are true"
@@ -254,7 +255,7 @@ def pageConfig() {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required: false, multiple: true, submitOnChange: true
                 if(contactEvent) {
-                    input "csOpenClosed", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
+                    input "csClosedOpen", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
                     input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -271,7 +272,7 @@ def pageConfig() {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required: false, multiple: true, submitOnChange: true
                 if(garageDoorEvent) {
-                    input "gdOpenClose", "bool", title: "Trigger when Open (off) or Closed (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    input "gdClosedOpen", "bool", title: "Trigger when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
                     input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -374,7 +375,7 @@ def pageConfig() {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
-                    input "meOnOff", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
+                    input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
                     input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -713,7 +714,7 @@ def notificationOptions(){
                 
                 if(triggerType.contains("xAcceleration") || triggerType.contains("xContact") || triggerType.contains("xGarageDoor") || triggerType.contains("xLock") || triggerType.contains("xMode") || triggerType.contains("xMotion") || triggerType.contains("xPeriodic") || triggerType.contains("xPresence") || triggerType.contains("xSwitch") || triggerType.contains("xTimeDays") || triggerType.contains("xWater")) {
                     paragraph "<b>Message Options</b>"
-                    input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange: true
+                    input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
                     input "msgList", "bool", defaultValue: false, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
                     if(msgList) {
                         def values = "${message}".split(";")
@@ -1403,7 +1404,7 @@ def contactHandler() {
     if(contactEvent) {
         state.eventName = contactEvent
         state.eventType = "contact"
-        state.type = csOpenClosed
+        state.type = csClosedOpen
         state.typeValue1 = "open"
         state.typeValue2 = "closed"
         state.typeAO = contactANDOR
@@ -1415,9 +1416,9 @@ def garageDoorHandler() {
     if(garageDoorEvent) {
         state.eventName = garageDoorEvent
         state.eventType = "door"
-        state.type = gdOpenClosed
-        state.typeValue1 = "closed"
-        state.typeValue2 = "open"
+        state.type = gdClosedOpen
+        state.typeValue1 = "open"
+        state.typeValue2 = "closed"
         state.typeAO = garageDoorANDOR
         areWeGoodHandler()
     } 
@@ -1439,7 +1440,7 @@ def motionHandler() {
     if(motionEvent) {
         state.eventName = motionEvent
         state.eventType = "motion"
-        state.type = meOnOff
+        state.type = meInactiveActive
         state.typeValue1 = "active"
         state.typeValue2 = "inactive"
         state.typeAO = motionANDOR
@@ -1452,8 +1453,8 @@ def presenceHandler() {
         state.eventName = presenceEvent
         state.eventType = "presence"
         state.type = pePresentNotPresent
-        state.typeValue1 = "present"
-        state.typeValue2 = "not present"
+        state.typeValue1 = "not present"
+        state.typeValue2 = "present"
         state.typeAO = presenceANDOR
         areWeGoodHandler()
     } 
@@ -1464,8 +1465,8 @@ def switchHandler() {
         state.eventName = switchEvent
         state.eventType = "switch"
         state.type = seOnOff
-        state.typeValue1 = "on"
-        state.typeValue2 = "off"
+        state.typeValue1 = "off"
+        state.typeValue2 = "on"
         state.typeAO = switchANDOR
         areWeGoodHandler()
     } 
@@ -1517,14 +1518,13 @@ def modeHandler(evt) {
             theValue = location.mode
             if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
 
-            if(theValue.contains(it)){
+            if(theValue == it){
                 if(modeOnOff) {
                     if(theValue) { state.modeStatus = true }
                 }
                 if(!modeOnOff) {
                     if(!theValue) { state.modeStatus = true }
                 }
-                startTheProcess()
             }
         }
     } else {
