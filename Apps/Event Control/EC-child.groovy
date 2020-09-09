@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 09/09/20 - Fixed a problem with speech
  *  1.1.1 - 09/08/20 - Added Slow Dim up and down, fixed Switch trigger (it was backwards)
  *  1.1.0 - 09/08/20 - Minor changes
  *  ---
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -2030,7 +2031,7 @@ def dimStepDown() {
 
 // ********** End Actions **********
 
-def messageHandler(message) {
+def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
     
     if(triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
@@ -2055,8 +2056,9 @@ def messageHandler(message) {
 	if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
     
     if(logEnable) log.debug "In messageHandler - message: ${state.message}"
-    if(useSpeech) letsTalk(state.theMessage)
-    if(sendPushMessage) pushHandler(state.theMessage)
+    msg = state.message
+    if(useSpeech) letsTalk(msg)
+    if(sendPushMessage) pushHandler(msg)
 }
 
 def letsTalk(msg) {
