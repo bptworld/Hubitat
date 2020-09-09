@@ -37,16 +37,9 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 09/08/20 - Added Slow Dim up and down, fixed Switch trigger (it was backwards)
  *  1.1.0 - 09/08/20 - Minor changes
- *  1.0.9 - 09/08/20 - Typos
- *  1.0.8 - 09/08/20 - Fixed issues with selecting Sunset/Sunrise settings, Added Illuminance, Acceleration, Water and Presence to Triggers.
- *  1.0.7 - 09/08/20 - Fixed typo in Modes, typo in Sunset to Sunrise name.
- *  1.0.6 - 09/07/20 - Logs Time Off is now selectable from 1 to 5 hours.
- *  1.0.5 - 09/07/20 - Reworked Time/Days trigger, added Sunset to Sunrise option.
- *  1.0.4 - 09/07/20 - Fixed NASTY bug in Actions
- *  1.0.3 - 09/07/20 - Fixed typo with Modes. Added Locks and Garage Door to Triggers/Actions. Can add in premade periodic expressions.
- *  1.0.2 - 09/06/20 - Added Periodic Options, minor adjustments
- *  1.0.1 - 09/06/20 - Made Contact, Motion and Switch Triggers 'and' or 'or'
+ *  ---
  *  1.0.0 - 09/05/20 - Initial release.
  *
  */
@@ -57,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.1.0"
+	state.version = "1.1.1"
 }
 
 definition(
@@ -177,6 +170,7 @@ def pageConfig() {
                     app.removeSetting("startTime")
                     app.removeSetting("repeat")
                     app.removeSetting("repeatType")
+                    app?.updateSetting("repeat",[value:"false",type:"bool"])
                 }
                 
                 if(timeDaysType.contains("tBetween")) {
@@ -188,7 +182,7 @@ def pageConfig() {
                 } else {
                     app.removeSetting("fromTime")
                     app.removeSetting("toTime")
-                    app.removeSetting("midnightCheckR")
+                    app?.updateSetting("midnightCheckR",[value:"false",type:"bool"])
                 }
                 
                 if(timeDaysType.contains("tSunsetSunrise")) {
@@ -232,6 +226,8 @@ def pageConfig() {
                     app.removeSetting("offsetSunset")
                     app.removeSetting("riseBeforeAfter")
                     app.removeSetting("offsetSunrise")
+                    app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
+                    app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
                 }
             }
 
@@ -250,6 +246,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("accelerationEvent")
+                app?.updateSetting("asInactiveActive",[value:"false",type:"bool"])
+                app?.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xContact")) {
@@ -267,6 +265,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("contactEvent")
+                app?.updateSetting("csClosedOpen",[value:"false",type:"bool"])
+                app?.updateSetting("contactANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xGarageDoor")) {
@@ -284,6 +284,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("garageDoorEvent")
+                app?.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
+                app?.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xHumidity")) {
@@ -312,6 +314,8 @@ def pageConfig() {
                 app.removeSetting("humidityEvent")
                 app.removeSetting("heSetPointHigh")
                 app.removeSetting("heSetPointLow")
+                app?.updateSetting("setHEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setHEPointLow",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xIlluminance")) {
@@ -340,6 +344,8 @@ def pageConfig() {
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
+                app?.updateSetting("setIEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setIEPointLow",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xLock")) {
@@ -357,6 +363,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("lockEvent")
+                app?.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
+                app?.updateSetting("lockANDOR",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xMode")) {
@@ -370,6 +378,7 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("modeEvent")
+                app?.updateSetting("modeOnOff",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xMotion")) {
@@ -387,6 +396,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("motionEvent")
+                app?.updateSetting("meInactiveActive",[value:"false",type:"bool"])
+                app?.updateSetting("motionANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xPower")) {
@@ -415,6 +426,8 @@ def pageConfig() {
                 app.removeSetting("powerEvent")
                 app.removeSetting("peSetPointHigh")
                 app.removeSetting("peSetPointLow")
+                app?.updateSetting("setPEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setPEPointLow",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xPresence")) {
@@ -432,13 +445,15 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("presenceEvent")
+                app?.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
+                app?.updateSetting("presentANDOR",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
-                    input "seOnOff", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
+                    input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Trigger will fire when <b>any</b> device is true"
@@ -449,6 +464,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("switchEvent")
+                app?.updateSetting("seOnOff",[value:"false",type:"bool"])
+                app?.updateSetting("switchANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xTemp")) {
@@ -477,6 +494,8 @@ def pageConfig() {
                 app.removeSetting("tempEvent")
                 app.removeSetting("setTEPointHigh")
                 app.removeSetting("setTEPointLow")
+                app?.updateSetting("setTEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xWater")) {
@@ -494,6 +513,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("waterEvent")
+                app?.updateSetting("wsDryWet",[value:"false",type:"bool"])
+                app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
             }
             
             if(accelerationEvent || contactEvent || humidityEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
@@ -501,6 +522,10 @@ def pageConfig() {
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
+                    paragraph "<small>* All devices have to stay in state for the duraction of the delay. If any device changes state, the notifications will be cancelled.</small>"
+                } else {
+                    app.removeSetting("notifyDelay")
+                    app?.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
             }
         }
@@ -624,8 +649,69 @@ def pageConfig() {
                     app.removeSetting("setOnLC")
                     app.removeSetting("levelLC")
                     app.removeSetting("colorLC")
+                    app?.updateSetting("switchesLCAction",[value:"false",type:"bool"])
                 }
                 
+                input "switchedDimUpAction", "bool", defaultValue: false, title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
+                input "switchedDimDnAction", "bool", defaultValue: false, title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
+                
+                if(switchedDimUpAction) {
+                    paragraph "<hr>"
+                    paragraph "<b>Slowly Dim Lighting UP</b>"
+                    input "slowDimmerUp", "capability.switchLevel", title: "Select dimmer devices to slowly rise", required: true, multiple: true
+                    input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
+                    input "startLevelHigh", "number", title: "Starting Level (5 to 99)", required: true, multiple: false, defaultValue: 5, range: '5..99'
+                    input "targetLevelHigh", "number", title: "Target Level (5 to 99)", required: true, multiple: false, defaultValue: 99, range: '5..99'
+                    input "colorUp", "enum", title: "Color", required: true, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                    paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
+                    input "targetDelay", "bool", defaultValue: false, title: "<b>Delay Until Finished</b>", description: "Target Delay", submitOnChange:true
+                } else {
+                    app.removeSetting("slowDimmerUp")
+                    app.removeSetting("minutesUp")
+                    app.removeSetting("startLevelHigh")
+                    app.removeSetting("targetLevelHigh")
+                    app.removeSetting("colorUp")
+                    app?.updateSetting("targetDelay",[value:"false",type:"bool"])
+                }
+                
+                if(switchedDimDnAction) {
+                    paragraph "<hr>"
+                    paragraph "<b>Slowly Dim Lighting DOWN</b>"
+                    input "slowDimmerDn", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
+                    input "minutesDn", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
+
+                    input "useMaxLevel", "bool", title: "Use a set starting level for all lights (off) or dim from the current level of each light (on)", defaultValue:false, submitOnChange:true
+                    if(useMaxLevel) {
+                        paragraph "The highest level light will start the process of dimming, each light will join in as the dim level reaches the lights current value"
+                        app.removeSetting("startLevelLow")
+                    } else {
+                        input "startLevelLow", "number", title: "Starting Level (5 to 99)", required: true, multiple: false, defaultValue: 99, range: '5..99'
+                    }
+
+                    input "targetLevelLow", "number", title: "Target Level (5 to 99)", required: true, multiple: false, defaultValue: 5, range: '5..99'
+                    input "dimDnOff", "bool", defaultValue: false, title: "<b>Turn dimmer off after target is reached?</b>", description: "Dim Off Options", submitOnChange: true
+                    input "colorDn", "enum", title: "Color", required: true, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                } else {
+                    app.removeSetting("slowDimmerDn")
+                    app.removeSetting("minutesDn")
+                    app.removeSetting("startLevelLow")
+                    app.removeSetting("targetLevelLow")
+                    app.removeSetting("dimDnOff")
+                    app.removeSetting("colorDn")
+                    app?.updateSetting("useMaxLevel",[value:"false",type:"bool"])
+                    app?.updateSetting("dimDnOff",[value:"false",type:"bool"])
+                }
+
                 if(switchesOnAction || switchesOffAction || switchesLCAction) {
                     paragraph "<hr>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
@@ -637,6 +723,10 @@ def pageConfig() {
                 app.removeSetting("switchesOffAction")
                 app.removeSetting("switchesToggleAction")
                 app.removeSetting("switchesLCAction")
+                app?.updateSetting("switchedDimUpAction",[value:"false",type:"bool"])
+                app?.updateSetting("switchedDimDnAction",[value:"false",type:"bool"])
+                app?.updateSetting("reverse",[value:"false",type:"bool"])
+                
             }
 		}
        
@@ -711,22 +801,31 @@ def notificationOptions(){
                     input "messageH", "text", title: "Message to speak when reading is too high", required: false, submitOnChange: true
                     input "messageL", "text", title: "Message to speak when reading is too low", required: false, submitOnChange: true
                     input "messageB", "text", title: "Message to speak when reading is both too high and too low", required: false
+                } else {
+                    app.removeSetting("messageH")
+                    app.removeSetting("messageL")
+                    app.removeSetting("messageB")vv
                 }
                 
-                if(triggerType.contains("xAcceleration") || triggerType.contains("xContact") || triggerType.contains("xGarageDoor") || triggerType.contains("xLock") || triggerType.contains("xMode") || triggerType.contains("xMotion") || triggerType.contains("xPeriodic") || triggerType.contains("xPresence") || triggerType.contains("xSwitch") || triggerType.contains("xTimeDays") || triggerType.contains("xWater")) {
-                    paragraph "<b>Message Options</b>"
-                    input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange: true
-                    input "msgList", "bool", defaultValue: false, title: "Show a list view of the messages?", description: "List View", submitOnChange: true
+                if(!triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
+                    paragraph "<b>Random Message Options</b>"
+                    input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
+                    input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
                     if(msgList) {
                         def values = "${message}".split(";")
                         listMap = ""
                         values.each { item -> listMap += "${item}<br>"}
                         paragraph "${listMap}"
                     }
-                }  
+                } else {
+                    app.removeSetting("message")  
+                }
             }
         } else {
             app.removeSetting("message")
+            app.removeSetting("messageH")
+            app.removeSetting("messageL")
+            app.removeSetting("messageB")
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
@@ -736,6 +835,10 @@ def notificationOptions(){
                 input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
                 input "flashOnHomePreset", "number", title: "Select the Preset to use when someone comes home (1..5)", required:true, submitOnChange:true
                 input "flashOnDepPreset", "number", title: "Select the Preset to use when someone leaves (1..5)", required:true, submitOnChange:true
+            } else {
+                app.removeSetting("theFlasherDevice")
+                app.removeSetting("flashOnHomePreset")
+                app.removeSetting("flashOnDepPreset")
             }
         }
     }
@@ -1309,14 +1412,18 @@ def startTheProcess(evt) {
         
         if(state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.areWeGood) {            
             if(logEnable) log.debug "In startTheProcess - Everything is GOOD - Here we go!"
-            
-            if(notifyDelay && state.hasntDelayedYet) {
-                int theDelay = notifyDelay * 60
+
+            if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
+            if((notifyDelay || targetDelay) && state.hasntDelayedYet) {
+                if(notifyDelay) newDelay = notifyDelay
+                if(targetDelay) newDelay = minutesUp
+                if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
+                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                int theDelay = newDelay * 60
                 state.hasntDelayedYet = false
                 runIn(theDelay, startTheProcess)
             } else {     
                 if(actionType == null) actionType = ""
-                                  
                 if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
                 if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
 
@@ -1324,6 +1431,12 @@ def startTheProcess(evt) {
                 if(actionType.contains("aSwitch") && switchesOffAction) { switchesOffActionHandler() }
                 if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
                 if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
+                if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                if(targetDelay == false) { 
+                    if(actionType.contains("aSwitch") && switchedDimUpAction) {
+                        slowOnHandler()
+                    } 
+                }
 
                 if(actionType.contains("aNotification")) { messageHandler() }
 
@@ -1331,7 +1444,7 @@ def startTheProcess(evt) {
                 if(modeAction) modeChangeActionHandler()
                 if(devicesToRefresh) devicesToRefreshActionHandler()
                 if(rmRule) ruleMachineHandler()
-                
+
                 state.hasntDelayedYet = true
             }
         } else if(reverse) {
@@ -1390,6 +1503,7 @@ def runAtSunrise() {
     if(logEnable) log.debug "In runAtSunrise (${state.version}) - ${app.label} - Starting"
     startTheProcess()
 }
+
 // *********** End sunRestriction ***********
 
 def accelerationHandler() {
@@ -1468,9 +1582,9 @@ def switchHandler() {
     if(switchEvent) {
         state.eventName = switchEvent
         state.eventType = "switch"
-        state.type = seOnOff
-        state.typeValue1 = "off"
-        state.typeValue2 = "on"
+        state.type = seOffOn
+        state.typeValue1 = "on"
+        state.typeValue2 = "off"
         state.typeAO = switchANDOR
         areWeGoodHandler()
     } 
@@ -1783,6 +1897,137 @@ def switchesToggleActionHandler() {
 	}
 }
 
+def slowOnHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In slowOnHandler (${state.version})"
+        state.fromWhere = "slowOn"
+        state.currentLevel = startLevelHigh ?: 1
+        state.onLevel = state.currentLevel
+        state.color = "${colorUp}"
+        setLevelandColorHandler()
+        if(minutesUp == 0) return
+        seconds = (minutesUp * 60) - 10
+        difference = targetLevelHigh - state.currentLevel
+        state.dimStep = (difference / seconds) * 10
+        if(logEnable) log.debug "In slowOnHandler - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh} - color: ${state.color}"
+        atLeastOneUpOn = false
+        runIn(5,dimStepUp)
+    }
+}
+
+def slowOffHandler() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "In slowOffHandler (${state.version})"
+        state.fromWhere = "slowOff"
+
+        if(useMaxLevel) {
+            findHighestCurrentValue()
+        } else {            
+            state.highestLevel = startLevelLow ?: 99    
+        }
+
+        state.color = "${colorDn}"
+        setLevelandColorHandler()
+        if(minutesDn == 0) return
+        seconds = (minutesDn * 60) - 10           
+        difference = state.highestLevel - targetLevelLow                
+        state.dimStep1 = (difference / seconds) * 10
+        if(logEnable) log.debug "slowOffHandler - highestLevel: ${state.highestLevel} - targetLevel: ${targetLevelLow} - dimStep1: ${state.dimStep1} - color: ${state.color}"
+        atLeastOneDnOn = false
+        runIn(5,dimStepDown)
+    }
+}
+
+def findHighestCurrentValue() {
+    if(logEnable) log.debug "In findHighestCurrentValue (${state.version})"
+    state.highestLevel = 0
+    
+    slowDimmerDn.each { it->
+        checkLevel = it.currentValue("level")
+        if(checkLevel > state.highestLevel) state.highestLevel = checkLevel
+    }
+    
+    if(logEnable) log.debug "In findHighestCurrentValue - highestLevel: ${state.highestLevel})"
+}
+
+def dimStepUp() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "-------------------- dimStepUp --------------------"
+        if(logEnable) log.debug "In dimStepUp (${state.version})"
+
+        if(state.currentLevel < targetLevelHigh) {
+            state.currentLevel = state.currentLevel + state.dimStep
+            if(state.currentLevel > targetLevelHigh) { state.currentLevel = targetLevelHigh }
+            if(logEnable) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+
+            slowDimmerUp.each { it->
+                deviceOn = it.currentValue("switch")
+                if(logEnable) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
+                if(deviceOn == "on") {
+                    atLeastOneUpOn = true
+                    it.setLevel(state.currentLevel)
+                }
+            }
+
+            if(atLeastOneUpOn) {
+                runIn(10,dimStepUp)
+            } else {
+                log.info "${app.label} - All devices are turned off"
+            }    
+        } else {
+            if(logEnable) log.debug "-------------------- End dimStepUp --------------------"
+            if(logEnable) log.info "In dimStepUp - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelHigh}"
+        }
+    }
+}
+
+def dimStepDown() {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "-------------------- dimStepDown --------------------"
+        if(logEnable) log.debug "In dimStepDown (${state.version})"
+
+        if(state.highestLevel > targetLevelLow) {
+            state.highestLevel = state.highestLevel - state.dimStep1                   
+            if(state.highestLevel < targetLevelLow) { state.highestLevel = targetLevelLow }                   
+            if(logEnable) log.debug "In dimStepDown - Starting Level: ${state.highestLevel} - targetLevelLow: ${targetLevelLow}"
+
+            slowDimmerDn.each { it->
+                deviceOn = it.currentValue("switch")
+                int cLevel = it.currentValue("level")
+                int wLevel = state.highestLevel
+
+                if(logEnable) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
+                if(deviceOn == "on") {
+                    atLeastOneDnOn = true
+                    if(wLevel <= cLevel) { it.setLevel(wLevel) }
+                }
+            }
+
+            if(atLeastOneDnOn) {
+                runIn(10,dimStepDown)
+            } else {
+                log.info "${app.label} - All devices are turned off"
+            }    
+        } else {
+            if(dimDnOff) slowDimmerDn.off()
+            if(logEnable) log.debug "-------------------- End dimStepDown --------------------"
+            if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
+        } 
+    }
+}
+
 // ********** End Actions **********
 
 def messageHandler(message) {
@@ -1794,13 +2039,14 @@ def messageHandler(message) {
         if(state.setPointLowOK == "no") theMessage = "${messageL}"
         if((state.setPointHighOK == "no") && (state.setPointLowOK == "no")) theMessage = "${messageB}"
     } else {
+        if(logEnable) log.debug "In messageHandler - Random - raw message: ${message}"
         def values = "${message}".split(";")
         vSize = values.size()
         count = vSize.toInteger()
         def randomKey = new Random().nextInt(count)
 
         theMessage = values[randomKey]
-        if(logEnable) log.debug "In messageDeparted - Random - theMessage: ${theMessage}" 
+        if(logEnable) log.debug "In messageHandler - Random - theMessage: ${theMessage}" 
     }
     
     state.message = theMessage
@@ -1809,9 +2055,8 @@ def messageHandler(message) {
 	if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
     
     if(logEnable) log.debug "In messageHandler - message: ${state.message}"
-    theMessage = state.message
-    if(useSpeech) letsTalk(theMessage)
-    if(sendPushMessage) pushHandler(theMessage)
+    if(useSpeech) letsTalk(state.theMessage)
+    if(sendPushMessage) pushHandler(state.theMessage)
 }
 
 def letsTalk(msg) {
@@ -1930,10 +2175,16 @@ def dayOfTheWeekHandler() {
 }
 
 def setLevelandColorHandler() {
-	if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, onLevel: ${state.onLevel}, color: ${state.color}"
+	if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color}"
     def hueColor = 0
     def saturation = 100
-	int onLevel = state.onLevel
+    
+    if(state.fromWhere == "slowOff") {
+        int onLevel = state.highestLevel
+    } else {
+	    int onLevel = state.onLevel ?: 99
+    }
+    
     switch(state.color) {
             case "White":
             hueColor = 52
@@ -1974,10 +2225,12 @@ def setLevelandColorHandler() {
             break;
     }
     
-	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel as Integer ?: 100]
+	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel]
     if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
+    
 	if(state.fromWhere == "dimmerOn") {
-    	switchesLCAction.each {
+        if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
+    	setOnLC.each {
         	if (it.hasCommand('setColor')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
