@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 09/09/20 - Added to Triggers: Battery, Added to Actions: Valves
  *  1.1.2 - 09/09/20 - Fixed a problem with speech
  *  1.1.1 - 09/08/20 - Added Slow Dim up and down, fixed Switch trigger (it was backwards)
  *  1.1.0 - 09/08/20 - Minor changes
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -84,8 +85,9 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
                 ["xPeriodic":"Periodic -The ultimate time/day based scheduling system"],
-                ["xTimeDays":"Time/Days - Sub-Menu"],
+                ["xTimeDays":"Time/Days - Sub-Menu - Easier to use"],
                 ["xAcceleration":"Acceleration Sensor"],
+                ["xBattery":"Battery Setpoint"],
                 ["xContact":"Contact Sensors"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xHumidity":"Humidity Setpoint"],
@@ -249,6 +251,36 @@ def pageConfig() {
                 app.removeSetting("accelerationEvent")
                 app?.updateSetting("asInactiveActive",[value:"false",type:"bool"])
                 app?.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
+            }
+            
+            if(triggerType.contains("xBattery")) {
+                paragraph "<b>Battery</b>"
+                input "batteryEvent", "capability.battery", title: "By Battery Setpoints", required:false, multiple:true, submitOnChange:true
+                if(batteryEvent) {
+                    input "setBEPointHigh", "bool", defaultValue:false, title: "Trigger when Battery is too High?", description: "Battery High", submitOnChange:true
+                    if(setBEPointHigh) {
+                        input "beSetPointHigh", "number", title: "Battery High Setpoint", required: true, submitOnChange: true
+                    } else {
+                        app.removeSetting("beSetPointHigh")
+                    }
+                    
+                    input "setBEPointLow", "bool", defaultValue:false, title: "Trigger when Battery is too Low?", description: "Battery Low", submitOnChange:true
+                    if(setBEPointLow) {
+                        input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true
+                    } else {
+                        app.removeSetting("beSetPointLow")
+                    }
+                    
+                    if(beSetPointHigh) paragraph "You will receive notifications if Battery reading is above ${beSetPointHigh}"
+                    if(beSetPointLow) paragraph "You will receive notifications if Battery reading is below ${beSetPointLow}"
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("batteryEvent")
+                app.removeSetting("beSetPointHigh")
+                app.removeSetting("beSetPointLow")
+                app?.updateSetting("setBEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setBEPointLow",[value:"false",type:"bool"])
             }
             
             if(triggerType.contains("xContact")) {
@@ -518,7 +550,7 @@ def pageConfig() {
                 app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
             }
             
-            if(accelerationEvent || contactEvent || humidityEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
+            if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
                 input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."
@@ -542,7 +574,8 @@ def pageConfig() {
                 ["aNotification":"Notifications (speech/push/flash)"],               
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
-                ["aSwitch":"Switches"]
+                ["aSwitch":"Switch Devices"],
+                ["aValves":"Valves"]
             ], required:false, multiple:true, submitOnChange:true
             
             paragraph "<hr>"
@@ -631,7 +664,7 @@ def pageConfig() {
             }
             
             if(actionType.contains("aSwitch")) {
-                paragraph "<b>Switch</b>"
+                paragraph "<b>Switch Devices</b>"
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
                 input "switchesOffAction", "capability.switch", title: "Switches to turn Off", multiple:true, submitOnChange:true
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
@@ -729,6 +762,16 @@ def pageConfig() {
                 app?.updateSetting("reverse",[value:"false",type:"bool"])
                 
             }
+            
+            if(actionType.contains("aValve")) {
+                paragraph "<b>Valves</b>"
+                input "valveClosedAction", "capability.valve", title: "Close Devices", multiple:true, submitOnChange:true
+                input "valveOpenAction", "capability.valve", title: "Open Devices", multiple:true, submitOnChange:true
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("valveClosedAction")
+                app.removeSetting("valveOpenAction")
+            }
 		}
        
 // ********** End Actions **********
@@ -797,7 +840,7 @@ def notificationOptions(){
             section(getFormat("header-green", "${getImage("Blank")}"+" Messages Options")) {
                 paragraph "%time% - will speak the current time in 24 h<br>%time1% - will speak the current time in 12 h"
                 
-                if(triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+                if(triggerType.contains("xBattery") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
                     paragraph "<b>Setpoint Message Options</b>"
                     input "messageH", "text", title: "Message to speak when reading is too high", required: false, submitOnChange: true
                     input "messageL", "text", title: "Message to speak when reading is too low", required: false, submitOnChange: true
@@ -808,7 +851,7 @@ def notificationOptions(){
                     app.removeSetting("messageB")
                 }
                 
-                if(!triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
+                if(!triggerType.contains("xBattery") ||  !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
                     paragraph "<b>Random Message Options</b>"
                     input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                     input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
@@ -1342,6 +1385,7 @@ def initialize() {
         if(startTime) schedule(startTime, startTheProcess)
         if(restriction) autoSunHandler()
         if(accelerationEvent) subscripe(accelerationEvent, "accelerationSensor", startTheProcess)
+        if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)
         if(contactEvent) subscribe(contactEvent, "contact", startTheProcess)
         if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
         if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
@@ -1391,11 +1435,12 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         state.setPointGood = true
-        state.areWeGood = true
+        state.devicesGood = true
         
         checkTime()
         checkTimeSun()
         accelerationHandler()
+        batteryHandler()
         contactHandler()
         dayOfTheWeekHandler()
         garageDoorHandler()
@@ -1409,9 +1454,9 @@ def startTheProcess(evt) {
         tempHandler()
         waterHandler()
         
-        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - areWeGood: ${state.areWeGood}"
+        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood}"
         
-        if(state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.areWeGood) {            
+        if(state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood) {            
             if(logEnable) log.debug "In startTheProcess - Everything is GOOD - Here we go!"
 
             if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -1427,7 +1472,8 @@ def startTheProcess(evt) {
                 if(actionType == null) actionType = ""
                 if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
                 if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-
+                if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                
                 if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
                 if(actionType.contains("aSwitch") && switchesOffAction) { switchesOffActionHandler() }
                 if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
@@ -1515,7 +1561,7 @@ def accelerationHandler() {
         state.typeValue1 = "active"
         state.typeValue2 = "inactive"
         state.typeAO = accelerationANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1527,7 +1573,7 @@ def contactHandler() {
         state.typeValue1 = "open"
         state.typeValue2 = "closed"
         state.typeAO = contactANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1539,7 +1585,7 @@ def garageDoorHandler() {
         state.typeValue1 = "open"
         state.typeValue2 = "closed"
         state.typeAO = garageDoorANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1551,7 +1597,7 @@ def lockHandler() {
         state.typeValue1 = "locked"
         state.typeValue2 = "unlocked"
         state.typeAO = lockANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1563,7 +1609,7 @@ def motionHandler() {
         state.typeValue1 = "active"
         state.typeValue2 = "inactive"
         state.typeAO = motionANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1575,7 +1621,7 @@ def presenceHandler() {
         state.typeValue1 = "not present"
         state.typeValue2 = "present"
         state.typeAO = presenceANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1587,7 +1633,7 @@ def switchHandler() {
         state.typeValue1 = "on"
         state.typeValue2 = "off"
         state.typeAO = switchANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
@@ -1599,19 +1645,19 @@ def waterHandler() {
         state.typeValue1 = "Wet"
         state.typeValue2 = "Dry"
         state.typeAO = waterANDOR
-        areWeGoodHandler()
+        devicesGoodHandler()
     } 
 }
 
-def areWeGoodHandler(evt) {
-    if(logEnable) log.debug "In areWeGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}" 
-    state.areWeGood = false
+def devicesGoodHandler(evt) {
+    if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}" 
+    state.devicesGood = false
     deviceTrue = 0
     theCount = state.eventName.size()
 
     state.eventName.each {
         theValue = it.currentValue("${state.eventType}")
-        if(logEnable) log.debug "In areWeGoodHandler - Checking: ${it.displayName} - Testing for typeValue1: ${state.typeValue1} - device is ${theValue}"
+        if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - Testing for typeValue1: ${state.typeValue1} - device is ${theValue}"
         if(state.type) {
             if(theValue == state.typeValue1) { deviceTrue = deviceTrue + 1 }              
         }
@@ -1619,13 +1665,13 @@ def areWeGoodHandler(evt) {
             if(theValue == state.typeValue2) { deviceTrue = deviceTrue + 1 }
         }
     }
-    if(logEnable) log.debug "In areWeGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
+    if(logEnable) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
     if(state.typeAO) {
-        if(deviceTrue >= 1) { state.areWeGood = true }           // OR
+        if(deviceTrue >= 1) { state.devicesGood = true }           // OR
     } else {
-        if(deviceTrue == theCount) { state.areWeGood = true }    // AND
+        if(deviceTrue == theCount) { state.devicesGood = true }    // AND
     }
-    if(logEnable) log.debug "In areWeGoodHandler - ${state.eventType.toUpperCase()} - areWeGood: ${state.areWeGood}"
+    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood}"
 }
 
 def modeHandler(evt) {
@@ -1658,6 +1704,16 @@ def ruleMachineHandler() {
 }
 
 // ***** Start Setpoint Handlers *****
+
+def batteryHandler() {
+    if(batteryEvent) {
+        state.spName = batteryEvent
+        state.spType = "battery"
+        state.setPointHigh = beSetPointHigh
+        state.setPointLow = beSetPointLow
+        setPointHandler()
+    } 
+}
 
 def humidityHandler() {
     if(humidityEvent) {
@@ -2029,12 +2085,29 @@ def dimStepDown() {
     }
 }
 
+def valveActionHandler() {
+    if(logEnable) log.debug "In valveActionHandler (${state.version})"
+    if(valveClosedAction) {
+        valveClosedAction.each { it ->
+            if(logEnable) log.debug "In valveActionHandler - Closing ${it}"
+            it.close()
+        }
+    }
+    
+    if(valveOpenAction) {
+        valveClosedAction.each { it ->
+            if(logEnable) log.debug "In valveActionHandler - Open ${it}"
+            it.open()
+        }
+    }
+}
+
 // ********** End Actions **********
 
 def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
     
-    if(triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+    if(triggerType.contains("xBattery") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
         if(logEnable) log.debug "In messageHandler (setpoint) - setPointHighOK: ${state.setPointHighOK} - setPointLowOK: ${state.setPointLowOK}"
         if(state.setPointHighOK == "no") theMessage = "${messageH}"
         if(state.setPointLowOK == "no") theMessage = "${messageL}"
@@ -2090,7 +2163,7 @@ def currentDateTime() {
 
 def checkTimeSun() {
     // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
-	if(logEnable) log.debug "In checkTimeSun (${state.version}) - ${app.label}"
+	if(logEnable) log.debug "In checkTimeSun (${state.version})"
     if(sunRestriction) {    
         def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
@@ -2134,25 +2207,26 @@ def checkTimeSun() {
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version}) - ${app.label} - ${fromTime} - ${toTime}"
+	if(logEnable) log.debug "In checkTime (${state.version})"
 	if(fromTime) {
+        if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
         } else {
 		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
 		if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - ${app.label} - Time within range - Don't Speak"
+            if(logEnable) log.debug "In checkTime - Time within range - Don't Speak"
 			state.timeBetween = true
 		} else {
-            if(logEnable) log.debug "In checkTime - ${app.label} - Time outside of range - Can Speak"
+            if(logEnable) log.debug "In checkTime - Time outside of range - Can Speak"
 			state.timeBetween = false
 		}
   	} else {  
-        if(logEnable) log.debug "In checkTime - ${app.label} - NO Time Restriction Specified"
+        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - ${app.label} - timeBetween: ${state.timeBetween}"
+	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
 }
 
 def dayOfTheWeekHandler() {
