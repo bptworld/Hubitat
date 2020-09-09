@@ -522,7 +522,7 @@ def pageConfig() {
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
-                    paragraph "<small>* All devices have to stay in state for the duraction of the delay. If any device changes state, the notifications will be cancelled.</small>"
+                    paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the notifications will be cancelled.</small>"
                 } else {
                     app.removeSetting("notifyDelay")
                     app?.updateSetting("setDelay",[value:"false",type:"bool"])
@@ -804,7 +804,7 @@ def notificationOptions(){
                 } else {
                     app.removeSetting("messageH")
                     app.removeSetting("messageL")
-                    app.removeSetting("messageB")vv
+                    app.removeSetting("messageB")
                 }
                 
                 if(!triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
