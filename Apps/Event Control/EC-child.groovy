@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 09/09/20 - Added Permanent Dim option, fixed Delay
  *  1.1.3 - 09/09/20 - Added to Triggers: Battery, Added to Actions: Valves
  *  1.1.2 - 09/09/20 - Fixed a problem with speech
  *  1.1.1 - 09/08/20 - Added Slow Dim up and down, fixed Switch trigger (it was backwards)
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Control"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -666,7 +667,15 @@ def pageConfig() {
             if(actionType.contains("aSwitch")) {
                 paragraph "<b>Switch Devices</b>"
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
-                input "switchesOffAction", "capability.switch", title: "Switches to turn Off", multiple:true, submitOnChange:true
+                input "switchesOffAction", "capability.switch", title: "Switches to turn Off<br><small>Can also be used as Permanent Dim</small>", multiple:true, submitOnChange:true
+                if(switchesOffAction){
+                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
+                    if(permanentDim) {
+                        paragraph "Instead of turning off, lights will dim to a set level"
+                        input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                    }
+                }
+                
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
 
                 input "switchesLCAction", "bool", title: "Turn Light On, Set Level and/or Color", description: "Light OLC", defaultValue:false, submitOnChange:true
@@ -750,6 +759,24 @@ def pageConfig() {
                     paragraph "<hr>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
                     paragraph "<small>* Only controls on/off, does not effect color or level</small>"
+                    
+                    if(reverse && (switchesOnAction || switchesLCAction)){
+                        paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
+                        input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
+                        if(permanentDim) {
+                            paragraph "Instead of turning off, lights will dim to a set level"
+                            input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                        } else {
+                            app.removeSetting("permanentDimLvl")
+                        }
+                    } else {
+                        app.removeSetting("permanentDimLvl")
+                        app?.updateSetting("permanentDim",[value:"false",type:"bool"])
+                    }
+                } else {
+                    app.removeSetting("permanentDimLvl")
+                    app?.updateSetting("permanentDim",[value:"false",type:"bool"])
+                    app?.updateSetting("reverse",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
             } else {
@@ -760,6 +787,8 @@ def pageConfig() {
                 app?.updateSetting("switchedDimUpAction",[value:"false",type:"bool"])
                 app?.updateSetting("switchedDimDnAction",[value:"false",type:"bool"])
                 app?.updateSetting("reverse",[value:"false",type:"bool"])
+                app?.updateSetting("permanentDim",[value:"false",type:"bool"])
+                app.removeSetting("permanentDimLvl")
                 
             }
             
@@ -1422,7 +1451,7 @@ def initialize() {
         }
         
         if(triggerType.contains("xPeriodic")) { 
-            if(logEnable) log.debug "In initialize - xPeriodic - Starting!- (${state.theSchedule})"
+            if(logEnable) log.debug "In initialize - xPeriodic - Starting! - (${state.theSchedule})"
             schedule(state.theSchedule, startTheProcess)
         }
     }
@@ -1434,6 +1463,14 @@ def startTheProcess(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
+        
+        if(evt) {
+            def whoHappened = evt.displayName
+            def whatHappened = evt.value
+            if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${whoHappened}: ${whatHappened} ********************"
+            state.hasntDelayedYet = true
+        }
+        
         state.setPointGood = true
         state.devicesGood = true
         
@@ -1475,7 +1512,8 @@ def startTheProcess(evt) {
                 if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
                 
                 if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                if(actionType.contains("aSwitch") && switchesOffAction) { switchesOffActionHandler() }
+                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
+                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
                 if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
                 if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
                 if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
@@ -1497,9 +1535,11 @@ def startTheProcess(evt) {
         } else if(reverse) {
             if(logEnable) log.debug "In startTheProcess - Going in REVERSE"
             if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-            if(actionType.contains("aSwitch") && switchesOffAction) { switchesOffReverseActionHandler() }
+            if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl) { permanentDimHandler() }
+            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffReverseActionHandler() }
             if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-            if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnReverseActionHandler() }
+            if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
+            if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
             
             state.hasntDelayedYet = true
         }
@@ -1856,9 +1896,29 @@ def dimmerOnActionHandler() {
 }
 
 def dimmerOnReverseActionHandler() {
-    switchesLCAction.each { it ->
-        if(logEnable) log.debug "In dimmerOnReverseActionHandler - Turning off ${it}"
-        it.off()
+    if(switchesLCAction) {
+        switchesLCAction.each { it ->
+            if(logEnable) log.debug "In dimmerOnReverseActionHandler - Turning off ${it}"
+            it.off()
+        }
+    }
+}
+
+def permanentDimHandler() {
+    if(switchesLCAction) {
+        switchesLCAction.each { it ->
+            if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl}"
+            it.setLevel(permanentDimLvl)
+        }
+    }
+    
+    if(switchesOnAction) {
+        switchesOnAction.each { it ->
+            if(it.hasCommand('setLevel')) {
+                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl}"
+                it.setLevel(permanentDimLvl)
+            }
+        }
     }
 }
 
@@ -2216,10 +2276,10 @@ def checkTime() {
 		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
 		if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - Time within range - Don't Speak"
+            if(logEnable) log.debug "In checkTime - Time within range"
 			state.timeBetween = true
 		} else {
-            if(logEnable) log.debug "In checkTime - Time outside of range - Can Speak"
+            if(logEnable) log.debug "In checkTime - Time outside of range"
 			state.timeBetween = false
 		}
   	} else {  
