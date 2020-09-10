@@ -11,7 +11,7 @@
 			"id" : "cbcf97c5-6ef2-4643-bdb8-5ab8d8c593f1",
 			"name": "Event 42",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%42/EC-parent.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%2042/E42-parent.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.0.0",
@@ -21,7 +21,7 @@
 			"id" : "f8a77601-2662-42ff-952b-e09819e9cab8",
 			"name": "Event 42 Child",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%42/EC-child.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%2042/E42-child.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.1.5"
