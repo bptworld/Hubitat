@@ -81,9 +81,9 @@
          "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
-   		"name": "Event Control",
+   		"name": "Event 42",
    		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Control/packageManifest.json",
+   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%2042/packageManifest.json",
    		"description": "Automatically control devices and events using multiple triggers!",
          "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
