@@ -1,5 +1,5 @@
 /**
- *  ****************  Event Control Child App  ****************
+ *  ****************  Event 42 Child App  ****************
  *
  *  Design Usage:
  *  Automatically control devices and events using multiple triggers!
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 09/10/20 - Fixed some typos, Name change: Event 42 (thanks furom!)
  *  1.1.4 - 09/09/20 - Added Permanent Dim option, fixed Delay
  *  1.1.3 - 09/09/20 - Added to Triggers: Battery, Added to Actions: Valves
  *  1.1.2 - 09/09/20 - Fixed a problem with speech
@@ -52,17 +53,17 @@ import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 
 def setVersion(){
-    state.name = "Event Control"
-	state.version = "1.1.4"
+    state.name = "Event 42"
+	state.version = "1.1.5"
 }
 
 definition(
-    name: "Event Control Child",
+    name: "Event 42 Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Automatically control devices and events using multiple triggers!",
     category: "Convenience",
-	parent: "BPTWorld:Event Control",
+	parent: "BPTWorld:Event 42",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
@@ -1897,7 +1898,7 @@ def dimmerOnActionHandler() {
 
 def dimmerOnReverseActionHandler() {
     if(switchesLCAction) {
-        switchesLCAction.each { it ->
+        setOnLC.each { it ->
             if(logEnable) log.debug "In dimmerOnReverseActionHandler - Turning off ${it}"
             it.off()
         }
@@ -1906,7 +1907,7 @@ def dimmerOnReverseActionHandler() {
 
 def permanentDimHandler() {
     if(switchesLCAction) {
-        switchesLCAction.each { it ->
+        setOnLC.each { it ->
             if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl}"
             it.setLevel(permanentDimLvl)
         }
