@@ -67,7 +67,7 @@ definition(
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Control/EC-child.groovy",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%2042/E42-child.groovy",
 )
 
 preferences {
