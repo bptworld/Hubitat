@@ -37,12 +37,8 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 09/10/20 - Minor changes
  *  1.1.5 - 09/10/20 - Fixed some typos, Name change: Event 42 (thanks furom!)
- *  1.1.4 - 09/09/20 - Added Permanent Dim option, fixed Delay
- *  1.1.3 - 09/09/20 - Added to Triggers: Battery, Added to Actions: Valves
- *  1.1.2 - 09/09/20 - Fixed a problem with speech
- *  1.1.1 - 09/08/20 - Added Slow Dim up and down, fixed Switch trigger (it was backwards)
- *  1.1.0 - 09/08/20 - Minor changes
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
  *
@@ -54,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event 42"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -1892,7 +1888,7 @@ def dimmerOnActionHandler() {
 	if(logEnable) log.debug "In dimmerOnActionHandler (${state.version})"
 	state.fromWhere = "dimmerOn"
 	state.color = "${colorLC}"
-	state.onLevel = levelLC
+    state.onLevel = levelLC
 	setLevelandColorHandler()
 }
 
@@ -2317,9 +2313,9 @@ def setLevelandColorHandler() {
     def saturation = 100
     
     if(state.fromWhere == "slowOff") {
-        int onLevel = state.highestLevel
+        state.onLevel = state.highestLevel
     } else {
-	    int onLevel = state.onLevel ?: 99
+	    state.onLevel = state.onLevel ?: 99
     }
     
     switch(state.color) {
@@ -2362,6 +2358,7 @@ def setLevelandColorHandler() {
             break;
     }
     
+    int onLevel = state.onLevel
 	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel]
     if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
     
@@ -2373,7 +2370,7 @@ def setLevelandColorHandler() {
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
-            	it.setLevel(onLevel as Integer ?: 100)
+            	it.setLevel(onLevel as Integer ?: 99)
         	} else {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
@@ -2388,7 +2385,7 @@ def setLevelandColorHandler() {
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
-            	it.setLevel(onLevel as Integer ?: 100)
+            	it.setLevel(onLevel as Integer ?: 99)
         	} else {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
@@ -2403,7 +2400,7 @@ def setLevelandColorHandler() {
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
-            	it.setLevel(level as Integer ?: 100)
+            	it.setLevel(level as Integer ?: 99)
         	} else {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
             	it.on()
