@@ -1,5 +1,5 @@
 /**
- *  ****************  Event Control Parent  ****************
+ *  ****************  Event 42 Parent  ****************
  *
  *  Design Usage:
  *  Automatically control devices and events using multiple triggers!
@@ -38,12 +38,12 @@
  */
 
 def setVersion(){
-    state.name = "Event Control"
+    state.name = "Event 42"
 	state.version = "1.0.0"
 }
 
 definition(
-    name:"Event Control",
+    name:"Event 42",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Automatically control devices and events using multiple triggers!",
@@ -84,7 +84,7 @@ def mainPage() {
 				paragraph "Automatically control devices and events using multiple triggers!"
 			}
 			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Event Control Child", namespace: "BPTWorld", title: "<b>Add a new 'Event Control' child</b>", multiple: true)
+				app(name: "anyOpenApp", appName: "Event 42 Child", namespace: "BPTWorld", title: "<b>Add a new 'Event 42' child</b>", multiple: true)
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
