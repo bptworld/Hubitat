@@ -1,17 +1,17 @@
 {
-	"packageName": "Event Control",
+	"packageName": "Event 42",
 	"minimumHEVersion": "1.0.0",
 	"author": "BPTWorld",
 	"dateReleased": "2020-09-05",
 	"documentationLink": "https://github.com/bptworld/Hubitat",
-	"communityLink": "https://community.hubitat.com/t/beta-event-control-automatically-control-devices-and-events-using-multiple-triggers/49727",
+	"communityLink": "https://community.hubitat.com/t/beta-event-42-automatically-control-devices-and-events-using-multiple-triggers/49727",
 	"releaseNotes": "All release notes can be found within the Community Link and within the App/Driver code.",
 	"apps" : [
 		{
 			"id" : "cbcf97c5-6ef2-4643-bdb8-5ab8d8c593f1",
-			"name": "Event Control",
+			"name": "Event 42",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Control/EC-parent.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%42/EC-parent.groovy",
 			"required": true,
 			"oauth": false,
 			"version": "1.0.0",
@@ -19,12 +19,12 @@
 		},
 		{
 			"id" : "f8a77601-2662-42ff-952b-e09819e9cab8",
-			"name": "Event Control Child",
+			"name": "Event 42 Child",
 			"namespace": "BPTWorld",
-			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Control/EC-child.groovy",
+			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%42/EC-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.1.4"
+			"version": "1.1.5"
 		}
 	],
 	"drivers" : [
