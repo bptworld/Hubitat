@@ -37,6 +37,8 @@
  *
  *  Changes:
  *
+ *  1.1.7 - 09/10/20 - To keep E42 lean and mean, Removed the Periodic Cron Expression maker and turned it into its own app.
+ *  Added Triggers: HSM Alert, HSM Status, other minor changes
  *  1.1.6 - 09/10/20 - Minor changes
  *  1.1.5 - 09/10/20 - Fixed some typos, Name change: Event 42 (thanks furom!)
  *  ---
@@ -50,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event 42"
-	state.version = "1.1.6"
+	state.version = "1.1.7"
 }
 
 definition(
@@ -69,7 +71,6 @@ definition(
 preferences {
     page(name: "pageConfig")
     page name: "notificationOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
-    page name: "periodicOptions", title: "", install: false, uninstall: true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -82,12 +83,14 @@ def pageConfig() {
 		
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
-                ["xPeriodic":"Periodic -The ultimate time/day based scheduling system"],
-                ["xTimeDays":"Time/Days - Sub-Menu - Easier to use"],
+                ["xPeriodic":"Periodic"],
+                ["xTimeDays":"Time/Days - Sub-Menu"],
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
                 ["xContact":"Contact Sensors"],
                 ["xGarageDoor":"Garage Doors"],
+                ["xHSMAlert":"HSM Alerts *** not tested ***"],
+                ["xHSMStatus":"HSM Status *** not tested ***"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"illuminance Setpoint"],
                 ["xLock":"Locks"],
@@ -106,27 +109,10 @@ def pageConfig() {
             if(triggerType.contains("xPeriodic")) {
                 input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
                 
-                href "periodicOptions", title:"Create your own Periodic Schedule Options", description:"Click here for options"
-                
+                paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
                 paragraph "<hr>"
-                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Format and spacing is critical, only enter if you know this is correct."
+                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
                 
-                if(preMadePeriodic) {
-                    state.remove("theSchedule")
-                    state.remove("inEnglish")
-                    state.theSchedule = preMadePeriodic
-                } else {
-                    if(state.inEnglish) { paragraph "${state.inEnglish}" }
-                    app.removeSetting("preMadePeriodic")
-                }
-                
-                if(state.theSchedule) { paragraph "Using: <small>${state.theSchedule}</small>" }
-                paragraph "<hr>"
-            } else {
-                if(state.theSchedule || state.inEnglish) {
-                    state.remove("theSchedule")
-                    state.remove("inEnglish")
-                }
             }
             
             if(triggerType.contains("xTimeDays")) {
@@ -317,6 +303,26 @@ def pageConfig() {
                 app.removeSetting("garageDoorEvent")
                 app?.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
                 app?.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
+            }
+            
+            if(triggerType.contains("xHSMAlert")) {
+                paragraph "<b>HSM Alert</b>"
+                paragraph "<b>Warning: This Trigger has not been tested. Use at your own risk.</b>"
+                input "hsmAlertEvent", "enum", title: "By HSM Alert", options: ["arming", "armingHome", "armingNight", "cancel", "cancelRuleAlerts", "intrusion", "intrusion-delay", "intrusion-home", "intrusion-home-delay", "intrusion-night", "intrusion-night-delay", "rule", "smoke", "water"], multiple:true, submitOnChange:true
+                if(hsmAlertEvent) paragraph "You will receive notifications if <b>any</b> of the HSM Alerts are active."
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("hsmAlertEvent")
+            }
+            
+            if(triggerType.contains("xHSMStatus")) {
+                paragraph "<b>HSM Status</b>"
+                paragraph "<b>Warning: This Trigger has not been tested. Use at your own risk.</b>"
+                input "hsmStatusEvent", "enum", title: "By HSM Status", options: ["All Disarmed", "Armed Away", "Armed Home", "Armed Night", "Delayed Armed Away", "Delayed Armed Home", "Delayed Armed Night", "Disarmed"], multiple:true, submitOnChange:true
+                if(hsmStatusEvent) paragraph "You will receive notifications if <b>any</b> of the HSM Status are active."
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("hsmStatusEvent")
             }
             
             if(triggerType.contains("xHumidity")) {
@@ -548,7 +554,7 @@ def pageConfig() {
                 app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
             }
             
-            if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
+            if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
                 input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."
@@ -914,477 +920,6 @@ def notificationOptions(){
     }
 }
 
-def periodicOptions(){
-    dynamicPage(name: "periodicOptions", title: "Periodic Options", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Periodic Schedule Options")) {
-            paragraph "If not familiar with Cron Generators, please visit <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a> to see what this can do! Be sure to scroll down on that page to see the Cron expression examples."
-            input "frequency", "enum", title: "Frequency", options: ["Seconds", "Minutes", "Hours", "Day", "Month", "Year"], submitOnChange:true
-                        
-            if(frequency == "Seconds") {
-                input "secondTrigger", "enum", title: "Select the Seconds Option", options: [
-                    ["1":"1. Every Second"],
-                    ["2":"2. Every 'x' Second(s), starting at 'Second'"],
-                    ["3":"3. Specific Second(s)"],
-                    ["4":"4. Every Second between Second 'x' and Second 'y'"]
-                ], submitOnChange:true
-                
-                if(secondTrigger == "1") {
-                    paragraph "No options available (notice the '*' in Second)"
-                    state.seconds = "*"
-                    
-                    // in English
-                    state.inEnglish1s = "Every Second."
-                    
-                } else if(secondTrigger == "2") {
-                    input "everySeconds2", "number", title: "Every 'x' Seconds (1 to 24)", range: '1..24', submitOnChange:true
-                    input "startingSeconds2", "enum", title: "Starting at Second", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true 
-                    
-                    if(everySeconds2 == null) everySeconds2 = "0"
-                    if(startingSeconds2 == null) startingSeconds2 = "0"
-                    state.seconds = "${startingSeconds2}/${everySeconds2}" 
-                    
-                    // in English
-                    state.inEnglish1s = "Every ${everySeconds2} Second(s), starting at second ${startingSeconds2}."
-                    
-                } else if(secondTrigger == "3") {
-                    input "seconds3", "enum", title: "Specific Second", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], multiple:true, submitOnChange:true
-                    state.seconds = seconds3
-                    
-                    // in English
-                    state.inEnglish1s = "Specific Second(s) - ${seconds3}"
-                    
-                } else if(secondTrigger == "4") {
-                    input "sbetweenX4", "enum", title: "Between Second", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true
-                    input "sbetweenY4", "enum", title: "and Second", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true
-                    state.seconds = "${sbetweenX4}-${sbetweenY4}"
-                    
-                    // in English
-                    state.inEnglish1s = "Every Second between Second ${sbetweenX4} and Second ${sbetweenY4}"
-                    
-                } else {
-                    state.seconds = "*"
-                }
-                
-                state.seconds = state.seconds.toString().replace("[", "").replace("]", "").replace(" ","")
-            }
-            
-            if(frequency == "Minutes") {
-                input "minuteTrigger", "enum", title: "Select the Minute Option", options: [
-                    ["1":"1. Every Minute"],
-                    ["2":"2. Every 'x' Minute(s), starting at 'Minute'"],
-                    ["3":"3. Specific Minute(s)"],
-                    ["4":"4. Every Minute between Minute 'x' and Minute 'y'"]
-                ], submitOnChange:true
-                
-                if(minuteTrigger == "1") {
-                    paragraph "No options available (notice the '*' in Minutes)"
-                    state.minutes = "*"
-                    
-                    // in English
-                    state.inEnglish1m = "Every Minute."
-                    
-                } else if(minuteTrigger == "2") {
-                    input "everyMinutes2", "number", title: "Every 'x' Minutes (1 to 59)", range: '1..59', submitOnChange:true
-                    input "startingMinutes2", "enum", title: "Starting at Minute", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true 
-                    
-                    if(everyMinutes2 == null) everyMinutes2 = "0"
-                    if(startingMinutes2 == null) startingMinutes2 = "0"
-                    state.minutes = "${startingMinutes2}/${everyMinutes2}" 
-                    
-                    // in English
-                    state.inEnglish1m = "Every ${everyMinutes2} Minute(s), starting at Minute ${startingMinutes2}."
-                    
-                } else if(minuteTrigger == "3") {
-                    input "minutes3", "enum", title: "Specific Minute", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], multiple:true, submitOnChange:true
-                    state.minutes = minutes3
-                    
-                    // in English
-                    state.inEnglish1m = "Specific Minute(s) - ${minutes3}"
-                    
-                } else if(minuteTrigger == "4") {
-                    input "mbetweenX4", "enum", title: "Between Minute", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true
-                    input "mbetweenY4", "enum", title: "and Minute", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true
-                    state.minutes = "${mbetweenX4}-${mbetweenY4}"
-                    
-                    // in English
-                    state.inEnglish1m = "Every Minute between Minute ${mbetweenX4} and Minute ${mbetweenY4}"
-                    
-                } else {
-                    state.minutes = "*"
-                }
-                
-                state.minutes = state.minutes.toString().replace("[", "").replace("]", "").replace(" ","")
-            }
-            
-            if(frequency == "Hours") {
-                input "hourTrigger", "enum", title: "Select the Hour Option", options: [
-                    ["1":"1. Every Hour"],
-                    ["2":"2. Every 'x' Hour(s), starting at 'Hour'"],
-                    ["3":"3. Specific Hour(s)"],
-                    ["4":"4. Every Hour between Hour 'x' and Hour 'y'"]
-                ], submitOnChange:true
-                
-                if(hourTrigger == "1") {
-                    paragraph "No options available (notice the '*' in Hours)"
-                    state.theHours = "*"
-                    
-                    // in English
-                    state.inEnglish1m = "Every Hour."
-                    
-                } else if(hourTrigger == "2") {
-                    input "everyHours2", "number", title: "Every 'x' Hours (1 to 24)", range: '1..24', submitOnChange:true
-                    input "startingHours2", "enum", title: "Starting at Hours", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true 
-                    
-                    if(everyHours2 == null) everyHours2 = "0"
-                    if(startingHours2 == null) startingHours2 = "0"
-                    state.theHours = "${startingHours2}/${everyHours2}" 
-                    
-                    // in English
-                    state.inEnglish1m = "Every ${everyHours2} Hour(s), starting at Hour ${startingHours2}."
-                    
-                } else if(hourTrigger == "3") {
-                    input "hours3", "enum", title: "Specific Hour", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], multiple:true, submitOnChange:true
-                    state.theHours = hours3
-                    
-                    // in English
-                    state.inEnglish1m = "Specific Hour(s) - ${hours3}"
-                    
-                } else if(hourTrigger == "4") {
-                    input "mbetweenX4", "enum", title: "Between Hour", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true
-                    input "mbetweenY4", "enum", title: "and Hour", options: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"], submitOnChange:true
-                    state.theHours = "${mbetweenX4}-${mbetweenY4}"
-                    
-                    // in English
-                    state.inEnglish1m = "Every Hour between Hour ${mbetweenX4} and Hour ${mbetweenY4}"
-                    
-                } else {
-                    state.theHours = "*"
-                }
-                
-                state.theHours = state.theHours.toString().replace("[", "").replace("]", "").replace(" ","")
-            }
-            
-            if(frequency == "Day") {
-                input "dayTrigger", "enum", title: "Select the Day Option", options: [
-                    ["1":"1. Every Day"],
-                    ["2":"2. Every 'x' Day(s), starting on 'Day'"],
-                    ["3":"3. Every 'x' Day(s), starting on the 'x' Day of the Month"],
-                    ["4":"4. Specific Day(s) of Week"],
-                    ["5":"5. Specific Day(s) of the Month"],
-                    ["6":"6. On the Last Day of the Month"],
-                    ["7":"7. On the Last Weekday of the Month"],
-                    ["8":"8. On the Last 'x' of the Month"],
-                    ["9":"9. 'x' Day(s) before the end of the Month"],
-                    ["10":"10. Nearest Weekday (Monday to Friday) to the 'x' of the Month"],
-                    ["11":"11. On the '(1st, 2nd, etc)' '(Mon, Tue, etc)' of the Month"],
-                ], submitOnChange:true
-                              
-                if(dayTrigger == "1") {
-                    paragraph "1. No options available (notice the '*' in the Day in the Week)"
-                    state.daily = "?"
-                    state.dayOfTheWeek = "*"
-                    state.inEnglish2 = "Every Day."
-                    
-                } else if(dayTrigger == "2") {
-                    input "everyDays2", "number", title: "2. Every How Many Days (1 to 7)", range: '1..7', submitOnChange:true
-                    input "startingDays2", "enum", title: "Starting on Day", options: [
-                        ["1":"Sunday"],
-                        ["2":"Monday"], 
-                        ["3":"Tuesday"],
-                        ["4":"Wednesday"],
-                        ["5":"Thursday"],
-                        ["6":"Friday"],
-                        ["7":"Saturday"]
-                    ], submitOnChange:true 
-
-                    if(everyDays2 == null) everyDays2 = "1"
-                    if(startingDays2 == null) startingDays2 = "1"
-                    state.daily = "?"
-                    state.dayOfTheWeek = "${startingDays2}/${everyDays2}"
-                    
-                    // In English                    
-                    if(startingDays2 == "1") theDayName = "Sunday"
-                    if(startingDays2 == "2") theDayName = "Monday"
-                    if(startingDays2 == "3") theDayName = "Tuesday"
-                    if(startingDays2 == "4") theDayName = "Wednesday"
-                    if(startingDays2 == "5") theDayName = "Thursday"
-                    if(startingDays2 == "6") theDayName = "Friday"
-                    if(startingDays2 == "7") theDayName = "Saturday"
-                    state.inEnglish2 = "Every ${everyDays2} Day(s), starting on ${theDayName}."
-                    
-                } else if(dayTrigger == "3") {
-                    input "everyDays3", "number", title: "3. Every How Many Days (1 to 31)", range: '1..31', submitOnChange:true
-                    input "startingDays3", "enum", title: "Starting on Day", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"], submitOnChange:true 
-
-                    if(everyDays3 == null) everyDays3 = "1"
-                    if(startingDays3 == null) startingDays3 = "1"
-                    state.daily = "${startingDays3}/${everyDays3}"
-                    state.dayOfTheWeek = "?"
-                    
-                    // in English
-                    state.inEnglish2 = "Every ${everyDays3} Day(s), starting on the ${startingDays3} of the Month."
-                    
-                } else if(dayTrigger == "4") {
-                    input "everyDays4", "enum", title: "4. Specific Day(s) of the Week", multiple:true, options: [
-                        ["SUN":"Sunday"],
-                        ["MON":"Monday"], 
-                        ["TUE":"Tuesday"],
-                        ["WED":"Wednesday"],
-                        ["THU":"Thursday"],
-                        ["FRI":"Friday"],
-                        ["SAT":"Saturday"]
-                    ], submitOnChange:true  
-
-                    if(everyDays4 == null) everyDays4 = "SUN"
-                    state.daily = "?"
-                    state.dayOfTheWeek = "${everyDays4}"
-                    
-                    // in English
-                    state.inEnglish2 = "Every ${everyDays4} of the Month."
-                    
-                } else if(dayTrigger == "5") {
-                    input "everyDays5", "enum", title: "5. Specific Day(s) of the Month", multiple:true, options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"], submitOnChange:true  
-
-                    if(everyDays5 == null) everyDays5 = "1"
-                    state.daily = "${everyDays}"
-                    state.dayOfTheWeek = "?"
-                    
-                    // in English
-                    state.inEnglish2 = "Every ${everyDays5} of the Month."
-                    
-                } else if(dayTrigger == "6") {
-                    paragraph "No options available (notice the 'L' in the Day of Month)"
-                    state.daily = "L"
-                    state.dayOfTheWeek = "?"
-                    
-                    // in English
-                    state.inEnglish2 = "On the Last Day of the Month."
-                    
-                } else if(dayTrigger == "7") {
-                    paragraph "No options available (notice the 'LW' in the Day of Month)"
-                    state.daily = "LW"
-                    state.dayOfTheWeek = "?"
-                    
-                    // in English
-                    state.inEnglish2 = "On the Last Weekday of the Month."
-                    
-                } else if(dayTrigger == "8") {
-                    input "everyDays8", "enum", title: "On the Last 'x' of the Month", options: [
-                        ["1L":"Sunday"],
-                        ["2L":"Monday"], 
-                        ["3L":"Tuesday"],
-                        ["4L":"Wednesday"],
-                        ["5L":"Thursday"],
-                        ["6L":"Friday"],
-                        ["7L":"Saturday"]
-                    ], submitOnChange:true  
-
-                    if(everyDays8 == null) everyDays8 = "1L"
-                    state.daily = "?"
-                    state.dayOfTheWeek = "${everyDays8}"
-                    
-                    // in English
-                    if(everyDays8 == "1L") dayName = "Sunday"
-                    if(everyDays8 == "2L") dayName = "Monday"
-                    if(everyDays8 == "3L") dayName = "Tuesday"
-                    if(everyDays8 == "4L") dayName = "Wednesday"
-                    if(everyDays8 == "5L") dayName = "Thursday"
-                    if(everyDays8 == "6L") dayName = "Friday"
-                    if(everyDays8 == "7L") dayName = "Saturday"
-                    state.inEnglish2 = "On the Last ${dayName} of the Month."
-                    
-                } else if(dayTrigger == "9") {
-                    input "everyDays9", "enum", title: "'x' Day(s) before the end of the Month", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"], submitOnChange:true  
-
-                    if(everyDays9 == null) everyDays9 = "1"
-                    state.daily = "L-${everyDays9}"
-                    state.dayOfTheWeek = "?"
-                    
-                    // in English
-                    state.inEnglish2 = "${everyDays9} Day(s) before the end of the Month."
-                    
-                } else if(dayTrigger == "10") {
-                    input "everyDays10", "enum", title: "Nearest Weekday (Monday to Friday) to the 'x' of the Month", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"], submitOnChange:true  
-
-                    if(everyDays10 == null) everyDays10 = "1"
-                    state.daily = "${everyDays10}W"
-                    state.dayOfTheWeek = "?"
-                    
-                    // in English
-                    state.inEnglish2 = "Nearest Weekday (Monday to Friday) to the ${everyDays10} of the Month."
-                    
-                } else if(dayTrigger == "11") {
-                    input "everyDays11", "enum", title: "On the 'x' of the Month", options: [
-                        ["1":"1st"],
-                        ["2":"2nd"],
-                        ["3":"3rd"],
-                        ["4":"4th"],
-                        ["5":"5th"]
-                    ], submitOnChange:true
-                    input "startingDays11", "enum", title: "Day", options: [
-                        ["1":"Sunday"],
-                        ["2":"Monday"], 
-                        ["3":"Tuesday"],
-                        ["4":"Wednesday"],
-                        ["5":"Thursday"],
-                        ["6":"Friday"],
-                        ["7":"Saturday"]
-                    ], submitOnChange:true 
-                    
-                    if(everyDays11 == null) everyDays11 = "1"
-                    if(startingDays11 == null) startingDays11 = "1"
-                    state.daily = "?"
-                    state.dayOfTheWeek = "${startingDays11}#${everyDays11}" 
-                    
-                    // in English
-                    if(everyDays11 == "1") which = "1st"
-                    if(everyDays11 == "2") which = "2nd"
-                    if(everyDays11 == "3") which = "3rd"
-                    if(everyDays11 == "4") which = "4th"
-                    if(everyDays11 == "5") which = "5th"
-                    
-                    if(startingDays11 == "1") dName = "Sunday"
-                    if(startingDays11 == "2") dName = "Monday"
-                    if(startingDays11 == "3") dName = "Tuesday"
-                    if(startingDays11 == "4") dName = "Wednesday"
-                    if(startingDays11 == "5") dName = "Thursday"
-                    if(startingDays11 == "6") dName = "Friday"
-                    if(startingDays11 == "7") dName = "Saturday"
-                    state.inEnglish2 = "On the ${which} ${dName} of the Month"
-                }
-                
-                state.dayOfTheWeek = state.dayOfTheWeek.toString().replace("[", "").replace("]", "").replace(" ","")
-            }
-            
-            if(frequency == "Month") {
-                input "monthTrigger", "enum", title: "Select the Month Option", options: [
-                    ["1":"1. Every Month"],
-                    ["2":"2. Every 'x' Month(s), starting at 'Month'"],
-                    ["3":"3. Specific Month(s)"],
-                    ["4":"4. Every Month between Month 'x' and Month 'y'"]
-                ], submitOnChange:true
-                
-                if(monthTrigger == "1") {
-                    paragraph "No options available (notice the '*' in Months)"
-                    state.months = "*"
-                    
-                    // in English
-                    state.inEnglish3 = "Every Month."
-                    
-                } else if(monthTrigger == "2") {
-                    input "everyMonth2", "number", title: "Every How Many Months (1 to 12)", range: '1..12', submitOnChange:true
-                    input "startingMonths2", "enum", title: "Starting at Month", options: ["*", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"], submitOnChange:true 
-
-                    if(everyMonth2 == null) everyMonth2 = "0"
-                    if(startingMonths2 == null) startingMonths2 = "0"
-                    state.months = "${startingMonths2}/${everyMonth2}" 
-                    
-                    // in English
-                    state.inEnglish3 = "Every ${everyMonth2} Month(s), starting at ${startingMonths2}."
-                    
-                } else if(monthTrigger == "3") {    
-                    input "monthly3", "enum", title: "Specific Hour", options: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"], multiple:true, submitOnChange:true
-                    state.months = monthly3
-                    
-                    // in English
-                    state.inEnglish3 = "Specific Month(s) - ${monthly3}"
-                    
-                } else if(monthTrigger == "4") {
-                    input "mbetweenX4", "enum", title: "Between Month", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"], submitOnChange:true
-                    input "mbetweenY4", "enum", title: "and Month", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"], submitOnChange:true
-                    state.months = "${mbetweenX4}-${mbetweenY4}"
-                    
-                    // in English
-                    state.inEnglish3 = "Every Month between Month ${mbetweenX4} and Month ${mbetweenY4}."
-                    
-                } else {
-                    state.months = "*"
-                }
-                
-                state.months = state.months.toString().replace("[", "").replace("]", "").replace(" ","")
-            }
-
-            if(frequency == "Year") {
-                input "yearTrigger", "enum", title: "Select the Year Option", options: [
-                    ["1":"1. Every Year"],
-                    ["2":"2. Every 'x' Year(s), starting at 'Year'"],
-                    ["3":"3. Specific Year(s)"],
-                    ["4":"4. Every Year between Month 'x' and Year 'y'"]
-                ], submitOnChange:true
-                
-                state.inEnglish4 = "Every Year."
-                
-                if(yearTrigger == "1") {
-                    paragraph "No options available (notice the '*' in Years)"
-                    state.years = "*"
-                } else if(yearTrigger == "2") {
-                    input "everyYear2", "number", title: "Every How Many Years (1 to 10)", range: '1..10', submitOnChange:true
-                    input "startingYears2", "enum", title: "Starting at year", options: ["2020", "2021", "2022", "2023", "2024", "2025"], submitOnChange:true 
-
-                    if(everyYear2 == null) everyYear2 = "0"
-                    if(startingYears2 == null) startingYears2 = "0"
-                    state.years = "${startingYears2}/${everyYear2}" 
-                    
-                    // in English
-                    state.inEnglish4 = "Every ${everyYear2} Years(s), starting at ${startingYears2}."
-                    
-                } else if(yearTrigger == "3") {
-                    input "yearly3", "enum", title: "Specific Year", options: ["2020", "2021", "2022", "2023", "2025", "2026", "2027", "2028", "2029", "2030"], multiple:true, submitOnChange:true
-                    state.years = yearly3
-
-                    // in English
-                    state.inEnglish4 = "Specific Year(s) - ${yearly3}"
-                    
-                } else if(yearTrigger == "4") {
-                    input "ybetweenX4", "enum", title: "Between Month", options: ["2020", "2021", "2022", "2023", "2025", "2026", "2027", "2028", "2029", "2030"], submitOnChange:true
-                    input "ybetweenY4", "enum", title: "and Month", options: ["2020", "2021", "2022", "2023", "2025", "2026", "2027", "2028", "2029", "2030"], submitOnChange:true
-                    state.years = "${ybetweenX4}-${ybetweenY4}"
-                    
-                    // in English
-                    state.inEnglish4 = "Every Year between Year ${ybetweenX4} and Year ${ybetweenY4}."
-                    
-                } else {
-                    state.years = "*"
-                }
-                
-                state.years = state.years.toString().replace("[", "").replace("]", "").replace(" ","")
-            }
-               
-            if(state.seconds == null) state.seconds = "*"
-            if(state.minutes == null) state.minutes = "*"
-            if(state.theHours == null) state.theHours = "*"
-            if(state.daily == null) state.daily = "?"
-            if(state.months == null) state.months = "*"
-            if(state.dayOfTheWeek == null) state.dayOfTheWeek = "*"
-            if(state.years == null) state.years = "*"
-
-            paragraph "<hr>"
-            
-            if(state.inEnglish1h == null || state.inEnglish1h == "") state.inEnglish1h = "Every Hour."
-            if(state.inEnglish1m == null || state.inEnglish1m == "") state.inEnglish1m = "Every Minute."
-            if(state.inEnglish1s == null || state.inEnglish1s == "") state.inEnglish1s = "Every Second."
-            
-            if(state.inEnglish2 == null || state.inEnglish2 == "") state.inEnglish2 = "Every Day."
-            if(state.inEnglish3 == null || state.inEnglish3 == "") state.inEnglish3 = "Every Month."
-            if(state.inEnglish4 == null || state.inEnglish4 == "") state.inEnglish4 = "Every Year."
-            
-            state.inEnglish = "<b>Will Run:<br>${state.inEnglish1h} ${state.inEnglish1m} ${state.inEnglish1s}<br>${state.inEnglish2} ${state.inEnglish3} ${state.inEnglish4}</b>"
-            
-            paragraph "${state.inEnglish}"
-            state.theSchedule = "${state.seconds} ${state.minutes} ${state.theHours} ${state.daily} ${state.months} ${state.dayOfTheWeek} ${state.years}"
-            
-            table = "<table width=90% align=center><tr align=center>"
-            table += "<td><b>Seconds</b><br>${state.seconds}<td><b>Minutes</b><br>${state.minutes}<td><b>Hours</b><br>${state.theHours}<td><b>Day Of Month</b><br>${state.daily}<td><b>Months</b><br>${state.months}<td><b>Day Of Week</b><br>${state.dayOfTheWeek}<td><b>Years</b><br>${state.years}"
-            table += "</table>"
-            
-            paragraph "<hr>"
-            paragraph "${table}"
-            paragraph "<hr>"
-            paragraph "Cron Schedule: <b>${state.theSchedule}</b>" 
-        }
-    }
-}
-
 def installed() {
     log.debug "Installed with settings: ${settings}"
 	initialize()
@@ -1414,6 +949,8 @@ def initialize() {
         if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)
         if(contactEvent) subscribe(contactEvent, "contact", startTheProcess)
         if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
+        if(hsmAlertEvent) subscribe(location, "hsmAlert", startTheProcess)
+        if(hsmStatusEvent) subscribe(location, "hsmStatus", startTheProcess)
         if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
         if(illuminanceEvent) subscribe(illuminanceEvent, "illuminanceEvent", startTheProcess)
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
@@ -1478,6 +1015,8 @@ def startTheProcess(evt) {
         contactHandler()
         dayOfTheWeekHandler()
         garageDoorHandler()
+        hsmAlertHandler(whatHappened)
+        hsmStatusHandler(whatHappened)
         humidityHandler()
         illuminanceHandler()
         modeHandler()
@@ -1686,7 +1225,7 @@ def waterHandler() {
     } 
 }
 
-def devicesGoodHandler(evt) {
+def devicesGoodHandler() {
     if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}" 
     state.devicesGood = false
     deviceTrue = 0
@@ -1711,7 +1250,45 @@ def devicesGoodHandler(evt) {
     if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood}"
 }
 
-def modeHandler(evt) {
+def hsmAlertHandler(data) {
+    if(hsmAlertEvent) {
+        if(logEnable) log.debug "In hsmAlertHandler (${state.version})"
+        state.hsmAlertStatus = false
+        String theValue = data
+        
+        hsmAlertEvent.each { it ->
+            if(logEnable) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
+
+            if(theValue == it){
+                state.hsmAlertStatus = true
+            }
+        }
+    } else {
+        state.hsmAlertStatus = true
+    }
+    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus}"
+}
+
+def hsmStatusHandler(data) {
+    if(hsmStatusEvent) {
+        if(logEnable) log.debug "In hsmStatusHandler (${state.version})"
+        state.hsmStatus = false
+        String theValue = data
+        
+        hsmStatusEvent.each { it ->
+            if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
+
+            if(theValue == it){
+                state.hsmStatus = true
+            }
+        }
+    } else {
+        state.hsmStatus = true
+    }
+    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus}"
+}
+
+def modeHandler() {
     if(modeEvent) {
         if(logEnable) log.debug "In modeHandler (${state.version})"
         state.modeStatus = false
