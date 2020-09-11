@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.8 - 09/11/20 - Added random delay option, added Test button
  *  1.1.7 - 09/10/20 - To keep E42 lean and mean, Removed the Periodic Cron Expression maker and turned it into its own app.
  *  Added Triggers: HSM Alert, HSM Status, other minor changes
  *  1.1.6 - 09/10/20 - Minor changes
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event 42"
-	state.version = "1.1.7"
+	state.version = "1.1.8"
 }
 
 definition(
@@ -92,7 +93,7 @@ def pageConfig() {
                 ["xHSMAlert":"HSM Alerts *** not tested ***"],
                 ["xHSMStatus":"HSM Status *** not tested ***"],
                 ["xHumidity":"Humidity Setpoint"],
-                ["xIlluminance":"illuminance Setpoint"],
+                ["xIlluminance":"Illuminance Setpoint"],
                 ["xLock":"Locks"],
                 ["xMode":"Mode"],
                 ["xMotion":"Motion Sensors"],
@@ -555,7 +556,10 @@ def pageConfig() {
             }
             
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
-                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true
+                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true, width:6
+                input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay?</b>", description: "Random Delay", submitOnChange:true, width:6
+                
+                if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
@@ -564,6 +568,24 @@ def pageConfig() {
                     app.removeSetting("notifyDelay")
                     app?.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
+                
+                if(randomDelay) {
+                    paragraph "Delay the notifications until all devices has been in state for XX minutes."                
+                    input "delayLow", "number", title: "Delay Low Limit (1 to 60)", required: true, multiple: false, range: '1..60', submitOnChange:true
+                    input "delayHigh", "number", title: "Delay High Limit (1 to 60)", required: true, multiple: false, range: '1..60', submitOnChange:true
+                    if(delayHigh <= delayLow) paragraph "<b>Delay High must be greater than Delay Low.</b>"                    
+                    paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the notifications will be cancelled.</small>"
+                } else {
+                    app.removeSetting("delayLow")
+                    app.removeSetting("delayHigh")
+                    app?.updateSetting("randomDelay",[value:"false",type:"bool"])
+                }
+            } else {
+                app.removeSetting("notifyDelay")
+                app?.updateSetting("setDelay",[value:"false",type:"bool"])
+                app.removeSetting("delayLow")
+                app.removeSetting("delayHigh")
+                app?.updateSetting("randomDelay",[value:"false",type:"bool"])
             }
         }
         
@@ -830,6 +852,8 @@ def pageConfig() {
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required: false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
+                paragraph "<hr>"
+                input "testButton", "button", title: "Test Event"
             }
 		}
 		display2()
@@ -1005,27 +1029,37 @@ def startTheProcess(evt) {
             state.hasntDelayedYet = true
         }
         
-        state.setPointGood = true
-        state.devicesGood = true
-        
-        checkTime()
-        checkTimeSun()
-        accelerationHandler()
-        batteryHandler()
-        contactHandler()
-        dayOfTheWeekHandler()
-        garageDoorHandler()
-        hsmAlertHandler(whatHappened)
-        hsmStatusHandler(whatHappened)
-        humidityHandler()
-        illuminanceHandler()
-        modeHandler()
-        motionHandler() 
-        powerHandler()
-        presenceHandler()
-        switchHandler()
-        tempHandler()
-        waterHandler()
+        if(runTest) {
+            state.timeBetween = true
+            state.timeBetweenSun = true
+            state.daysMatch = true
+            state.modeStatus = true
+            state.setPointGood = true
+            state.devicesGood = true
+            if(logEnable) log.warn "*********** RUNNING TEST ***********"
+        } else {
+            state.setPointGood = true
+            state.devicesGood = true
+
+            checkTime()
+            checkTimeSun()
+            accelerationHandler()
+            batteryHandler()
+            contactHandler()
+            dayOfTheWeekHandler()
+            garageDoorHandler()
+            hsmAlertHandler(whatHappened)
+            hsmStatusHandler(whatHappened)
+            humidityHandler()
+            illuminanceHandler()
+            modeHandler()
+            motionHandler() 
+            powerHandler()
+            presenceHandler()
+            switchHandler()
+            tempHandler()
+            waterHandler()
+        }
         
         if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood}"
         
@@ -1033,8 +1067,10 @@ def startTheProcess(evt) {
             if(logEnable) log.debug "In startTheProcess - Everything is GOOD - Here we go!"
 
             if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-            if((notifyDelay || targetDelay) && state.hasntDelayedYet) {
+            if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
                 if(notifyDelay) newDelay = notifyDelay
+                // Math.abs(new Random().nextInt() % ([UPPER_LIMIT] - [LOWER_LIMIT])) + [LOWER_LIMIT]
+                if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                 if(targetDelay) newDelay = minutesUp
                 if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
                 if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
@@ -1769,12 +1805,12 @@ def messageHandler() {
 }
 
 def letsTalk(msg) {
-    if(logEnable) log.warn "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
+    if(logEnable) log.debug "In letsTalk (${state.version}) - Sending the message to Follow Me - msg: ${msg}"
     if(useSpeech && fmSpeaker) {
         fmSpeaker.latestMessageFrom(state.name)
         fmSpeaker.speak(msg)
     }
-    if(logEnable) log.warn "In letsTalk - *** Finished ***"
+    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def pushHandler(msg){
@@ -1984,6 +2020,18 @@ def setLevelandColorHandler() {
         	}
     	}
 	}
+}
+
+def appButtonHandler(buttonPressed) {
+    state.whichButton = buttonPressed
+    log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
+    
+    if(state.whichButton == "testButton"){
+        log.debug "In appButtonHandler - testButton"
+        runTest = true
+        startTheProcess()
+        runTest = false
+    }
 }
 
 // ********** Normal Stuff **********
