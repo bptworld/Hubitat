@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.3.3 - 09/12/20 - Adjustments to time
  *  1.3.2 - 09/03/20 - Attempt to fix Permanent Dim without sun restriction
  *  1.3.1 - 09/01/20 - Cosmetic changes, more options
  *  1.3.0 - 08/22/20 - Working on notifications
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.3.2"
+	state.version = "1.3.3"
 }
 
 definition(
@@ -623,29 +624,32 @@ def autoSunHandler() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
+        log.warn getSunriseAndSunset().sunrise
         // autoSunHandler - This is to trigger AT the exact times with offsets
         if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-        def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        
+        def sunriseString = getSunriseAndSunset().sunrise
+        def sunsetString = getSunriseAndSunset().sunset
+            
+        if(logEnable) log.debug "In autoSunHandler - sunrise: ${sunriseString}"
+        if(logEnable) log.debug "In autoSunHandler - sunset: ${sunsetString}"
 
-        def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
         int theOffsetSunset = offsetSunset ?: 1    
         if(setBeforeAfter) {
-            state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+            state.timeSunset = new Date(sunsetString.time + (theOffsetSunset * 60 * 1000))
         } else {
-            state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+            state.timeSunset = new Date(sunsetString.time - (theOffsetSunset * 60 * 1000))
         }
 
-        def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
         int theOffsetSunrise = offsetSunrise ?: 1
         if(riseBeforeAfter) {
-            state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+            state.timeSunrise = new Date(sunriseString.time + (theOffsetSunrise * 60 * 1000))
         } else {
-            state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+            state.timeSunrise = new Date(sunriseString.time - (theOffsetSunrise * 60 * 1000))
         }
 
-        if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-        if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+        if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetString} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+        if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseString} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
         if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
 
         // check for new sunset/sunrise times every day at 12:05 am
@@ -1327,11 +1331,8 @@ def checkTimeSun() {
     // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
 	if(logEnable) log.debug "In checkTimeSun (${state.version}) - ${app.label}"
     if(sunRestriction) {    
-        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        
-        nextSunset = toDateTime(sunsetTime)
-        nextSunrise = toDateTime(sunriseTime)+1
+        def nextSunrise = (getSunriseAndSunset().sunrise)+1
+        def nextSunset = getSunriseAndSunset().sunset
         
         int theOffsetSunset = offsetSunset ?: 1    
         if(setBeforeAfter) {
