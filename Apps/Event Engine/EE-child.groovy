@@ -1,8 +1,8 @@
 /**
- *  ****************  Event 42 Child App  ****************
+ *  ****************  Event Engine Child App  ****************
  *
  *  Design Usage:
- *  Automatically control devices and events using multiple triggers!
+ *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
  *
  *  Copyright 2020 Bryan Turcotte (@bptworld)
  * 
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.9 - 09/12/20 - Adjustments to time, fixed issue with Permanent Dim, name change again (last time, I promise!)
  *  1.1.8 - 09/11/20 - Added random delay option, added Test button
  *  1.1.7 - 09/10/20 - To keep E42 lean and mean, Removed the Periodic Cron Expression maker and turned it into its own app.
  *  Added Triggers: HSM Alert, HSM Status, other minor changes
@@ -52,21 +53,21 @@ import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 
 def setVersion(){
-    state.name = "Event 42"
-	state.version = "1.1.8"
+    state.name = "Event Engine"
+	state.version = "1.1.9"
 }
 
 definition(
-    name: "Event 42 Child",
+    name: "Event Engine Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Automatically control devices and events using multiple triggers!",
+    description: "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
     category: "Convenience",
-	parent: "BPTWorld:Event 42",
+	parent: "BPTWorld:Event Engine",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%2042/E42-child.groovy",
+	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-child.groovy",
 )
 
 preferences {
@@ -79,7 +80,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Automatically control devices and events using multiple triggers!"
+    		paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
 		}
 		
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
@@ -398,6 +399,13 @@ def pageConfig() {
                         paragraph "Trigger will fire when <b>all</b> devices are true"
                     }
                 }
+                
+/*
+                if(lockEvent) {
+                    getLockUsers()
+                    //input "lockUser", "enum", title: "By Lock User", options: state.theLockUsers, required: false, multiple: true, submitOnChange: true
+                }
+*/
                 paragraph "<hr>"
             } else {
                 app.removeSetting("lockEvent")
@@ -694,11 +702,16 @@ def pageConfig() {
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
                 input "switchesOffAction", "capability.switch", title: "Switches to turn Off<br><small>Can also be used as Permanent Dim</small>", multiple:true, submitOnChange:true
                 if(switchesOffAction){
-                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
-                    if(permanentDim) {
+                    input "permanentDim2", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
+                    if(permanentDim2) {
                         paragraph "Instead of turning off, lights will dim to a set level"
-                        input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                        input "permanentDimLvl2", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                    } else {
+                        app.removeSetting("permanentDimLvl2")
                     }
+                } else {
+                    app.removeSetting("permanentDimLvl2")
+                    app?.updateSetting("permanentDim2",[value:"false",type:"bool"])
                 }
                 
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
@@ -708,6 +721,7 @@ def pageConfig() {
 					input "setOnLC", "capability.switchLevel", title: "Select dimmer to set", required: false, multiple: true
 					input "levelLC", "number", title: "On Level (1 to 99)", required: false, multiple: false, defaultValue: 99, range: '1..99'
 					input "colorLC", "enum", title: "Color", required: false, multiple:false, options: [
+                        ["No Change":"Keep Current Color"],
                 		["Soft White":"Soft White - Default"],
                 		["White":"White - Concentrate"],
                 		["Daylight":"Daylight - Energize"],
@@ -1052,6 +1066,7 @@ def startTheProcess(evt) {
             hsmStatusHandler(whatHappened)
             humidityHandler()
             illuminanceHandler()
+            lockHandler()
             modeHandler()
             motionHandler() 
             powerHandler()
@@ -1107,8 +1122,8 @@ def startTheProcess(evt) {
         } else if(reverse) {
             if(logEnable) log.debug "In startTheProcess - Going in REVERSE"
             if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-            if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl) { permanentDimHandler() }
-            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffReverseActionHandler() }
+            if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
+            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
             if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
             if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
             if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
@@ -1123,10 +1138,9 @@ def autoSunHandler() {
     // autoSunHandler - This is to trigger AT the exact times with offsets
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
     
-    def sunriseString = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    def sunsetString = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    def sunriseTime = getSunriseAndSunset().sunrise
+    def sunsetTime = getSunriseAndSunset().sunset
 
-    def sunsetTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunsetString)
     int theOffsetSunset = offsetSunset ?: 1    
     if(setBeforeAfter) {
         state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
@@ -1134,7 +1148,6 @@ def autoSunHandler() {
         state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
     }
     
-    def sunriseTime = Date.parse("yyyy-MM-dd'T'HH:mm:ss.SSSZ", sunriseString)
     int theOffsetSunrise = offsetSunrise ?: 1
     if(riseBeforeAfter) {
         state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
@@ -1530,6 +1543,15 @@ def permanentDimHandler() {
             }
         }
     }
+    
+    if(switchesOffAction) {
+        switchesOffAction.each { it ->
+            if(it.hasCommand('setLevel')) {
+                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl2}"
+                it.setLevel(permanentDimLvl2)
+            }
+        }
+    }
 }
 
 def devicesToRefreshActionHandler() {
@@ -1576,6 +1598,55 @@ def lockActionHandler() {
             it.unlock()
         }
     }
+}
+
+def lockUserActionHandler(evt) {
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.warn "In lockUserActionHandler (${state.version})"
+
+        if(evt) {
+            lockdata = evt.data
+            lockStatus = evt.value
+            lockName = evt.displayName
+            if(logEnable) log.trace "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
+            if(lockStatus == "unlocked") {
+                if(logEnable) log.trace "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
+                if(theLocks) {
+                    //if(logEnable) log.trace "In lockUserActionHandler - lockdata: ${lockdata}"
+                    if (lockdata && !lockdata[0].startsWith("{")) {
+                        lockdata = decrypt(lockdata)
+                        //log.trace "Lock Data: ${lockdata}"
+                        if (lockdata == null) {
+                            log.debug "Unable to decrypt lock code from device: ${lockName}"
+                            return
+                        }
+                    }
+                    def codeMap = parseJson(lockdata ?: "{}").find{ it }
+                    //if(logEnable) log.trace "In lockUserActionHandler - codeMap: ${codeMap}"
+                    if (!codeMap) {
+                        if(logEnable) log.trace "In lockUserActionHandler - Lock Code not available."
+                        return
+                    }
+                    codeName = "${codeMap?.value?.name}"         
+                    if(logEnable) log.trace "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	
+                }
+            }
+        }
+    }
+}
+
+def getLockUsers() {
+    //def lockData = lockEvent.currentValue("lockCodes")
+    //dLockData = decrypt(lockData)
+    
+    //dLockSize = dLockData.size()
+    
+    
+    state.theLockUsers = "none yet"
+    if(logEnable) log.debug "In getLockUsers - size: ${dLockSize} - theLockUsers: ${state.theLockUsers}"
 }
 
 def modeChangeActionHandler() {
@@ -1833,13 +1904,10 @@ def currentDateTime() {
 
 def checkTimeSun() {
     // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
-	if(logEnable) log.debug "In checkTimeSun (${state.version})"
+	if(logEnable) log.debug "In checkTimeSun (${state.version}) - ${app.label}"
     if(sunRestriction) {    
-        def sunriseTime = location.sunrise.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        def sunsetTime = location.sunset.format("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        
-        nextSunset = toDateTime(sunsetTime)
-        nextSunrise = toDateTime(sunriseTime)+1
+        def nextSunrise = (getSunriseAndSunset().sunrise)+1
+        def nextSunset = getSunriseAndSunset().sunset
         
         int theOffsetSunset = offsetSunset ?: 1    
         if(setBeforeAfter) {
@@ -1864,10 +1932,10 @@ def checkTimeSun() {
         
 		if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
-			state.timeBetweenSun = true
+			state.sunRiseTosunSet = true
 		} else {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
-			state.timeBetweenSun = false
+			state.sunRiseTosunSet = false
 		}
         if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
   	} else {
@@ -1922,8 +1990,6 @@ def dayOfTheWeekHandler() {
 
 def setLevelandColorHandler() {
 	if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color}"
-    def hueColor = 0
-    def saturation = 100
     
     if(state.fromWhere == "slowOff") {
         state.onLevel = state.highestLevel
@@ -1932,7 +1998,11 @@ def setLevelandColorHandler() {
     }
     
     switch(state.color) {
-            case "White":
+        case "No Change":
+            hueColor = null
+            saturation = null
+            break;
+        case "White":
             hueColor = 52
             saturation = 19
             break;
@@ -1972,12 +2042,18 @@ def setLevelandColorHandler() {
     }
     
     int onLevel = state.onLevel
-	def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel]
-    if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
+	//def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel]
+    //if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
     
 	if(state.fromWhere == "dimmerOn") {
         if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
     	setOnLC.each {
+            if(state.color == "No Change") {
+                hueColor = it.currentValue("hue")
+                saturation = it.currentValue("saturation")
+                def value = [hue: hueColor, saturation: saturation, level: onLevel]               
+            }
+            
         	if (it.hasCommand('setColor')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
