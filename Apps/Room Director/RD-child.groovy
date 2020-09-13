@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.3.4 - 09/13/20 - Adjustments to Permanent Dim
  *  1.3.3 - 09/12/20 - Adjustments to time
  *  1.3.2 - 09/03/20 - Attempt to fix Permanent Dim without sun restriction
  *  1.3.1 - 09/01/20 - Cosmetic changes, more options
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.3.3"
+	state.version = "1.3.4"
 }
 
 definition(
@@ -1050,7 +1051,7 @@ def lightsHandler() {
     if(logEnable) log.debug "In lightsHandler (${state.version}) - ${app.label} - roStatus: ${state.roStatus} - occupancy1: ${state.occupancy1} - occupancy2: ${state.occupancy2} - sleeping: ${state.sleeping}"
     
     if(permanentDim) {
-        if(logEnable) log.debug "In vacantHandler - ${app.label} - permanentDim"
+        if(logEnable) log.debug "In lightsHandler - ${app.label} - permanentDim"
         if(oDimmers1) theDevices = oDimmers1
         if(oDimmers2) theDevices = oDimmers2
         if(oDimmers3) theDevices = oDimmers3
@@ -1064,8 +1065,11 @@ def lightsHandler() {
 
         if(theDevices) {
             theDevices.each { it ->
-                if(logEnable) log.debug "In vacantHandler - ${app.label} - working on ${it} - turning Off"                     
-                it.off()
+                if(it.hasCommand("setLevel")) {
+                    if(logEnable) log.debug "In lightsHandler - ${app.label} - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"                     
+                    it.setLevel("${permanentDimLvl}")
+                    if(logEnable) log.debug "In lightsHandler - ${app.label} - working on ${it} - setLevel to: ${permanentDimLvl}"
+                }
             }
         }
     } else {
