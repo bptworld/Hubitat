@@ -189,7 +189,7 @@
    		"name": "Periodic Expressions",
    		"category": "Utility",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Periodic%20Expressions/packageManifest.json",
-   		"description": "Create Periodic Cron Expression to be used with Event 42.",
+   		"description": "Create Periodic Cron Expression to be used with Event Engine.",
          "tags": [ "Tools & Utilities" ]
    	},
       {
