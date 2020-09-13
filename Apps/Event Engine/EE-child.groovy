@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.1 - 09/13/20 - Fix for Set Point Values
  *  1.2.0 - 09/12/20 - Added trigger for Energy. Added Device Wildcards to notifications
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.0"
+	state.version = "1.2.1"
 }
 
 definition(
@@ -1467,21 +1468,23 @@ def setPointHandler() {
     log.trace "spName: ${state.spName}"
     state.spName.each {
         setPointValue = it.currentValue("${state.spType}")
-        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue}"
+        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh}"
         setPointValue1 = setPointValue.toDouble()
 
         // *** setPointHigh ***
         if(state.setPointHigh && !state.setPointLow) {
             state.setPointLowOK = "yes"
-            if(setPointValue1 > state.setPointHigh) {
+            if(setPointValue1 >= state.setPointHigh) {
                 if(state.setPointHighOK != "no") {
                     if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${state.setPointHigh}"
                     state.setPointHighOK = "no"
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
+            
             if(setPointValue1 < state.setPointHigh) {
                 if(state.setPointHighOK == "no") {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${state.setPointHigh}"
@@ -1489,6 +1492,7 @@ def setPointHandler() {
                     state.setPointGood = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
         }
@@ -1503,8 +1507,10 @@ def setPointHandler() {
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
+            
             if(setPointValue1 > state.setPointLow) {
                 if(state.setPointLowOK == "no") {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${state.setPointLow}"
@@ -1512,6 +1518,7 @@ def setPointHandler() {
                     state.setPointGood = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
         }
@@ -1525,8 +1532,10 @@ def setPointHandler() {
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
+            
             if(setPointValue1 < state.setPointLow) {
                 if(state.setPointLowOK != "no") {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${state.setPointLow}"
@@ -1534,6 +1543,7 @@ def setPointHandler() {
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
             if((setPointValue1 <= state.setPointHigh) && (setPointValue1 >= state.setPointLow)) {
@@ -1544,10 +1554,12 @@ def setPointHandler() {
                     state.setPointGood = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
         }
     }
+    
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood}"
 }
 
