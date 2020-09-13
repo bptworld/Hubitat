@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.2 - 09/13/20 - Fixed typo in Action - Valve
  *  1.2.1 - 09/13/20 - Fix for Set Point Values
  *  1.2.0 - 09/12/20 - Added trigger for Energy. Added Device Wildcards to notifications
  *  ---
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.1"
+	state.version = "1.2.2"
 }
 
 definition(
@@ -636,7 +637,7 @@ def pageConfig() {
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
                 ["aSwitch":"Switch Devices"],
-                ["aValves":"Valves"]
+                ["aValve":"Valves"]
             ], required:false, multiple:true, submitOnChange:true
             
             paragraph "<hr>"
