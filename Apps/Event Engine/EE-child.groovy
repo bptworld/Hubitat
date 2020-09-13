@@ -1,5 +1,5 @@
 /**
- *  ****************  Event Engine Child App  ****************
+ *  ****************  Event Engine Cog App  ****************
  *
  *  Design Usage:
  *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.4 - 09/13/20 - Trigger types are now 'And' or 'Or'. Fixed some typos.
  *  1.2.3 - 09/13/20 - Fixed issue with Modes, added Use Whole Numbers to anything that uses set points.
  *  1.2.2 - 09/13/20 - Fixed typo in Action - Valve
  *  1.2.1 - 09/13/20 - Fix for Set Point Values
@@ -52,11 +53,11 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.3"
+	state.version = "1.2.4"
 }
 
 definition(
-    name: "Event Engine Child",
+    name: "Event Engine Cog",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
     description: "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
@@ -104,9 +105,10 @@ def pageConfig() {
                 ["xWater":"Water Sensor"]
             ], required: true, multiple:true, submitOnChange:true
             
+            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true
             paragraph "<hr>"
             if(triggerType == null) triggerType = ""
-            
+
             if(triggerType.contains("xPeriodic")) {
                 input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
                 
@@ -593,7 +595,7 @@ def pageConfig() {
             }
             
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
-                input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Nubmers (round each number)", description: "Whole", submitOnChange:true
+                input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
             } else {
                 app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
             }
@@ -1085,55 +1087,66 @@ def startTheProcess(evt) {
         }
         
         if(runTest) {
-            state.timeBetween = true
-            state.timeBetweenSun = true
-            state.daysMatch = true
-            state.modeStatus = true
-            state.setPointGood = true
-            state.devicesGood = true
+            state.doIt = true
             if(logEnable) log.warn "*********** RUNNING TEST ***********"
         } else {
-            state.setPointGood = true
-            state.devicesGood = true
-
-            accelerationHandler()
-            batteryHandler()
+            state.allDevicesTrue = true
+            
+            // Time
             checkTime()
             checkTimeSun()
-            contactHandler()
             dayOfTheWeekHandler()
-            energyHandler()
+            
+            // Devices
+            accelerationHandler()
+            contactHandler()
             garageDoorHandler()
             hsmAlertHandler(state.whatHappened)
-            hsmStatusHandler(state.whatHappened)
-            humidityHandler()
-            illuminanceHandler()
+            hsmStatusHandler(state.whatHappened)           
             lockHandler()
             modeHandler()
-            motionHandler() 
-            powerHandler()
+            motionHandler()             
             presenceHandler()
-            switchHandler()
-            tempHandler()
+            switchHandler()            
             waterHandler()
+            
+            // setPoint
+            batteryHandler()
+            energyHandler()
+            humidityHandler()
+            illuminanceHandler()
+            powerHandler()
+            tempHandler()
         }
         
-        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood}"
+        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - doIt: ${state.doIt}"
         
-        if(state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood) {            
-            if(logEnable) log.debug "In startTheProcess - Everything is GOOD - Here we go!"
+        if(!triggerAndOr && state.allDevicesTrue) { 
+            state.devicesGood = true
+        } else if(!triggerAndOr && !state.allDevicesTrue) {
+            state.devicesGood = false
+        }
+        
+        if(triggerAndOr && !state.allDevicesTrue) { 
+            state.devicesGood = true
+        } else if(triggerAndOr && state.allDevicesTrue) {
+            state.devicesGood = false
+        }
+
+        
+        if((state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood) || state.doIt) {            
+            if(logEnable) log.trace "In startTheProcess - Everything is GOOD - Here we go!"
 
             if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
             if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
                 if(notifyDelay) newDelay = notifyDelay
-                // Math.abs(new Random().nextInt() % ([UPPER_LIMIT] - [LOWER_LIMIT])) + [LOWER_LIMIT]
                 if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                 if(targetDelay) newDelay = minutesUp
                 if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
                 if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
                 int theDelay = newDelay * 60
                 state.hasntDelayedYet = false
-                runIn(theDelay, startTheProcess)
+                runIn(theDelay, startTheProcess, [data: "again"])
             } else {     
                 if(actionType == null) actionType = ""
                 if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
@@ -1162,7 +1175,7 @@ def startTheProcess(evt) {
                 state.hasntDelayedYet = true
             }
         } else if(reverse) {
-            if(logEnable) log.debug "In startTheProcess - Going in REVERSE"
+            if(logEnable) log.trace "In startTheProcess - Going in REVERSE"
             if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
             if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
             if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
@@ -1171,6 +1184,8 @@ def startTheProcess(evt) {
             if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
             
             state.hasntDelayedYet = true
+        } else {
+            if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOP"
         }
     }
 }
@@ -1334,11 +1349,19 @@ def devicesGoodHandler() {
     }
     if(logEnable) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue}" 
     if(state.typeAO) {
-        if(deviceTrue >= 1) { state.devicesGood = true }           // OR
+        if(deviceTrue >= 1) { // OR
+            state.devicesGood = true
+        }           
     } else {
-        if(deviceTrue == theCount) { state.devicesGood = true }    // AND
+        if(deviceTrue == theCount) { // AND
+            state.devicesGood = true
+        }    
     }
     if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood}"
+    
+    if(!state.devicesGood) {
+        state.allDevicesTrue = false
+    }
 }
 
 def hsmAlertHandler(data) {
@@ -1352,6 +1375,7 @@ def hsmAlertHandler(data) {
 
             if(theValue == it){
                 state.hsmAlertStatus = true
+                if(triggerAndOr) state.doIt = true
             }
         }
     } else {
@@ -1371,6 +1395,7 @@ def hsmStatusHandler(data) {
 
             if(theValue == it){
                 state.hsmStatus = true
+                if(triggerAndOr) state.doIt = true
             }
         }
     } else {
@@ -1390,10 +1415,16 @@ def modeHandler() {
 
             if(theValue == it){
                 if(modeOnOff) {
-                    if(theValue) { state.modeStatus = true }
+                    if(theValue) { 
+                        state.modeStatus = true
+                        if(triggerAndOr) state.doIt = true
+                    }
                 }
                 if(!modeOnOff) {
-                    if(!theValue) { state.modeStatus = true }
+                    if(!theValue) { 
+                        state.modeStatus = true
+                        if(triggerAndOr) state.doIt = true
+                    }
                 }
             }
         }
@@ -1473,6 +1504,7 @@ def tempHandler() {
 def setPointHandler() {
     if(logEnable) log.debug "In setPointHandler (${state.version})" 
     state.setPointGood = false
+    state.doIt = false
     log.trace "spName: ${state.spName}"
     state.spName.each {
         setPointValue = it.currentValue("${state.spType}")
@@ -1492,9 +1524,11 @@ def setPointHandler() {
                     if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${state.setPointHigh}"
                     state.setPointHighOK = "no"
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 }
             }
             
@@ -1506,6 +1540,7 @@ def setPointHandler() {
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                   if(triggerAndOr) state.doIt = true
                 }
             }
         }
@@ -1518,9 +1553,11 @@ def setPointHandler() {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${state.setPointLow}"
                     state.setPointLowOK = "no"
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 }
             }
             
@@ -1532,6 +1569,7 @@ def setPointHandler() {
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 }
             }
         }
@@ -1543,9 +1581,11 @@ def setPointHandler() {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${state.setPointHigh}"
                     state.setPointHighOK = "no"
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 }
             }
             
@@ -1554,9 +1594,11 @@ def setPointHandler() {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${state.setPointLow}"
                     state.setPointLowOK = "no"
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 }
             }
             if((setPointValue1 <= state.setPointHigh) && (setPointValue1 >= state.setPointLow)) {
@@ -1568,8 +1610,12 @@ def setPointHandler() {
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
                     state.setPointGood = true
+                    if(triggerAndOr) state.doIt = true
                 }
-            }
+            }  
+        }
+        if(!state.setPointGood) {
+            state.allDevicesTrue = false
         }
     }
     
@@ -1941,17 +1987,19 @@ def messageHandler() {
     }
     
     state.message = theMessage
-   
-    if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%time%', state.whatHappened)}
-    if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%time%', state.whoHappened)}
     
-	if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
-	if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
-    
-    if(logEnable) log.debug "In messageHandler - message: ${state.message}"
-    msg = state.message
-    if(useSpeech) letsTalk(msg)
-    if(sendPushMessage) pushHandler(msg)
+    if(state.message) { 
+        if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
+        if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
+
+        if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
+        if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
+
+        if(logEnable) log.debug "In messageHandler - message: ${state.message}"
+        msg = state.message
+        if(useSpeech) letsTalk(msg)
+        if(sendPushMessage) pushHandler(msg)
+    }
 }
 
 def letsTalk(msg) {
