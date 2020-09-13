@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.5 - 09/13/20 - Pause App is now in red, cosmetic changes
  *  1.2.4 - 09/13/20 - Trigger types are now 'And' or 'Or'. Fixed some typos.
  *  1.2.3 - 09/13/20 - Fixed issue with Modes, added Use Whole Numbers to anything that uses set points.
  *  1.2.2 - 09/13/20 - Fixed typo in Action - Valve
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.4"
+	state.version = "1.2.5"
 }
 
 definition(
@@ -76,12 +77,12 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "", title: "", install: true, uninstall: true, refreshInterval:0) {
-		display() 
+        display() 
         section("Instructions:", hideable: true, hidden: true) {
-			paragraph "<b>Notes:</b>"
-    		paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
-		}
-		
+            paragraph "<b>Notes:</b>"
+            paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
+        }
+
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
                 ["xPeriodic":"Periodic"],
@@ -104,20 +105,20 @@ def pageConfig() {
                 ["xTemp":"Temperature Setpoint"],
                 ["xWater":"Water Sensor"]
             ], required: true, multiple:true, submitOnChange:true
-            
+
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true
             paragraph "<hr>"
             if(triggerType == null) triggerType = ""
 
             if(triggerType.contains("xPeriodic")) {
                 input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
-                
+
                 paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
                 paragraph "<hr>"
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
-                
+
             }
-            
+
             if(triggerType.contains("xTimeDays")) {
                 paragraph "<b>Time/Days - Sub-Menu</b>"
                 input "timeDaysType", "enum", title: "Trigger Type", options: [
@@ -128,10 +129,10 @@ def pageConfig() {
                     ["tSunrise":"Just Sunrise"],
                     ["tSunset":"Just Sunset"],
                 ], required: true, multiple:true, submitOnChange:true
-                
+
                 paragraph "<hr>"
                 if(timeDaysType == null) timeDaysType = ""
-                
+
                 if(timeDaysType.contains("tDays")) {
                     paragraph "<b>By Days</b>"
                     input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -162,7 +163,7 @@ def pageConfig() {
                     app.removeSetting("repeatType")
                     app?.updateSetting("repeat",[value:"false",type:"bool"])
                 }
-                
+
                 if(timeDaysType.contains("tBetween")) {
                     paragraph "<b>Between two times</b>"
                     input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
@@ -174,7 +175,7 @@ def pageConfig() {
                     app.removeSetting("toTime")
                     app?.updateSetting("midnightCheckR",[value:"false",type:"bool"])
                 }
-                
+
                 if(timeDaysType.contains("tSunsetSunrise")) {
                     if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
                         paragraph "<b>'Sunset to Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
@@ -192,7 +193,7 @@ def pageConfig() {
                         paragraph "<hr>"
                     }
                 }
-                
+
                 if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
                     paragraph "<b>Please select 'Sunset to Sunrise', instead of both 'Just Sunrise' and 'Just Sunset'.</b>"
                 } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
@@ -210,7 +211,7 @@ def pageConfig() {
                     input "offsetSunset", "number", title: "Offset (minutes)", width:6
                     paragraph "<hr>"
                 }
-                
+
                 if(!timeDaysType.contains("tSunsetSunrise") && !timeDaysType.contains("tSunrise") && !timeDaysType.contains("tSunset")) { 
                     app.removeSetting("setBeforeAfter")
                     app.removeSetting("offsetSunset")
@@ -228,9 +229,9 @@ def pageConfig() {
                     input "asInactiveActive", "bool", title: "Trigger when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
                     input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(accelerationANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Acceleration Sensor is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Acceleration Sensors are true"
                     }
                 }
                 paragraph "<hr>"
@@ -239,7 +240,7 @@ def pageConfig() {
                 app?.updateSetting("asInactiveActive",[value:"false",type:"bool"])
                 app?.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xBattery")) {
                 paragraph "<b>Battery</b>"
                 input "batteryEvent", "capability.battery", title: "By Battery Setpoints", required:false, multiple:true, submitOnChange:true
@@ -250,14 +251,14 @@ def pageConfig() {
                     } else {
                         app.removeSetting("beSetPointHigh")
                     }
-                    
+
                     input "setBEPointLow", "bool", defaultValue:false, title: "Trigger when Battery is too Low?", description: "Battery Low", submitOnChange:true
                     if(setBEPointLow) {
                         input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("beSetPointLow")
                     }
-                    
+
                     if(beSetPointHigh) paragraph "You will receive notifications if Battery reading is above ${beSetPointHigh}"
                     if(beSetPointLow) paragraph "You will receive notifications if Battery reading is below ${beSetPointLow}"
                 }
@@ -269,7 +270,7 @@ def pageConfig() {
                 app?.updateSetting("setBEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setBEPointLow",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xContact")) {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required: false, multiple: true, submitOnChange: true
@@ -277,9 +278,9 @@ def pageConfig() {
                     input "csClosedOpen", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
                     input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Contact Sensor is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Contact Sensors are true"
                     }
                 }
                 paragraph "<hr>"
@@ -299,7 +300,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("eeSetPointHigh")
                     }
-                    
+
                     input "setEEPointLow", "bool", defaultValue:false, title: "Trigger when Energy is too Low?", description: "Energy Low", submitOnChange:true
                     if(setEEPointLow) {
                         input "eeSetPointLow", "number", title: "Energy Low Setpoint", required: true, submitOnChange: true
@@ -318,7 +319,7 @@ def pageConfig() {
                 app?.updateSetting("setEEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setEEPointLow",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xGarageDoor")) {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required: false, multiple: true, submitOnChange: true
@@ -326,9 +327,9 @@ def pageConfig() {
                     input "gdClosedOpen", "bool", title: "Trigger when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
                     input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Garage Door is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Garage Doors are true"
                     }
                 }
                 paragraph "<hr>"
@@ -337,7 +338,7 @@ def pageConfig() {
                 app?.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
                 app?.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xHSMAlert")) {
                 paragraph "<b>HSM Alert</b>"
                 paragraph "<b>Warning: This Trigger has not been tested. Use at your own risk.</b>"
@@ -347,7 +348,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("hsmAlertEvent")
             }
-            
+
             if(triggerType.contains("xHSMStatus")) {
                 paragraph "<b>HSM Status</b>"
                 paragraph "<b>Warning: This Trigger has not been tested. Use at your own risk.</b>"
@@ -357,7 +358,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("hsmStatusEvent")
             }
-            
+
             if(triggerType.contains("xHumidity")) {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
@@ -368,14 +369,14 @@ def pageConfig() {
                     } else {
                         app.removeSetting("heSetPointHigh")
                     }
-                    
+
                     input "setHEPointLow", "bool", defaultValue:false, title: "Trigger when Humidity is too Low?", description: "Humidity Low", submitOnChange:true
                     if(setHEPointLow) {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("heSetPointLow")
                     }
-                    
+
                     if(heSetPointHigh) paragraph "You will receive notifications if Humidity reading is above ${heSetPointHigh}"
                     if(heSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${heSetPointLow}"
                 }
@@ -398,7 +399,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("ieSetPointHigh")
                     }
-                    
+
                     input "setIEPointLow", "bool", defaultValue:false, title: "Trigger when Illuminance is too Low?", description: "Low", submitOnChange:true
                     if(setIEPointLow) {
                         input "ieSetPointLow", "number", title: "Illuminance Low Setpoint", required:true, submitOnChange:true
@@ -417,7 +418,7 @@ def pageConfig() {
                 app?.updateSetting("setIEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setIEPointLow",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xLock")) {
                 paragraph "<b>Lock</b>"
                 input "lockEvent", "capability.lock", title: "By Lock", required: false, multiple: true, submitOnChange: true
@@ -425,12 +426,12 @@ def pageConfig() {
                     input "lUnlockedLocked", "bool", title: "Trigger when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
                     input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(lockANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Lock is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Locks are true"
                     }
                 }
-                
+
 
                 if(lockEvent) {
                     getLockUsers()
@@ -443,7 +444,7 @@ def pageConfig() {
                 app?.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
                 app?.updateSetting("lockANDOR",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xMode")) {
                 paragraph "<b>Mode</b>"
                 input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
@@ -457,7 +458,7 @@ def pageConfig() {
                 app.removeSetting("modeEvent")
                 app?.updateSetting("modeOnOff",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xMotion")) {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
@@ -465,9 +466,9 @@ def pageConfig() {
                     input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
                     input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Motion Sensor is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Motion Sensors are true"
                     }
                 }
                 paragraph "<hr>"
@@ -487,7 +488,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("peSetPointHigh")
                     }
-                    
+
                     input "setPEPointLow", "bool", defaultValue:false, title: "Trigger when Power is too Low?", description: "Power Low", submitOnChange:true
                     if(setPEPointLow) {
                         input "peSetPointLow", "number", title: "Power Low Setpoint", required: true, submitOnChange: true
@@ -514,9 +515,9 @@ def pageConfig() {
                     input "psPresentNotPresent", "bool", title: "Trigger when Present (off) or Not Present (on)", description: "Present", defaultValue:false, submitOnChange:true
                     input "presentANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(presentANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Presence Sensor is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Presence Sensors are true"
                     }
                 }
                 paragraph "<hr>"
@@ -525,7 +526,7 @@ def pageConfig() {
                 app?.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
                 app?.updateSetting("presentANDOR",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
@@ -533,9 +534,9 @@ def pageConfig() {
                     input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Switch is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Switches are true"
                     }
                 }
                 paragraph "<hr>"
@@ -555,7 +556,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("setTEPointHigh")
                     }
-                    
+
                     input "setTEPointLow", "bool", defaultValue:false, title: "Trigger when Temperature is too Low?", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
                         input "teSetPointLow", "number", title: "Temperature Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
@@ -574,7 +575,7 @@ def pageConfig() {
                 app?.updateSetting("setTEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xWater")) {
                 paragraph "<b>Water</b>"
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required: false, multiple: true, submitOnChange: true
@@ -582,9 +583,9 @@ def pageConfig() {
                     input "wsDryWet", "bool", title: "Trigger when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
                     input "waterANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(waterANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> device is true"
+                        paragraph "Trigger will fire when <b>any</b> Water Sensor is true"
                     } else {
-                        paragraph "Trigger will fire when <b>all</b> devices are true"
+                        paragraph "Trigger will fire when <b>all</b> Water Sensors are true"
                     }
                 }
                 paragraph "<hr>"
@@ -593,17 +594,17 @@ def pageConfig() {
                 app?.updateSetting("wsDryWet",[value:"false",type:"bool"])
                 app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
             }
-            
+
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
             } else {
                 app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
             }
-            
+
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
                 input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true, width:6
                 input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay?</b>", description: "Random Delay", submitOnChange:true, width:6
-                
+
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."
@@ -613,7 +614,7 @@ def pageConfig() {
                     app.removeSetting("notifyDelay")
                     app?.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
-                
+
                 if(randomDelay) {
                     paragraph "Delay the notifications until all devices has been in state for XX minutes."                
                     input "delayLow", "number", title: "Delay Low Limit (1 to 60)", required: true, multiple: false, range: '1..60', submitOnChange:true
@@ -633,9 +634,9 @@ def pageConfig() {
                 app?.updateSetting("randomDelay",[value:"false",type:"bool"])
             }
         }
-        
-// ********** Start Actions **********
-        
+
+        // ********** Start Actions **********
+
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform", options: [
                 ["aGarageDoor":"Garage Doors"],
@@ -648,10 +649,10 @@ def pageConfig() {
                 ["aSwitch":"Switch Devices"],
                 ["aValve":"Valves"]
             ], required:false, multiple:true, submitOnChange:true
-            
+
             paragraph "<hr>"
             if(actionType == null) actionType = " "
-            
+
             if(actionType.contains("aGarageDoor")) {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorClosedAction", "capability.garageDoorControl", title: "Close Devices", multiple:true, submitOnChange:true
@@ -661,7 +662,7 @@ def pageConfig() {
                 app.removeSetting("garageDoorClosedAction")
                 app.removeSetting("garageDoorOpenAction")
             }
-            
+
             if(actionType.contains("aHSM")) {
                 paragraph "<b>HSM</b>"
                 input "setHSM", "enum", title: "Set HSM state", required: false, multiple:false, options: [
@@ -677,7 +678,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("setHSM")
             }
-            
+
             if(actionType.contains("aLock")) {
                 paragraph "<b>Lock</b>"
                 input "lockAction", "capability.lock", title: "Lock Devices", multiple:true, submitOnChange:true
@@ -687,7 +688,7 @@ def pageConfig() {
                 app.removeSetting("lockAction")
                 app.removeSetting("unlockAction")
             }
-            
+
             if(actionType.contains("aMode")) {
                 paragraph "<b>Mode</b>"
                 input "modeAction", "mode", title: "Change Mode to", multiple:false, submitOnChange:true
@@ -695,7 +696,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("modeAction")
             }
-            
+
             if(actionType.contains("aNotification")) {
                 paragraph "<b>Notification</b>"
                 if(useSpeech || sendPushMessage || useTheFlasher) {
@@ -704,12 +705,12 @@ def pageConfig() {
                     href "notificationOptions", title:"Notification Options", description:"Click here for options"
                 }
             }
-            
+
             if(actionType.contains("aRefresh")) {
                 paragraph "<b>Refresh Device</b><br><small>* Only works for devices that have the 'refresh' attribute.</small>"
                 input "devicesToRefresh", "capability.refresh", title: "Devices to Refresh", multiple:true, submitOnChange:true               
             }
-            
+
             if(actionType.contains("aRule")) {
                 paragraph "<b>Rule Machine</b>"
                 def rules = RMUtils.getRuleList()
@@ -733,7 +734,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("rmRule")
             }
-            
+
             if(actionType.contains("aSwitch")) {
                 paragraph "<b>Switch Devices</b>"
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
@@ -750,30 +751,30 @@ def pageConfig() {
                     app.removeSetting("permanentDimLvl2")
                     app?.updateSetting("permanentDim2",[value:"false",type:"bool"])
                 }
-                
+
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
 
                 input "switchesLCAction", "bool", title: "Turn Light On, Set Level and/or Color", description: "Light OLC", defaultValue:false, submitOnChange:true
                 if(switchesLCAction) {
-					input "setOnLC", "capability.switchLevel", title: "Select dimmer to set", required: false, multiple: true
-					input "levelLC", "number", title: "On Level (1 to 99)", required: false, multiple: false, defaultValue: 99, range: '1..99'
-					input "colorLC", "enum", title: "Color", required: false, multiple:false, options: [
+                    input "setOnLC", "capability.switchLevel", title: "Select dimmer to set", required: false, multiple: true
+                    input "levelLC", "number", title: "On Level (1 to 99)", required: false, multiple: false, defaultValue: 99, range: '1..99'
+                    input "colorLC", "enum", title: "Color", required: false, multiple:false, options: [
                         ["No Change":"Keep Current Color"],
-                		["Soft White":"Soft White - Default"],
-                		["White":"White - Concentrate"],
-                		["Daylight":"Daylight - Energize"],
-                		["Warm White":"Warm White - Relax"],
-                		"Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
                 } else {
                     app.removeSetting("setOnLC")
                     app.removeSetting("levelLC")
                     app.removeSetting("colorLC")
                     app?.updateSetting("switchesLCAction",[value:"false",type:"bool"])
                 }
-                
+
                 input "switchedDimUpAction", "bool", defaultValue: false, title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
                 input "switchedDimDnAction", "bool", defaultValue: false, title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
-                
+
                 if(switchedDimUpAction) {
                     paragraph "<hr>"
                     paragraph "<b>Slowly Dim Lighting UP</b>"
@@ -797,7 +798,7 @@ def pageConfig() {
                     app.removeSetting("colorUp")
                     app?.updateSetting("targetDelay",[value:"false",type:"bool"])
                 }
-                
+
                 if(switchedDimDnAction) {
                     paragraph "<hr>"
                     paragraph "<b>Slowly Dim Lighting DOWN</b>"
@@ -835,7 +836,7 @@ def pageConfig() {
                     paragraph "<hr>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
                     paragraph "<small>* Only controls on/off, does not effect color or level</small>"
-                    
+
                     if(reverse && (switchesOnAction || switchesLCAction)){
                         paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
                         input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
@@ -865,9 +866,9 @@ def pageConfig() {
                 app?.updateSetting("reverse",[value:"false",type:"bool"])
                 app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                 app.removeSetting("permanentDimLvl")
-                
+
             }
-            
+
             if(actionType.contains("aValve")) {
                 paragraph "<b>Valves</b>"
                 input "valveClosedAction", "capability.valve", title: "Close Devices", multiple:true, submitOnChange:true
@@ -877,38 +878,46 @@ def pageConfig() {
                 app.removeSetting("valveClosedAction")
                 app.removeSetting("valveOpenAction")
             }
-		}
-       
-// ********** End Actions **********
-        
+        }
+
+        // ********** End Actions **********
+
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains(" (Paused)")) {
-                        app.updateLabel(app.label + " (Paused)")
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label - " (Paused)")
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
                 }
             }
+        }
+        section() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            label title: "Enter a name for this automation", required: false
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required: false
+            }
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required: false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
                 paragraph "<hr>"
                 input "testButton", "button", title: "Test Event"
             }
-		}
-		display2()
-	}
+        }
+        display2()
+    }
 }
 
 def notificationOptions(){
@@ -2277,14 +2286,24 @@ def getFormat(type, myText="") {			// Modified from @Stephack Code
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
+    
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
 		paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
 	}
 }
 
