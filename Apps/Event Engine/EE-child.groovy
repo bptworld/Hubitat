@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.3 - 09/13/20 - Fixed issue with Modes, added Use Whole Numbers to anything that uses set points.
  *  1.2.2 - 09/13/20 - Fixed typo in Action - Valve
  *  1.2.1 - 09/13/20 - Fix for Set Point Values
  *  1.2.0 - 09/12/20 - Added trigger for Energy. Added Device Wildcards to notifications
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.2"
+	state.version = "1.2.3"
 }
 
 definition(
@@ -591,6 +592,12 @@ def pageConfig() {
                 app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
             }
             
+            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
+                input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Nubmers (round each number)", description: "Whole", submitOnChange:true
+            } else {
+                app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
+            }
+            
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
                 input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true, width:6
                 input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay?</b>", description: "Random Delay", submitOnChange:true, width:6
@@ -1020,7 +1027,7 @@ def initialize() {
         if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
         if(illuminanceEvent) subscribe(illuminanceEvent, "illuminanceEvent", startTheProcess)
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
-        if(modeEvent) subscribe(modeEvent, "mode", startTheProcess)
+        if(modeEvent) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
         if(powerEvent) subscribe(powerEvent, "power", startTheProcess)
         if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)
@@ -1469,8 +1476,13 @@ def setPointHandler() {
     log.trace "spName: ${state.spName}"
     state.spName.each {
         setPointValue = it.currentValue("${state.spType}")
-        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh}"
-        setPointValue1 = setPointValue.toDouble()
+        if(useWholeNumber) {
+            setPointValue1 = Math.round(setPointValue)
+        } else {
+            setPointValue1 = setPointValue.toDouble()
+        }
+        
+        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue1} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh}"
 
         // *** setPointHigh ***
         if(state.setPointHigh && !state.setPointLow) {
