@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.2 - 09/13/20 - Bring on the Cogs!
  *  1.0.1 - 09/12/20 - Name change
  *  1.0.0 - 09/05/20 - Initial release.
  *
@@ -40,7 +41,7 @@
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.0.1"
+	state.version = "1.0.2"
 }
 
 definition(
