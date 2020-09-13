@@ -72,7 +72,7 @@ def updated() {
 def initialize() {
     log.info "There are ${childApps.size()} Cogs"
     childApps.each {child ->
-    	log.info "Child app: ${child.label}"
+    	log.info "Cog: ${child.label}"
     }
 }
 
@@ -84,8 +84,8 @@ def mainPage() {
 				paragraph "<b>Information</b>"
 				paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
 			}
-			section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
-				app(name: "anyOpenApp", appName: "Event Engine Child", namespace: "BPTWorld", title: "<b>Add a new Cog to Event Engine</b>", multiple: true)
+			section(getFormat("header-green", "${getImage("Blank")}"+" Cogs")) {
+				app(name: "anyOpenApp", appName: "Event Engine Cog", namespace: "BPTWorld", title: "<b>Add a new Cog to Event Engine</b>", multiple: true)
 			}
             
 			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
