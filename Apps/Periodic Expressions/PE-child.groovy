@@ -2,7 +2,7 @@
  *  **************** Periodic Expressions Child App  ****************
  *
  *  Design Usage:
- *  Create Periodic Cron Expression to be used with Event 42
+ *  Create Periodic Cron Expression to be used with Event Engine
  *
  *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
@@ -53,7 +53,7 @@ definition(
     name: "Periodic Expressions Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Create Periodic Cron Expression to be used with Event 42",
+    description: "Create Periodic Cron Expression to be used with Event Engine",
     category: "Convenience",
     parent: "BPTWorld:Periodic Expressions",
     iconUrl: "",
@@ -71,7 +71,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Create Periodic Cron Expression to be used with Event 42"
+    		paragraph "Create Periodic Cron Expression to be used with Event Engine"
 		}
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Periodic Schedule Options")) {
