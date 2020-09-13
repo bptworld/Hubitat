@@ -37,12 +37,7 @@
  *
  *  Changes:
  *
- *  1.1.9 - 09/12/20 - Adjustments to time, fixed issue with Permanent Dim, name change again (last time, I promise!)
- *  1.1.8 - 09/11/20 - Added random delay option, added Test button
- *  1.1.7 - 09/10/20 - To keep E42 lean and mean, Removed the Periodic Cron Expression maker and turned it into its own app.
- *  Added Triggers: HSM Alert, HSM Status, other minor changes
- *  1.1.6 - 09/10/20 - Minor changes
- *  1.1.5 - 09/10/20 - Fixed some typos, Name change: Event 42 (thanks furom!)
+ *  1.2.0 - 09/12/20 - Added trigger for Energy. Added Device Wildcards to notifications
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
  *
@@ -54,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.1.9"
+	state.version = "1.2.0"
 }
 
 definition(
@@ -90,6 +85,7 @@ def pageConfig() {
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
                 ["xContact":"Contact Sensors"],
+                ["xEnergy":"Energy Setpoint"],
                 ["xGarageDoor":"Garage Doors"],
                 ["xHSMAlert":"HSM Alerts *** not tested ***"],
                 ["xHSMStatus":"HSM Status *** not tested ***"],
@@ -288,6 +284,36 @@ def pageConfig() {
                 app?.updateSetting("contactANDOR",[value:"false",type:"bool"])
             }
 
+            if(triggerType.contains("xEnergy")) {
+                paragraph "<b>Energy</b>"
+                input "energyEvent", "capability.powerMeter", title: "By Energy Setpoints", required:false, multiple:true, submitOnChange:true
+                if(energyEvent) {
+                    input "setEEPointHigh", "bool", defaultValue: "false", title: "Trigger when Energy is too High?", description: "Energy High", submitOnChange:true
+                    if(setEEPointHigh) {
+                        input "eeSetPointHigh", "number", title: "Energy High Setpoint", required: true, submitOnChange: true
+                    } else {
+                        app.removeSetting("eeSetPointHigh")
+                    }
+                    
+                    input "setEEPointLow", "bool", defaultValue:false, title: "Trigger when Energy is too Low?", description: "Energy Low", submitOnChange:true
+                    if(setEEPointLow) {
+                        input "eeSetPointLow", "number", title: "Energy Low Setpoint", required: true, submitOnChange: true
+                    } else {
+                        app.removeSetting("eeSetPointLow")
+                    }
+
+                    if(eeSetPointHigh) paragraph "You will receive notifications if Energy reading is above ${eeSetPointHigh}"
+                    if(eeSetPointLow) paragraph "You will receive notifications if Energy reading is below ${eeSetPointLow}"
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("energyEvent")
+                app.removeSetting("eeSetPointHigh")
+                app.removeSetting("eeSetPointLow")
+                app?.updateSetting("setEEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setEEPointLow",[value:"false",type:"bool"])
+            }
+            
             if(triggerType.contains("xGarageDoor")) {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required: false, multiple: true, submitOnChange: true
@@ -400,12 +426,12 @@ def pageConfig() {
                     }
                 }
                 
-/*
+
                 if(lockEvent) {
                     getLockUsers()
                     //input "lockUser", "enum", title: "By Lock User", options: state.theLockUsers, required: false, multiple: true, submitOnChange: true
                 }
-*/
+
                 paragraph "<hr>"
             } else {
                 app.removeSetting("lockEvent")
@@ -908,9 +934,9 @@ def notificationOptions(){
             }
             
             section(getFormat("header-green", "${getImage("Blank")}"+" Messages Options")) {
-                paragraph "%time% - will speak the current time in 24 h<br>%time1% - will speak the current time in 12 h"
+                paragraph "%whoHappened% - Device that caused the event to trigger<br>%whatHappened% - Device status that caused the event to trigger<br>%time% - Will speak the current time in 24 h<br>%time1% - Will speak the current time in 12 h"
                 
-                if(triggerType.contains("xBattery") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+                if(triggerType.contains("xBattery") ||  triggerType.contains("xEnergy") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
                     paragraph "<b>Setpoint Message Options</b>"
                     input "messageH", "text", title: "Message to speak when reading is too high", required: false, submitOnChange: true
                     input "messageL", "text", title: "Message to speak when reading is too low", required: false, submitOnChange: true
@@ -921,7 +947,7 @@ def notificationOptions(){
                     app.removeSetting("messageB")
                 }
                 
-                if(!triggerType.contains("xBattery") ||  !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
+                if(!triggerType.contains("xBattery") ||  !triggerType.contains("xEnergy") ||  !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
                     paragraph "<b>Random Message Options</b>"
                     input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
                     input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
@@ -982,10 +1008,10 @@ def initialize() {
         setDefaults()
 
         if(startTime) schedule(startTime, startTheProcess)
-        if(restriction) autoSunHandler()
         if(accelerationEvent) subscripe(accelerationEvent, "accelerationSensor", startTheProcess)
         if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)
         if(contactEvent) subscribe(contactEvent, "contact", startTheProcess)
+        if(energyEvent) subscribe(energyEvent, "energy", startTheProcess)
         if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
         if(hsmAlertEvent) subscribe(location, "hsmAlert", startTheProcess)
         if(hsmStatusEvent) subscribe(location, "hsmStatus", startTheProcess)
@@ -1026,6 +1052,12 @@ def initialize() {
             if(logEnable) log.debug "In initialize - xPeriodic - Starting! - (${state.theSchedule})"
             schedule(state.theSchedule, startTheProcess)
         }
+        
+        if(tSunsetSunrise || tSunset || tSunrise) {
+            autoSunHandler()
+        } else {
+            state.sunRiseTosunSet = true
+        }
     }
 }
 
@@ -1037,9 +1069,9 @@ def startTheProcess(evt) {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         
         if(evt) {
-            def whoHappened = evt.displayName
-            def whatHappened = evt.value
-            if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${whoHappened}: ${whatHappened} ********************"
+            state.whoHappened = evt.displayName
+            state.whatHappened = evt.value
+            if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${state.whoHappened}: ${state.whatHappened} ********************"
             state.hasntDelayedYet = true
         }
         
@@ -1055,15 +1087,16 @@ def startTheProcess(evt) {
             state.setPointGood = true
             state.devicesGood = true
 
-            checkTime()
-            checkTimeSun()
             accelerationHandler()
             batteryHandler()
+            checkTime()
+            checkTimeSun()
             contactHandler()
             dayOfTheWeekHandler()
+            energyHandler()
             garageDoorHandler()
-            hsmAlertHandler(whatHappened)
-            hsmStatusHandler(whatHappened)
+            hsmAlertHandler(state.whatHappened)
+            hsmStatusHandler(state.whatHappened)
             humidityHandler()
             illuminanceHandler()
             lockHandler()
@@ -1378,6 +1411,16 @@ def batteryHandler() {
     } 
 }
 
+def energyHandler() {
+    if(energyEvent) {
+        state.spName = energyEvent
+        state.spType = "energy"
+        state.setPointHigh = eeSetPointHigh
+        state.setPointLow = eeSetPointLow
+        setPointHandler()
+    } 
+}
+
 def humidityHandler() {
     if(humidityEvent) {
         state.spName = humidityEvent
@@ -1639,12 +1682,20 @@ def lockUserActionHandler(evt) {
 }
 
 def getLockUsers() {
-    //def lockData = lockEvent.currentValue("lockCodes")
-    //dLockData = decrypt(lockData)
+    //def lockData = lockEvent.getCodes()
+    
+    lockEvent.each { it ->
+        
+        String lockData = it.currentValue("lockCodes[0]")
+        dLockData = decrypt(lockData)
+        
+        log.trace "Device: ${it.displayName} - dLockData:${dLockData}"
+    }
+    
     
     //dLockSize = dLockData.size()
     
-    
+    if(logEnable) log.debug "In getLockUsers - dLockData:${dLockData}"
     state.theLockUsers = "none yet"
     if(logEnable) log.debug "In getLockUsers - size: ${dLockSize} - theLockUsers: ${state.theLockUsers}"
 }
@@ -1848,7 +1899,7 @@ def valveActionHandler() {
 def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
     
-    if(triggerType.contains("xBattery") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+    if(triggerType.contains("xBattery") ||  triggerType.contains("xEnergy") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
         if(logEnable) log.debug "In messageHandler (setpoint) - setPointHighOK: ${state.setPointHighOK} - setPointLowOK: ${state.setPointLowOK}"
         if(state.setPointHighOK == "no") theMessage = "${messageH}"
         if(state.setPointLowOK == "no") theMessage = "${messageL}"
@@ -1866,6 +1917,9 @@ def messageHandler() {
     
     state.message = theMessage
    
+    if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%time%', state.whatHappened)}
+    if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%time%', state.whoHappened)}
+    
 	if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
 	if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
     
