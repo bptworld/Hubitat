@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.8 - 09/14/20 - More adjustments to setPointHandler, fixed Enable/Disable switch. Added Retrictions to By Days, Time Between, Time Between Sun and Mode.
  *  1.2.7 - 09/13/20 - Adjustments to setPointHandler and setLevelandColorHandler
  *  1.2.6 - 09/13/20 - Adjusted Periodic
  *  1.2.5 - 09/13/20 - Pause App is now in red, cosmetic changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.7"
+	state.version = "1.2.8"
 }
 
 definition(
@@ -138,9 +139,13 @@ def pageConfig() {
                 if(timeDaysType.contains("tDays")) {
                     paragraph "<b>By Days</b>"
                     input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                    
+                    paragraph "By Days can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                    input "daysMatchRestriction", "bool", defaultValue: false, title: "By Days as Restriction", description: "By Days Restriction", submitOnChange:true
                     paragraph "<hr>"
                 } else {
                     app.removeSetting("days")
+                    app?.updateSetting("daysMatchRestriction",[value:"false",type:"bool"])
                 }
 
                 if(timeDaysType.contains("tTime")) {
@@ -171,11 +176,15 @@ def pageConfig() {
                     input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
                     input "toTime", "time", title: "To", required: false, width: 6
                     input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+                    
+                    paragraph "Between two times can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                    input "timeBetweenRestriction", "bool", defaultValue: false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
                     paragraph "<hr>"
                 } else {
                     app.removeSetting("fromTime")
                     app.removeSetting("toTime")
                     app?.updateSetting("midnightCheckR",[value:"false",type:"bool"])
+                    app?.updateSetting("timeBetweenRestriction",[value:"false",type:"bool"])
                 }
 
                 if(timeDaysType.contains("tSunsetSunrise")) {
@@ -192,6 +201,9 @@ def pageConfig() {
                         paragraph "Sunrise"
                         input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                         input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                        
+                        paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                        input "timeBetweenSunRestriction", "bool", defaultValue: false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
                         paragraph "<hr>"
                     }
                 }
@@ -221,7 +233,10 @@ def pageConfig() {
                     app.removeSetting("offsetSunrise")
                     app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
                     app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
+                    app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
                 }
+            } else {
+                app.removeSetting("timeDaysType")
             }
 
             if(triggerType.contains("xAcceleration")) {
@@ -454,6 +469,9 @@ def pageConfig() {
                     input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
                     if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
                     if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
+                    
+                    paragraph "Mode can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                    input "modeRestriction", "bool", defaultValue: false, title: "Mode as Restriction", description: "Mode Restriction", submitOnChange:true
                 }
                 paragraph "<hr>"
             } else {
@@ -915,7 +933,7 @@ def pageConfig() {
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required: false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
                 paragraph "<hr>"
-                input "testButton", "button", title: "Test Event"
+                input "testButton", "button", title: "Test Actions"
             }
         }
         display2()
@@ -1089,6 +1107,7 @@ def startTheProcess(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
+        if(state.nothingToDo == null) state.nothingToDo = true
         
         if(evt) {
             state.whoHappened = evt.displayName
@@ -1107,30 +1126,33 @@ def startTheProcess(evt) {
             checkTime()
             checkTimeSun()
             dayOfTheWeekHandler()
-            
-            // Devices
-            accelerationHandler()
-            contactHandler()
-            garageDoorHandler()
-            hsmAlertHandler(state.whatHappened)
-            hsmStatusHandler(state.whatHappened)           
-            lockHandler()
             modeHandler()
-            motionHandler()             
-            presenceHandler()
-            switchHandler()            
-            waterHandler()
             
-            // setPoint
-            batteryHandler()
-            energyHandler()
-            humidityHandler()
-            illuminanceHandler()
-            powerHandler()
-            tempHandler()
+            hsmAlertHandler(state.whatHappened)
+            hsmStatusHandler(state.whatHappened)
+            
+            if(!state.nothingToDo) {
+                // Devices
+                accelerationHandler()
+                contactHandler()
+                garageDoorHandler()           
+                lockHandler()
+                motionHandler()             
+                presenceHandler()
+                switchHandler()            
+                waterHandler()
+
+                // setPoint
+                batteryHandler()
+                energyHandler()
+                humidityHandler()
+                illuminanceHandler()
+                powerHandler()
+                tempHandler()
+            }
         }
         
-        if(logEnable) log.debug "In startTheProcess - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - doIt: ${state.doIt}"
+        if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - doIt: ${state.doIt} - nothingToDo: ${state.nothingToDo}"
         
         if(!triggerAndOr && state.allDevicesTrue) { 
             state.devicesGood = true
@@ -1144,59 +1166,64 @@ def startTheProcess(evt) {
             state.devicesGood = false
         }
 
+        if(logEnable) log.debug "In startTheProcess - 2 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - doIt: ${state.doIt} - nothingToDo: ${state.nothingToDo}"
         
-        if((state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood) || state.doIt) {            
-            if(logEnable) log.trace "In startTheProcess - Everything is GOOD - Here we go!"
+        if(state.nothingToDo) {
+            if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
+        } else {
+            if((state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood) || state.doIt) {            
+                if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
 
-            if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-            if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
-                if(notifyDelay) newDelay = notifyDelay
-                if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                if(targetDelay) newDelay = minutesUp
-                if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
-                if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                int theDelay = newDelay * 60
-                state.hasntDelayedYet = false
-                runIn(theDelay, startTheProcess, [data: "again"])
-            } else {     
-                if(actionType == null) actionType = ""
-                if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                
-                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
-                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
-                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
-                if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                if(targetDelay == false) { 
-                    if(actionType.contains("aSwitch") && switchedDimUpAction) {
-                        slowOnHandler()
-                    } 
+                if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
+                if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                    if(notifyDelay) newDelay = notifyDelay
+                    if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                    if(targetDelay) newDelay = minutesUp
+                    if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
+                    if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                    int theDelay = newDelay * 60
+                    state.hasntDelayedYet = false
+                    runIn(theDelay, startTheProcess, [data: "again"])
+                } else {     
+                    if(actionType == null) actionType = ""
+                    if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                    if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                    if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+
+                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
+                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
+                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                    if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
+                    if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                    if(targetDelay == false) { 
+                        if(actionType.contains("aSwitch") && switchedDimUpAction) {
+                            slowOnHandler()
+                        } 
+                    }
+
+                    if(actionType.contains("aNotification")) { messageHandler() }
+
+                    if(setHSM) hsmChangeActionHandler()
+                    if(modeAction) modeChangeActionHandler()
+                    if(devicesToRefresh) devicesToRefreshActionHandler()
+                    if(rmRule) ruleMachineHandler()
+
+                    state.hasntDelayedYet = true
                 }
-
-                if(actionType.contains("aNotification")) { messageHandler() }
-
-                if(setHSM) hsmChangeActionHandler()
-                if(modeAction) modeChangeActionHandler()
-                if(devicesToRefresh) devicesToRefreshActionHandler()
-                if(rmRule) ruleMachineHandler()
+            } else if(reverse) {
+                if(logEnable) log.trace "In startTheProcess - GOING IN REVERSE"
+                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
+                if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
+                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
+                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
+                if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
 
                 state.hasntDelayedYet = true
+            } else {
+                if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOPING"
             }
-        } else if(reverse) {
-            if(logEnable) log.trace "In startTheProcess - Going in REVERSE"
-            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-            if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
-            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-            if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
-            if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
-            
-            state.hasntDelayedYet = true
-        } else {
-            if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOP"
         }
     }
 }
@@ -1385,6 +1412,7 @@ def hsmAlertHandler(data) {
             if(logEnable) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
 
             if(theValue == it){
+                state.nothingToDo = false
                 state.hsmAlertStatus = true
                 if(triggerAndOr) state.doIt = true
             }
@@ -1405,6 +1433,7 @@ def hsmStatusHandler(data) {
             if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
 
             if(theValue == it){
+                state.nothingToDo = false
                 state.hsmStatus = true
                 if(triggerAndOr) state.doIt = true
             }
@@ -1427,12 +1456,14 @@ def modeHandler() {
             if(theValue == it){
                 if(modeOnOff) {
                     if(theValue) { 
+                        state.nothingToDo = false
                         state.modeStatus = true
                         if(triggerAndOr) state.doIt = true
                     }
                 }
                 if(!modeOnOff) {
                     if(!theValue) { 
+                        state.nothingToDo = false
                         state.modeStatus = true
                         if(triggerAndOr) state.doIt = true
                     }
@@ -1442,7 +1473,10 @@ def modeHandler() {
     } else {
         state.modeStatus = true
     }
-    if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus}"
+    
+    if(modeRestriction && !state.modeStatus) { state.nothingToDo = true }
+
+    if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus} - nothingToDo: ${state.nothingToDo}"
 }
 
 def ruleMachineHandler() {
@@ -1532,28 +1566,25 @@ def setPointHandler() {
             state.setPointLowOK = "yes"
             int sPV = setPointValue1
             int sPH = state.setPointHigh
-            if(sPV >= sPH) {
-                if(state.setPointHighOK != "no") {
+            if(sPV > sPH) {
+                if(state.setPointHighOK == "yes") {
                     if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
+                    state.nothingToDo = false
                     state.setPointHighOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 }
-            }
-            
-            if(sPV < sPH) {
+            } else {
                 if(state.setPointHighOK == "no") {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is Less THAN setPointHigh: ${sPH}"
+                    state.nothingToDo = false
                     state.setPointHighOK = "yes"
                     state.setPointGood = false
+                    if(triggerAndOr) state.doIt = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                   if(triggerAndOr) state.doIt = true
                 }
             }
         }
@@ -1564,27 +1595,24 @@ def setPointHandler() {
             int sPV = setPointValue1
             int sPL = state.setPointLow
             if(sPV < sPL) {
-                if(state.setPointLowOK != "no") {
+                if(state.setPointLowOK == "yes") {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
+                    state.nothingToDo = false
                     state.setPointLowOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 }
-            }
-            
-            if(sPV > sPL) {
+            } else {
                 if(state.setPointLowOK == "no") {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointLow: ${sPL}"
+                    state.nothingToDo = false
                     state.setPointLowOK = "yes"
                     state.setPointGood = false
+                    if(triggerAndOr) state.doIt = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 }
             }
         }
@@ -1597,38 +1625,35 @@ def setPointHandler() {
             if(sPV > sPH) {
                 if(state.setPointHighOK != "no") {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
+                    state.nothingToDo = false
                     state.setPointHighOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
+                }
+            } else {
+                if(state.setPointLowOK == "yes") {
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
+                    state.nothingToDo = false
+                    state.setPointLowOK = "no"
+                    state.setPointGood = false
+                    if(triggerAndOr) state.doIt = false
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
             }
             
-            if(sPV < sPL) {
-                if(state.setPointLowOK != "no") {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
-                    state.setPointLowOK = "no"
-                    state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
-                } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
-                }
-            }
             if((sPV <= sPH) && (sPV >= sPL)) {
                 if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
                     if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is BETWEEN tempHigh: ${sPH} and setPointLow: ${state.setPointLow}"
+                    state.nothingToDo = false
                     state.setPointHighOK = "yes"
                     state.setPointLowOK = "yes"
-                    state.setPointGood = false
-                } else {
-                    if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
             }  
         }
@@ -1637,7 +1662,7 @@ def setPointHandler() {
         }
     }
     
-    if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood}"
+    if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
 }
 
 // ********** Start Actions **********
@@ -2082,11 +2107,13 @@ def checkTimeSun() {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
 			state.sunRiseTosunSet = false
 		}
-        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
   	} else {
 		state.timeBetweenSun = true
-        if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
   	}
+    
+    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true }
+    
+    if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - nothingToDo: ${state.nothingToDo}"
 }
 
 def checkTime() {
@@ -2109,7 +2136,10 @@ def checkTime() {
         if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
 		state.timeBetween = true
   	}
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween}"
+    
+    if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true }
+    
+	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween} - nothingToDo: ${state.nothingToDo}"
 }
 
 def dayOfTheWeekHandler() {
@@ -2130,7 +2160,10 @@ def dayOfTheWeekHandler() {
     } else {
         state.daysMatch = true
     }
-    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
+    
+    if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true }
+    
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - nothingToDo: ${state.nothingToDo}"
 }
 
 def setLevelandColorHandler() {
@@ -2271,9 +2304,10 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            state.eSwitch = it.currentValue("switch")
-            if(state.eSwitch == "on") { state.eSwitch = true }
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") { state.eSwitch = true }
         }
+        if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}"
     }
 }
 
