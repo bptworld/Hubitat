@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.6 - 09/13/20 - Adjusted Periodic
  *  1.2.5 - 09/13/20 - Pause App is now in red, cosmetic changes
  *  1.2.4 - 09/13/20 - Trigger types are now 'And' or 'Or'. Fixed some typos.
  *  1.2.3 - 09/13/20 - Fixed issue with Modes, added Use Whole Numbers to anything that uses set points.
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.5"
+	state.version = "1.2.6"
 }
 
 definition(
@@ -1069,8 +1070,8 @@ def initialize() {
         }
         
         if(triggerType.contains("xPeriodic")) { 
-            if(logEnable) log.debug "In initialize - xPeriodic - Starting! - (${state.theSchedule})"
-            schedule(state.theSchedule, startTheProcess)
+            if(logEnable) log.debug "In initialize - xPeriodic - Starting! - (${preMadePeriodic})"
+            schedule(preMadePeriodic, startTheProcess)
         }
         
         if(tSunsetSunrise || tSunset || tSunrise) {
