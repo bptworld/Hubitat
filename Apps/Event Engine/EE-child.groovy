@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.9 - 09/14/20 - More Adjustments to Periodic
  *  1.2.8 - 09/14/20 - More adjustments to setPointHandler, fixed Enable/Disable switch. Added Restrictions to By Days, Time Between, Time Between Sun and Mode.
  *  1.2.7 - 09/13/20 - Adjustments to setPointHandler and setLevelandColorHandler
  *  1.2.6 - 09/13/20 - Adjusted Periodic
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.8"
+	state.version = "1.2.9"
 }
 
 definition(
@@ -120,6 +121,8 @@ def pageConfig() {
                 paragraph "<hr>"
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
 
+            } else {
+                app.removeSetting("preMadePeriodic")
             }
 
             if(triggerType.contains("xTimeDays")) {
@@ -1107,6 +1110,7 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         if(state.nothingToDo == null) state.nothingToDo = true
+        if(preMadePeriodic) state.nothingToDo = false
         
         if(evt) {
             state.whoHappened = evt.displayName
@@ -1130,25 +1134,23 @@ def startTheProcess(evt) {
             hsmAlertHandler(state.whatHappened)
             hsmStatusHandler(state.whatHappened)
             
-            if(!state.nothingToDo) {
-                // Devices
-                accelerationHandler()
-                contactHandler()
-                garageDoorHandler()           
-                lockHandler()
-                motionHandler()             
-                presenceHandler()
-                switchHandler()            
-                waterHandler()
+            // Devices
+            accelerationHandler()
+            contactHandler()
+            garageDoorHandler()           
+            lockHandler()
+            motionHandler()             
+            presenceHandler()
+            switchHandler()            
+            waterHandler()
 
-                // setPoint
-                batteryHandler()
-                energyHandler()
-                humidityHandler()
-                illuminanceHandler()
-                powerHandler()
-                tempHandler()
-            }
+            // setPoint
+            batteryHandler()
+            energyHandler()
+            humidityHandler()
+            illuminanceHandler()
+            powerHandler()
+            tempHandler()
         }
         
         if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - doIt: ${state.doIt} - nothingToDo: ${state.nothingToDo}"
@@ -1165,12 +1167,17 @@ def startTheProcess(evt) {
             state.devicesGood = false
         }
 
-        if(logEnable) log.debug "In startTheProcess - 2 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - doIt: ${state.doIt} - nothingToDo: ${state.nothingToDo}"
+        if(state.setPointGood == null) state.setPointGood = true
+        if(state.doIt == null) state.doIt = true
+        
+        if(logEnable) log.debug "In startTheProcess - 2 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus} - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
-            if((state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood) || state.doIt) {            
+            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood
+            if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood} - doIt: ${state.doIt}"
+            if(allGood || state.doIt) {            
                 if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
 
                 if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -1281,6 +1288,8 @@ def accelerationHandler() {
         state.typeValue2 = "inactive"
         state.typeAO = accelerationANDOR
         devicesGoodHandler()
+    } else {
+        if(logEnable) log.debug "In accelerationHandler - No Devices"
     } 
 }
 
@@ -1293,6 +1302,8 @@ def contactHandler() {
         state.typeValue2 = "closed"
         state.typeAO = contactANDOR
         devicesGoodHandler()
+    } else {
+        if(logEnable) log.debug "In contactHandler - No Devices"
     } 
 }
 
@@ -1305,6 +1316,8 @@ def garageDoorHandler() {
         state.typeValue2 = "closed"
         state.typeAO = garageDoorANDOR
         devicesGoodHandler()
+    } else {
+        if(logEnable) log.debug "In garageDoorHandler - No Devices"
     } 
 }
 
@@ -1317,6 +1330,8 @@ def lockHandler() {
         state.typeValue2 = "unlocked"
         state.typeAO = lockANDOR
         devicesGoodHandler()
+    } else {
+        if(logEnable) log.debug "In lockHandler - No Devices"
     } 
 }
 
@@ -1329,6 +1344,8 @@ def motionHandler() {
         state.typeValue2 = "inactive"
         state.typeAO = motionANDOR
         devicesGoodHandler()
+    } else {
+        if(logEnable) log.debug "In motionHandler - No Devices"
     } 
 }
 
@@ -1341,7 +1358,9 @@ def presenceHandler() {
         state.typeValue2 = "present"
         state.typeAO = presenceANDOR
         devicesGoodHandler()
-    } 
+    } else {
+        if(logEnable) log.debug "In presenceHandler - No Devices"
+    }
 }
 
 def switchHandler() {
@@ -1353,7 +1372,9 @@ def switchHandler() {
         state.typeValue2 = "off"
         state.typeAO = switchANDOR
         devicesGoodHandler()
-    } 
+    } else {
+        if(logEnable) log.debug "In switchHandler - No Devices"
+    }
 }
 
 def waterHandler() {
@@ -1369,7 +1390,7 @@ def waterHandler() {
 }
 
 def devicesGoodHandler() {
-    if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}" 
+    if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}"
     state.devicesGood = false
     deviceTrue = 0
     theCount = state.eventName.size()
@@ -1395,7 +1416,7 @@ def devicesGoodHandler() {
         }    
     }
     if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood}"
-    
+
     if(!state.devicesGood) {
         state.allDevicesTrue = false
     }
@@ -1492,6 +1513,8 @@ def batteryHandler() {
         state.setPointHigh = beSetPointHigh
         state.setPointLow = beSetPointLow
         setPointHandler()
+    } else {
+        if(logEnable) log.debug "In batteryHandler - No Devices"
     } 
 }
 
@@ -1502,7 +1525,9 @@ def energyHandler() {
         state.setPointHigh = eeSetPointHigh
         state.setPointLow = eeSetPointLow
         setPointHandler()
-    } 
+    } else {
+        if(logEnable) log.debug "In energyHandler - No Devices"
+    }
 }
 
 def humidityHandler() {
@@ -1512,6 +1537,8 @@ def humidityHandler() {
         state.setPointHigh = heSetPointHigh
         state.setPointLow = heSetPointLow
         setPointHandler()
+    } else {
+        if(logEnable) log.debug "In humidityHandler - No Devices"
     } 
 }
 
@@ -1522,6 +1549,8 @@ def illuminanceHandler() {
         state.setPointHigh = ieSetPointHigh
         state.setPointLow = ieSetPointLow
         setPointHandler()
+    } else {
+        if(logEnable) log.debug "In illuminanceHandler - No Devices"
     } 
 }
 
@@ -1532,6 +1561,8 @@ def powerHandler() {
         state.setPointHigh = peSetPointHigh
         state.setPointLow = peSetPointLow
         setPointHandler()
+    } else {
+        if(logEnable) log.debug "In powerHandler - No Devices"
     } 
 }
 
@@ -1542,11 +1573,13 @@ def tempHandler() {
         state.setPointHigh = teSetPointHigh
         state.setPointLow = teSetPointLow
         setPointHandler()
-    } 
+    } else {
+        if(logEnable) log.debug "In tempHandler - No Devices"
+    }
 }
 
 def setPointHandler() {
-    if(logEnable) log.debug "In setPointHandler (${state.version})" 
+    if(logEnable) log.debug "In setPointHandler (${state.version})"
     state.setPointGood = false
     state.doIt = false
     log.trace "spName: ${state.spName}"
