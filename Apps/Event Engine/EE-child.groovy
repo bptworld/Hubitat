@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.2.8 - 09/14/20 - More adjustments to setPointHandler, fixed Enable/Disable switch. Added Retrictions to By Days, Time Between, Time Between Sun and Mode.
+ *  1.2.8 - 09/14/20 - More adjustments to setPointHandler, fixed Enable/Disable switch. Added Restrictions to By Days, Time Between, Time Between Sun and Mode.
  *  1.2.7 - 09/13/20 - Adjustments to setPointHandler and setLevelandColorHandler
  *  1.2.6 - 09/13/20 - Adjusted Periodic
  *  1.2.5 - 09/13/20 - Pause App is now in red, cosmetic changes
