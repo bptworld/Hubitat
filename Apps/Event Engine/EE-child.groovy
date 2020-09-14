@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.7 - 09/13/20 - Adjustments to setPointHandler and setLevelandColorHandler
  *  1.2.6 - 09/13/20 - Adjusted Periodic
  *  1.2.5 - 09/13/20 - Pause App is now in red, cosmetic changes
  *  1.2.4 - 09/13/20 - Trigger types are now 'And' or 'Or'. Fixed some typos.
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.2.6"
+	state.version = "1.2.7"
 }
 
 definition(
@@ -1529,26 +1530,28 @@ def setPointHandler() {
         // *** setPointHigh ***
         if(state.setPointHigh && !state.setPointLow) {
             state.setPointLowOK = "yes"
-            if(setPointValue1 >= state.setPointHigh) {
+            int sPV = setPointValue1
+            int sPH = state.setPointHigh
+            if(sPV >= sPH) {
                 if(state.setPointHighOK != "no") {
-                    if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${state.setPointHigh}"
+                    if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
                     state.setPointHighOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 }
             }
             
-            if(setPointValue1 < state.setPointHigh) {
+            if(sPV < sPH) {
                 if(state.setPointHighOK == "no") {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${setPointValue1} is Less THAN setPointHigh: ${state.setPointHigh}"
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is Less THAN setPointHigh: ${sPH}"
                     state.setPointHighOK = "yes"
                     state.setPointGood = false
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                    if(triggerAndOr) state.doIt = true
                 }
@@ -1558,26 +1561,28 @@ def setPointHandler() {
         // *** setPointLow ***
         if(state.setPointLow && !state.setPointHigh) {
             state.setPointHighOK = "yes"
-            if(setPointValue1 < state.setPointLow) {
+            int sPV = setPointValue1
+            int sPL = state.setPointLow
+            if(sPV < sPL) {
                 if(state.setPointLowOK != "no") {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${state.setPointLow}"
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
                     state.setPointLowOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 }
             }
             
-            if(setPointValue1 > state.setPointLow) {
+            if(sPV > sPL) {
                 if(state.setPointLowOK == "no") {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointLow: ${state.setPointLow}"
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointLow: ${sPL}"
                     state.setPointLowOK = "yes"
                     state.setPointGood = false
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 }
@@ -1586,39 +1591,42 @@ def setPointHandler() {
 
         // *** Inbetween ***
         if(state.setPointHigh && state.setPointLow) {
-            if(setPointValue1 > state.setPointHigh) {
+            int sPV = setPointValue1
+            int sPL = state.setPointLow
+            int sPH = state.setPointHigh
+            if(sPV > sPH) {
                 if(state.setPointHighOK != "no") {
-                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${state.setPointHigh}"
+                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
                     state.setPointHighOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 }
             }
             
-            if(setPointValue1 < state.setPointLow) {
+            if(sPV < sPL) {
                 if(state.setPointLowOK != "no") {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${state.setPointLow}"
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
                     state.setPointLowOK = "no"
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 }
             }
-            if((setPointValue1 <= state.setPointHigh) && (setPointValue1 >= state.setPointLow)) {
+            if((sPV <= sPH) && (sPV >= sPL)) {
                 if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
-                    if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${it}, Actual value: ${setPointValue1} is BETWEEN tempHigh: ${state.setPointHigh} and setPointLow: ${state.setPointLow}"
+                    if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is BETWEEN tempHigh: ${sPH} and setPointLow: ${state.setPointLow}"
                     state.setPointHighOK = "yes"
                     state.setPointLowOK = "yes"
                     state.setPointGood = false
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${setPointValue1} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                     state.setPointGood = true
                     if(triggerAndOr) state.doIt = true
                 }
@@ -2126,13 +2134,14 @@ def dayOfTheWeekHandler() {
 }
 
 def setLevelandColorHandler() {
-	if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color}"
-    
     if(state.fromWhere == "slowOff") {
         state.onLevel = state.highestLevel
     } else {
 	    state.onLevel = state.onLevel ?: 99
     }
+    if(state.color == null || state.color == "null" || state.color == "") state.color = "No Change"
+    
+    if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color} - onLevel: ${state.onLevel}"
     
     switch(state.color) {
         case "No Change":
@@ -2180,16 +2189,19 @@ def setLevelandColorHandler() {
     
     int onLevel = state.onLevel
 	//def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel]
-    //if(logEnable) log.debug "In setLevelandColorHandler - value: $value"
+    if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
+    
     
 	if(state.fromWhere == "dimmerOn") {
         if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
     	setOnLC.each {
             if(state.color == "No Change") {
                 hueColor = it.currentValue("hue")
-                saturation = it.currentValue("saturation")
-                def value = [hue: hueColor, saturation: saturation, level: onLevel]               
+                saturation = it.currentValue("saturation")              
             }
+            
+            def value = [hue: hueColor, saturation: saturation, level: onLevel] 
+            if(logEnable) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
             
         	if (it.hasCommand('setColor')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
