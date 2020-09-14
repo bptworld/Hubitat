@@ -140,7 +140,7 @@ def pageConfig() {
                     paragraph "<b>By Days</b>"
                     input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
                     
-                    paragraph "By Days can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                    paragraph "By Days can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                     input "daysMatchRestriction", "bool", defaultValue: false, title: "By Days as Restriction", description: "By Days Restriction", submitOnChange:true
                     paragraph "<hr>"
                 } else {
@@ -177,7 +177,7 @@ def pageConfig() {
                     input "toTime", "time", title: "To", required: false, width: 6
                     input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
                     
-                    paragraph "Between two times can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                    paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                     input "timeBetweenRestriction", "bool", defaultValue: false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
                     paragraph "<hr>"
                 } else {
@@ -202,7 +202,7 @@ def pageConfig() {
                         input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                         input "offsetSunrise", "number", title: "Offset(minutes)", width:6
                         
-                        paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                        paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                         input "timeBetweenSunRestriction", "bool", defaultValue: false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
                         paragraph "<hr>"
                     }
@@ -449,7 +449,6 @@ def pageConfig() {
                     }
                 }
 
-
                 if(lockEvent) {
                     getLockUsers()
                     //input "lockUser", "enum", title: "By Lock User", options: state.theLockUsers, required: false, multiple: true, submitOnChange: true
@@ -470,7 +469,7 @@ def pageConfig() {
                     if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
                     if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
                     
-                    paragraph "Mode can also be used as a Restriction. If used as a Retriction, Reverse and Permenant Dim will not run while this trigger is false."
+                    paragraph "Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                     input "modeRestriction", "bool", defaultValue: false, title: "Mode as Restriction", description: "Mode Restriction", submitOnChange:true
                 }
                 paragraph "<hr>"
