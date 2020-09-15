@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.4 - 09/15/20 - Adjustments
  *  1.3.3 - 09/15/20 - Adjustments
  *  1.3.2 - 09/15/20 - Cosmetic changes - added more descriptions
  *  1.3.1 - 09/15/20 - Found major bug, everyone needs to update.  Other adjustments
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.3"
+	state.version = "1.3.4"
 }
 
 definition(
@@ -1517,6 +1518,7 @@ def hsmAlertHandler(data) {
         if(logEnable) log.debug "In hsmAlertHandler (${state.version})"
         state.hsmAlertStatus = false
         String theValue = data
+        deviceTrue = 0
         
         hsmAlertEvent.each { it ->
             if(logEnable) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
@@ -1524,9 +1526,21 @@ def hsmAlertHandler(data) {
             if(theValue == it){
                 state.nothingToDo = false
                 state.hsmAlertStatus = true
-                if(triggerAndOr) state.doIt = true
+                deviceTrue = deviceTrue + 1
             }
         }
+        
+        if(state.typeAO) {
+            if(deviceTrue >= 1) { // OR
+                state.devicesGood = true
+                state.nothingToDo = false
+            }
+        } else {
+            if(deviceTrue == theCount) { // AND
+                state.devicesGood = true
+                state.nothingToDo = false
+            }   
+        }  
     } else {
         state.hsmAlertStatus = true
     }
@@ -1538,6 +1552,7 @@ def hsmStatusHandler(data) {
         if(logEnable) log.debug "In hsmStatusHandler (${state.version})"
         state.hsmStatus = false
         String theValue = data
+        deviceTrue = 0
         
         hsmStatusEvent.each { it ->
             if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
@@ -1545,9 +1560,21 @@ def hsmStatusHandler(data) {
             if(theValue == it){
                 state.nothingToDo = false
                 state.hsmStatus = true
-                if(triggerAndOr) state.doIt = true
+                deviceTrue = deviceTrue + 1
             }
         }
+        
+        if(state.typeAO) {
+            if(deviceTrue >= 1) { // OR
+                state.devicesGood = true
+                state.nothingToDo = false
+            }
+        } else {
+            if(deviceTrue == theCount) { // AND
+                state.devicesGood = true
+                state.nothingToDo = false
+            }   
+        }  
     } else {
         state.hsmStatus = true
     }
@@ -1559,6 +1586,7 @@ def modeHandler() {
     if(modeEvent) {
         if(logEnable) log.debug "In modeHandler - modeEvent: ${modeEvent}"
         state.modeStatus = false
+        deviceTrue = 0
 
         modeEvent.each { it ->
             theValue = location.mode
@@ -1569,18 +1597,30 @@ def modeHandler() {
                     if(theValue) { 
                         state.nothingToDo = false
                         state.modeStatus = true
-                        if(triggerAndOr) state.doIt = true
+                        deviceTrue = deviceTrue + 1
                     }
                 }
                 if(!modeOnOff) {
                     if(!theValue) { 
                         state.nothingToDo = false
                         state.modeStatus = true
-                        if(triggerAndOr) state.doIt = true
+                        deviceTrue = deviceTrue + 1
                     }
                 }
             }
         }
+        
+        if(state.typeAO) {
+            if(deviceTrue >= 1) { // OR
+                state.devicesGood = true
+                state.nothingToDo = false
+            }
+        } else {
+            if(deviceTrue == theCount) { // AND
+                state.devicesGood = true
+                state.nothingToDo = false
+            }   
+        }  
     } else {
         state.modeStatus = true
     }
@@ -1694,7 +1734,6 @@ def setPointHandler() {
                     state.nothingToDo = false
                     state.setPointHighOK = "no"
                     state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
@@ -1720,7 +1759,6 @@ def setPointHandler() {
                     state.nothingToDo = false
                     state.setPointLowOK = "no"
                     state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
@@ -1746,7 +1784,6 @@ def setPointHandler() {
                     state.nothingToDo = false
                     state.setPointHighOK = "no"
                     state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
@@ -1767,13 +1804,12 @@ def setPointHandler() {
                     state.setPointHighOK = "yes"
                     state.setPointLowOK = "yes"
                     state.setPointGood = true
-                    if(triggerAndOr) state.doIt = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
             }  
         }
-    }
+    } 
     
     if(!state.setPointGood && reverse) state.nothingToDo = false    
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
