@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  1.3.5 - 09/15/20 - More adjustments to Permanent Dim
  *  1.3.4 - 09/13/20 - Adjustments to Permanent Dim
  *  1.3.3 - 09/12/20 - Adjustments to time
  *  1.3.2 - 09/03/20 - Attempt to fix Permanent Dim without sun restriction
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Room Director"
-	state.version = "1.3.4"
+	state.version = "1.3.5"
 }
 
 definition(
@@ -1063,13 +1064,18 @@ def lightsHandler() {
         if(oDimmers9) theDevices = oDimmers9
         if(oDimmers0) theDevices = oDimmers0
 
-        if(theDevices) {
+        if(theDevices && state.sunRiseTosunSet) {
             theDevices.each { it ->
                 if(it.hasCommand("setLevel")) {
                     if(logEnable) log.debug "In lightsHandler - ${app.label} - working on ${it} - has setLevel: ${it.hasCommand("setLevel")}"                     
                     it.setLevel("${permanentDimLvl}")
                     if(logEnable) log.debug "In lightsHandler - ${app.label} - working on ${it} - setLevel to: ${permanentDimLvl}"
                 }
+            }
+        } else {
+            theDevices.each { it ->
+                if(logEnable) log.debug "In lightsHandler - ${app.label} - working on ${it} - turning Off"                     
+                it.off()
             }
         }
     } else {
