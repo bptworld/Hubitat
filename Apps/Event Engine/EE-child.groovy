@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.1 - 09/15/20 - Found major bug, everyone needs to update.  Other adjustments
  *  1.3.0 - 09/15/20 - Locks trigger can now specify lock users, lots of other adjustments
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.0"
+	state.version = "1.3.1"
 }
 
 definition(
@@ -1040,6 +1041,7 @@ def installed() {
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
+    unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite: false])
@@ -1056,8 +1058,8 @@ def initialize() {
         setDefaults()
 
         if(startTime) schedule(startTime, startTheProcess)
-        if(accelerationEvent) subscripe(accelerationEvent, "accelerationSensor", startTheProcess)
-        if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)
+        if(accelerationEvent) subscribe(accelerationEvent, "accelerationSensor", startTheProcess)             
+        if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)        
         if(contactEvent) subscribe(contactEvent, "contact", startTheProcess)
         if(energyEvent) subscribe(energyEvent, "energy", startTheProcess)
         if(garagedoorEvent) subscribe(garagedoorEvent, "door", startTheProcess)
@@ -1068,8 +1070,8 @@ def initialize() {
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
         if(modeEvent) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
-        if(powerEvent) subscribe(powerEvent, "power", startTheProcess)
-        if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)
+        if(powerEvent) subscribe(powerEvent, "power", startTheProcess)       
+        if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)        
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
 
         if(repeat) {
@@ -1121,6 +1123,7 @@ def startTheProcess(evt) {
         state.setPointGood = false
         state.isThereSetpoints = false
         state.isThereDevices = false
+        state.skip = false
         if(preMadePeriodic) state.nothingToDo = false
         
         if(evt) {
@@ -1147,46 +1150,50 @@ def startTheProcess(evt) {
             
             if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus}"
                         
-            // Devices
-            accelerationHandler()
-            contactHandler()
-            garageDoorHandler()           
-            lockHandler()
-            motionHandler()             
-            presenceHandler()
-            switchHandler()            
-            waterHandler()
+            if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
+            if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
+            if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }
+            if(modeRestriction && !state.modeStatus) { state.nothingToDo = true; state.skip = true }
+            
+            if(!state.skip) {
+                // Devices
+                accelerationHandler()
+                contactHandler()
+                garageDoorHandler()           
+                lockHandler()
+                motionHandler()             
+                presenceHandler()
+                switchHandler()            
+                waterHandler()
 
-            // setPoint
-            batteryHandler()
-            energyHandler()
-            humidityHandler()
-            illuminanceHandler()
-            powerHandler()
-            tempHandler()
+                // setPoint
+                batteryHandler()
+                energyHandler()
+                humidityHandler()
+                illuminanceHandler()
+                powerHandler()
+                tempHandler()
+            }
         }
         
-        if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood}"
-        
-        if(!triggerAndOr && state.allDevicesTrue) { 
-            state.devicesGood = true
-        } else if(!triggerAndOr && !state.allDevicesTrue) {
-            state.devicesGood = false
-        }
-        
-        if(triggerAndOr && !state.allDevicesTrue) { 
-            state.devicesGood = true
-        } else if(triggerAndOr && state.allDevicesTrue) {
-            state.devicesGood = false
-        }
-        
-        if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true }
-        if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true }
-        if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true }
-        if(modeRestriction && !state.modeStatus) { state.nothingToDo = true }
-        
-        if(logEnable) log.debug "In startTheProcess - 3 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+        if(!state.skip) {
+            if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood}"
 
+            if(!triggerAndOr && state.allDevicesTrue) { 
+                state.devicesGood = true
+            } else if(!triggerAndOr && !state.allDevicesTrue) {
+                state.devicesGood = false
+            }
+
+            if(triggerAndOr && !state.allDevicesTrue) { 
+                state.devicesGood = true
+            } else if(triggerAndOr && state.allDevicesTrue) {
+                state.devicesGood = false
+            }
+
+            if(logEnable) log.debug "In startTheProcess - 3 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+        }
+        
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
@@ -1246,6 +1253,7 @@ def startTheProcess(evt) {
                 if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOPING"
             }
         }
+        if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
     }
 }
 
@@ -2129,7 +2137,7 @@ def pushHandler(msg){
 }
 
 def currentDateTime() {
-	if(logEnable) log.debug "In currentDateTime - Control Switch: ${state.controlSwitch2}"
+	if(logEnable) log.debug "In currentDateTime (${state.version})"
 	Date date = new Date()
 	String datePart = date.format("dd/MM/yyyy")
 	String timePart = date.format("HH:mm")
@@ -2141,7 +2149,7 @@ def currentDateTime() {
 
 def checkTimeSun() {
     // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
-	if(logEnable) log.debug "In checkTimeSun (${state.version}) - ${app.label}"
+	if(logEnable) log.debug "In checkTimeSun (${state.version})"
     if(sunRestriction) {    
         def nextSunrise = (getSunriseAndSunset().sunrise)+1
         def nextSunset = getSunriseAndSunset().sunset
@@ -2175,6 +2183,7 @@ def checkTimeSun() {
 			state.sunRiseTosunSet = false
 		}
   	} else {
+        if(logEnable) log.debug "In checkTimeSun - NOT Specified"
 		state.timeBetweenSun = true
   	}
     
@@ -2221,6 +2230,7 @@ def dayOfTheWeekHandler() {
             state.daysMatch = false
         }
     } else {
+        if(logEnable) log.debug "In dayOfTheWeekHandler - NO Days Specified"
         state.daysMatch = true
     }
     
