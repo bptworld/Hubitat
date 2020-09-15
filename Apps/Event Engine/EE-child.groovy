@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.3.2 - 09/15/20 - Cosmetic changes - add more descriptions
+ *  1.3.3 - 09/15/20 - Adjustments
+ *  1.3.2 - 09/15/20 - Cosmetic changes - added more descriptions
  *  1.3.1 - 09/15/20 - Found major bug, everyone needs to update.  Other adjustments
  *  1.3.0 - 09/15/20 - Locks trigger can now specify lock users, lots of other adjustments
  *  ---
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.2"
+	state.version = "1.3.3"
 }
 
 definition(
@@ -1183,9 +1184,7 @@ def startTheProcess(evt) {
         if(runTest) {
             state.doIt = true
             if(logEnable) log.warn "*********** RUNNING TEST ***********"
-        } else {
-            state.allDevicesTrue = true
-            
+        } else {            
             // Time
             checkTime()
             checkTimeSun()
@@ -1224,28 +1223,14 @@ def startTheProcess(evt) {
         }
         
         if(!state.skip) {
-            if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood}"
-
-            if(!triggerAndOr && state.allDevicesTrue) { 
-                state.devicesGood = true
-            } else if(!triggerAndOr && !state.allDevicesTrue) {
-                state.devicesGood = false
-            }
-
-            if(triggerAndOr && !state.allDevicesTrue) { 
-                state.devicesGood = true
-            } else if(triggerAndOr && state.allDevicesTrue) {
-                state.devicesGood = false
-            }
-
-            if(logEnable) log.debug "In startTheProcess - 3 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+            if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
         
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
             allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood
-            if(logEnable) log.debug "In startTheProcess - 4 - allGood: ${allGood} - doIt: ${state.doIt}"
+            if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood} - doIt: ${state.doIt}"
             if(allGood || state.doIt) {            
                 if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
 
@@ -1522,15 +1507,9 @@ def devicesGoodHandler() {
             state.devicesGood = true
             state.nothingToDo = false
         }   
-    }
-    
-    if(!state.devicesGood && reverse) state.nothingToDo = false
-    
+    }    
+    if(!state.devicesGood && reverse) state.nothingToDo = false    
     if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood}"
-
-    if(!state.devicesGood) {
-        state.allDevicesTrue = false
-    }
 }
 
 def hsmAlertHandler(data) {
@@ -1605,7 +1584,6 @@ def modeHandler() {
     } else {
         state.modeStatus = true
     }
-
     if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus} - nothingToDo: ${state.nothingToDo}"
 }
 
@@ -1795,13 +1773,9 @@ def setPointHandler() {
                 }
             }  
         }
-        if(!state.setPointGood) {
-            state.allDevicesTrue = false
-        }
     }
     
-    if(!state.setPointGood && reverse) state.nothingToDo = false
-    
+    if(!state.setPointGood && reverse) state.nothingToDo = false    
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
 }
 
