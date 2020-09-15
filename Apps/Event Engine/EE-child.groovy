@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.2 - 09/15/20 - Cosmetic changes - add more descriptions
  *  1.3.1 - 09/15/20 - Found major bug, everyone needs to update.  Other adjustments
  *  1.3.0 - 09/15/20 - Locks trigger can now specify lock users, lots of other adjustments
  *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.1"
+	state.version = "1.3.2"
 }
 
 definition(
@@ -240,6 +241,12 @@ def pageConfig() {
                 input "accelerationEvent", "capability.accelerationSensor", title: "By Acceleration Sensor", required: false, multiple: true, submitOnChange: true
                 if(accelerationEvent) {
                     input "asInactiveActive", "bool", title: "Trigger when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
+                    if(asInactiveActive) {
+                        paragraph "Trigger will fire when Sensor(s) become Active"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Inactive"
+                    }
+                    
                     input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(accelerationANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Acceleration Sensor is true"
@@ -289,6 +296,12 @@ def pageConfig() {
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required: false, multiple: true, submitOnChange: true
                 if(contactEvent) {
                     input "csClosedOpen", "bool", title: "Trigger when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
+                    if(csClosedOpen) {
+                        paragraph "Trigger will fire when Sensor(s) become Open"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Closed"
+                    }
+                    
                     input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Contact Sensor is true"
@@ -338,6 +351,12 @@ def pageConfig() {
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required: false, multiple: true, submitOnChange: true
                 if(garageDoorEvent) {
                     input "gdClosedOpen", "bool", title: "Trigger when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    if(gdClosedOpen) {
+                        paragraph "Trigger will fire when Sensor(s) become Open"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Closed"
+                    }
+                    
                     input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Garage Door is true"
@@ -437,6 +456,11 @@ def pageConfig() {
                 input "lockEvent", "capability.lock", title: "By Lock", required: false, multiple: false, submitOnChange: true
                 if(lockEvent) {
                     input "lUnlockedLocked", "bool", title: "Trigger when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
+                    if(lUnlockedLocked) {
+                        paragraph "Trigger will fire when Sensor(s) become Locked"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Unlocked"
+                    }
 /*
                 If changing this, remember to also change lockHander
                     input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
@@ -487,6 +511,12 @@ def pageConfig() {
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
                     input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
+                    if(meInactiveActive) {
+                        paragraph "Trigger will fire when Sensor(s) become Active"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Inactive"
+                    }
+                    
                     input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Motion Sensor is true"
@@ -536,6 +566,12 @@ def pageConfig() {
                 input "presenceEvent", "capability.presenceSensor", title: "By Presence Sensor", required: false, multiple: true, submitOnChange: true
                 if(presenceEvent) {
                     input "psPresentNotPresent", "bool", title: "Trigger when Present (off) or Not Present (on)", description: "Present", defaultValue:false, submitOnChange:true
+                    if(psPresentNotPresent) {
+                        paragraph "Trigger will fire when Sensor(s) become Not Present"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Present"
+                    }
+                    
                     input "presentANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(presentANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Presence Sensor is true"
@@ -555,6 +591,12 @@ def pageConfig() {
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
                     input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
+                    if(seOffOn) {
+                        paragraph "Trigger will fire when Sensor(s) become On"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Off"
+                    }
+                    
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Switch is true"
@@ -604,6 +646,11 @@ def pageConfig() {
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required: false, multiple: true, submitOnChange: true
                 if(waterEvent) {
                     input "wsDryWet", "bool", title: "Trigger when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
+                    if(wsDryWet) {
+                        paragraph "Trigger will fire when Sensor(s) become Wet"
+                    } else {
+                        paragraph "Trigger will fire when Sensor(s) become Dry"
+                    }
                     input "waterANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(waterANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Water Sensor is true"
