@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.7 - 09/16/20 - between two times adjustments
  *  1.3.6 - 09/16/20 - setPoint adjustments
  *  1.3.5 - 09/15/20 - Time trigger adjustments
  *  1.3.4 - 09/15/20 - Adjustments
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.6"
+	state.version = "1.3.7"
 }
 
 definition(
@@ -1160,13 +1161,13 @@ def initialize() {
             schedule(preMadePeriodic, startTheProcess)
         }
         
-        if(tSunsetSunrise || tSunset || tSunrise) {
+        if(triggerType.contains("xTimeDays")) { 
             autoSunHandler()
         } else {
             state.sunRiseTosunSet = true
         }
         
-        if(tBetween) { 
+        if(fromTime && toTime) { 
             checkTime()
             schedule(fromTime, runAtTime1)
             schedule(toTime, runAtTime2)
@@ -1183,7 +1184,6 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         state.nothingToDo = true
-        state.doIt = false
         state.devicesGood = false
         state.setPointGood = false
         state.isThereSetpoints = false
@@ -1199,26 +1199,32 @@ def startTheProcess(evt) {
         }
         
         if(runTest) {
-            state.doIt = true
+            state.skip = true
             if(logEnable) log.warn "*********** RUNNING TEST ***********"
-        } else {            
-            // Time
-            checkTime()
-            checkTimeSun()
-            dayOfTheWeekHandler()
-            modeHandler()
+        } else {        
+            if(state.skip) {
+                if(logEnable) log.debug "In startTheProcess - Skipping Time checks for Test"
+            } else {
+                // Time
+                checkTime()
+                checkTimeSun()
+                dayOfTheWeekHandler()
+                modeHandler()
+
+                hsmAlertHandler(state.whatHappened)
+                hsmStatusHandler(state.whatHappened)
+
+                if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus}"
+
+                if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
+                if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
+                if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }
+                if(modeRestriction && !state.modeStatus) { state.nothingToDo = true; state.skip = true }
+            }
             
-            hsmAlertHandler(state.whatHappened)
-            hsmStatusHandler(state.whatHappened)
-            
-            if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus}"
-                        
-            if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
-            if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
-            if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }
-            if(modeRestriction && !state.modeStatus) { state.nothingToDo = true; state.skip = true }
-            
-            if(!state.skip) {
+            if(state.skip) {
+                if(logEnable) log.debug "In startTheProcess - Skipping Device checks for Test"
+            } else {
                 // Devices
                 accelerationHandler()
                 contactHandler()
@@ -1239,7 +1245,9 @@ def startTheProcess(evt) {
             }
         }
         
-        if(!state.skip) {
+        if(state.skip) { 
+            state.nothingToDo = false
+        } else {
             if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
         
@@ -1247,11 +1255,9 @@ def startTheProcess(evt) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
             allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood
-            
-            // reverse
-            
-            if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood} - doIt: ${state.doIt}"
-            if(allGood || state.doIt) {            
+            if(state.skip) { allGood = true }
+            if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood}"
+            if(allGood) {            
                 if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
 
                 if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -1305,6 +1311,7 @@ def startTheProcess(evt) {
                 if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOPING"
             }
         }
+        state.skip = false
         if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
     }
 }
