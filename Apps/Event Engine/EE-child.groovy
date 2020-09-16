@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.8 - 09/16/20 - Added an End Time option to Just Sunset and Just Sunrise, added Triger: Voltage, other adjustments 
  *  1.3.7 - 09/16/20 - between two times adjustments
  *  1.3.6 - 09/16/20 - setPoint adjustments
  *  1.3.5 - 09/15/20 - Time trigger adjustments
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.7"
+	state.version = "1.3.8"
 }
 
 definition(
@@ -107,6 +108,7 @@ def pageConfig() {
                 ["xPresence":"Presence Sensor"],
                 ["xSwitch":"Switches"],
                 ["xTemp":"Temperature Setpoint"],
+                ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"]
             ], required: true, multiple:true, submitOnChange:true
 
@@ -214,6 +216,12 @@ def pageConfig() {
                         input "timeBetweenSunRestriction", "bool", defaultValue: false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
                         paragraph "<hr>"
                     }
+                } else {
+                    app.removeSetting("offsetSunset")
+                    app.removeSetting("offsetSunrise")
+                    app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
+                    app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
+                    app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
                 }
 
                 if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
@@ -226,22 +234,34 @@ def pageConfig() {
                     paragraph "<b>Just Sunrise</b>"
                     input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunrise", "number", title: "Offset (minutes)", width:6
+                    
+                    input "sunriseToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
+                    if(sunriseToTime) {
+                        input "sunriseEndTime", "time", title: "Time to End", description: "Time", required: false
+                        paragraph "<small>* Must be BEFORE midnight.</small>"
+                    } else {
+                        app.removeSetting("sunriseEndTime")
+                    }
                     paragraph "<hr>"
                 } else if(timeDaysType.contains("tSunset")) {
                     paragraph "<b>Just Sunset</b>"
                     input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunset", "number", title: "Offset (minutes)", width:6
+                    
+                    input "sunsetToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
+                    if(sunsetToTime) {
+                        input "sunsetEndTime", "time", title: "Time to End", description: "Time", required: false
+                        paragraph "<small>* Must be BEFORE midnight.</small>"
+                    } else {
+                        app.removeSetting("sunsetEndTime")
+                    }                    
                     paragraph "<hr>"
-                }
-
-                if(!timeDaysType.contains("tSunsetSunrise") && !timeDaysType.contains("tSunrise") && !timeDaysType.contains("tSunset")) { 
-                    app.removeSetting("setBeforeAfter")
-                    app.removeSetting("offsetSunset")
-                    app.removeSetting("riseBeforeAfter")
+                } else {
+                    app.removeSetting("sunsetEndTime")
                     app.removeSetting("offsetSunrise")
+                    app.removeSetting("offsetSunset")
                     app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
-                    app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
-                    app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
+                    app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])                   
                 }
             } else {
                 app.removeSetting("timeDaysType")
@@ -652,6 +672,36 @@ def pageConfig() {
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
             }
 
+            if(triggerType.contains("xVoltage")) {
+                paragraph "<b>Voltage</b>"
+                input "voltageEvent", "capability.voltageMeasurement", title: "By Voltage Setpoints", required:false, multiple:true, submitOnChange:true
+                if(voltageEvent) {
+                    input "setVEPointHigh", "bool", defaultValue:false, title: "Trigger when Voltage is too High?", description: "Voltage High", submitOnChange:true
+                    if(setVEPointHigh) {
+                        input "veSetPointHigh", "number", title: "Voltage High Setpoint", required: true, submitOnChange: true
+                    } else {
+                        app.removeSetting("veSetPointHigh")
+                    }
+
+                    input "setVEPointLow", "bool", defaultValue:false, title: "Trigger when Voltage is too Low?", description: "Voltage Low", submitOnChange:true
+                    if(setVEPointLow) {
+                        input "veSetPointLow", "number", title: "Voltage Low Setpoint", required:true, submitOnChange:true
+                    } else {
+                        app.removeSetting("veSetPointLow")
+                    }
+
+                    if(veSetPointHigh) paragraph "You will receive notifications if Voltage reading is above ${veSetPointHigh}"
+                    if(veSetPointLow) paragraph "You will receive notifications if Voltage reading is below ${veSetPointLow}"
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("voltageEvent")
+                app.removeSetting("veSetPointHigh")
+                app.removeSetting("veSetPointLow")
+                app?.updateSetting("setVEPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setVEPointLow",[value:"false",type:"bool"])
+            }
+            
             if(triggerType.contains("xWater")) {
                 paragraph "<b>Water</b>"
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required: false, multiple: true, submitOnChange: true
@@ -678,6 +728,7 @@ def pageConfig() {
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
+                paragraph "<small>* Note: This effects the data coming in from the device.</small>"
             } else {
                 app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
             }
@@ -1129,7 +1180,8 @@ def initialize() {
         if(modeEvent) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
         if(powerEvent) subscribe(powerEvent, "power", startTheProcess)       
-        if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)        
+        if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)   
+        if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
 
         if(repeat) {
@@ -1174,6 +1226,9 @@ def initialize() {
         } else {
             state.timeBetween = true
         }
+        
+        if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
+        if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)        
     }
 }
 
@@ -1242,6 +1297,7 @@ def startTheProcess(evt) {
                 illuminanceHandler()
                 powerHandler()
                 tempHandler()
+                voltageHandler()
             }
         }
         
@@ -1681,6 +1737,18 @@ def tempHandler() {
         state.spType = "temperature"
         state.setPointHigh = teSetPointHigh
         state.setPointLow = teSetPointLow
+        setPointHandler()
+    } else {
+        if(logEnable) log.debug "In tempHandler - No Devices"
+    }
+}
+
+def voltageHandler() {
+    if(voltageEvent) {
+        state.spName = voltageEvent
+        state.spType = "voltage"
+        state.setPointHigh = veSetPointHigh
+        state.setPointLow = veSetPointLow
         setPointHandler()
     } else {
         if(logEnable) log.debug "In tempHandler - No Devices"
@@ -2183,7 +2251,6 @@ def currentDateTime() {
 	if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
 }
 
-// *********** Start sunRestriction ***********
 def autoSunHandler() {
     // autoSunHandler - This is to trigger AT the exact times with offsets
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
@@ -2209,13 +2276,12 @@ def autoSunHandler() {
     if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
     if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
 
-    // check for new sunset/sunrise times every day at 12:05 am
-    schedule("0 5 0 ? * * *", autoSunHandler)
+    // check for new sunset/sunrise times every day at 12:05 pm
+    schedule("0 5 12 ? * * *", autoSunHandler)
         
     if(riseSet) { schedule(state.timeSunset, runAtTime1) }
     if(!riseSet) { schedule(state.timeSunrise, runAtTime2) }
 }
-// *********** End sunRestriction ***********
 
 def runAtTime1() {
     if(logEnable) log.debug "In runAtTime1 (${state.version}) - ${app.label} - Starting"
