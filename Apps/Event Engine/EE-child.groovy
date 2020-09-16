@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.5 - 09/15/20 - Time trigger adjustments
  *  1.3.4 - 09/15/20 - Adjustments
  *  1.3.3 - 09/15/20 - Adjustments
  *  1.3.2 - 09/15/20 - Cosmetic changes - added more descriptions
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.4"
+	state.version = "1.3.5"
 }
 
 definition(
@@ -81,6 +82,7 @@ def pageConfig() {
         section("Instructions:", hideable: true, hidden: true) {
             paragraph "<b>Notes:</b>"
             paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
+            paragraph "Please <a href='https://docs.google.com/document/d/1QtIsAKUb9vzAZ1RWTQR2SfxaZFvuLO3ePxDxmH-VU48/edit?usp=sharing' target='_blank'>visit this link</a> for a breakdown of all Event Engine Options. (Google Docs)"
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
@@ -107,6 +109,11 @@ def pageConfig() {
             ], required: true, multiple:true, submitOnChange:true
 
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true
+            if(triggerAndOr) {
+                paragraph "Cog will fire when <b>ANY</b> trigger is true"
+            } else {
+                paragraph "Cog will fire when <b>ALL</b> triggers are true"
+            }
             paragraph "<hr>"
             if(triggerType == null) triggerType = ""
 
@@ -1152,10 +1159,18 @@ def initialize() {
             schedule(preMadePeriodic, startTheProcess)
         }
         
-        if(tSunsetSunrise || tSunset || tSunrise) {
+        if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) {
             autoSunHandler()
         } else {
             state.sunRiseTosunSet = true
+        }
+        
+        if(timeDaysType.contains("tBetween")) { 
+            checkTime()
+            schedule(fromTime, runAtTime1)
+            schedule(toTime, runAtTime2)
+        } else {
+            state.timeBetween = true
         }
     }
 }
@@ -1289,51 +1304,6 @@ def startTheProcess(evt) {
         if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
     }
 }
-
-// *********** Start sunRestriction ***********
-def autoSunHandler() {
-    // autoSunHandler - This is to trigger AT the exact times with offsets
-    if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    
-    def sunriseTime = getSunriseAndSunset().sunrise
-    def sunsetTime = getSunriseAndSunset().sunset
-
-    int theOffsetSunset = offsetSunset ?: 1    
-    if(setBeforeAfter) {
-        state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
-    } else {
-        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
-    }
-    
-    int theOffsetSunrise = offsetSunrise ?: 1
-    if(riseBeforeAfter) {
-        state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
-    } else {
-        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-    }
-
-    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
-
-    // check for new sunset/sunrise times every day at 12:05 am
-    schedule("0 5 0 ? * * *", autoSunHandler)
-        
-    if(riseSet) { schedule(state.timeSunset, runAtSunset) }
-    if(!riseSet) { schedule(state.timeSunrise, runAtSunrise) }
-}
-
-def runAtSunset() {
-    if(logEnable) log.debug "In runAtSunset (${state.version}) - ${app.label} - Starting"
-    startTheProcess()
-}
-
-def runAtSunrise() {
-    if(logEnable) log.debug "In runAtSunrise (${state.version}) - ${app.label} - Starting"
-    startTheProcess()
-}
-
-// *********** End sunRestriction ***********
 
 def accelerationHandler() {
     if(accelerationEvent) {
@@ -2204,6 +2174,50 @@ def currentDateTime() {
 	if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
 }
 
+// *********** Start sunRestriction ***********
+def autoSunHandler() {
+    // autoSunHandler - This is to trigger AT the exact times with offsets
+    if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
+    
+    def sunriseTime = getSunriseAndSunset().sunrise
+    def sunsetTime = getSunriseAndSunset().sunset
+
+    int theOffsetSunset = offsetSunset ?: 1    
+    if(setBeforeAfter) {
+        state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+    } else {
+        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+    }
+    
+    int theOffsetSunrise = offsetSunrise ?: 1
+    if(riseBeforeAfter) {
+        state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+    } else {
+        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+    }
+
+    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+    if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+
+    // check for new sunset/sunrise times every day at 12:05 am
+    schedule("0 5 0 ? * * *", autoSunHandler)
+        
+    if(riseSet) { schedule(state.timeSunset, runAtTime1) }
+    if(!riseSet) { schedule(state.timeSunrise, runAtTime2) }
+}
+// *********** End sunRestriction ***********
+
+def runAtTime1() {
+    if(logEnable) log.debug "In runAtTime1 (${state.version}) - ${app.label} - Starting"
+    startTheProcess()
+}
+
+def runAtTime2() {
+    if(logEnable) log.debug "In runAtTime2 (${state.version}) - ${app.label} - Starting"
+    startTheProcess()
+}
+
 def checkTimeSun() {
     // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
 	if(logEnable) log.debug "In checkTimeSun (${state.version})"
@@ -2235,9 +2249,11 @@ def checkTimeSun() {
 		if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
 			state.sunRiseTosunSet = true
+            state.nothingToDo = false
 		} else {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
 			state.sunRiseTosunSet = false
+            if(reverse) state.nothingToDo = false
 		}
   	} else {
         if(logEnable) log.debug "In checkTimeSun - NOT Specified"
@@ -2249,7 +2265,7 @@ def checkTimeSun() {
 
 def checkTime() {
 	if(logEnable) log.debug "In checkTime (${state.version})"
-	if(fromTime) {
+	if(fromTime && toTime) {
         if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
@@ -2259,9 +2275,11 @@ def checkTime() {
 		if(state.betweenTime) {
             if(logEnable) log.debug "In checkTime - Time within range"
 			state.timeBetween = true
+            state.nothingToDo = false
 		} else {
             if(logEnable) log.debug "In checkTime - Time outside of range"
 			state.timeBetween = false
+            if(reverse) state.nothingToDo = false
 		}
   	} else {  
         if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
