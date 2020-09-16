@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.3.6 - 09/16/20 - setPoint adjustments
  *  1.3.5 - 09/15/20 - Time trigger adjustments
  *  1.3.4 - 09/15/20 - Adjustments
  *  1.3.3 - 09/15/20 - Adjustments
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.5"
+	state.version = "1.3.6"
 }
 
 definition(
@@ -626,14 +627,14 @@ def pageConfig() {
                 if(tempEvent) {
                     input "setTEPointHigh", "bool", defaultValue:false, title: "Trigger when Temperature is too High?", description: "Temp High", submitOnChange:true
                     if(setTEPointHigh) {
-                        input "teSetPointHigh", "number", title: "Temperature High Setpoint", required: true, defaultValue: 75, submitOnChange: true
+                        input "teSetPointHigh", "number", title: "Temperature High Setpoint", required: true, submitOnChange: true
                     } else {
                         app.removeSetting("setTEPointHigh")
                     }
 
                     input "setTEPointLow", "bool", defaultValue:false, title: "Trigger when Temperature is too Low?", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
-                        input "teSetPointLow", "number", title: "Temperature Low Setpoint", required: true, defaultValue: 30, submitOnChange: true
+                        input "teSetPointLow", "number", title: "Temperature Low Setpoint", required: true, submitOnChange: true
                     } else {
                         app.removeSetting("setTEPointLow")
                     }
@@ -644,8 +645,8 @@ def pageConfig() {
                 paragraph "<hr>"
             } else {
                 app.removeSetting("tempEvent")
-                app.removeSetting("setTEPointHigh")
-                app.removeSetting("setTEPointLow")
+                app.removeSetting("teSetPointHigh")
+                app.removeSetting("teSetPointLow")
                 app?.updateSetting("setTEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
             }
@@ -1159,13 +1160,13 @@ def initialize() {
             schedule(preMadePeriodic, startTheProcess)
         }
         
-        if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) {
+        if(tSunsetSunrise || tSunset || tSunrise) {
             autoSunHandler()
         } else {
             state.sunRiseTosunSet = true
         }
         
-        if(timeDaysType.contains("tBetween")) { 
+        if(tBetween) { 
             checkTime()
             schedule(fromTime, runAtTime1)
             schedule(toTime, runAtTime2)
@@ -1246,6 +1247,9 @@ def startTheProcess(evt) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
             allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood
+            
+            // reverse
+            
             if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood} - doIt: ${state.doIt}"
             if(allGood || state.doIt) {            
                 if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
@@ -1705,7 +1709,7 @@ def setPointHandler() {
                     state.setPointHighOK = "no"
                     state.setPointGood = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is HIGH but already notified.  Nothing to do."
                 }
             } else {
                 if(state.setPointHighOK == "no") {
@@ -1713,7 +1717,7 @@ def setPointHandler() {
                     state.nothingToDo = false
                     state.setPointHighOK = "yes"
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
                 }
             }
         }
@@ -1730,7 +1734,7 @@ def setPointHandler() {
                     state.setPointLowOK = "no"
                     state.setPointGood = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is LOW but all ready notified.  Nothing to do."
                 }
             } else {
                 if(state.setPointLowOK == "no") {
@@ -1749,13 +1753,12 @@ def setPointHandler() {
             int sPL = state.setPointLow
             int sPH = state.setPointHigh
             if(sPV > sPH) {
-                if(state.setPointHighOK != "no") {
+                if(state.setPointHighOK == "yes") {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
                     state.nothingToDo = false
                     state.setPointHighOK = "no"
-                    state.setPointGood = true
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is HIGH but already notified.  Nothing to do."
                 }
             } else {
                 if(state.setPointLowOK == "yes") {
@@ -1763,7 +1766,7 @@ def setPointHandler() {
                     state.nothingToDo = false
                     state.setPointLowOK = "no"
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is LOW but already notified.  Nothing to do."
                 }
             }
             
@@ -1779,9 +1782,8 @@ def setPointHandler() {
                 }
             }  
         }
-    } 
-    
-    if(!state.setPointGood && reverse) state.nothingToDo = false    
+    }     
+    if(!state.setPointGood && reverse) state.nothingToDo = false
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
 }
 
