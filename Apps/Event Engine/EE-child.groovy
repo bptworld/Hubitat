@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.2 - 09/17/20 - Adjustment to Mode
  *  1.4.1 - 09/17/20 - Added Restrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
  *  1.4.0 - 09/17/20 - Fixed issue with delay, added more Mode options
  *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.1"
+	state.version = "1.4.2"
 }
 
 definition(
@@ -120,7 +121,6 @@ def pageConfig() {
                 paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
                 paragraph "<hr>"
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
-
             } else {
                 app.removeSetting("preMadePeriodic")
             }
@@ -138,7 +138,6 @@ def pageConfig() {
 
                 paragraph "<hr>"
                 if(timeDaysType == null) timeDaysType = ""
-
                 if(timeDaysType.contains("tDays")) {
                     paragraph "<b>By Days</b>"
                     input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -1393,6 +1392,7 @@ def startTheProcess(evt) {
         state.nothingToDo = true
         state.devicesGood = false
         state.setPointGood = false
+        state.modeMatch = false
         state.isThereSetpoints = false
         state.isThereDevices = false
         state.areRestrictions = false
@@ -1433,7 +1433,6 @@ def startTheProcess(evt) {
             if(state.skip) {
                 if(logEnable) log.debug "In startTheProcess - Restrictions are true,Skipping Time checks"
             } else {
-                // Time
                 checkTime()
                 checkTimeSun()
                 dayOfTheWeekHandler()
@@ -1452,7 +1451,6 @@ def startTheProcess(evt) {
             if(state.skip) {
                 if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
             } else {
-                // Devices
                 accelerationHandler()
                 contactHandler()
                 garageDoorHandler()           
@@ -1462,7 +1460,6 @@ def startTheProcess(evt) {
                 switchHandler()            
                 waterHandler()
 
-                // setPoint
                 batteryHandler()
                 energyHandler()
                 humidityHandler()
@@ -1482,7 +1479,7 @@ def startTheProcess(evt) {
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
-            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.setPointGood && state.devicesGood
+            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch && state.setPointGood && state.devicesGood
             if(state.skip) { allGood = true }
             if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood}"
             if(allGood) {            
@@ -1539,7 +1536,6 @@ def startTheProcess(evt) {
                 if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOPING"
             }
         }
-        state.skip = false
         if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
     }
 }
@@ -1555,9 +1551,7 @@ def accelerationHandler() {
         state.typeValue2 = "inactive"
         state.typeAO = accelerationANDOR
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In accelerationHandler - No Devices"
-    } 
+    }
 }
 
 def contactHandler() {
@@ -1569,9 +1563,7 @@ def contactHandler() {
         state.typeValue2 = "closed"
         state.typeAO = contactANDOR
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In contactHandler - No Devices"
-    } 
+    }
 }
 
 def garageDoorHandler() {
@@ -1583,9 +1575,7 @@ def garageDoorHandler() {
         state.typeValue2 = "closed"
         state.typeAO = garageDoorANDOR
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In garageDoorHandler - No Devices"
-    } 
+    }
 }
 
 def lockHandler() {
@@ -1597,9 +1587,7 @@ def lockHandler() {
         state.typeValue2 = "unlocked"
         state.typeAO = false
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In lockHandler - No Devices"
-    } 
+    }
 }
 
 def motionHandler() {
@@ -1611,9 +1599,7 @@ def motionHandler() {
         state.typeValue2 = "inactive"
         state.typeAO = motionANDOR
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In motionHandler - No Devices"
-    } 
+    }
 }
 
 def presenceHandler() {
@@ -1625,8 +1611,6 @@ def presenceHandler() {
         state.typeValue2 = "present"
         state.typeAO = presenceANDOR
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In presenceHandler - No Devices"
     }
 }
 
@@ -1639,8 +1623,6 @@ def switchHandler() {
         state.typeValue2 = "off"
         state.typeAO = switchANDOR
         devicesGoodHandler()
-    } else {
-        if(logEnable) log.debug "In switchHandler - No Devices"
     }
 }
 
@@ -1653,10 +1635,8 @@ def waterHandler() {
         state.typeValue2 = "Dry"
         state.typeAO = waterANDOR
         devicesGoodHandler()
-    } 
-    
-    // Keep in LAST device
-    if(!state.isThereDevices) { state.devicesGood = true }
+    }     
+    if(!state.isThereDevices) { state.devicesGood = true }    // Keep in LAST device
 }
 
 def devicesGoodHandler() {
@@ -1820,17 +1800,19 @@ def modeHandler() {
 
         if(state.typeAO) {
             if(deviceTrue >= 1) { // OR
-                state.devicesGood = true
+                state.modeMatch = true
                 state.nothingToDo = false
             }
         } else {
             if(deviceTrue == theCount) { // AND
-                state.devicesGood = true
+                state.modeMatch = true
                 state.nothingToDo = false
             }   
         }  
+    } else {
+        state.modeMatch = true
     }
-    if(logEnable) log.debug "In modeHandler - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
 }
 
 def ruleMachineHandler() {
@@ -1847,9 +1829,7 @@ def batteryHandler() {
         state.setPointHigh = beSetPointHigh
         state.setPointLow = beSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In batteryHandler - No Devices"
-    } 
+    }
 }
 
 def energyHandler() {
@@ -1859,8 +1839,6 @@ def energyHandler() {
         state.setPointHigh = eeSetPointHigh
         state.setPointLow = eeSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In energyHandler - No Devices"
     }
 }
 
@@ -1871,8 +1849,6 @@ def humidityHandler() {
         state.setPointHigh = heSetPointHigh
         state.setPointLow = heSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In humidityHandler - No Devices"
     } 
 }
 
@@ -1883,9 +1859,7 @@ def illuminanceHandler() {
         state.setPointHigh = ieSetPointHigh
         state.setPointLow = ieSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In illuminanceHandler - No Devices"
-    } 
+    }
 }
 
 def powerHandler() {
@@ -1895,9 +1869,7 @@ def powerHandler() {
         state.setPointHigh = peSetPointHigh
         state.setPointLow = peSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In powerHandler - No Devices"
-    } 
+    }
 }
 
 def tempHandler() {
@@ -1907,8 +1879,6 @@ def tempHandler() {
         state.setPointHigh = teSetPointHigh
         state.setPointLow = teSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In tempHandler - No Devices"
     }
 }
 
@@ -1919,12 +1889,8 @@ def voltageHandler() {
         state.setPointHigh = veSetPointHigh
         state.setPointLow = veSetPointLow
         setPointHandler()
-    } else {
-        if(logEnable) log.debug "In voltageHandler - No Devices"
-    }
-    
-    // Keep in LAST setpoint
-    if(!state.isThereSetpoints) { state.setPointGood = true }
+    }    
+    if(!state.isThereSetpoints) { state.setPointGood = true }    // Keep in LAST setpoint
 }
     
 def setPointHandler() {
@@ -2049,9 +2015,7 @@ def accelerationRestrictionHandler() {
         state.rTypeValue2 = "inactive"
         state.rTypeAO = accelerationRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In accelerationRestrictionHandler - No Devices"
-    } 
+    }
 }
 
 def contactRestrictionHandler() {
@@ -2063,8 +2027,6 @@ def contactRestrictionHandler() {
         state.rTypeValue2 = "closed"
         state.rTypeAO = contactRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In contactRestrictionHandler - No Devices"
     } 
 }
 
@@ -2077,8 +2039,6 @@ def garageDoorRestrictionHandler() {
         state.rTypeValue2 = "closed"
         state.rTypeAO = garageDoorRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In garageDoorRestrictionHandler - No Devices"
     } 
 }
 
@@ -2091,8 +2051,6 @@ def lockRestrictionHandler() {
         state.rTypeValue2 = "unlocked"
         state.rTypeAO = false
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In lockRestrictionHandler - No Devices"
     } 
 }
 
@@ -2105,9 +2063,7 @@ def motionRestrictionHandler() {
         state.rTypeValue2 = "inactive"
         state.rTypeAO = motionRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In motionRestrictionHandler - No Devices"
-    } 
+    }
 }
 
 def presenceRestrictionHandler() {
@@ -2119,8 +2075,6 @@ def presenceRestrictionHandler() {
         state.rTypeValue2 = "present"
         state.rTypeAO = presenceRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In presenceRestrictionHandler - No Devices"
     }
 }
 
@@ -2133,8 +2087,6 @@ def switchRestrictionHandler() {
         state.rTypeValue2 = "off"
         state.rTypeAO = switchRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In switchRestrictionHandler - No Devices"
     }
 }
 
@@ -2147,8 +2099,6 @@ def waterRestrictionHandler() {
         state.rTypeValue2 = "Dry"
         state.rTypeAO = waterRANDOR
         restrictionHandler()
-    } else {
-        if(logEnable) log.debug "In waterRestrictionHandler - No Devices"
     }
 }
 
@@ -2261,8 +2211,14 @@ def dimmerOnActionHandler() {
 def dimmerOnReverseActionHandler() {
     if(switchesLCAction) {
         setOnLC.each { it ->
-            if(logEnable) log.debug "In dimmerOnReverseActionHandler - Turning off ${it}"
-            it.off()
+            //value = state.oldValue_$it
+            //theStatus = state.oldStatus_$it
+            //if(logEnable) log.debug "In dimmerOnReverseActionHandler - Reversing Light: ${it} - Old theStatus: ${theStatus} - Old value: ${value}"
+            //it.setColor(value)
+            //pauseExecution(500)
+            //if(theStatus == "off") {
+                it.off()
+            //}
         }
     }
 }
@@ -2355,17 +2311,14 @@ def lockUserActionHandler(evt) {
             if(lockStatus == "unlocked") {
                 if(logEnable) log.trace "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
                 if(theLocks) {
-                    //if(logEnable) log.trace "In lockUserActionHandler - lockdata: ${lockdata}"
                     if (lockdata && !lockdata[0].startsWith("{")) {
                         lockdata = decrypt(lockdata)
-                        //log.trace "Lock Data: ${lockdata}"
                         if (lockdata == null) {
                             log.debug "Unable to decrypt lock code from device: ${lockName}"
                             return
                         }
                     }
                     def codeMap = parseJson(lockdata ?: "{}").find{ it }
-                    //if(logEnable) log.trace "In lockUserActionHandler - codeMap: ${codeMap}"
                     if (!codeMap) {
                         if(logEnable) log.trace "In lockUserActionHandler - Lock Code not available."
                         return
@@ -2828,7 +2781,8 @@ def setLevelandColorHandler() {
     }
     
     int onLevel = state.onLevel
-	//def value = [switch: "on", hue: hueColor, saturation: saturation, level: onLevel]
+	if(saturation == null) saturation = 100
+    
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
     
     
@@ -2844,7 +2798,13 @@ def setLevelandColorHandler() {
             if(logEnable) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
             
         	if (it.hasCommand('setColor')) {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                oldHueColor = it.currentValue("hue")
+                oldSaturation = it.currentValue("saturation")
+                oldLevel = it.currentValue("level")
+                //state.oldStatus_$it = it.currentValue("switch")
+                //state.oldValue_$it = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
+                
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
@@ -2904,18 +2864,6 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 	return result ? result[0..-2] : ""
 }
 
-def appButtonHandler(buttonPressed) {
-    state.whichButton = buttonPressed
-    log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
-    
-    if(state.whichButton == "testButton"){
-        log.debug "In appButtonHandler - testButton"
-        runTest = true
-        startTheProcess()
-        runTest = false
-    }
-}
-
 // ********** Normal Stuff **********
 
 def logsOff() {
@@ -2937,8 +2885,6 @@ def checkEnableHandler() {
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
-	if(state.daysMatch == null){state.daysMatch = false}
-	if(state.msg == null){state.msg = ""}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
