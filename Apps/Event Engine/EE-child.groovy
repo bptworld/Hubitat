@@ -37,16 +37,7 @@
  *
  *  Changes:
  *
- *  1.3.9 - 09/16/20 - Adjustments to setPoint
- *  1.3.8 - 09/16/20 - Added an End Time option to Just Sunset and Just Sunrise, added Trigger: Voltage, other adjustments 
- *  1.3.7 - 09/16/20 - between two times adjustments
- *  1.3.6 - 09/16/20 - setPoint adjustments
- *  1.3.5 - 09/15/20 - Time trigger adjustments
- *  1.3.4 - 09/15/20 - Adjustments
- *  1.3.3 - 09/15/20 - Adjustments
- *  1.3.2 - 09/15/20 - Cosmetic changes - added more descriptions
- *  1.3.1 - 09/15/20 - Found major bug, everyone needs to update.  Other adjustments
- *  1.3.0 - 09/15/20 - Locks trigger can now specify lock users, lots of other adjustments
+ *  1.4.0 - 09/17/20 - Fixed issue with delay, added more Mode options
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
  *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.9"
+	state.version = "1.4.0"
 }
 
 definition(
@@ -530,10 +521,13 @@ def pageConfig() {
                     
                     paragraph "Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                     input "modeRestriction", "bool", defaultValue: false, title: "Mode as Restriction", description: "Mode Restriction", submitOnChange:true
+                    input "mode2Event", "mode", title: "If in this Mode(s), then do nothing", multiple:true, submitOnChange:true
+                    paragraph "<small>* This will stop this Cog from running any events.</small>"
                 }
                 paragraph "<hr>"
             } else {
                 app.removeSetting("modeEvent")
+                app.removeSetting("mode2Event")
                 app?.updateSetting("modeOnOff",[value:"false",type:"bool"])
                 app?.updateSetting("modeRestriction",[value:"false",type:"bool"])
             }
@@ -1244,14 +1238,24 @@ def startTheProcess(evt) {
         state.setPointGood = false
         state.isThereSetpoints = false
         state.isThereDevices = false
+        state.mode2Restriction = false
         state.skip = false
         if(preMadePeriodic) state.nothingToDo = false
         
         if(evt) {
-            state.whoHappened = evt.displayName
-            state.whatHappened = evt.value
-            if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${state.whoHappened}: ${state.whatHappened} ********************"
-            state.hasntDelayedYet = true
+            if(evt == "again") {
+                state.whoHappened = "NA"
+                state.whatHappened = "NA"
+            } else {
+                try {
+                    state.whoHappened = evt.displayName
+                    state.whatHappened = evt.value
+                } catch(e) {
+                    // Do nothing
+                }
+                if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${state.whoHappened}: ${state.whatHappened} ********************"
+                state.hasntDelayedYet = true
+            }
         }
         
         if(runTest) {
@@ -1276,6 +1280,7 @@ def startTheProcess(evt) {
                 if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
                 if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }
                 if(modeRestriction && !state.modeStatus) { state.nothingToDo = true; state.skip = true }
+                if(state.mode2Restriction) { state.nothingToDo = true; state.skip = true }
             }
             
             if(state.skip) {
@@ -1303,7 +1308,11 @@ def startTheProcess(evt) {
         }
         
         if(state.skip) { 
-            state.nothingToDo = false
+            if(state.mode2Restriction) {
+                state.nothingToDo = true
+            } else {
+                state.nothingToDo = false
+            }
         } else {
             if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
@@ -1626,43 +1635,58 @@ def modeHandler() {
         state.modeStatus = false
         deviceTrue = 0
 
-        modeEvent.each { it ->
-            theValue = location.mode
-            if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
+        if(mode2Event) {
+            mode2Event.each { it ->
+                theValue = location.mode
+                if(logEnable) log.debug "In modeHandler - mode2Event - Checking: ${it} - value: ${theValue}"
 
-            if(theValue == it){
-                if(modeOnOff) {
-                    if(theValue) { 
-                        state.nothingToDo = false
-                        state.modeStatus = true
-                        deviceTrue = deviceTrue + 1
-                    }
-                }
-                if(!modeOnOff) {
-                    if(!theValue) { 
-                        state.nothingToDo = false
-                        state.modeStatus = true
-                        deviceTrue = deviceTrue + 1
-                    }
+                if(theValue == it){
+                    state.mode2Restriction = true
                 }
             }
         }
         
-        if(state.typeAO) {
-            if(deviceTrue >= 1) { // OR
-                state.devicesGood = true
-                state.nothingToDo = false
-            }
+        if(state.mode2Restriction) {
+            // Do nothing
         } else {
-            if(deviceTrue == theCount) { // AND
-                state.devicesGood = true
-                state.nothingToDo = false
-            }   
-        }  
+            modeEvent.each { it ->
+                theValue = location.mode
+                if(logEnable) log.debug "In modeHandler - modeEvent - Checking: ${it} - value: ${theValue}"
+
+                if(theValue == it){
+                    if(modeOnOff) {
+                        if(theValue) { 
+                            state.nothingToDo = false
+                            state.modeStatus = true
+                            deviceTrue = deviceTrue + 1
+                        }
+                    }
+                    if(!modeOnOff) {
+                        if(!theValue) { 
+                            state.nothingToDo = false
+                            state.modeStatus = true
+                            deviceTrue = deviceTrue + 1
+                        }
+                    }
+                }
+            }
+        
+            if(state.typeAO) {
+                if(deviceTrue >= 1) { // OR
+                    state.devicesGood = true
+                    state.nothingToDo = false
+                }
+            } else {
+                if(deviceTrue == theCount) { // AND
+                    state.devicesGood = true
+                    state.nothingToDo = false
+                }   
+            }  
+        }
     } else {
         state.modeStatus = true
     }
-    if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus} - mode2Restriction: ${state.mode2Restriction} - nothingToDo: ${state.nothingToDo}"
 }
 
 def ruleMachineHandler() {
@@ -1752,7 +1776,7 @@ def voltageHandler() {
         state.setPointLow = veSetPointLow
         setPointHandler()
     } else {
-        if(logEnable) log.debug "In tempHandler - No Devices"
+        if(logEnable) log.debug "In voltageHandler - No Devices"
     }
     
     // Keep in LAST setpoint
