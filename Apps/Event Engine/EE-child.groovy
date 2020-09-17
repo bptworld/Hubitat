@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.4.1 - 09/17/20 - Added Retrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
+ *  1.4.1 - 09/17/20 - Added Restrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
  *  1.4.0 - 09/17/20 - Fixed issue with delay, added more Mode options
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
@@ -51,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.0"
+	state.version = "1.4.1"
 }
 
 definition(
@@ -2038,7 +2038,7 @@ def setPointHandler() {
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
 }
 
-// ********** Start Retrictions **********
+// ********** Start Restrictions **********
 
 def accelerationRestrictionHandler() {
     if(accelerationRestrictionEvent) {
