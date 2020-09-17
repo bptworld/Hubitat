@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.1 - 09/17/20 - Added Retrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
  *  1.4.0 - 09/17/20 - Fixed issue with delay, added more Mode options
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
@@ -265,9 +266,9 @@ def pageConfig() {
                 if(accelerationEvent) {
                     input "asInactiveActive", "bool", title: "Trigger when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
                     if(asInactiveActive) {
-                        paragraph "Trigger will fire when Sensor(s) become Active"
+                        paragraph "Trigger will fire when Sensor(s) becomes Active"
                     } else {
-                        paragraph "Trigger will fire when Sensor(s) become Inactive"
+                        paragraph "Trigger will fire when Sensor(s) becomes Inactive"
                     }
                     
                     input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
@@ -276,12 +277,34 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Acceleration Sensors are true"
                     }
+                } else {
+                    app.removeSetting("accelerationEvent")
+                    app?.updateSetting("asInactiveActive",[value:"false",type:"bool"])
+                    app?.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
+
+                }
+                
+                input "accelerationRestrictionEvent", "capability.accelerationSensor", title: "Restrict By Acceleration Sensor", required: false, multiple: true, submitOnChange: true
+                if(accelerationRestrictionEvent) {
+                    input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
+                    if(arInactiveActive) {
+                        paragraph "Restrict when Sensor(s) becomes Active"
+                    } else {
+                        paragraph "Restrict when Sensor(s) becomes Inactive"
+                    }
+                    
+                    input "accelerationRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(accelerationRANDOR) {
+                        paragraph "Restrict when <b>any</b> Acceleration Sensor is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Acceleration Sensors are true"
+                    }
+                } else {
+                    app.removeSetting("accelerationRestrictionEvent")
+                    app?.updateSetting("arInactiveActive",[value:"false",type:"bool"])
+                    app?.updateSetting("accelerationRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
-            } else {
-                app.removeSetting("accelerationEvent")
-                app?.updateSetting("asInactiveActive",[value:"false",type:"bool"])
-                app?.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xBattery")) {
@@ -331,12 +354,33 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Contact Sensors are true"
                     }
+                } else {
+                    app.removeSetting("contactEvent")
+                    app?.updateSetting("csClosedOpen",[value:"false",type:"bool"])
+                    app?.updateSetting("contactANDOR",[value:"false",type:"bool"])
+                }
+                
+                input "contactRestrictionEvent", "capability.contactSensor", title: "Restrict By Contact Sensor", required: false, multiple: true, submitOnChange: true
+                if(contactRestrictionEvent) {
+                    input "crClosedOpen", "bool", title: "Restrict when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
+                    if(crClosedOpen) {
+                        paragraph "Restrict when Sensor(s) become Open"
+                    } else {
+                        paragraph "Restrict when Sensor(s) become Closed"
+                    }
+                    
+                    input "contactRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(contactRANDOR) {
+                        paragraph "Restrict when <b>any</b> Contact Sensor is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Contact Sensors are true"
+                    }
+                } else {
+                    app.removeSetting("contactRestrictionEvent")
+                    app?.updateSetting("crClosedOpen",[value:"false",type:"bool"])
+                    app?.updateSetting("contactRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
-            } else {
-                app.removeSetting("contactEvent")
-                app?.updateSetting("csClosedOpen",[value:"false",type:"bool"])
-                app?.updateSetting("contactANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xEnergy")) {
@@ -386,12 +430,33 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Garage Doors are true"
                     }
+                } else {
+                    app.removeSetting("garageDoorEvent")
+                    app?.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
+                    app?.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
                 }
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("garageDoorEvent")
-                app?.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
-                app?.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
+                
+                input "garageDoorRestrictionEvent", "capability.garageDoorControl", title: "Restrict By Garage Door", required: false, multiple: true, submitOnChange: true
+                if(garageDoorRestrictionEvent) {
+                    input "gdrClosedOpen", "bool", title: "Restrict when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
+                    if(gdrClosedOpen) {
+                        paragraph "Restrict when Sensor(s) become Open"
+                    } else {
+                        paragraph "Restrict when Sensor(s) become Closed"
+                    }
+                    
+                    input "garageDoorRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(garageDoorANDOR) {
+                        paragraph "Restrict when <b>any</b> Garage Door is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Garage Doors are true"
+                    }
+                } else {
+                    app.removeSetting("garageDoorRestrictionEvent")
+                    app?.updateSetting("gdsClosedOpen",[value:"false",type:"bool"])
+                    app?.updateSetting("garageDoorRANDOR",[value:"false",type:"bool"])
+                }
+                paragraph "<hr>"   
             }
 
             if(triggerType.contains("xHSMAlert")) {
@@ -484,31 +549,38 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) become Unlocked"
                     }
-/*
-                If changing this, remember to also change lockHander
-                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
-                    if(lockANDOR) {
-                        paragraph "Trigger will fire when <b>any</b> Lock is true"
-                    } else {
-                        paragraph "Trigger will fire when <b>all</b> Locks are true"
-                    }
-*/
-                }
-
-                if(lockEvent) {
+                
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User", options: theNames, required: false, multiple: true, submitOnChange: true
                     
                     paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
                 } else {
                     app.removeSetting("lockUser")
+                    app.removeSetting("lockEvent")
+                    app?.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
+                    app?.updateSetting("lockANDOR",[value:"false",type:"bool"])
                 }
-
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("lockEvent")
-                app?.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
-                app?.updateSetting("lockANDOR",[value:"false",type:"bool"])
+                
+                input "lockRestrictionEvent", "capability.lock", title: "Restrict By Lock", required: false, multiple: false, submitOnChange: true
+                if(lockRestrictionEvent) {
+                    input "lrUnlockedLocked", "bool", title: "Restrict when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
+                    if(lrUnlockedLocked) {
+                        paragraph "Restrict when Sensor(s) become Locked"
+                    } else {
+                        paragraph "Restrict when Sensor(s) become Unlocked"
+                    }
+                
+                    theNames = getLockCodeNames(lockRestrictionEvent)
+                    input "lockRestrictionUser", "enum", title: "Restrict By Lock User", options: theNames, required: false, multiple: true, submitOnChange: true
+                    
+                    paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
+                } else {
+                    app.removeSetting("lockRestrictionUser")
+                    app.removeSetting("lockRestrictionEvent")
+                    app?.updateSetting("lrUnlockedLocked",[value:"false",type:"bool"])
+                    app?.updateSetting("lockRANDOR",[value:"false",type:"bool"])
+                }
+                paragraph "<hr>" 
             }
 
             if(triggerType.contains("xMode")) {
@@ -518,18 +590,21 @@ def pageConfig() {
                     input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
                     if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
                     if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
-                    
-                    paragraph "Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
-                    input "modeRestriction", "bool", defaultValue: false, title: "Mode as Restriction", description: "Mode Restriction", submitOnChange:true
-                    input "mode2Event", "mode", title: "If in this Mode(s), then do nothing", multiple:true, submitOnChange:true
-                    paragraph "<small>* This will stop this Cog from running any events.</small>"
+                } else {
+                    app.removeSetting("modeEvent")
+                    app.removeSetting("modeOnOff")
+                }
+                
+                input "modeRestrictionEvent", "mode", title: "Restrict By Mode", multiple:true, submitOnChange:true
+                if(modeRestrictionEvent) {
+                    input "modeROnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
+                    if(modeROnOff) paragraph "Restrict if <b>any</b> of the modes are on."
+                    if(!modeROnOff) paragraph "Restrict if <b>any</b> of the modes are off."
+                } else {
+                    app.removeSetting("modeRestrictionEvent")
+                    app.removeSetting("modeROnOff")
                 }
                 paragraph "<hr>"
-            } else {
-                app.removeSetting("modeEvent")
-                app.removeSetting("mode2Event")
-                app?.updateSetting("modeOnOff",[value:"false",type:"bool"])
-                app?.updateSetting("modeRestriction",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xMotion")) {
@@ -538,9 +613,9 @@ def pageConfig() {
                 if(motionEvent) {
                     input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
                     if(meInactiveActive) {
-                        paragraph "Trigger will fire when Sensor(s) become Active"
+                        paragraph "Trigger will fire when Sensor(s) becomes Active"
                     } else {
-                        paragraph "Trigger will fire when Sensor(s) become Inactive"
+                        paragraph "Trigger will fire when Sensor(s) becomes Inactive"
                     }
                     
                     input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
@@ -549,12 +624,33 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Motion Sensors are true"
                     }
+                } else {
+                    app.removeSetting("motionEvent")
+                    app?.updateSetting("meInactiveActive",[value:"false",type:"bool"])
+                    app?.updateSetting("motionANDOR",[value:"false",type:"bool"])
+                }
+                
+                input "motionRestrictionEvent", "capability.motionSensor", title: "Restrict By Motion Sensor", required:false, multiple:true, submitOnChange:true
+                if(motionRestrictionEvent) {
+                    input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
+                    if(mrInactiveActive) {
+                        paragraph "Restrict when Sensor(s) becomes Active"
+                    } else {
+                        paragraph "Restrict when Sensor(s) becomes Inactive"
+                    }
+                    
+                    input "motionRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(motionRANDOR) {
+                        paragraph "Restrict when <b>any</b> Motion Sensor is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Motion Sensors are true"
+                    }
+                } else {
+                    app.removeSetting("motionRestrictionEvent")
+                    app?.updateSetting("mrInactiveActive",[value:"false",type:"bool"])
+                    app?.updateSetting("motionRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
-            } else {
-                app.removeSetting("motionEvent")
-                app?.updateSetting("meInactiveActive",[value:"false",type:"bool"])
-                app?.updateSetting("motionANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xPower")) {
@@ -604,23 +700,44 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Presence Sensors are true"
                     }
+                } else {
+                    app.removeSetting("presenceEvent")
+                    app?.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
+                    app?.updateSetting("presentANDOR",[value:"false",type:"bool"])
+                }
+                
+                input "presenceRestrictionEvent", "capability.presenceSensor", title: "Restrict By Presence Sensor", required: false, multiple: true, submitOnChange: true
+                if(presenceRestrictionEvent) {
+                    input "prPresentNotPresent", "bool", title: "Restrict when Present (off) or Not Present (on)", description: "Present", defaultValue:false, submitOnChange:true
+                    if(prPresentNotPresent) {
+                        paragraph "Restrict when Sensor(s) become Not Present"
+                    } else {
+                        paragraph "Restrict when Sensor(s) become Present"
+                    }
+                    
+                    input "presentRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(presentRANDOR) {
+                        paragraph "Restrict when <b>any</b> Presence Sensor is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Presence Sensors are true"
+                    }
+                } else {
+                    app.removeSetting("presenceRestrictionEvent")
+                    app?.updateSetting("prPresentNotPresent",[value:"false",type:"bool"])
+                    app?.updateSetting("presentRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
-            } else {
-                app.removeSetting("presenceEvent")
-                app?.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
-                app?.updateSetting("presentANDOR",[value:"false",type:"bool"])
             }
 
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
-                input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
+                input "switchEvent", "capability.switch", title: "Trigger by Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
                     input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
                     if(seOffOn) {
-                        paragraph "Trigger will fire when Sensor(s) become On"
+                        paragraph "Trigger will fire when Sensor(s) becomes On"
                     } else {
-                        paragraph "Trigger will fire when Sensor(s) become Off"
+                        paragraph "Trigger will fire when Sensor(s) becomes Off"
                     }
                     
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
@@ -628,13 +745,35 @@ def pageConfig() {
                         paragraph "Trigger will fire when <b>any</b> Switch is true"
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Switches are true"
-                    }
+                    }                  
+                } else {
+                    app.removeSetting("switchEvent")
+                    app?.updateSetting("seOffOn",[value:"false",type:"bool"])
+                    app?.updateSetting("switchANDOR",[value:"false",type:"bool"])
                 }
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("switchEvent")
-                app?.updateSetting("seOffOn",[value:"false",type:"bool"])
-                app?.updateSetting("switchANDOR",[value:"false",type:"bool"])
+                
+                input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
+                if(switchRestrictionEvent) {
+                    input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
+                    if(srOffOn) {
+                        paragraph "Restrict when Switch(es) are On"
+                    } else {
+                        paragraph "Restrict when Switch(es) are Off"
+                    }
+                    
+                    input "switchRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(switchRANDOR) {
+                        paragraph "Restrict when <b>any</b> Switch is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Switches are true"
+                    }                  
+                } else {
+                    app.removeSetting("switchRestrictionEvent")
+                    app?.updateSetting("srOffOn",[value:"false",type:"bool"])
+                    app?.updateSetting("switchRANDOR",[value:"false",type:"bool"])
+                }
+                
+                paragraph "<hr>"  
             }
 
             if(triggerType.contains("xTemp")) {
@@ -713,12 +852,32 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when <b>all</b> Water Sensors are true"
                     }
+                } else {
+                    app.removeSetting("waterEvent")
+                    app?.updateSetting("wsDryWet",[value:"false",type:"bool"])
+                    app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
+                }
+                
+                input "waterRestrictionEvent", "capability.waterSensor", title: "Restrict By Water Sensor", required: false, multiple: true, submitOnChange: true
+                if(waterRestrictionEvent) {
+                    input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
+                    if(wRDryWet) {
+                        paragraph "Restrict when Sensor(s) become Wet"
+                    } else {
+                        paragraph "Restrict when Sensor(s) become Dry"
+                    }
+                    input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(waterANDOR) {
+                        paragraph "Restrict when <b>any</b> Water Sensor is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Water Sensors are true"
+                    }
+                } else {
+                    app.removeSetting("waterRestrictionEvent")
+                    app?.updateSetting("wrDryWet",[value:"false",type:"bool"])
+                    app?.updateSetting("waterRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
-            } else {
-                app.removeSetting("waterEvent")
-                app?.updateSetting("wsDryWet",[value:"false",type:"bool"])
-                app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
@@ -1039,8 +1198,6 @@ def pageConfig() {
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required: false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
-                paragraph "<hr>"
-                input "testButton", "button", title: "Test Actions"
             }
         }
         display2()
@@ -1238,7 +1395,7 @@ def startTheProcess(evt) {
         state.setPointGood = false
         state.isThereSetpoints = false
         state.isThereDevices = false
-        state.mode2Restriction = false
+        state.areRestrictions = false
         state.skip = false
         if(preMadePeriodic) state.nothingToDo = false
         
@@ -1258,12 +1415,23 @@ def startTheProcess(evt) {
             }
         }
         
-        if(runTest) {
+        accelerationRestrictionHandler()
+        contactRestrictionHandler()
+        garageDoorRestrictionHandler()           
+        lockRestrictionHandler()
+        motionRestrictionHandler()             
+        presenceRestrictionHandler()
+        switchRestrictionHandler()            
+        waterRestrictionHandler()
+        modeRestrictionHandler()
+        
+        if(state.areRestrictions) {
+            if(logEnable) log.debug "In startTheProcess - Restrictions are true, skipping"
             state.skip = true
-            if(logEnable) log.warn "*********** RUNNING TEST ***********"
+            state.nothingToDo = true
         } else {        
             if(state.skip) {
-                if(logEnable) log.debug "In startTheProcess - Skipping Time checks for Test"
+                if(logEnable) log.debug "In startTheProcess - Restrictions are true,Skipping Time checks"
             } else {
                 // Time
                 checkTime()
@@ -1274,17 +1442,15 @@ def startTheProcess(evt) {
                 hsmAlertHandler(state.whatHappened)
                 hsmStatusHandler(state.whatHappened)
 
-                if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeStatus: ${state.modeStatus}"
+                if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch}"
 
                 if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
                 if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
                 if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }
-                if(modeRestriction && !state.modeStatus) { state.nothingToDo = true; state.skip = true }
-                if(state.mode2Restriction) { state.nothingToDo = true; state.skip = true }
             }
             
             if(state.skip) {
-                if(logEnable) log.debug "In startTheProcess - Skipping Device checks for Test"
+                if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
             } else {
                 // Devices
                 accelerationHandler()
@@ -1308,11 +1474,7 @@ def startTheProcess(evt) {
         }
         
         if(state.skip) { 
-            if(state.mode2Restriction) {
-                state.nothingToDo = true
-            } else {
-                state.nothingToDo = false
-            }
+            // do nothing
         } else {
             if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
@@ -1320,7 +1482,7 @@ def startTheProcess(evt) {
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
-            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeStatus && state.setPointGood && state.devicesGood
+            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.setPointGood && state.devicesGood
             if(state.skip) { allGood = true }
             if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood}"
             if(allGood) {            
@@ -1381,6 +1543,8 @@ def startTheProcess(evt) {
         if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
     }
 }
+
+// ********** Start Triggers **********
 
 def accelerationHandler() {
     if(accelerationEvent) {
@@ -1632,61 +1796,41 @@ def modeHandler() {
     if(logEnable) log.debug "In modeHandler (${state.version})"
     if(modeEvent) {
         if(logEnable) log.debug "In modeHandler - modeEvent: ${modeEvent}"
-        state.modeStatus = false
         deviceTrue = 0
 
-        if(mode2Event) {
-            mode2Event.each { it ->
-                theValue = location.mode
-                if(logEnable) log.debug "In modeHandler - mode2Event - Checking: ${it} - value: ${theValue}"
+        modeEvent.each { it ->
+            theValue = location.mode
+            if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
 
-                if(theValue == it){
-                    state.mode2Restriction = true
+            if(theValue == it){
+                if(modeOnOff) {
+                    if(theValue) { 
+                        state.nothingToDo = false
+                        deviceTrue = deviceTrue + 1
+                    }
+                }
+                if(!modeOnOff) {
+                    if(!theValue) { 
+                        state.nothingToDo = false
+                        deviceTrue = deviceTrue + 1
+                    }
                 }
             }
         }
-        
-        if(state.mode2Restriction) {
-            // Do nothing
+
+        if(state.typeAO) {
+            if(deviceTrue >= 1) { // OR
+                state.devicesGood = true
+                state.nothingToDo = false
+            }
         } else {
-            modeEvent.each { it ->
-                theValue = location.mode
-                if(logEnable) log.debug "In modeHandler - modeEvent - Checking: ${it} - value: ${theValue}"
-
-                if(theValue == it){
-                    if(modeOnOff) {
-                        if(theValue) { 
-                            state.nothingToDo = false
-                            state.modeStatus = true
-                            deviceTrue = deviceTrue + 1
-                        }
-                    }
-                    if(!modeOnOff) {
-                        if(!theValue) { 
-                            state.nothingToDo = false
-                            state.modeStatus = true
-                            deviceTrue = deviceTrue + 1
-                        }
-                    }
-                }
-            }
-        
-            if(state.typeAO) {
-                if(deviceTrue >= 1) { // OR
-                    state.devicesGood = true
-                    state.nothingToDo = false
-                }
-            } else {
-                if(deviceTrue == theCount) { // AND
-                    state.devicesGood = true
-                    state.nothingToDo = false
-                }   
-            }  
-        }
-    } else {
-        state.modeStatus = true
+            if(deviceTrue == theCount) { // AND
+                state.devicesGood = true
+                state.nothingToDo = false
+            }   
+        }  
     }
-    if(logEnable) log.debug "In modeHandler - modeStatus: ${state.modeStatus} - mode2Restriction: ${state.mode2Restriction} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In modeHandler - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
 }
 
 def ruleMachineHandler() {
@@ -1892,6 +2036,216 @@ def setPointHandler() {
     }     
     if(!state.setPointGood && reverse) state.nothingToDo = false
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
+}
+
+// ********** Start Retrictions **********
+
+def accelerationRestrictionHandler() {
+    if(accelerationRestrictionEvent) {
+        state.rEventName = accelerationRestrictionEvent
+        state.rEventType = "acceleration"
+        state.rType = arInactiveActive
+        state.rTypeValue1 = "active"
+        state.rTypeValue2 = "inactive"
+        state.rTypeAO = accelerationRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In accelerationRestrictionHandler - No Devices"
+    } 
+}
+
+def contactRestrictionHandler() {
+    if(contactRestrictionEvent) {
+        state.rEventName = contactRestrictionEvent
+        state.rEventType = "contact"
+        state.rType = crClosedOpen
+        state.rTypeValue1 = "open"
+        state.rTypeValue2 = "closed"
+        state.rTypeAO = contactRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In contactRestrictionHandler - No Devices"
+    } 
+}
+
+def garageDoorRestrictionHandler() {
+    if(garageDoorRestrictionEvent) {
+        state.rEventName = garageDoorRestrictionEvent
+        state.rEventType = "door"
+        state.rEype = gdrClosedOpen
+        state.rTypeValue1 = "open"
+        state.rTypeValue2 = "closed"
+        state.rTypeAO = garageDoorRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In garageDoorRestrictionHandler - No Devices"
+    } 
+}
+
+def lockRestrictionHandler() {
+    if(lockRestrictionEvent) {
+        state.rEventName = lockRestrictionEvent
+        state.rEventType = "lock"
+        state.rType = lrUnlockedLocked
+        state.rTypeValue1 = "locked"
+        state.rTypeValue2 = "unlocked"
+        state.rTypeAO = false
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In lockRestrictionHandler - No Devices"
+    } 
+}
+
+def motionRestrictionHandler() {
+    if(motionRestrictionEvent) {
+        state.rEventName = motionRestrictionEvent
+        state.rEventType = "motion"
+        state.rType = mrInactiveActive
+        state.rTypeValue1 = "active"
+        state.rTypeValue2 = "inactive"
+        state.rTypeAO = motionRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In motionRestrictionHandler - No Devices"
+    } 
+}
+
+def presenceRestrictionHandler() {
+    if(presenceRestrictionEvent) {
+        state.rEventName = presenceRestrictionEvent
+        state.rEventType = "presence"
+        state.rType = prPresentNotPresent
+        state.rTypeValue1 = "not present"
+        state.rTypeValue2 = "present"
+        state.rTypeAO = presenceRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In presenceRestrictionHandler - No Devices"
+    }
+}
+
+def switchRestrictionHandler() {
+    if(switchRestriction) {
+        state.rEventName = switchRestrictionEvent
+        state.rEventType = "switch"
+        state.rType = srOffOn
+        state.rTypeValue1 = "on"
+        state.rTypeValue2 = "off"
+        state.rTypeAO = switchRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In switchRestrictionHandler - No Devices"
+    }
+}
+
+def waterRestrictionHandler() {
+    if(waterRestrictionEvent) {
+        state.rEventName = waterRestrictionEvent
+        state.rEventType = "water"
+        state.rType = wrDryWet
+        state.rTypeValue1 = "Wet"
+        state.rTypeValue2 = "Dry"
+        state.rTypeAO = waterRANDOR
+        restrictionHandler()
+    } else {
+        if(logEnable) log.debug "In waterRestrictionHandler - No Devices"
+    }
+}
+
+def restrictionHandler() {
+    if(logEnable) log.debug "In restrictionHandler (${state.version}) - ${state.rEventType.toUpperCase()}"
+    deviceTrue = 0
+    try {
+        theCount = state.rEventName.size()
+    } catch(e) {
+        theCount = 1
+    }
+
+    state.rEventName.each { it ->
+        theValue = it.currentValue("${state.rEventType}")
+        if(logEnable) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
+
+        if(state.rType) {
+            if(theValue == state.rTypeValue1) { 
+                if(state.rEventType == "lock") {
+                    if(logEnable) log.debug "In restrictionHandler - Lock"
+                    state.whoUnlocked = it.currentValue("lastCodeName")
+                    lockRestrictionUser.each { us ->
+                        if(logEnable) log.trace "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(us == state.whoUnlocked) { 
+                            if(logEnable) log.trace "MATCH: ${state.whoUnlocked}"
+                            deviceTrue = deviceTrue + 1
+                        }                   
+                    }
+                } else {
+                    if(logEnable) log.debug "In restrictionHandler - Everything Else 1"
+                    deviceTrue = deviceTrue + 1
+                }                  
+            } 
+        } else if(theValue == state.rTypeValue2) { 
+            if(state.rEventType == "lock") {
+                state.whoUnlocked = it.currentValue("lastCodeName")
+                lockRestrictionUser.each { us ->
+                    if(logEnable) log.trace "I'm checking lock names - $us vs $state.whoUnlocked"
+                    if(us == state.whoUnlocked) { 
+                        if(logEnable) log.trace "MATCH: ${state.whoUnlocked}"
+                        deviceTrue = deviceTrue + 1
+                    }                   
+                }
+            } else {
+                if(logEnable) log.debug "In restrictionHandler - Everything Else 2"
+                deviceTrue = deviceTrue + 1
+            }
+        }
+    }
+    if(logEnable) log.debug "In restrictionHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} vs ${theCount} - type: ${state.rTypeAO}" 
+    if(state.rTypeAO) {
+        if(deviceTrue >= 1) { // OR
+            state.areRestrictions = true
+        }
+    } else {
+        if(deviceTrue == theCount) { // AND
+            state.areRestrictions = true
+        }   
+    }   
+    if(logEnable) log.debug "In restrictionHandler - ${state.rEventType.toUpperCase()} - areRestrictions: ${state.areRestrictions}"   
+}
+
+def modeRestrictionHandler() {
+    if(logEnable) log.debug "In modeRestrictionHandler (${state.version})"
+    if(modeRestrictionEvent) {
+        if(modeRestrictionEvent) log.debug "In modeRestrictionHandler - modeRestrictionEvent: ${modeRestrictionEvent}"
+        deviceTrue = 0
+
+        modeRestrictionEvent.each { it ->
+            theValue = location.mode
+            if(logEnable) log.debug "In modeRestrictionHandler - Checking: ${it} - value: ${theValue}"
+
+            if(theValue == it){
+                if(modeROnOff) {
+                    if(theValue) { 
+                        deviceTrue = deviceTrue + 1
+                    }
+                }
+                if(!modeOnOff) {
+                    if(!theValue) { 
+                        deviceTrue = deviceTrue + 1
+                    }
+                }
+            }
+        }
+
+        if(state.typeAO) {
+            if(deviceTrue >= 1) { // OR
+                state.areRestrictions = true
+            }
+        } else {
+            if(deviceTrue == theCount) { // AND
+                state.areRestrictions = true
+            }   
+        }  
+    }
+    if(logEnable) log.debug "In modeRestrictionHandler - areRestrictions: ${state.areRestrictions}"
 }
 
 // ********** Start Actions **********
