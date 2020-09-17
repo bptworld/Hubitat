@@ -37,7 +37,8 @@
  *
  *  Changes:
  *
- *  1.3.8 - 09/16/20 - Added an End Time option to Just Sunset and Just Sunrise, added Triger: Voltage, other adjustments 
+ *  1.3.9 - 09/16/20 - Adjustments to setPoint
+ *  1.3.8 - 09/16/20 - Added an End Time option to Just Sunset and Just Sunrise, added Trigger: Voltage, other adjustments 
  *  1.3.7 - 09/16/20 - between two times adjustments
  *  1.3.6 - 09/16/20 - setPoint adjustments
  *  1.3.5 - 09/15/20 - Time trigger adjustments
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.3.8"
+	state.version = "1.3.9"
 }
 
 definition(
@@ -739,7 +740,7 @@ def pageConfig() {
 
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
-                    paragraph "Delay the notifications until all devices has been in state for XX minutes."
+                    paragraph "Delay the notifications until all devices have been in state for XX minutes."
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required: true, multiple: false, range: '1..60'
                     paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the notifications will be cancelled.</small>"
                 } else {
@@ -748,7 +749,7 @@ def pageConfig() {
                 }
 
                 if(randomDelay) {
-                    paragraph "Delay the notifications until all devices has been in state for XX minutes."                
+                    paragraph "Delay the notifications until all devices have been in state for XX minutes."                
                     input "delayLow", "number", title: "Delay Low Limit (1 to 60)", required: true, multiple: false, range: '1..60', submitOnChange:true
                     input "delayHigh", "number", title: "Delay High Limit (1 to 60)", required: true, multiple: false, range: '1..60', submitOnChange:true
                     if(delayHigh <= delayLow) paragraph "<b>Delay High must be greater than Delay Low.</b>"                    
@@ -1770,7 +1771,7 @@ def setPointHandler() {
             setPointValue1 = setPointValue.toDouble()
         }
         
-        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue1} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh}"
+        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue1} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh} - nothingToDo: ${state.nothingToDo}"
 
         // *** setPointHigh ***
         if(state.setPointHigh && !state.setPointLow) {
@@ -1785,6 +1786,7 @@ def setPointHandler() {
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is HIGH but already notified.  Nothing to do."
+                    state.setPointGood = true
                 }
             } else {
                 if(state.setPointHighOK == "no") {
@@ -1793,6 +1795,7 @@ def setPointHandler() {
                     state.setPointHighOK = "yes"
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
         }
@@ -1810,6 +1813,7 @@ def setPointHandler() {
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is LOW but all ready notified.  Nothing to do."
+                    state.setPointGood = true
                 }
             } else {
                 if(state.setPointLowOK == "no") {
@@ -1818,6 +1822,7 @@ def setPointHandler() {
                     state.setPointLowOK = "yes"
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
         }
@@ -1834,6 +1839,7 @@ def setPointHandler() {
                     state.setPointHighOK = "no"
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is HIGH but already notified.  Nothing to do."
+                    state.setPointGood = true
                 }
             } else {
                 if(state.setPointLowOK == "yes") {
@@ -1842,6 +1848,7 @@ def setPointHandler() {
                     state.setPointLowOK = "no"
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is LOW but already notified.  Nothing to do."
+                    state.setPointGood = true
                 }
             }
             
@@ -1854,6 +1861,7 @@ def setPointHandler() {
                     state.setPointGood = true
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
+                    state.setPointGood = true
                 }
             }  
         }
