@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.3 - 09/17/20 - More adjustments to Mode, Reverse now effects color and level!
  *  1.4.2 - 09/17/20 - Adjustment to Mode
  *  1.4.1 - 09/17/20 - Added Restrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
  *  1.4.0 - 09/17/20 - Fixed issue with delay, added more Mode options
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.2"
+	state.version = "1.4.3"
 }
 
 definition(
@@ -1120,8 +1121,6 @@ def pageConfig() {
                 if(switchesOnAction || switchesOffAction || switchesLCAction) {
                     paragraph "<hr>"
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
-                    paragraph "<small>* Only controls on/off, does not effect color or level</small>"
-
                     if(reverse && (switchesOnAction || switchesLCAction)){
                         paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
                         input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
@@ -1784,16 +1783,12 @@ def modeHandler() {
 
             if(theValue == it){
                 if(modeOnOff) {
-                    if(theValue) { 
-                        state.nothingToDo = false
-                        deviceTrue = deviceTrue + 1
-                    }
+                    state.nothingToDo = false
+                    deviceTrue = deviceTrue + 1
                 }
                 if(!modeOnOff) {
-                    if(!theValue) { 
-                        state.nothingToDo = false
-                        deviceTrue = deviceTrue + 1
-                    }
+                    state.nothingToDo = false
+                    deviceTrue = deviceTrue + 1
                 }
             }
         }
@@ -2173,19 +2168,15 @@ def modeRestrictionHandler() {
 
             if(theValue == it){
                 if(modeROnOff) {
-                    if(theValue) { 
-                        deviceTrue = deviceTrue + 1
-                    }
+                    deviceTrue = deviceTrue + 1
                 }
-                if(!modeOnOff) {
-                    if(!theValue) { 
-                        deviceTrue = deviceTrue + 1
-                    }
+                if(!modeROnOff) {
+                    deviceTrue = deviceTrue + 1
                 }
             }
         }
 
-        if(state.typeAO) {
+        if(state.rTypeAO) {
             if(deviceTrue >= 1) { // OR
                 state.areRestrictions = true
             }
@@ -2211,14 +2202,33 @@ def dimmerOnActionHandler() {
 def dimmerOnReverseActionHandler() {
     if(switchesLCAction) {
         setOnLC.each { it ->
-            //value = state.oldValue_$it
-            //theStatus = state.oldStatus_$it
-            //if(logEnable) log.debug "In dimmerOnReverseActionHandler - Reversing Light: ${it} - Old theStatus: ${theStatus} - Old value: ${value}"
-            //it.setColor(value)
-            //pauseExecution(500)
-            //if(theStatus == "off") {
-                it.off()
-            //}
+            if(it.hasCommand("setColor")) {
+                name = (it.displayName).replace(" ","")
+                data = state.oldMap.get(name)            
+                def (oldStatus, oldHueColor, oldSaturation, oldLevel) =  data.split("::")           
+                int hueColor = oldHueColor.toInteger()
+                int saturation = oldSaturation.toInteger()
+                int level = oldLevel.toInteger()           
+                def theValue = [hue: hueColor, saturation: saturation, level: level]
+                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - Old theStatus: ${oldStatus} - Old value: ${theValue}"
+                it.setColor(theValue)
+                pauseExecution(500)
+                if(oldStatus == "off") {
+                    it.off()
+                }
+            } else if(it.hasCommand("setLevel")) {
+                name = (it.displayName).replace(" ","")
+                data = state.oldLevelMap.get(name)            
+                def (oldStatus, oldLevel) =  data.split("::")           
+                int level = oldLevel.toInteger()           
+                def theValue = [level: level]
+                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - Old theStatus: ${oldStatus} - Old value: ${theValue}"
+                it.setLevel(theValue)
+                pauseExecution(500)
+                if(oldStatus == "off") {
+                    it.off()
+                }
+            }
         }
     }
 }
@@ -2787,8 +2797,10 @@ def setLevelandColorHandler() {
     
     
 	if(state.fromWhere == "dimmerOn") {
-        if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
-    	setOnLC.each {
+        if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"  
+        state.oldMap = [:]
+        state.oldLevelMap = [:]
+        setOnLC.each {
             if(state.color == "No Change") {
                 hueColor = it.currentValue("hue")
                 saturation = it.currentValue("saturation")              
@@ -2801,12 +2813,18 @@ def setLevelandColorHandler() {
                 oldHueColor = it.currentValue("hue")
                 oldSaturation = it.currentValue("saturation")
                 oldLevel = it.currentValue("level")
-                //state.oldStatus_$it = it.currentValue("switch")
-                //state.oldValue_$it = [hue: oldHueColor, saturation: oldSaturation, level: oldLevel]
-                
+                name = (it.displayName).replace(" ","")
+                status = it.currentValue("switch")
+                oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}"
+                state.oldMap.put(name,oldStatus) 
                 if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
+                oldLevel = it.currentValue("level")
+                name = (it.displayName).replace(" ","")
+                status = it.currentValue("switch")
+                oldStatus = "${status}::${oldLevel}"
+                state.oldLevelMap.put(name,oldStatus)
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
             	it.setLevel(onLevel as Integer ?: 99)
         	} else {
