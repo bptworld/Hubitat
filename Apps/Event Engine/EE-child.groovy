@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.4.4 - 09/17/20 - More adjustments to Mode, lots of minor changes
+ *  1.4.4 - 09/18/20 - More adjustments to Mode, lots of minor changes
  *  1.4.3 - 09/17/20 - More adjustments to Mode, Reverse now effects color and level!
  *  1.4.2 - 09/17/20 - Adjustment to Mode
  *  1.4.1 - 09/17/20 - Added Restrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
