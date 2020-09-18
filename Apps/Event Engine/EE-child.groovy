@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.4 - 09/17/20 - More adjustments to Mode, lots of minor changes
  *  1.4.3 - 09/17/20 - More adjustments to Mode, Reverse now effects color and level!
  *  1.4.2 - 09/17/20 - Adjustment to Mode
  *  1.4.1 - 09/17/20 - Added Restrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.3"
+	state.version = "1.4.4"
 }
 
 definition(
@@ -1315,7 +1316,6 @@ def initialize() {
         log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
-
         if(startTime) schedule(startTime, startTheProcess)
         if(accelerationEvent) subscribe(accelerationEvent, "accelerationSensor", startTheProcess)             
         if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)        
@@ -1439,7 +1439,6 @@ def startTheProcess(evt) {
 
                 hsmAlertHandler(state.whatHappened)
                 hsmStatusHandler(state.whatHappened)
-
                 if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch}"
 
                 if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
@@ -1708,29 +1707,14 @@ def hsmAlertHandler(data) {
         if(logEnable) log.debug "In hsmAlertHandler (${state.version})"
         state.hsmAlertStatus = false
         String theValue = data
-        deviceTrue = 0
-        
+
         hsmAlertEvent.each { it ->
             if(logEnable) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
 
             if(theValue == it){
-                state.nothingToDo = false
                 state.hsmAlertStatus = true
-                deviceTrue = deviceTrue + 1
             }
         }
-        
-        if(state.typeAO) {
-            if(deviceTrue >= 1) { // OR
-                state.devicesGood = true
-                state.nothingToDo = false
-            }
-        } else {
-            if(deviceTrue == theCount) { // AND
-                state.devicesGood = true
-                state.nothingToDo = false
-            }   
-        }  
     } else {
         state.hsmAlertStatus = true
     }
@@ -1742,29 +1726,14 @@ def hsmStatusHandler(data) {
         if(logEnable) log.debug "In hsmStatusHandler (${state.version})"
         state.hsmStatus = false
         String theValue = data
-        deviceTrue = 0
         
         hsmStatusEvent.each { it ->
             if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
 
             if(theValue == it){
-                state.nothingToDo = false
                 state.hsmStatus = true
-                deviceTrue = deviceTrue + 1
             }
         }
-        
-        if(state.typeAO) {
-            if(deviceTrue >= 1) { // OR
-                state.devicesGood = true
-                state.nothingToDo = false
-            }
-        } else {
-            if(deviceTrue == theCount) { // AND
-                state.devicesGood = true
-                state.nothingToDo = false
-            }   
-        }  
     } else {
         state.hsmStatus = true
     }
@@ -1775,35 +1744,21 @@ def modeHandler() {
     if(logEnable) log.debug "In modeHandler (${state.version})"
     if(modeEvent) {
         if(logEnable) log.debug "In modeHandler - modeEvent: ${modeEvent}"
-        deviceTrue = 0
 
         modeEvent.each { it ->
             theValue = location.mode
             if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
 
             if(theValue == it){
+                if(logEnable) log.debug "In modeHandler - MATCH"
                 if(modeOnOff) {
-                    state.nothingToDo = false
-                    deviceTrue = deviceTrue + 1
+                    state.modeMatch = true
                 }
                 if(!modeOnOff) {
-                    state.nothingToDo = false
-                    deviceTrue = deviceTrue + 1
+                    state.modeMatch = true
                 }
             }
         }
-
-        if(state.typeAO) {
-            if(deviceTrue >= 1) { // OR
-                state.modeMatch = true
-                state.nothingToDo = false
-            }
-        } else {
-            if(deviceTrue == theCount) { // AND
-                state.modeMatch = true
-                state.nothingToDo = false
-            }   
-        }  
     } else {
         state.modeMatch = true
     }
@@ -2160,31 +2115,21 @@ def modeRestrictionHandler() {
     if(logEnable) log.debug "In modeRestrictionHandler (${state.version})"
     if(modeRestrictionEvent) {
         if(modeRestrictionEvent) log.debug "In modeRestrictionHandler - modeRestrictionEvent: ${modeRestrictionEvent}"
-        deviceTrue = 0
-
+        
         modeRestrictionEvent.each { it ->
             theValue = location.mode
             if(logEnable) log.debug "In modeRestrictionHandler - Checking: ${it} - value: ${theValue}"
 
             if(theValue == it){
+                if(logEnable) log.debug "In modeHandler - MATCH"
                 if(modeROnOff) {
-                    deviceTrue = deviceTrue + 1
+                    state.areRestrictions = true
                 }
                 if(!modeROnOff) {
-                    deviceTrue = deviceTrue + 1
+                    state.areRestrictions = true
                 }
             }
         }
-
-        if(state.rTypeAO) {
-            if(deviceTrue >= 1) { // OR
-                state.areRestrictions = true
-            }
-        } else {
-            if(deviceTrue == theCount) { // AND
-                state.areRestrictions = true
-            }   
-        }  
     }
     if(logEnable) log.debug "In modeRestrictionHandler - areRestrictions: ${state.areRestrictions}"
 }
@@ -2441,8 +2386,7 @@ def findHighestCurrentValue() {
     slowDimmerDn.each { it->
         checkLevel = it.currentValue("level")
         if(checkLevel > state.highestLevel) state.highestLevel = checkLevel
-    }
-    
+    }   
     if(logEnable) log.debug "In findHighestCurrentValue - highestLevel: ${state.highestLevel})"
 }
 
@@ -2551,18 +2495,15 @@ def messageHandler() {
         vSize = values.size()
         count = vSize.toInteger()
         def randomKey = new Random().nextInt(count)
-
         theMessage = values[randomKey]
         if(logEnable) log.debug "In messageHandler - Random - theMessage: ${theMessage}" 
-    }
-    
+    }    
     state.message = theMessage
     
     if(state.message) { 
         if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
         if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
-        if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}
-        
+        if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}       
         if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
         if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
 
@@ -2667,7 +2608,6 @@ def checkTimeSun() {
         if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
         
         state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
-
         if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
         
 		if(state.timeBetweenSun) {
