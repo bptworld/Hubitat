@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.4.5"
+			"version": "1.4.6"
 		}
 	],
 	"drivers" : [
