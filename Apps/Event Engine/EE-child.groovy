@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.8 - 09/18/20 - Adjustments
  *  1.4.7 - 09/18/20 - Adjustment to Illuminance trigger
  *  1.4.6 - 09/18/20 - Adjustments to devices
  *  1.4.5 - 09/18/20 - More adjustments to Mode
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.7"
+	state.version = "1.4.8"
 }
 
 definition(
@@ -1408,7 +1409,9 @@ def initialize() {
         }
         
         if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
-        if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)        
+        if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)   
+        
+        startTheProcess()
     }
 }
 
@@ -1460,7 +1463,7 @@ def startTheProcess(evt) {
             state.nothingToDo = true
         } else {        
             if(state.skip) {
-                if(logEnable) log.debug "In startTheProcess - Restrictions are true,Skipping Time checks"
+                if(logEnable) log.debug "In startTheProcess - Skipping Time checks"
             } else {
                 checkTime()
                 checkTimeSun()
