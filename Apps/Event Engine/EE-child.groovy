@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.5 - 09/18/20 - More adjustments to Mode
  *  1.4.4 - 09/18/20 - More adjustments to Mode, lots of minor changes
  *  1.4.3 - 09/17/20 - More adjustments to Mode, Reverse now effects color and level!
  *  1.4.2 - 09/17/20 - Adjustment to Mode
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.4"
+	state.version = "1.4.5"
 }
 
 definition(
@@ -1753,9 +1754,11 @@ def modeHandler() {
                 if(logEnable) log.debug "In modeHandler - MATCH"
                 if(modeOnOff) {
                     state.modeMatch = true
+                    state.nothingToDo = false
                 }
                 if(!modeOnOff) {
                     state.modeMatch = true
+                    state.nothingToDo = false
                 }
             }
         }
