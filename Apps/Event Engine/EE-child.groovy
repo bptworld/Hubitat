@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.7 - 09/18/20 - Adjustment to Illuminance trigger
  *  1.4.6 - 09/18/20 - Adjustments to devices
  *  1.4.5 - 09/18/20 - More adjustments to Mode
  *  1.4.4 - 09/18/20 - More adjustments to Mode, lots of minor changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.6"
+	state.version = "1.4.7"
 }
 
 definition(
@@ -1354,7 +1355,7 @@ def initialize() {
         if(hsmAlertEvent) subscribe(location, "hsmAlert", startTheProcess)
         if(hsmStatusEvent) subscribe(location, "hsmStatus", startTheProcess)
         if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
-        if(illuminanceEvent) subscribe(illuminanceEvent, "illuminanceEvent", startTheProcess)
+        if(illuminanceEvent) subscribe(illuminanceEvent, "illuminance", startTheProcess)
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
         if(modeEvent) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
