@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.6 - 09/18/20 - Adjustments to devices
  *  1.4.5 - 09/18/20 - More adjustments to Mode
  *  1.4.4 - 09/18/20 - More adjustments to Mode, lots of minor changes
  *  1.4.3 - 09/17/20 - More adjustments to Mode, Reverse now effects color and level!
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.5"
+	state.version = "1.4.6"
 }
 
 definition(
@@ -307,6 +308,9 @@ def pageConfig() {
                     app?.updateSetting("accelerationRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
+            } else {
+                app.removeSetting("accelerationEvent")
+                app.removeSetting("accelerationRestrictionEvent")
             }
 
             if(triggerType.contains("xBattery")) {
@@ -383,6 +387,9 @@ def pageConfig() {
                     app?.updateSetting("contactRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
+            } else {
+                app.removeSetting("contactEvent")
+                app.removeSetting("contactRestrictionEvent")
             }
 
             if(triggerType.contains("xEnergy")) {
@@ -459,6 +466,9 @@ def pageConfig() {
                     app?.updateSetting("garageDoorRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"   
+            } else {
+                app.removeSetting("garageDoorEvent")
+                app.removeSetting("garageDoorRestrictionEvent")
             }
 
             if(triggerType.contains("xHSMAlert")) {
@@ -583,6 +593,9 @@ def pageConfig() {
                     app?.updateSetting("lockRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>" 
+            } else {
+                app.removeSetting("lockEvent")
+                app.removeSetting("lockRestrictionEvent")
             }
 
             if(triggerType.contains("xMode")) {
@@ -607,6 +620,9 @@ def pageConfig() {
                     app.removeSetting("modeROnOff")
                 }
                 paragraph "<hr>"
+            } else {
+                app.removeSetting("modeEvent")
+                app.removeSetting("modeRestrictionEvent")
             }
 
             if(triggerType.contains("xMotion")) {
@@ -653,6 +669,9 @@ def pageConfig() {
                     app?.updateSetting("motionRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
+            } else {
+                app.removeSetting("motionEvent")
+                app.removeSetting("motionRestrictionEvent")
             }
 
             if(triggerType.contains("xPower")) {
@@ -729,6 +748,9 @@ def pageConfig() {
                     app?.updateSetting("presentRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
+            } else {
+                app.removeSetting("presenceEvent")
+                app.removeSetting("presenceRestrictionEvent")
             }
 
             if(triggerType.contains("xSwitch")) {
@@ -776,6 +798,9 @@ def pageConfig() {
                 }
                 
                 paragraph "<hr>"  
+            } else {
+                app.removeSetting("switchEvent")
+                app.removeSetting("switchRestrictionEvent")
             }
 
             if(triggerType.contains("xTemp")) {
@@ -880,6 +905,9 @@ def pageConfig() {
                     app?.updateSetting("waterRANDOR",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
+            } else {
+                app.removeSetting("waterEvent")
+                app.removeSetting("waterRestrictionEvent")
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
