@@ -37,24 +37,12 @@
  *
  *  Changes:
  *
+ *  1.1.9 - 09/18/20 - Adjustments
  *  1.1.8 - 08/21/20 - Each section now tries 3 times to get data
  *  1.1.7 - 07/19/20 - Changed up Alerts to remove from app as Weather.gov removes them from their website
  *  1.1.6 - 06/13/20 - Changed 'No Data' to 0 for current weather values as requested
  *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
- *  1.1.4 - 05/07/20 - Added multiple alert data
- *  1.1.3 - 04/27/20 - Added two new attributes, todaysHigh and todaysLow
- *  1.1.2 - 04/24/20 - Adjustments to Asthma and Pollen handlers
- *  1.1.1 - 04/24/20 - Added more logging to Asthma and Pollen handlers
- *  1.1.0 - 04/22/20 - Changed up the error checking
- *  1.0.9 - 04/20/20 - Added Asthma and Pollen forecasting
- *  1.0.8 - 04/19/20 - Tweaking things
- *  1.0.7 - 04/18/20 - Added switch capability
- *  1.0.6 - 04/18/20 - Fixed another issue with Alerts
- *  1.0.5 - 04/18/20 - Fixed typo with alert description
- *  1.0.4 - 04/17/20 - More adjustments
- *  1.0.3 - 04/17/20 - More adjustments for alerts
- *  1.0.2 - 04/17/20 - Added alerts
- *  1.0.1 - 04/13/20 - Fixed Wind speed, precipitation calculations
+ *  ---
  *  1.0.0 - 04/07/20 - Initial release
  */
 
@@ -451,19 +439,23 @@ def getWeatherData() {
             
             if(response.status == 200) {
                 def textDescription = response.data.properties.textDescription
-                sendEvent(name: "textDescription", value: textDescription)
+                if(textDescription) {
+                    sendEvent(name: "textDescription", value: textDescription)
+                }
                 
                 def icona = response.data.properties.icon
-                def icon = icona.replace("https://", "")
-                sendEvent(name: "icon", value: icon)
+                if(icona) { 
+                    def icon = icona.replace("https://", "")
+                    sendEvent(name: "icon", value: icon)
+                }
                                 
                 def timestamp = response.data.properties.timestamp
-                sendEvent(name: "timestamp", value: timestamp)
+                if(timestamp) { 
+                    sendEvent(name: "timestamp", value: timestamp) 
+                }
                                 
                 def xtemperature = response.data.properties.temperature.value
-                if(!xtemperature) {
-                    temperature = "0"
-                } else {
+                if(xtemperature) { 
                     if(unitFormat1 == "Imperial") {
                         cTOf(xtemperature)
                         temperature = theUnit
@@ -471,15 +463,12 @@ def getWeatherData() {
                         unitI = xtemperature.toFloat()
                         temperature = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - temperature: ${temperature}"
+                    sendEvent(name: "temperature", value: temperature)
                 }
-                if(logEnable) log.debug "In getWeatherData - temperature: ${temperature}"
-                sendEvent(name: "temperature", value: temperature)
-                     
-                
+                                     
                 def xdewpoint = response.data.properties.dewpoint.value
-                if(!xdewpoint) {
-                    temperature = "0"
-                } else {
+                if(xdewpoint) { 
                     if(unitFormat1 == "Imperial") {
                         cTOf(xdewpoint)
                         dewpoint = theUnit
@@ -487,26 +476,20 @@ def getWeatherData() {
                         unitI = xdewpoint.toFloat()
                         dewpoint = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - dewpoint: ${dewpoint}"
+                    sendEvent(name: "dewpoint", value: dewpoint)
                 }
-                if(logEnable) log.debug "In getWeatherData - dewpoint: ${dewpoint}"
-                sendEvent(name: "dewpoint", value: dewpoint)
-                
-                
+                                
                 def xwindDirection = response.data.properties.windDirection.value
-                if(!xwindDirection) {
-                    windDirection = "0"
-                } else {
+                if(xwindDirection) {
                     direction(xwindDirection)
                     windDirection = theUnit
+                    if(logEnable) log.debug "In getWeatherData - windDirection: ${windDirection}"
+                    sendEvent(name: "windDirection", value: windDirection)
                 }
-                if(logEnable) log.debug "In getWeatherData - windDirection: ${windDirection}"
-                sendEvent(name: "windDirection", value: windDirection)
-
                 
                 def xwindSpeed = response.data.properties.windSpeed.value
-                if(!xwindSpeed) {
-                    windSpeed = "0"
-                } else {
+                if(xwindSpeed) {
                     if(unitFormat1 == "Imperial") {
                         mpsTOmph(xwindSpeed)
                         windSpeed = theUnit
@@ -514,15 +497,12 @@ def getWeatherData() {
                         unitI = xwindSpeed.toFloat()
                         windSpeed = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - windSpeed: ${windSpeed}"
+                    sendEvent(name: "windSpeed", value: windSpeed)
                 }
-                if(logEnable) log.debug "In getWeatherData - windSpeed: ${windSpeed}"
-                sendEvent(name: "windSpeed", value: windSpeed)
-                
-                
+                               
                 def xwindGust = response.data.properties.windGust.value
-                if(!xwindGust) {
-                    windGust = "0"
-                } else {
+                if(xwindGust) {
                     if(unitFormat1 == "Imperial") {
                         kphTOmph(xwindGust)
                         windGust = theUnit
@@ -530,15 +510,12 @@ def getWeatherData() {
                         unitI = xwindGust.toFloat()
                         windGust = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - windGust: ${windGust}"
+                    sendEvent(name: "windGust", value: windGust)
                 }
-                if(logEnable) log.debug "In getWeatherData - windGust: ${windGust}"
-                sendEvent(name: "windGust", value: windGust)
-                
-                
+                                
                 def xbarometricPressure = response.data.properties.barometricPressure.value
-                if(!xbarometricPressure) {
-                    barometricPressure = "0"
-                } else {
+                if(xbarometricPressure) {
                     if(unitFormat1 == "Imperial") {
                         mbTOinhg(xbarometricPressure)
                         barometricPressure = theUnit
@@ -546,15 +523,12 @@ def getWeatherData() {
                         unitI = xbarometricPressure.toFloat()
                         barometricPressure = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - barometricPressure: ${barometricPressure}"
+                    sendEvent(name: "barometricPressure", value: barometricPressure)
                 }
-                if(logEnable) log.debug "In getWeatherData - barometricPressure: ${barometricPressure}"
-                sendEvent(name: "barometricPressure", value: barometricPressure)
-                
-                
+                                
                 def xseaLevelPressure = response.data.properties.seaLevelPressure.value
-                if(!xseaLevelPressure) {
-                    seaLevelPressure = "0"
-                } else {
+                if(xseaLevelPressure) {
                     if(unitFormat1 == "Imperial") {
                         mbTOinhg(xseaLevelPressure)
                         seaLevelPressure = theUnit
@@ -562,15 +536,12 @@ def getWeatherData() {
                         unitI = xseaLevelPressure.toFloat()
                         seaLevelPressure = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - seaLevelPressure: ${seaLevelPressure}"
+                    sendEvent(name: "seaLevelPressure", value: seaLevelPressure)
                 }
-                if(logEnable) log.debug "In getWeatherData - seaLevelPressure: ${seaLevelPressure}"
-                sendEvent(name: "seaLevelPressure", value: seaLevelPressure)
-                
-                
+                              
                 def xvisibility = response.data.properties.visibility.value
-                if(!xvisibility) {
-                    visibility = "0"
-                } else {
+                if(xvisibility) {
                     if(unitFormat1 == "Imperial") {
                         mTOft(xvisibility)
                         visibility = theUnit
@@ -578,15 +549,12 @@ def getWeatherData() {
                         mTOk(xvisibility)
                         visibility = theUnit
                     }
+                    if(logEnable) log.debug "In getWeatherData - visibility: ${visibility}"
+                    sendEvent(name: "visibility", value: visibility)
                 }
-                if(logEnable) log.debug "In getWeatherData - visibility: ${visibility}"
-                sendEvent(name: "visibility", value: visibility)
-                
-                
+                              
                 def xmaxTemperatureLast24Hours = response.data.properties.maxTemperatureLast24Hours.value
-                if(!xmaxTemperatureLast24Hours) {
-                    maxTemperatureLast24Hours = "0"
-                } else {
+                if(xmaxTemperatureLast24Hours) {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xmaxTemperatureLast24Hours)
                         maxTemperatureLast24Hours = theUnit
@@ -594,15 +562,12 @@ def getWeatherData() {
                         unitI = xmaxTemperatureLast24Hours.toFloat()
                         maxTemperatureLast24Hours = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - maxTemperatureLast24Hours: ${maxTemperatureLast24Hours}"
+                    sendEvent(name: "maxTemperatureLast24Hours", value: maxTemperatureLast24Hours)
                 }
-                if(logEnable) log.debug "In getWeatherData - maxTemperatureLast24Hours: ${maxTemperatureLast24Hours}"
-                sendEvent(name: "maxTemperatureLast24Hours", value: maxTemperatureLast24Hours)
-                
-                
+                                
                 def xminTemperatureLast24Hours = response.data.properties.minTemperatureLast24Hours.value
-                if(!xminTemperatureLast24Hours) {
-                    minTemperatureLast24Hours = "0"
-                } else {
+                if(xminTemperatureLast24Hours) {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xminTemperatureLast24Hours)
                         minTemperatureLast24Hours = theUnit
@@ -610,15 +575,13 @@ def getWeatherData() {
                         unitI = xminTemperatureLast24Hours.toFloat()
                         minTemperatureLast24Hours = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - minTemperatureLast24Hours: ${minTemperatureLast24Hours}"
+                    sendEvent(name: "minTemperatureLast24Hours", value: minTemperatureLast24Hours)
                 }
-                if(logEnable) log.debug "In getWeatherData - minTemperatureLast24Hours: ${minTemperatureLast24Hours}"
-                sendEvent(name: "minTemperatureLast24Hours", value: minTemperatureLast24Hours)
                 
                 
                 def xprecipitationLastHour = response.data.properties.precipitationLastHour.value
-                if(!xprecipitationLastHour) {
-                    precipitationLastHour = "0"
-                } else {
+                if(xprecipitationLastHour) {
                     if(unitFormat1 == "Imperial") {
                         mmTOin(xprecipitationLastHour)
                         precipitationLastHour = theUnit
@@ -626,15 +589,12 @@ def getWeatherData() {
                         unitI = xprecipitationLastHour.toFloat()
                         precipitationLastHour = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - precipitationLastHour: ${precipitationLastHour}"
+                    sendEvent(name: "precipitationLastHour", value: precipitationLastHour)
                 }
-                if(logEnable) log.debug "In getWeatherData - precipitationLastHour: ${precipitationLastHour}"
-                sendEvent(name: "precipitationLastHour", value: precipitationLastHour)
-                
-                
+                               
                 def xprecipitationLast3Hours = response.data.properties.precipitationLast3Hours.value
-                if(!xprecipitationLast3Hours) {
-                    precipitationLast3Hours = "0"
-                } else {
+                if(xprecipitationLast3Hours) {
                     if(unitFormat1 == "Imperial") {
                         mmTOin(xprecipitationLast3Hours)
                         precipitationLast3Hours = theUnit
@@ -642,15 +602,12 @@ def getWeatherData() {
                         unitI = xpxprecipitationLast3Hours.toFloat()
                         xprecipitationLast3Hours = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - precipitationLast3Hours: ${precipitationLast3Hours}"
+                    sendEvent(name: "precipitationLast3Hours", value: precipitationLast3Hours)
                 }
-                if(logEnable) log.debug "In getWeatherData - precipitationLast3Hours: ${precipitationLast3Hours}"
-                sendEvent(name: "precipitationLast3Hours", value: precipitationLast3Hours)
-                
                 
                 def xprecipitationLast6Hours = response.data.properties.precipitationLast6Hours.value
-                if(!xprecipitationLast6Hours) {
-                    precipitationLast6Hours = "0"
-                } else {
+                if(xprecipitationLast6Hours) {
                     if(unitFormat1 == "Imperial") {
                         mmTOin(xprecipitationLast6Hours)
                         precipitationLast6Hours = theUnit
@@ -658,26 +615,20 @@ def getWeatherData() {
                         unitI = xpxprecipitationLast6Hours.toFloat()
                         xprecipitationLast6Hours = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - precipitationLast6Hours: ${precipitationLast6Hours}"
+                    sendEvent(name: "precipitationLast6Hours", value: precipitationLast6Hours)
                 }
-                if(logEnable) log.debug "In getWeatherData - precipitationLast6Hours: ${precipitationLast6Hours}"
-                sendEvent(name: "precipitationLast6Hours", value: precipitationLast6Hours)
-                
-                
+                               
                 def xrelativeHumidity = response.data.properties.relativeHumidity.value
-                if(!xrelativeHumidity) {
-                    relativeHumidity = "0"
-                } else {
+                if(xrelativeHumidity) {
                     unitI = xrelativeHumidity.toFloat()
                     relativeHumidity = unitI.round(2)
+                    if(logEnable) log.debug "In getWeatherData - relativeHumidity: ${relativeHumidity}"
+                    sendEvent(name: "relativeHumidity", value: relativeHumidity)
                 }
-                if(logEnable) log.debug "In getWeatherData - relativeHumidity: ${relativeHumidity}"
-                sendEvent(name: "relativeHumidity", value: relativeHumidity)
-                
                 
                 def xwindChill = response.data.properties.windChill.value
-                if(!xwindChill) {
-                    windChill = "0"
-                } else {
+                if(xwindChill) {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xwindChill)
                         windChill = theUnit
@@ -685,15 +636,12 @@ def getWeatherData() {
                         unitI = xwindChill.toFloat()
                         windChill = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - windChill: ${windChill}"
+                    sendEvent(name: "windChill", value: windChill)
                 }
-                if(logEnable) log.debug "In getWeatherData - windChill: ${windChill}"
-                sendEvent(name: "windChill", value: windChill)
-                
-                
+                                
                 def xheatIndex = response.data.properties.heatIndex.value
-                if(!xheatIndex) {
-                    heatIndex = "0"
-                } else {
+                if(xheatIndex) {
                     if(unitFormat1 == "Imperial") {
                         cTOf(xheatIndex)
                         heatIndex = theUnit
@@ -701,9 +649,9 @@ def getWeatherData() {
                         unitI = xheatIndex.toFloat()
                         heatIndex = unitI.round(2)
                     }
+                    if(logEnable) log.debug "In getWeatherData - heatIndex: ${heatIndex}"
+                    sendEvent(name: "heatIndex", value: heatIndex) 
                 }
-                if(logEnable) log.debug "In getWeatherData - heatIndex: ${heatIndex}"
-                sendEvent(name: "heatIndex", value: heatIndex) 
                 
                 if(windChill != "0") xHowItFeels = windChill
                 if(heatIndex != "0") xHowItFeels = heatIndex
