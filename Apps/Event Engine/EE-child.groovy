@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.2 - 09/19/20 - adjustment
  *  1.5.1 - 09/19/20 - setpoints again
  *  1.5.0 - 09/19/20 - Fun with setpoints
  *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.1"
+	state.version = "1.5.2"
 }
 
 definition(
@@ -1404,6 +1405,9 @@ def initialize() {
         if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
         if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)   
         
+        state.setPointBetweenOK = "no"
+        state.setPointHighOK = "no"
+        state.setPointLowOK = "no"
         startTheProcess()
     }
 }
