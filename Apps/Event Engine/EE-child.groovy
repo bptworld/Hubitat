@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.1 - 09/19/20 - setpoints again
  *  1.5.0 - 09/19/20 - Fun with setpoints
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.0"
+	state.version = "1.5.1"
 }
 
 definition(
@@ -1881,6 +1882,8 @@ def setPointHandler() {
         
         // *** setPointHigh ***
         if(state.setPointHigh && !state.setPointLow) {
+            if(state.setPointHighOK == null) state.setPointHighOK = "no"
+            if(logEnable) log.debug "In setPointHandler (High) - setPointHighOK: ${state.setPointHighOK}"
             int setpointHighValue = setPointValue
             int setpointHigh = state.setPointHigh
             if(setpointHighValue > setpointHigh) {  // bad
@@ -1909,6 +1912,8 @@ def setPointHandler() {
 
         // *** setPointLow ***
         if(!state.setPointHigh && state.setPointLow) {
+            if(state.setPointLowOK == null) state.setPointLowOK = "no"
+            if(logEnable) log.debug "In setPointHandler (Low) - setPointLowOK: ${state.setPointLowOK}"
             int setpointLowValue = setPointValue
             int setpointLow = state.setPointLow
             if(setpointLowValue < setpointLow) {  // bad
@@ -1937,6 +1942,8 @@ def setPointHandler() {
         
         // *** Inbetween ***
         if(state.setPointHigh && state.setPointLow) {
+            if(state.setPointBetweenOK == null) state.setPointBetweenOK = "no"
+            if(logEnable) log.debug "In setPointHandler (Between) - setPointBetweenOK: ${state.setPointBetweenOK}"
             int setpointValue = setPointValue
             int setpointLow = state.setPointLow
             int setpointHigh = state.setPointHigh
