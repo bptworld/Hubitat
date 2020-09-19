@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.4.9 - 09/19/20 - Adjustments to setpoints
  *  1.4.8 - 09/18/20 - Adjustments
  *  1.4.7 - 09/18/20 - Adjustment to Illuminance trigger
  *  1.4.6 - 09/18/20 - Adjustments to devices
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.8"
+	state.version = "1.4.9"
 }
 
 definition(
@@ -1425,7 +1426,6 @@ def startTheProcess(evt) {
         state.devicesGood = false
         state.setPointGood = false
         state.modeMatch = false
-        state.isThereSetpoints = false
         state.isThereDevices = false
         state.areRestrictions = false
         state.skip = false
@@ -1875,117 +1875,101 @@ def voltageHandler() {
         state.setPointLow = veSetPointLow
         setPointHandler()
     }    
-    if(!state.isThereSetpoints) { state.setPointGood = true }    // Keep in LAST setpoint
 }
     
 def setPointHandler() {
-    if(logEnable) log.debug "In setPointHandler (${state.version})"
-    state.isThereSetpoints = true
-    log.trace "spName: ${state.spName}"
+    if(logEnable) log.debug "In setPointHandler (${state.version}) - spName: ${state.spName}"
     state.spName.each {
-        setPointValue = it.currentValue("${state.spType}")
+        spValue = it.currentValue("${state.spType}")
         if(useWholeNumber) {
-            setPointValue1 = Math.round(setPointValue)
+            setPointValue = Math.round(spValue)
         } else {
-            setPointValue1 = setPointValue.toDouble()
-        }
+            setPointValue = spValue.toDouble()
+        }       
+        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh} - nothingToDo: ${state.nothingToDo}"
         
-        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue1} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh} - nothingToDo: ${state.nothingToDo}"
-
         // *** setPointHigh ***
         if(state.setPointHigh && !state.setPointLow) {
-            state.setPointLowOK = "yes"
-            int sPV = setPointValue1
-            int sPH = state.setPointHigh
-            if(sPV > sPH) {
+            int setpointHighValue = setPointValue
+            int setpointHigh = state.setPointHigh
+            if(setpointHighValue > setpointHigh) {  // bad
                 if(state.setPointHighOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
-                    state.nothingToDo = false
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is GREATER THAN setPointHigh: ${setpointHigh}"
                     state.setPointHighOK = "no"
                     state.setPointGood = true
-                } else {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is HIGH but already notified.  Nothing to do."
-                    state.setPointGood = true
-                }
-            } else {
-                if(state.setPointHighOK == "no") {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is Less THAN setPointHigh: ${sPH}"
                     state.nothingToDo = false
-                    state.setPointHighOK = "yes"
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
+                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
+                }
+            } else {  // good
+                if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setPointHigh: ${setpointHigh} - All Good"
+                if(state.setPointHighOK == "yes") {
+                    // do nothing
+                } else {
+                    state.setPointHighOK = "yes" 
+                    if(reverse) {
+                        state.setPointGood = false
+                        state.nothingToDo = false
+                    }
                 }
             }
         }
 
         // *** setPointLow ***
-        if(state.setPointLow && !state.setPointHigh) {
-            state.setPointHighOK = "yes"
-            int sPV = setPointValue1
-            int sPL = state.setPointLow
-            if(sPV < sPL) {
+        if(!state.setPointHigh && state.setPointLow) {
+            int setpointLowValue = setPointValue
+            int setpointLow = state.setPointLow
+            if(setpointLowValue < setpointLow) {  // bad
                 if(state.setPointLowOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
-                    state.nothingToDo = false
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is LESS THAN setPointLow: ${setpointLow}"
                     state.setPointLowOK = "no"
                     state.setPointGood = true
-                } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is LOW but all ready notified.  Nothing to do."
-                    state.setPointGood = true
-                }
-            } else {
-                if(state.setPointLowOK == "no") {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointLow: ${sPL}"
                     state.nothingToDo = false
-                    state.setPointLowOK = "yes"
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
+                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
+                }
+            } else {  // good
+                if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setPointLow: ${setpointLow} - All Good"
+                if(state.setPointLowOK == "yes") {
+                    // do nothing
+                } else {
+                    state.setPointLowOK = "yes" 
+                    if(reverse) {
+                        state.setPointGood = false
+                        state.nothingToDo = false
+                    }
                 }
             }
         }
-
+        
         // *** Inbetween ***
         if(state.setPointHigh && state.setPointLow) {
-            int sPV = setPointValue1
-            int sPL = state.setPointLow
-            int sPH = state.setPointHigh
-            if(sPV > sPH) {
-                if(state.setPointHighOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is GREATER THAN setPointHigh: ${sPH}"
-                    state.nothingToDo = false
-                    state.setPointHighOK = "no"
-                } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${it}, Actual value: ${sPV} is HIGH but already notified.  Nothing to do."
+            int setpointValue = setPointValue
+            int setpointLow = state.setPointLow
+            int setpointHigh = state.setPointHigh
+            if((setpointValue < setpointLow) || (setpointValue > setpointHigh)) {  // bad
+                if(state.setPointBetweenOK == "yes") {
+                    if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpoints."
+                    state.setPointBetweenOK = "no"
                     state.setPointGood = true
+                    state.nothingToDo = false
+                } else {
+                    if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is STILL NOT BETWEEN. Nothing to do."
                 }
-            } else {
-                if(state.setPointLowOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, (Low) - Actual value: ${sPV} is LESS THAN setPointLow: ${sPL}"
-                    state.nothingToDo = false
-                    state.setPointLowOK = "no"
+            } else {  // good
+                if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
+                if(state.setPointBetweenOK == "yes") {
+                    // do nothing
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${it}, Actual value: ${sPV} is LOW but already notified.  Nothing to do."
-                    state.setPointGood = true
+                    state.setPointBetweenOK = "yes" 
+                    if(reverse) {
+                        state.setPointGood = false
+                        state.nothingToDo = false
+                    }
                 }
             }
-            
-            if((sPV <= sPH) && (sPV >= sPL)) {
-                if(state.setPointHighOK == "no" || state.setPointLowOK == "no") {
-                    if(logEnable) log.debug "InsetPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is BETWEEN tempHigh: ${sPH} and setPointLow: ${state.setPointLow}"
-                    state.nothingToDo = false
-                    state.setPointHighOK = "yes"
-                    state.setPointLowOK = "yes"
-                    state.setPointGood = true
-                } else {
-                    if(logEnable) log.debug "In setPointHandler (Both) - Device: ${it}, Actual value: ${sPV} is good.  Nothing to do."
-                    state.setPointGood = true
-                }
-            }  
         }
-    }     
-    if(!state.setPointGood && reverse) state.nothingToDo = false
+    }
     if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
 }
 
