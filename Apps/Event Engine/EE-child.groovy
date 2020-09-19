@@ -37,16 +37,7 @@
  *
  *  Changes:
  *
- *  1.4.9 - 09/19/20 - Adjustments to setpoints
- *  1.4.8 - 09/18/20 - Adjustments
- *  1.4.7 - 09/18/20 - Adjustment to Illuminance trigger
- *  1.4.6 - 09/18/20 - Adjustments to devices
- *  1.4.5 - 09/18/20 - More adjustments to Mode
- *  1.4.4 - 09/18/20 - More adjustments to Mode, lots of minor changes
- *  1.4.3 - 09/17/20 - More adjustments to Mode, Reverse now effects color and level!
- *  1.4.2 - 09/17/20 - Adjustment to Mode
- *  1.4.1 - 09/17/20 - Added Restrictions to almost all device triggers, changed how Restrictions work, please check your child apps!
- *  1.4.0 - 09/17/20 - Fixed issue with delay, added more Mode options
+ *  1.5.0 - 09/19/20 - Fun with setpoints
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
  *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.4.9"
+	state.version = "1.5.0"
 }
 
 definition(
@@ -1900,11 +1891,12 @@ def setPointHandler() {
                     state.nothingToDo = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
+                    state.nothingToDo = true
                 }
             } else {  // good
                 if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setPointHigh: ${setpointHigh} - All Good"
                 if(state.setPointHighOK == "yes") {
-                    // do nothing
+                    state.nothingToDo = true
                 } else {
                     state.setPointHighOK = "yes" 
                     if(reverse) {
@@ -1927,11 +1919,12 @@ def setPointHandler() {
                     state.nothingToDo = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
+                    state.nothingToDo = true
                 }
             } else {  // good
                 if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setPointLow: ${setpointLow} - All Good"
                 if(state.setPointLowOK == "yes") {
-                    // do nothing
+                    state.nothingToDo = true
                 } else {
                     state.setPointLowOK = "yes" 
                     if(reverse) {
@@ -1955,11 +1948,12 @@ def setPointHandler() {
                     state.nothingToDo = false
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is STILL NOT BETWEEN. Nothing to do."
+                    state.nothingToDo = true
                 }
             } else {  // good
                 if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
                 if(state.setPointBetweenOK == "yes") {
-                    // do nothing
+                    state.nothingToDo = true
                 } else {
                     state.setPointBetweenOK = "yes" 
                     if(reverse) {
