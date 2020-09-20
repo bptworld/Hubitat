@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.9 - 09/20/20 - More logging
  *  1.5.8 - 09/20/20 - More adjustments
  *  1.5.7 - 09/20/20 - More logging
  *  1.5.6 - 09/20/20 - yup
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.8"
+	state.version = "1.5.9"
 }
 
 definition(
@@ -1954,10 +1955,9 @@ def voltageHandler() {
 }
     
 def setpointHandler() {
-    if(logEnable) log.debug "In setpointHandler (${state.version}) - spName: ${state.spName}"
+    if(logEnable) log.trace "In setpointHandler (${state.version}) - spName: ${state.spName}"
     if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
     state.isThereSPDevices = true
-    log.trace ""
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
         if(useWholeNumber) {
@@ -1966,27 +1966,27 @@ def setpointHandler() {
             setpointValue = spValue.toDouble()
         }     
         state.preSPV = setpointValue
-        if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
+        if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
         
         // *** setpointHigh ***
         if(state.setpointHigh && !state.setpointLow) {
             if(state.setpointHighOK == null) state.setpointHighOK = "yes"
             int setpointHighValue = setpointValue
             int setpointHigh = state.setpointHigh
-            if(logEnable) log.debug "In setpointHandler (High) - setpointHighOK: ${state.setpointHighOK} - setpointHighValue: ${setpointHighValue} - setpointHigh: ${setpointHigh}"
+            if(logEnable) log.trace "In setpointHandler (High) - setpointHighOK: ${state.setpointHighOK} - setpointHighValue: ${setpointHighValue} - setpointHigh: ${setpointHigh}"
             if(setpointHighValue > setpointHigh) {  // bad
                 if(state.setpointHighOK == "yes") {
-                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is GREATER THAN setpointHigh: ${setpointHigh}"
+                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is GREATER THAN setpointHigh: ${setpointHigh}"
                     state.setpointHighOK = "no"
                     state.setpointGood = true
                     state.nothingToDo = false
                 } else {
-                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
+                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
                     state.nothingToDo = true
                     state.setpointHighOK == "yes"
                 }
             } else {  // good
-                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setpointHigh: ${setpointHigh} - All Good"
+                if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setpointHigh: ${setpointHigh} - All Good"
                 if(state.setpointHighOK == "yes") {
                     state.nothingToDo = true
                 } else {
@@ -2007,20 +2007,20 @@ def setpointHandler() {
             if(state.setpointLowOK == null) state.setpointLowOK = "yes"
             int setpointLowValue = setpointValue
             int setpointLow = state.setpointLow
-            if(logEnable) log.debug "In setpointHandler (Low) - setpointLowOK: ${state.setpointLowOK} - setpointLowValue: ${setpointLowValue} - setpointLow: ${setpointLow}"
+            if(logEnable) log.trace "In setpointHandler (Low) - setpointLowOK: ${state.setpointLowOK} - setpointLowValue: ${setpointLowValue} - setpointLow: ${setpointLow}"
             if(setpointLowValue < setpointLow) {  // bad
                 if(state.setpointLowOK == "yes") {
-                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is LESS THAN setpointLow: ${setpointLow}"
+                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is LESS THAN setpointLow: ${setpointLow}"
                     state.setpointLowOK = "no"
                     state.setpointGood = true
                     state.nothingToDo = false
                 } else {
-                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
+                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
                     state.nothingToDo = true
                     state.setpointLowOK == "yes"
                 }
             } else {  // good
-                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setpointLow: ${setpointLow} - All Good"
+                if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setpointLow: ${setpointLow} - All Good"
                 if(state.setpointLowOK == "yes") {
                     state.nothingToDo = true
                 } else {
