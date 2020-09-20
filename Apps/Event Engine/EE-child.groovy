@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.6 - 09/20/20 - yup
  *  1.5.5 - 09/20/20 - typing is hard today
  *  1.5.4 - 09/20/20 - I got a good feeling about this one...
  *  1.5.3 - 09/19/20 - Found a bad typo
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.5"
+	state.version = "1.5.6"
 }
 
 definition(
@@ -1987,6 +1988,9 @@ def setpointHandler() {
                     if(reverse) {
                         state.setpointGood = false
                         state.nothingToDo = false
+                    } else {
+                        state.setpointGood = true
+                        state.nothingToDo = true
                     }
                 }
             }
@@ -2017,6 +2021,9 @@ def setpointHandler() {
                     if(reverse) {
                         state.setpointGood = false
                         state.nothingToDo = false
+                    } else {
+                        state.setpointGood = true
+                        state.nothingToDo = true
                     }
                 }
             }
@@ -2048,6 +2055,9 @@ def setpointHandler() {
                     if(reverse) {
                         state.setpointGood = false
                         state.nothingToDo = false
+                    } else {
+                        state.setpointGood = true
+                        state.nothingToDo = true
                     }
                 }
             }
