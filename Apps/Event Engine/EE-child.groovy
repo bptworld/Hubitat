@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.8 - 09/20/20 - More adjustments
  *  1.5.7 - 09/20/20 - More logging
  *  1.5.6 - 09/20/20 - yup
  *  1.5.5 - 09/20/20 - typing is hard today
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.7"
+	state.version = "1.5.8"
 }
 
 definition(
@@ -1969,7 +1970,7 @@ def setpointHandler() {
         
         // *** setpointHigh ***
         if(state.setpointHigh && !state.setpointLow) {
-            if(state.setpointHighOK == null) state.setpointHighOK = "no"
+            if(state.setpointHighOK == null) state.setpointHighOK = "yes"
             int setpointHighValue = setpointValue
             int setpointHigh = state.setpointHigh
             if(logEnable) log.debug "In setpointHandler (High) - setpointHighOK: ${state.setpointHighOK} - setpointHighValue: ${setpointHighValue} - setpointHigh: ${setpointHigh}"
@@ -1982,6 +1983,7 @@ def setpointHandler() {
                 } else {
                     if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
                     state.nothingToDo = true
+                    state.setpointHighOK == "yes"
                 }
             } else {  // good
                 if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setpointHigh: ${setpointHigh} - All Good"
@@ -2002,7 +2004,7 @@ def setpointHandler() {
 
         // *** setpointLow ***
         if(!state.setpointHigh && state.setpointLow) {
-            if(state.setpointLowOK == null) state.setpointLowOK = "no"
+            if(state.setpointLowOK == null) state.setpointLowOK = "yes"
             int setpointLowValue = setpointValue
             int setpointLow = state.setpointLow
             if(logEnable) log.debug "In setpointHandler (Low) - setpointLowOK: ${state.setpointLowOK} - setpointLowValue: ${setpointLowValue} - setpointLow: ${setpointLow}"
@@ -2015,6 +2017,7 @@ def setpointHandler() {
                 } else {
                     if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
                     state.nothingToDo = true
+                    state.setpointLowOK == "yes"
                 }
             } else {  // good
                 if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setpointLow: ${setpointLow} - All Good"
