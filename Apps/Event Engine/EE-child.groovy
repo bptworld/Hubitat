@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.4 - 09/20/20 - I got a good feeling about this one...
  *  1.5.3 - 09/19/20 - Found a bad typo
  *  1.5.2 - 09/19/20 - adjustment
  *  1.5.1 - 09/19/20 - setpoints again
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.3"
+	state.version = "1.5.4"
 }
 
 definition(
@@ -886,7 +887,7 @@ def pageConfig() {
                 input "waterRestrictionEvent", "capability.waterSensor", title: "Restrict By Water Sensor", required: false, multiple: true, submitOnChange: true
                 if(waterRestrictionEvent) {
                     input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
-                    if(wRDryWet) {
+                    if(wrDryWet) {
                         paragraph "Restrict when Sensor(s) become Wet"
                     } else {
                         paragraph "Restrict when Sensor(s) become Dry"
@@ -910,9 +911,9 @@ def pageConfig() {
 
             if(triggerType.contains("xCustom")) {
                 paragraph "<b>Custom Attribute</b>"
-                input "specialDevices", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+                input "specialDevicesEvent", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
                 
-                if(specialDevices) {
+                if(specialDevicesEvent) {
                     allAttrs1 = []
                     allAttrs1 = specialDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                     allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
@@ -938,41 +939,47 @@ def pageConfig() {
                         if(sdSetPointHigh) paragraph "You will receive notifications if Custom reading is above ${sdSetPointHigh}"
                         if(sdSetPointLow) paragraph "You will receive notifications if Custom reading is below ${sdSetPointLow}"
 
-                        input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
-                        
-                        app.removeSetting("waterRestrictionEvent")
-                        app?.updateSetting("wrDryWet",[value:"false",type:"bool"])
-                        app?.updateSetting("waterRANDOR",[value:"false",type:"bool"])
+                        app.removeSetting("custom1")
+                        app.removeSetting("custom2")
+                        app?.updateSetting("sdCustom1Custom2",[value:"false",type:"bool"])
+                        app?.updateSetting("customANDOR",[value:"false",type:"bool"])
                     } else {
+                        paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
+                        input "custom1", "text", title: "Attribute Value 1", required:true, submitOnChange:true
+                        input "custom2", "text", title: "Attribute Value 2", required:true, submitOnChange:true
                         
-                        
-                        input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
-                        if(wRDryWet) {
-                            paragraph "Restrict when Sensor(s) become Wet"
+                        input "sdCustom1Custom2", "bool", title: "Trigger when ${custom1} (off) or ${custom2} (on)", description: "Custom", defaultValue:false, submitOnChange:true
+                        if(sdCustom1Custom2) {
+                            paragraph "Trigger will fire when Custom(s) become ${custom1}"
                         } else {
-                            paragraph "Restrict when Sensor(s) become Dry"
+                            paragraph "Trigger will fire when Custom(s) become ${custom2}"
                         }
-                        input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
-                        if(waterANDOR) {
-                            paragraph "Restrict when <b>any</b> Water Sensor is true"
+                        input "customANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                        if(customANDOR) {
+                            paragraph "Trigger will fire when <b>any</b> Custom is true"
                         } else {
-                            paragraph "Restrict when <b>all</b> Water Sensors are true"
+                            paragraph "Trigger will fire when <b>all</b> Custom are true"
                         }
-                        
-                        
+
                         app.removeSetting("sdSetPointHigh")
                         app.removeSetting("sdSetPointLow")
                         app?.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
                         app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
                     }
                 }
-                
-                
-                
-                
+            } else {
+                app.removeSetting("custom1")
+                app.removeSetting("custom2")
+                app?.updateSetting("sdCustom1Custom2",[value:"false",type:"bool"])
+                app?.updateSetting("customANDOR",[value:"false",type:"bool"])
+
+                app.removeSetting("sdSetPointHigh")
+                app.removeSetting("sdSetPointLow")
+                app?.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
             }
             
-            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
+            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (specialDevices && deviceORsetpoint)) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
             } else {
@@ -1424,6 +1431,7 @@ def initialize() {
         if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)   
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
+        if(specialDevicesEvent) subscribe(specialDevicesEvent, "${specialAtt}", startTheProcess)
 
         if(repeat) {
             startTheProcess()
@@ -1471,9 +1479,9 @@ def initialize() {
         if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
         if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)   
         
-        state.setPointBetweenOK = "no"
-        state.setPointHighOK = "no"
-        state.setPointLowOK = "no"
+        state.setpointBetweenOK = "yes"
+        state.setpointHighOK = "yes"
+        state.setpointLowOK = "yes"
         startTheProcess()
     }
 }
@@ -1486,7 +1494,7 @@ def startTheProcess(evt) {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         state.nothingToDo = true
         state.devicesGood = false
-        state.setPointGood = false
+        state.setpointGood = false
         state.modeMatch = false
         state.isThereDevices = false
         state.isThereSPDevices = false
@@ -1567,13 +1575,13 @@ def startTheProcess(evt) {
         if(state.skip) { 
             // do nothing
         } else {
-            if(logEnable) log.debug "In startTheProcess - 2 - setPointGood: ${state.setPointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+            if(logEnable) log.debug "In startTheProcess - 2 - setpointGood: ${state.setpointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
         
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
-            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch && state.setPointGood && state.devicesGood
+            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch && state.setpointGood && state.devicesGood
             if(state.skip) { allGood = true }
             if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood}"
             if(allGood) {            
@@ -1874,9 +1882,9 @@ def batteryHandler() {
     if(batteryEvent) {
         state.spName = batteryEvent
         state.spType = "battery"
-        state.setPointHigh = beSetPointHigh
-        state.setPointLow = beSetPointLow
-        setPointHandler()
+        state.setpointHigh = beSetPointHigh
+        state.setpointLow = beSetPointLow
+        setpointHandler()
     }
 }
 
@@ -1884,9 +1892,9 @@ def energyHandler() {
     if(energyEvent) {
         state.spName = energyEvent
         state.spType = "energy"
-        state.setPointHigh = eeSetPointHigh
-        state.setPointLow = eeSetPointLow
-        setPointHandler()
+        state.setpointHigh = eeSetPointHigh
+        state.setpointLow = eeSetPointLow
+        setpointHandler()
     }
 }
 
@@ -1894,9 +1902,9 @@ def humidityHandler() {
     if(humidityEvent) {
         state.spName = humidityEvent
         state.spType = "humidity"
-        state.setPointHigh = heSetPointHigh
-        state.setPointLow = heSetPointLow
-        setPointHandler()
+        state.setpointHigh = heSetPointHigh
+        state.setpointLow = heSetPointLow
+        setpointHandler()
     } 
 }
 
@@ -1904,9 +1912,9 @@ def illuminanceHandler() {
     if(illuminanceEvent) {
         state.spName = illuminanceEvent
         state.spType = "illuminance"
-        state.setPointHigh = ieSetPointHigh
-        state.setPointLow = ieSetPointLow
-        setPointHandler()
+        state.setpointHigh = ieSetPointHigh
+        state.setpointLow = ieSetPointLow
+        setpointHandler()
     }
 }
 
@@ -1914,9 +1922,9 @@ def powerHandler() {
     if(powerEvent) {
         state.spName = powerEvent
         state.spType = "power"
-        state.setPointHigh = peSetPointHigh
-        state.setPointLow = peSetPointLow
-        setPointHandler()
+        state.setpointHigh = peSetPointHigh
+        state.setpointLow = peSetPointLow
+        setpointHandler()
     }
 }
 
@@ -1924,9 +1932,9 @@ def tempHandler() {
     if(tempEvent) {
         state.spName = tempEvent
         state.spType = "temperature"
-        state.setPointHigh = teSetPointHigh
-        state.setPointLow = teSetPointLow
-        setPointHandler()
+        state.setpointHigh = teSetPointHigh
+        state.setpointLow = teSetPointLow
+        setpointHandler()
     }
 }
 
@@ -1934,79 +1942,79 @@ def voltageHandler() {
     if(voltageEvent) {
         state.spName = voltageEvent
         state.spType = "voltage"
-        state.setPointHigh = veSetPointHigh
-        state.setPointLow = veSetPointLow
-        setPointHandler()
+        state.setpointHigh = veSetPointHigh
+        state.setpointLow = veSetPointLow
+        setpointHandler()
     }    
-    if(!state.isThereSPDevices) { state.setPointGood = true }    // Keep in LAST setpoint
+    if(!state.isThereSPDevices) { state.setpointGood = true }    // Keep in LAST setpoint
 }
     
-def setPointHandler() {
-    if(logEnable) log.debug "In setPointHandler (${state.version}) - spName: ${state.spName}"
+def setpointHandler() {
+    if(logEnable) log.debug "In setpointHandler (${state.version}) - spName: ${state.spName}"
     state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
         if(useWholeNumber) {
-            setPointValue = Math.round(spValue)
+            setpointValue = Math.round(spValue)
         } else {
-            setPointValue = spValue.toDouble()
+            sepPointValue = spValue.toDouble()
         }       
-        if(logEnable) log.debug "In setPointHandler - Working on: ${it} - setPointValue: ${setPointValue} - setPointLow: ${state.setPointLow} - setPointHigh: ${state.setPointHigh} - nothingToDo: ${state.nothingToDo}"
+        if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
         
-        // *** setPointHigh ***
-        if(state.setPointHigh && !state.setPointLow) {
-            if(state.setPointHighOK == null) state.setPointHighOK = "no"
-            if(logEnable) log.debug "In setPointHandler (High) - setPointHighOK: ${state.setPointHighOK}"
-            int setpointHighValue = setPointValue
-            int setpointHigh = state.setPointHigh
+        // *** setpointHigh ***
+        if(state.setpointHigh && !state.setpointLow) {
+            if(state.setpointHighOK == null) state.setpointHighOK = "no"
+            int setpointHighValue = setpointValue
+            int setpointHigh = state.setpointHigh
+            if(logEnable) log.debug "In setpointHandler (High) - setpointHighOK: ${state.setpointHighOK} - setpointHighValue: ${setpointHighValue} - setpointHigh: ${setpointHigh}"
             if(setpointHighValue > setpointHigh) {  // bad
-                if(state.setPointHighOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is GREATER THAN setPointHigh: ${setpointHigh}"
-                    state.setPointHighOK = "no"
-                    state.setPointGood = true
+                if(state.setpointHighOK == "yes") {
+                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is GREATER THAN setpointHigh: ${setpointHigh}"
+                    state.setpointHighOK = "no"
+                    state.setpointGood = true
                     state.nothingToDo = false
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
+                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
                     state.nothingToDo = true
                 }
             } else {  // good
-                if(logEnable) log.debug "In setPointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setPointHigh: ${setpointHigh} - All Good"
-                if(state.setPointHighOK == "yes") {
+                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setpointHigh: ${setpointHigh} - All Good"
+                if(state.setpointHighOK == "yes") {
                     state.nothingToDo = true
                 } else {
-                    state.setPointHighOK = "yes" 
+                    state.setpointHighOK = "yes" 
                     if(reverse) {
-                        state.setPointGood = false
+                        state.setpointGood = false
                         state.nothingToDo = false
                     }
                 }
             }
         }
 
-        // *** setPointLow ***
-        if(!state.setPointHigh && state.setPointLow) {
-            if(state.setPointLowOK == null) state.setPointLowOK = "no"
-            if(logEnable) log.debug "In setPointHandler (Low) - setPointLowOK: ${state.setPointLowOK}"
-            int setpointLowValue = setPointValue
-            int setpointLow = state.setPointLow
+        // *** setpointLow ***
+        if(!state.setpointHigh && state.setpointLow) {
+            if(state.setpointLowOK == null) state.setpointLowOK = "no"
+            int setpointLowValue = setpointValue
+            int setpointLow = state.setpointLow
+            if(logEnable) log.debug "In setpointHandler (Low) - setpointLowOK: ${state.setpointLowOK} - setpointLowValue: ${setpointLowValue} - setpointLow: ${setpointLow}"
             if(setpointLowValue < setpointLow) {  // bad
-                if(state.setPointLowOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is LESS THAN setPointLow: ${setpointLow}"
-                    state.setPointLowOK = "no"
-                    state.setPointGood = true
+                if(state.setpointLowOK == "yes") {
+                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is LESS THAN setpointLow: ${setpointLow}"
+                    state.setpointLowOK = "no"
+                    state.setpointGood = true
                     state.nothingToDo = false
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
+                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
                     state.nothingToDo = true
                 }
             } else {  // good
-                if(logEnable) log.debug "In setPointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setPointLow: ${setpointLow} - All Good"
-                if(state.setPointLowOK == "yes") {
+                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setpointLow: ${setpointLow} - All Good"
+                if(state.setpointLowOK == "yes") {
                     state.nothingToDo = true
                 } else {
-                    state.setPointLowOK = "yes" 
+                    state.setpointLowOK = "yes" 
                     if(reverse) {
-                        state.setPointGood = false
+                        state.setpointGood = false
                         state.nothingToDo = false
                     }
                 }
@@ -2014,37 +2022,37 @@ def setPointHandler() {
         }
         
         // *** Inbetween ***
-        if(state.setPointHigh && state.setPointLow) {
-            if(state.setPointBetweenOK == null) state.setPointBetweenOK = "no"
-            if(logEnable) log.debug "In setPointHandler (Between) - setPointBetweenOK: ${state.setPointBetweenOK}"
-            int setpointValue = setPointValue
-            int setpointLow = state.setPointLow
-            int setpointHigh = state.setPointHigh
+        if(state.setpointHigh && state.setpointLow) {
+            if(state.setpointBetweenOK == null) state.setpointBetweenOK = "no"
+            if(logEnable) log.debug "In setpointHandler (Between) - setpointBetweenOK: ${state.setpointBetweenOK}"
+            int setpointValue = setpointValue
+            int setpointLow = state.setpointLow
+            int setpointHigh = state.setpointHigh
             if((setpointValue < setpointLow) || (setpointValue > setpointHigh)) {  // bad
-                if(state.setPointBetweenOK == "yes") {
-                    if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpoints."
-                    state.setPointBetweenOK = "no"
-                    state.setPointGood = true
+                if(state.setpointBetweenOK == "yes") {
+                    if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpoints."
+                    state.setpointBetweenOK = "no"
+                    state.setpointGood = true
                     state.nothingToDo = false
                 } else {
-                    if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is STILL NOT BETWEEN. Nothing to do."
+                    if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is STILL NOT BETWEEN. Nothing to do."
                     state.nothingToDo = true
                 }
             } else {  // good
-                if(logEnable) log.debug "In setPointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
-                if(state.setPointBetweenOK == "yes") {
+                if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
+                if(state.setpointBetweenOK == "yes") {
                     state.nothingToDo = true
                 } else {
-                    state.setPointBetweenOK = "yes" 
+                    state.setpointBetweenOK = "yes" 
                     if(reverse) {
-                        state.setPointGood = false
+                        state.setpointGood = false
                         state.nothingToDo = false
                     }
                 }
             }
         }
     }
-    if(logEnable) log.debug "In setPointHandler - ${state.spType.toUpperCase()} - setPointGood: ${state.setPointGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In setpointHandler - ${state.spType.toUpperCase()} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
 }
 
 // ********** Start Restrictions **********
@@ -2578,10 +2586,10 @@ def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
     
     if(triggerType.contains("xBattery") ||  triggerType.contains("xEnergy") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-        if(logEnable) log.debug "In messageHandler (setpoint) - setPointHighOK: ${state.setPointHighOK} - setPointLowOK: ${state.setPointLowOK}"
-        if(state.setPointHighOK == "no") theMessage = "${messageH}"
-        if(state.setPointLowOK == "no") theMessage = "${messageL}"
-        if((state.setPointHighOK == "no") && (state.setPointLowOK == "no")) theMessage = "${messageB}"
+        if(logEnable) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
+        if(state.setpointHighOK == "no") theMessage = "${messageH}"
+        if(state.setpointLowOK == "no") theMessage = "${messageL}"
+        if((state.setpointHighOK == "no") && (state.setpointLowOK == "no")) theMessage = "${messageB}"
     } else {
         if(logEnable) log.debug "In messageHandler - Random - raw message: ${message}"
         def values = "${message}".split(";")
