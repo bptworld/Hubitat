@@ -2858,7 +2858,8 @@ def setLevelandColorHandler() {
                 status = it.currentValue("switch")
                 oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}"
                 state.oldMap.put(name,oldStatus) 
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+                if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
             	it.setColor(value)
         	} else if (it.hasCommand('setLevel')) {
                 oldLevel = it.currentValue("level")
@@ -2866,7 +2867,8 @@ def setLevelandColorHandler() {
                 status = it.currentValue("switch")
                 oldStatus = "${status}::${oldLevel}"
                 state.oldLevelMap.put(name,oldStatus)
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+            	if(logEnable) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
             	it.setLevel(onLevel as Integer ?: 99)
         	} else {
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
