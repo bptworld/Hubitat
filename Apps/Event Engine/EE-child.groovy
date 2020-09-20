@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.6.0 - 09/20/20 - Changes to Mode
  *  1.5.9 - 09/20/20 - More logging
  *  1.5.8 - 09/20/20 - More adjustments
  *  1.5.7 - 09/20/20 - More logging
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.9"
+	state.version = "1.6.0"
 }
 
 definition(
@@ -1548,11 +1549,12 @@ def startTheProcess(evt) {
 
                 hsmAlertHandler(state.whatHappened)
                 hsmStatusHandler(state.whatHappened)
-                if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch}"
+                if(logEnable) log.debug "In startTheProcess - 1 - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
 
                 if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
                 if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
                 if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }
+                if(modeRestrictionEvent && !state.modeMatch) { state.nothingToDo = true; state.skip = true }
             }
             
             if(state.skip) {
