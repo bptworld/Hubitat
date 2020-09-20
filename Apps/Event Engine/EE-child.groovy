@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.6.3 - 09/20/20 - More logging
  *  1.6.2 - 09/20/20 - adjustments to Devices, NEW - Custom Attribute Trigger option 
  *  1.6.1 - 09/20/20 - Changes to Mode - again
  *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.6.2"
+	state.version = "1.6.3"
 }
 
 definition(
@@ -977,9 +978,11 @@ def pageConfig() {
                 app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
             }
             
-            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (specialDevices && deviceORsetpoint)) {
+            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
+                
+                //input "useOverRestriction", "bool", title: "Use over Setpoint as Restriction", description: "restriction", defaultValue:false, submitOnChange:true
             } else {
                 app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
             }
@@ -2327,10 +2330,11 @@ def dimmerOnReverseActionHandler() {
                 int saturation = oldSaturation.toInteger()
                 int level = oldLevel.toInteger()           
                 def theValue = [hue: hueColor, saturation: saturation, level: level]
-                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - Old theStatus: ${oldStatus} - Old value: ${theValue}"
+                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
                 it.setColor(theValue)
                 pauseExecution(500)
                 if(oldStatus == "off") {
+                    if(logEnable) log.trace "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                     it.off()
                 }
             } else if(it.hasCommand("setLevel")) {
@@ -2339,10 +2343,11 @@ def dimmerOnReverseActionHandler() {
                 def (oldStatus, oldLevel) =  data.split("::")           
                 int level = oldLevel.toInteger()           
                 def theValue = [level: level]
-                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - Old theStatus: ${oldStatus} - Old value: ${theValue}"
+                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
                 it.setLevel(theValue)
                 pauseExecution(500)
                 if(oldStatus == "off") {
+                    if(logEnable) log.trace "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                     it.off()
                 }
             }
