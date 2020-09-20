@@ -37,7 +37,7 @@
  *
  *  Changes:
  *
- *  1.5.3 - 09/19/20 - Found a bag typo
+ *  1.5.3 - 09/19/20 - Found a bad typo
  *  1.5.2 - 09/19/20 - adjustment
  *  1.5.1 - 09/19/20 - setpoints again
  *  1.5.0 - 09/19/20 - Fun with setpoints
