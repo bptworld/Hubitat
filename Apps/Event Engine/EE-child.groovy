@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.7 - 09/20/20 - More logging
  *  1.5.6 - 09/20/20 - yup
  *  1.5.5 - 09/20/20 - typing is hard today
  *  1.5.4 - 09/20/20 - I got a good feeling about this one...
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.6"
+	state.version = "1.5.7"
 }
 
 definition(
@@ -1953,14 +1954,17 @@ def voltageHandler() {
     
 def setpointHandler() {
     if(logEnable) log.debug "In setpointHandler (${state.version}) - spName: ${state.spName}"
+    if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
     state.isThereSPDevices = true
+    log.trace ""
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
         if(useWholeNumber) {
             setpointValue = Math.round(spValue)
         } else {
             setpointValue = spValue.toDouble()
-        }       
+        }     
+        state.preSPV = setpointValue
         if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
         
         // *** setpointHigh ***
