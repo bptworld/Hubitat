@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.6.4 - 09/20/20 - Minor change for testing
  *  1.6.3 - 09/20/20 - More logging
  *  1.6.2 - 09/20/20 - adjustments to Devices, NEW - Custom Attribute Trigger option 
  *  1.6.1 - 09/20/20 - Changes to Mode - again
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.6.3"
+	state.version = "1.6.4"
 }
 
 definition(
@@ -2332,7 +2333,7 @@ def dimmerOnReverseActionHandler() {
                 def theValue = [hue: hueColor, saturation: saturation, level: level]
                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
                 it.setColor(theValue)
-                pauseExecution(500)
+                pauseExecution(1000)
                 if(oldStatus == "off") {
                     if(logEnable) log.trace "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                     it.off()
@@ -2345,7 +2346,7 @@ def dimmerOnReverseActionHandler() {
                 def theValue = [level: level]
                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
                 it.setLevel(theValue)
-                pauseExecution(500)
+                pauseExecution(1000)
                 if(oldStatus == "off") {
                     if(logEnable) log.trace "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                     it.off()
