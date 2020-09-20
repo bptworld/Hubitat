@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.3 - 09/19/20 - Found a bag typo
  *  1.5.2 - 09/19/20 - adjustment
  *  1.5.1 - 09/19/20 - setpoints again
  *  1.5.0 - 09/19/20 - Fun with setpoints
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.2"
+	state.version = "1.5.3"
 }
 
 definition(
@@ -103,7 +104,8 @@ def pageConfig() {
                 ["xSwitch":"Switches"],
                 ["xTemp":"Temperature Setpoint"],
                 ["xVoltage":"Voltage Setpoint"],
-                ["xWater":"Water Sensor"]
+                ["xWater":"Water Sensor"],
+                //["xCustom":"** Custom Attribute **"]
             ], required: true, multiple:true, submitOnChange:true
 
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true
@@ -906,6 +908,70 @@ def pageConfig() {
                 app.removeSetting("waterRestrictionEvent")
             }
 
+            if(triggerType.contains("xCustom")) {
+                paragraph "<b>Custom Attribute</b>"
+                input "specialDevices", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+                
+                if(specialDevices) {
+                    allAttrs1 = []
+                    allAttrs1 = specialDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                    allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
+                    input "specialAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
+                    
+                    input "deviceORsetpoint", "bool", defaultValue:false, title: "Device (off) or Setpoint (on)", description: "Whole", submitOnChange:true
+                    
+                    if(deviceORsetpoint) {
+                        input "setSDPointHigh", "bool", defaultValue:false, title: "Trigger when Custom is too High?", description: "Custom High", submitOnChange:true
+                        if(setSDPointHigh) {
+                            input "sdSetPointHigh", "number", title: "Custom High Setpoint", required: true, submitOnChange: true
+                        } else {
+                            app.removeSetting("sdSetPointHigh")
+                        }
+
+                        input "setSDPointLow", "bool", defaultValue:false, title: "Trigger when Custom is too Low?", description: "Custom Low", submitOnChange:true
+                        if(setSDPointLow) {
+                            input "sdSetPointLow", "number", title: "Custom Low Setpoint", required:true, submitOnChange:true
+                        } else {
+                            app.removeSetting("sdSetPointLow")
+                        }
+
+                        if(sdSetPointHigh) paragraph "You will receive notifications if Custom reading is above ${sdSetPointHigh}"
+                        if(sdSetPointLow) paragraph "You will receive notifications if Custom reading is below ${sdSetPointLow}"
+
+                        input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
+                        
+                        app.removeSetting("waterRestrictionEvent")
+                        app?.updateSetting("wrDryWet",[value:"false",type:"bool"])
+                        app?.updateSetting("waterRANDOR",[value:"false",type:"bool"])
+                    } else {
+                        
+                        
+                        input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
+                        if(wRDryWet) {
+                            paragraph "Restrict when Sensor(s) become Wet"
+                        } else {
+                            paragraph "Restrict when Sensor(s) become Dry"
+                        }
+                        input "waterRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                        if(waterANDOR) {
+                            paragraph "Restrict when <b>any</b> Water Sensor is true"
+                        } else {
+                            paragraph "Restrict when <b>all</b> Water Sensors are true"
+                        }
+                        
+                        
+                        app.removeSetting("sdSetPointHigh")
+                        app.removeSetting("sdSetPointLow")
+                        app?.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
+                        app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
+                    }
+                }
+                
+                
+                
+                
+            }
+            
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
@@ -1423,6 +1489,7 @@ def startTheProcess(evt) {
         state.setPointGood = false
         state.modeMatch = false
         state.isThereDevices = false
+        state.isThereSPDevices = false
         state.areRestrictions = false
         state.skip = false
         if(preMadePeriodic) state.nothingToDo = false
@@ -1871,10 +1938,12 @@ def voltageHandler() {
         state.setPointLow = veSetPointLow
         setPointHandler()
     }    
+    if(!state.isThereSPDevices) { state.setPointGood = true }    // Keep in LAST setpoint
 }
     
 def setPointHandler() {
     if(logEnable) log.debug "In setPointHandler (${state.version}) - spName: ${state.spName}"
+    state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
         if(useWholeNumber) {
