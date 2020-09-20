@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.6.2 - 09/20/20 - adjustments to Devices, NEW - Custom Attribute Trigger option 
  *  1.6.1 - 09/20/20 - Changes to Mode - again
  *  ---
  *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.6.1"
+	state.version = "1.6.2"
 }
 
 definition(
@@ -102,7 +103,7 @@ def pageConfig() {
                 ["xTemp":"Temperature Setpoint"],
                 ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"],
-                //["xCustom":"** Custom Attribute **"]
+                ["xCustom":"** Custom Attribute **"]
             ], required: true, multiple:true, submitOnChange:true
 
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true
@@ -907,11 +908,11 @@ def pageConfig() {
 
             if(triggerType.contains("xCustom")) {
                 paragraph "<b>Custom Attribute</b>"
-                input "specialDevicesEvent", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
+                input "customEvent", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
                 
-                if(specialDevicesEvent) {
+                if(customEvent) {
                     allAttrs1 = []
-                    allAttrs1 = specialDevices.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
+                    allAttrs1 = customEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                     allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
                     input "specialAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
                     
@@ -950,6 +951,7 @@ def pageConfig() {
                         } else {
                             paragraph "Trigger will fire when Custom(s) become ${custom2}"
                         }
+                        paragraph "* Remember - If trigger is working backwards, simply reverse your values above."
                         input "customANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                         if(customANDOR) {
                             paragraph "Trigger will fire when <b>any</b> Custom is true"
@@ -1427,7 +1429,7 @@ def initialize() {
         if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)   
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
-        if(specialDevicesEvent) subscribe(specialDevicesEvent, "${specialAtt}", startTheProcess)
+        if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
 
         if(repeat) {
             startTheProcess()
@@ -1478,6 +1480,7 @@ def initialize() {
         state.setpointBetweenOK = "yes"
         state.setpointHighOK = "yes"
         state.setpointLowOK = "yes"
+        state.devicesOK = "yes"
         startTheProcess()
     }
 }
@@ -1566,6 +1569,12 @@ def startTheProcess(evt) {
                 powerHandler()
                 tempHandler()
                 voltageHandler()
+                
+                if(deviceORsetpoint) {
+                    customSetpointHandler()
+                } else {
+                    customDeviceHandler()
+                }
             }
         }
         
@@ -1640,6 +1649,18 @@ def startTheProcess(evt) {
 }
 
 // ********** Start Triggers **********
+
+def customDeviceHandler() {
+    if(customEvent) {
+        state.eventName = customEvent
+        state.eventType = specialAtt
+        state.type = sdCustom1Custom2
+        state.typeValue1 = custom1
+        state.typeValue2 = custom2
+        state.typeAO = customANDOR
+        devicesGoodHandler()
+    }
+}
 
 def accelerationHandler() {
     if(accelerationEvent) {
@@ -1789,18 +1810,51 @@ def devicesGoodHandler() {
     }
     if(logEnable) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} vs ${theCount} - type: ${state.typeAO}" 
     if(state.typeAO) {
-        if(deviceTrue >= 1) { // OR
-            state.devicesGood = true
-            state.nothingToDo = false
+        if(deviceTrue >= 1) { // Bad
+            if(state.devicesOK == "yes") {
+                state.devicesOK = "no"
+                state.devicesGood = true
+                state.nothingToDo = false
+            } else {
+                state.nothingToDo = true
+                state.devicesOK == "yes"
+            }
+        } else {  // Good
+            if(state.devicesOK == "yes") {
+                state.nothingToDo = true
+            } else {
+                state.devicesOK = "yes" 
+                if(reverse) {
+                    state.devicesGood = false
+                    state.nothingToDo = false
+                } else {
+                    state.devicesGood = true
+                    state.nothingToDo = true
+                }
+            }
         }
     } else {
-        if(deviceTrue == theCount) { // AND
-            state.devicesGood = true
-            state.nothingToDo = false
+        if(deviceTrue == theCount) { // Bad
+            if(state.devicesOK == "yes") {
+                state.devicesOK = "no"
+                state.devicesGood = true
+                state.nothingToDo = false
+            } else {
+                state.nothingToDo = true
+                state.devicesOK == "yes"
+            }
+        } else { // Good
+            state.devicesOK = "yes" 
+            if(reverse) {
+                state.devicesGood = false
+                state.nothingToDo = false
+            } else {
+                state.devicesGood = true
+                state.nothingToDo = true
+            }
         }   
-    }    
-    if(!state.devicesGood && reverse) state.nothingToDo = false    
-    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood}"
+    }
+    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
 }
 
 def hsmAlertHandler(data) {
@@ -1874,6 +1928,16 @@ def ruleMachineHandler() {
 }
 
 // ***** Start Setpoint Handlers *****
+
+def customSetpointHandler() {
+    if(customEvent) {
+        state.spName = customEvent
+        state.spType = specialAtt
+        state.setpointHigh = sdSetPointHigh
+        state.setpointLow = sdSetPointLow
+        setpointHandler()
+    }
+}
 
 def batteryHandler() {
     if(batteryEvent) {
@@ -1962,7 +2026,6 @@ def setpointHandler() {
         
         // *** setpointHigh ***
         if(state.setpointHigh && !state.setpointLow) {
-            if(state.setpointHighOK == null) state.setpointHighOK = "yes"
             int setpointHighValue = setpointValue
             int setpointHigh = state.setpointHigh
             if(logEnable) log.trace "In setpointHandler (High) - setpointHighOK: ${state.setpointHighOK} - setpointHighValue: ${setpointHighValue} - setpointHigh: ${setpointHigh}"
@@ -1996,7 +2059,6 @@ def setpointHandler() {
 
         // *** setpointLow ***
         if(!state.setpointHigh && state.setpointLow) {
-            if(state.setpointLowOK == null) state.setpointLowOK = "yes"
             int setpointLowValue = setpointValue
             int setpointLow = state.setpointLow
             if(logEnable) log.trace "In setpointHandler (Low) - setpointLowOK: ${state.setpointLowOK} - setpointLowValue: ${setpointLowValue} - setpointLow: ${setpointLow}"
@@ -2030,7 +2092,6 @@ def setpointHandler() {
         
         // *** Inbetween ***
         if(state.setpointHigh && state.setpointLow) {
-            if(state.setpointBetweenOK == null) state.setpointBetweenOK = "no"
             if(logEnable) log.debug "In setpointHandler (Between) - setpointBetweenOK: ${state.setpointBetweenOK}"
             int setpointValue = setpointValue
             int setpointLow = state.setpointLow
