@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.5.5 - 09/20/20 - typing is hard today
  *  1.5.4 - 09/20/20 - I got a good feeling about this one...
  *  1.5.3 - 09/19/20 - Found a bad typo
  *  1.5.2 - 09/19/20 - adjustment
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.5.4"
+	state.version = "1.5.5"
 }
 
 definition(
@@ -1957,7 +1958,7 @@ def setpointHandler() {
         if(useWholeNumber) {
             setpointValue = Math.round(spValue)
         } else {
-            sepPointValue = spValue.toDouble()
+            setpointValue = spValue.toDouble()
         }       
         if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
         
