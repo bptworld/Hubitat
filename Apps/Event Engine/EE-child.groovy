@@ -129,12 +129,12 @@ def pageConfig() {
                 app.removeSetting("timeDaysType")
             }
 
-            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
-            if(triggerAndOr) {
-                paragraph "Cog will fire when <b>ANY</b> trigger is true"
-            } else {
-                paragraph "Cog will fire when <b>ALL</b> triggers are true"
-            }
+            //input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
+            //if(triggerAndOr) {
+            //    paragraph "Cog will fire when <b>ANY</b> trigger is true"
+            //} else {
+            //    paragraph "Cog will fire when <b>ALL</b> triggers are true"
+            //}
             paragraph "<hr>"
 
             if(timeDaysType.contains("tPeriodic")) {
