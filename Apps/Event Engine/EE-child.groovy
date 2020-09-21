@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.6.5 - 09/21/20 - Cog truths can now be Reset under Log Debug options (no longer resets on save). New option to reset setpoint truths by time. Cosmetic Changes.
  *  1.6.4 - 09/20/20 - Minor change for testing
  *  1.6.3 - 09/20/20 - More logging
  *  1.6.2 - 09/20/20 - adjustments to Devices, NEW - Custom Attribute Trigger option 
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.6.4"
+	state.version = "1.6.5"
 }
 
 definition(
@@ -85,7 +86,6 @@ def pageConfig() {
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
-                ["xPeriodic":"Periodic"],
                 ["xTimeDays":"Time/Days - Sub-Menu"],
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
@@ -99,6 +99,7 @@ def pageConfig() {
                 ["xLock":"Locks"],
                 ["xMode":"Mode"],
                 ["xMotion":"Motion Sensors"],
+                ["xPeriodic":"Periodic"],
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
                 ["xSwitch":"Switches"],
@@ -106,37 +107,19 @@ def pageConfig() {
                 ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"],
                 ["xCustom":"** Custom Attribute **"]
-            ], required: true, multiple:true, submitOnChange:true
+            ], required: true, multiple:true, submitOnChange:true, width:6
 
-            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true
-            if(triggerAndOr) {
-                paragraph "Cog will fire when <b>ANY</b> trigger is true"
-            } else {
-                paragraph "Cog will fire when <b>ALL</b> triggers are true"
-            }
-            paragraph "<hr>"
             if(triggerType == null) triggerType = ""
-
-            if(triggerType.contains("xPeriodic")) {
-                input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
-
-                paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
-                paragraph "<hr>"
-                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
-            } else {
-                app.removeSetting("preMadePeriodic")
-            }
-
+            
             if(triggerType.contains("xTimeDays")) {
-                paragraph "<b>Time/Days - Sub-Menu</b>"
-                input "timeDaysType", "enum", title: "Trigger Type", options: [
+                input "timeDaysType", "enum", title: "Time/Days - Sub-Menu", options: [
                     ["tDays":"By Days"],
                     ["tTime":"Certain Time"],
                     ["tBetween":"Between Two Times"],
                     ["tSunsetSunrise":"Sunset to Sunrise"],                  
                     ["tSunrise":"Just Sunrise"],
                     ["tSunset":"Just Sunset"],
-                ], required: true, multiple:true, submitOnChange:true
+                ], required: true, multiple:true, submitOnChange:true, width:6
 
                 paragraph "<hr>"
                 if(timeDaysType == null) timeDaysType = ""
@@ -260,6 +243,14 @@ def pageConfig() {
             } else {
                 app.removeSetting("timeDaysType")
             }
+            
+            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
+            if(triggerAndOr) {
+                paragraph "Cog will fire when <b>ANY</b> trigger is true"
+            } else {
+                paragraph "Cog will fire when <b>ALL</b> triggers are true"
+            }
+            paragraph "<hr>"
 
             if(triggerType.contains("xAcceleration")) {
                 paragraph "<b>Acceleration Sensor</b>"
@@ -672,6 +663,17 @@ def pageConfig() {
                 app.removeSetting("motionRestrictionEvent")
             }
 
+            if(triggerType.contains("xPeriodic")) {
+                paragraph "<b>By Periodic</b>"
+                input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
+
+                paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
+                paragraph "<hr>"
+                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
+            } else {
+                app.removeSetting("preMadePeriodic")
+            }
+            
             if(triggerType.contains("xPower")) {
                 paragraph "<b>Power</b>"
                 input "powerEvent", "capability.powerMeter", title: "By Power Setpoints", required:false, multiple:true, submitOnChange:true
@@ -982,6 +984,9 @@ def pageConfig() {
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
+                
+                paragraph "Setpoint truths can also be reset one time daily. Typically to allow another notification of a high/low reading."
+                input "spResetTime", "time", title: "Time to reset Setpoint truths (optional)", description: "Reset SP", required: false
                 
                 //input "useOverRestriction", "bool", title: "Use over Setpoint as Restriction", description: "restriction", defaultValue:false, submitOnChange:true
             } else {
@@ -1297,6 +1302,11 @@ def pageConfig() {
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required: false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
+                input "resetTruth", "bool", defaultValue:false, title: "Reset Cog Truths <small>(This will happen immediately)</small>", description: "Truth", submitOnChange:true
+                if(resetTruth) {
+                    resetTruthHandler()
+                    app?.updateSetting("resetTruth",[value:"false",type:"bool"])
+                }
             }
         }
         display2()
@@ -1434,6 +1444,8 @@ def initialize() {
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
+        
+        if(spResetTime) schedule(spResetTime, resetTruthHandler)
 
         if(repeat) {
             startTheProcess()
@@ -1481,10 +1493,6 @@ def initialize() {
         if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
         if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)   
         
-        state.setpointBetweenOK = "yes"
-        state.setpointHighOK = "yes"
-        state.setpointLowOK = "yes"
-        state.devicesOK = "yes"
         startTheProcess()
     }
 }
@@ -3000,6 +3008,14 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 	def result = ""
 	lockCodes.each {if(it.value.name) result += it.value.name + ","}
 	return result ? result[0..-2] : ""
+}
+
+def resetTruthHandler() {
+    if(logEnable) log.debug "In resetTruthHandler (${state.version})"
+    state.setpointBetweenOK = "yes"
+    state.setpointHighOK = "yes"
+    state.setpointLowOK = "yes"
+    state.devicesOK = "yes"
 }
 
 // ********** Normal Stuff **********
