@@ -1,60 +1,61 @@
 /**
- *  ****************  Event Engine Cog App  ****************
- *
- *  Design Usage:
- *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
- *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
- * 
- *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
- *
- *  Remember...I am not a programmer, everything I do takes a lot of time and research!
- *  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
- *
- *  Paypal at: https://paypal.me/bptworld
- * 
- *  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
- *  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
- *  the community grow. Have FUN with it!
- * 
- *-------------------------------------------------------------------------------------------------------------------
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
- *
- * ------------------------------------------------------------------------------------------------------------------------------
- *
- *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
- *
- *  App and Driver updates can be found at https://github.com/bptworld/Hubitat/
- *
- * ------------------------------------------------------------------------------------------------------------------------------
- *
- *  Changes:
- *
- *  1.6.5 - 09/21/20 - Cog truths can now be Reset under Log Debug options (no longer resets on save). New option to reset setpoint truths by time. Cosmetic Changes.
- *  1.6.4 - 09/20/20 - Minor change for testing
- *  1.6.3 - 09/20/20 - More logging
- *  1.6.2 - 09/20/20 - adjustments to Devices, NEW - Custom Attribute Trigger option 
- *  1.6.1 - 09/20/20 - Changes to Mode - again
- *  ---
- *  1.0.0 - 09/05/20 - Initial release.
- *
- */
+*  ****************  Event Engine Cog App  ****************
+*
+*  Design Usage:
+*  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
+*
+*  Copyright 2020 Bryan Turcotte (@bptworld)
+* 
+*  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
+*
+*  Remember...I am not a programmer, everything I do takes a lot of time and research!
+*  Donations are never necessary but always appreciated.  Donations to support development efforts are accepted via: 
+*
+*  Paypal at: https://paypal.me/bptworld
+* 
+*  Unless noted in the code, ALL code contained within this app is mine. You are free to change, ripout, copy, modify or
+*  otherwise use the code in anyway you want. This is a hobby, I'm more than happy to share what I have learned and help
+*  the community grow. Have FUN with it!
+* 
+*-------------------------------------------------------------------------------------------------------------------
+*  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+*  in compliance with the License. You may obtain a copy of the License at:
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+*  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+*  for the specific language governing permissions and limitations under the License.
+*
+* ------------------------------------------------------------------------------------------------------------------------------
+*
+*  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
+*
+*  App and Driver updates can be found at https://github.com/bptworld/Hubitat/
+*
+* ------------------------------------------------------------------------------------------------------------------------------
+*
+*  Changes:
+*
+*  1.6.6 - 09/21/20 - Moved Periodic Expressions and Mode to Time/Days sub menu - CHECK YOUR COGS!
+*  1.6.5 - 09/21/20 - Cog truths can now be Reset under Log Debug options (no longer resets on save). New option to reset setpoint truths by time. Cosmetic Changes.
+*  1.6.4 - 09/20/20 - Minor change for testing
+*  1.6.3 - 09/20/20 - More logging
+*  1.6.2 - 09/20/20 - adjustments to Devices, NEW - Custom Attribute Trigger option 
+*  1.6.1 - 09/20/20 - Changes to Mode - again
+*  ---
+*  1.0.0 - 09/05/20 - Initial release.
+*
+*/
 
 import groovy.json.*
-import hubitat.helper.RMUtils
+    import hubitat.helper.RMUtils
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-	state.version = "1.6.5"
+    state.version = "1.6.6"
 }
 
 definition(
@@ -63,11 +64,11 @@ definition(
     author: "Bryan Turcotte",
     description: "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!",
     category: "Convenience",
-	parent: "BPTWorld:Event Engine",
+    parent: "BPTWorld:Event Engine",
     iconUrl: "",
     iconX2Url: "",
     iconX3Url: "",
-	importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-child.groovy",
+    importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Engine/EE-child.groovy",
 )
 
 preferences {
@@ -86,7 +87,7 @@ def pageConfig() {
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
-                ["xTimeDays":"Time/Days - Sub-Menu"],
+                ["tTimeDays":"Time/Days/Mode - Sub-Menu"],
                 ["xAcceleration":"Acceleration Sensor"],
                 ["xBattery":"Battery Setpoint"],
                 ["xContact":"Contact Sensors"],
@@ -96,10 +97,8 @@ def pageConfig() {
                 ["xHSMStatus":"HSM Status *** not tested ***"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
-                ["xLock":"Locks"],
-                ["xMode":"Mode"],
-                ["xMotion":"Motion Sensors"],
-                ["xPeriodic":"Periodic"],
+                ["xLock":"Locks"],              
+                ["xMotion":"Motion Sensors"],               
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
                 ["xSwitch":"Switches"],
@@ -110,9 +109,12 @@ def pageConfig() {
             ], required: true, multiple:true, submitOnChange:true, width:6
 
             if(triggerType == null) triggerType = ""
-            
-            if(triggerType.contains("xTimeDays")) {
+            if(timeDaysType == null) timeDaysType = ""
+
+            if(triggerType.contains("tTimeDays")) {
                 input "timeDaysType", "enum", title: "Time/Days - Sub-Menu", options: [
+                    ["tPeriodic":"Periodic Expression"],
+                    ["tMode":"By Mode"],
                     ["tDays":"By Days"],
                     ["tTime":"Certain Time"],
                     ["tBetween":"Between Two Times"],
@@ -122,128 +124,11 @@ def pageConfig() {
                 ], required: true, multiple:true, submitOnChange:true, width:6
 
                 paragraph "<hr>"
-                if(timeDaysType == null) timeDaysType = ""
-                if(timeDaysType.contains("tDays")) {
-                    paragraph "<b>By Days</b>"
-                    input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                    
-                    paragraph "By Days can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
-                    input "daysMatchRestriction", "bool", defaultValue: false, title: "By Days as Restriction", description: "By Days Restriction", submitOnChange:true
-                    paragraph "<hr>"
-                } else {
-                    app.removeSetting("days")
-                    app?.updateSetting("daysMatchRestriction",[value:"false",type:"bool"])
-                }
-
-                if(timeDaysType.contains("tTime")) {
-                    paragraph "<b>Certain Time</b>"
-                    input "startTime", "time", title: "Time to activate", description: "Time", required: false, width:12
-                    input "repeat", "bool", title: "Repeat?", description: "Repeat", defaultValue:false, submitOnChange:true
-                    if(repeat) {
-                        input "repeatType", "enum", title: "Repeat schedule", options: [
-                            ["r1min":"1 Minute"],
-                            ["r5min":"5 Minutes"],
-                            ["r10min":"10 Minutes"],
-                            ["r15min":"15 Minutes"],
-                            ["r30min":"30 Minutes"],
-                            ["r1hour":"1 Hour"],
-                            ["r3hour":"3 Hours"]
-                        ], required:true, multiple:true, submitOnChange:true
-                    }
-                    paragraph "<hr>"
-                } else {
-                    app.removeSetting("startTime")
-                    app.removeSetting("repeat")
-                    app.removeSetting("repeatType")
-                    app?.updateSetting("repeat",[value:"false",type:"bool"])
-                }
-
-                if(timeDaysType.contains("tBetween")) {
-                    paragraph "<b>Between two times</b>"
-                    input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
-                    input "toTime", "time", title: "To", required: false, width: 6
-                    input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
-                    
-                    paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
-                    input "timeBetweenRestriction", "bool", defaultValue: false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
-                    paragraph "<hr>"
-                } else {
-                    app.removeSetting("fromTime")
-                    app.removeSetting("toTime")
-                    app?.updateSetting("midnightCheckR",[value:"false",type:"bool"])
-                    app?.updateSetting("timeBetweenRestriction",[value:"false",type:"bool"])
-                }
-
-                if(timeDaysType.contains("tSunsetSunrise")) {
-                    if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
-                        paragraph "<b>'Sunset to Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
-                    } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
-                        paragraph "<b>'Sunset to Sunrise' and 'Just Sunset' can't be used at the same time. Please deselect one of them.</b>"
-                    } else {
-                        paragraph "<b>Sunset to Sunrise</b>"                   
-                        paragraph "Sunset"
-                        input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunset", "number", title: "Offset (minutes)", width:6
-
-                        paragraph "Sunrise"
-                        input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
-                        input "offsetSunrise", "number", title: "Offset(minutes)", width:6
-                        
-                        paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
-                        input "timeBetweenSunRestriction", "bool", defaultValue: false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
-                        paragraph "<hr>"
-                    }
-                } else {
-                    app.removeSetting("offsetSunset")
-                    app.removeSetting("offsetSunrise")
-                    app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
-                    app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
-                    app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
-                }
-
-                if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
-                    paragraph "<b>Please select 'Sunset to Sunrise', instead of both 'Just Sunrise' and 'Just Sunset'.</b>"
-                } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
-                    // Messge above will show
-                } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
-                    // Messge above will show
-                } else if(timeDaysType.contains("tSunrise")) {
-                    paragraph "<b>Just Sunrise</b>"
-                    input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
-                    input "offsetSunrise", "number", title: "Offset (minutes)", width:6
-                    
-                    input "sunriseToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
-                    if(sunriseToTime) {
-                        input "sunriseEndTime", "time", title: "Time to End", description: "Time", required: false
-                        paragraph "<small>* Must be BEFORE midnight.</small>"
-                    } else {
-                        app.removeSetting("sunriseEndTime")
-                    }
-                    paragraph "<hr>"
-                } else if(timeDaysType.contains("tSunset")) {
-                    paragraph "<b>Just Sunset</b>"
-                    input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
-                    input "offsetSunset", "number", title: "Offset (minutes)", width:6
-                    
-                    input "sunsetToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
-                    if(sunsetToTime) {
-                        input "sunsetEndTime", "time", title: "Time to End", description: "Time", required: false
-                        paragraph "<small>* Must be BEFORE midnight.</small>"
-                    } else {
-                        app.removeSetting("sunsetEndTime")
-                    }                    
-                    paragraph "<hr>"
-                } else {
-                    app.removeSetting("sunsetEndTime")
-                    app.removeSetting("offsetSunrise")
-                    app.removeSetting("offsetSunset")
-                    app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
-                    app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])                   
-                }
             } else {
+                paragraph " ", width:6
                 app.removeSetting("timeDaysType")
             }
-            
+
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
             if(triggerAndOr) {
                 paragraph "Cog will fire when <b>ANY</b> trigger is true"
@@ -251,6 +136,163 @@ def pageConfig() {
                 paragraph "Cog will fire when <b>ALL</b> triggers are true"
             }
             paragraph "<hr>"
+
+            if(timeDaysType.contains("tPeriodic")) {
+                paragraph "<b>By Periodic</b>"
+                input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
+
+                paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
+                paragraph "<hr>"
+                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
+            } else {
+                app.removeSetting("preMadePeriodic")
+            }
+
+            if(timeDaysType.contains("tMode")) {
+                paragraph "<b>Mode</b>"
+                input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
+                if(modeEvent) {
+                    input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
+                    if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
+                    if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
+                } else {
+                    app.removeSetting("modeEvent")
+                    app.removeSetting("modeOnOff")
+                }
+
+                input "modeRestrictionEvent", "mode", title: "Restrict By Mode", multiple:true, submitOnChange:true
+                if(modeRestrictionEvent) {
+                    input "modeROnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
+                    if(modeROnOff) paragraph "Restrict if <b>any</b> of the modes are on."
+                    if(!modeROnOff) paragraph "Restrict if <b>any</b> of the modes are off."
+                } else {
+                    app.removeSetting("modeRestrictionEvent")
+                    app.removeSetting("modeROnOff")
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("modeEvent")
+                app.removeSetting("modeRestrictionEvent")
+            }
+
+            if(timeDaysType.contains("tDays")) {
+                paragraph "<b>By Days</b>"
+                input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+                paragraph "By Days can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
+                input "daysMatchRestriction", "bool", defaultValue: false, title: "By Days as Restriction", description: "By Days Restriction", submitOnChange:true
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("days")
+                app?.updateSetting("daysMatchRestriction",[value:"false",type:"bool"])
+            }
+
+            if(timeDaysType.contains("tTime")) {
+                paragraph "<b>Certain Time</b>"
+                input "startTime", "time", title: "Time to activate", description: "Time", required: false, width:12
+                input "repeat", "bool", title: "Repeat?", description: "Repeat", defaultValue:false, submitOnChange:true
+                if(repeat) {
+                    input "repeatType", "enum", title: "Repeat schedule", options: [
+                        ["r1min":"1 Minute"],
+                        ["r5min":"5 Minutes"],
+                        ["r10min":"10 Minutes"],
+                        ["r15min":"15 Minutes"],
+                        ["r30min":"30 Minutes"],
+                        ["r1hour":"1 Hour"],
+                        ["r3hour":"3 Hours"]
+                    ], required:true, multiple:true, submitOnChange:true
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("startTime")
+                app.removeSetting("repeat")
+                app.removeSetting("repeatType")
+                app?.updateSetting("repeat",[value:"false",type:"bool"])
+            }
+
+            if(timeDaysType.contains("tBetween")) {
+                paragraph "<b>Between two times</b>"
+                input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
+                input "toTime", "time", title: "To", required: false, width: 6
+                input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
+
+                paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
+                input "timeBetweenRestriction", "bool", defaultValue: false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("fromTime")
+                app.removeSetting("toTime")
+                app?.updateSetting("midnightCheckR",[value:"false",type:"bool"])
+                app?.updateSetting("timeBetweenRestriction",[value:"false",type:"bool"])
+            }
+
+            if(timeDaysType.contains("tSunsetSunrise")) {
+                if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
+                    paragraph "<b>'Sunset to Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
+                } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
+                    paragraph "<b>'Sunset to Sunrise' and 'Just Sunset' can't be used at the same time. Please deselect one of them.</b>"
+                } else {
+                    paragraph "<b>Sunset to Sunrise</b>"                   
+                    paragraph "Sunset"
+                    input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunset", "number", title: "Offset (minutes)", width:6
+
+                    paragraph "Sunrise"
+                    input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                    input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+
+                    paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
+                    input "timeBetweenSunRestriction", "bool", defaultValue: false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
+                    paragraph "<hr>"
+                }
+            } else {
+                app.removeSetting("offsetSunset")
+                app.removeSetting("offsetSunrise")
+                app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
+                app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
+                app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
+            }
+
+            if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
+                paragraph "<b>Please select 'Sunset to Sunrise', instead of both 'Just Sunrise' and 'Just Sunset'.</b>"
+            } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
+                // Messge above will show
+            } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunset")) {
+                // Messge above will show
+            } else if(timeDaysType.contains("tSunrise")) {
+                paragraph "<b>Just Sunrise</b>"
+                input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
+                input "offsetSunrise", "number", title: "Offset (minutes)", width:6
+
+                input "sunriseToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
+                if(sunriseToTime) {
+                    input "sunriseEndTime", "time", title: "Time to End", description: "Time", required: false
+                    paragraph "<small>* Must be BEFORE midnight.</small>"
+                } else {
+                    app.removeSetting("sunriseEndTime")
+                }
+                paragraph "<hr>"
+            } else if(timeDaysType.contains("tSunset")) {
+                paragraph "<b>Just Sunset</b>"
+                input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
+                input "offsetSunset", "number", title: "Offset (minutes)", width:6
+
+                input "sunsetToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
+                if(sunsetToTime) {
+                    input "sunsetEndTime", "time", title: "Time to End", description: "Time", required: false
+                    paragraph "<small>* Must be BEFORE midnight.</small>"
+                } else {
+                    app.removeSetting("sunsetEndTime")
+                }                    
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("sunsetEndTime")
+                app.removeSetting("offsetSunrise")
+                app.removeSetting("offsetSunset")
+                app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
+                app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])                   
+            }
+
 
             if(triggerType.contains("xAcceleration")) {
                 paragraph "<b>Acceleration Sensor</b>"
@@ -262,7 +304,7 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) becomes Inactive"
                     }
-                    
+
                     input "accelerationANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(accelerationANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Acceleration Sensor is true"
@@ -275,7 +317,7 @@ def pageConfig() {
                     app?.updateSetting("accelerationANDOR",[value:"false",type:"bool"])
 
                 }
-                
+
                 input "accelerationRestrictionEvent", "capability.accelerationSensor", title: "Restrict By Acceleration Sensor", required: false, multiple: true, submitOnChange: true
                 if(accelerationRestrictionEvent) {
                     input "arInactiveActive", "bool", title: "Restrict when Inactive (off) or Active (on)", description: "Acceleration", defaultValue:false, submitOnChange:true
@@ -284,7 +326,7 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Sensor(s) becomes Inactive"
                     }
-                    
+
                     input "accelerationRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(accelerationRANDOR) {
                         paragraph "Restrict when <b>any</b> Acceleration Sensor is true"
@@ -342,7 +384,7 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) become Closed"
                     }
-                    
+
                     input "contactANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Contact Sensor is true"
@@ -354,7 +396,7 @@ def pageConfig() {
                     app?.updateSetting("csClosedOpen",[value:"false",type:"bool"])
                     app?.updateSetting("contactANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "contactRestrictionEvent", "capability.contactSensor", title: "Restrict By Contact Sensor", required: false, multiple: true, submitOnChange: true
                 if(contactRestrictionEvent) {
                     input "crClosedOpen", "bool", title: "Restrict when Closed (off) or Opened (on)", description: "Contact", defaultValue:false, submitOnChange:true
@@ -363,7 +405,7 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Sensor(s) become Closed"
                     }
-                    
+
                     input "contactRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(contactRANDOR) {
                         paragraph "Restrict when <b>any</b> Contact Sensor is true"
@@ -421,7 +463,7 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) become Closed"
                     }
-                    
+
                     input "garageDoorANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Garage Door is true"
@@ -433,7 +475,7 @@ def pageConfig() {
                     app?.updateSetting("gdClosedOpen",[value:"false",type:"bool"])
                     app?.updateSetting("garageDoorANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "garageDoorRestrictionEvent", "capability.garageDoorControl", title: "Restrict By Garage Door", required: false, multiple: true, submitOnChange: true
                 if(garageDoorRestrictionEvent) {
                     input "gdrClosedOpen", "bool", title: "Restrict when Closed (off) or Open (on)", description: "Garage Door", defaultValue:false, submitOnChange:true
@@ -442,7 +484,7 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Sensor(s) become Closed"
                     }
-                    
+
                     input "garageDoorRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(garageDoorANDOR) {
                         paragraph "Restrict when <b>any</b> Garage Door is true"
@@ -550,10 +592,10 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) become Unlocked"
                     }
-                
+
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User", options: theNames, required: false, multiple: true, submitOnChange: true
-                    
+
                     paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
                 } else {
                     app.removeSetting("lockUser")
@@ -561,7 +603,7 @@ def pageConfig() {
                     app?.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
                     app?.updateSetting("lockANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "lockRestrictionEvent", "capability.lock", title: "Restrict By Lock", required: false, multiple: false, submitOnChange: true
                 if(lockRestrictionEvent) {
                     input "lrUnlockedLocked", "bool", title: "Restrict when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
@@ -570,10 +612,10 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Sensor(s) become Unlocked"
                     }
-                
+
                     theNames = getLockCodeNames(lockRestrictionEvent)
                     input "lockRestrictionUser", "enum", title: "Restrict By Lock User", options: theNames, required: false, multiple: true, submitOnChange: true
-                    
+
                     paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
                 } else {
                     app.removeSetting("lockRestrictionUser")
@@ -587,33 +629,6 @@ def pageConfig() {
                 app.removeSetting("lockRestrictionEvent")
             }
 
-            if(triggerType.contains("xMode")) {
-                paragraph "<b>Mode</b>"
-                input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
-                if(modeEvent) {
-                    input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
-                    if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
-                    if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
-                } else {
-                    app.removeSetting("modeEvent")
-                    app.removeSetting("modeOnOff")
-                }
-                
-                input "modeRestrictionEvent", "mode", title: "Restrict By Mode", multiple:true, submitOnChange:true
-                if(modeRestrictionEvent) {
-                    input "modeROnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
-                    if(modeROnOff) paragraph "Restrict if <b>any</b> of the modes are on."
-                    if(!modeROnOff) paragraph "Restrict if <b>any</b> of the modes are off."
-                } else {
-                    app.removeSetting("modeRestrictionEvent")
-                    app.removeSetting("modeROnOff")
-                }
-                paragraph "<hr>"
-            } else {
-                app.removeSetting("modeEvent")
-                app.removeSetting("modeRestrictionEvent")
-            }
-
             if(triggerType.contains("xMotion")) {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
@@ -624,7 +639,7 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) becomes Inactive"
                     }
-                    
+
                     input "motionANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Motion Sensor is true"
@@ -636,7 +651,7 @@ def pageConfig() {
                     app?.updateSetting("meInactiveActive",[value:"false",type:"bool"])
                     app?.updateSetting("motionANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "motionRestrictionEvent", "capability.motionSensor", title: "Restrict By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionRestrictionEvent) {
                     input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
@@ -645,7 +660,7 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Sensor(s) becomes Inactive"
                     }
-                    
+
                     input "motionRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(motionRANDOR) {
                         paragraph "Restrict when <b>any</b> Motion Sensor is true"
@@ -663,17 +678,6 @@ def pageConfig() {
                 app.removeSetting("motionRestrictionEvent")
             }
 
-            if(triggerType.contains("xPeriodic")) {
-                paragraph "<b>By Periodic</b>"
-                input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
-
-                paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
-                paragraph "<hr>"
-                paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
-            } else {
-                app.removeSetting("preMadePeriodic")
-            }
-            
             if(triggerType.contains("xPower")) {
                 paragraph "<b>Power</b>"
                 input "powerEvent", "capability.powerMeter", title: "By Power Setpoints", required:false, multiple:true, submitOnChange:true
@@ -714,7 +718,7 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) become Present"
                     }
-                    
+
                     input "presentANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(presentANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Presence Sensor is true"
@@ -726,7 +730,7 @@ def pageConfig() {
                     app?.updateSetting("psPresentNotPresent",[value:"false",type:"bool"])
                     app?.updateSetting("presentANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "presenceRestrictionEvent", "capability.presenceSensor", title: "Restrict By Presence Sensor", required: false, multiple: true, submitOnChange: true
                 if(presenceRestrictionEvent) {
                     input "prPresentNotPresent", "bool", title: "Restrict when Present (off) or Not Present (on)", description: "Present", defaultValue:false, submitOnChange:true
@@ -735,7 +739,7 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Sensor(s) become Present"
                     }
-                    
+
                     input "presentRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(presentRANDOR) {
                         paragraph "Restrict when <b>any</b> Presence Sensor is true"
@@ -763,7 +767,7 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) becomes Off"
                     }
-                    
+
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Trigger will fire when <b>any</b> Switch is true"
@@ -775,7 +779,7 @@ def pageConfig() {
                     app?.updateSetting("seOffOn",[value:"false",type:"bool"])
                     app?.updateSetting("switchANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
                 if(switchRestrictionEvent) {
                     input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
@@ -784,7 +788,7 @@ def pageConfig() {
                     } else {
                         paragraph "Restrict when Switch(es) are Off"
                     }
-                    
+
                     input "switchRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchRANDOR) {
                         paragraph "Restrict when <b>any</b> Switch is true"
@@ -796,7 +800,7 @@ def pageConfig() {
                     app?.updateSetting("srOffOn",[value:"false",type:"bool"])
                     app?.updateSetting("switchRANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 paragraph "<hr>"  
             } else {
                 app.removeSetting("switchEvent")
@@ -862,7 +866,7 @@ def pageConfig() {
                 app?.updateSetting("setVEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setVEPointLow",[value:"false",type:"bool"])
             }
-            
+
             if(triggerType.contains("xWater")) {
                 paragraph "<b>Water</b>"
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required: false, multiple: true, submitOnChange: true
@@ -884,7 +888,7 @@ def pageConfig() {
                     app?.updateSetting("wsDryWet",[value:"false",type:"bool"])
                     app?.updateSetting("waterANDOR",[value:"false",type:"bool"])
                 }
-                
+
                 input "waterRestrictionEvent", "capability.waterSensor", title: "Restrict By Water Sensor", required: false, multiple: true, submitOnChange: true
                 if(waterRestrictionEvent) {
                     input "wrDryWet", "bool", title: "Restrict when Dry (off) or Wet (on)", description: "Water", defaultValue:false, submitOnChange:true
@@ -913,15 +917,15 @@ def pageConfig() {
             if(triggerType.contains("xCustom")) {
                 paragraph "<b>Custom Attribute</b>"
                 input "customEvent", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
-                
+
                 if(customEvent) {
                     allAttrs1 = []
                     allAttrs1 = customEvent.supportedAttributes.flatten().unique{ it.name }.collectEntries{ [(it):"${it.name.capitalize()}"] }
                     allAttrs1a = allAttrs1.sort { a, b -> a.value <=> b.value }
                     input "specialAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
-                    
+
                     input "deviceORsetpoint", "bool", defaultValue:false, title: "Device (off) or Setpoint (on)", description: "Whole", submitOnChange:true
-                    
+
                     if(deviceORsetpoint) {
                         input "setSDPointHigh", "bool", defaultValue:false, title: "Trigger when Custom is too High?", description: "Custom High", submitOnChange:true
                         if(setSDPointHigh) {
@@ -948,7 +952,7 @@ def pageConfig() {
                         paragraph "Enter in the attribute values required to trigger Cog. Must be exactly as seen in the device current stats. (ie. on/off, open/closed)"
                         input "custom1", "text", title: "Attribute Value 1", required:true, submitOnChange:true
                         input "custom2", "text", title: "Attribute Value 2", required:true, submitOnChange:true
-                        
+
                         input "sdCustom1Custom2", "bool", title: "Trigger when ${custom1} (off) or ${custom2} (on)", description: "Custom", defaultValue:false, submitOnChange:true
                         if(sdCustom1Custom2) {
                             paragraph "Trigger will fire when Custom(s) become ${custom1}"
@@ -980,14 +984,14 @@ def pageConfig() {
                 app?.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
             }
-            
+
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                 input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
-                
+
                 paragraph "Setpoint truths can also be reset one time daily. Typically to allow another notification of a high/low reading."
                 input "spResetTime", "time", title: "Time to reset Setpoint truths (optional)", description: "Reset SP", required: false
-                
+
                 //input "useOverRestriction", "bool", title: "Use over Setpoint as Restriction", description: "restriction", defaultValue:false, submitOnChange:true
             } else {
                 app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
@@ -1315,16 +1319,16 @@ def pageConfig() {
 
 def notificationOptions(){
     dynamicPage(name: "notificationOptions", title: "Notification Options", install: false, uninstall:false){
-		section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
-           paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
+        section(getFormat("header-green", "${getImage("Blank")}"+" Speaker Options")) { 
+            paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
             input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
             if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
         }
-        
+
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple: true, required: false, submitOnChange: true
         }
-        
+
         if(useSpeech || sendPushMessage) {
             section(getFormat("header-green", "${getImage("Blank")}"+" Priority Message Instructions")) { }
             section("Instructions for Priority Message:", hideable: true, hidden: true) {
@@ -1345,7 +1349,7 @@ def notificationOptions(){
                 paragraph "Priority Voice and Sound options are only available when using Speech Synth option.<br>Also notice there is no spaces between the option and the message."
                 paragraph "<b>ie.</b> [N:3:0]Window has been open too long"
             }
-            
+
             section(getFormat("header-green", "${getImage("Blank")}"+" Messages Options")) {
                 wc =  "%whoHappened% - Device that caused the event to trigger<br>"
                 wc += "%whatHappened% - Device status that caused the event to trigger<br>"
@@ -1354,7 +1358,7 @@ def notificationOptions(){
                 if(lockEvent) wc += "%whoUnlocked% - The name of the person who unlocked the door<br>"
 
                 paragraph wc
-                
+
                 if(triggerType.contains("xBattery") ||  triggerType.contains("xEnergy") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
                     paragraph "<b>Setpoint Message Options</b>"
                     input "messageH", "text", title: "Message to speak when reading is too high", required: false, submitOnChange: true
@@ -1365,7 +1369,7 @@ def notificationOptions(){
                     app.removeSetting("messageL")
                     app.removeSetting("messageB")
                 }
-                
+
                 if(!triggerType.contains("xBattery") ||  !triggerType.contains("xEnergy") ||  !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
                     paragraph "<b>Random Message Options</b>"
                     input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
@@ -1386,7 +1390,7 @@ def notificationOptions(){
             app.removeSetting("messageL")
             app.removeSetting("messageB")
         }
-        
+
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights.  Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
@@ -1405,19 +1409,19 @@ def notificationOptions(){
 
 def installed() {
     log.debug "Installed with settings: ${settings}"
-	initialize()
+    initialize()
 }
 
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
-	unschedule()
+    unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite: false])
-	initialize()
+    initialize()
 }
 
 def initialize() {
@@ -1444,14 +1448,14 @@ def initialize() {
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
-        
+
         if(spResetTime) schedule(spResetTime, resetTruthHandler)
 
         if(repeat) {
             startTheProcess()
             def rT = repeatType.toString().replace("[", "").replace("]", "")
             if(logEnable) log.debug "In initialize - repeat - repeatType: ${rT}"
-            
+
             if(rT == "r1min") { 
                 runEvery1Minute(startTheProcess)
             } else if(rT == "r5min") {
@@ -1470,18 +1474,18 @@ def initialize() {
                 if(logEnable) log.debug "In initialize - repeat - Not repeating"
             }
         }
-        
-        if(triggerType.contains("xPeriodic")) { 
-            if(logEnable) log.debug "In initialize - xPeriodic - Starting! - (${preMadePeriodic})"
+
+        if(triggerType.contains("tPeriodic")) { 
+            if(logEnable) log.debug "In initialize - tPeriodic - Starting! - (${preMadePeriodic})"
             schedule(preMadePeriodic, startTheProcess)
         }
-        
-        if(triggerType.contains("xTimeDays")) { 
+
+        if(triggerType.contains("tTimeDays")) { 
             autoSunHandler()
         } else {
             state.sunRiseTosunSet = true
         }
-        
+
         if(fromTime && toTime) { 
             checkTime()
             schedule(fromTime, runAtTime1)
@@ -1489,10 +1493,10 @@ def initialize() {
         } else {
             state.timeBetween = true
         }
-        
+
         if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
         if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)   
-        
+
         startTheProcess()
     }
 }
@@ -1512,7 +1516,7 @@ def startTheProcess(evt) {
         state.areRestrictions = false
         state.skip = false
         if(preMadePeriodic) state.nothingToDo = false
-        
+
         if(evt) {
             if(evt == "again") {
                 state.whoHappened = "NA"
@@ -1528,7 +1532,7 @@ def startTheProcess(evt) {
                 state.hasntDelayedYet = true
             }
         }
-        
+
         accelerationRestrictionHandler()
         contactRestrictionHandler()
         garageDoorRestrictionHandler()           
@@ -1538,7 +1542,7 @@ def startTheProcess(evt) {
         switchRestrictionHandler()            
         waterRestrictionHandler()
         modeRestrictionHandler()
-        
+
         if(state.areRestrictions) {
             if(logEnable) log.debug "In startTheProcess - Restrictions are true, skipping"
             state.skip = true
@@ -1561,7 +1565,7 @@ def startTheProcess(evt) {
                 if(timeBetweenSunRestriction || !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }                
                 if(modeRestrictionEvent || !state.modeMatch) { state.nothingToDo = true; state.skip = true }
             }
-            
+
             if(state.skip) {
                 if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
             } else {
@@ -1581,7 +1585,7 @@ def startTheProcess(evt) {
                 powerHandler()
                 tempHandler()
                 voltageHandler()
-                
+
                 if(deviceORsetpoint) {
                     customSetpointHandler()
                 } else {
@@ -1589,13 +1593,13 @@ def startTheProcess(evt) {
                 }
             }
         }
-        
+
         if(state.skip) { 
             // do nothing
         } else {
             if(logEnable) log.debug "In startTheProcess - 2 - setpointGood: ${state.setpointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
-        
+
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
@@ -1893,7 +1897,7 @@ def hsmStatusHandler(data) {
         if(logEnable) log.debug "In hsmStatusHandler (${state.version})"
         state.hsmStatus = false
         String theValue = data
-        
+
         hsmStatusEvent.each { it ->
             if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
 
@@ -2021,7 +2025,7 @@ def voltageHandler() {
     }    
     if(!state.isThereSPDevices) { state.setpointGood = true }    // Keep in LAST setpoint
 }
-    
+
 def setpointHandler() {
     if(logEnable) log.trace "In setpointHandler (${state.version}) - spName: ${state.spName}"
     if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
@@ -2035,7 +2039,7 @@ def setpointHandler() {
         }     
         state.preSPV = setpointValue
         if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
-        
+
         // *** setpointHigh ***
         if(state.setpointHigh && !state.setpointLow) {
             int setpointHighValue = setpointValue
@@ -2101,7 +2105,7 @@ def setpointHandler() {
                 }
             }
         }
-        
+
         // *** Inbetween ***
         if(state.setpointHigh && state.setpointLow) {
             if(logEnable) log.debug "In setpointHandler (Between) - setpointBetweenOK: ${state.setpointBetweenOK}"
@@ -2299,7 +2303,7 @@ def modeRestrictionHandler() {
     if(logEnable) log.debug "In modeRestrictionHandler (${state.version})"
     if(modeRestrictionEvent) {
         if(modeRestrictionEvent) log.debug "In modeRestrictionHandler - modeRestrictionEvent: ${modeRestrictionEvent}"
-        
+
         modeRestrictionEvent.each { it ->
             theValue = location.mode
             if(logEnable) log.debug "In modeRestrictionHandler - Checking: ${it} - value: ${theValue}"
@@ -2321,11 +2325,11 @@ def modeRestrictionHandler() {
 // ********** Start Actions **********
 
 def dimmerOnActionHandler() {
-	if(logEnable) log.debug "In dimmerOnActionHandler (${state.version})"
-	state.fromWhere = "dimmerOn"
-	state.color = "${colorLC}"
+    if(logEnable) log.debug "In dimmerOnActionHandler (${state.version})"
+    state.fromWhere = "dimmerOn"
+    state.color = "${colorLC}"
     state.onLevel = levelLC
-	setLevelandColorHandler()
+    setLevelandColorHandler()
 }
 
 def dimmerOnReverseActionHandler() {
@@ -2371,7 +2375,7 @@ def permanentDimHandler() {
             it.setLevel(permanentDimLvl)
         }
     }
-    
+
     if(switchesOnAction) {
         switchesOnAction.each { it ->
             if(it.hasCommand('setLevel')) {
@@ -2380,7 +2384,7 @@ def permanentDimHandler() {
             }
         }
     }
-    
+
     if(switchesOffAction) {
         switchesOffAction.each { it ->
             if(it.hasCommand('setLevel')) {
@@ -2406,7 +2410,7 @@ def garageDoorActionHandler() {
             it.close()
         }
     }
-    
+
     if(garageDoorOpenAction) {
         garageDoorClosedAction.each { it ->
             if(logEnable) log.debug "In garageDoorActionHandler - Open ${it}"
@@ -2428,7 +2432,7 @@ def lockActionHandler() {
             it.lock()
         }
     }
-    
+
     if(unlockAction) {
         unlockAction.each { it ->
             if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}"
@@ -2473,22 +2477,22 @@ def lockUserActionHandler(evt) {
 }
 
 def modeChangeActionHandler() {
-	if(logEnable) log.debug "In modeChangeActionHandler - Changing mode to ${modeAction}"
-	setLocationMode(modeAction)
+    if(logEnable) log.debug "In modeChangeActionHandler - Changing mode to ${modeAction}"
+    setLocationMode(modeAction)
 }
 
 def switchesOnActionHandler() {
-	switchesOnAction.each { it ->
-		if(logEnable) log.debug "In switchesOnActionHandler - Turning on ${it}"
-		it.on()
-	}
+    switchesOnAction.each { it ->
+        if(logEnable) log.debug "In switchesOnActionHandler - Turning on ${it}"
+        it.on()
+    }
 }
 
 def switchesOnReverseActionHandler() {
-	switchesOnAction.each { it ->
-		if(logEnable) log.debug "In switchesOnReverseActionHandler - Turning off ${it}"
-		it.off()
-	}
+    switchesOnAction.each { it ->
+        if(logEnable) log.debug "In switchesOnReverseActionHandler - Turning off ${it}"
+        it.off()
+    }
 }
 
 def switchesOffActionHandler() {
@@ -2506,7 +2510,7 @@ def switchesOffReverseActionHandler() {
 }
 
 def switchesToggleActionHandler() {
-	switchesToggleAction.each { it ->
+    switchesToggleAction.each { it ->
         status = it.currentValue("switch")
         if(status == "off") {
             if(logEnable) log.debug "In switchesToggleActionHandler - Turning on ${it}"
@@ -2515,7 +2519,7 @@ def switchesToggleActionHandler() {
             if(logEnable) log.debug "In switchesToggleActionHandler - Turning off ${it}"
             it.off()
         }
-	}
+    }
 }
 
 def slowOnHandler() {
@@ -2568,7 +2572,7 @@ def slowOffHandler() {
 def findHighestCurrentValue() {
     if(logEnable) log.debug "In findHighestCurrentValue (${state.version})"
     state.highestLevel = 0
-    
+
     slowDimmerDn.each { it->
         checkLevel = it.currentValue("level")
         if(checkLevel > state.highestLevel) state.highestLevel = checkLevel
@@ -2656,7 +2660,7 @@ def valveActionHandler() {
             it.close()
         }
     }
-    
+
     if(valveOpenAction) {
         valveClosedAction.each { it ->
             if(logEnable) log.debug "In valveActionHandler - Open ${it}"
@@ -2669,7 +2673,7 @@ def valveActionHandler() {
 
 def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
-    
+
     if(triggerType.contains("xBattery") ||  triggerType.contains("xEnergy") ||  triggerType.contains("xHumidity") ||  triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
         if(logEnable) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
         if(state.setpointHighOK == "no") theMessage = "${messageH}"
@@ -2685,7 +2689,7 @@ def messageHandler() {
         if(logEnable) log.debug "In messageHandler - Random - theMessage: ${theMessage}" 
     }    
     state.message = theMessage
-    
+
     if(state.message) { 
         if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
         if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
@@ -2711,26 +2715,26 @@ def letsTalk(msg) {
 
 def pushHandler(msg){
     if(logEnable) log.debug "In pushNow (${state.version}) - Sending a push - msg: ${msg}"
-	theMessage = "${app.label} - ${msg}"
-	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
-   	sendPushMessage.deviceNotification(theMessage)
+    theMessage = "${app.label} - ${msg}"
+    if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
+    sendPushMessage.deviceNotification(theMessage)
 }
 
 def currentDateTime() {
-	if(logEnable) log.debug "In currentDateTime (${state.version})"
-	Date date = new Date()
-	String datePart = date.format("dd/MM/yyyy")
-	String timePart = date.format("HH:mm")
-	String timePart1 = date.format("h:mm a")
-	state.theTime = timePart		// 24 h
-	state.theTime1 = timePart1		// AM PM
-	if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
+    if(logEnable) log.debug "In currentDateTime (${state.version})"
+    Date date = new Date()
+    String datePart = date.format("dd/MM/yyyy")
+    String timePart = date.format("HH:mm")
+    String timePart1 = date.format("h:mm a")
+    state.theTime = timePart		// 24 h
+    state.theTime1 = timePart1		// AM PM
+    if(logEnable) log.debug "In currentDateTime - ${state.theTime}"
 }
 
 def autoSunHandler() {
     // autoSunHandler - This is to trigger AT the exact times with offsets
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    
+
     def sunriseTime = getSunriseAndSunset().sunrise
     def sunsetTime = getSunriseAndSunset().sunset
 
@@ -2740,7 +2744,7 @@ def autoSunHandler() {
     } else {
         state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
     }
-    
+
     int theOffsetSunrise = offsetSunrise ?: 1
     if(riseBeforeAfter) {
         state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
@@ -2754,7 +2758,7 @@ def autoSunHandler() {
 
     // check for new sunset/sunrise times every day at 12:05 pm
     schedule("0 5 12 ? * * *", autoSunHandler)
-        
+
     if(riseSet) { schedule(state.timeSunset, runAtTime1) }
     if(!riseSet) { schedule(state.timeSunrise, runAtTime2) }
 }
@@ -2771,18 +2775,18 @@ def runAtTime2() {
 
 def checkTimeSun() {
     // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
-	if(logEnable) log.debug "In checkTimeSun (${state.version})"
+    if(logEnable) log.debug "In checkTimeSun (${state.version})"
     if(sunRestriction) {    
         def nextSunrise = (getSunriseAndSunset().sunrise)+1
         def nextSunset = getSunriseAndSunset().sunset
-        
+
         int theOffsetSunset = offsetSunset ?: 1    
         if(setBeforeAfter) {
             use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
         } else {
             use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
         }
-        
+
         int theOffsetSunrise = offsetSunrise ?: 1
         if(riseBeforeAfter) {
             use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
@@ -2792,55 +2796,55 @@ def checkTimeSun() {
 
         if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
         if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
-        
+
         state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
         if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
-        
-		if(state.timeBetweenSun) {
+
+        if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
-			state.sunRiseTosunSet = true
+            state.sunRiseTosunSet = true
             state.nothingToDo = false
-		} else {
+        } else {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
-			state.sunRiseTosunSet = false
+            state.sunRiseTosunSet = false
             if(reverse) state.nothingToDo = false
-		}
-  	} else {
+        }
+    } else {
         if(logEnable) log.debug "In checkTimeSun - NOT Specified"
-		state.timeBetweenSun = true
-  	}
-    
+        state.timeBetweenSun = true
+    }
+
     if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - nothingToDo: ${state.nothingToDo}"
 }
 
 def checkTime() {
-	if(logEnable) log.debug "In checkTime (${state.version})"
-	if(fromTime && toTime) {
+    if(logEnable) log.debug "In checkTime (${state.version})"
+    if(fromTime && toTime) {
         if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
         } else {
-		    state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
+            state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
-		if(state.betweenTime) {
+        if(state.betweenTime) {
             if(logEnable) log.debug "In checkTime - Time within range"
-			state.timeBetween = true
+            state.timeBetween = true
             state.nothingToDo = false
-		} else {
+        } else {
             if(logEnable) log.debug "In checkTime - Time outside of range"
-			state.timeBetween = false
+            state.timeBetween = false
             if(reverse) state.nothingToDo = false
-		}
-  	} else {  
+        }
+    } else {  
         if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
-		state.timeBetween = true
-  	}
-    
-	if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween} - nothingToDo: ${state.nothingToDo}"
+        state.timeBetween = true
+    }
+
+    if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween} - nothingToDo: ${state.nothingToDo}"
 }
 
 def dayOfTheWeekHandler() {
-	if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
+    if(logEnable) log.debug "In dayOfTheWeek (${state.version})"    
     if(days) {
         def df = new java.text.SimpleDateFormat("EEEE")
         df.setTimeZone(location.timeZone)
@@ -2858,7 +2862,7 @@ def dayOfTheWeekHandler() {
         if(logEnable) log.debug "In dayOfTheWeekHandler - NO Days Specified"
         state.daysMatch = true
     }
-    
+
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - nothingToDo: ${state.nothingToDo}"
 }
 
@@ -2866,63 +2870,63 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOff") {
         state.onLevel = state.highestLevel
     } else {
-	    state.onLevel = state.onLevel ?: 99
+        state.onLevel = state.onLevel ?: 99
     }
     if(state.color == null || state.color == "null" || state.color == "") state.color = "No Change"
-    
+
     if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color} - onLevel: ${state.onLevel}"
-    
+
     switch(state.color) {
         case "No Change":
-            hueColor = null
-            saturation = null
-            break;
+        hueColor = null
+        saturation = null
+        break;
         case "White":
-            hueColor = 52
-            saturation = 19
-            break;
+        hueColor = 52
+        saturation = 19
+        break;
         case "Daylight":
-            hueColor = 53
-            saturation = 91
-            break;
+        hueColor = 53
+        saturation = 91
+        break;
         case "Soft White":
-            hueColor = 23
-            saturation = 56
-            break;
+        hueColor = 23
+        saturation = 56
+        break;
         case "Warm White":
-            hueColor = 20
-            saturation = 80
-            break;
+        hueColor = 20
+        saturation = 80
+        break;
         case "Blue":
-            hueColor = 70
-            break;
+        hueColor = 70
+        break;
         case "Green":
-            hueColor = 39
-            break;
+        hueColor = 39
+        break;
         case "Yellow":
-            hueColor = 25
-            break;
+        hueColor = 25
+        break;
         case "Orange":
-            hueColor = 10
-            break;
+        hueColor = 10
+        break;
         case "Purple":
-            hueColor = 75
-            break;
+        hueColor = 75
+        break;
         case "Pink":
-            hueColor = 83
-            break;
+        hueColor = 83
+        break;
         case "Red":
-            hueColor = 100
-            break;
+        hueColor = 100
+        break;
     }
-    
+
     int onLevel = state.onLevel
-	if(saturation == null) saturation = 100
-    
+    if(saturation == null) saturation = 100
+
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
-    
-    
-	if(state.fromWhere == "dimmerOn") {
+
+
+    if(state.fromWhere == "dimmerOn") {
         if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"  
         state.oldMap = [:]
         state.oldLevelMap = [:]
@@ -2931,11 +2935,11 @@ def setLevelandColorHandler() {
                 hueColor = it.currentValue("hue")
                 saturation = it.currentValue("saturation")              
             }
-            
+
             def value = [hue: hueColor, saturation: saturation, level: onLevel] 
             if(logEnable) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
-            
-        	if (it.hasCommand('setColor')) {
+
+            if (it.hasCommand('setColor')) {
                 oldHueColor = it.currentValue("hue")
                 oldSaturation = it.currentValue("saturation")
                 oldLevel = it.currentValue("level")
@@ -2945,69 +2949,69 @@ def setLevelandColorHandler() {
                 state.oldMap.put(name,oldStatus) 
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
-            	it.setColor(value)
-        	} else if (it.hasCommand('setLevel')) {
+                it.setColor(value)
+            } else if (it.hasCommand('setLevel')) {
                 oldLevel = it.currentValue("level")
                 name = (it.displayName).replace(" ","")
                 status = it.currentValue("switch")
                 oldStatus = "${status}::${oldLevel}"
                 state.oldLevelMap.put(name,oldStatus)
                 if(logEnable) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
-            	if(logEnable) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
-            	it.setLevel(onLevel as Integer ?: 99)
-        	} else {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
-            	it.on()
-        	}
-    	}
-	}
-    
-	if(state.fromWhere == "slowOn") {
-    	slowDimmerUp.each {
-        	if (it.hasCommand('setColor')) {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
-            	it.setColor(value)
-        	} else if (it.hasCommand('setLevel')) {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
-            	it.setLevel(onLevel as Integer ?: 99)
-        	} else {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
-            	it.on()
-        	}
-    	}
-	}
-    
-	if(state.fromWhere == "slowOff") {
-    	slowDimmerDn.each {
-        	if (it.hasCommand('setColor')) {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
-            	it.setColor(value)
-        	} else if (it.hasCommand('setLevel')) {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
-            	it.setLevel(level as Integer ?: 99)
-        	} else {
-            	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
-            	it.on()
-        	}
-    	}
-	}
+                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
+                it.setLevel(onLevel as Integer ?: 99)
+            } else {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                it.on()
+            }
+        }
+    }
+
+    if(state.fromWhere == "slowOn") {
+        slowDimmerUp.each {
+            if (it.hasCommand('setColor')) {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                it.setColor(value)
+            } else if (it.hasCommand('setLevel')) {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                it.setLevel(onLevel as Integer ?: 99)
+            } else {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                it.on()
+            }
+        }
+    }
+
+    if(state.fromWhere == "slowOff") {
+        slowDimmerDn.each {
+            if (it.hasCommand('setColor')) {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                it.setColor(value)
+            } else if (it.hasCommand('setLevel')) {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                it.setLevel(level as Integer ?: 99)
+            } else {
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                it.on()
+            }
+        }
+    }
 }
 
 def getLockCodeNames(myDev) {  // Special thanks to Bruce @bravenel for this code
-	def list = ["**Any Lock Code**"] + getLockCodesFromDevice(myDev).tokenize(",")
-	return list
+    def list = ["**Any Lock Code**"] + getLockCodesFromDevice(myDev).tokenize(",")
+    return list
 }
 
 def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for this code
-	def lcText = device?.currentValue("lockCodes")
-	if (!lcText?.startsWith("{")) {
-		lcText = decrypt(lcText)
-	} 
-	def lockCodes
-	if(lcText) lockCodes = new JsonSlurper().parseText(lcText)
-	def result = ""
-	lockCodes.each {if(it.value.name) result += it.value.name + ","}
-	return result ? result[0..-2] : ""
+    def lcText = device?.currentValue("lockCodes")
+    if (!lcText?.startsWith("{")) {
+        lcText = decrypt(lcText)
+    } 
+    def lockCodes
+    if(lcText) lockCodes = new JsonSlurper().parseText(lcText)
+    def result = ""
+    lockCodes.each {if(it.value.name) result += it.value.name + ","}
+    return result ? result[0..-2] : ""
 }
 
 def resetTruthHandler() {
@@ -3038,7 +3042,7 @@ def checkEnableHandler() {
 }
 
 def setDefaults(){
-	if(logEnable == null){logEnable = false}
+    if(logEnable == null){logEnable = false}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -3052,7 +3056,7 @@ def getImage(type) {					// Modified from @Stephack Code
 }
 
 def getFormat(type, myText="") {			// Modified from @Stephack Code   
-	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
@@ -3061,7 +3065,7 @@ def display(data) {
     if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    
+
     if(app.label) {
         if(app.label.contains("(Paused)")) {
             theName = app.label - " <span style='color:red'>(Paused)</span>"
@@ -3069,21 +3073,21 @@ def display(data) {
             theName = app.label
         }
     }
-    
+
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
+        paragraph getFormat("line")
         input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
-	}
+    }
 }
 
 def display2() {
-	section() {
-		paragraph getFormat("line")
-		paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+    section() {
+        paragraph getFormat("line")
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
         paragraph "${state.footerMessage}"
-	}       
+    }       
 }
 
 def getHeaderAndFooter() {
