@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.6.8 - 09/22/20 - Fixed Just Sunset / Just Sunrise
 *  1.6.7 - 09/22/20 - Mode now works just like any other time based trigger, Trigger AND OR is back!
 *  1.6.6 - 09/21/20 - Moved Periodic Expressions and Mode to Time/Days sub menu - CHECK YOUR COGS!
 *  1.6.5 - 09/21/20 - Cog truths can now be Reset under Log Debug options (no longer resets on save). New option to reset setpoint truths by time. Cosmetic Changes.
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.6.7"
+    state.version = "1.6.8"
 }
 
 definition(
@@ -230,10 +231,6 @@ def pageConfig() {
                     paragraph "<hr>"
                 }
             } else {
-                app.removeSetting("offsetSunset")
-                app.removeSetting("offsetSunrise")
-                app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
-                app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
                 app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
             }
 
@@ -247,7 +244,6 @@ def pageConfig() {
                 paragraph "<b>Just Sunrise</b>"
                 input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                 input "offsetSunrise", "number", title: "Offset (minutes)", width:6
-
                 input "sunriseToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
                 if(sunriseToTime) {
                     input "sunriseEndTime", "time", title: "Time to End", description: "Time", required: false
@@ -260,7 +256,6 @@ def pageConfig() {
                 paragraph "<b>Just Sunset</b>"
                 input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
                 input "offsetSunset", "number", title: "Offset (minutes)", width:6
-
                 input "sunsetToTime", "bool", title: "Set a certain time to turn off", defaultValue:false, submitOnChange:true
                 if(sunsetToTime) {
                     input "sunsetEndTime", "time", title: "Time to End", description: "Time", required: false
@@ -270,13 +265,16 @@ def pageConfig() {
                 }                    
                 paragraph "<hr>"
             } else {
-                app.removeSetting("sunsetEndTime")
+                app.removeSetting("sunsetEndTime")                
+            }
+
+            if(!timeDaysType.contains("tSunsetSunrise") && !timeDaysType.contains("tSunrise") && !timeDaysType.contains("tSunset")) {
                 app.removeSetting("offsetSunrise")
                 app.removeSetting("offsetSunset")
                 app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
-                app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])                   
+                app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
             }
-
+                    
             if(triggerType.contains("xAcceleration")) {
                 paragraph "<b>Acceleration Sensor</b>"
                 input "accelerationEvent", "capability.accelerationSensor", title: "By Acceleration Sensor", required: false, multiple: true, submitOnChange: true
