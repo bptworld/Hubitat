@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.6.7 - 09/22/20 - Mode now works just like any other time based trigger, Trigger AND OR is back!
 *  1.6.6 - 09/21/20 - Moved Periodic Expressions and Mode to Time/Days sub menu - CHECK YOUR COGS!
 *  1.6.5 - 09/21/20 - Cog truths can now be Reset under Log Debug options (no longer resets on save). New option to reset setpoint truths by time. Cosmetic Changes.
 *  1.6.4 - 09/20/20 - Minor change for testing
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.6.6"
+    state.version = "1.6.7"
 }
 
 definition(
@@ -112,7 +113,7 @@ def pageConfig() {
             if(timeDaysType == null) timeDaysType = ""
 
             if(triggerType.contains("tTimeDays")) {
-                input "timeDaysType", "enum", title: "Time/Days - Sub-Menu", options: [
+                input "timeDaysType", "enum", title: "Time/Days/Mode - Sub-Menu", options: [
                     ["tPeriodic":"Periodic Expression"],
                     ["tMode":"By Mode"],
                     ["tDays":"By Days"],
@@ -129,12 +130,13 @@ def pageConfig() {
                 app.removeSetting("timeDaysType")
             }
 
-            //input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
-            //if(triggerAndOr) {
-            //    paragraph "Cog will fire when <b>ANY</b> trigger is true"
-            //} else {
-            //    paragraph "Cog will fire when <b>ALL</b> triggers are true"
-            //}
+            input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Trigger types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
+            if(triggerAndOr) {
+                paragraph "Cog will fire when <b>ANY</b> trigger is true"
+            } else {
+                paragraph "Cog will fire when <b>ALL</b> triggers are true"
+            }
+            paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
             paragraph "<hr>"
 
             if(timeDaysType.contains("tPeriodic")) {
@@ -151,34 +153,17 @@ def pageConfig() {
             if(timeDaysType.contains("tMode")) {
                 paragraph "<b>Mode</b>"
                 input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
-                if(modeEvent) {
-                    input "modeOnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
-                    if(modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are on."
-                    if(!modeOnOff) paragraph "You will receive notifications if <b>any</b> of the modes are off."
-                } else {
-                    app.removeSetting("modeEvent")
-                    app.removeSetting("modeOnOff")
-                }
-
-                input "modeRestrictionEvent", "mode", title: "Restrict By Mode", multiple:true, submitOnChange:true
-                if(modeRestrictionEvent) {
-                    input "modeROnOff", "bool", defaultValue: false, title: "Mode Inactive (off) or Active (on)?", description: "Mode", submitOnChange:true
-                    if(modeROnOff) paragraph "Restrict if <b>any</b> of the modes are on."
-                    if(!modeROnOff) paragraph "Restrict if <b>any</b> of the modes are off."
-                } else {
-                    app.removeSetting("modeRestrictionEvent")
-                    app.removeSetting("modeROnOff")
-                }
+                paragraph "By Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
+                input "modeMatchRestriction", "bool", defaultValue: false, title: "By Mode as Restriction", description: "By Mode Restriction", submitOnChange:true
                 paragraph "<hr>"
             } else {
                 app.removeSetting("modeEvent")
-                app.removeSetting("modeRestrictionEvent")
+                app.removeSetting("modeMatchRestriction")
             }
 
             if(timeDaysType.contains("tDays")) {
                 paragraph "<b>By Days</b>"
                 input "days", "enum", title: "Activate on these days", description: "Days to Activate", required: false, multiple: true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
                 paragraph "By Days can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                 input "daysMatchRestriction", "bool", defaultValue: false, title: "By Days as Restriction", description: "By Days Restriction", submitOnChange:true
                 paragraph "<hr>"
@@ -215,7 +200,6 @@ def pageConfig() {
                 input "fromTime", "time", title: "From", required: false, width: 6, submitOnChange:true
                 input "toTime", "time", title: "To", required: false, width: 6
                 input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
-
                 paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this trigger is false."
                 input "timeBetweenRestriction", "bool", defaultValue: false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
                 paragraph "<hr>"
@@ -293,7 +277,6 @@ def pageConfig() {
                 app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])                   
             }
 
-
             if(triggerType.contains("xAcceleration")) {
                 paragraph "<b>Acceleration Sensor</b>"
                 input "accelerationEvent", "capability.accelerationSensor", title: "By Acceleration Sensor", required: false, multiple: true, submitOnChange: true
@@ -342,6 +325,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("accelerationEvent")
                 app.removeSetting("accelerationRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('acceleration') }
             }
 
             if(triggerType.contains("xBattery")) {
@@ -372,6 +356,7 @@ def pageConfig() {
                 app.removeSetting("beSetPointLow")
                 app?.updateSetting("setBEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setBEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('battery') }
             }
 
             if(triggerType.contains("xContact")) {
@@ -421,6 +406,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("contactEvent")
                 app.removeSetting("contactRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('contact') }
             }
 
             if(triggerType.contains("xEnergy")) {
@@ -451,6 +437,7 @@ def pageConfig() {
                 app.removeSetting("eeSetPointLow")
                 app?.updateSetting("setEEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setEEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('energy') }
             }
 
             if(triggerType.contains("xGarageDoor")) {
@@ -500,6 +487,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("garageDoorEvent")
                 app.removeSetting("garageDoorRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('garageDoor') }
             }
 
             if(triggerType.contains("xHSMAlert")) {
@@ -550,6 +538,7 @@ def pageConfig() {
                 app.removeSetting("heSetPointLow")
                 app?.updateSetting("setHEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setHEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('humidity') }
             }
 
             if(triggerType.contains("xIlluminance")) {
@@ -580,6 +569,7 @@ def pageConfig() {
                 app.removeSetting("ieSetPointLow")
                 app?.updateSetting("setIEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setIEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('illuminance') }
             }
 
             if(triggerType.contains("xLock")) {
@@ -622,6 +612,7 @@ def pageConfig() {
                     app.removeSetting("lockRestrictionEvent")
                     app?.updateSetting("lrUnlockedLocked",[value:"false",type:"bool"])
                     app?.updateSetting("lockRANDOR",[value:"false",type:"bool"])
+                    if(state.deviceMap) { state.deviceMap.remove('lock') }
                 }
                 paragraph "<hr>" 
             } else {
@@ -676,6 +667,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("motionEvent")
                 app.removeSetting("motionRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('motion') }
             }
 
             if(triggerType.contains("xPower")) {
@@ -706,6 +698,7 @@ def pageConfig() {
                 app.removeSetting("peSetPointLow")
                 app?.updateSetting("setPEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setPEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('power') }
             }
 
             if(triggerType.contains("xPresence")) {
@@ -755,6 +748,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("presenceEvent")
                 app.removeSetting("presenceRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('presence') }
             }
 
             if(triggerType.contains("xSwitch")) {
@@ -805,6 +799,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("switchEvent")
                 app.removeSetting("switchRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('switch') }
             }
 
             if(triggerType.contains("xTemp")) {
@@ -835,6 +830,7 @@ def pageConfig() {
                 app.removeSetting("teSetPointLow")
                 app?.updateSetting("setTEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('temperature') }
             }
 
             if(triggerType.contains("xVoltage")) {
@@ -865,6 +861,7 @@ def pageConfig() {
                 app.removeSetting("veSetPointLow")
                 app?.updateSetting("setVEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setVEPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('voltage') }
             }
 
             if(triggerType.contains("xWater")) {
@@ -912,6 +909,7 @@ def pageConfig() {
             } else {
                 app.removeSetting("waterEvent")
                 app.removeSetting("waterRestrictionEvent")
+                if(state.deviceMap) { state.deviceMap.remove('water') }
             }
 
             if(triggerType.contains("xCustom")) {
@@ -983,6 +981,7 @@ def pageConfig() {
                 app.removeSetting("sdSetPointLow")
                 app?.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
+                if(state.deviceMap) { state.deviceMap.remove('custom') }
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
@@ -1510,7 +1509,6 @@ def startTheProcess(evt) {
         state.nothingToDo = true
         state.devicesGood = false
         state.setpointGood = false
-        state.modeMatch = false
         state.isThereDevices = false
         state.isThereSPDevices = false
         state.areRestrictions = false
@@ -1541,7 +1539,6 @@ def startTheProcess(evt) {
         presenceRestrictionHandler()
         switchRestrictionHandler()            
         waterRestrictionHandler()
-        modeRestrictionHandler()
 
         if(state.areRestrictions) {
             if(logEnable) log.debug "In startTheProcess - Restrictions are true, skipping"
@@ -1562,8 +1559,8 @@ def startTheProcess(evt) {
 
                 if(daysMatchRestriction || !state.daysMatch) { state.nothingToDo = true; state.skip = true }
                 if(timeBetweenRestriction || !state.timeBetween) { state.nothingToDo = true; state.skip = true }
-                if(timeBetweenSunRestriction || !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true }                
-                if(modeRestrictionEvent || !state.modeMatch) { state.nothingToDo = true; state.skip = true }
+                if(timeBetweenSunRestriction || !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true } 
+                if(modeMatchRestriction || !state.modeMatch) { state.nothingToDo = true; state.skip = true }
             }
 
             if(state.skip) {
@@ -1591,6 +1588,8 @@ def startTheProcess(evt) {
                 } else {
                     customDeviceHandler()
                 }
+                
+                checkTriggerAndOr()
             }
         }
 
@@ -1603,10 +1602,14 @@ def startTheProcess(evt) {
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
-            allGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch && state.setpointGood && state.devicesGood
-            if(state.skip) { allGood = true }
-            if(logEnable) log.debug "In startTheProcess - 3 - allGood: ${allGood}"
-            if(allGood) {            
+            allTimeGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch
+            alldevices = state.setpointGood && state.devicesGood
+            if(state.skip) { 
+                allTimeGood = true
+                alldevices = true
+            }
+            if(logEnable) log.debug "In startTheProcess - 3 - allTimeGood: ${allTimeGood} - alldevices: ${alldevices}"
+            if(allTimeGood && alldevices) {            
                 if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
 
                 if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -1668,6 +1671,7 @@ def startTheProcess(evt) {
 
 def customDeviceHandler() {
     if(customEvent) {
+        if(logEnable) log.trace "customEvent: ${customEvent}"
         state.eventName = customEvent
         state.eventType = specialAtt
         state.type = sdCustom1Custom2
@@ -1680,6 +1684,7 @@ def customDeviceHandler() {
 
 def accelerationHandler() {
     if(accelerationEvent) {
+        if(logEnable) log.trace "accelerationEvent: ${accelerationEvent}"
         state.eventName = accelerationEvent
         state.eventType = "acceleration"
         state.type = asInactiveActive
@@ -1692,6 +1697,7 @@ def accelerationHandler() {
 
 def contactHandler() {
     if(contactEvent) {
+        if(logEnable) log.trace "contactEvent: ${contactEvent}"
         state.eventName = contactEvent
         state.eventType = "contact"
         state.type = csClosedOpen
@@ -1704,6 +1710,7 @@ def contactHandler() {
 
 def garageDoorHandler() {
     if(garageDoorEvent) {
+        if(logEnable) log.trace "garageDoorEvent: ${garageDoorEvent}"
         state.eventName = garageDoorEvent
         state.eventType = "door"
         state.type = gdClosedOpen
@@ -1716,6 +1723,7 @@ def garageDoorHandler() {
 
 def lockHandler() {
     if(lockEvent) {
+        if(logEnable) log.trace "lockEvent: ${lockEvent}"
         state.eventName = lockEvent
         state.eventType = "lock"
         state.type = lUnlockedLocked
@@ -1728,6 +1736,7 @@ def lockHandler() {
 
 def motionHandler() {
     if(motionEvent) {
+        if(logEnable) log.trace "motionEvent: ${motionEvent}"
         state.eventName = motionEvent
         state.eventType = "motion"
         state.type = meInactiveActive
@@ -1740,6 +1749,7 @@ def motionHandler() {
 
 def presenceHandler() {
     if(presenceEvent) {
+        if(logEnable) log.trace "presenceEvent: ${presenceEvent}"
         state.eventName = presenceEvent
         state.eventType = "presence"
         state.type = pePresentNotPresent
@@ -1752,6 +1762,7 @@ def presenceHandler() {
 
 def switchHandler() {
     if(switchEvent) {
+        if(logEnable) log.trace "switchEvent: ${switchEvent}"
         state.eventName = switchEvent
         state.eventType = "switch"
         state.type = seOffOn
@@ -1764,6 +1775,7 @@ def switchHandler() {
 
 def waterHandler() {
     if(waterEvent) {
+        if(logEnable) log.trace "waterEvent: ${waterEvent}"
         state.eventName = waterEvent
         state.eventType = "water"
         state.type = weDryWet
@@ -1777,6 +1789,19 @@ def waterHandler() {
 
 def devicesGoodHandler() {
     if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}"
+    if(state.deviceMap == null) state.deviceMap = [:]
+    try {
+        mapData = state.deviceMap.get(state.eventType)
+        def (devicesOK, devicesGood, nothingToDo) = mapData.split(":")
+        state.devicesOK = devicesOK
+        state.devicesGood = devicesGood
+        state.nothingToDo = nothingToDo
+    } catch(e) {
+        // Do nothing
+    }
+    if(state.devicesOK == null) state.devicesOK = ""
+    if(state.devicesGood == null) state.devicesGood = ""
+    if(state.nothingToDo == null) state.nothingToDo = ""
     state.isThereDevices = true
     deviceTrue = 0
     try {
@@ -1870,7 +1895,71 @@ def devicesGoodHandler() {
             }
         }   
     }
+    mapData = "${state.devicesOK}:${state.devicesGood}:${state.nothingToDo}"
+    state.deviceMap.put(state.eventType, mapData)
+      
     if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - mapData: ${mapData}"
+}
+
+def checkTriggerAndOr() {
+    if(logEnable) log.debug "In checkTriggerAndOr (${state.version})"
+    deviceTrue = 0
+    if(state.allDevicesOK == null) state.allDevicesOK = "yes"
+    if(state.deviceMap) {
+        mapCount = state.deviceMap.size()
+        state.deviceMap.each { it ->
+            itValue = it.value.split(":")           
+            if(itValue[0] == "no") deviceTrue = deviceTrue + 1
+        }
+        if(logEnable) log.debug "In checkTriggerAndOr - mapCount: ${mapCount} - deviceTrue: ${deviceTrue} - deviceMap: ${state.deviceMap}"
+        if(triggerAndOr) {    // OR
+            if(deviceTrue >= 1) { // Bad
+                if(state.allDevicesOK == "yes") {
+                    state.allDevicesOK = "no"
+                    state.devicesGood = true
+                    state.nothingToDo = false
+                } else {
+                    state.nothingToDo = true
+                    state.allDevicesOK == "yes"
+                }
+            } else {  // Good
+                if(state.allDevicesOK == "yes") {
+                    state.nothingToDo = true
+                } else {
+                    state.allDevicesOK = "yes" 
+                    if(reverse) {
+                        state.devicesGood = false
+                        state.nothingToDo = false
+                    } else {
+                        state.devicesGood = true
+                        state.nothingToDo = true
+                    }
+                }
+            }
+        } else {    // AND
+            if(deviceTrue == mapCount) { // Bad
+                if(state.allDevicesOK == "yes") {
+                    state.allDevicesOK = "no"
+                    state.devicesGood = true
+                    state.nothingToDo = false
+                } else {
+                    state.nothingToDo = true
+                    state.allDevicesOK == "yes"
+                }
+            } else { // Good
+                state.allDevicesOK = "yes" 
+                if(reverse) {
+                    state.devicesGood = false
+                    state.nothingToDo = false
+                } else {
+                    state.devicesGood = true
+                    state.nothingToDo = true
+                }
+            }   
+        }
+        if(logEnable) log.debug "In checkTriggerAndOr - allDevicesOK: ${state.allDevicesOK} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+    }
 }
 
 def hsmAlertHandler(data) {
@@ -1909,33 +1998,6 @@ def hsmStatusHandler(data) {
         state.hsmStatus = true
     }
     if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus}"
-}
-
-def modeHandler() {
-    if(logEnable) log.debug "In modeHandler (${state.version})"
-    if(modeEvent) {
-        if(logEnable) log.debug "In modeHandler - modeEvent: ${modeEvent}"
-
-        modeEvent.each { it ->
-            theValue = location.mode
-            if(logEnable) log.debug "In modeHandler - Checking: ${it} - value: ${theValue}"
-
-            if(theValue == it){
-                if(logEnable) log.debug "In modeHandler - MATCH"
-                if(modeOnOff) {
-                    state.modeMatch = true
-                    state.nothingToDo = false
-                }
-                if(!modeOnOff) {
-                    state.modeMatch = true
-                    state.nothingToDo = false
-                }
-            }
-        }
-    } else {
-        state.modeMatch = true
-    }
-    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
 }
 
 def ruleMachineHandler() {
@@ -2299,29 +2361,6 @@ def restrictionHandler() {
     if(logEnable) log.debug "In restrictionHandler - ${state.rEventType.toUpperCase()} - areRestrictions: ${state.areRestrictions}"   
 }
 
-def modeRestrictionHandler() {
-    if(logEnable) log.debug "In modeRestrictionHandler (${state.version})"
-    if(modeRestrictionEvent) {
-        if(modeRestrictionEvent) log.debug "In modeRestrictionHandler - modeRestrictionEvent: ${modeRestrictionEvent}"
-
-        modeRestrictionEvent.each { it ->
-            theValue = location.mode
-            if(logEnable) log.debug "In modeRestrictionHandler - Checking: ${it} - value: ${theValue}"
-
-            if(theValue == it){
-                if(logEnable) log.debug "In modeHandler - MATCH"
-                if(modeROnOff) {
-                    state.areRestrictions = true
-                }
-                if(!modeROnOff) {
-                    state.areRestrictions = true
-                }
-            }
-        }
-    }
-    if(logEnable) log.debug "In modeRestrictionHandler - areRestrictions: ${state.areRestrictions}"
-}
-
 // ********** Start Actions **********
 
 def dimmerOnActionHandler() {
@@ -2337,31 +2376,39 @@ def dimmerOnReverseActionHandler() {
         setOnLC.each { it ->
             if(it.hasCommand("setColor")) {
                 name = (it.displayName).replace(" ","")
-                data = state.oldMap.get(name)            
-                def (oldStatus, oldHueColor, oldSaturation, oldLevel) =  data.split("::")           
-                int hueColor = oldHueColor.toInteger()
-                int saturation = oldSaturation.toInteger()
-                int level = oldLevel.toInteger()           
-                def theValue = [hue: hueColor, saturation: saturation, level: level]
-                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
-                it.setColor(theValue)
-                pauseExecution(1000)
-                if(oldStatus == "off") {
-                    if(logEnable) log.trace "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
-                    it.off()
+                try {
+                    data = state.oldMap.get(name)            
+                    def (oldStatus, oldHueColor, oldSaturation, oldLevel) =  data.split("::")           
+                    int hueColor = oldHueColor.toInteger()
+                    int saturation = oldSaturation.toInteger()
+                    int level = oldLevel.toInteger()           
+                    def theValue = [hue: hueColor, saturation: saturation, level: level]
+                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
+                    it.setColor(theValue)
+                    pauseExecution(1000)
+                    if(oldStatus == "off") {
+                        if(logEnable) log.trace "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                        it.off()
+                    }
+                } catch(e) {
+                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Something went wrong"
                 }
             } else if(it.hasCommand("setLevel")) {
                 name = (it.displayName).replace(" ","")
-                data = state.oldLevelMap.get(name)            
-                def (oldStatus, oldLevel) =  data.split("::")           
-                int level = oldLevel.toInteger()           
-                def theValue = [level: level]
-                if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
-                it.setLevel(theValue)
-                pauseExecution(1000)
-                if(oldStatus == "off") {
-                    if(logEnable) log.trace "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
-                    it.off()
+                try {
+                    data = state.oldLevelMap.get(name)            
+                    def (oldStatus, oldLevel) =  data.split("::")           
+                    int level = oldLevel.toInteger()           
+                    def theValue = [level: level]
+                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
+                    it.setLevel(theValue)
+                    pauseExecution(1000)
+                    if(oldStatus == "off") {
+                        if(logEnable) log.trace "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
+                        it.off()
+                    }
+                } catch(e) {
+                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Something went wrong"
                 }
             }
         }
@@ -2864,6 +2911,27 @@ def dayOfTheWeekHandler() {
     }
 
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - nothingToDo: ${state.nothingToDo}"
+}
+
+def modeHandler() {
+    if(logEnable) log.debug "In modeHandler (${state.version})"
+    if(modeEvent) {
+        if(logEnable) log.debug "In modeHandler - modeEvent: ${modeEvent}"
+        theValue = location.mode
+        def modeCheck = modeEvent.contains(theValue)
+
+        if(modeCheck) {
+            if(logEnable) log.debug "In modeHandler - Mode Check Passed"
+            state.modeMatch = true
+        } else {
+            if(logEnable) log.debug "In modeHandler - Mode Check Failed"
+            state.modeMatch = false
+        }
+    } else {
+        if(logEnable) log.debug "In modeHandler - NO Modes Specified"
+        state.modeMatch = true
+    }
+    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
 }
 
 def setLevelandColorHandler() {
