@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.1 - 09/23/20 - Adjustment
 *  1.7.0 - 09/23/20 - New - Cog Description section
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.0"
+    state.version = "1.7.1"
 }
 
 definition(
@@ -1366,10 +1367,11 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
             paragraph "This will give a short description on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
-            paragraph state.theCogTriggers
-            paragraph state.theCogActions
-            paragraph state.theCogNotifications
+            if(state.theCogTriggers) paragraph state.theCogTriggers.replaceAll("null","NA")
+            if(state.theCogActions) paragraph state.theCogActions.replaceAll("null","NA")
+            if(state.theCogNotifications) paragraph state.theCogNotifications.replaceAll("null","NA")
             paragraph "<hr>"
+            paragraph "<small>* If you're not seeing your Notification settings, please re-visit the Notifications section.</small>"
             input "resetCog", "bool", defaultValue:false, title: "Refresh The Cog Description <small>(This will happen immediately)</small>", description: "Cog", submitOnChange:true
             if(resetCog) {
                 app?.updateSetting("resetCog",[value:"false",type:"bool"])
