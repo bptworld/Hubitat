@@ -1366,9 +1366,9 @@ def pageConfig() {
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
             paragraph "This will give a short description on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
-            paragraph state.theCogTriggers.replaceAll("null","NA")
-            paragraph state.theCogActions.replaceAll("null","NA")
-            paragraph state.theCogNotifications.replaceAll("null","NA")
+            paragraph state.theCogTriggers
+            paragraph state.theCogActions
+            paragraph state.theCogNotifications
             paragraph "<hr>"
             input "resetCog", "bool", defaultValue:false, title: "Refresh The Cog Description <small>(This will happen immediately)</small>", description: "Cog", submitOnChange:true
             if(resetCog) {
