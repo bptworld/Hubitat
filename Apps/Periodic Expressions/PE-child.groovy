@@ -2,7 +2,7 @@
  *  **************** Periodic Expressions Child App  ****************
  *
  *  Design Usage:
- *  Create Periodic Cron Expression to be used with Event Engine
+ *  Create Periodic Cron Expression to be used with Event 42
  *
  *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
  * 
@@ -53,7 +53,7 @@ definition(
     name: "Periodic Expressions Child",
     namespace: "BPTWorld",
     author: "Bryan Turcotte",
-    description: "Create Periodic Cron Expression to be used with Event Engine",
+    description: "Create Periodic Cron Expression to be used with Event 42",
     category: "Convenience",
     parent: "BPTWorld:Periodic Expressions",
     iconUrl: "",
@@ -71,7 +71,7 @@ def pageConfig() {
 		display() 
         section("Instructions:", hideable: true, hidden: true) {
 			paragraph "<b>Notes:</b>"
-    		paragraph "Create Periodic Cron Expression to be used with Event Engine"
+    		paragraph "Create Periodic Cron Expression to be used with Event 42"
 		}
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Periodic Schedule Options")) {
@@ -580,6 +580,7 @@ def updated() {
     if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite: false])
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite: false])
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
@@ -604,8 +605,8 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            state.eSwitch = it.currentValue("switch")
-            if(state.eSwitch == "on") { state.eSwitch = true }
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
         }
     }
 }
