@@ -898,8 +898,8 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            state.eSwitch = it.currentValue("switch")
-            if(state.eSwitch == "on") { state.eSwitch = true }
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
         }
     }
 }
