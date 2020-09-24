@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  2.1.6 - 09/24/20 - Adjustments
  *  2.1.5 - 07/20/20 - Adjustments
  *  2.1.4 - 06/29/20 - Now auto connects
  *  2.1.3 - 06/26/20 - Minor change 
@@ -44,14 +45,7 @@
  *  2.1.1 - 06/25/20 - Fixing bugs
  *  2.1.0 - 06/24/20 - Added App Control options
  *  2.0.9 - 06/24/20 - More changes 
- *  2.0.8 - 06/24/20 - Lots of changes
- *  2.0.7 - 04/27/20 - Cosmetic changes
- *  2.0.6 - 11/24/19 - Code enhancements
- *  2.0.5 - 10/08/19 - Reduce child apps to just one keyset to prevent run away conditions 
- *  2.0.4 - 09/05/19 - More code changes... this is a beta app ;)
- *  2.0.3 - 09/04/19 - Fixed some typos
- *  2.0.2 - 09/03/19 - Added 'does not contain' keywords
- *  2.0.1 - 09/02/19 - Evolving fast, lots of changes
+ *  ---
  *  2.0.0 - 08/31/19 - Initial release.
  *
  */
@@ -61,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Log Watchdog"
-	state.version = "2.1.5"
+	state.version = "2.1.6"
 }
 
 definition(
@@ -114,24 +108,24 @@ def pageConfig() {
             paragraph "Remember, depending on your keyword settings, this could produce a lot of notifications!"
 			input "sendPushMessage", "capability.notification", title: "Send a push notification?", multiple:true, required:false
 		}
-/*        
-		section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause This App <small> * Pause status will show correctly after hitting 'Done' to save the app</small>", defaultValue:false, submitOnChange:true            
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains("pauseApp")) {
-                        app.updateLabel(app.label + " Paused")
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label.replaceAll(" Paused",""))
+                    app.updateLabel(app.label - " (Paused)")
                 }
             }
-            //paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
-            //input "edSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-*/        
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             label title: "Enter a name for this automation", required: false
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Debugging", submitOnChange:true
@@ -218,15 +212,21 @@ def updated() {
     sendToDevice()
 	unschedule()
     unsubscribe()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-    if(dataDevice) {
-        subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
-        dataDevice.appStatus("active")
-        dataDevice.initialize()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(dataDevice) {
+            subscribe(dataDevice, "bpt-lastLogMessage", theNotifyStuff)
+            dataDevice.appStatus("active")
+            dataDevice.initialize()
+        }
     }
 }
 	
@@ -236,15 +236,6 @@ def uninstalled() {
 
 private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
-}
-
-def checkEnableHandler() {
-    eSwitch = true
-    if(edSwitch) { 
-        eSwitch = edSwitch.currentValue("switch")
-        if(eSwitch == "on") { eSwitch = false }
-    }
-    return eSwitch
 }
 
 def sendToDevice() {
@@ -257,7 +248,9 @@ def sendToDevice() {
 
 def theNotifyStuff(evt) {
     checkEnableHandler()
-    if(eSwitch) {
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
         if(logEnable) log.debug "In theNotifyStuff (${state.version})"
         if(sendPushMessage) pushHandler()
     }
@@ -319,6 +312,22 @@ def createDataChildDevice() {
 }
 
 // ********** Normal Stuff **********
+
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
 
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
