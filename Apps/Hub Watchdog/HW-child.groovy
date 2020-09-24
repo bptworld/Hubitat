@@ -33,19 +33,12 @@
  *
  *  Changes:
  *
+ *  1.1.4 - 09/24/20 - Fixed enable/disable, 
  *  1.1.3 - 09/01/20 - Changes for only 40 data points
  *  1.1.2 - 08/30/20 - lots of cosmetic updates
  *  1.1.1 - 07/11/20 - Added user selectable 'Max number of times it can fail'
  *  1.1.0 - 07/10/20 - Added Maintenance Override Options
- *  1.0.9 - 05/16/20 - Logging changes
- *  1.0.8 - 04/27/20 - Cosmetic changes
- *  1.0.7 - 09/26/19 - Added a 'push all' option
- *  1.0.6 - 09/26/19 - Holds up to 80 data points, added color coding
- *  1.0.5 - 09/25/19 - Added a failsafe, test has to fail 3 times before notification is sent. Other small adjustments
- *  1.0.4 - 09/25/19 - Here comes the reports!
- *  1.0.3 - 09/25/19 - Added Rule Machine options, started working on reports section
- *  1.0.2 - 09/24/19 - Added Run time options
- *  1.0.1 - 09/24/19 - Added Data device options
+ *  ---
  *  1.0.0 - 09/24/19 - Initial release.
  *
  */
@@ -56,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.1.3"
+	state.version = "1.1.4"
 }
 
 definition(
@@ -487,8 +480,8 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            state.eSwitch = it.currentValue("switch")
-            if(state.eSwitch == "on") { state.eSwitch = true }
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
         }
     }
 }
