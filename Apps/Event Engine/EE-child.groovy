@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.2 - 09/24/20 - Adjustments, reworked the setpointHandler...more power!
 *  1.7.1 - 09/23/20 - Adjustment
 *  1.7.0 - 09/23/20 - New - Cog Description section
 *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.1"
+    state.version = "1.7.2"
 }
 
 definition(
@@ -1183,7 +1184,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("permanentDimLvl2")
                     }
-                    state.theCogActions += "<b>Action:</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2}<br>"
+                    if(permanentDim2) state.theCogActions += "<b>Action:</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2}<br>"
                 } else {
                     state.theCogActions -= "<b>Action:</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2}<br>"
                     app.removeSetting("permanentDimLvl2")
@@ -1277,8 +1278,19 @@ def pageConfig() {
 
                 if(switchesOnAction || switchesOffAction || switchesLCAction) {
                     paragraph "<hr>"
-                    input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
-                    if(reverse && (switchesOnAction || switchesLCAction)){
+                    if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                        paragraph "<b><small>Please choose only ONE of the following:</b></small>"
+                        input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
+                        input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low?", defaultValue:false, submitOnChange:true
+                        input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between?", defaultValue:false, submitOnChange:true
+                    } else {
+                        input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
+                    }
+                    if(notifyDelay || randomDelay || targetDelay) {
+                        paragraph "<small>* The Delay specified above will also be used with Reverse</small>"
+                    }
+                    if((reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
+                        paragraph "<hr>"
                         paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
                         input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
                         if(permanentDim) {
@@ -1357,7 +1369,7 @@ def pageConfig() {
             input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
             if(logEnable) {
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
-                input "resetTruth", "bool", defaultValue:false, title: "Reset Cog Truths <small>(This will happen immediately)</small>", description: "Truth", submitOnChange:true
+                input "resetTruth", "bool", defaultValue:false, title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", submitOnChange:true
                 if(resetTruth) {
                     resetTruthHandler()
                     app?.updateSetting("resetTruth",[value:"false",type:"bool"])
@@ -1534,7 +1546,6 @@ def initialize() {
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
         if(spResetTime) schedule(spResetTime, resetTruthHandler)
-
         if(repeat) {
             startTheProcess()
             def rT = repeatType.toString().replace("[", "").replace("]", "")
@@ -1557,18 +1568,19 @@ def initialize() {
                 if(logEnable) log.debug "In initialize - repeat - Not repeating"
             }
         }
-
         if(triggerType.contains("tPeriodic")) { 
             if(logEnable) log.debug "In initialize - tPeriodic - Starting! - (${preMadePeriodic})"
             schedule(preMadePeriodic, startTheProcess)
         }
-
-        if(triggerType.contains("tTimeDays")) { 
-            autoSunHandler()
-        } else {
-            state.sunRiseTosunSet = true
+        if(timeDaysType) {
+            if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) { 
+                autoSunHandler()
+                if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
+                if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
+            } else {
+                state.sunRiseTosunSet = true
+            }
         }
-
         if(fromTime && toTime) { 
             checkTime()
             schedule(fromTime, runAtTime1)
@@ -1576,9 +1588,6 @@ def initialize() {
         } else {
             state.timeBetween = true
         }
-        if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
-        if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
-
         startTheProcess()
     }
 }
@@ -1611,6 +1620,7 @@ def startTheProcess(evt) {
                 }
                 if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${state.whoHappened}: ${state.whatHappened} ********************"
                 state.hasntDelayedYet = true
+                state.hasntDelayedReverseYet = true
             }
         }
 
@@ -1643,7 +1653,6 @@ def startTheProcess(evt) {
                 if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true } 
                 if(modeMatchRestriction && !state.modeMatch) { state.nothingToDo = true; state.skip = true }
             }
-
             if(logEnable) log.debug "In startTheProcess - 1B - skip: ${state.skip} - daysMatchRestriction: ${daysMatchRestriction} - timeBetweenRestriction: ${timeBetweenRestriction} - timeBetweenSunRestriction: ${timeBetweenSunRestriction} - modeMatchRestriction: ${modeMatchRestriction}"
             if(logEnable) log.debug "In startTheProcess - 1C - skip: ${state.skip} - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
             if(state.skip) {
@@ -1674,13 +1683,11 @@ def startTheProcess(evt) {
                 checkTriggerAndOr()
             }
         }
-
         if(state.skip) { 
             // do nothing
         } else {
             if(logEnable) log.debug "In startTheProcess - 2 - setpointGood: ${state.setpointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
         }
-
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
@@ -1702,6 +1709,9 @@ def startTheProcess(evt) {
                     if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
                     int theDelay = newDelay * 60
                     state.hasntDelayedYet = false
+                    state.setpointHighOK = "yes"
+                    state.setpointLowOK = "yes"
+                    state.setpointBetweenOK = "yes"
                     runIn(theDelay, startTheProcess, [data: "again"])
                 } else {
                     if(actionType == null) actionType = ""
@@ -1719,7 +1729,6 @@ def startTheProcess(evt) {
                             slowOnHandler()
                         } 
                     }
-
                     if(actionType.contains("aNotification")) { messageHandler() }
                     if(setHSM) hsmChangeActionHandler()
                     if(modeAction) modeChangeActionHandler()
@@ -1727,15 +1736,31 @@ def startTheProcess(evt) {
                     if(rmRule) ruleMachineHandler()
                     state.hasntDelayedYet = true
                 }
-            } else if(reverse) {
-                if(logEnable) log.trace "In startTheProcess - GOING IN REVERSE"
-                if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
-                if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-                if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
-                if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
-                state.hasntDelayedYet = true
+            } else if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+                if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet) {
+                    if(notifyDelay) newDelay = notifyDelay
+                    if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                    if(targetDelay) newDelay = minutesUp
+                    if(logEnable) log.debug "In startTheProcess - Reverse Delay is set for ${newDelay} minutes"
+                    int theDelay = newDelay * 60
+                    state.hasntDelayedReverseYet = false
+                    state.setpointHighOK = "yes"
+                    state.setpointLowOK = "yes"
+                    state.setpointBetweenOK = "yes"
+                    runIn(theDelay, startTheProcess, [data: "again"])
+                } else {             
+                    if(logEnable) log.trace "In startTheProcess - GOING IN REVERSE"
+                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
+                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
+                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
+                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                    if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
+                    if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
+                    if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                        if(actionType.contains("aNotification")) { messageHandler() }
+                    }
+                    state.hasntDelayedReverseYet = true
+                }
             } else {
                 if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOPING"
             }
@@ -1745,7 +1770,6 @@ def startTheProcess(evt) {
 }
 
 // ********** Start Triggers **********
-
 def customDeviceHandler() {
     if(customEvent) {
         if(logEnable) log.trace "customEvent: ${customEvent}"
@@ -1886,7 +1910,6 @@ def devicesGoodHandler() {
     } catch(e) {
         theCount = 1
     }
-
     state.eventName.each { it ->
         theValue = it.currentValue("${state.eventType}")
         if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
@@ -2077,7 +2100,6 @@ def ruleMachineHandler() {
 }
 
 // ***** Start Setpoint Handlers *****
-
 def customSetpointHandler() {
     if(customEvent) {
         state.spName = customEvent
@@ -2161,7 +2183,10 @@ def voltageHandler() {
 
 def setpointHandler() {
     if(logEnable) log.trace "In setpointHandler (${state.version}) - spName: ${state.spName}"
-    if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
+    if(state.setpointHighOK == null) state.setpointHighOK = "no"
+    if(state.setpointLowOK == null) state.setpointLowOK = "no"
+    if(state.setpointBetweenOK == null) state.setpointBetweenOK = "no"
+    if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointBetweenOK: ${state.setpointBetweenOK} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
     state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
@@ -2171,103 +2196,62 @@ def setpointHandler() {
             setpointValue = spValue.toDouble()
         }
         state.preSPV = setpointValue
-        if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${state.setpointLow} - setpointHigh: ${state.setpointHigh} - nothingToDo: ${state.nothingToDo}"
-
-        // *** setpointHigh ***
-        if(state.setpointHigh && !state.setpointLow) {
-            int setpointHighValue = setpointValue
-            int setpointHigh = state.setpointHigh
-            if(logEnable) log.trace "In setpointHandler (High) - setpointHighOK: ${state.setpointHighOK} - setpointHighValue: ${setpointHighValue} - setpointHigh: ${setpointHigh}"
-            if(setpointHighValue > setpointHigh) {  // bad
+        int setpointValue = setpointValue
+        int setpointLow = state.setpointLow ?: 0
+        int setpointHigh = state.setpointHigh ?: 99999
+        if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh} - nothingToDo: ${state.nothingToDo}"
+        if((setpointValue < setpointLow) || (setpointValue >= setpointHigh)) {  // bad
+            state.setpointBetweenOK = "no" 
+            if(setpointValue >= setpointHigh) {  // bad
                 if(state.setpointHighOK == "yes") {
-                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is GREATER THAN setpointHigh: ${setpointHigh}"
+                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
                     state.setpointHighOK = "no"
-                    state.setpointGood = true
-                    state.nothingToDo = false
+                    if(reverseWhenHigh) {
+                        state.setpointGood = false
+                        state.nothingToDo = false
+                    } else {
+                        state.setpointGood = true
+                        state.nothingToDo = false
+                    }
                 } else {
-                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is STILL HIGH. Nothing to do."
+                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is STILL HIGH. Nothing to do."
                     state.nothingToDo = true
                     state.setpointHighOK == "yes"
                 }
-            } else {  // good
-                if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointHighValue} is LESS THAN setpointHigh: ${setpointHigh} - All Good"
-                if(state.setpointHighOK == "yes") {
-                    state.nothingToDo = true
-                } else {
-                    state.setpointHighOK = "yes" 
-                    if(reverse) {
+            } else {
+                state.setpointHighOK = "yes"
+            }
+            if(setpointValue < setpointLow) {  // bad
+                if(state.setpointLowOK == "yes") {
+                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
+                    state.setpointLowOK = "no"
+                    if(reverseWhenLow) {
                         state.setpointGood = false
                         state.nothingToDo = false
                     } else {
                         state.setpointGood = true
-                        state.nothingToDo = true
+                        state.nothingToDo = false
                     }
-                }
-            }
-        }
-
-        // *** setpointLow ***
-        if(!state.setpointHigh && state.setpointLow) {
-            int setpointLowValue = setpointValue
-            int setpointLow = state.setpointLow
-            if(logEnable) log.trace "In setpointHandler (Low) - setpointLowOK: ${state.setpointLowOK} - setpointLowValue: ${setpointLowValue} - setpointLow: ${setpointLow}"
-            if(setpointLowValue < setpointLow) {  // bad
-                if(state.setpointLowOK == "yes") {
-                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is LESS THAN setpointLow: ${setpointLow}"
-                    state.setpointLowOK = "no"
-                    state.setpointGood = true
-                    state.nothingToDo = false
                 } else {
-                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is STILL LOW. Nothing to do."
+                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is STILL LOW. Nothing to do."
                     state.nothingToDo = true
                     state.setpointLowOK == "yes"
                 }
-            } else {  // good
-                if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointLowValue} is GREATER THAN setpointLow: ${setpointLow} - All Good"
-                if(state.setpointLowOK == "yes") {
-                    state.nothingToDo = true
-                } else {
-                    state.setpointLowOK = "yes" 
-                    if(reverse) {
-                        state.setpointGood = false
-                        state.nothingToDo = false
-                    } else {
-                        state.setpointGood = true
-                        state.nothingToDo = true
-                    }
-                }
+            } else {
+                state.setpointLowOK = "yes"
             }
-        }
-
-        // *** Inbetween ***
-        if(state.setpointHigh && state.setpointLow) {
-            if(logEnable) log.debug "In setpointHandler (Between) - setpointBetweenOK: ${state.setpointBetweenOK}"
-            int setpointValue = setpointValue
-            int setpointLow = state.setpointLow
-            int setpointHigh = state.setpointHigh
-            if((setpointValue < setpointLow) || (setpointValue > setpointHigh)) {  // bad
-                if(state.setpointBetweenOK == "yes") {
-                    if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is NOT BETWEEN setpoints."
-                    state.setpointBetweenOK = "no"
-                    state.setpointGood = true
+        } else {  // good
+            if(logEnable) log.debug "In setpointHandler - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
+            if(state.setpointBetweenOK == "yes") {
+                state.nothingToDo = true
+            } else {
+                state.setpointBetweenOK = "yes" 
+                if(reverseWhenBetween) {
+                    state.setpointGood = false
                     state.nothingToDo = false
                 } else {
-                    if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is STILL NOT BETWEEN. Nothing to do."
+                    state.setpointGood = true
                     state.nothingToDo = true
-                }
-            } else {  // good
-                if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
-                if(state.setpointBetweenOK == "yes") {
-                    state.nothingToDo = true
-                } else {
-                    state.setpointBetweenOK = "yes" 
-                    if(reverse) {
-                        state.setpointGood = false
-                        state.nothingToDo = false
-                    } else {
-                        state.setpointGood = true
-                        state.nothingToDo = true
-                    }
                 }
             }
         }
@@ -2380,11 +2364,9 @@ def restrictionHandler() {
     } catch(e) {
         theCount = 1
     }
-
     state.rEventName.each { it ->
         theValue = it.currentValue("${state.rEventType}")
         if(logEnable) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
-
         if(state.rType) {
             if(theValue == state.rTypeValue1) { 
                 if(state.rEventType == "lock") {
@@ -2526,7 +2508,6 @@ def garageDoorActionHandler() {
             it.close()
         }
     }
-
     if(garageDoorOpenAction) {
         garageDoorClosedAction.each { it ->
             if(logEnable) log.debug "In garageDoorActionHandler - Open ${it}"
@@ -2548,7 +2529,6 @@ def lockActionHandler() {
             it.lock()
         }
     }
-
     if(unlockAction) {
         unlockAction.each { it ->
             if(logEnable) log.debug "In unlockActionHandler - Unlocking ${it}"
@@ -2563,7 +2543,6 @@ def lockUserActionHandler(evt) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.warn "In lockUserActionHandler (${state.version})"
-
         if(evt) {
             lockdata = evt.data
             lockStatus = evt.value
@@ -2712,7 +2691,6 @@ def dimStepUp() {
                     it.setLevel(state.currentLevel)
                 }
             }
-
             if(atLeastOneUpOn) {
                 runIn(10,dimStepUp)
             } else {
@@ -2732,12 +2710,10 @@ def dimStepDown() {
     } else {
         if(logEnable) log.debug "-------------------- dimStepDown --------------------"
         if(logEnable) log.debug "In dimStepDown (${state.version})"
-
         if(state.highestLevel > targetLevelLow) {
             state.highestLevel = state.highestLevel - state.dimStep1
             if(state.highestLevel < targetLevelLow) { state.highestLevel = targetLevelLow }
             if(logEnable) log.debug "In dimStepDown - Starting Level: ${state.highestLevel} - targetLevelLow: ${targetLevelLow}"
-
             slowDimmerDn.each { it->
                 deviceOn = it.currentValue("switch")
                 int cLevel = it.currentValue("level")
@@ -2749,7 +2725,6 @@ def dimStepDown() {
                     if(wLevel <= cLevel) { it.setLevel(wLevel) }
                 }
             }
-
             if(atLeastOneDnOn) {
                 runIn(10,dimStepDown)
             } else {
@@ -2771,7 +2746,6 @@ def valveActionHandler() {
             it.close()
         }
     }
-
     if(valveOpenAction) {
         valveClosedAction.each { it ->
             if(logEnable) log.debug "In valveActionHandler - Open ${it}"
@@ -2844,28 +2818,23 @@ def autoSunHandler() {
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
     def sunriseTime = getSunriseAndSunset().sunrise
     def sunsetTime = getSunriseAndSunset().sunset
-
     int theOffsetSunset = offsetSunset ?: 1
     if(setBeforeAfter) {
         state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
     } else {
         state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
     }
-
     int theOffsetSunrise = offsetSunrise ?: 1
     if(riseBeforeAfter) {
         state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
     } else {
         state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
     }
-
     if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
     if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
     if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
-
     // check for new sunset/sunrise times every day at 12:05 pm
     schedule("0 5 12 ? * * *", autoSunHandler)
-
     if(riseSet) { schedule(state.timeSunset, runAtTime1) }
     if(!riseSet) { schedule(state.timeSunrise, runAtTime2) }
 }
@@ -2892,19 +2861,16 @@ def checkTimeSun() {
         } else {
             use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
         }
-
         int theOffsetSunrise = offsetSunrise ?: 1
         if(riseBeforeAfter) {
             use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
         } else {
             use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
         }
-
         if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
         if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
         state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
         if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
-
         if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
             state.sunRiseTosunSet = true
@@ -2918,7 +2884,6 @@ def checkTimeSun() {
         if(logEnable) log.debug "In checkTimeSun - NOT Specified"
         state.timeBetweenSun = true
     }
-
     if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - nothingToDo: ${state.nothingToDo}"
 }
 
@@ -3136,10 +3101,7 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 
 def resetTruthHandler() {
     if(logEnable) log.debug "In resetTruthHandler (${state.version})"
-    state.setpointBetweenOK = "yes"
-    state.setpointHighOK = "yes"
-    state.setpointLowOK = "yes"
-    state.devicesOK = "yes"
+    state.clear()
 }
 
 // ********** Normal Stuff **********
