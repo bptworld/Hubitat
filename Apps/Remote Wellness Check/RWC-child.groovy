@@ -33,7 +33,8 @@
  *
  *  Changes:
  *
- *  1.0.4 - 06/19/20 - added The Flasher
+ *  1.0.5 - 09/24/20 - Adjustments
+ *  1.0.4 - 06/19/20 - Added The Flasher
  *  1.0.3 - 04/27/20 - Cosmetic changes
  *  1.0.2 - 01/17/20 - Minor changes
  *  1.0.1 - 01/16/20 - Added more 'Check' options
@@ -41,9 +42,12 @@
  *
  */
 
+import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
+
 def setVersion(){
     state.name = "Remote Wellness Check"
-	state.version = "1.0.4"
+	state.version = "1.0.5"
 }
 
 definition(
@@ -140,6 +144,23 @@ def pageConfig(){
             }
         }
         
+        section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            if(pauseApp) {
+                if(app.label) {
+                    if(!app.label.contains(" (Paused)")) {
+                        app.updateLabel(app.label + " (Paused)")
+                    }
+                }
+            } else {
+                if(app.label) {
+                    app.updateLabel(app.label - " (Paused)")
+                }
+            }
+            paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+            input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
             label title: "Enter a name for this child app", required: false, submitOnChange: true
             input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
@@ -157,58 +178,69 @@ def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
 	unschedule()
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
-    if(onDemandSwitch) subscribe(onDemandSwitch, "switch.on", scheduleCheck)
-    
-    if(runEvery == "1 Min") runEvery1Minute(scheduleCheck)
-    if(runEvery == "5 Min") runEvery5Minutes(scheduleCheck)
-    if(runEvery == "10 Min") runEvery10Minutes(scheduleCheck)
-    if(runEvery == "15 Min") runEvery15Minutes(scheduleCheck)
-    if(runEvery == "30 Min") runEvery30Minutes(scheduleCheck)
-	if(runEvery == "1 Hour") runEvery1Hour(scheduleCheck)
-    if(runEvery == "3 Hours") runEvery3Hours(scheduleCheck)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+        if(onDemandSwitch) subscribe(onDemandSwitch, "switch.on", scheduleCheck)
+
+        if(runEvery == "1 Min") runEvery1Minute(scheduleCheck)
+        if(runEvery == "5 Min") runEvery5Minutes(scheduleCheck)
+        if(runEvery == "10 Min") runEvery10Minutes(scheduleCheck)
+        if(runEvery == "15 Min") runEvery15Minutes(scheduleCheck)
+        if(runEvery == "30 Min") runEvery30Minutes(scheduleCheck)
+        if(runEvery == "1 Hour") runEvery1Hour(scheduleCheck)
+        if(runEvery == "3 Hours") runEvery3Hours(scheduleCheck)
+    }
 }
 
 def scheduleCheck(evt) {
-    if(logEnable) log.debug "********************  Start - Remote Wellness Check - ${state.version}  ********************"
-    recentContact()
-    recentMotion()
-    recentSwitch()
-    if(logEnable) log.debug "In scheduleCheck - recentContact: ${state.recentContact} - recentMotion: ${state.recentMotion} - recentSwitch: ${state.recentSwitch}"
-	if(state.recentContact && state.recentMotion && state.recentSwitch) {
-        checkTime()
-        dayOfTheWeekHandler()
-        modeHandler()
-        if(state.daysMatch) {
-            if(state.timeBetween) {
-                if(state.matchFound) {
-		            def person = person ?: "who ever"
-                    def msg = "Alert! There has been NO activity at ${person}‘s place in the last ${minsToCheck} minutes!"
-		            if(logEnable) log.debug msg
-                    if(isDataDevice) { isDataDevice.on() }
-		            if(sendPushMessage) pushHandler(msg)
-                    if(useTheFlasher && flashPreset) {
-                        flashData = "Preset::${flashPreset}"
-                        theFlasherDevice.sendPreset(flashData)
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        if(logEnable) log.debug "********************  Start - Remote Wellness Check - ${state.version}  ********************"
+        recentContact()
+        recentMotion()
+        recentSwitch()
+        if(logEnable) log.debug "In scheduleCheck - recentContact: ${state.recentContact} - recentMotion: ${state.recentMotion} - recentSwitch: ${state.recentSwitch}"
+        if(state.recentContact && state.recentMotion && state.recentSwitch) {
+            checkTime()
+            dayOfTheWeekHandler()
+            modeHandler()
+            if(state.daysMatch) {
+                if(state.timeBetween) {
+                    if(state.matchFound) {
+                        def person = person ?: "who ever"
+                        def msg = "Alert! There has been NO activity at ${person}‘s place in the last ${minsToCheck} minutes!"
+                        if(logEnable) log.debug msg
+                        if(isDataDevice) { isDataDevice.on() }
+                        if(sendPushMessage) pushHandler(msg)
+                        if(useTheFlasher && flashPreset) {
+                            flashData = "Preset::${flashPreset}"
+                            theFlasherDevice.sendPreset(flashData)
+                        }
+                    } else {
+                        if(logEnable) log.debug "Mode did not match, not checking for alert"
                     }
                 } else {
-                    if(logEnable) log.debug "Mode did not match, not checking for alert"
+                    if(logEnable) log.debug "Outside of scheduled times, not checking for alert"
                 }
             } else {
-                if(logEnable) log.debug "Outside of scheduled times, not checking for alert"
+                if(logEnable) log.debug "Day of the Week did not match, not checking for alert"
             }
         } else {
-            if(logEnable) log.debug "Day of the Week did not match, not checking for alert"
+            if(isDataDevice) { isDataDevice.off() }
+            if(logEnable) log.debug "There has been recent activity, no need to send alert"
         }
-	} else {
-        if(isDataDevice) { isDataDevice.off() }
-		if(logEnable) log.debug "There has been recent activity, no need to send alert"
-	}
-    if(logEnable) log.debug "********************  End - Remote Wellness Check - ${state.version}  ********************"
+        if(logEnable) log.debug "********************  End - Remote Wellness Check - ${state.version}  ********************"
+    }
 }
 
 private recentContact() {
@@ -352,6 +384,22 @@ def modeHandler() {
 
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults(){
 	if(logEnable == null){logEnable = false}
 }
@@ -392,25 +440,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
