@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.0.8 - 09/24/20 - Adjustments
  *  1.0.7 - 09/01/20 - Cosmetic changes, changes to handle 40 points
  *  1.0.6 - 05/01/20 - Fixed the error when no data, thanks axornet
  *  1.0.5 - 04/30/20 - Fixed a nasty bug
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Hub Watchdog Examiner"
-	state.version = "1.0.7"
+	state.version = "1.0.8"
 }
 
 definition(
@@ -400,8 +401,8 @@ def checkEnableHandler() {
     if(disableSwitch) { 
         if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            state.eSwitch = it.currentValue("switch")
-            if(state.eSwitch == "on") { state.eSwitch = true }
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
         }
     }
 }
@@ -486,4 +487,3 @@ def timeSinceNewHeaders() {
     state.previous = now
     //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
-
