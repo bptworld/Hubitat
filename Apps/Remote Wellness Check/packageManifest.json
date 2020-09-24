@@ -24,7 +24,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Remote%20Wellness%20Check/RWC-child.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "1.0.4"
+			"version": "1.0.5"
 		}
 	],
 	"drivers" : [	
