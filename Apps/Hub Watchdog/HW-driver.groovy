@@ -33,17 +33,10 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 09/24/20 - Adjustments
  *  1.1.1 - 09/01/20 - Now only holds 40 max data points, Changed short names.
  *  1.1.0 - 05/01/20 - Removed some old code
- *  1.0.9 - 04/30/20 - Fixed a bug
- *  1.0.8 - 09/30/19 - Lots of little changes
- *  1.0.7 - 09/29/19 - Added support for 'Examiner' child app
- *  1.0.6 - 09/28/19 - Fixed the '60' error.
- *  1.0.5 - 09/26/19 - More color choices, rounded Med to 3
- *  1.0.4 - 09/26/19 - Holds up to 80 data points, added color coding
- *  1.0.3 - 09/25/19 - More tweaks
- *  1.0.2 - 09/25/19 - Attempt to fix a null object error
- *  1.0.1 - 09/25/19 - Added a lot of data points
+ *  ---
  *  1.0.0 - 09/24/19 - Initial release
  */
 
@@ -158,16 +151,16 @@ def makeList(theMessage) {
                     theData1 += "${lines1[x]}<br>"
                 }
             }
-            theData1 += "</div></td></tr></table>"
+            theData1 += "</div></table>"
             numOfCharacters1 = theData1.size()
             
             theData2 = "<table><tr><td><div style='font-size:${fontSize}px'>"
-            for(x=19;x < listSize1;x++) {
+            for(x=19;x < listSizeLines;x++) {
                 if(x > 19 && x <= 39) {
                     theData2 += "${lines1[x]}<br>"
                 }
             }
-            theData2 += "</div></td></tr></table>"
+            theData2 += "</div></table>"
             numOfCharacters2 = theData2.size()            
             
 	        sendEvent(name: "dataPoints1", value: theData1, displayed: true)
