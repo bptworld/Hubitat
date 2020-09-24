@@ -40,6 +40,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 09/24/20 - Adjustments
  *  1.0.8 - 08/11/20 - Added search by Tag option
  *  1.0.7 - 08/11/20 - Fixed an issue with category options
  *  1.0.6 - 06/03/20 - Added a Master List Option
@@ -53,6 +54,7 @@
  */
 
 import groovy.time.TimeCategory
+import java.text.SimpleDateFormat
 import groovy.transform.Field
 @Field static String repositoryListing = "https://raw.githubusercontent.com/dcmeglio/hubitat-packagerepositories/master/repositories.json"
 @Field static List categories = [] 
@@ -61,7 +63,7 @@ import groovy.transform.Field
     
 def setVersion(){
     state.name = "Package Explorer"
-	state.version = "1.0.8"
+	state.version = "1.0.9"
 }
 
 definition(
@@ -115,14 +117,37 @@ def pageConfig() {
                 //app.updateSetting("installedRepositories", state.reposToShow)
                 paragraph "<small>* Be sure to check for new Repositories in the dropdown!</small>"
 
-                href "categoryOptions", title:"Category Options", description:"See all Apps and Drivers the selected Category has to offer"
-                href "tagOptions", title:"Tag Options", description:"Search by Tags across all Developers and Categories"
-                href "developerOptions", title:"Developer Options", description:"See all Apps and Drivers the selected Developer has to offer"
-                href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an App or Driver across all Developers and Categories"
-                href "masterListOptions", title:"Master List Options", description:"Creates an alphabetical list of ALL packages. <i><b>This will take a minute to run! Please be patient.</b></i>"
-                href "whatsNewOptions", title:"What's New Options", description:"See 'What's New' within the past 7 days. <i><b>This will take a minute to run! Please be patient.</b></i>"
+                checkEnableHandler()
+                if(pauseApp || state.eSwitch) {
+                    paragraph "${app.label} is Paused or Disabled"
+                    log.info "${app.label} is Paused or Disabled"
+                } else {
+                    href "categoryOptions", title:"Category Options", description:"See all Apps and Drivers the selected Category has to offer"
+                    href "tagOptions", title:"Tag Options", description:"Search by Tags across all Developers and Categories"
+                    href "developerOptions", title:"Developer Options", description:"See all Apps and Drivers the selected Developer has to offer"
+                    href "searchOptions", title:"Keyword Options", description:"Use Keywords to search for an App or Driver across all Developers and Categories"
+                    href "masterListOptions", title:"Master List Options", description:"Creates an alphabetical list of ALL packages. <i><b>This will take a minute to run! Please be patient.</b></i>"
+                    href "whatsNewOptions", title:"What's New Options", description:"See 'What's New' within the past 7 days. <i><b>This will take a minute to run! Please be patient.</b></i>"
+                }
             }
 
+            section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
+                input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+                if(pauseApp) {
+                    if(app.label) {
+                        if(!app.label.contains(" (Paused)")) {
+                            app.updateLabel(app.label + " (Paused)")
+                        }
+                    }
+                } else {
+                    if(app.label) {
+                        app.updateLabel(app.label - " (Paused)")
+                    }
+                }
+                paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
+                input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+            }
+            
             section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
                 label title: "Enter a name for this child app", required: false, submitOnChange: true
                 input "logEnable","bool", title: "Enable Debug Logging", description: "Debugging", defaultValue: false, submitOnChange: true
@@ -622,11 +647,17 @@ def installed() {
 
 def updated() {	
     if(logEnable) log.debug "Updated with settings: ${settings}"
+    if(logEnable) runIn(3600, logsOff)
 	initialize()
 }
 
 def initialize() {
-    setDefaults()
+    checkEnableHandler()
+    if(pauseApp || state.eSwitch) {
+        log.info "${app.label} is Paused or Disabled"
+    } else {
+        setDefaults()
+    }
 }
 
 def downloadFile(file) {        // Code by dman2306
@@ -699,6 +730,22 @@ def getAppList() {    // Thanks to gavincampbell for the code below!
 
 // ********** Normal Stuff **********
 
+def logsOff() {
+    log.info "${app.label} - Debug logging auto disabled"
+    app?.updateSetting("logEnable",[value:"false",type:"bool"])
+}
+
+def checkEnableHandler() {
+    state.eSwitch = false
+    if(disableSwitch) { 
+        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
+        disableSwitch.each { it ->
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
+        }
+    }
+}
+
 def setDefaults() {
 	if(logEnable == null){logEnable = false}
 }
@@ -737,25 +784,43 @@ def display2() {
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
-    def params = [
-	    uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-		requestContentType: "application/json",
-		contentType: "application/json",
-		timeout: 30
-	]
-    
-    try {
-        def result = null
-        httpGet(params) { resp ->
-            state.headerMessage = resp.data.headerMessage
-            state.footerMessage = resp.data.footerMessage
+    timeSinceNewHeaders()   
+    if(state.totalHours > 4) {
+        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        def params = [
+            uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+            requestContentType: "application/json",
+            contentType: "application/json",
+            timeout: 30
+        ]
+
+        try {
+            def result = null
+            httpGet(params) { resp ->
+                state.headerMessage = resp.data.headerMessage
+                state.footerMessage = resp.data.footerMessage
+            }
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
+        catch (e) { }
     }
-    catch (e) {
-        state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
-        state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br><a href='https://paypal.me/bptworld' target='_blank'>Paypal</a></div>"
+    if(state.headerMessage == null) state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
+    if(state.footerMessage == null) state.footerMessage = "<div style='color:#1A77C9;text-align:center'>BPTWorld Apps and Drivers<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Donations are never necessary but always appreciated!</a><br><a href='https://paypal.me/bptworld' target='_blank'><b>Paypal</b></a></div>"
+}
+
+def timeSinceNewHeaders() { 
+    if(state.previous == null) { 
+        prev = new Date()
+    } else {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
+        prev = dateFormat.parse("${state.previous}".replace("+00:00","+0000"))
     }
+    def now = new Date()
+    use(TimeCategory) {       
+        state.dur = now - prev
+        state.days = state.dur.days
+        state.hours = state.dur.hours
+        state.totalHours = (state.days * 24) + state.hours
+    }
+    state.previous = now
+    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
