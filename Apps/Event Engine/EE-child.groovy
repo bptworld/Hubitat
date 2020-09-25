@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.5 - 09/25/20 - Added Thermostat Actions
 *  1.7.4 - 09/25/20 - Big improvements over all
 *  1.7.3 - 09/25/20 - Tons of Adjustments, Thermostats added to Triggers
 *  1.7.2 - 09/24/20 - Adjustments, reworked the setpointHandler...more power!
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.4"
+    state.version = "1.7.5"
 }
 
 definition(
@@ -1085,6 +1086,7 @@ def pageConfig() {
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
                 ["aSwitch":"Switch Devices"],
+                ["aThermostat":"Thermostat"],
                 ["aValve":"Valves"]
             ], required:false, multiple:true, submitOnChange:true
             paragraph "<hr>"
@@ -1358,6 +1360,28 @@ def pageConfig() {
                 app.removeSetting("permanentDimLvl")
             }
 
+            if(actionType.contains("aThermostat")) {
+                paragraph "<b>Thermostat</b>"
+                input "thermostatAction", "capability.thermostat", title: "Thermostats", multiple:true, submitOnChange:true
+                if(thermostatAction) {
+                    input "setThermostatFanMode", "enum", title: "Set Thermostat Fan mode", required:false, multiple:false, options: ["on", "circulate", "auto"], submitOnChange:true
+                    input "setThermostatMode", "enum", title: "Set Thermostat mode", required:false, multiple:false, options: ["auto", "off", "heat", "emergency heat", "cool"], submitOnChange:true
+                    input "coolingSetpoint", "number", title: "Set Cooling Setpoint", required:false, multiple:false, submitOnChange:true, width:6
+                    input "heatingSetpoint", "number", title: "Set Heating Setpoint", required:false, multiple:false, submitOnChange:true, width:6
+                    
+                }
+                paragraph "<hr>"
+                if(setThermostatMode) state.theCogActions += "<b>Action:</b> Set Thermostats (${thermostatAction}) to mode: ${setThermostatMode}<br>"
+                if(coolingSetpoint) state.theCogActions += "<b>Action:</b> Set Thermostats Cooling Setpoint to: ${coolingSetpoint}<br>"
+                if(heatingSetpoint) state.theCogActions += "<b>Action:</b> Set Thermostats Heating Setpoint to: ${heatingSetpoint}<br>"
+            } else {
+                state.theCogActions -= "<b>Action:</b> Set Thermostats ${thermostatAction} to mode: ${setThermostatMode}<br>"
+                state.theCogActions -= "<b>Action:</b> Set Thermostats Cooling Setpoint to: ${coolingSetpoint}<br>"
+                state.theCogActions -= "<b>Action:</b> Set Thermostats Heating Setpoint to: ${heatingSetpoint}<br>"               
+                app.removeSetting("thermostatAction")
+                app.removeSetting("setThermostatMode")
+            }
+            
             if(actionType.contains("aValve")) {
                 paragraph "<b>Valves</b>"
                 input "valveClosedAction", "capability.valve", title: "Close Devices", multiple:true, submitOnChange:true
@@ -1761,6 +1785,7 @@ def startTheProcess(evt) {
                             slowOnHandler()
                         } 
                     }
+                    if(actionType.contains("aThermostat")) { thermostatActionHandler() }
                     if(actionType.contains("aNotification")) { messageHandler() }
                     if(setHSM) hsmChangeActionHandler()
                     if(modeAction) modeChangeActionHandler()
@@ -2715,6 +2740,30 @@ def dimStepDown() {
             if(logEnable) log.debug "-------------------- End dimStepDown --------------------"
             if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
         } 
+    }
+}
+
+def thermostatActionHandler() {
+    thermostatAction.each { it ->
+        if(setThermostatFanMode) {
+            if(logEnable) log.debug "In thermostatActionHandler - Fan Mode - Setting ${it} to ${setThermostatFanMode}"
+            it.setThermostatFanMode(setThermostatFanMode)
+        }
+        if(setThermostatMode) {
+            pauseExecution(1000)
+            if(logEnable) log.debug "In thermostatActionHandler - Thermostat Mode - Setting ${it} to ${setThermostatMode}"
+            it.setThermostatMode(setThermostatMode)
+        }
+        if(coolingSetpoint) {
+            pauseExecution(1000)
+            if(logEnable) log.debug "In thermostatActionHandler - Cooling Setpoint - Setting ${it} to ${coolingSetpoint}"
+            it.setCoolingSetpoint(coolingSetpoint)
+        }
+        if(heatingSetpoint) {
+            pauseExecution(1000)
+            if(logEnable) log.debug "In thermostatActionHandler - Heating Setpoint - Setting ${it} to ${heatingSetpoint}"
+            it.setHeatingSetpoint(heatingSetpoint)
+        }
     }
 }
 
