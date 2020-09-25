@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.4 - 09/25/20 - Big improvements over all
 *  1.7.3 - 09/25/20 - Tons of Adjustments, Thermostats added to Triggers
 *  1.7.2 - 09/24/20 - Adjustments, reworked the setpointHandler...more power!
 *  1.7.1 - 09/23/20 - Adjustment
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.3"
+    state.version = "1.7.4"
 }
 
 definition(
@@ -1632,12 +1633,9 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         state.nothingToDo = true
-        state.devicesGood = false
-        state.otherGood = false
-        state.setpointGood = false
-        state.totalGood = false
         state.isThereDevices = false
         state.isThereSPDevices = false
+        state.isThereOthers = false
         state.areRestrictions = false
         state.skip = false
         if(preMadePeriodic) state.nothingToDo = false
@@ -1718,25 +1716,21 @@ def startTheProcess(evt) {
                 }
                 thermostatHandler()
                 
-                checkTriggerAndOr()            
+                checkingAndOr()            
             }
         }
         if(state.skip) { 
             // do nothing
         } else {
-            if(logEnable) log.debug "In startTheProcess - 2 - setpointGood: ${state.setpointGood} - totalGood: ${state.totalGood} - nothingToDo: ${state.nothingToDo}"
+            if(logEnable) log.debug "In startTheProcess - 2 - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
         }
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
-            allTimeGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch
-            alldevices = state.setpointGood && state.totalGood
             if(state.skip) { 
-                allTimeGood = true
-                alldevices = true
+                state.allGood = true
             }
-            if(logEnable) log.debug "In startTheProcess - 3 - allTimeGood: ${allTimeGood} - alldevices: ${alldevices}"
-            if(allTimeGood && alldevices) {
+            if(state.allGood) {
                 if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
                 if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
@@ -1923,26 +1917,13 @@ def waterHandler() {
         state.typeAO = waterANDOR
         devicesGoodHandler()
     }     
-    if(!state.isThereDevices) { state.devicesGood = true }    // Keep in LAST device
+    if(!state.isThereDevices) { state.devicesOK = true }    // Keep in LAST device
 }
 
 def devicesGoodHandler() {
     if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}"
-    if(state.deviceMap == null) state.deviceMap = [:]
-    try {
-        mapData = state.deviceMap.get(state.eventType)
-        def (devicesOK, devicesGood, nothingToDo) = mapData.split(":")
-        state.devicesOK = devicesOK
-        state.devicesGood = devicesGood
-        state.nothingToDo = nothingToDo
-    } catch(e) {
-        // Do nothing
-    }
-    if(state.devicesOK == null) state.devicesOK = ""
-    if(state.devicesGood == null) state.devicesGood = ""
-    if(state.nothingToDo == null) state.nothingToDo = ""
-    state.isThereDevices = true
     deviceTrue = 0
+    state.isThereDevices = true
     try {
         theCount = state.eventName.size()
     } catch(e) {
@@ -1986,56 +1967,21 @@ def devicesGoodHandler() {
             }
         }
     }
-    if(logEnable) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} vs ${theCount} - type: ${state.typeAO}" 
+    if(logEnable) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} - type: ${state.typeAO}" 
     if(state.typeAO) {
-        if(deviceTrue >= 1) { // Bad
-            if(state.devicesOK == "yes") {
-                state.devicesOK = "no"
-                state.devicesGood = true
-                state.nothingToDo = false
-            } else {
-                state.nothingToDo = true
-                state.devicesOK == "yes"
-            }
-        } else {  // Good
-            if(state.devicesOK == "yes") {
-                state.nothingToDo = true
-            } else {
-                state.devicesOK = "yes" 
-                if(reverse) {
-                    state.devicesGood = false
-                    state.nothingToDo = false
-                } else {
-                    state.devicesGood = true
-                    state.nothingToDo = true
-                }
-            }
+        if(deviceTrue >= 1) {
+            state.devicesOK = true
+        } else {
+            state.devicesOK = false 
         }
     } else {
-        if(deviceTrue == theCount) { // Bad
-            if(state.devicesOK == "yes") {
-                state.devicesOK = "no"
-                state.devicesGood = true
-                state.nothingToDo = false
-            } else {
-                state.nothingToDo = true
-                state.devicesOK == "yes"
-            }
-        } else { // Good
-            state.devicesOK = "yes" 
-            if(reverse) {
-                state.devicesGood = false
-                state.nothingToDo = false
-            } else {
-                state.devicesGood = true
-                state.nothingToDo = true
-            }
-        }   
+        if(deviceTrue == theCount) {
+            state.devicesOK = true
+        } else {
+            state.devicesOK = false 
+        }
     }
-    mapData = "${state.devicesOK}:${state.devicesGood}:${state.nothingToDo}"
-    state.deviceMap.put(state.eventType, mapData)
-    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
-    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - mapData: ${mapData}"
+    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - deviceTrue: ${deviceTrue} - theCount: ${theCount} - devicesOK: ${state.devicesOK}"
 }
 
 def hsmAlertHandler(data) {
@@ -2076,146 +2022,37 @@ def hsmStatusHandler(data) {
 
 def thermostatHandler() {
     if(thermoEvent) {
-        if(logEnable) log.trace "thermoEvent: ${thermoEvent}"
         state.otherName = thermoEvent
         state.otherType = "thermostat"
         state.otherValue = "thermostatOperatingState"
         otherHandler()
     }
+    if(!state.isThereOthers) { state.otherOK = true }    // Keep in LAST device
 }
 
 def otherHandler() {
     if(logEnable) log.debug "In otherHandler (${state.version})"
-    if(state.deviceMap == null) state.deviceMap = [:]
+    otherTrue = 0
+    state.isThereOthers = true
     try {
-        mapData = state.deviceMap.get(state.eventType)
-        def (otherOK, otherGood, nothingToDo) = mapData.split(":")
-        state.otherOK = otherOK
-        state.otherGood = otherGood
-        state.nothingToDo = nothingToDo
+        otherCount = state.otherName.size()
     } catch(e) {
-        // Do nothing
+        otherCount = 1
     }
-    try {
-        theCount = state.otherName.size()
-    } catch(e) {
-        theCount = 1
-    }
-    if(state.otherOK == null) state.otherOK = ""
-    if(state.otherGood == null) state.otherGood = ""
-    if(state.nothingToDo == null) state.nothingToDo = ""
-    //state.isThereDevices = true
-    deviceTrue = 0
-    
-    if(otherEvent) {
-        otherEvent.each { other ->
-            def otherName = other.displayName
-            def otherStatus = other.currentValue(state.otherValue)
-            if(otherStatus != "idle") {
-                deviceTrue = deviceTrue + 1
-                if(logEnable) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
-            }
+    state.otherName.each { other ->
+        def otherName = other.displayName
+        def otherStatus = other.currentValue(state.otherValue)
+        if(otherStatus != "idle") {
+            otherTrue = otherTrue + 1
+            if(logEnable) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
         }
     }
-    if(logEnable) log.debug "In otherHandler - ${state.eventType.toUpperCase()} - deviceTrue: ${deviceTrue} - theCount: ${theCount} - otherOK: ${state.otherOK}"
-    if(deviceTrue == theCount) { // Bad
-        if(state.otherOK == "yes") {
-            state.otherOK = "no"
-            state.otherGood = true
-            state.nothingToDo = false
-        } else {
-            state.otherOK == "yes"
-            if(reverse) {
-                state.otherGood = true
-                state.nothingToDo = false
-            } else {
-                state.otherGood = true
-                state.nothingToDo = true
-            }
-        }
-    } else { // Good
-        state.otherOK = "yes" 
-        if(reverse) {
-            state.otherGood = false
-            state.nothingToDo = false
-        } else {
-            state.otherGood = true
-            state.nothingToDo = true
-        }
-    }  
-    mapData = "${state.otherOK}:${state.otherGood}:${state.nothingToDo}"
-    state.deviceMap.put(state.eventType, mapData)
-    if(logEnable) log.debug "In otherHandler - ${state.eventType.toUpperCase()} - otherGood: ${state.otherGood} - nothingToDo: ${state.nothingToDo}"
-    if(logEnable) log.debug "In otherHandler - ${state.eventType.toUpperCase()} - mapData: ${mapData}"
-}
-
-def checkTriggerAndOr() {
-    if(logEnable) log.debug "In checkTriggerAndOr (${state.version})"
-    deviceTrue = 0
-    if(state.allDevicesOK == null) state.allDevicesOK = "yes"
-    if(state.devieMap) {
-        if(logEnable) log.debug "In checkTriggerAndOr - deviceMap: ${state.deviceMap}"
-        mapCount = state.deviceMap.size()
-        state.deviceMap.each { it ->
-            itValue = it.value.split(":")
-            if(itValue[0] == "no") deviceTrue = deviceTrue + 1
-        }
-        if(logEnable) log.debug "In checkTriggerAndOr - mapCount: ${mapCount} - deviceTrue: ${deviceTrue}"
-        if(triggerAndOr) {    // OR
-            if(deviceTrue >= 1) { // Bad
-                if(state.allDevicesOK == "yes") {
-                    state.allDevicesOK = "no"
-                    state.totalGood = true
-                    state.nothingToDo = false
-                } else {
-                    state.nothingToDo = true
-                    state.allDevicesOK == "yes"
-                }
-            } else {  // Good
-                if(state.allDevicesOK == "yes") {
-                    state.nothingToDo = true
-                } else {
-                    state.allDevicesOK = "yes" 
-                    if(reverse) {
-                        state.totalGood = false
-                        state.nothingToDo = false
-                    } else {
-                        state.totalGood = true
-                        state.nothingToDo = true
-                    }
-                }
-            }
-        } else {    // AND
-            if(deviceTrue == mapCount) { // Bad
-                if(state.allDevicesOK == "yes") {
-                    state.allDevicesOK = "no"
-                    state.totalGood = true
-                    state.nothingToDo = false
-                } else {
-                    state.allDevicesOK == "yes"
-                    if(reverse) {
-                        state.totalGood = true
-                        state.nothingToDo = false
-                    } else {
-                        state.totalGood = true
-                        state.nothingToDo = true
-                    }
-                }
-            } else { // Good
-                state.allDevicesOK = "yes" 
-                if(reverse) {
-                    state.totalGood = false
-                    state.nothingToDo = false
-                } else {
-                    state.totalGood = true
-                    state.nothingToDo = true
-                }
-            }   
-        }
+    if(otherTrue == otherCount) {
+        state.otherOK = true
     } else {
-        state.totalGood = true
+        state.otherOK = false
     }
-    if(logEnable) log.debug "In checkTriggerAndOr - allDevicesOK: ${state.allDevicesOK} - totalGood: ${state.totalGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In otherHandler - ${state.otherType.toUpperCase()} - otherTrue: ${otherTrue} - otherCount: ${otherCount} - otherOK: ${state.otherOK}"
 }
 
 def ruleMachineHandler() {
@@ -2302,15 +2139,20 @@ def voltageHandler() {
         state.setpointLow = veSetPointLow
         setpointHandler()
     }    
-    if(!state.isThereSPDevices) { state.setpointGood = true }    // Keep in LAST setpoint
+    if(!state.isThereSPDevices) { 
+        state.setpointOK = true
+        state.setpointHighOK = "yes"
+        state.setpointLowOK = "yes"
+        state.setpointBetweenOK = "yes"
+    }    // Keep in LAST setpoint
 }
 
 def setpointHandler() {
     if(logEnable) log.trace "In setpointHandler (${state.version}) - spName: ${state.spName}"
-    if(state.setpointHighOK == null) state.setpointHighOK = "no"
-    if(state.setpointLowOK == null) state.setpointLowOK = "no"
-    if(state.setpointBetweenOK == null) state.setpointBetweenOK = "no"
-    if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointBetweenOK: ${state.setpointBetweenOK} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
+    if(state.setpointHighOK == null) state.setpointHighOK = "yes"
+    if(state.setpointLowOK == null) state.setpointLowOK = "yes"
+    if(state.setpointBetweenOK == null) state.setpointBetweenOK = "yes"
+    if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
     state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
@@ -2323,64 +2165,78 @@ def setpointHandler() {
         int setpointValue = setpointValue
         int setpointLow = state.setpointLow ?: 0
         int setpointHigh = state.setpointHigh ?: 99999
-        if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh} - nothingToDo: ${state.nothingToDo}"
+        if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
         if((setpointValue < setpointLow) || (setpointValue >= setpointHigh)) {  // bad
             state.setpointBetweenOK = "no" 
             if(setpointValue >= setpointHigh) {  // bad
                 if(state.setpointHighOK == "yes") {
                     if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
-                    state.setpointHighOK = "no"
-                    if(reverseWhenHigh) {
-                        state.setpointGood = false
-                        state.nothingToDo = false
-                    } else {
-                        state.setpointGood = true
-                        state.nothingToDo = false
-                    }
-                } else {
-                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is STILL HIGH. Nothing to do."
-                    state.nothingToDo = true
-                    state.setpointHighOK == "yes"
+                    state.setpointOK = false
                 }
             } else {
-                state.setpointHighOK = "yes"
+                state.setpointHighOK = "no"
+                state.setpointOK = true
             }
             if(setpointValue < setpointLow) {  // bad
                 if(state.setpointLowOK == "yes") {
                     if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
                     state.setpointLowOK = "no"
-                    if(reverseWhenLow) {
-                        state.setpointGood = false
-                        state.nothingToDo = false
-                    } else {
-                        state.setpointGood = true
-                        state.nothingToDo = false
-                    }
-                } else {
-                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is STILL LOW. Nothing to do."
-                    state.nothingToDo = true
-                    state.setpointLowOK == "yes"
+                    state.setpointOK = false
                 }
             } else {
-                state.setpointLowOK = "yes"
+                state.setpointLowOK = "no"
+                state.setpointOK = true
             }
         } else {  // good
             if(logEnable) log.debug "In setpointHandler - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
-            if(state.setpointBetweenOK == "yes") {
-                state.nothingToDo = true
-            } else {
-                state.setpointBetweenOK = "yes" 
-                if(reverseWhenBetween) {
-                    state.setpointGood = false
-                    state.nothingToDo = false
-                } else {
-                    state.setpointGood = true
-                    state.nothingToDo = true
-                }
-            }
+            state.setpointOK = false
         }
     }
-    if(logEnable) log.debug "In setpointHandler - ${state.spType.toUpperCase()} - setpointGood: ${state.setpointGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In setpointHandler - ${state.spType.toUpperCase()} - setpointOK: ${state.setpointOK}"
+}
+
+def checkingAndOr() {
+    if(logEnable) log.info "-----------------------------------------------------------------------------"
+    if(logEnable) log.debug "In checkingAndOr (${state.version})"
+    if(logEnable) log.debug "In checkingAndOr - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
+    if(triggerAndOr) {
+        if(logEnable) log.debug "In checkingAndOr ----------  Using OR  ----------"
+        if(state.devicesOK || state.setpointOK || state.otherOK) {
+            state.everythingGood = true
+        } else {
+            state.everythingGood = false
+        }
+    } else {
+        if(logEnable) log.debug "In checkingAndOr ----------  Using AND  ----------"
+        if(state.devicesOK && state.setpointOK && state.otherOK) {
+            state.everythingOK = true
+        } else {
+            state.everythingOK = false
+        }
+    }
+    if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
+    if(state.beenHere == null) state.beenHere = "no"
+    if(state.everythingOK) {
+        if(state.beenHere == "no") {
+            state.beenHere = "yes"
+            state.allGood = true
+            state.nothingToDo = false
+        } else {       
+            state.allGood = true
+            state.nothingToDo = true
+        }
+    } else {
+        if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+            state.allGood = false
+            state.nothingToDo = false
+        } else {
+            state.allGood = true
+            state.nothingToDo = true
+        }
+        state.beenHere = "no"
+    }   
+    if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.info "-----------------------------------------------------------------------------"
 }
 
 // ********** Start Restrictions **********
