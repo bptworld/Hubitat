@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.3 - 09/25/20 - Tons of Adjustments, Thermostats added to Triggers
 *  1.7.2 - 09/24/20 - Adjustments, reworked the setpointHandler...more power!
 *  1.7.1 - 09/23/20 - Adjustment
 *  1.7.0 - 09/23/20 - New - Cog Description section
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.2"
+    state.version = "1.7.3"
 }
 
 definition(
@@ -101,6 +102,7 @@ def pageConfig() {
                 ["xPresence":"Presence Sensor"],
                 ["xSwitch":"Switches"],
                 ["xTemp":"Temperature Setpoint"],
+                ["xTherm":"Thermostat Activity"],
                 ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"],
                 ["xCustom":"** Custom Attribute **"]
@@ -857,6 +859,18 @@ def pageConfig() {
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('temperature') }
             }
+            
+            if(triggerType.contains("xTherm")) {
+                paragraph "<b>Thermostat</b>"
+                paragraph "Tracks the state of the thermostat. It will react if not in Idle. (ie. heating or cooling)"
+                input "thermoEvent", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
+                paragraph "<hr>"
+                state.theCogTriggers += "<b>Trigger:</b> By Thermostat: ${thermoEvent}<br>"
+            } else {
+                state.theCogTriggers -= "<b>Trigger:</b> By Thermostat: ${thermoEvent}<br>"
+                app.removeSetting("thermoEvent")
+                if(state.deviceMap) { state.deviceMap.remove('thermostat') }
+            }
 
             if(triggerType.contains("xVoltage")) {
                 paragraph "<b>Voltage</b>"
@@ -1283,11 +1297,29 @@ def pageConfig() {
                         input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
                         input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low?", defaultValue:false, submitOnChange:true
                         input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between?", defaultValue:false, submitOnChange:true
+                        app?.updateSetting("reverse",[value:"false",type:"bool"])
                     } else {
                         input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
+                        app?.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
+                        app?.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
+                        app?.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
                     }
-                    if(notifyDelay || randomDelay || targetDelay) {
-                        paragraph "<small>* The Delay specified above will also be used with Reverse</small>"
+                    if((notifyDelay || randomDelay || targetDelay) && (reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween)) {
+                        input "delayOnReverse", "bool", title: "Also Delay when going in Reverse", defaultValue:false, submitOnChange:true
+                        if(delayOnReverse) paragraph "<small>* The Delay specified above will also be used with Reverse</small>"
+                        
+                    } else {
+                        app?.updateSetting("delayOnReverse",[value:"false",type:"bool"])
+                    }
+                    if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+                        if(reverse) {
+                            state.theCogActions += "<b>Action:</b> Reverse: ${reverse} - Delay On Reverse: ${delayOnReverse}<br>"
+                        } else if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+                            state.theCogActions += "<b>Action:</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween} - Delay On Reverse: ${delayOnReverse}<br>"
+                        }
+                    } else {
+                        state.theCogActions -= "<b>Action:</b> Reverse: ${reverse} - Delay On Reverse: ${delayOnReverse}<br>"
+                        state.theCogActions -= "<b>Action:</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween} - Delay On Reverse: ${delayOnReverse}<br>"
                     }
                     if((reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
                         paragraph "<hr>"
@@ -1299,9 +1331,9 @@ def pageConfig() {
                         } else {
                             app.removeSetting("permanentDimLvl")
                         }
-                        state.theCogActions += "<b>Action:</b> Reverse: ${reverse} - Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                        state.theCogActions += "<b>Action:</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
                     } else {
-                        state.theCogActions -= "<b>Action:</b> Reverse: ${reverse} - Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                        state.theCogActions -= "<b>Action:</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
                         app.removeSetting("permanentDimLvl")
                         app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                     }
@@ -1544,6 +1576,7 @@ def initialize() {
         if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
+        if(thermoEvent) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
         if(spResetTime) schedule(spResetTime, resetTruthHandler)
         if(repeat) {
@@ -1600,7 +1633,9 @@ def startTheProcess(evt) {
         if(logEnable) log.debug "In startTheProcess (${state.version})"
         state.nothingToDo = true
         state.devicesGood = false
+        state.otherGood = false
         state.setpointGood = false
+        state.totalGood = false
         state.isThereDevices = false
         state.isThereSPDevices = false
         state.areRestrictions = false
@@ -1641,6 +1676,7 @@ def startTheProcess(evt) {
             if(state.skip) {
                 if(logEnable) log.debug "In startTheProcess - Skipping Time checks"
             } else {
+                if(triggerType.contains("tTimeDays")) { state.nothingToDo = false }
                 checkTime()
                 checkTimeSun()
                 dayOfTheWeekHandler()
@@ -1674,25 +1710,27 @@ def startTheProcess(evt) {
                 powerHandler()
                 tempHandler()
                 voltageHandler()
-
+                
                 if(deviceORsetpoint) {
                     customSetpointHandler()
                 } else {
                     customDeviceHandler()
                 }
-                checkTriggerAndOr()
+                thermostatHandler()
+                
+                checkTriggerAndOr()            
             }
         }
         if(state.skip) { 
             // do nothing
         } else {
-            if(logEnable) log.debug "In startTheProcess - 2 - setpointGood: ${state.setpointGood} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
+            if(logEnable) log.debug "In startTheProcess - 2 - setpointGood: ${state.setpointGood} - totalGood: ${state.totalGood} - nothingToDo: ${state.nothingToDo}"
         }
         if(state.nothingToDo) {
             if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
         } else {
             allTimeGood = state.timeBetween && state.timeBetweenSun && state.daysMatch && state.modeMatch
-            alldevices = state.setpointGood && state.devicesGood
+            alldevices = state.setpointGood && state.totalGood
             if(state.skip) { 
                 allTimeGood = true
                 alldevices = true
@@ -1737,7 +1775,7 @@ def startTheProcess(evt) {
                     state.hasntDelayedYet = true
                 }
             } else if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-                if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet) {
+                if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet && delayOnReverse) {
                     if(notifyDelay) newDelay = notifyDelay
                     if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                     if(targetDelay) newDelay = minutesUp
@@ -2000,66 +2038,6 @@ def devicesGoodHandler() {
     if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - mapData: ${mapData}"
 }
 
-def checkTriggerAndOr() {
-    if(logEnable) log.debug "In checkTriggerAndOr (${state.version})"
-    deviceTrue = 0
-    if(state.allDevicesOK == null) state.allDevicesOK = "yes"
-    if(state.deviceMap) {
-        mapCount = state.deviceMap.size()
-        state.deviceMap.each { it ->
-            itValue = it.value.split(":")
-            if(itValue[0] == "no") deviceTrue = deviceTrue + 1
-        }
-        if(logEnable) log.debug "In checkTriggerAndOr - mapCount: ${mapCount} - deviceTrue: ${deviceTrue} - deviceMap: ${state.deviceMap}"
-        if(triggerAndOr) {    // OR
-            if(deviceTrue >= 1) { // Bad
-                if(state.allDevicesOK == "yes") {
-                    state.allDevicesOK = "no"
-                    state.devicesGood = true
-                    state.nothingToDo = false
-                } else {
-                    state.nothingToDo = true
-                    state.allDevicesOK == "yes"
-                }
-            } else {  // Good
-                if(state.allDevicesOK == "yes") {
-                    state.nothingToDo = true
-                } else {
-                    state.allDevicesOK = "yes" 
-                    if(reverse) {
-                        state.devicesGood = false
-                        state.nothingToDo = false
-                    } else {
-                        state.devicesGood = true
-                        state.nothingToDo = true
-                    }
-                }
-            }
-        } else {    // AND
-            if(deviceTrue == mapCount) { // Bad
-                if(state.allDevicesOK == "yes") {
-                    state.allDevicesOK = "no"
-                    state.devicesGood = true
-                    state.nothingToDo = false
-                } else {
-                    state.nothingToDo = true
-                    state.allDevicesOK == "yes"
-                }
-            } else { // Good
-                state.allDevicesOK = "yes" 
-                if(reverse) {
-                    state.devicesGood = false
-                    state.nothingToDo = false
-                } else {
-                    state.devicesGood = true
-                    state.nothingToDo = true
-                }
-            }   
-        }
-        if(logEnable) log.debug "In checkTriggerAndOr - allDevicesOK: ${state.allDevicesOK} - devicesGood: ${state.devicesGood} - nothingToDo: ${state.nothingToDo}"
-    }
-}
-
 def hsmAlertHandler(data) {
     if(hsmAlertEvent) {
         if(logEnable) log.debug "In hsmAlertHandler (${state.version})"
@@ -2069,12 +2047,13 @@ def hsmAlertHandler(data) {
             if(logEnable) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
                 state.hsmAlertStatus = true
+                state.nothingToDo = false
             }
         }
     } else {
         state.hsmAlertStatus = true
     }
-    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus}"
+    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus} - nothingToDo: ${state.nothingToDo}"
 }
 
 def hsmStatusHandler(data) {
@@ -2086,12 +2065,157 @@ def hsmStatusHandler(data) {
             if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
                 state.hsmStatus = true
+                state.nothingToDo = false
             }
         }
     } else {
         state.hsmStatus = true
     }
-    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus}"
+    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus} - nothingToDo: ${state.nothingToDo}"
+}
+
+def thermostatHandler() {
+    if(thermoEvent) {
+        if(logEnable) log.trace "thermoEvent: ${thermoEvent}"
+        state.otherName = thermoEvent
+        state.otherType = "thermostat"
+        state.otherValue = "thermostatOperatingState"
+        otherHandler()
+    }
+}
+
+def otherHandler() {
+    if(logEnable) log.debug "In otherHandler (${state.version})"
+    if(state.deviceMap == null) state.deviceMap = [:]
+    try {
+        mapData = state.deviceMap.get(state.eventType)
+        def (otherOK, otherGood, nothingToDo) = mapData.split(":")
+        state.otherOK = otherOK
+        state.otherGood = otherGood
+        state.nothingToDo = nothingToDo
+    } catch(e) {
+        // Do nothing
+    }
+    try {
+        theCount = state.otherName.size()
+    } catch(e) {
+        theCount = 1
+    }
+    if(state.otherOK == null) state.otherOK = ""
+    if(state.otherGood == null) state.otherGood = ""
+    if(state.nothingToDo == null) state.nothingToDo = ""
+    //state.isThereDevices = true
+    deviceTrue = 0
+    
+    if(otherEvent) {
+        otherEvent.each { other ->
+            def otherName = other.displayName
+            def otherStatus = other.currentValue(state.otherValue)
+            if(otherStatus != "idle") {
+                deviceTrue = deviceTrue + 1
+                if(logEnable) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
+            }
+        }
+    }
+    if(logEnable) log.debug "In otherHandler - ${state.eventType.toUpperCase()} - deviceTrue: ${deviceTrue} - theCount: ${theCount} - otherOK: ${state.otherOK}"
+    if(deviceTrue == theCount) { // Bad
+        if(state.otherOK == "yes") {
+            state.otherOK = "no"
+            state.otherGood = true
+            state.nothingToDo = false
+        } else {
+            state.otherOK == "yes"
+            if(reverse) {
+                state.otherGood = true
+                state.nothingToDo = false
+            } else {
+                state.otherGood = true
+                state.nothingToDo = true
+            }
+        }
+    } else { // Good
+        state.otherOK = "yes" 
+        if(reverse) {
+            state.otherGood = false
+            state.nothingToDo = false
+        } else {
+            state.otherGood = true
+            state.nothingToDo = true
+        }
+    }  
+    mapData = "${state.otherOK}:${state.otherGood}:${state.nothingToDo}"
+    state.deviceMap.put(state.eventType, mapData)
+    if(logEnable) log.debug "In otherHandler - ${state.eventType.toUpperCase()} - otherGood: ${state.otherGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In otherHandler - ${state.eventType.toUpperCase()} - mapData: ${mapData}"
+}
+
+def checkTriggerAndOr() {
+    if(logEnable) log.debug "In checkTriggerAndOr (${state.version})"
+    deviceTrue = 0
+    if(state.allDevicesOK == null) state.allDevicesOK = "yes"
+    if(state.devieMap) {
+        if(logEnable) log.debug "In checkTriggerAndOr - deviceMap: ${state.deviceMap}"
+        mapCount = state.deviceMap.size()
+        state.deviceMap.each { it ->
+            itValue = it.value.split(":")
+            if(itValue[0] == "no") deviceTrue = deviceTrue + 1
+        }
+        if(logEnable) log.debug "In checkTriggerAndOr - mapCount: ${mapCount} - deviceTrue: ${deviceTrue}"
+        if(triggerAndOr) {    // OR
+            if(deviceTrue >= 1) { // Bad
+                if(state.allDevicesOK == "yes") {
+                    state.allDevicesOK = "no"
+                    state.totalGood = true
+                    state.nothingToDo = false
+                } else {
+                    state.nothingToDo = true
+                    state.allDevicesOK == "yes"
+                }
+            } else {  // Good
+                if(state.allDevicesOK == "yes") {
+                    state.nothingToDo = true
+                } else {
+                    state.allDevicesOK = "yes" 
+                    if(reverse) {
+                        state.totalGood = false
+                        state.nothingToDo = false
+                    } else {
+                        state.totalGood = true
+                        state.nothingToDo = true
+                    }
+                }
+            }
+        } else {    // AND
+            if(deviceTrue == mapCount) { // Bad
+                if(state.allDevicesOK == "yes") {
+                    state.allDevicesOK = "no"
+                    state.totalGood = true
+                    state.nothingToDo = false
+                } else {
+                    state.allDevicesOK == "yes"
+                    if(reverse) {
+                        state.totalGood = true
+                        state.nothingToDo = false
+                    } else {
+                        state.totalGood = true
+                        state.nothingToDo = true
+                    }
+                }
+            } else { // Good
+                state.allDevicesOK = "yes" 
+                if(reverse) {
+                    state.totalGood = false
+                    state.nothingToDo = false
+                } else {
+                    state.totalGood = true
+                    state.nothingToDo = true
+                }
+            }   
+        }
+    } else {
+        state.totalGood = true
+    }
+    if(logEnable) log.debug "In checkTriggerAndOr - allDevicesOK: ${state.allDevicesOK} - totalGood: ${state.totalGood} - nothingToDo: ${state.nothingToDo}"
 }
 
 def ruleMachineHandler() {
@@ -2782,8 +2906,10 @@ def messageHandler() {
         if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
         if(logEnable) log.debug "In messageHandler - message: ${state.message}"
         msg = state.message
-        if(useSpeech) letsTalk(msg)
-        if(sendPushMessage) pushHandler(msg)
+        if(msg) {
+            if(useSpeech) letsTalk(msg)
+            if(sendPushMessage) pushHandler(msg)
+        }
     }
 }
 
@@ -3102,6 +3228,7 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 def resetTruthHandler() {
     if(logEnable) log.debug "In resetTruthHandler (${state.version})"
     state.clear()
+    state.deviceMap = [:]
 }
 
 // ********** Normal Stuff **********
