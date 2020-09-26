@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.6 - 09/26/20 - Troubleshooting
 *  1.7.5 - 09/25/20 - Added Thermostat Actions
 *  1.7.4 - 09/25/20 - Big improvements over all
 *  1.7.3 - 09/25/20 - Tons of Adjustments, Thermostats added to Triggers
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.5"
+    state.version = "1.7.6"
 }
 
 definition(
@@ -1209,7 +1210,11 @@ def pageConfig() {
                 }
                 
                 input "switchesToggleAction", "capability.switch", title: "Switches to Toggle", multiple:true, submitOnChange:true
-                state.theCogActions += "<b>Action:</b> Switches to Toggle: ${switchesToggleAction}<br>"
+                if(switchesToggleAction) {
+                    state.theCogActions += "<b>Action:</b> Switches to Toggle: ${switchesToggleAction}<br>"
+                } else {
+                    state.theCogActions -= "<b>Action:</b> Switches to Toggle: ${switchesToggleAction}<br>"
+                }
                 input "switchesLCAction", "bool", title: "Turn Light On, Set Level and/or Color", description: "Light OLC", defaultValue:false, submitOnChange:true
                 if(switchesLCAction) {
                     input "setOnLC", "capability.switchLevel", title: "Select dimmer to set", required:false, multiple:true
@@ -1749,13 +1754,13 @@ def startTheProcess(evt) {
             if(logEnable) log.debug "In startTheProcess - 2 - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
         }
         if(state.nothingToDo) {
-            if(logEnable) log.trace "In startTheProcess - Nothing to do - STOPING"
+            if(logEnable) log.debug "In startTheProcess - Nothing to do - STOPING"
         } else {
             if(state.skip) { 
                 state.allGood = true
             }
             if(state.allGood) {
-                if(logEnable) log.trace "In startTheProcess - HERE WE GO!"
+                if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
                 if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
                     if(notifyDelay) newDelay = notifyDelay
@@ -1806,7 +1811,7 @@ def startTheProcess(evt) {
                     state.setpointBetweenOK = "yes"
                     runIn(theDelay, startTheProcess, [data: "again"])
                 } else {             
-                    if(logEnable) log.trace "In startTheProcess - GOING IN REVERSE"
+                    if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
                     if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
                     if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
                     if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
@@ -1819,7 +1824,7 @@ def startTheProcess(evt) {
                     state.hasntDelayedReverseYet = true
                 }
             } else {
-                if(logEnable) log.trace "In startTheProcess - Something didn't pass - STOPING"
+                if(logEnable) log.debug "In startTheProcess - Something didn't pass - STOPING"
             }
         }
         if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
@@ -1829,7 +1834,6 @@ def startTheProcess(evt) {
 // ********** Start Triggers **********
 def customDeviceHandler() {
     if(customEvent) {
-        if(logEnable) log.trace "customEvent: ${customEvent}"
         state.eventName = customEvent
         state.eventType = specialAtt
         state.type = sdCustom1Custom2
@@ -1842,7 +1846,6 @@ def customDeviceHandler() {
 
 def accelerationHandler() {
     if(accelerationEvent) {
-        if(logEnable) log.trace "accelerationEvent: ${accelerationEvent}"
         state.eventName = accelerationEvent
         state.eventType = "acceleration"
         state.type = asInactiveActive
@@ -1855,7 +1858,6 @@ def accelerationHandler() {
 
 def contactHandler() {
     if(contactEvent) {
-        if(logEnable) log.trace "contactEvent: ${contactEvent}"
         state.eventName = contactEvent
         state.eventType = "contact"
         state.type = csClosedOpen
@@ -1868,7 +1870,6 @@ def contactHandler() {
 
 def garageDoorHandler() {
     if(garageDoorEvent) {
-        if(logEnable) log.trace "garageDoorEvent: ${garageDoorEvent}"
         state.eventName = garageDoorEvent
         state.eventType = "door"
         state.type = gdClosedOpen
@@ -1881,7 +1882,6 @@ def garageDoorHandler() {
 
 def lockHandler() {
     if(lockEvent) {
-        if(logEnable) log.trace "lockEvent: ${lockEvent}"
         state.eventName = lockEvent
         state.eventType = "lock"
         state.type = lUnlockedLocked
@@ -1894,7 +1894,6 @@ def lockHandler() {
 
 def motionHandler() {
     if(motionEvent) {
-        if(logEnable) log.trace "motionEvent: ${motionEvent}"
         state.eventName = motionEvent
         state.eventType = "motion"
         state.type = meInactiveActive
@@ -1907,7 +1906,6 @@ def motionHandler() {
 
 def presenceHandler() {
     if(presenceEvent) {
-        if(logEnable) log.trace "presenceEvent: ${presenceEvent}"
         state.eventName = presenceEvent
         state.eventType = "presence"
         state.type = pePresentNotPresent
@@ -1920,7 +1918,6 @@ def presenceHandler() {
 
 def switchHandler() {
     if(switchEvent) {
-        if(logEnable) log.trace "switchEvent: ${switchEvent}"
         state.eventName = switchEvent
         state.eventType = "switch"
         state.type = seOffOn
@@ -1933,7 +1930,6 @@ def switchHandler() {
 
 def waterHandler() {
     if(waterEvent) {
-        if(logEnable) log.trace "waterEvent: ${waterEvent}"
         state.eventName = waterEvent
         state.eventType = "water"
         state.type = weDryWet
@@ -1964,9 +1960,9 @@ def devicesGoodHandler() {
                     if(logEnable) log.debug "In devicesGoodHandler - Lock"
                     state.whoUnlocked = it.currentValue("lastCodeName")
                     lockUser.each { us ->
-                        if(logEnable) log.trace "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
-                            if(logEnable) log.trace "MATCH: ${state.whoUnlocked}"
+                            if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
                             deviceTrue = deviceTrue + 1
                         }
                     }
@@ -1980,9 +1976,9 @@ def devicesGoodHandler() {
             if(state.eventType == "lock") {
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockUser.each { us ->
-                    if(logEnable) log.trace "I'm checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
-                        if(logEnable) log.trace "MATCH: ${state.whoUnlocked}"
+                        if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
                         deviceTrue = deviceTrue + 1
                     }
                 }
@@ -2173,11 +2169,11 @@ def voltageHandler() {
 }
 
 def setpointHandler() {
-    if(logEnable) log.trace "In setpointHandler (${state.version}) - spName: ${state.spName}"
+    if(logEnable) log.debug "In setpointHandler (${state.version}) - spName: ${state.spName}"
     if(state.setpointHighOK == null) state.setpointHighOK = "yes"
     if(state.setpointLowOK == null) state.setpointLowOK = "yes"
     if(state.setpointBetweenOK == null) state.setpointBetweenOK = "yes"
-    if(logEnable) log.trace "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
+    if(logEnable) log.debug "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
     state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
@@ -2190,12 +2186,12 @@ def setpointHandler() {
         int setpointValue = setpointValue
         int setpointLow = state.setpointLow ?: 0
         int setpointHigh = state.setpointHigh ?: 99999
-        if(logEnable) log.trace "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
+        if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
         if((setpointValue < setpointLow) || (setpointValue >= setpointHigh)) {  // bad
             state.setpointBetweenOK = "no" 
             if(setpointValue >= setpointHigh) {  // bad
                 if(state.setpointHighOK == "yes") {
-                    if(logEnable) log.trace "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
+                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
                     state.setpointOK = false
                 }
             } else {
@@ -2204,7 +2200,7 @@ def setpointHandler() {
             }
             if(setpointValue < setpointLow) {  // bad
                 if(state.setpointLowOK == "yes") {
-                    if(logEnable) log.trace "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
+                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
                     state.setpointLowOK = "no"
                     state.setpointOK = false
                 }
@@ -2246,17 +2242,21 @@ def checkingAndOr() {
             state.beenHere = "yes"
             state.allGood = true
             state.nothingToDo = false
+            if(logEnable) log.debug "In checkingAndOr - A"
         } else {       
             state.allGood = true
-            state.nothingToDo = true
+            //state.nothingToDo = true
+            if(logEnable) log.debug "In checkingAndOr - B"
         }
     } else {
         if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
             state.allGood = false
             state.nothingToDo = false
+            if(logEnable) log.debug "In checkingAndOr - C"
         } else {
             state.allGood = true
-            state.nothingToDo = true
+            //state.nothingToDo = true
+            if(logEnable) log.debug "In checkingAndOr - D"
         }
         state.beenHere = "no"
     }   
@@ -2378,9 +2378,9 @@ def restrictionHandler() {
                     if(logEnable) log.debug "In restrictionHandler - Lock"
                     state.whoUnlocked = it.currentValue("lastCodeName")
                     lockRestrictionUser.each { us ->
-                        if(logEnable) log.trace "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
-                            if(logEnable) log.trace "MATCH: ${state.whoUnlocked}"
+                            if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
                             deviceTrue = deviceTrue + 1
                         }
                     }
@@ -2393,9 +2393,9 @@ def restrictionHandler() {
             if(state.rEventType == "lock") {
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockRestrictionUser.each { us ->
-                    if(logEnable) log.trace "I'm checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
-                        if(logEnable) log.trace "MATCH: ${state.whoUnlocked}"
+                        if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
                         deviceTrue = deviceTrue + 1
                     }
                 }
@@ -2443,7 +2443,7 @@ def dimmerOnReverseActionHandler() {
                     it.setColor(theValue)
                     pauseExecution(1000)
                     if(oldStatus == "off") {
-                        if(logEnable) log.trace "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                         it.off()
                     }
                 } catch(e) {
@@ -2460,7 +2460,7 @@ def dimmerOnReverseActionHandler() {
                     it.setLevel(theValue)
                     pauseExecution(1000)
                     if(oldStatus == "off") {
-                        if(logEnable) log.trace "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                         it.off()
                     }
                 } catch(e) {
@@ -2552,9 +2552,9 @@ def lockUserActionHandler(evt) {
             lockdata = evt.data
             lockStatus = evt.value
             lockName = evt.displayName
-            if(logEnable) log.trace "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
+            if(logEnable) log.debug "In lockUserActionHandler (${state.version}) - Lock: ${lockName} - Status: ${lockStatus}"
             if(lockStatus == "unlocked") {
-                if(logEnable) log.trace "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
+                if(logEnable) log.debug "In lockUserActionHandler - Lock: ${lockName} - Status: ${lockStatus} - We're in!"
                 if(theLocks) {
                     if (lockdata && !lockdata[0].startsWith("{")) {
                         lockdata = decrypt(lockdata)
@@ -2565,11 +2565,11 @@ def lockUserActionHandler(evt) {
                     }
                     def codeMap = parseJson(lockdata ?: "{}").find{ it }
                     if (!codeMap) {
-                        if(logEnable) log.trace "In lockUserActionHandler - Lock Code not available."
+                        if(logEnable) log.debug "In lockUserActionHandler - Lock Code not available."
                         return
                     }
                     codeName = "${codeMap?.value?.name}"
-                    if(logEnable) log.trace "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	
+                    if(logEnable) log.debug "In lockUserActionHandler - ${lockName} was unlocked by ${codeName}"	
                 }
             }
         }
@@ -2952,14 +2952,11 @@ def dayOfTheWeekHandler() {
         def dayCheck = days.contains(day)
 
         if(dayCheck) {
-            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Passed"
             state.daysMatch = true
         } else {
-            if(logEnable) log.debug "In dayOfTheWeekHandler - Days of the Week Check Failed"
             state.daysMatch = false
         }
     } else {
-        if(logEnable) log.debug "In dayOfTheWeekHandler - NO Days Specified"
         state.daysMatch = true
     }
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - nothingToDo: ${state.nothingToDo}"
@@ -2968,19 +2965,15 @@ def dayOfTheWeekHandler() {
 def modeHandler() {
     if(logEnable) log.debug "In modeHandler (${state.version})"
     if(modeEvent) {
-        if(logEnable) log.debug "In modeHandler - modeEvent: ${modeEvent}"
         theValue = location.mode
         def modeCheck = modeEvent.contains(theValue)
 
         if(modeCheck) {
-            if(logEnable) log.debug "In modeHandler - Mode Check Passed"
             state.modeMatch = true
         } else {
-            if(logEnable) log.debug "In modeHandler - Mode Check Failed"
             state.modeMatch = false
         }
     } else {
-        if(logEnable) log.debug "In modeHandler - NO Modes Specified"
         state.modeMatch = true
     }
     if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
