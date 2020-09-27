@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.8 - 09/27/20 - Quick fix
 *  1.7.7 - 09/27/20 - Adjustments
 *  1.7.6 - 09/26/20 - Troubleshooting
 *  1.7.5 - 09/25/20 - Added Thermostat Actions
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.7"
+    state.version = "1.7.8"
 }
 
 definition(
@@ -1153,12 +1154,14 @@ def pageConfig() {
                     href "notificationOptions", title:"Notification Options", description:"Click here for options"
                 }
             } else {
-                state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
-                state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
-                state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
-                state.theCogNotifications -= "<b>Notification:</b> Message: ${message}<br>"
-                state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
-                state.theCogNotifications -= "<b>Notification:</b> Send Push: ${sendPushMessage}<br>"
+                if(state.theCogNotifications) {
+                    state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
+                    state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
+                    state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
+                    state.theCogNotifications -= "<b>Notification:</b> Message: ${message}<br>"
+                    state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
+                    state.theCogNotifications -= "<b>Notification:</b> Send Push: ${sendPushMessage}<br>"
+                }
                 app.removeSetting("message")
                 app.removeSetting("messageH")
                 app.removeSetting("messageL")
