@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-* * 1.7.7 - 09/27/20 - Adjustments
+*  1.7.7 - 09/27/20 - Adjustments
 *  1.7.6 - 09/26/20 - Troubleshooting
 *  1.7.5 - 09/25/20 - Added Thermostat Actions
 *  1.7.4 - 09/25/20 - Big improvements over all
