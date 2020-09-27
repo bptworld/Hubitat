@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+* * 1.7.7 - 09/27/20 - Adjustments
 *  1.7.6 - 09/26/20 - Troubleshooting
 *  1.7.5 - 09/25/20 - Added Thermostat Actions
 *  1.7.4 - 09/25/20 - Big improvements over all
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.6"
+    state.version = "1.7.7"
 }
 
 definition(
@@ -1151,6 +1152,20 @@ def pageConfig() {
                 } else {
                     href "notificationOptions", title:"Notification Options", description:"Click here for options"
                 }
+            } else {
+                state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
+                state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
+                state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
+                state.theCogNotifications -= "<b>Notification:</b> Message: ${message}<br>"
+                state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
+                state.theCogNotifications -= "<b>Notification:</b> Send Push: ${sendPushMessage}<br>"
+                app.removeSetting("message")
+                app.removeSetting("messageH")
+                app.removeSetting("messageL")
+                app.removeSetting("messageB")
+                app?.updateSetting("useSpeech",[value:"false",type:"bool"])
+                app.removeSetting("fmSpeaker")
+                app.removeSetting("sendPushMessage")
             }
 
             if(actionType.contains("aRefresh")) {
@@ -1339,7 +1354,7 @@ def pageConfig() {
                         } else {
                             app.removeSetting("permanentDimLvl")
                         }
-                        state.theCogActions += "<b>Action:</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                        if(permanentDim) state.theCogActions += "<b>Action:</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
                     } else {
                         state.theCogActions -= "<b>Action:</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
                         app.removeSetting("permanentDimLvl")
@@ -1466,6 +1481,7 @@ def notificationOptions(){
                 state.theCogNotifications += "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
             } else {
                 state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
+                app.removeSetting("fmSpeaker")
             }
         }
 
@@ -1541,10 +1557,15 @@ def notificationOptions(){
             state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
             state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
             state.theCogNotifications -= "<b>Notification:</b> Message: ${message}<br>"
+            state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
+            state.theCogNotifications -= "<b>Notification:</b> Send Push: ${sendPushMessage}<br>"
             app.removeSetting("message")
             app.removeSetting("messageH")
             app.removeSetting("messageL")
             app.removeSetting("messageB")
+            app?.updateSetting("useSpeech",[value:"false",type:"bool"])
+            app.removeSetting("fmSpeaker")
+            app.removeSetting("sendPushMessage")
         }
 /*
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
@@ -1760,43 +1781,45 @@ def startTheProcess(evt) {
                 state.allGood = true
             }
             if(state.allGood) {
-                if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
-                if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-                if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
-                    if(notifyDelay) newDelay = notifyDelay
-                    if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                    if(targetDelay) newDelay = minutesUp
-                    if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
-                    if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                    int theDelay = newDelay * 60
-                    state.hasntDelayedYet = false
-                    state.setpointHighOK = "yes"
-                    state.setpointLowOK = "yes"
-                    state.setpointBetweenOK = "yes"
-                    runIn(theDelay, startTheProcess, [data: "again"])
-                } else {
-                    if(actionType == null) actionType = ""
-                    if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                    if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                    if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
-                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
-                    if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                    if(targetDelay == false) { 
-                        if(actionType.contains("aSwitch") && switchedDimUpAction) {
-                            slowOnHandler()
-                        } 
+                if(state.modeMatch && state.daysMatch && state.timeBetween && state.timeBetweenSun && state.modeMatch) {
+                    if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
+                    if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
+                    if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                        if(notifyDelay) newDelay = notifyDelay
+                        if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                        if(targetDelay) newDelay = minutesUp
+                        if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
+                        if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                        int theDelay = newDelay * 60
+                        state.hasntDelayedYet = false
+                        state.setpointHighOK = "yes"
+                        state.setpointLowOK = "yes"
+                        state.setpointBetweenOK = "yes"
+                        runIn(theDelay, startTheProcess, [data: "again"])
+                    } else {
+                        if(actionType == null) actionType = ""
+                        if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                        if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                        if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
+                        if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
+                        if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                        if(targetDelay == false) { 
+                            if(actionType.contains("aSwitch") && switchedDimUpAction) {
+                                slowOnHandler()
+                            } 
+                        }
+                        if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                        if(actionType.contains("aNotification")) { messageHandler() }
+                        if(setHSM) hsmChangeActionHandler()
+                        if(modeAction) modeChangeActionHandler()
+                        if(devicesToRefresh) devicesToRefreshActionHandler()
+                        if(rmRule) ruleMachineHandler()
+                        state.hasntDelayedYet = true
                     }
-                    if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                    if(actionType.contains("aNotification")) { messageHandler() }
-                    if(setHSM) hsmChangeActionHandler()
-                    if(modeAction) modeChangeActionHandler()
-                    if(devicesToRefresh) devicesToRefreshActionHandler()
-                    if(rmRule) ruleMachineHandler()
-                    state.hasntDelayedYet = true
                 }
             } else if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet && delayOnReverse) {
@@ -2210,7 +2233,7 @@ def setpointHandler() {
             }
         } else {  // good
             if(logEnable) log.debug "In setpointHandler - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
-            state.setpointOK = false
+            state.setpointOK = true
         }
     }
     if(logEnable) log.debug "In setpointHandler - ${state.spType.toUpperCase()} - setpointOK: ${state.setpointOK}"
@@ -2811,6 +2834,7 @@ def messageHandler() {
         if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
         if(logEnable) log.debug "In messageHandler - message: ${state.message}"
         msg = state.message
+        if(msg == "null" || msg == "") msg == null
         if(msg) {
             if(useSpeech) letsTalk(msg)
             if(sendPushMessage) pushHandler(msg)
