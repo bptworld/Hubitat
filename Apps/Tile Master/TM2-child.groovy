@@ -33,19 +33,9 @@
  *
  *  Changes:
  *
+ *  2.4.2 - 09/28/20 - Adjustments
  *  2.4.1 - 07/30/20 - Fixed a typo, added todays Sunset/Sunrise to wildcards
  *  2.4.0 - 05/21/20 - Fixed a typo
- *  2.3.9 - 04/27/20 - Cosmetic changes
- *  2.3.8 - 04/16/20 - Cosmetic changes
- *  2.3.7 - 03/23/20 - Attempt to fix working with RM variables
- *  2.3.6 - 03/22/20 - Changed custom number color wording. Fixed device value not showing after selecting attribute. Added selection for IP or Cloud for device control
- *  2.3.5 - 03/14/20 - Fixed Bitly url selection
- *  2.3.4 - 03/14/20 - Maker API setup now in Parent app, On/off/lock/unlock url now selected from dropdown in child app
- *                    - No more editing the Maker URL, it is now created for you
- *                    - If number of lines is reduced, a cleanup happens to remove all of the leftover settings
- *                    - Line copy now brings over the Device and Attribute
- *                    - Tile copy now bring over the Device
- *                    - Found and fixed a few bugs too!
  *  ---
  *  1.0.0 - 02/16/19 - Initially started working on this concept.
  *
@@ -56,7 +46,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.1"
+	state.version = "2.4.2"
 }
 
 definition(
@@ -1727,104 +1717,108 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
     words = "${wordsBEF}" + "${controlLink}" + "${wordsAFT}"
     if(logEnable) log.debug "In makeTileLine - words: ${words}"
     
-    if(words.toLowerCase().contains("wlink")) { 
-        try {
-            theLink = "<a href='http://${linkURL}' target=_blank>${linkName}</a>"
-            
-            if(logEnable) log.debug "In makeTileLine - theLink: ${theLink}"
-            if(theLink) {words = words.replace("%wLink%","${theLink}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    
-    if(words.toLowerCase().contains("%lastact%")) {
-        try {
-            if(dateTimeFormat == "f1") dFormat = "MMM dd, yyy - h:mm:ss a"
-            if(dateTimeFormat == "f2") dFormat = "dd MMM, yyy - h:mm:ss a"
-            if(dateTimeFormat == "f3") dFormat = "MMM dd - h:mm:ss a"
-            if(dateTimeFormat == "f4") dFormat = "dd MMM - h:mm:ss a"
-            if(dateTimeFormat == "f3a") dFormat = "MMM dd - h:mm a"
-            if(dateTimeFormat == "f4a") dFormat = "dd MMM - h:mm a"
-            if(dateTimeFormat == "f5") dFormat = "MMM dd - HH:mm"
-            if(dateTimeFormat == "f6") dFormat = "dd MMM - HH:mm"
-            if(dateTimeFormat == "f7") dFormat = "h:mm:ss a"
-            if(dateTimeFormat == "f8") dFormat = "HH:mm:ss"
-            
-            lAct = theDevice.getLastActivity().format("${dFormat}")
-            
-            if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
-            if(lAct) {words = words.replace("%lastAct%","${lAct}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    
-    if(words.toLowerCase().contains("%currdate%")) {
-        try {
-            if(cDateFormat == "cd1") cdFormat = "MMM dd, yyy"
-            if(cDateFormat == "cd2") cdFormat = "dd MMM, yyy"
-            if(cDateFormat == "cd3") cdFormat = "MMM dd"
-            if(cDateFormat == "cd4") cdFormat = "dd MMM"
-             
-            theDate = new Date()
-            if(logEnable) log.debug "In makeTileLine - theDate: ${theDate}"
-            cDate = theDate.format("${cdFormat}")
-             
-            if(logEnable) log.debug "In makeTileLine - cDate: ${cDate}"
-            if(cDate) {words = words.replace("%currDate%","${cDate}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    
-    if(words.toLowerCase().contains("%currtime%")) {
-         try {
-            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
-            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
-            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
-            if(cTimeFormat == "ct4") ctFormat = "HH:mm"
-                 
-            theDate = new Date()
-            tDate = theDate.format("${ctFormat}")
-             
-            if(logEnable) log.debug "In makeTileLine - tDate: ${tDate}"
-            if(tDate) {words = words.replace("%currTime%","${tDate}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    
-    if(words.toLowerCase().contains("%sunset%")) {
-        try {
-            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
-            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
-            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
-            if(cTimeFormat == "ct4") ctFormat = "HH:mm"
-           
-            def ssDate = location.sunset.format("${ctFormat}")
-            
-            if(logEnable) log.debug "In makeTileLine - ssDate: ${ssDate}"
-            if(ssDate) {words = words.replace("%sunset%","${ssDate}")}
-        } catch (e) {
-            log.error e
-        }
-    }
-    
-    if(words.toLowerCase().contains("%sunrise%")) {
-        try {
-            if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
-            if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
-            if(cTimeFormat == "ct3") ctFormat = "h:mm a"
-            if(cTimeFormat == "ct4") ctFormat = "HH:mm"
+    if(words) {
+        if(words.toLowerCase().contains("wlink")) { 
+            try {
+                theLink = "<a href='http://${linkURL}' target=_blank>${linkName}</a>"
 
-            def srDate = location.sunrise.format("${ctFormat}")
-
-            if(logEnable) log.debug "In makeTileLine - srDate: ${srDate}"
-            if(srDate) {words = words.replace("%sunrise%","${srDate}")}
-        } catch (e) {
-            log.error e
+                if(logEnable) log.debug "In makeTileLine - theLink: ${theLink}"
+                if(theLink) {words = words.replace("%wLink%","${theLink}")}
+            } catch (e) {
+                log.error e
+            }
         }
+
+        if(words.toLowerCase().contains("%lastact%")) {
+            try {
+                if(dateTimeFormat == "f1") dFormat = "MMM dd, yyy - h:mm:ss a"
+                if(dateTimeFormat == "f2") dFormat = "dd MMM, yyy - h:mm:ss a"
+                if(dateTimeFormat == "f3") dFormat = "MMM dd - h:mm:ss a"
+                if(dateTimeFormat == "f4") dFormat = "dd MMM - h:mm:ss a"
+                if(dateTimeFormat == "f3a") dFormat = "MMM dd - h:mm a"
+                if(dateTimeFormat == "f4a") dFormat = "dd MMM - h:mm a"
+                if(dateTimeFormat == "f5") dFormat = "MMM dd - HH:mm"
+                if(dateTimeFormat == "f6") dFormat = "dd MMM - HH:mm"
+                if(dateTimeFormat == "f7") dFormat = "h:mm:ss a"
+                if(dateTimeFormat == "f8") dFormat = "HH:mm:ss"
+
+                lAct = theDevice.getLastActivity().format("${dFormat}")
+
+                if(logEnable) log.debug "In makeTileLine - lAct: ${lAct}"
+                if(lAct) {words = words.replace("%lastAct%","${lAct}")}
+            } catch (e) {
+                log.error e
+            }
+        }
+
+        if(words.toLowerCase().contains("%currdate%")) {
+            try {
+                if(cDateFormat == "cd1") cdFormat = "MMM dd, yyy"
+                if(cDateFormat == "cd2") cdFormat = "dd MMM, yyy"
+                if(cDateFormat == "cd3") cdFormat = "MMM dd"
+                if(cDateFormat == "cd4") cdFormat = "dd MMM"
+
+                theDate = new Date()
+                if(logEnable) log.debug "In makeTileLine - theDate: ${theDate}"
+                cDate = theDate.format("${cdFormat}")
+
+                if(logEnable) log.debug "In makeTileLine - cDate: ${cDate}"
+                if(cDate) {words = words.replace("%currDate%","${cDate}")}
+            } catch (e) {
+                log.error e
+            }
+        }
+
+        if(words.toLowerCase().contains("%currtime%")) {
+            try {
+                if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+                if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+                if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+                if(cTimeFormat == "ct4") ctFormat = "HH:mm"
+
+                theDate = new Date()
+                tDate = theDate.format("${ctFormat}")
+
+                if(logEnable) log.debug "In makeTileLine - tDate: ${tDate}"
+                if(tDate) {words = words.replace("%currTime%","${tDate}")}
+            } catch (e) {
+                log.error e
+            }
+        }
+
+        if(words.toLowerCase().contains("%sunset%")) {
+            try {
+                if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+                if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+                if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+                if(cTimeFormat == "ct4") ctFormat = "HH:mm"
+
+                def ssDate = location.sunset.format("${ctFormat}")
+
+                if(logEnable) log.debug "In makeTileLine - ssDate: ${ssDate}"
+                if(ssDate) {words = words.replace("%sunset%","${ssDate}")}
+            } catch (e) {
+                log.error e
+            }
+        }
+
+        if(words.toLowerCase().contains("%sunrise%")) {
+            try {
+                if(cTimeFormat == "ct1") ctFormat = "h:mm:ss a"
+                if(cTimeFormat == "ct2") ctFormat = "HH:mm:ss"
+                if(cTimeFormat == "ct3") ctFormat = "h:mm a"
+                if(cTimeFormat == "ct4") ctFormat = "HH:mm"
+
+                def srDate = location.sunrise.format("${ctFormat}")
+
+                if(logEnable) log.debug "In makeTileLine - srDate: ${srDate}"
+                if(srDate) {words = words.replace("%sunrise%","${srDate}")}
+            } catch (e) {
+                log.error e
+            }
+        }
+    } else {
+        words = ""
     }
     
     newWords2 = "${words}"
@@ -1988,7 +1982,7 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
     }
     
     if(!textORnumber && useColors) {
-        if(color1Name) {
+        if(color1Name && deviceStatus) {
             if(deviceStatus.toLowerCase() == color1Name.toLowerCase()) {
                 if(useColors) deviceStatus1 = "<span style='color:${color1Value}'>${color1Name}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${color1Value}'>${wordsBEF}</span>"
@@ -1996,7 +1990,7 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
             }
         }
         
-        if(color2Name) {
+        if(color2Name && deviceStatus) {
             if(deviceStatus.toLowerCase() == color2Name.toLowerCase()) {
                 if(useColors) deviceStatus1 = "<span style='color:${color2Value}'>${color2Name}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${color2Value}'>${wordsBEF}</span>"
@@ -2028,12 +2022,12 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
     }
   
     if(!textORnumber && useIcons) {
-        if(icon1Name && iconLink1) {
+        if(icon1Name && iconLink1 && deviceStatus) {
             if(deviceStatus.toLowerCase() == icon1Name.toLowerCase()) {
                 deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
             }
         }
-        if(icon2Name && iconLink2) {
+        if(icon2Name && iconLink2 && deviceStatus) {
             if(deviceStatus.toLowerCase() == icon2Name.toLowerCase()) {
                 deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
             }
@@ -2073,13 +2067,13 @@ def getCellColors(deviceStatus, deviceAtts, textORnumber, color1Name, color1Valu
     }
     
     if(!textORnumber) {
-        if(color1Name) {
+        if(color1Name && deviceStatus) {
             if(deviceStatus.toLowerCase() == color1Name.toLowerCase()) {
                 theCellColor = "${color1Value}"
             }
         }
 
-        if(color2Name) {
+        if(color2Name && deviceStatus) {
             if(deviceStatus.toLowerCase() == color2Name.toLowerCase()) {
                 theCellColor = "${color2Value}"
             }
