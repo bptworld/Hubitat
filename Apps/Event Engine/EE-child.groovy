@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.2 - 09/29/20 - More logic adjustments
 *  1.8.1 - 09/29/20 - More logic adjustments
 *  1.8.0 - 09/29/20 - Adjustments
 *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.1"
+    state.version = "1.8.2"
 }
 
 definition(
@@ -283,7 +284,7 @@ def pageConfig() {
                 app?.updateSetting("setBeforeAfter",[value:"false",type:"bool"])
                 app?.updateSetting("riseBeforeAfter",[value:"false",type:"bool"])
             }
-
+// -----------
             if(triggerType.contains("xAcceleration")) {
                 paragraph "<b>Acceleration Sensor</b>"
                 input "accelerationEvent", "capability.accelerationSensor", title: "By Acceleration Sensor", required:false, multiple:true, submitOnChange:true
@@ -335,7 +336,7 @@ def pageConfig() {
                 app.removeSetting("accelerationRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('acceleration') }
             }
-
+// -----------
             if(triggerType.contains("xBattery")) {
                 paragraph "<b>Battery</b>"
                 input "batteryEvent", "capability.battery", title: "By Battery Setpoints", required:false, multiple:true, submitOnChange:true
@@ -366,7 +367,7 @@ def pageConfig() {
                 app?.updateSetting("setBEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('battery') }
             }
-
+// -----------
             if(triggerType.contains("xContact")) {
                 paragraph "<b>Contact</b>"
                 input "contactEvent", "capability.contactSensor", title: "By Contact Sensor", required:false, multiple:true, submitOnChange:true
@@ -418,7 +419,7 @@ def pageConfig() {
                 app.removeSetting("contactRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('contact') }
             }
-
+// -----------
             if(triggerType.contains("xEnergy")) {
                 paragraph "<b>Energy</b>"
                 input "energyEvent", "capability.powerMeter", title: "By Energy Setpoints", required:false, multiple:true, submitOnChange:true
@@ -449,7 +450,7 @@ def pageConfig() {
                 app?.updateSetting("setEEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('energy') }
             }
-
+// -----------
             if(triggerType.contains("xGarageDoor")) {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorEvent", "capability.garageDoorControl", title: "By Garage Door", required:false, multiple:true, submitOnChange:true
@@ -501,7 +502,7 @@ def pageConfig() {
                 app.removeSetting("garageDoorRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('garageDoor') }
             }
-
+// -----------
             if(triggerType.contains("xHSMAlert")) {
                 paragraph "<b>HSM Alert</b>"
                 paragraph "<b>Warning: This Trigger has not been tested. Use at your own risk.</b>"
@@ -513,7 +514,7 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>Trigger:</b> By HSM Alert: ${hsmAlertEvent}<br>"
                 app.removeSetting("hsmAlertEvent")
             }
-
+// -----------
             if(triggerType.contains("xHSMStatus")) {
                 paragraph "<b>HSM Status</b>"
                 paragraph "<b>Warning: This Trigger has not been tested. Use at your own risk.</b>"
@@ -525,7 +526,7 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>Trigger:</b> By HSM Status: ${hsmStatusEvent}<br>"
                 app.removeSetting("hsmStatusEvent")
             }
-
+// -----------
             if(triggerType.contains("xHumidity")) {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
@@ -556,7 +557,7 @@ def pageConfig() {
                 app?.updateSetting("setHEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('humidity') }
             }
-
+// -----------
             if(triggerType.contains("xIlluminance")) {
                 paragraph "<b>Illuminance</b>"
                 input "illuminanceEvent", "capability.illuminanceMeasurement", title: "By Illuminance Setpoints", required:false, multiple:true, submitOnChange:true
@@ -587,7 +588,7 @@ def pageConfig() {
                 app?.updateSetting("setIEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('illuminance') }
             }
-
+// -----------
             if(triggerType.contains("xLock")) {
                 paragraph "<b>Lock</b>"
                 input "lockEvent", "capability.lock", title: "By Lock", required:false, multiple:false, submitOnChange:true
@@ -635,7 +636,7 @@ def pageConfig() {
                 app.removeSetting("lockEvent")
                 app.removeSetting("lockRestrictionEvent")
             }
-
+// -----------
             if(triggerType.contains("xMotion")) {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
@@ -687,7 +688,7 @@ def pageConfig() {
                 app.removeSetting("motionRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('motion') }
             }
-
+// -----------
             if(triggerType.contains("xPower")) {
                 paragraph "<b>Power</b>"
                 input "powerEvent", "capability.powerMeter", title: "By Power Setpoints", required:false, multiple:true, submitOnChange:true
@@ -720,7 +721,7 @@ def pageConfig() {
                 app?.updateSetting("setPEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('power') }
             }
-
+// -----------
             if(triggerType.contains("xPresence")) {
                 paragraph "<b>Presence</b>"
                 input "presenceEvent", "capability.presenceSensor", title: "By Presence Sensor", required:false, multiple:true, submitOnChange:true
@@ -774,7 +775,7 @@ def pageConfig() {
                 app.removeSetting("presenceRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('presence') }
             }
-
+// -----------
             if(triggerType.contains("xSwitch")) {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "Trigger by Switch", required:false, multiple:true, submitOnChange:true
@@ -798,7 +799,7 @@ def pageConfig() {
                     app?.updateSetting("seOffOn",[value:"false",type:"bool"])
                     app?.updateSetting("switchANDOR",[value:"false",type:"bool"])
                 }
-
+// -----------
                 input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
                 if(switchRestrictionEvent) {
                     input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
@@ -826,7 +827,7 @@ def pageConfig() {
                 app.removeSetting("switchRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('switch') }
             }
-
+// -----------
             if(triggerType.contains("xTemp")) {
                 paragraph "<b>Temperature</b>"
                 input "tempEvent", "capability.temperatureMeasurement", title: "By Temperature Setpoints", required:false, multiple:true, submitOnChange:true
@@ -857,7 +858,7 @@ def pageConfig() {
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('temperature') }
             }
-            
+// -----------            
             if(triggerType.contains("xTherm")) {
                 paragraph "<b>Thermostat</b>"
                 paragraph "Tracks the state of the thermostat. It will react if not in Idle. (ie. heating or cooling)"
@@ -869,7 +870,7 @@ def pageConfig() {
                 app.removeSetting("thermoEvent")
                 if(state.deviceMap) { state.deviceMap.remove('thermostat') }
             }
-
+// -----------
             if(triggerType.contains("xVoltage")) {
                 paragraph "<b>Voltage</b>"
                 input "voltageEvent", "capability.voltageMeasurement", title: "By Voltage Setpoints", required:false, multiple:true, submitOnChange:true
@@ -900,7 +901,7 @@ def pageConfig() {
                 app?.updateSetting("setVEPointLow",[value:"false",type:"bool"])
                 if(state.deviceMap) { state.deviceMap.remove('voltage') }
             }
-
+// -----------
             if(triggerType.contains("xWater")) {
                 paragraph "<b>Water</b>"
                 input "waterEvent", "capability.waterSensor", title: "By Water Sensor", required:false, multiple:true, submitOnChange:true
@@ -952,7 +953,7 @@ def pageConfig() {
                 app.removeSetting("waterRestrictionEvent")
                 if(state.deviceMap) { state.deviceMap.remove('water') }
             }
-
+// -----------
             if(triggerType.contains("xCustom")) {
                 paragraph "<b>Custom Attribute</b>"
                 input "customEvent", "capability.*", title: "Select Device(s)", required:false, multiple:true, submitOnChange:true
@@ -1681,6 +1682,8 @@ def startTheProcess(evt) {
         if(logEnable) log.trace "*"
         if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.whatToDo = "run"
+        state.count = 0
+        state.deviceMatch = 0
         state.isThereDevices = false
         state.isThereSPDevices = false
         state.isThereOthers = false
@@ -1790,6 +1793,7 @@ def startTheProcess(evt) {
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
+                        state.beenHere = "no"
                         runIn(theDelay, startTheProcess, [data: "again"])
                     } else {
                         if(actionType) {
@@ -1973,31 +1977,31 @@ def devicesGoodHandler() {
     } catch(e) {
         theCount = 1
     }
+    state.count = state.count + theCount
     state.eventName.each { it ->
         theValue = it.currentValue("${state.eventType}")
         if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
-        if(state.type) {
-            if(theValue == state.typeValue1) { 
-                if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
-                if(state.eventType == "lock") {
-                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
-                    if(lockUser) {
-                        state.whoUnlocked = it.currentValue("lastCodeName")
-                        lockUser.each { us ->
-                            if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
-                            if(us == state.whoUnlocked) { 
-                                if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                                deviceTrue1 = deviceTrue1 + 1
-                            }
+
+        if(theValue == state.typeValue1) { 
+            if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
+            if(state.eventType == "lock") {
+                if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
+                if(lockUser) {
+                    state.whoUnlocked = it.currentValue("lastCodeName")
+                    lockUser.each { us ->
+                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(us == state.whoUnlocked) { 
+                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                            deviceTrue1 = deviceTrue1 + 1
                         }
-                    } else {
-                        deviceTrue1 = deviceTrue1 + 1
                     }
                 } else {
-                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
                     deviceTrue1 = deviceTrue1 + 1
                 }
-            } 
+            } else {
+                if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
+                deviceTrue1 = deviceTrue1 + 1
+            }
         } else if(theValue == state.typeValue2) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
@@ -2017,51 +2021,34 @@ def devicesGoodHandler() {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
                 deviceTrue2 = deviceTrue2 + 1
             }
+        } else {
+            log.warn "In devicesGoodHandler - Something Went Wrong - eventType: ${state.eventType} - theValue: ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
         }
     }
-    if(logEnable && logSize) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} - type: ${state.typeAO}" 
-    if(state.typeAO) {  // OR
-        if(state.type) {
-            if(deviceTrue1 >= 1) {
-                if(logEnable) log.debug "In devicesGoodHandler - Using M1"
-                state.devicesOK = true
-            } else {
-                if(logEnable) log.debug "In devicesGoodHandler - Using M2"
-                state.devicesOK = false 
-            }
-        } else {
-            if(deviceTrue2 >= 1) {
-                if(logEnable) log.debug "In devicesGoodHandler - Using N1"
-                state.devicesOK = false
-            } else {
-                if(logEnable) log.debug "In devicesGoodHandler - Using N2"
-                state.devicesOK = true 
-            }
-        }
-    } else {  // AND
-        if(state.type) {
-            if(deviceTrue1 == theCount) {
-                if(logEnable) log.debug "In devicesGoodHandler - Using O1"
-                state.devicesOK = true
-            } else {
-                if(logEnable) log.debug "In devicesGoodHandler - Using O2"
-                state.devicesOK = false 
-            }
-        } else {
-            if(deviceTrue2 == theCount) {
-                if(logEnable) log.debug "In devicesGoodHandler - Using P1"
-                state.devicesOK = false
-            } else {
-                if(logEnable) log.debug "In devicesGoodHandler - Using P2"
-                state.devicesOK = true 
-            }
-        }
-    }
-    if(state.typeAO) {
-        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - deviceTrue2: ${deviceTrue2} - theCount: ${theCount} - devicesOK: ${state.devicesOK}"
+    if(state.type) {
+        state.deviceMatch = state.deviceMatch + deviceTrue1
     } else {
-        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - deviceTrue1: ${deviceTrue1} - theCount: ${theCount} - devicesOK: ${state.devicesOK}"
+        state.deviceMatch = state.deviceMatch + deviceTrue2
     }
+    if(logEnable && logSize) log.debug "In devicesGoodHandler - deviceMatch: ${state.deviceMatch} - theCount: ${theCount} - type: ${state.typeAO}" 
+    if(state.typeAO) {  // OR (true)
+        if(state.deviceMatch >= 1) {
+            if(logEnable) log.debug "In devicesGoodHandler - Using OR1"
+            state.devicesOK = true
+        } else {
+            if(logEnable) log.debug "In devicesGoodHandler - Using OR2"
+            state.devicesOK = false 
+        }
+    } else {  // AND (False)
+        if(state.deviceMatch == state.count) {
+            if(logEnable) log.debug "In devicesGoodHandler - Using AND1"
+            state.devicesOK = true
+        } else {
+            if(logEnable) log.debug "In devicesGoodHandler - Using AND2"
+            state.devicesOK = false 
+        }
+    }
+    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - deviceMatch: ${state.deviceMatch} - count: ${state.count} - devicesOK: ${state.devicesOK}"
 }
 
 def hsmAlertHandler(data) {
@@ -2309,7 +2296,7 @@ def checkingAndOr() {
             state.whatToDo = "reverse"
             if(logEnable) log.debug "In checkingAndOr - Using C"
         } else {
-            state.whatToDo = "run"
+            state.whatToDo = "stop"
             if(logEnable) log.debug "In checkingAndOr - Using D"
         }
         state.beenHere = "no"
