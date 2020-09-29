@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.1 - 09/29/20 - More logic adjustments
 *  1.8.0 - 09/29/20 - Adjustments
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.0"
+    state.version = "1.8.1"
 }
 
 definition(
@@ -1906,8 +1907,8 @@ def lockHandler() {
         state.eventName = lockEvent
         state.eventType = "lock"
         state.type = lUnlockedLocked
-        state.typeValue1 = "unlocked"
-        state.typeValue2 = "locked"
+        state.typeValue1 = "locked"
+        state.typeValue2 = "unlocked"
         state.typeAO = false
         devicesGoodHandler()
     }
@@ -1964,7 +1965,8 @@ def waterHandler() {
 
 def devicesGoodHandler() {
     if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}"
-    deviceTrue = 0
+    deviceTrue1 = 0
+    deviceTrue2 = 0
     state.isThereDevices = true
     try {
         theCount = state.eventName.size()
@@ -1985,15 +1987,15 @@ def devicesGoodHandler() {
                             if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                             if(us == state.whoUnlocked) { 
                                 if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                                deviceTrue = deviceTrue + 1
+                                deviceTrue1 = deviceTrue1 + 1
                             }
                         }
                     } else {
-                        deviceTrue = deviceTrue + 1
+                        deviceTrue1 = deviceTrue1 + 1
                     }
                 } else {
                     if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
-                    deviceTrue = deviceTrue + 1
+                    deviceTrue1 = deviceTrue1 + 1
                 }
             } 
         } else if(theValue == state.typeValue2) { 
@@ -2005,33 +2007,61 @@ def devicesGoodHandler() {
                         if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
                             if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                            deviceTrue = deviceTrue + 1
+                            deviceTrue2 = deviceTrue2 + 1
                         }
                     }
                 } else {
-                    deviceTrue = deviceTrue + 1
+                    deviceTrue2 = deviceTrue2 + 1
                 }
             } else {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
-                deviceTrue = deviceTrue + 1
+                deviceTrue2 = deviceTrue2 + 1
             }
         }
     }
     if(logEnable && logSize) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} - type: ${state.typeAO}" 
-    if(state.typeAO) {
-        if(deviceTrue >= 1) {
-            state.devicesOK = true
+    if(state.typeAO) {  // OR
+        if(state.type) {
+            if(deviceTrue1 >= 1) {
+                if(logEnable) log.debug "In devicesGoodHandler - Using M1"
+                state.devicesOK = true
+            } else {
+                if(logEnable) log.debug "In devicesGoodHandler - Using M2"
+                state.devicesOK = false 
+            }
         } else {
-            state.devicesOK = false 
+            if(deviceTrue2 >= 1) {
+                if(logEnable) log.debug "In devicesGoodHandler - Using N1"
+                state.devicesOK = false
+            } else {
+                if(logEnable) log.debug "In devicesGoodHandler - Using N2"
+                state.devicesOK = true 
+            }
         }
-    } else {
-        if(deviceTrue == theCount) {
-            state.devicesOK = true
+    } else {  // AND
+        if(state.type) {
+            if(deviceTrue1 == theCount) {
+                if(logEnable) log.debug "In devicesGoodHandler - Using O1"
+                state.devicesOK = true
+            } else {
+                if(logEnable) log.debug "In devicesGoodHandler - Using O2"
+                state.devicesOK = false 
+            }
         } else {
-            state.devicesOK = false 
+            if(deviceTrue2 == theCount) {
+                if(logEnable) log.debug "In devicesGoodHandler - Using P1"
+                state.devicesOK = false
+            } else {
+                if(logEnable) log.debug "In devicesGoodHandler - Using P2"
+                state.devicesOK = true 
+            }
         }
     }
-    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - deviceTrue: ${deviceTrue} - theCount: ${theCount} - devicesOK: ${state.devicesOK}"
+    if(state.typeAO) {
+        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - deviceTrue2: ${deviceTrue2} - theCount: ${theCount} - devicesOK: ${state.devicesOK}"
+    } else {
+        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - deviceTrue1: ${deviceTrue1} - theCount: ${theCount} - devicesOK: ${state.devicesOK}"
+    }
 }
 
 def hsmAlertHandler(data) {
