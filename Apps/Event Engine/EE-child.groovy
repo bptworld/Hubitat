@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.7.9 - 09/29/20 - Fixed Periodic, logic adjustments, new debug options
 *  1.7.8 - 09/27/20 - Quick fix
 *  1.7.7 - 09/27/20 - Adjustments
 *  1.7.6 - 09/26/20 - Troubleshooting
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.8"
+    state.version = "1.7.9"
 }
 
 definition(
@@ -1446,10 +1447,11 @@ def pageConfig() {
             } else {
                 label title: "Enter a name for this automation", required:false
             }
-            input "logEnable", "bool", defaultValue:false, title: "Enable Debug Logging", description: "Enable extra logging for debugging.", submitOnChange:true
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logEnable) {
+                input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
-                input "resetTruth", "bool", defaultValue:false, title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", submitOnChange:true
+                input "resetTruth", "bool", title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", defaultValue:false, submitOnChange:true
                 if(resetTruth) {
                     resetTruthHandler()
                     app?.updateSetting("resetTruth",[value:"false",type:"bool"])
@@ -1654,12 +1656,12 @@ def initialize() {
             } else {
                 if(logEnable) log.debug "In initialize - repeat - Not repeating"
             }
-        }
-        if(triggerType.contains("tPeriodic")) { 
-            if(logEnable) log.debug "In initialize - tPeriodic - Starting! - (${preMadePeriodic})"
-            schedule(preMadePeriodic, startTheProcess)
-        }
+        }       
         if(timeDaysType) {
+            if(timeDaysType.contains("tPeriodic")) { 
+                if(logEnable) log.debug "In initialize - tPeriodic - Starting! - (${preMadePeriodic})"
+                schedule(preMadePeriodic, startTheProcess)
+            }
             if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) { 
                 autoSunHandler()
                 if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
@@ -1684,14 +1686,14 @@ def startTheProcess(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In startTheProcess (${state.version})"
-        state.nothingToDo = true
+        if(logEnable) log.trace "*"
+        if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
+        state.whatToDo = "run"
         state.isThereDevices = false
         state.isThereSPDevices = false
         state.isThereOthers = false
         state.areRestrictions = false
-        state.skip = false
-        if(preMadePeriodic) state.nothingToDo = false
+        if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
             if(evt == "again") {
@@ -1704,12 +1706,11 @@ def startTheProcess(evt) {
                 } catch(e) {
                     // Do nothing
                 }
-                if(logEnable) log.trace "******************** In startTheProcess - ${app.label} - ${state.whoHappened}: ${state.whatHappened} ********************"
+                if(logEnable) log.debug "In startTheProcess - ${state.whoHappened}: ${state.whatHappened}"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
             }
         }
-
         accelerationRestrictionHandler()
         contactRestrictionHandler()
         garageDoorRestrictionHandler()
@@ -1720,29 +1721,33 @@ def startTheProcess(evt) {
         waterRestrictionHandler()
 
         if(state.areRestrictions) {
-            if(logEnable) log.debug "In startTheProcess - Restrictions are true, skipping"
-            state.skip = true
-            state.nothingToDo = true
+            if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
+            state.whatToDo = "stop"
         } else {
-            if(state.skip) {
-                if(logEnable) log.debug "In startTheProcess - Skipping Time checks"
+            if(state.whatToDo == "stop") {
+                if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Skipping Time checks"
             } else {
-                if(triggerType.contains("tTimeDays")) { state.nothingToDo = false }
+                if(triggerType && tTimeDays) {
+                    if(triggerType.contains("tTimeDays")) { state.whatToDo = "run" }
+                }
                 checkTime()
                 checkTimeSun()
                 dayOfTheWeekHandler()
                 modeHandler()
                 hsmAlertHandler(state.whatHappened)
                 hsmStatusHandler(state.whatHappened)
-                if(logEnable) log.debug "In startTheProcess - 1A - skip: ${state.skip} - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
-                if(daysMatchRestriction && !state.daysMatch) { state.nothingToDo = true; state.skip = true }
-                if(timeBetweenRestriction && !state.timeBetween) { state.nothingToDo = true; state.skip = true }
-                if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.nothingToDo = true; state.skip = true } 
-                if(modeMatchRestriction && !state.modeMatch) { state.nothingToDo = true; state.skip = true }
+                if(logEnable) log.debug "In startTheProcess - 1A - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+                if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
+                if(timeBetweenRestriction && !state.timeBetween) { state.whatToDo = "stop" }
+                if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
+                if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
             }
-            if(logEnable) log.debug "In startTheProcess - 1B - skip: ${state.skip} - daysMatchRestriction: ${daysMatchRestriction} - timeBetweenRestriction: ${timeBetweenRestriction} - timeBetweenSunRestriction: ${timeBetweenSunRestriction} - modeMatchRestriction: ${modeMatchRestriction}"
-            if(logEnable) log.debug "In startTheProcess - 1C - skip: ${state.skip} - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
-            if(state.skip) {
+            
+            if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"
+            
+            if(logEnable) log.debug "In startTheProcess - 1C - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+            
+            if(state.whatToDo == "stop") {
                 if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
             } else {
                 accelerationHandler()
@@ -1772,18 +1777,11 @@ def startTheProcess(evt) {
                 checkingAndOr()            
             }
         }
-        if(state.skip) { 
-            // do nothing
-        } else {
-            if(logEnable) log.debug "In startTheProcess - 2 - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
-        }
-        if(state.nothingToDo) {
+
+        if(state.whatToDo == "stop") {
             if(logEnable) log.debug "In startTheProcess - Nothing to do - STOPING"
         } else {
-            if(state.skip) { 
-                state.allGood = true
-            }
-            if(state.allGood) {
+            if(state.whatToDo == "run") {
                 if(state.modeMatch && state.daysMatch && state.timeBetween && state.timeBetweenSun && state.modeMatch) {
                     if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
@@ -1792,7 +1790,9 @@ def startTheProcess(evt) {
                         if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                         if(targetDelay) newDelay = minutesUp
                         if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
-                        if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                        if(actionType) {
+                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
+                        }
                         int theDelay = newDelay * 60
                         state.hasntDelayedYet = false
                         state.setpointHighOK = "yes"
@@ -1800,23 +1800,24 @@ def startTheProcess(evt) {
                         state.setpointBetweenOK = "yes"
                         runIn(theDelay, startTheProcess, [data: "again"])
                     } else {
-                        if(actionType == null) actionType = ""
-                        if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
-                        if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
-                        if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
-                        if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
-                        if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                        if(targetDelay == false) { 
-                            if(actionType.contains("aSwitch") && switchedDimUpAction) {
-                                slowOnHandler()
-                            } 
+                        if(actionType) {
+                            if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
+                            if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
+                            if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
+                            if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
+                            if(targetDelay == false) { 
+                                if(actionType.contains("aSwitch") && switchedDimUpAction) {
+                                    slowOnHandler()
+                                } 
+                            }
+                            if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                            if(actionType.contains("aNotification")) { messageHandler() }
                         }
-                        if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                        if(actionType.contains("aNotification")) { messageHandler() }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
                         if(devicesToRefresh) devicesToRefreshActionHandler()
@@ -1824,7 +1825,7 @@ def startTheProcess(evt) {
                         state.hasntDelayedYet = true
                     }
                 }
-            } else if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+            } else if(state.whatToDo == "reverse") {
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet && delayOnReverse) {
                     if(notifyDelay) newDelay = notifyDelay
                     if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
@@ -1838,22 +1839,25 @@ def startTheProcess(evt) {
                     runIn(theDelay, startTheProcess, [data: "again"])
                 } else {             
                     if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
-                    if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
-                    if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                    if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
-                    if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
-                    if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                        if(actionType.contains("aNotification")) { messageHandler() }
+                    if(actionType) {
+                        if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
+                        if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
+                        if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
+                        if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
+                        if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                            if(actionType.contains("aNotification")) { messageHandler() }
+                        }
                     }
                     state.hasntDelayedReverseYet = true
                 }
             } else {
-                if(logEnable) log.debug "In startTheProcess - Something didn't pass - STOPING"
+                if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
         }
-        if(logEnable) log.trace "******************** End startTheProcess - ${app.label} ********************"
+        if(logEnable) log.trace "********************* End - startTheProcess (${state.version}) - ${app.label} *********************"
+        if(logEnable) log.trace "*"
     }
 }
 
@@ -1978,43 +1982,43 @@ def devicesGoodHandler() {
     }
     state.eventName.each { it ->
         theValue = it.currentValue("${state.eventType}")
-        if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
+        if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
         if(state.type) {
             if(theValue == state.typeValue1) { 
-                if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
+                if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
-                    if(logEnable) log.debug "In devicesGoodHandler - Lock"
+                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
                     state.whoUnlocked = it.currentValue("lastCodeName")
                     lockUser.each { us ->
-                        if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
-                            if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
+                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
                             deviceTrue = deviceTrue + 1
                         }
                     }
                 } else {
-                    if(logEnable) log.debug "In devicesGoodHandler - Everything Else 1"
+                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
                     deviceTrue = deviceTrue + 1
                 }
             } 
         } else if(theValue == state.typeValue2) { 
-            if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
+            if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockUser.each { us ->
-                    if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
-                        if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
+                        if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
                         deviceTrue = deviceTrue + 1
                     }
                 }
             } else {
-                if(logEnable) log.debug "In devicesGoodHandler - Everything Else 2"
+                if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
                 deviceTrue = deviceTrue + 1
             }
         }
     }
-    if(logEnable) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} - type: ${state.typeAO}" 
+    if(logEnable && logSize) log.debug "In devicesGoodHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} - type: ${state.typeAO}" 
     if(state.typeAO) {
         if(deviceTrue >= 1) {
             state.devicesOK = true
@@ -2037,16 +2041,16 @@ def hsmAlertHandler(data) {
         state.hsmAlertStatus = false
         String theValue = data
         hsmAlertEvent.each { it ->
-            if(logEnable) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
+            if(logEnable && logSize) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
                 state.hsmAlertStatus = true
-                state.nothingToDo = false
+                state.whatToDo = "run"
             }
         }
     } else {
         state.hsmAlertStatus = true
     }
-    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus} - whatToDo: ${state.whatToDo}"
 }
 
 def hsmStatusHandler(data) {
@@ -2055,16 +2059,16 @@ def hsmStatusHandler(data) {
         state.hsmStatus = false
         String theValue = data
         hsmStatusEvent.each { it ->
-            if(logEnable) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
+            if(logEnable && logSize) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
                 state.hsmStatus = true
-                state.nothingToDo = false
+                state.whatToDo = "run"
             }
         }
     } else {
         state.hsmStatus = true
     }
-    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus} - whatToDo: ${state.whatToDo}"
 }
 
 def thermostatHandler() {
@@ -2091,7 +2095,7 @@ def otherHandler() {
         def otherStatus = other.currentValue(state.otherValue)
         if(otherStatus != "idle") {
             otherTrue = otherTrue + 1
-            if(logEnable) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
+            if(logEnable && logSize) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
         }
     }
     if(otherTrue == otherCount) {
@@ -2212,12 +2216,12 @@ def setpointHandler() {
         int setpointValue = setpointValue
         int setpointLow = state.setpointLow ?: 0
         int setpointHigh = state.setpointHigh ?: 99999
-        if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
+        if(logEnable && logSize) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
         if((setpointValue < setpointLow) || (setpointValue >= setpointHigh)) {  // bad
             state.setpointBetweenOK = "no" 
             if(setpointValue >= setpointHigh) {  // bad
                 if(state.setpointHighOK == "yes") {
-                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
+                    if(logEnable && logSize) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
                     state.setpointOK = false
                 }
             } else {
@@ -2226,7 +2230,7 @@ def setpointHandler() {
             }
             if(setpointValue < setpointLow) {  // bad
                 if(state.setpointLowOK == "yes") {
-                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
+                    if(logEnable && logSize) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
                     state.setpointLowOK = "no"
                     state.setpointOK = false
                 }
@@ -2235,7 +2239,7 @@ def setpointHandler() {
                 state.setpointOK = true
             }
         } else {  // good
-            if(logEnable) log.debug "In setpointHandler - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
+            if(logEnable && logSize) log.debug "In setpointHandler - Device: ${it}, Value: ${setpointValue} is BETWEEN setpoints - All Good."
             state.setpointOK = true
         }
     }
@@ -2243,7 +2247,6 @@ def setpointHandler() {
 }
 
 def checkingAndOr() {
-    if(logEnable) log.info "-----------------------------------------------------------------------------"
     if(logEnable) log.debug "In checkingAndOr (${state.version})"
     if(logEnable) log.debug "In checkingAndOr - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
     if(triggerAndOr) {
@@ -2261,33 +2264,28 @@ def checkingAndOr() {
             state.everythingOK = false
         }
     }
-    if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - whatToDo: ${state.whatToDo}"
     if(state.beenHere == null) state.beenHere = "no"
     if(state.everythingOK) {
         if(state.beenHere == "no") {
             state.beenHere = "yes"
-            state.allGood = true
-            state.nothingToDo = false
+            state.whatToDo = "run"
             if(logEnable) log.debug "In checkingAndOr - A"
         } else {       
-            state.allGood = true
-            //state.nothingToDo = true
+            state.whatToDo = "stop"
             if(logEnable) log.debug "In checkingAndOr - B"
         }
     } else {
         if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-            state.allGood = false
-            state.nothingToDo = false
+            state.whatToDo = "reverse"
             if(logEnable) log.debug "In checkingAndOr - C"
         } else {
-            state.allGood = true
-            //state.nothingToDo = true
+            state.whatToDo = "stop"
             if(logEnable) log.debug "In checkingAndOr - D"
         }
         state.beenHere = "no"
     }   
-    if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - allGood: ${state.allGood} - nothingToDo: ${state.nothingToDo}"
-    if(logEnable) log.info "-----------------------------------------------------------------------------"
+    if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - whatToDo: ${state.whatToDo}"
 }
 
 // ********** Start Restrictions **********
@@ -2397,21 +2395,21 @@ def restrictionHandler() {
     }
     state.rEventName.each { it ->
         theValue = it.currentValue("${state.rEventType}")
-        if(logEnable) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
+        if(logEnable && logSize) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
         if(state.rType) {
             if(theValue == state.rTypeValue1) { 
                 if(state.rEventType == "lock") {
-                    if(logEnable) log.debug "In restrictionHandler - Lock"
+                    if(logEnable && logSize) log.debug "In restrictionHandler - Lock"
                     state.whoUnlocked = it.currentValue("lastCodeName")
                     lockRestrictionUser.each { us ->
-                        if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
-                            if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
+                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
                             deviceTrue = deviceTrue + 1
                         }
                     }
                 } else {
-                    if(logEnable) log.debug "In restrictionHandler - Everything Else 1"
+                    if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 1"
                     deviceTrue = deviceTrue + 1
                 }
             } 
@@ -2419,19 +2417,19 @@ def restrictionHandler() {
             if(state.rEventType == "lock") {
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockRestrictionUser.each { us ->
-                    if(logEnable) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
-                        if(logEnable) log.debug "MATCH: ${state.whoUnlocked}"
+                        if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
                         deviceTrue = deviceTrue + 1
                     }
                 }
             } else {
-                if(logEnable) log.debug "In restrictionHandler - Everything Else 2"
+                if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 2"
                 deviceTrue = deviceTrue + 1
             }
         }
     }
-    if(logEnable) log.debug "In restrictionHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} vs ${theCount} - type: ${state.rTypeAO}" 
+    if(logEnable && logSize) log.debug "In restrictionHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} vs ${theCount} - type: ${state.rTypeAO}" 
     if(state.rTypeAO) {
         if(deviceTrue >= 1) { // OR
             state.areRestrictions = true
@@ -2708,15 +2706,15 @@ def dimStepUp() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "-------------------- dimStepUp --------------------"
-        if(logEnable) log.debug "In dimStepUp (${state.version})"
+        if(logEnable && logSize) log.debug "-------------------- dimStepUp --------------------"
+        if(logEnable && logSize) log.debug "In dimStepUp (${state.version})"
         if(state.currentLevel < targetLevelHigh) {
             state.currentLevel = state.currentLevel + state.dimStep
             if(state.currentLevel > targetLevelHigh) { state.currentLevel = targetLevelHigh }
-            if(logEnable) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+            if(logEnable && logSize) log.debug "In dimStepUp - Setting currentLevel: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
             slowDimmerUp.each { it->
                 deviceOn = it.currentValue("switch")
-                if(logEnable) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
+                if(logEnable && logSize) log.debug "In dimStepUp - ${it} is: ${deviceOn}"
                 if(deviceOn == "on") {
                     atLeastOneUpOn = true
                     it.setLevel(state.currentLevel)
@@ -2728,7 +2726,7 @@ def dimStepUp() {
                 log.info "${app.label} - All devices are turned off"
             }
         } else {
-            if(logEnable) log.debug "-------------------- End dimStepUp --------------------"
+            if(logEnable && logSize) log.debug "-------------------- End dimStepUp --------------------"
             if(logEnable) log.info "In dimStepUp - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelHigh}"
         }
     }
@@ -2739,18 +2737,18 @@ def dimStepDown() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "-------------------- dimStepDown --------------------"
-        if(logEnable) log.debug "In dimStepDown (${state.version})"
+        if(logEnable && logSize) log.debug "-------------------- dimStepDown --------------------"
+        if(logEnable && logSize) log.debug "In dimStepDown (${state.version})"
         if(state.highestLevel > targetLevelLow) {
             state.highestLevel = state.highestLevel - state.dimStep1
             if(state.highestLevel < targetLevelLow) { state.highestLevel = targetLevelLow }
-            if(logEnable) log.debug "In dimStepDown - Starting Level: ${state.highestLevel} - targetLevelLow: ${targetLevelLow}"
+            if(logEnable && logSize) log.debug "In dimStepDown - Starting Level: ${state.highestLevel} - targetLevelLow: ${targetLevelLow}"
             slowDimmerDn.each { it->
                 deviceOn = it.currentValue("switch")
                 int cLevel = it.currentValue("level")
                 int wLevel = state.highestLevel
 
-                if(logEnable) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
+                if(logEnable && logSize) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
                 if(deviceOn == "on") {
                     atLeastOneDnOn = true
                     if(wLevel <= cLevel) { it.setLevel(wLevel) }
@@ -2763,7 +2761,7 @@ def dimStepDown() {
             }
         } else {
             if(dimDnOff) slowDimmerDn.off()
-            if(logEnable) log.debug "-------------------- End dimStepDown --------------------"
+            if(logEnable && logSize) log.debug "-------------------- End dimStepDown --------------------"
             if(logEnable) log.info "In dimStepDown - Current Level: ${state.currentLevel} has reached targetLevel: ${targetLevelLow}"
         } 
     }
@@ -2813,19 +2811,21 @@ def valveActionHandler() {
 
 def messageHandler() {
     if(logEnable) log.debug "In messageHandler (${state.version})"
-    if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-        if(logEnable) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
-        if(state.setpointHighOK == "no") theMessage = "${messageH}"
-        if(state.setpointLowOK == "no") theMessage = "${messageL}"
-        if((state.setpointHighOK == "no") && (state.setpointLowOK == "no")) theMessage = "${messageB}"
-    } else {
-        if(logEnable) log.debug "In messageHandler - Random - raw message: ${message}"
-        def values = "${message}".split(";")
-        vSize = values.size()
-        count = vSize.toInteger()
-        def randomKey = new Random().nextInt(count)
-        theMessage = values[randomKey]
-        if(logEnable) log.debug "In messageHandler - Random - theMessage: ${theMessage}" 
+    if(triggerType) {
+        if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+            if(logEnable && logSize) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
+            if(state.setpointHighOK == "no") theMessage = "${messageH}"
+            if(state.setpointLowOK == "no") theMessage = "${messageL}"
+            if((state.setpointHighOK == "no") && (state.setpointLowOK == "no")) theMessage = "${messageB}"
+        } else {
+            if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${message}"
+            def values = "${message}".split(";")
+            vSize = values.size()
+            count = vSize.toInteger()
+            def randomKey = new Random().nextInt(count)
+            theMessage = values[randomKey]
+            if(logEnable && logSize) log.debug "In messageHandler - Random - theMessage: ${theMessage}" 
+        }
     }
     state.message = theMessage
 
@@ -2851,7 +2851,6 @@ def letsTalk(msg) {
         fmSpeaker.latestMessageFrom(state.name)
         fmSpeaker.speak(msg)
     }
-    if(logEnable) log.debug "In letsTalk - *** Finished ***"
 }
 
 def pushHandler(msg){
@@ -2862,7 +2861,7 @@ def pushHandler(msg){
 }
 
 def currentDateTime() {
-    if(logEnable) log.debug "In currentDateTime (${state.version})"
+    if(logEnable && logSize) log.debug "In currentDateTime (${state.version})"
     Date date = new Date()
     String datePart = date.format("dd/MM/yyyy")
     String timePart = date.format("HH:mm")
@@ -2888,9 +2887,9 @@ def autoSunHandler() {
     } else {
         state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
     }
-    if(logEnable) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-    if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+    if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+    if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+    if(logEnable && logSize) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
     // check for new sunset/sunrise times every day at 12:05 pm
     schedule("0 5 12 ? * * *", autoSunHandler)
     if(riseSet) { schedule(state.timeSunset, runAtTime1) }
@@ -2925,49 +2924,49 @@ def checkTimeSun() {
         } else {
             use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
         }
-        if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
-        if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
+        if(logEnable && logSize) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
+        if(logEnable && logSize) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
         state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
-        if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
+        if(logEnable && logSize) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
         if(state.timeBetweenSun) {
-            if(logEnable) log.debug "In checkTimeSun - Time within range"
+            if(logEnable && logSize) log.debug "In checkTimeSun - Time within range"
             state.sunRiseTosunSet = true
-            state.nothingToDo = false
+            state.whatToDo = "run"
         } else {
-            if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+            if(logEnable && logSize) log.debug "In checkTimeSun - Time outside of range"
             state.sunRiseTosunSet = false
-            if(reverse) state.nothingToDo = false
+            if(reverse) state.whatToDo = "reverse"
         }
     } else {
-        if(logEnable) log.debug "In checkTimeSun - NOT Specified"
+        if(logEnable && logSize) log.debug "In checkTimeSun - NOT Specified"
         state.timeBetweenSun = true
     }
-    if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - whatToDo: ${state.whatToDo}"
 }
 
 def checkTime() {
     if(logEnable) log.debug "In checkTime (${state.version})"
     if(fromTime && toTime) {
-        if(logEnable) log.debug "In checkTime - ${fromTime} - ${toTime}"
+        if(logEnable && logSize) log.debug "In checkTime - ${fromTime} - ${toTime}"
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
         } else {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
         if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - Time within range"
+            if(logEnable && logSize) log.debug "In checkTime - Time within range"
             state.timeBetween = true
-            state.nothingToDo = false
+            state.whatToDo = "run"
         } else {
-            if(logEnable) log.debug "In checkTime - Time outside of range"
+            if(logEnable && logSize) log.debug "In checkTime - Time outside of range"
             state.timeBetween = false
-            if(reverse) state.nothingToDo = false
+            if(reverse) state.whatToDo = "reverse"
         }
     } else {
-        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
+        if(logEnable && logSize) log.debug "In checkTime - NO Time Restriction Specified"
         state.timeBetween = true
     }
-    if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween} - whatToDo: ${state.whatToDo}"
 }
 
 def dayOfTheWeekHandler() {
@@ -2986,7 +2985,7 @@ def dayOfTheWeekHandler() {
     } else {
         state.daysMatch = true
     }
-    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - whatToDo: ${state.whatToDo}"
 }
 
 def modeHandler() {
@@ -3003,7 +3002,7 @@ def modeHandler() {
     } else {
         state.modeMatch = true
     }
-    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - nothingToDo: ${state.nothingToDo}"
+    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
 }
 
 def setLevelandColorHandler() {
@@ -3060,10 +3059,10 @@ def setLevelandColorHandler() {
     }
     int onLevel = state.onLevel
     if(saturation == null) saturation = 100
-    if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
+    if(logEnable && logSize) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
 
     if(state.fromWhere == "dimmerOn") {
-        if(logEnable) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
+        if(logEnable && logSize) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
         state.oldMap = [:]
         state.oldLevelMap = [:]
         setOnLC.each {
@@ -3073,7 +3072,7 @@ def setLevelandColorHandler() {
             }
 
             def value = [hue: hueColor, saturation: saturation, level: onLevel] 
-            if(logEnable) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
+            if(logEnable && logSize) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
 
             if (it.hasCommand('setColor')) {
                 oldHueColor = it.currentValue("hue")
@@ -3083,8 +3082,8 @@ def setLevelandColorHandler() {
                 status = it.currentValue("switch")
                 oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}"
                 state.oldMap.put(name,oldStatus) 
-                if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
-                if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
                 oldLevel = it.currentValue("level")
@@ -3092,11 +3091,11 @@ def setLevelandColorHandler() {
                 status = it.currentValue("switch")
                 oldStatus = "${status}::${oldLevel}"
                 state.oldLevelMap.put(name,oldStatus)
-                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
-                if(logEnable) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 it.on()
             }
         }
@@ -3105,13 +3104,13 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOn") {
         slowDimmerUp.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 it.on()
             }
         }
@@ -3120,13 +3119,13 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOff") {
         slowDimmerDn.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
                 it.setLevel(level as Integer ?: 99)
             } else {
-                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName, on()"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 it.on()
             }
         }
@@ -3225,7 +3224,7 @@ def display2() {
 def getHeaderAndFooter() {
     timeSinceNewHeaders()
     if(state.totalHours > 4) {
-        if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
+        //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
         def params = [
             uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
             requestContentType: "application/json",
