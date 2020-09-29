@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  1.7.9 - 09/29/20 - Fixed Periodic, logic adjustments, new debug options
-*  1.7.8 - 09/27/20 - Quick fix
-*  1.7.7 - 09/27/20 - Adjustments
-*  1.7.6 - 09/26/20 - Troubleshooting
-*  1.7.5 - 09/25/20 - Added Thermostat Actions
-*  1.7.4 - 09/25/20 - Big improvements over all
-*  1.7.3 - 09/25/20 - Tons of Adjustments, Thermostats added to Triggers
-*  1.7.2 - 09/24/20 - Adjustments, reworked the setpointHandler...more power!
-*  1.7.1 - 09/23/20 - Adjustment
-*  1.7.0 - 09/23/20 - New - Cog Description section
+*  1.8.0 - 09/29/20 - Adjustments
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.7.9"
+    state.version = "1.8.0"
 }
 
 definition(
@@ -1915,8 +1906,8 @@ def lockHandler() {
         state.eventName = lockEvent
         state.eventType = "lock"
         state.type = lUnlockedLocked
-        state.typeValue1 = "locked"
-        state.typeValue2 = "unlocked"
+        state.typeValue1 = "unlocked"
+        state.typeValue2 = "locked"
         state.typeAO = false
         devicesGoodHandler()
     }
@@ -1988,13 +1979,17 @@ def devicesGoodHandler() {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
                     if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
-                    state.whoUnlocked = it.currentValue("lastCodeName")
-                    lockUser.each { us ->
-                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
-                        if(us == state.whoUnlocked) { 
-                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                            deviceTrue = deviceTrue + 1
+                    if(lockUser) {
+                        state.whoUnlocked = it.currentValue("lastCodeName")
+                        lockUser.each { us ->
+                            if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                            if(us == state.whoUnlocked) { 
+                                if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                                deviceTrue = deviceTrue + 1
+                            }
                         }
+                    } else {
+                        deviceTrue = deviceTrue + 1
                     }
                 } else {
                     if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
@@ -2004,13 +1999,17 @@ def devicesGoodHandler() {
         } else if(theValue == state.typeValue2) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
-                state.whoUnlocked = it.currentValue("lastCodeName")
-                lockUser.each { us ->
-                    if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
-                    if(us == state.whoUnlocked) { 
-                        if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                        deviceTrue = deviceTrue + 1
+                if(lockUser) {
+                    state.whoUnlocked = it.currentValue("lastCodeName")
+                    lockUser.each { us ->
+                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(us == state.whoUnlocked) { 
+                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                            deviceTrue = deviceTrue + 1
+                        }
                     }
+                } else {
+                    deviceTrue = deviceTrue + 1
                 }
             } else {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
@@ -2270,18 +2269,18 @@ def checkingAndOr() {
         if(state.beenHere == "no") {
             state.beenHere = "yes"
             state.whatToDo = "run"
-            if(logEnable) log.debug "In checkingAndOr - A"
+            if(logEnable) log.debug "In checkingAndOr - Using A"
         } else {       
             state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingAndOr - B"
+            if(logEnable) log.debug "In checkingAndOr - Using B"
         }
     } else {
         if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
             state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingAndOr - C"
+            if(logEnable) log.debug "In checkingAndOr - Using C"
         } else {
-            state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingAndOr - D"
+            state.whatToDo = "run"
+            if(logEnable) log.debug "In checkingAndOr - Using D"
         }
         state.beenHere = "no"
     }   
