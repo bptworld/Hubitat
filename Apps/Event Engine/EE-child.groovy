@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.4 - 09/30/20 - Quick update
 *  1.8.3 - 09/30/20 - More logic adjustments
 *  1.8.2 - 09/29/20 - More logic adjustments
 *  1.8.1 - 09/29/20 - More logic adjustments
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.3"
+    state.version = "1.8.4"
 }
 
 definition(
@@ -3182,7 +3183,7 @@ def setLevelandColorHandler() {
 }
 
 def getLockCodeNames(myDev) {  // Special thanks to Bruce @bravenel for this code
-    def list = ["**Any Lock Code**"] + getLockCodesFromDevice(myDev).tokenize(",")
+    def list = [] + getLockCodesFromDevice(myDev).tokenize(",")
     return list
 }
 
