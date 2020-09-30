@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.3 - 09/30/20 - More logic adjustments
 *  1.8.2 - 09/29/20 - More logic adjustments
 *  1.8.1 - 09/29/20 - More logic adjustments
 *  1.8.0 - 09/29/20 - Adjustments
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.2"
+    state.version = "1.8.3"
 }
 
 definition(
@@ -82,7 +83,6 @@ def pageConfig() {
             paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
             paragraph "Please <a href='https://docs.google.com/document/d/1QtIsAKUb9vzAZ1RWTQR2SfxaZFvuLO3ePxDxmH-VU48/edit?usp=sharing' target='_blank'>visit this link</a> for a breakdown of all Event Engine Options. (Google Docs)"
         }
-
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Triggers")) {
             input "triggerType", "enum", title: "Trigger Type", options: [
                 ["tTimeDays":"Time/Days/Mode - Sub-Menu"],
@@ -135,7 +135,7 @@ def pageConfig() {
             }
             paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
             paragraph "<hr>"
-
+// -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
                 input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
@@ -148,7 +148,7 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>Trigger:</b> By Periodic - ${preMadePeriodic}<br>"
                 app.removeSetting("preMadePeriodic")
             }
-
+// -----------
             if(timeDaysType.contains("tMode")) {
                 paragraph "<b>By Mode</b>"
                 input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
@@ -161,7 +161,7 @@ def pageConfig() {
                 app.removeSetting("modeEvent")
                 app?.updateSetting("modeMatchRestriction",[value:"false",type:"bool"])
             }
-
+// -----------
             if(timeDaysType.contains("tDays")) {
                 paragraph "<b>By Days</b>"
                 input "days", "enum", title: "Activate on these days", description: "Days to Activate", required:false, multiple:true, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -174,7 +174,7 @@ def pageConfig() {
                 app.removeSetting("days")
                 app?.updateSetting("daysMatchRestriction",[value:"false",type:"bool"])
             }
-
+// -----------
             if(timeDaysType.contains("tTime")) {
                 paragraph "<b>Certain Time</b>"
                 input "startTime", "time", title: "Time to activate", description: "Time", required:false, width:12
@@ -199,7 +199,7 @@ def pageConfig() {
                 app.removeSetting("repeatType")
                 app?.updateSetting("repeat",[value:"false",type:"bool"])
             }
-
+// -----------
             if(timeDaysType.contains("tBetween")) {
                 paragraph "<b>Between two times</b>"
                 input "fromTime", "time", title: "From", required:false, width: 6, submitOnChange:true
@@ -216,7 +216,7 @@ def pageConfig() {
                 app?.updateSetting("midnightCheckR",[value:"false",type:"bool"])
                 app?.updateSetting("timeBetweenRestriction",[value:"false",type:"bool"])
             }
-
+// -----------
             if(timeDaysType.contains("tSunsetSunrise")) {
                 if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
                     paragraph "<b>'Sunset to Sunrise' and 'Just Sunrise' can't be used at the same time. Please deselect one of them.</b>"
@@ -239,7 +239,7 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>Trigger:</b> Sunset to Sunrise - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - with Restriction: ${timeBetweenSunRestriction}<br>"
                 app?.updateSetting("timeBetweenSunRestriction",[value:"false",type:"bool"])
             }
-
+// -----------
             if(timeDaysType.contains("tSunrise") && timeDaysType.contains("tSunset")) {
                 paragraph "<b>Please select 'Sunset to Sunrise', instead of both 'Just Sunrise' and 'Just Sunset'.</b>"
             } else if(timeDaysType.contains("tSunsetSunrise") && timeDaysType.contains("tSunrise")) {
@@ -599,12 +599,18 @@ def pageConfig() {
                     } else {
                         paragraph "Trigger will fire when Sensor(s) become Unlocked"
                     }
+                    input "lockANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(lockANDOR) {
+                        paragraph "Trigger will fire when <b>any</b> Lock is true"
+                    } else {
+                        paragraph "Trigger will fire when <b>all</b> Locks are true"
+                    }
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User", options: theNames, required:false, multiple:true, submitOnChange:true
                     paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
-                    state.theCogTriggers += "<b>Trigger:</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, Lock User: ${lockUser}<br>"
+                    state.theCogTriggers += "<b>Trigger:</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Trigger:</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, Lock User: ${lockUser}<br>"
+                    state.theCogTriggers -= "<b>Trigger:</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                     app.removeSetting("lockUser")
                     app.removeSetting("lockEvent")
                     app?.updateSetting("lUnlockedLocked",[value:"false",type:"bool"])
@@ -1683,11 +1689,14 @@ def startTheProcess(evt) {
         if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.whatToDo = "run"
         state.count = 0
+        state.rCount = 0
         state.deviceMatch = 0
+        state.restrictionMatch = 0
         state.isThereDevices = false
         state.isThereSPDevices = false
         state.isThereOthers = false
         state.areRestrictions = false
+        state.atLeastOneDeviceOK = false
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
@@ -1820,6 +1829,8 @@ def startTheProcess(evt) {
                         if(rmRule) ruleMachineHandler()
                         state.hasntDelayedYet = true
                     }
+                } else {
+                    if(logEnable) log.debug "In startTheProcess - One of the Time Triggers didn't match - Doing Nothing"
                 }
             } else if(state.whatToDo == "reverse") {
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet && delayOnReverse) {
@@ -1913,7 +1924,7 @@ def lockHandler() {
         state.type = lUnlockedLocked
         state.typeValue1 = "locked"
         state.typeValue2 = "unlocked"
-        state.typeAO = false
+        state.typeAO = lockANDOR
         devicesGoodHandler()
     }
 }
@@ -1989,7 +2000,7 @@ def devicesGoodHandler() {
                 if(lockUser) {
                     state.whoUnlocked = it.currentValue("lastCodeName")
                     lockUser.each { us ->
-                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
                             if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
                             deviceTrue1 = deviceTrue1 + 1
@@ -2008,7 +2019,7 @@ def devicesGoodHandler() {
                 if(lockUser) {
                     state.whoUnlocked = it.currentValue("lastCodeName")
                     lockUser.each { us ->
-                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                        if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
                         if(us == state.whoUnlocked) { 
                             if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
                             deviceTrue2 = deviceTrue2 + 1
@@ -2035,6 +2046,7 @@ def devicesGoodHandler() {
         if(state.deviceMatch >= 1) {
             if(logEnable) log.debug "In devicesGoodHandler - Using OR1"
             state.devicesOK = true
+            state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In devicesGoodHandler - Using OR2"
             state.devicesOK = false 
@@ -2043,12 +2055,18 @@ def devicesGoodHandler() {
         if(state.deviceMatch == state.count) {
             if(logEnable) log.debug "In devicesGoodHandler - Using AND1"
             state.devicesOK = true
+            state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In devicesGoodHandler - Using AND2"
             state.devicesOK = false 
+            if(state.deviceMatch >= 1) state.atLeastOneDeviceOK = true
         }
     }
-    if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - deviceMatch: ${state.deviceMatch} - count: ${state.count} - devicesOK: ${state.devicesOK}"
+    if(state.typeAO) {
+        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - OR - deviceMatch: ${state.deviceMatch} - count: ${state.count} - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK}"
+    } else {
+        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - deviceMatch: ${state.deviceMatch} - count: ${state.count} - devicesOK: ${state.devicesOK}"
+    }
 }
 
 def hsmAlertHandler(data) {
@@ -2094,7 +2112,13 @@ def thermostatHandler() {
         state.otherValue = "thermostatOperatingState"
         otherHandler()
     }
-    if(!state.isThereOthers) { state.otherOK = true }    // Keep in LAST device
+    if(!state.isThereOthers) {  // Keep in LAST device
+        if(triggerAndOr) {
+            state.otherOK = false
+        } else {
+            state.otherOK = true
+        }
+    }
 }
 
 def otherHandler() {
@@ -2206,12 +2230,16 @@ def voltageHandler() {
         state.setpointLow = veSetPointLow
         setpointHandler()
     }    
-    if(!state.isThereSPDevices) { 
-        state.setpointOK = true
+    if(!state.isThereSPDevices) {  // Keep in LAST setpoint
+        if(triggerAndOr) {
+            state.setpointOK = false
+        } else {
+            state.setpointOK = true
+        }
         state.setpointHighOK = "yes"
         state.setpointLowOK = "yes"
         state.setpointBetweenOK = "yes"
-    }    // Keep in LAST setpoint
+    }
 }
 
 def setpointHandler() {
@@ -2263,17 +2291,16 @@ def setpointHandler() {
 }
 
 def checkingAndOr() {
-    if(logEnable) log.debug "In checkingAndOr (${state.version})"
-    if(logEnable) log.debug "In checkingAndOr - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
+    if(logEnable) log.debug "In checkingAndOr (${state.version})"  
     if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingAndOr ----------  Using OR  ----------"
-        if(state.devicesOK || state.setpointOK || state.otherOK) {
-            state.everythingGood = true
+        if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
+        if(state.atLeastOneDeviceOK || state.setpointOK || state.otherOK) {
+            state.everythingOK = true
         } else {
-            state.everythingGood = false
+            state.everythingOK = false
         }
     } else {
-        if(logEnable) log.debug "In checkingAndOr ----------  Using AND  ----------"
+        if(logEnable) log.debug "In checkingAndOr - USING AND - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
         if(state.devicesOK && state.setpointOK && state.otherOK) {
             state.everythingOK = true
         } else {
@@ -2403,59 +2430,65 @@ def waterRestrictionHandler() {
 
 def restrictionHandler() {
     if(logEnable) log.debug "In restrictionHandler (${state.version}) - ${state.rEventType.toUpperCase()}"
-    deviceTrue = 0
+    restrictionMatch1 = 0
+    restrictionMatch2 = 0
     try {
         theCount = state.rEventName.size()
     } catch(e) {
         theCount = 1
     }
+    state.rCount = state.rCount + theCount
     state.rEventName.each { it ->
         theValue = it.currentValue("${state.rEventType}")
         if(logEnable && logSize) log.debug "In restrictionHandler - Checking: ${it.displayName} - ${state.rEventType} - Testing Current Value - ${theValue}"
-        if(state.rType) {
-            if(theValue == state.rTypeValue1) { 
-                if(state.rEventType == "lock") {
-                    if(logEnable && logSize) log.debug "In restrictionHandler - Lock"
-                    state.whoUnlocked = it.currentValue("lastCodeName")
-                    lockRestrictionUser.each { us ->
-                        if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
-                        if(us == state.whoUnlocked) { 
-                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                            deviceTrue = deviceTrue + 1
-                        }
+        if(theValue == state.rTypeValue1) { 
+            if(state.rEventType == "lock") {
+                if(logEnable && logSize) log.debug "In restrictionHandler - Lock"
+                state.whoUnlocked = it.currentValue("lastCodeName")
+                lockRestrictionUser.each { us ->
+                    if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                    if(us == state.whoUnlocked) { 
+                        if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                        restrictionMatch1 = restrictionMatch1 + 1
                     }
-                } else {
-                    if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 1"
-                    deviceTrue = deviceTrue + 1
                 }
-            } 
+            } else {
+                if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 1"
+                restrictionMatch1 = restrictionMatch1 + 1
+            }
         } else if(theValue == state.rTypeValue2) { 
             if(state.rEventType == "lock") {
                 state.whoUnlocked = it.currentValue("lastCodeName")
                 lockRestrictionUser.each { us ->
-                    if(logEnable && logSize) log.debug "I'm checking lock names - $us vs $state.whoUnlocked"
+                    if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
                     if(us == state.whoUnlocked) { 
                         if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                        deviceTrue = deviceTrue + 1
+                        restrictionMatch2 = restrictionMatch2 + 1
                     }
                 }
             } else {
                 if(logEnable && logSize) log.debug "In restrictionHandler - Everything Else 2"
-                deviceTrue = deviceTrue + 1
+                restrictionMatch2 = restrictionMatch2 + 1
             }
         }
     }
-    if(logEnable && logSize) log.debug "In restrictionHandler - theCount: ${theCount} - deviceTrue: ${deviceTrue} vs ${theCount} - type: ${state.rTypeAO}" 
-    if(state.rTypeAO) {
-        if(deviceTrue >= 1) { // OR
-            state.areRestrictions = true
-        }
+    if(logEnable && logSize) log.debug "In restrictionHandler - theCount: ${theCount} - theValue: ${theValue} vs 1: ${state.restrictionMatch1} or 2: ${state.restrictionMatch2}"
+    if(state.rType) {
+        state.restrictionMatch = state.restrictionMatch + restrictionMatch1
     } else {
-        if(deviceTrue == theCount) { // AND
+        state.restrictionMatch = state.restrictionMatch + restrictionMatch2
+    }
+    if(logEnable && logSize) log.debug "In devicesGoodHandler - restrictionMatch: ${state.restrictionMatch} - rCount: ${state.rCount} - type: ${state.rTypeAO}" 
+    if(state.rTypeAO) {  // OR (true)
+        if(state.restrictionMatch >= 1) {
             state.areRestrictions = true
+        } else {  // AND (False)
+            if(state.restrictionMatch == state.rCount) {
+                state.areRestrictions = true
+            }
         }
     }
-    if(logEnable) log.debug "In restrictionHandler - ${state.rEventType.toUpperCase()} - areRestrictions: ${state.areRestrictions}"   
+    if(logEnable) log.debug "In restrictionHandler - ${state.rEventType.toUpperCase()} - areRestrictions: ${state.areRestrictions}"
 }
 
 // ********** Start Actions **********
