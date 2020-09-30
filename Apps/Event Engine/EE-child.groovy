@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.5 - 09/30/20 - Automaticaly checks 'In between' when entering/existing time frame
 *  1.8.4 - 09/30/20 - Quick update
 *  1.8.3 - 09/30/20 - More logic adjustments
 *  1.8.2 - 09/29/20 - More logic adjustments
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.4"
+    state.version = "1.8.5"
 }
 
 definition(
@@ -625,6 +626,12 @@ def pageConfig() {
                         paragraph "Restrict when Sensor(s) become Locked"
                     } else {
                         paragraph "Restrict when Sensor(s) become Unlocked"
+                    }
+                    input "lockRANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                    if(lockRANDOR) {
+                        paragraph "Restrict when <b>any</b> Lock is true"
+                    } else {
+                        paragraph "Restrict when <b>all</b> Locks are true"
                     }
                     theNames = getLockCodeNames(lockRestrictionEvent)
                     input "lockRestrictionUser", "enum", title: "Restrict By Lock User", options: theNames, required:false, multiple:true, submitOnChange:true
@@ -1327,14 +1334,19 @@ def pageConfig() {
                         app?.updateSetting("reverse",[value:"false",type:"bool"])
                     } else {
                         input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
+                        //input "timeReverse", "bool", title: "Reverse actions after a set number of minutes?", defaultValue:false, submitOnChange:true
+                        if(timeReverse) {
+                            input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
+                        } else {
+                            app.removeSetting("timeToReverse")
+                        }
                         app?.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
                         app?.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
                         app?.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
                     }
                     if((notifyDelay || randomDelay || targetDelay) && (reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween)) {
                         input "delayOnReverse", "bool", title: "Also Delay when going in Reverse", defaultValue:false, submitOnChange:true
-                        if(delayOnReverse) paragraph "<small>* The Delay specified above will also be used with Reverse</small>"
-                        
+                        if(delayOnReverse) paragraph "<small>* The Delay specified above will also be used with Reverse</small>"    
                     } else {
                         app?.updateSetting("delayOnReverse",[value:"false",type:"bool"])
                     }
@@ -1365,6 +1377,8 @@ def pageConfig() {
                         app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                     }
                 } else {
+                    app.removeSetting("timeToReverse")
+                    app?.updateSetting("timeReverse",[value:"false",type:"bool"])
                     app.removeSetting("permanentDimLvl")
                     app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                     app?.updateSetting("reverse",[value:"false",type:"bool"])
@@ -1790,10 +1804,11 @@ def startTheProcess(evt) {
                 if(state.modeMatch && state.daysMatch && state.timeBetween && state.timeBetweenSun && state.modeMatch) {
                     if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-                    if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                    if((notifyDelay || randomDelay || targetDelay || timedDelay) && state.hasntDelayedYet) {
                         if(notifyDelay) newDelay = notifyDelay
                         if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
                         if(targetDelay) newDelay = minutesUp
+                        if(timeReverse) newDelay = timeToReverse
                         if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
                         if(actionType) {
                             if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
@@ -1925,7 +1940,7 @@ def lockHandler() {
         state.type = lUnlockedLocked
         state.typeValue1 = "locked"
         state.typeValue2 = "unlocked"
-        state.typeAO = lockANDOR
+        state.typeAO = lockRANDOR
         devicesGoodHandler()
     }
 }
@@ -2948,11 +2963,13 @@ def autoSunHandler() {
 
 def runAtTime1() {
     if(logEnable) log.debug "In runAtTime1 (${state.version}) - ${app.label} - Starting"
+    state.beenHere = "no"
     startTheProcess()
 }
 
 def runAtTime2() {
     if(logEnable) log.debug "In runAtTime2 (${state.version}) - ${app.label} - Starting"
+    state.beenHere = "no"
     startTheProcess()
 }
 
@@ -3015,7 +3032,9 @@ def checkTime() {
     } else {
         if(logEnable && logSize) log.debug "In checkTime - NO Time Restriction Specified"
         state.timeBetween = true
-    }
+    }    
+    if(fromtTime) { schedule(fromTime, runAtTime1) }
+    if(toTime) { schedule(toTime, runAtTime2) }
     if(logEnable) log.debug "In checkTime - timeBetween: ${state.timeBetween} - whatToDo: ${state.whatToDo}"
 }
 
@@ -3043,7 +3062,6 @@ def modeHandler() {
     if(modeEvent) {
         theValue = location.mode
         def modeCheck = modeEvent.contains(theValue)
-
         if(modeCheck) {
             state.modeMatch = true
         } else {
