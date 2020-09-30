@@ -37,7 +37,8 @@
 *
 *  Changes:
 *
-*  1.8.5 - 09/30/20 - Automaticaly checks 'In between' when entering/existing time frame
+*  1.8.6 - 09/30/20 - New option: Reverse after xx minutes or seconds
+*  1.8.5 - 09/30/20 - Automatically checks 'In between' when entering/existing time frame
 *  1.8.4 - 09/30/20 - Quick update
 *  1.8.3 - 09/30/20 - More logic adjustments
 *  1.8.2 - 09/29/20 - More logic adjustments
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.5"
+    state.version = "1.8.6"
 }
 
 definition(
@@ -1055,11 +1056,17 @@ def pageConfig() {
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
                     paragraph "Delay the notifications until all devices have been in state for XX minutes."
-                    input "notifyDelay", "number", title: "Delay (1 to 60)", required:true, multiple:false, range: '1..60'
+                    input "notifyDelay", "number", title: "Delay (1 to 60)", required:true, multiple:false, range: '1..60', width:6
+                    input "minSec", "bool", title: "Use Minutes (off) or Seconds (on)", description: "minSec", defaultValue:false, submitOnChange:true, width:6
                     paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the notifications will be cancelled.</small>"
-                    state.theCogTriggers += "<b>Trigger Option:</b> Set Delay: ${setDelay} - notifyDelay: ${notifyDelay} - Random Delay: ${randomDelay}<br>"
+                    if(minSec) {
+                        minSecValue = "Second(s)"
+                    } else {
+                        minSecValue = "Minute(s)"
+                    }
+                    state.theCogTriggers += "<b>Trigger Option:</b> Set Delay: ${setDelay} - notifyDelay: ${notifyDelay} ${minSecValue} - Random Delay: ${randomDelay}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>Trigger Option:</b> Set Delay: ${setDelay} - notifyDelay: ${notifyDelay} - Random Delay: ${randomDelay}<br>"
+                    state.theCogTriggers -= "<b>Trigger Option:</b> Set Delay: ${setDelay} - notifyDelay: ${notifyDelay} ${minSecValue} - Random Delay: ${randomDelay}<br>"
                     app.removeSetting("notifyDelay")
                     app?.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
@@ -1334,12 +1341,13 @@ def pageConfig() {
                         app?.updateSetting("reverse",[value:"false",type:"bool"])
                     } else {
                         input "reverse", "bool", title: "Reverse actions when conditions are no longer true?", defaultValue:false, submitOnChange:true
-                        //input "timeReverse", "bool", title: "Reverse actions after a set number of minutes?", defaultValue:false, submitOnChange:true
+                        input "timeReverse", "bool", title: "Reverse actions after a set number of minutes?", defaultValue:false, submitOnChange:true
                         if(timeReverse) {
                             input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
                         } else {
                             app.removeSetting("timeToReverse")
                         }
+                        if(reverse && timeReverse) paragraph "<b>* Please only select ONE Reverse option.</b>"
                         app?.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
                         app?.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
                         app?.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
@@ -1350,15 +1358,18 @@ def pageConfig() {
                     } else {
                         app?.updateSetting("delayOnReverse",[value:"false",type:"bool"])
                     }
-                    if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+                    if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween || timeReverse) {
                         if(reverse) {
                             state.theCogActions += "<b>Action:</b> Reverse: ${reverse} - Delay On Reverse: ${delayOnReverse}<br>"
                         } else if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
                             state.theCogActions += "<b>Action:</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween} - Delay On Reverse: ${delayOnReverse}<br>"
+                        } else if(timeReverse) {
+                            state.theCogActions += "<b>Action:</b> Reverse After: ${timeToReverse} minute(s), even if triggers are still true<br>"
                         }
                     } else {
                         state.theCogActions -= "<b>Action:</b> Reverse: ${reverse} - Delay On Reverse: ${delayOnReverse}<br>"
                         state.theCogActions -= "<b>Action:</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween} - Delay On Reverse: ${delayOnReverse}<br>"
+                        state.theCogActions -= "<b>Action:</b> Reverse After: ${timeToReverse} minutes, even if triggers are still true<br>"
                     }
                     if((reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
                         paragraph "<hr>"
@@ -1715,9 +1726,11 @@ def startTheProcess(evt) {
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
-            if(evt == "again") {
+            if(evt == "runAfterDelay") {
                 state.whoHappened = "NA"
                 state.whatHappened = "NA"
+            } else if(evt == "timeReverse") {
+                skipToReverse = true
             } else {
                 try {
                     state.whoHappened = evt.displayName
@@ -1749,24 +1762,28 @@ def startTheProcess(evt) {
                 if(triggerType && tTimeDays) {
                     if(triggerType.contains("tTimeDays")) { state.whatToDo = "run" }
                 }
-                checkTime()
-                checkTimeSun()
-                dayOfTheWeekHandler()
-                modeHandler()
-                hsmAlertHandler(state.whatHappened)
-                hsmStatusHandler(state.whatHappened)
-                if(logEnable) log.debug "In startTheProcess - 1A - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
-                if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
-                if(timeBetweenRestriction && !state.timeBetween) { state.whatToDo = "stop" }
-                if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
-                if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                if(skipToReverse) {
+                    // Skipping
+                } else {
+                    checkTime()
+                    checkTimeSun()
+                    dayOfTheWeekHandler()
+                    modeHandler()
+                    hsmAlertHandler(state.whatHappened)
+                    hsmStatusHandler(state.whatHappened)
+                    if(logEnable) log.debug "In startTheProcess - 1A - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
+                    if(timeBetweenRestriction && !state.timeBetween) { state.whatToDo = "stop" }
+                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
+                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+                }
             }
             
             if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"
             
             if(logEnable) log.debug "In startTheProcess - 1C - checkTime: ${state.timeBetween} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
             
-            if(state.whatToDo == "stop") {
+            if(state.whatToDo == "stop" || skipToReverse) {
                 if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
             } else {
                 accelerationHandler()
@@ -1800,26 +1817,37 @@ def startTheProcess(evt) {
         if(state.whatToDo == "stop") {
             if(logEnable) log.debug "In startTheProcess - Nothing to do - STOPING"
         } else {
+            if(skipToReverse) state.whatToDo = "reverse"
             if(state.whatToDo == "run") {
                 if(state.modeMatch && state.daysMatch && state.timeBetween && state.timeBetweenSun && state.modeMatch) {
                     if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
-                    if((notifyDelay || randomDelay || targetDelay || timedDelay) && state.hasntDelayedYet) {
-                        if(notifyDelay) newDelay = notifyDelay
-                        if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                        if(targetDelay) newDelay = minutesUp
-                        if(timeReverse) newDelay = timeToReverse
-                        if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minutes"
+                    if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
+                        if(notifyDelay && minSec) {
+                            theDelay = notifyDelay
+                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${notifyDelay} second(s)"
+                        } else if(notifyDelay && !minSec) {
+                            theDelay = notifyDelay * 60
+                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${notifyDelay} minute(s)"
+                        } else if(randomDelay) {
+                            newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                            theDelay = newDelay * 60
+                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${newDelay} minute(s)"
+                        } else if(targetDelay) {
+                            theDelay = minutesUp * 60
+                            if(logEnable) log.debug "In startTheProcess - Delay is set for ${minutesUp} minute(s)"
+                        } else {
+                            if(logEnable) log.warn "In startTheProcess - Something went wrong"
+                        }
                         if(actionType) {
                             if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() }
-                        }
-                        int theDelay = newDelay * 60
+                        }                              
                         state.hasntDelayedYet = false
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
                         state.beenHere = "no"
-                        runIn(theDelay, startTheProcess, [data: "again"])
+                        runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
                             if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
@@ -1844,22 +1872,38 @@ def startTheProcess(evt) {
                         if(devicesToRefresh) devicesToRefreshActionHandler()
                         if(rmRule) ruleMachineHandler()
                         state.hasntDelayedYet = true
+                        if(timeReverse) {
+                            theDelay = timeToReverse * 60
+                            if(logEnable) log.debug "In startTheProcess - Reverse will run in ${timeToReverse} minutes"
+                            runIn(theDelay, startTheProcess, [data: "timeReverse"])
+                        }
                     }
                 } else {
                     if(logEnable) log.debug "In startTheProcess - One of the Time Triggers didn't match - Doing Nothing"
                 }
             } else if(state.whatToDo == "reverse") {
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet && delayOnReverse) {
-                    if(notifyDelay) newDelay = notifyDelay
-                    if(randomDelay) newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
-                    if(targetDelay) newDelay = minutesUp
-                    if(logEnable) log.debug "In startTheProcess - Reverse Delay is set for ${newDelay} minutes"
-                    int theDelay = newDelay * 60
+                    if(notifyDelay && minSec) {
+                            theDelay = notifyDelay
+                            if(logEnable) log.debug "In startTheProcess - Reverse - Delay is set for ${notifyDelay} second(s)"
+                        } else if(notifyDelay && !minSec) {
+                            theDelay = notifyDelay * 60
+                            if(logEnable) log.debug "In startTheProcess - Reverse - Delay is set for ${notifyDelay} minute(s)"
+                        } else if(randomDelay) {
+                            newDelay = Math.abs(new Random().nextInt() % (delayHigh - delayLow)) + delayLow
+                            theDelay = newDelay * 60
+                            if(logEnable) log.debug "In startTheProcess - Reverse - Delay is set for ${newDelay} minute(s)"
+                        } else if(targetDelay) {
+                            theDelay = minutesUp * 60
+                            if(logEnable) log.debug "In startTheProcess - Reverse - Delay is set for ${minutesUp} minute(s)"
+                        } else {
+                            if(logEnable) log.warn "In startTheProcess - Reverse - Something went wrong"
+                        }
                     state.hasntDelayedReverseYet = false
                     state.setpointHighOK = "yes"
                     state.setpointLowOK = "yes"
                     state.setpointBetweenOK = "yes"
-                    runIn(theDelay, startTheProcess, [data: "again"])
+                    runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                 } else {             
                     if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
                     if(actionType) {
