@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.7 - 10/01/20 - Adjustments to Lock handling
 *  1.8.6 - 09/30/20 - New option: Reverse after xx minutes or seconds
 *  1.8.5 - 09/30/20 - Automatically checks 'In between' when entering/existing time frame
 *  1.8.4 - 09/30/20 - Quick update
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.6"
+    state.version = "1.8.7"
 }
 
 definition(
@@ -610,7 +611,7 @@ def pageConfig() {
                     }
                     theNames = getLockCodeNames(lockEvent)
                     input "lockUser", "enum", title: "By Lock User", options: theNames, required:false, multiple:true, submitOnChange:true
-                    paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encryted.</small>"
+                    paragraph "<small>* Note: If you are using HubConnect and have this cog on a different hub than the Lock, the lock codes must not be encrypted.</small>"
                     state.theCogTriggers += "<b>Trigger:</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
                 } else {
                     state.theCogTriggers -= "<b>Trigger:</b> By Lock: ${lockEvent} - UnlockedLocked: ${lUnlockedLocked}, lockANDOR: ${lockANDOR}, Lock User: ${lockUser}<br>"
@@ -1723,6 +1724,7 @@ def startTheProcess(evt) {
         state.isThereOthers = false
         state.areRestrictions = false
         state.atLeastOneDeviceOK = false
+        state.dText = ""
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
@@ -1735,10 +1737,11 @@ def startTheProcess(evt) {
                 try {
                     state.whoHappened = evt.displayName
                     state.whatHappened = evt.value
+                    state.dText = evt.descriptionText
                 } catch(e) {
                     // Do nothing
                 }
-                if(logEnable) log.debug "In startTheProcess - ${state.whoHappened}: ${state.whatHappened}"
+                if(logEnable) log.debug "In startTheProcess - ${state.whoHappened}: ${state.whatHappened} - dText: ${state.dText}"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
             }
@@ -2056,18 +2059,22 @@ def devicesGoodHandler() {
         if(theValue == state.typeValue1) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
-                if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
-                if(lockUser) {
-                    state.whoUnlocked = it.currentValue("lastCodeName")
-                    lockUser.each { us ->
-                        if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                        if(us == state.whoUnlocked) { 
-                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                            deviceTrue1 = deviceTrue1 + 1
-                        }
-                    }
+                if(state.dText.contains("[digital]") || state.dText.contains("[physical]")) {
+                    if(logEnable) log.trace "In devicesGoodHandler - Lock was manually locked, no notifications necessary"
                 } else {
-                    deviceTrue1 = deviceTrue1 + 1
+                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
+                    if(lockUser) {
+                        state.whoUnlocked = it.currentValue("lastCodeName")
+                        lockUser.each { us ->
+                            if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                            if(us == state.whoUnlocked) { 
+                                if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                                deviceTrue1 = deviceTrue1 + 1
+                            }
+                        }
+                    } else {
+                        deviceTrue1 = deviceTrue1 + 1
+                    }
                 }
             } else {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
@@ -2076,17 +2083,21 @@ def devicesGoodHandler() {
         } else if(theValue == state.typeValue2) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
-                if(lockUser) {
-                    state.whoUnlocked = it.currentValue("lastCodeName")
-                    lockUser.each { us ->
-                        if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                        if(us == state.whoUnlocked) { 
-                            if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                            deviceTrue2 = deviceTrue2 + 1
-                        }
-                    }
+                if(state.dText.contains("[digital]") || state.dText.contains("[physical]")) {
+                    if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
                 } else {
-                    deviceTrue2 = deviceTrue2 + 1
+                    if(lockUser) {
+                        state.whoUnlocked = it.currentValue("lastCodeName")
+                        lockUser.each { us ->
+                            if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                            if(us == state.whoUnlocked) { 
+                                if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                                deviceTrue2 = deviceTrue2 + 1
+                            }
+                        }
+                    } else {
+                        deviceTrue2 = deviceTrue2 + 1
+                    }
                 }
             } else {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
