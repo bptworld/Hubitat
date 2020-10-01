@@ -2059,7 +2059,7 @@ def devicesGoodHandler() {
         if(theValue == state.typeValue1) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
-                if(state.dText.contains("[digital]") || state.dText.contains("[physical]")) {
+                if(!state.dText.contains("unlocked by")) {
                     if(logEnable) log.trace "In devicesGoodHandler - Lock was manually locked, no notifications necessary"
                 } else {
                     if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
@@ -2083,7 +2083,7 @@ def devicesGoodHandler() {
         } else if(theValue == state.typeValue2) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
-                if(state.dText.contains("[digital]") || state.dText.contains("[physical]")) {
+                if(!state.dText.contains("unlocked by")) {
                     if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
                 } else {
                     if(lockUser) {
