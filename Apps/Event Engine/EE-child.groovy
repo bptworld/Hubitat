@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.8 - 10/01/20 - Adjustments to Certain Time
 *  1.8.7 - 10/01/20 - Adjustments to Lock handling
 *  1.8.6 - 09/30/20 - New option: Reverse after xx minutes or seconds
 *  1.8.5 - 09/30/20 - Automatically checks 'In between' when entering/existing time frame
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.7"
+    state.version = "1.8.8"
 }
 
 definition(
@@ -1725,6 +1726,7 @@ def startTheProcess(evt) {
         state.areRestrictions = false
         state.atLeastOneDeviceOK = false
         state.dText = ""
+        if(startTime) state.beenHere = "no"
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
