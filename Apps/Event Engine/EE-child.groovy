@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  1.8.9 - 10/02/20 - Added a Rolling Average to setpoints
-*  1.8.8 - 10/01/20 - Adjustments to Certain Time
-*  1.8.7 - 10/01/20 - Adjustments to Lock handling
-*  1.8.6 - 09/30/20 - New option: Reverse after xx minutes or seconds
-*  1.8.5 - 09/30/20 - Automatically checks 'In between' when entering/existing time frame
-*  1.8.4 - 09/30/20 - Quick update
-*  1.8.3 - 09/30/20 - More logic adjustments
-*  1.8.2 - 09/29/20 - More logic adjustments
-*  1.8.1 - 09/29/20 - More logic adjustments
-*  1.8.0 - 09/29/20 - Adjustments
+*  1.9.0 - 10/02/20 - Adjustments 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.9"
+    state.version = "1.9.0"
 }
 
 definition(
@@ -1757,7 +1748,8 @@ def startTheProcess(evt) {
                 } catch(e) {
                     // Do nothing
                 }
-                if(logEnable) log.debug "In startTheProcess - ${state.whoHappened}: ${state.whatHappened} - dText: ${state.dText}"
+                if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - dText: ${state.dText}"
+                state.beenHere = "no"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
             }
