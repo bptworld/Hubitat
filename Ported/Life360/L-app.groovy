@@ -46,6 +46,7 @@
  *
  *  Changes:
  *
+ *  2.0.8 - 09/26/20 - Testing Fix by @jpoeppelman1
  *  2.0.7 - 08/25/20 - Added more error catching
  *  2.0.6 - 06/01/20 - Added code to remove devices if app is uninstalled
  *  2.0.5 - 04/27/20 - Cosmetic changes
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-	state.version = "2.0.7"
+	state.version = "2.0.8"
 }
 
 definition(
@@ -417,16 +418,17 @@ def generateInitialEvent (member, childDevice) {
                 avatarHtml = "not set"
             }
 
-            if(member.location.address1 == null || member.location.address1 == "")
-                address1 = "No Data"
-            else
-                address1 = member.location.address1
+            /**  Start Fix **/       
+            if(member.location.name != null) {
+                if(member.location.name != member.location.address1) {
+                    log.warn "Life360 with States - Caught the issue, changing address1 to place " + member.location.name
 
-            if(member.location.address2 == null || member.location.address2 == "")
-                address2 = "No Data"
-            else
-                address2 = member.location.address2
-
+                    address1 = member.location.name
+                    address2 = "No Data"               
+                }
+            } 
+            /**  End Fix **/
+            
             //Covert 0 1 to False True	
             def charging = member.location.charge == "0" ? "false" : "true"
             def moving = member.location.inTransit == "0" ? "false" : "true"
