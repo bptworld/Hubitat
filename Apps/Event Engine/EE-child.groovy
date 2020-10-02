@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.8.9 - 10/02/20 - Added a Rolling Average to setpoints
 *  1.8.8 - 10/01/20 - Adjustments to Certain Time
 *  1.8.7 - 10/01/20 - Adjustments to Lock handling
 *  1.8.6 - 09/30/20 - New option: Reverse after xx minutes or seconds
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.8.8"
+    state.version = "1.8.9"
 }
 
 definition(
@@ -1042,14 +1043,27 @@ def pageConfig() {
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                input "useWholeNumber", "bool", defaultValue:false, title: "Only use Whole Numbers (round each number)", description: "Whole", submitOnChange:true
+                input "setpointRollingAverage", "bool", title: "Use a rolling Average", description: "average", defaultValue:false, submitOnChange:true
+                if(setpointRollingAverage) {
+                    paragraph "<small>*All values are rounded for this option</small>"
+                    input "numOfPoints", "number", title: "Number of points to average", required:true, submitOnChange:true
+                    app?.updateSetting("useWholeNumber",[value:"true",type:"bool"])
+                } else {
+                    app.removeSetting("numOfPoints")
+                    state.readings = []
+                }
+                input "useWholeNumber", "bool", title: "Only use Whole Numbers (round each number)", description: "Whole", defaultValue:false, submitOnChange:true
+                if(setpointRollingAverage) paragraph "<b>When using a Rolling Average, use Whole Numbers MUST also be true.</b>"
                 paragraph "<small>* Note: This effects the data coming in from the device.</small>"
                 paragraph "Setpoint truths can also be reset one time daily. Typically to allow another notification of a high/low reading."
                 input "spResetTime", "time", title: "Time to reset Setpoint truths (optional)", description: "Reset SP", required:false
-                state.theCogTriggers += "<b>Trigger Option:</b> Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
+                state.theCogTriggers += "<b>Trigger Option:</b> Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger Option:</b> Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
+                state.theCogTriggers -= "<b>Trigger Option:</b> Rolling Average: ${setpointRollingAverage} - Use Whole Numbers: ${useWholeNumber} - ResetTime: ${spResetTime}<br>"
+                app.removeSetting("spResetTime")
                 app?.updateSetting("useWholeNumber",[value:"false",type:"bool"])
+                app?.updateSetting("setpointRollingAverage",[value:"false",type:"bool"])
+                state.readings = []
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
@@ -2331,6 +2345,17 @@ def setpointHandler() {
         }
         state.preSPV = setpointValue
         int setpointValue = setpointValue
+        
+        if(setpointRollingAverage) {
+            if(state.readings == null) state.readings = []
+            state.readings.add(0,setpointValue)           
+            int maxReadingSize = state.spName.size() * numOfPoints
+            int readings = state.readings.size()            
+            if(readings > maxReadingSize) state.readings.removeAt(maxReadingSize)
+            setpointRollingAverageHandler(maxReadingSize)
+            if(state.theAverage >= 0) setpointValue = state.theAverage
+        }
+        
         int setpointLow = state.setpointLow ?: 0
         int setpointHigh = state.setpointHigh ?: 99999
         if(logEnable && logSize) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
@@ -2361,6 +2386,32 @@ def setpointHandler() {
         }
     }
     if(logEnable) log.debug "In setpointHandler - ${state.spType.toUpperCase()} - setpointOK: ${state.setpointOK}"
+}
+
+def setpointRollingAverageHandler(data) {
+    if(logEnable) log.debug "In setpointRollingAverageHandler (${state.version})"
+    int totalNum = 0
+    int maxReadingSize = data    
+    floatingPoint = false
+    log.warn "state.readings: ${state.readings}"
+    String readings = state.readings
+    def theNumbers = readings.split(",")
+    int readingsSize = theNumbers.size()
+    if(readingsSize > 1) {       
+        for(x=0;x<readingsSize;x++) {
+            int theNumber = theNumbers[x].replace("[","").replace("]","").toInteger()
+            log.warn "${x} - ${theNumber}"
+            totalNum = totalNum + theNumber        
+        }
+        
+        log.warn "totalNum: ${totalNum} - readingsSize: ${readingsSize}"
+        if(totalNum == 0 || totalNum == null) {
+            state.theAverage = 0
+        } else {
+            state.theAverage = (totalNum / readingsSize).toDouble().round()
+        }
+    }
+    if(logEnable) log.debug "In setpointRollingAverageHandler - theAverage: ${state.theAverage} - readingSize: ${readingsSize} - readings: ${readings}"
 }
 
 def checkingAndOr() {
