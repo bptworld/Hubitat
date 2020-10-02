@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.7 - 10/01/20 - Added code adjustments from @napalmcsr
  *  1.0.6 - 06/17/20 - Added code for address1prev, other adjustments
  *  1.0.5 - 05/31/20 - Adjustments
  *  1.0.4 - 05/30/20 - Fix for History
@@ -120,12 +121,13 @@ metadata {
 }
            
 preferences {
-	input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh. Items with (Places) are optional and only needed when the NEW Location Tracker app is released", type:"paragraph", element:"paragraph"
+	//input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh. Items with (Places) are optional and only needed when the NEW Location Tracker app is released", type:"paragraph", element:"paragraph"
+    input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
     
-    input "apiKey", "text", title: "API Key from Google Maps (Places)", required: false
-    input "consumerKey", "text", title: "Consumer Key from MapQuest (Places)", required: false
-    input "threshold", "number", title: "Min minutes between checks (Places)", required: false, defaultValue: 2
-    input "avatarURL", "text", title: "Avatar URL (Places)", required: false
+    //input "apiKey", "text", title: "API Key from Google Maps (Places)", required: false
+    //input "consumerKey", "text", title: "Consumer Key from MapQuest (Places)", required: false
+    //input "threshold", "number", title: "Min minutes between checks (Places)", required: false, defaultValue: 2
+    //input "avatarURL", "text", title: "Avatar URL (Places)", required: false
         
 	input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
@@ -462,39 +464,47 @@ def getTimeDiff() {
 // *********************************************************
 
 def generatePresenceEvent(boolean present, homeDistance) {
-	if(logEnable) log.debug "In generatePresenceEvent - present: $present - homeDistance: $homeDistance"
+    if(logEnable) log.debug "In generatePresenceEvent - present: $present - homeDistance: $homeDistance"
+    def linkText = getLinkText(device)
+    def descriptionText = formatDescriptionText(linkText, present)
+    def handlerName = getState(present)
+
+    CurrentAddress = device.currentValue('address1')
+
+    if(!present){
+        if(CurrentAddress == "home" || CurrentAddress == "Home") {
+            present = true
+        }
+    }
+
     def presence = formatValue(present)
-	def linkText = getLinkText(device)
-	def descriptionText = formatDescriptionText(linkText, present)
-	def handlerName = getState(present)
-	
-	def results = [
-		name: "presence",
-		value: presence,
-		linkText: linkText,
-		descriptionText: descriptionText,
-		handlerName: handlerName,
-	]
-	if(logEnable) log.debug "In generatePresenceEvent - Generating Event: ${results}"
-	sendEvent (results)
-	
+    def results = [
+        name: "presence",
+        value: presence,
+        linkText: linkText,
+        descriptionText: descriptionText,
+        handlerName: handlerName,
+    ]
+    if(logEnable) log.debug "In generatePresenceEvent - Generating Event: ${results}"
+    sendEvent (results)
+
     if(units == "Kilometers" || units == null || units == ""){
-	    def statusDistance = homeDistance / 1000
-	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
+        def statusDistance = homeDistance / 1000
+        def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " km from: Home"
         if(status != device.currentValue('status')){
             sendEvent( name: "status", value: status )
             state.update = true
         }
     } else {
-	    def statusDistance = (homeDistance / 1000) / 1.609344 
-   	    def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
+        def statusDistance = (homeDistance / 1000) / 1.609344 
+        def status = sprintf("%.2f", statusDistance.toDouble().round(2)) + " Miles from: Home"
         if(status != device.currentValue('status')){
-   	        sendEvent( name: "status", value: status )
+            sendEvent( name: "status", value: status )
             state.update = true
         }
         state.status = status
     }
-	
+
     def km = sprintf("%.2f", homeDistance / 1000)
     if(km.toDouble().round(2) != device.currentValue('distanceKm')){
         sendEvent( name: "distanceKm", value: km.toDouble().round(2) )
@@ -502,81 +512,76 @@ def generatePresenceEvent(boolean present, homeDistance) {
     }
 
     def miles = sprintf("%.2f", (homeDistance / 1000) / 1.609344)
-	if(miles.toDouble().round(2) != device.currentValue('distanceMiles')){    
+    if(miles.toDouble().round(2) != device.currentValue('distanceMiles')){    
         sendEvent( name: "distanceMiles", value: miles.toDouble().round(2) )
-	    state.update = true
+        state.update = true
     }
 
     if(homeDistance.toDouble().round(2) != device.currentValue('distanceMetric')){
-	    sendEvent( name: "distanceMetric", value: homeDistance.toDouble().round(2) )
-	    state.update = true
+        sendEvent( name: "distanceMetric", value: homeDistance.toDouble().round(2) )
+        state.update = true
     }
 
     if(state.update == true){
-	    sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
-	    state.update = false
+        sendEvent( name: "lastLocationUpdate", value: "Last location update on:\r\n${formatLocalTime("MM/dd/yyyy @ h:mm:ss a")}" )
+        state.update = false
     }
-    
+
     sendStatusTile1()
 }
 
 // **** Life360 ****
 private extraInfo(address1,address2,battery,charge,endTimestamp,inTransit,isDriving,latitude,longitude,since,speedMetric,speedMiles,speedKm,wifiState,xplaces,avatar,avatarHtml,lastUpdated) {
-	//if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
-	   
+    if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
+
     newAddress = address1
     oldAddress = device.currentValue('address1')
+    log.debug "oldAddress = $oldAddress | newAddress = $newAddress" 
     if(newAddress != oldAddress) {
         sendEvent(name: "address1prev", value: oldAddress)
         sendEvent(name: "address1", value: newAddress)
         sendEvent(name: "since", value: since)
-        
-        if(newAddress == "home" || newAddress == "Home") { 
-            sendEvent(name: "presence", value: "present", isStateChange: true)
-        } else {
-            sendEvent(name: "presence", value: "not present", isStateChange: true)
-        }
-	}
+    }
 
     prevAddress = device.currentValue('address1prev')
     if(prevAddress == null) {
         sendEvent(name: "address1prev", value: "Lost")
     }
-    
+
     if(battery != device.currentValue('battery')) { sendEvent(name: "battery", value: battery) }    
     if(charge != device.currentValue('charge')) { sendEvent(name: "charge", value: charge) }
- 
+
     if(inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
 
-	def curDriving = device.currentValue('isDriving') 
+    def curDriving = device.currentValue('isDriving') 
     if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
 
     def curlat = device.currentValue('latitude').toString()
     latitude = latitude.toString()
     if(latitude != curlat) { sendEvent(name: "latitude", value: latitude) }
-    
+
     def curlong = device.currentValue('longitude').toString()
     longitude = longitude.toString()
     if(longitude != curlong) { sendEvent(name: "longitude", value: longitude) }
-    
+
     if(speedMetric != device.currentValue('speedMetric')) { sendEvent(name: "speedMetric", value: speedMetric) }
-    
+
     if(speedMiles != device.currentValue('speedMiles')) { sendEvent(name: "speedMiles", value: speedMiles) }
-    
+
     if(speedKm != device.currentValue('speedKm')) { sendEvent(name: "speedKm", value: speedKm) }
-    
+
     if(wifiState != device.currentValue('wifiState')) { sendEvent(name: "wifiState", value: wifiState) }
-    
+
     setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
 
     sendEvent(name: "savedPlaces", value: xplaces)
-    
+
     sendEvent(name: "avatar", value: avatar)
-    
+
     sendEvent(name: "avatarHtml", value: avatarHtml)
 
     sendEvent(name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a"))
-    
+
     sendStatusTile1()
 }
 
@@ -640,4 +645,3 @@ private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) 
 // *********************************************************
 // *******************  End of Life360  ********************
 // *********************************************************
-
