@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.9.3 - 10/03/20 - Fixed The Flasher
 *  1.9.2 - 10/03/20 - Cleanup
 *  1.9.1 - 10/03/20 - Removed beenHere restriction (behind the scenes)
 *  1.9.0 - 10/02/20 - Adjustments 
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.2"
+    state.version = "1.9.3"
 }
 
 definition(
@@ -1589,23 +1590,20 @@ def notificationOptions(){
             app.removeSetting("fmSpeaker")
             app.removeSetting("sendPushMessage")
         }
-/*
+
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-the-flasher-flash-your-lights-based-on-several-triggers/30843' target=_blank>The Flasher</a> to process Flashing Lights. Please be sure to have The Flasher installed before trying to use this option."
             input "useTheFlasher", "bool", title: "Use The Flasher", defaultValue:false, submitOnChange:true
             if(useTheFlasher) {
                 input "theFlasherDevice", "capability.actuator", title: "The Flasher Device containing the Presets you wish to use", required:true, multiple:false
-                input "flashOnHomePreset", "number", title: "Select the Preset to use when someone comes home (1..5)", required:true, submitOnChange:true
-                input "flashOnDepPreset", "number", title: "Select the Preset to use when someone leaves (1..5)", required:true, submitOnChange:true
-                if(useTheFlasher) state.theCogNotifications += "<b>Notification:</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset home: ${flashOnHomePreset} - Preset leaves: ${flashOnDepPreset}<br>"
+                input "flashOnTriggerPreset", "number", title: "Select the Preset to use when Notifications are triggered (1..5)", required:true, submitOnChange:true
+                if(useTheFlasher) state.theCogNotifications += "<b>Notification:</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset When Triggered: ${flashOnTriggerPreset}<br>"
             } else {
-                state.theCogNotifications -= "<b>Notification:</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset home: ${flashOnHomePreset} - Preset leaves: ${flashOnDepPreset}<br>"
+                state.theCogNotifications -= "<b>Notification:</b> Use The Flasher: ${useTheFlasher} - Device: ${theFlasherDevice} - Preset When Triggered: ${flashOnTriggerPreset}<br>"
                 app.removeSetting("theFlasherDevice")
-                app.removeSetting("flashOnHomePreset")
-                app.removeSetting("flashOnDepPreset")
+                app.removeSetting("flashOnTriggerPreset")
             }
         }
-*/
     }
 }
 
@@ -1858,7 +1856,10 @@ def startTheProcess(evt) {
                                 } 
                             }
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                            if(actionType.contains("aNotification")) { messageHandler() }
+                            if(actionType.contains("aNotification")) { 
+                                messageHandler() 
+                                if(useTheFlasher) theFlasherHandler()
+                            }
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
@@ -1907,7 +1908,10 @@ def startTheProcess(evt) {
                         if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
                         if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
                         if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                            if(actionType.contains("aNotification")) { messageHandler() }
+                            if(actionType.contains("aNotification")) { 
+                                messageHandler() 
+                                if(useTheFlasher) theFlasherHandler()
+                            }
                         }
                     }
                     state.hasntDelayedReverseYet = true
@@ -2995,6 +2999,13 @@ def pushHandler(msg){
     theMessage = "${app.label} - ${msg}"
     if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
     sendPushMessage.deviceNotification(theMessage)
+}
+
+def theFlasherHandler() {
+    if(logEnable) log.debug "In theFlasherHandler (${state.version})"
+    flashData = "Preset::${flashOnTriggerPreset}"
+    if(logEnable) log.debug "In theFlasherHandler - Sending: ${flashData}"
+    theFlasherDevice.sendPreset(flashData)    
 }
 
 def currentDateTime() {
