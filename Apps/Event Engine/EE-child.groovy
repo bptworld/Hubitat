@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-* * 1.9.1 - 10/03/20 - Big change, removed beenHere restriction (behind the scenes)
+*  1.9.1 - 10/03/20 - Big change, removed beenHere restriction (behind the scenes)
 *  1.9.0 - 10/02/20 - Adjustments 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
