@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+* * 1.9.1 - 10/03/20 - Big change, removed beenHere restriction (behind the scenes)
 *  1.9.0 - 10/02/20 - Adjustments 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.0"
+    state.version = "1.9.1"
 }
 
 definition(
@@ -1731,7 +1732,7 @@ def startTheProcess(evt) {
         state.areRestrictions = false
         state.atLeastOneDeviceOK = false
         state.dText = ""
-        if(startTime) state.beenHere = "no"
+        state.beenHere = "no"
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
@@ -1749,7 +1750,7 @@ def startTheProcess(evt) {
                     // Do nothing
                 }
                 if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - dText: ${state.dText}"
-                state.beenHere = "no"
+                //state.beenHere = "no"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
             }
@@ -1857,7 +1858,7 @@ def startTheProcess(evt) {
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
-                        state.beenHere = "no"
+                        //state.beenHere = "no"
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
@@ -2424,16 +2425,16 @@ def checkingAndOr() {
         }
     }
     if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - whatToDo: ${state.whatToDo}"
-    if(state.beenHere == null) state.beenHere = "no"
+    //if(state.beenHere == null) state.beenHere = "no"
     if(state.everythingOK) {
-        if(state.beenHere == "no") {
-            state.beenHere = "yes"
+        //if(state.beenHere == "no") {
+            //state.beenHere = "yes"
             state.whatToDo = "run"
             if(logEnable) log.debug "In checkingAndOr - Using A"
-        } else {       
-            state.whatToDo = "stop"
+        //} else {       
+        //    state.whatToDo = "stop"
             if(logEnable) log.debug "In checkingAndOr - Using B"
-        }
+        //}
     } else {
         if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
             state.whatToDo = "reverse"
@@ -2442,7 +2443,7 @@ def checkingAndOr() {
             state.whatToDo = "stop"
             if(logEnable) log.debug "In checkingAndOr - Using D"
         }
-        state.beenHere = "no"
+        //state.beenHere = "no"
     }   
     if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - whatToDo: ${state.whatToDo}"
 }
