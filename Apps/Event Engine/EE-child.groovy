@@ -37,7 +37,8 @@
 *
 *  Changes:
 *
-*  1.9.1 - 10/03/20 - Big change, removed beenHere restriction (behind the scenes)
+*  1.9.2 - 10/03/20 - Cleanup
+*  1.9.1 - 10/03/20 - Removed beenHere restriction (behind the scenes)
 *  1.9.0 - 10/02/20 - Adjustments 
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.1"
+    state.version = "1.9.2"
 }
 
 definition(
@@ -332,7 +333,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("accelerationEvent")
                 app.removeSetting("accelerationRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('acceleration') }
             }
 // -----------
             if(triggerType.contains("xBattery")) {
@@ -363,7 +363,6 @@ def pageConfig() {
                 app.removeSetting("beSetPointLow")
                 app?.updateSetting("setBEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setBEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('battery') }
             }
 // -----------
             if(triggerType.contains("xContact")) {
@@ -415,7 +414,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("contactEvent")
                 app.removeSetting("contactRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('contact') }
             }
 // -----------
             if(triggerType.contains("xEnergy")) {
@@ -446,7 +444,6 @@ def pageConfig() {
                 app.removeSetting("eeSetPointLow")
                 app?.updateSetting("setEEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setEEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('energy') }
             }
 // -----------
             if(triggerType.contains("xGarageDoor")) {
@@ -498,7 +495,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("garageDoorEvent")
                 app.removeSetting("garageDoorRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('garageDoor') }
             }
 // -----------
             if(triggerType.contains("xHSMAlert")) {
@@ -553,7 +549,6 @@ def pageConfig() {
                 app.removeSetting("heSetPointLow")
                 app?.updateSetting("setHEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setHEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('humidity') }
             }
 // -----------
             if(triggerType.contains("xIlluminance")) {
@@ -584,7 +579,6 @@ def pageConfig() {
                 app.removeSetting("ieSetPointLow")
                 app?.updateSetting("setIEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setIEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('illuminance') }
             }
 // -----------
             if(triggerType.contains("xLock")) {
@@ -639,7 +633,6 @@ def pageConfig() {
                     app.removeSetting("lockRestrictionEvent")
                     app?.updateSetting("lrUnlockedLocked",[value:"false",type:"bool"])
                     app?.updateSetting("lockRANDOR",[value:"false",type:"bool"])
-                    if(state.deviceMap) { state.deviceMap.remove('lock') }
                 }
                 paragraph "<hr>" 
             } else {
@@ -696,7 +689,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("motionEvent")
                 app.removeSetting("motionRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('motion') }
             }
 // -----------
             if(triggerType.contains("xPower")) {
@@ -729,7 +721,6 @@ def pageConfig() {
                 app.removeSetting("peSetPointLow")
                 app?.updateSetting("setPEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setPEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('power') }
             }
 // -----------
             if(triggerType.contains("xPresence")) {
@@ -783,7 +774,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("presenceEvent")
                 app.removeSetting("presenceRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('presence') }
             }
 // -----------
             if(triggerType.contains("xSwitch")) {
@@ -835,7 +825,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("switchEvent")
                 app.removeSetting("switchRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('switch') }
             }
 // -----------
             if(triggerType.contains("xTemp")) {
@@ -866,7 +855,6 @@ def pageConfig() {
                 app.removeSetting("teSetPointLow")
                 app?.updateSetting("setTEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setTEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('temperature') }
             }
 // -----------            
             if(triggerType.contains("xTherm")) {
@@ -878,7 +866,6 @@ def pageConfig() {
             } else {
                 state.theCogTriggers -= "<b>Trigger:</b> By Thermostat: ${thermoEvent}<br>"
                 app.removeSetting("thermoEvent")
-                if(state.deviceMap) { state.deviceMap.remove('thermostat') }
             }
 // -----------
             if(triggerType.contains("xVoltage")) {
@@ -909,7 +896,6 @@ def pageConfig() {
                 app.removeSetting("veSetPointLow")
                 app?.updateSetting("setVEPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setVEPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('voltage') }
             }
 // -----------
             if(triggerType.contains("xWater")) {
@@ -961,7 +947,6 @@ def pageConfig() {
             } else {
                 app.removeSetting("waterEvent")
                 app.removeSetting("waterRestrictionEvent")
-                if(state.deviceMap) { state.deviceMap.remove('water') }
             }
 // -----------
             if(triggerType.contains("xCustom")) {
@@ -1031,7 +1016,6 @@ def pageConfig() {
                 app.removeSetting("sdSetPointLow")
                 app?.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
                 app?.updateSetting("setSDPointLow",[value:"false",type:"bool"])
-                if(state.deviceMap) { state.deviceMap.remove('custom') }
             }
 
             if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
@@ -1732,7 +1716,6 @@ def startTheProcess(evt) {
         state.areRestrictions = false
         state.atLeastOneDeviceOK = false
         state.dText = ""
-        state.beenHere = "no"
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
@@ -1750,7 +1733,6 @@ def startTheProcess(evt) {
                     // Do nothing
                 }
                 if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - dText: ${state.dText}"
-                //state.beenHere = "no"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
             }
@@ -1858,7 +1840,6 @@ def startTheProcess(evt) {
                         state.setpointHighOK = "yes"
                         state.setpointLowOK = "yes"
                         state.setpointBetweenOK = "yes"
-                        //state.beenHere = "no"
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
@@ -2386,18 +2367,17 @@ def setpointRollingAverageHandler(data) {
     int totalNum = 0
     int maxReadingSize = data    
     floatingPoint = false
-    log.warn "state.readings: ${state.readings}"
+    if(logEnable && logSize) log.debug "In setpointRollingAverageHandler  - state.readings: ${state.readings}"
     String readings = state.readings
     def theNumbers = readings.split(",")
     int readingsSize = theNumbers.size()
     if(readingsSize > 1) {       
         for(x=0;x<readingsSize;x++) {
             int theNumber = theNumbers[x].replace("[","").replace("]","").toInteger()
-            log.warn "${x} - ${theNumber}"
+            if(logEnable && logSize) log.debug "In setpointRollingAverageHandler - ${x} - ${theNumber}"
             totalNum = totalNum + theNumber        
-        }
-        
-        log.warn "totalNum: ${totalNum} - readingsSize: ${readingsSize}"
+        }       
+        if(logEnable && logSize) log.debug "In setpointRollingAverageHandler - totalNum: ${totalNum} - readingsSize: ${readingsSize}"
         if(totalNum == 0 || totalNum == null) {
             state.theAverage = 0
         } else {
@@ -2424,28 +2404,20 @@ def checkingAndOr() {
             state.everythingOK = false
         }
     }
-    if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - whatToDo: ${state.whatToDo}"
-    //if(state.beenHere == null) state.beenHere = "no"
+    if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - whatToDo: ${state.whatToDo}"
     if(state.everythingOK) {
-        //if(state.beenHere == "no") {
-            //state.beenHere = "yes"
             state.whatToDo = "run"
-            if(logEnable) log.debug "In checkingAndOr - Using A"
-        //} else {       
-        //    state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingAndOr - Using B"
-        //}
+            if(logEnable) log.debug "In checkingAndOr - Using A - Run"
     } else {
         if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
             state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingAndOr - Using C"
+            if(logEnable) log.debug "In checkingAndOr - Using B - Reverse"
         } else {
             state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingAndOr - Using D"
+            if(logEnable) log.debug "In checkingAndOr - Using C - Stop"
         }
-        //state.beenHere = "no"
     }   
-    if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - beenHere: ${state.beenHere} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - whatToDo: ${state.whatToDo}"
 }
 
 // ********** Start Restrictions **********
@@ -2913,7 +2885,6 @@ def dimStepDown() {
                 deviceOn = it.currentValue("switch")
                 int cLevel = it.currentValue("level")
                 int wLevel = state.highestLevel
-
                 if(logEnable && logSize) log.debug "In dimStepDown - ${it} is: ${deviceOn} - cLevel: ${cLevel} - wLevel: ${wLevel}"
                 if(deviceOn == "on") {
                     atLeastOneDnOn = true
@@ -3064,18 +3035,15 @@ def autoSunHandler() {
 
 def runAtTime1() {
     if(logEnable) log.debug "In runAtTime1 (${state.version}) - ${app.label} - Starting"
-    state.beenHere = "no"
     startTheProcess()
 }
 
 def runAtTime2() {
     if(logEnable) log.debug "In runAtTime2 (${state.version}) - ${app.label} - Starting"
-    state.beenHere = "no"
     startTheProcess()
 }
 
 def checkTimeSun() {
-    // checkTimeSun - This is to ensure that the it's BETWEEN sunset/sunrise with offsets
     if(logEnable) log.debug "In checkTimeSun (${state.version})"
     if(sunRestriction) {
         def nextSunrise = (getSunriseAndSunset().sunrise)+1
@@ -3321,7 +3289,6 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 def resetTruthHandler() {
     if(logEnable) log.debug "In resetTruthHandler (${state.version})"
     state.clear()
-    state.deviceMap = [:]
 }
 
 // ********** Normal Stuff **********
