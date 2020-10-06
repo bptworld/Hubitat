@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.9.4 - 10/06/20 - Minor changes
 *  1.9.3 - 10/03/20 - Fixed The Flasher
 *  1.9.2 - 10/03/20 - Cleanup
 *  1.9.1 - 10/03/20 - Removed beenHere restriction (behind the scenes)
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.3"
+    state.version = "1.9.4"
 }
 
 definition(
@@ -356,9 +357,9 @@ def pageConfig() {
                     if(beSetPointLow) paragraph "You will receive notifications if Battery reading is below ${beSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh}, setpoint Low: ${setBEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh} ${beSetPointHigh}, setpoint Low: ${setBEPointLow} ${beSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh}, setpoint Low: ${setBEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh} ${beSetPointHigh}, setpoint Low: ${setBEPointLow} ${beSetPointLow}<br>"
                 app.removeSetting("batteryEvent")
                 app.removeSetting("beSetPointHigh")
                 app.removeSetting("beSetPointLow")
@@ -437,9 +438,9 @@ def pageConfig() {
                     if(eeSetPointLow) paragraph "You will receive notifications if Energy reading is below ${eeSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh}, setpoint Low: ${setEEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh} ${eeSetPointHigh}, setpoint Low: ${setEEPointLow} ${eeSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh}, setpoint Low: ${setEEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh} ${eeSetPointHigh}, setpoint Low: ${setEEPointLow} ${eeSetPointLow}<br>"
                 app.removeSetting("energyEvent")
                 app.removeSetting("eeSetPointHigh")
                 app.removeSetting("eeSetPointLow")
@@ -542,9 +543,9 @@ def pageConfig() {
                     if(heSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${heSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh}, setpoint Low: ${setHEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh} ${seSetPointHigh}, setpoint Low: ${setHEPointLow} ${seSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh}, setpoint Low: ${setHEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh} ${seSetPointHigh}, setpoint Low: ${setHEPointLow} ${seSetPointLow}<br>"
                 app.removeSetting("humidityEvent")
                 app.removeSetting("heSetPointHigh")
                 app.removeSetting("heSetPointLow")
@@ -572,9 +573,9 @@ def pageConfig() {
                     if(iSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${ieSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh}, setpoint Low: ${setIEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh}, setpoint Low: ${setIEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
                 app.removeSetting("illuminanceEvent")
                 app.removeSetting("ieSetPointHigh")
                 app.removeSetting("ieSetPointLow")
@@ -714,9 +715,9 @@ def pageConfig() {
                     if(peSetPointLow) paragraph "You will receive notifications if Power reading is below ${peSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh}, setpoint Low: ${setPEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh} ${peSetPointHigh}, setpoint Low: ${setPEPointLow} ${peSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh}, setpoint Low: ${setPEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh} ${peSetPointHigh}, setpoint Low: ${setPEPointLow} ${peSetPointLow}<br>"
                 app.removeSetting("powerEvent")
                 app.removeSetting("peSetPointHigh")
                 app.removeSetting("peSetPointLow")
@@ -848,9 +849,9 @@ def pageConfig() {
                     if(teSetPointLow) paragraph "You will receive notifications if Temperature reading is below ${teSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh}, setpoint Low: ${setTEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh} ${teSetPointHigh}, setpoint Low: ${setTEPointLow} ${teSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh}, setpoint Low: ${setTEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh} ${teSetPointHigh}, setpoint Low: ${setTEPointLow} ${teSetPointLow}<br>"
                 app.removeSetting("tempEvent")
                 app.removeSetting("teSetPointHigh")
                 app.removeSetting("teSetPointLow")
@@ -889,9 +890,9 @@ def pageConfig() {
                     if(veSetPointLow) paragraph "You will receive notifications if Voltage reading is below ${veSetPointLow}"
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>Trigger:</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh}, setpoint Low: ${setVEPointLow}<br>"
+                state.theCogTriggers += "<b>Trigger:</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh} ${veSetPointHigh}, setpoint Low: ${setVEPointLow} ${veSetPointLow}<br>"
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh}, setpoint Low: ${setVEPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh} ${veSetPointHigh}, setpoint Low: ${setVEPointLow} ${veSetPointLow}<br>"
                 app.removeSetting("voltageEvent")
                 app.removeSetting("veSetPointHigh")
                 app.removeSetting("veSetPointLow")
@@ -975,7 +976,7 @@ def pageConfig() {
                         if(sdSetPointHigh) paragraph "You will receive notifications if Custom reading is above ${sdSetPointHigh}"
                         if(sdSetPointLow) paragraph "You will receive notifications if Custom reading is below ${sdSetPointLow}"
                         state.theCogTriggers -= "<b>Trigger:</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
-                        state.theCogTriggers += "<b>Trigger:</b> By Custom Setpoints: ${voltageEvent} - setpoint High: ${setSDPointHigh}, setpoint Low: ${setSDPointLow}<br>"
+                        state.theCogTriggers += "<b>Trigger:</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
                         
                         app.removeSetting("custom1")
                         app.removeSetting("custom2")
@@ -998,7 +999,7 @@ def pageConfig() {
                         } else {
                             paragraph "Trigger will fire when <b>all</b> Custom are true"
                         }
-                        state.theCogTriggers -= "<b>Trigger:</b> By Custom Setpoints: ${voltageEvent} - setpoint High: ${setSDPointHigh}, setpoint Low: ${setSDPointLow}<br>"
+                        state.theCogTriggers -= "<b>Trigger:</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
                         state.theCogTriggers += "<b>Trigger:</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         app.removeSetting("sdSetPointHigh")
                         app.removeSetting("sdSetPointLow")
@@ -1007,7 +1008,7 @@ def pageConfig() {
                     }
                 }
             } else {
-                state.theCogTriggers -= "<b>Trigger:</b> By Custom Setpoints: ${voltageEvent} - setpoint High: ${setSDPointHigh}, setpoint Low: ${setSDPointLow}<br>"
+                state.theCogTriggers -= "<b>Trigger:</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
                 state.theCogTriggers -= "<b>Trigger:</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                 app.removeSetting("custom1")
                 app.removeSetting("custom2")
@@ -1165,7 +1166,6 @@ def pageConfig() {
                 if(state.theCogNotifications) {
                     state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
                     state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
-                    state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
                     state.theCogNotifications -= "<b>Notification:</b> Message: ${message}<br>"
                     state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
                     state.theCogNotifications -= "<b>Notification:</b> Send Push: ${sendPushMessage}<br>"
@@ -1173,7 +1173,6 @@ def pageConfig() {
                 app.removeSetting("message")
                 app.removeSetting("messageH")
                 app.removeSetting("messageL")
-                app.removeSetting("messageB")
                 app?.updateSetting("useSpeech",[value:"false",type:"bool"])
                 app.removeSetting("fmSpeaker")
                 app.removeSetting("sendPushMessage")
@@ -1546,17 +1545,13 @@ def notificationOptions(){
                     paragraph "<b>Setpoint Message Options</b>"
                     input "messageH", "text", title: "Message to speak when reading is too high", required:false, submitOnChange:true
                     input "messageL", "text", title: "Message to speak when reading is too low", required:false, submitOnChange:true
-                    input "messageB", "text", title: "Message to speak when reading is both too high and too low", required:false
                     if(messageH) state.theCogNotifications += "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
                     if(messageL) state.theCogNotifications += "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
-                    if(messageB) state.theCogNotifications += "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
                 } else {
                     state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
                     state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
-                    state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
                     app.removeSetting("messageH")
                     app.removeSetting("messageL")
-                    app.removeSetting("messageB")
                 }
 
                 if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
@@ -1578,14 +1573,12 @@ def notificationOptions(){
         } else {
             state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high: ${messageH}<br>"
             state.theCogNotifications -= "<b>Notification:</b> Message when reading is too low: ${messageL}<br>"
-            state.theCogNotifications -= "<b>Notification:</b> Message when reading is too high and too low: ${messageB}<br>"
             state.theCogNotifications -= "<b>Notification:</b> Message: ${message}<br>"
             state.theCogNotifications -= "<b>Notification:</b> Use Speech: ${fmSpeaker}<br>"
             state.theCogNotifications -= "<b>Notification:</b> Send Push: ${sendPushMessage}<br>"
             app.removeSetting("message")
             app.removeSetting("messageH")
             app.removeSetting("messageL")
-            app.removeSetting("messageB")
             app?.updateSetting("useSpeech",[value:"false",type:"bool"])
             app.removeSetting("fmSpeaker")
             app.removeSetting("sendPushMessage")
@@ -1850,11 +1843,7 @@ def startTheProcess(evt) {
                             if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
                             if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
                             if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
-                            if(targetDelay == false) { 
-                                if(actionType.contains("aSwitch") && switchedDimUpAction) {
-                                    slowOnHandler()
-                                } 
-                            }
+                            if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() } 
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
                             if(actionType.contains("aNotification")) { 
                                 messageHandler() 
@@ -2312,7 +2301,6 @@ def setpointHandler() {
     if(state.setpointHighOK == null) state.setpointHighOK = "yes"
     if(state.setpointLowOK == null) state.setpointLowOK = "yes"
     if(state.setpointBetweenOK == null) state.setpointBetweenOK = "yes"
-    if(logEnable) log.debug "PREVIOUS: prevSPV: ${state.preSPV} - setpointLowOK: ${state.setpointLowOK} - setpointHighOK: ${state.setpointHighOK} - setpointBetweenOK: ${state.setpointBetweenOK}"
     state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
@@ -2634,6 +2622,7 @@ def dimmerOnReverseActionHandler() {
                 }
             }
         }
+        state.setOldMap = false
     }
 }
 
@@ -2957,7 +2946,6 @@ def messageHandler() {
             if(logEnable && logSize) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
             if(state.setpointHighOK == "no") theMessage = "${messageH}"
             if(state.setpointLowOK == "no") theMessage = "${messageL}"
-            if((state.setpointHighOK == "no") && (state.setpointLowOK == "no")) theMessage = "${messageB}"
         } else {
             if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${message}"
             def values = "${message}".split(";")
@@ -3154,6 +3142,7 @@ def modeHandler() {
 }
 
 def setLevelandColorHandler() {
+    if(state.setOldMap == null) state.setOldMap = false
     if(state.fromWhere == "slowOff") {
         state.onLevel = state.highestLevel
     } else {
@@ -3211,8 +3200,6 @@ def setLevelandColorHandler() {
 
     if(state.fromWhere == "dimmerOn") {
         if(logEnable && logSize) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
-        state.oldMap = [:]
-        state.oldLevelMap = [:]
         setOnLC.each {
             if(state.color == "No Change") {
                 hueColor = it.currentValue("hue")
@@ -3220,26 +3207,34 @@ def setLevelandColorHandler() {
             }
 
             def value = [hue: hueColor, saturation: saturation, level: onLevel] 
-            if(logEnable && logSize) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
+            if(logEnable && logSize) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel} - setOldMap: ${state.setOldMap}"
 
-            if (it.hasCommand('setColor')) {
-                oldHueColor = it.currentValue("hue")
-                oldSaturation = it.currentValue("saturation")
-                oldLevel = it.currentValue("level")
-                name = (it.displayName).replace(" ","")
-                status = it.currentValue("switch")
-                oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}"
-                state.oldMap.put(name,oldStatus) 
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+            if(it.hasCommand('setColor')) {
+                if(state.setOldMap == false) {
+                    state.oldMap = [:]
+                    oldHueColor = it.currentValue("hue")
+                    oldSaturation = it.currentValue("saturation")
+                    oldLevel = it.currentValue("level")
+                    name = (it.displayName).replace(" ","")
+                    status = it.currentValue("switch")
+                    oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}"
+                    state.oldMap.put(name,oldStatus) 
+                    state.setOldMap = true
+                    if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus} - setOldMap: ${state.setOldMap}"
+                }
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                oldLevel = it.currentValue("level")
-                name = (it.displayName).replace(" ","")
-                status = it.currentValue("switch")
-                oldStatus = "${status}::${oldLevel}"
-                state.oldLevelMap.put(name,oldStatus)
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
+                if(state.setOldMap == false) {
+                    state.oldLevelMap = [:]
+                    oldLevel = it.currentValue("level")
+                    name = (it.displayName).replace(" ","")
+                    status = it.currentValue("switch")
+                    oldStatus = "${status}::${oldLevel}"
+                    state.oldLevelMap.put(name,oldStatus)
+                    state.setOldMap = true
+                    if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus} - setOldMap: ${state.setOldMap}"
+                }
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
@@ -3322,7 +3317,7 @@ def checkEnableHandler() {
 }
 
 def setDefaults(){
-    if(logEnable == null){logEnable = false}
+    state.setOldMap = false
 }
 
 def getImage(type) {					// Modified from @Stephack Code
