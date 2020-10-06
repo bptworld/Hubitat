@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.3 - 10/06/20 - Adjustments
  *  2.4.2 - 09/28/20 - Adjustments
  *  2.4.1 - 07/30/20 - Fixed a typo, added todays Sunset/Sunrise to wildcards
  *  2.4.0 - 05/21/20 - Fixed a typo
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.2"
+	state.version = "2.4.3"
 }
 
 definition(
@@ -1550,9 +1551,7 @@ def tileHandler(evt){
         if(logEnable) log.debug "In tileHander - sec3Style: ${sec3Style}"
         
         // Looking into adding CSS to place manually in dashboard
-        
-        
-        
+
         secWidth = app."secWidth_$y"
         secWidtha = app."secWidtha_$y"
         secWidthb = app."secWidthb_$y"
@@ -1983,7 +1982,8 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
     
     if(!textORnumber && useColors) {
         if(color1Name && deviceStatus) {
-            if(deviceStatus.toLowerCase() == color1Name.toLowerCase()) {
+            sDeviceStatus = deviceStatus.toString()
+            if(sDeviceStatus.toLowerCase() == color1Name.toLowerCase()) {
                 if(useColors) deviceStatus1 = "<span style='color:${color1Value}'>${color1Name}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${color1Value}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${color1Value}'>${wordsAFT}</span>"
@@ -1991,7 +1991,8 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
         }
         
         if(color2Name && deviceStatus) {
-            if(deviceStatus.toLowerCase() == color2Name.toLowerCase()) {
+            sDeviceStatus = deviceStatus.toString()
+            if(sDeviceStatus.toLowerCase() == color2Name.toLowerCase()) {
                 if(useColors) deviceStatus1 = "<span style='color:${color2Value}'>${color2Name}</span>"
                 if(useColorsBEF) wordsBEF1 = "<span style='color:${color2Value}'>${wordsBEF}</span>"
                 if(useColorsAFT) wordsAFT1 = "<span style='color:${color2Value}'>${wordsAFT}</span>"
