@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.9.6 - 10/07/20 - Fixed issue with using Buttons with Custom Trigger
 *  1.9.5 - 10/07/20 - If bulb was in CT mode before changes, it will go back to CT when reversed.
 *  1.9.4 - 10/06/20 - Minor changes
 *  1.9.3 - 10/03/20 - Fixed The Flasher
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.5"
+    state.version = "1.9.6"
 }
 
 definition(
@@ -2038,7 +2039,7 @@ def devicesGoodHandler() {
     state.count = state.count + theCount
     if(state.dText == null) state.dText = ""
     state.eventName.each { it ->
-        theValue = it.currentValue("${state.eventType}")
+        theValue = it.currentValue("${state.eventType}").toString()
         if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
 
         if(theValue == state.typeValue1) { 
