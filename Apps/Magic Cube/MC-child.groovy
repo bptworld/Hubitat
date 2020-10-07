@@ -540,7 +540,7 @@ def face2Options(){
 				input(name: "f2rLeftOn", type: "capability.switch", title: "Turn these switches ON", required: false, multiple: true)
 				input(name: "f2rLeftOff", type: "capability.switch", title: "Turn these switches OFF", required: false, multiple: true)
 				input(name: "f2rLeftToggle", type: "capability.switch", title: "Toggle these switches", required: false, multiple: true)
-				input "f2KnocksetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
+				input "f2rLeftsetOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: false, multiple: true, submitOnChange: true
 				if(f2rLeftsetOnLC) input "f2rLeftlevelLC", "number", title: "On Level (1 to 99)", required: true, defaultValue: 99, range: '1..99'
 				if(f2rLeftsetOnLC) { input "f2rLeftcolorLC", "enum", title: "Color", required: false, options: [
                 		["Soft White":"Soft White - Default"],
