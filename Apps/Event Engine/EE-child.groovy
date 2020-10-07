@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  1.9.5 - 10/07/20 - If bulb was in CT mode before changes, it will go back to CT when reversed.
 *  1.9.4 - 10/06/20 - Minor changes
 *  1.9.3 - 10/03/20 - Fixed The Flasher
 *  1.9.2 - 10/03/20 - Cleanup
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.4"
+    state.version = "1.9.5"
 }
 
 definition(
@@ -1250,7 +1251,7 @@ def pageConfig() {
                         ["White":"White - Concentrate"],
                         ["Daylight":"Daylight - Energize"],
                         ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
                     state.theCogActions += "<b>Action:</b> Turn Light On, Set Level and/or Color: ${switchesLCAction} - Dimmers: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC}<br>"   
                 } else {
                     state.theCogActions -= "<b>Action:</b> Switches to Toggle: ${switchesToggleAction}<br>"
@@ -2035,6 +2036,7 @@ def devicesGoodHandler() {
         theCount = 1
     }
     state.count = state.count + theCount
+    if(state.dText == null) state.dText = ""
     state.eventName.each { it ->
         theValue = it.currentValue("${state.eventType}")
         if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
@@ -2087,7 +2089,7 @@ def devicesGoodHandler() {
                 deviceTrue2 = deviceTrue2 + 1
             }
         } else {
-            log.warn "In devicesGoodHandler - Something Went Wrong - eventType: ${state.eventType} - theValue: ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
+            //log.warn "In devicesGoodHandler - Something Went Wrong - eventType: ${state.eventType} - theValue: ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
         }
     }
     if(state.type) {
@@ -2588,17 +2590,30 @@ def dimmerOnReverseActionHandler() {
                 name = (it.displayName).replace(" ","")
                 try {
                     data = state.oldMap.get(name)
-                    def (oldStatus, oldHueColor, oldSaturation, oldLevel) = data.split("::")
+                    def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
                     int hueColor = oldHueColor.toInteger()
                     int saturation = oldSaturation.toInteger()
                     int level = oldLevel.toInteger()
-                    def theValue = [hue: hueColor, saturation: saturation, level: level]
-                    if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
-                    it.setColor(theValue)
-                    pauseExecution(1000)
-                    if(oldStatus == "off") {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
-                        it.off()
+                    int cTemp = oldColorTemp.toInteger()
+                    def cMode = oldColorMode
+                    if(cMode == "CT") {
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level}"
+                        it.setColorTemperature(cTemp)
+                        it.setLevel(level)
+                        pauseExecution(1000)
+                        if(oldStatus == "off") {
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                            it.off()
+                        }
+                    } else {
+                        def theValue = [hue: hueColor, saturation: saturation, level: level]
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
+                        it.setColor(theValue)
+                        pauseExecution(1000)
+                        if(oldStatus == "off") {
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
+                            it.off()
+                        }
                     }
                 } catch(e) {
                     if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Something went wrong"
@@ -3148,6 +3163,7 @@ def setLevelandColorHandler() {
     } else {
         state.onLevel = state.onLevel ?: 99
     }
+    
     if(state.color == null || state.color == "null" || state.color == "") state.color = "No Change"
     if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color} - onLevel: ${state.onLevel}"
 
@@ -3215,12 +3231,14 @@ def setLevelandColorHandler() {
                     oldHueColor = it.currentValue("hue")
                     oldSaturation = it.currentValue("saturation")
                     oldLevel = it.currentValue("level")
+                    oldColorTemp = it.currentValue("colorTemperature")
+                    oldColorMode = it.currentValue("colorMode")
                     name = (it.displayName).replace(" ","")
                     status = it.currentValue("switch")
-                    oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}"
+                    oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
                     state.oldMap.put(name,oldStatus) 
                     state.setOldMap = true
-                    if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus} - setOldMap: ${state.setOldMap}"
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 }
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
                 it.setColor(value)
@@ -3233,7 +3251,7 @@ def setLevelandColorHandler() {
                     oldStatus = "${status}::${oldLevel}"
                     state.oldLevelMap.put(name,oldStatus)
                     state.setOldMap = true
-                    if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus} - setOldMap: ${state.setOldMap}"
+                    if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 }
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
                 it.setLevel(onLevel as Integer ?: 99)
