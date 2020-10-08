@@ -46,6 +46,7 @@
  *
  *  Changes:
  *
+ *  2.0.9 - 10/07/20 - Attempting fix for jumping GPS
  *  2.0.8 - 09/26/20 - Testing Fix by @jpoeppelman1
  *  2.0.7 - 08/25/20 - Added more error catching
  *  2.0.6 - 06/01/20 - Added code to remove devices if app is uninstalled
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-	state.version = "2.0.8"
+	state.version = "2.0.9"
 }
 
 definition(
@@ -391,8 +392,7 @@ def generateInitialEvent (member, childDevice) {
             if(logEnable) log.debug "Place Location = ${placeLatitude}/${placeLongitude}"
             if(logEnable) log.debug "Place Radius = ${placeRadius}"
         
-        	def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude)*1000 // in meters  
-        	if(logEnable) log.debug "Distance Away = ${distanceAway}" 
+        	def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude)*1000 // in meters   
   			boolean isPresent = (distanceAway <= placeRadius)
 
 			if(logEnable) log.info "Life360 generateInitialEvent, member: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
@@ -407,7 +407,7 @@ def generateInitialEvent (member, childDevice) {
             def avatar
             def lastUpdated
 
-            xplaces = state.places.name.replaceAll(", ",",")
+            xplaces = state.places.name
             lastUpdated = new Date()
 
             if (member.avatar != null) {
@@ -459,13 +459,15 @@ def generateInitialEvent (member, childDevice) {
             def longitude = member.location.longitude.toFloat()
 
             //Sent data	
-            childDevice?.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedmeters,speedMPH,speedKPH,wifi,xplaces,avatar,avatarHtml,lastUpdated)
-       
+            //log.trace "1 - Distance Away: ${distanceAway}"
+            
+            childDevice?.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedmeters, speedMPH, speedKPH, wifi, xplaces, avatar, avatarHtml, lastUpdated)
+        
             childDevice?.generatePresenceEvent(isPresent, distanceAway)         
         }    
     }
     catch (e) {
-        // eat it
+        log.error e
     }  
 }
 
@@ -533,8 +535,7 @@ def sendCmd(url, result){
     asynchttpGet("cmdHandler", requestParams)
 }
 
-def cmdHandler(resp, data) {
-    
+def cmdHandler(resp, data) { 
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {       
         result = resp.getJson()	
     	def members = result.members
@@ -558,7 +559,6 @@ def cmdHandler(resp, data) {
                 def lastUpdated
 
                 thePlaces = state.places.sort { a, b -> a.name <=> b.name }
-                xplaces = "${thePlaces.name}".replaceAll(", ",",")
                 lastUpdated = new Date()
 
                 if (member.avatar != null){
@@ -607,11 +607,9 @@ def cmdHandler(resp, data) {
                 def battery = Math.round(member.location.battery.toDouble())
                 def latitude = member.location.latitude.toFloat()
                 def longitude = member.location.longitude.toFloat()
-                //if(logEnable) log.debug "extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charging | Last Checkin = $member.location.endTimestamp | Moving = $moving | Driving = $driving | Latitude = $latitude | Longitude = $longitude | Since = $member.location.since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifi"
-                deviceWrapper.extraInfo(address1,address2,battery,charging,member.location.endTimestamp,moving,driving,latitude,longitude,member.location.since,speedMetric,speedMiles,speedKm,wifi,xplaces,avatar,avatarHtml,lastUpdated)
 
                 def place = state.places.find{it.id==settings.place}
-                if (place) {
+                if(place) {
                     def memberLatitude = new Float (member.location.latitude)
                     def memberLongitude = new Float (member.location.longitude)
                     def memberAddress1 = member.location.address1
@@ -626,6 +624,12 @@ def cmdHandler(resp, data) {
                     if(logEnable) log.info "Life360 Update member ($member.firstName): ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
 
                     deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
+                    
+                    //log.trace "2 - distanceAway: ${distanceAway}"
+                    
+                    deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedMetric, speedMiles, speedKm, wifi, xplaces, avatar, avatarHtml, lastUpdated)
+                } else {
+                    deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedMetric, speedMiles, speedKm, wifi, xplaces, avatar, avatarHtml, lastUpdated)
                 }
             } catch(e) {
                 if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
