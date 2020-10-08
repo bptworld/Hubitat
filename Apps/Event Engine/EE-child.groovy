@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  1.9.9 - 10/08/20 - Adjustments to setpoints
-*  1.9.8 - 10/08/20 - Another adjustment to sunset/sunrise, added 'Reverse actions when conditions are no longer true (with delay)'
-*  1.9.7 - 10/08/20 - Adjustment to sunset/sunrise, other adjustments
-*  1.9.6 - 10/07/20 - Fixed issue with using Buttons with Custom Condition
-*  1.9.5 - 10/07/20 - If bulb was in CT mode before changes, it will go back to CT when reversed.
-*  1.9.4 - 10/06/20 - Minor changes
-*  1.9.3 - 10/03/20 - Fixed The Flasher
-*  1.9.2 - 10/03/20 - Cleanup
-*  1.9.1 - 10/03/20 - Removed beenHere restriction (behind the scenes)
-*  1.9.0 - 10/02/20 - Adjustments 
+*  2.0.0 - 10/08/20 - Added Virtual Contact Sensor to Actions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.9"
+    state.version = "2.0.0"
 }
 
 definition(
@@ -1106,7 +1097,8 @@ def pageConfig() {
                 ["aRule":"Rule Machine"],
                 ["aSwitch":"Switch Devices"],
                 ["aThermostat":"Thermostat"],
-                ["aValve":"Valves"]
+                ["aValve":"Valves"],
+                ["aVirtualContact":"* Virtual Contact Sensor"]
             ], required:false, multiple:true, submitOnChange:true
             paragraph "<hr>"
             if(actionType == null) actionType = " "
@@ -1329,71 +1321,6 @@ def pageConfig() {
                     app?.updateSetting("useMaxLevel",[value:"false",type:"bool"])
                     app?.updateSetting("dimDnOff",[value:"false",type:"bool"])
                 }
-
-                if(switchesOnAction || switchesOffAction || switchesLCAction) {
-                    paragraph "<hr>"
-                    if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
-                        paragraph "<b><small>Please choose only ONE of the following:</b></small>"
-                        input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
-                        input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low?", defaultValue:false, submitOnChange:true
-                        input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between?", defaultValue:false, submitOnChange:true
-                        app?.updateSetting("reverse",[value:"false",type:"bool"])
-                    } else {
-                        input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
-                        input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
-                        input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
-                        if(reverseWithDelay || timeReverse) {
-                            input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
-                        }
-                        paragraph "<small><b>* Please only select ONE Reverse option.</b></small>"
-                        app?.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
-                        app?.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
-                        app?.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
-                        if(!reverseWithDelay && !timeReverse) {
-                            app.removeSetting("timeToReverse")
-                        }
-                    }
-                    if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween || timeReverse || reverseWithDelay) {
-                        if(reverse) {
-                            state.theCogActions += "<b>-</b> Reverse: ${reverse}<br>"
-                        } else if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-                            state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
-                        } else if(timeReverse) {
-                            state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
-                        } else if(reverseWithDelay) {
-                            state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false<br>"
-                        }
-                    } else {
-                        state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>"
-                        state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
-                        state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
-                        state.theCogActions -= "<b>-</b> Reverse: ${delayReverse} minute(s), after Conditions become false<br>"
-                    }
-                    if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
-                        paragraph "<hr>"
-                        paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
-                        input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
-                        if(permanentDim) {
-                            paragraph "Instead of turning off, lights will dim to a set level"
-                            input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
-                        } else {
-                            app.removeSetting("permanentDimLvl")
-                        }
-                        if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
-                    } else {
-                        state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
-                        app.removeSetting("permanentDimLvl")
-                        app?.updateSetting("permanentDim",[value:"false",type:"bool"])
-                    }
-                } else {
-                    app.removeSetting("timeToReverse")
-                    app?.updateSetting("timeReverse",[value:"false",type:"bool"])
-                    app.removeSetting("permanentDimLvl")
-                    app?.updateSetting("permanentDim",[value:"false",type:"bool"])
-                    app?.updateSetting("reverse",[value:"false",type:"bool"])
-                    app.removeSetting("delayReverse")
-                    app?.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
-                }
                 paragraph "<hr>"
             } else {
                 state.theCogActions -= "<b>-</b> Switches to turn On: ${switchesOnAction}<br>"
@@ -1404,11 +1331,6 @@ def pageConfig() {
                 app.removeSetting("switchesLCAction")
                 app?.updateSetting("switchedDimUpAction",[value:"false",type:"bool"])
                 app?.updateSetting("switchedDimDnAction",[value:"false",type:"bool"])
-                app?.updateSetting("reverse",[value:"false",type:"bool"])
-                app?.updateSetting("permanentDim",[value:"false",type:"bool"])
-                app.removeSetting("permanentDimLvl")
-                app.removeSetting("timeToReverse")
-                app?.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
             }
 
             if(actionType.contains("aThermostat")) {
@@ -1443,6 +1365,84 @@ def pageConfig() {
                 state.theCogActions -= "<b>-</b> Close Valves: ${valveClosedAction} - Open Valves: ${valveOpenAction}<br>"
                 app.removeSetting("valveClosedAction")
                 app.removeSetting("valveOpenAction")
+            }
+            
+            if(actionType.contains("aVirtualContact")) {
+                paragraph "<b>Virtual Contact Sensor</b><br><small>* Can be used with Alexa Routines!</small>"
+                input "contactCloseAction", "capability.contactSensor", title: "Close Sensors", multiple:true, submitOnChange:true
+                input "contactOpenAction", "capability.contactSensor", title: "Open Sensors", multiple:true, submitOnChange:true
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Virtual Contact Sensor - Close Sensors: ${contactClosedAction} - Open Sensors: ${contactOpenAction}<br>"
+            } else {
+                state.theCogActions -= "<b>-</b> Virtual Contact Sensor - Close Sensors: ${contactClosedAction} - Open Sensors: ${contactOpenAction}<br>"
+                app.removeSetting("contactClosedAction")
+                app.removeSetting("contactOpenAction")
+            }      
+        
+            // Reverse Options
+            if(switchesOnAction || switchesOffAction || switchesLCAction || contactOpenAction) {
+                if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+                    paragraph "<b><small>Please choose only ONE of the following:</b></small>"
+                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
+                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low?", defaultValue:false, submitOnChange:true
+                    input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between?", defaultValue:false, submitOnChange:true
+                    app?.updateSetting("reverse",[value:"false",type:"bool"])
+                } else {
+                    input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
+                    input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
+                    input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
+                    if(reverseWithDelay || timeReverse) {
+                        input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
+                    }
+                    paragraph "<small><b>* Please only select ONE Reverse option.</b></small>"
+                    app?.updateSetting("reverseWhenHigh",[value:"false",type:"bool"])
+                    app?.updateSetting("reverseWhenLow",[value:"false",type:"bool"])
+                    app?.updateSetting("reverseWhenBetween",[value:"false",type:"bool"])
+                    if(!reverseWithDelay && !timeReverse) {
+                        app.removeSetting("timeToReverse")
+                    }
+                }
+                if(reverse || reverseWhenHigh || reverseWhenLow || reverseWhenBetween || timeReverse || reverseWithDelay) {
+                    if(reverse) {
+                        state.theCogActions += "<b>-</b> Reverse: ${reverse}<br>"
+                    } else if(reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+                        state.theCogActions += "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
+                    } else if(timeReverse) {
+                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
+                    } else if(reverseWithDelay) {
+                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false<br>"
+                    }
+                } else {
+                    state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>"
+                    state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
+                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
+                    state.theCogActions -= "<b>-</b> Reverse: ${delayReverse} minute(s), after Conditions become false<br>"
+                }
+                if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
+                    paragraph "<hr>"
+                    paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
+                    input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
+                    if(permanentDim) {
+                        paragraph "Instead of turning off, lights will dim to a set level"
+                        input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                    } else {
+                        app.removeSetting("permanentDimLvl")
+                    }
+                    if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                } else {
+                    state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                    app.removeSetting("permanentDimLvl")
+                    app?.updateSetting("permanentDim",[value:"false",type:"bool"])
+                }
+                paragraph "<hr>"
+            } else {
+                app.removeSetting("timeToReverse")
+                app?.updateSetting("timeReverse",[value:"false",type:"bool"])
+                app.removeSetting("permanentDimLvl")
+                app?.updateSetting("permanentDim",[value:"false",type:"bool"])
+                app?.updateSetting("reverse",[value:"false",type:"bool"])
+                app.removeSetting("delayReverse")
+                app?.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
             }
         }
         // ********** End Actions **********
@@ -1862,6 +1862,7 @@ def startTheProcess(evt) {
                                 messageHandler() 
                                 if(useTheFlasher) theFlasherHandler()
                             }
+                            if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactActionHandler() }
                         }
                         if(setHSM) hsmChangeActionHandler()
                         if(modeAction) modeChangeActionHandler()
@@ -1902,6 +1903,7 @@ def startTheProcess(evt) {
                                 if(useTheFlasher) theFlasherHandler()
                             }
                         }
+                        if(actionType.contains("aVirtualContact") && (contactOpenAction || contactClosedAction)) { contactReverseActionHandler() }
                     }
                     state.hasntDelayedReverseYet = true
                 }
@@ -2692,7 +2694,7 @@ def garageDoorActionHandler() {
         }
     }
     if(garageDoorOpenAction) {
-        garageDoorClosedAction.each { it ->
+        garageDoorOpenAction.each { it ->
             if(logEnable) log.debug "In garageDoorActionHandler - Open ${it}"
             it.open()
         }
@@ -2953,9 +2955,41 @@ def valveActionHandler() {
         }
     }
     if(valveOpenAction) {
-        valveClosedAction.each { it ->
+        valveOpenAction.each { it ->
             if(logEnable) log.debug "In valveActionHandler - Open ${it}"
             it.open()
+        }
+    }
+}
+
+def contactActionHandler() {
+    if(logEnable) log.debug "In contactActionHandler (${state.version})"
+    if(contactClosedAction) {
+        contactClosedAction.each { it ->
+            if(logEnable) log.debug "In contactActionHandler - Closing ${it}"
+            it.close()
+        }
+    }
+    if(contactOpenAction) {
+        contactOpenAction.each { it ->
+            if(logEnable) log.debug "In contactActionHandler - Open ${it}"
+            it.open()
+        }
+    }
+}
+
+def contactReverseActionHandler() {
+    if(logEnable) log.debug "In contactReverseActionHandler (${state.version})"
+    if(contactClosedAction) {
+        contactClosedAction.each { it ->
+            if(logEnable) log.debug "In contactReverseActionHandler - Open ${it}"
+            it.open()
+        }
+    }
+    if(contactOpenAction) {
+        contactOpenAction.each { it ->
+            if(logEnable) log.debug "In contactReverseActionHandler - Close ${it}"
+            it.close()
         }
     }
 }
