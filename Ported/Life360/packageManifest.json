@@ -11,7 +11,7 @@
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-app.groovy",
 			"required": true,
 			"oauth": false,
-			"version": "2.0.8"
+			"version": "2.0.9"
 		}
 	],
 	"drivers" : [
@@ -21,7 +21,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy",
 			"required": true,
-			"version": "1.0.7"
+			"version": "1.0.8"
 		}
 	]
 }
