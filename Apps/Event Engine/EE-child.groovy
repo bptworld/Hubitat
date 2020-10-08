@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-* * 1.9.7 - 10/08/20 - Adjustment to sunset/sunrise, other adjustments
+*  1.9.7 - 10/08/20 - Adjustment to sunset/sunrise, other adjustments
 *  1.9.6 - 10/07/20 - Fixed issue with using Buttons with Custom Trigger
 *  1.9.5 - 10/07/20 - If bulb was in CT mode before changes, it will go back to CT when reversed.
 *  1.9.4 - 10/06/20 - Minor changes
