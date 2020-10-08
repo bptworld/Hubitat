@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+* * 1.9.7 - 10/08/20 - Adjustment to sunset/sunrise, other adjustments
 *  1.9.6 - 10/07/20 - Fixed issue with using Buttons with Custom Trigger
 *  1.9.5 - 10/07/20 - If bulb was in CT mode before changes, it will go back to CT when reversed.
 *  1.9.4 - 10/06/20 - Minor changes
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "1.9.6"
+    state.version = "1.9.7"
 }
 
 definition(
@@ -1012,6 +1013,8 @@ def pageConfig() {
             } else {
                 state.theCogTriggers -= "<b>Trigger:</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
                 state.theCogTriggers -= "<b>Trigger:</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
+                app.removeSetting("customEvent")
+                app.removeSetting("specialAtt")
                 app.removeSetting("custom1")
                 app.removeSetting("custom2")
                 app?.updateSetting("sdCustom1Custom2",[value:"false",type:"bool"])
@@ -1864,7 +1867,7 @@ def startTheProcess(evt) {
                         }
                     }
                 } else {
-                    if(logEnable) log.debug "In startTheProcess - One of the Time Triggers didn't match - Doing Nothing"
+                    if(logEnable) log.debug "In startTheProcess - One of the Time Triggers didn't match - Stopping"
                 }
             } else if(state.whatToDo == "reverse") {
                 if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedReverseYet && delayOnReverse) {
@@ -3044,8 +3047,8 @@ def autoSunHandler() {
     if(logEnable && logSize) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
     // check for new sunset/sunrise times every day at 12:05 pm
     schedule("0 5 12 ? * * *", autoSunHandler)
-    if(riseSet) { schedule(state.timeSunset, runAtTime1) }
-    if(!riseSet) { schedule(state.timeSunrise, runAtTime2) }
+    schedule(state.timeSunset, runAtTime1)
+    schedule(state.timeSunrise, runAtTime2)
 }
 
 def runAtTime1() {
@@ -3060,37 +3063,36 @@ def runAtTime2() {
 
 def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun (${state.version})"
-    if(sunRestriction) {
-        def nextSunrise = (getSunriseAndSunset().sunrise)+1
-        def nextSunset = getSunriseAndSunset().sunset
-        int theOffsetSunset = offsetSunset ?: 1
-        if(setBeforeAfter) {
-            use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
-        } else {
-            use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
-        }
-        int theOffsetSunrise = offsetSunrise ?: 1
-        if(riseBeforeAfter) {
-            use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
-        } else {
-            use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
-        }
-        if(logEnable && logSize) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
-        if(logEnable && logSize) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
-        state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
-        if(logEnable && logSize) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
-        if(state.timeBetweenSun) {
-            if(logEnable && logSize) log.debug "In checkTimeSun - Time within range"
-            state.sunRiseTosunSet = true
-            state.whatToDo = "run"
-        } else {
-            if(logEnable && logSize) log.debug "In checkTimeSun - Time outside of range"
-            state.sunRiseTosunSet = false
-            if(reverse) state.whatToDo = "reverse"
-        }
+    def nextSunrise = (getSunriseAndSunset().sunrise)+1
+    def nextSunset = getSunriseAndSunset().sunset
+    int theOffsetSunset = offsetSunset ?: 1
+    if(setBeforeAfter) {
+        use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
     } else {
-        if(logEnable && logSize) log.debug "In checkTimeSun - NOT Specified"
-        state.timeBetweenSun = true
+        use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
+    }
+    int theOffsetSunrise = offsetSunrise ?: 1
+    if(riseBeforeAfter) {
+        use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
+    } else {
+        use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
+    } 
+    if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
+    if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
+    state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
+    if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
+    if(state.timeBetweenSun) {
+        if(logEnable) log.debug "In checkTimeSun - Time within range"
+        state.sunRiseTosunSet = true
+        state.whatToDo = "run"
+    } else {
+        if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+        state.sunRiseTosunSet = false
+        if(reverse && !timeBetweenSunRestriction) {
+            state.whatToDo = "reverse"
+        } else {
+            state.whatToDo = "stop"
+        }
     }
     if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - whatToDo: ${state.whatToDo}"
 }
@@ -3105,16 +3107,20 @@ def checkTime() {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }
         if(state.betweenTime) {
-            if(logEnable && logSize) log.debug "In checkTime - Time within range"
+            if(logEnable) log.debug "In checkTime - Time within range"
             state.timeBetween = true
             state.whatToDo = "run"
         } else {
-            if(logEnable && logSize) log.debug "In checkTime - Time outside of range"
+            if(logEnable) log.debug "In checkTime - Time outside of range"
             state.timeBetween = false
-            if(reverse) state.whatToDo = "reverse"
+            if(reverse) {
+                state.whatToDo = "reverse"
+            } else {
+                state.whatToDo = "stop"
+            }
         }
     } else {
-        if(logEnable && logSize) log.debug "In checkTime - NO Time Restriction Specified"
+        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
         state.timeBetween = true
     }    
     if(fromtTime) { schedule(fromTime, runAtTime1) }
