@@ -32,6 +32,7 @@
  *
  *  Changes:
  *
+ *  2.2.9 - 09/03/20 - Reworked some things
  *  2.2.8 - 08/27/20 - Working on Priority Speaker
  *  2.2.7 - 08/08/20 - Working on the Queue, changes to playing sounds
  *  2.2.6 - 07/07/20 - Sounds Setup now in Parent App
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
     
 def setVersion(){
     state.name = "Follow Me"
-	state.version = "2.2.8"   
+	state.version = "2.2.9"   
 }
 
 definition(
@@ -168,8 +169,8 @@ def pageConfig() {
                 }
                 if(speakerType == "googleSpeaker") {
                     paragraph "<b>Speaker type is a Google/Nest Device. Google/Nest devices can play custom sounds and change voices.</b>"
-                    input "gInitialize", "bool", title: "When using Google/Nest devices sometimes an Initialize is necessary (not always). Initialize Google/Nest devices before sending speech?", required: true, defaultValue: false
-                    input "gInitRepeat", "number", title: "Initialize Google/Nest devices every X minutes? (recommended: 4)", required: false
+                    input "gInitialize", "bool", title: "When using Google/Nest devices sometimes an Initialize is necessary (not always). Initialize Google/Nest devices before sending speech?", required: true, defaultValue: false, submitOnChange:true
+                    if(gInitialize) input "gInitRepeat", "number", title: "Initialize Google/Nest devices every X minutes? (recommended: 4)", required: false
                 }
                 if(speakerType == "sonosSpeaker") {
                     paragraph "<b>Speaker type is a Sonos Device. Sonos devices can play custom sounds and change voices.</b>"
@@ -305,6 +306,7 @@ def pageConfig() {
             
             if(useQueue) {
                 paragraph "Follow Me uses a custom speech queue. Sometimes it gets 'stuck' and queues all the messages. To recover from this, please use the options below."
+                input "logQueue", "bool", title: "Enable Queue Debug Logging", description: "Enable extra logging for debugging.", defaultValue:false, submitOnChange:true
 			    input "maxQueued", "number", title: "Max number of messages to be queued before auto clear is issued (default=5)", required: true, defaultValue: 5
                 input "clearQueue", "bool", defaultValue:false, title: "Manually Clear the Queue right now", description: "Clear", submitOnChange:true, width:6
                 if(clearQueue) clearTheQueue()
@@ -316,6 +318,9 @@ def pageConfig() {
                 paragraph "${state.TTSQueue}"
                 paragraph "<small>* Blank [] is good! Mulitple messages is not!</small>"
                 paragraph "<hr>"
+            } else {
+                app?.updateSetting("logQueue",[value:"false",type:"bool"])
+                clearTheQueue()
             }
 		}
 		display2()
@@ -809,7 +814,7 @@ def initializeSpeaker() {
 def letsTalkQueue(evt) {
     theText = evt.value
     if(useQueue) {
-        if(logEnable) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
+        if(logQueue) log.debug "In letsTalkQueue (${state.version}) - theText: ${theText}"
 	    state.TTSQueue << [theText]
 	    if(!atomicState.playingTTS) { runInMillis(500, processQueue) }
     } else {
@@ -819,16 +824,24 @@ def letsTalkQueue(evt) {
 }
 
 def processQueue() {
-	if(logEnable) log.debug "In processQueue (${state.version})"
+	if(logQueue) log.debug "In processQueue (${state.version})"
 	atomicState.playingTTS = true
-    if(state.TTSQueue.size() >= maxQueued) clearTheQueue()
-	if(state.TTSQueue.size() == 0) {
+    int maxQ = maxQueued
+    int queueSize = state.TTSQueue.size()
+    if(logQueue) log.info "In processQueue - size: ${queueSize} vs maxQ: ${maxQ}"
+    
+    if(queueSize >= maxQ) {
+        if(logQueue) log.info "In processQueue - queueSize is too much: ${queueSize}, going to clearTheQueue"
+        clearTheQueue()
+    }
+    
+	if(queueSize == 0) {
 		atomicState.playingTTS = false
-        if(logEnable) log.info "In processQueue - size: ${state.TTSQueue.size()} - playingTTS: ${atomicState.playingTTS} - Finished Playing"
+        if(logQueue) log.info "In processQueue - size: ${queueSize} - playingTTS: ${atomicState.playingTTS} - Finished Playing"
 		return
 	}
 	def nextTTS = state.TTSQueue[0]
-    if(logEnable) log.info "In processQueue - size: ${state.TTSQueue.size()} - playingTTS: ${atomicState.playingTTS} - Playing Next: ${nextTTS}"
+    if(logQueue) log.info "In processQueue - size: ${queueSize} - playingTTS: ${atomicState.playingTTS} - Playing Next: ${nextTTS}"
     state.TTSQueue.remove(0)
 	letsTalk(nextTTS)
     runIn(1,processQueue)
@@ -970,18 +983,30 @@ def letsTalk(msg) {
                                 if(logEnable) log.debug "In letsTalk - (speak) playTrack Received - speaker: ${it} - ${message.message}"
                                 beforeVolume(it)
                                 if(state.sound) {
-                                    it.playTrack(state.sound)
-                                    soundDur = state.sLength * 1000
-                                    pauseExecution(soundDur)
+                                    try {
+                                        it.playTrack(state.sound)
+                                        soundDur = state.sLength * 1000
+                                        pauseExecution(soundDur)
+                                    } catch(e) {
+                                        // do nothing
+                                    }
                                 }
                                 pauseExecution(500)
-                                it.playTrack(state.uriMessage)
-                                pauseExecution(theDuration)
-                                afterVolume(it)                               
+                                try {
+                                    it.playTrack(state.uriMessage)
+                                    pauseExecution(theDuration)
+                                    afterVolume(it) 
+                                } catch(e) {
+                                    // do nothing 
+                                }                              
                             } else {		        
                                 if(logEnable) log.debug "In letsTalk - (speak) - ${it} - message: ${message.message}"
                                 beforeVolume(it)
-                                it.speak(message.message)
+                                try {
+                                    it.speak(message.message)
+                                } catch(e) {
+                                    // do nothing 
+                                }     
                                 pauseExecution(theDuration)
                                 afterVolume(it)
                             }
@@ -989,10 +1014,14 @@ def letsTalk(msg) {
                     }
                 } else {
                     if(logEnable) log.debug "In letsTalk - (Default speak) - ${it} - message: ${message.message}"
-                    beforeVolume(it)
-                    it.speak(message.message)
+                    //beforeVolume(it)
+                    try {
+                        it.speak(message.message)
+                    } catch(e) {
+                        // do nothing 
+                    }     
                     pauseExecution(theDuration)
-                    afterVolume(it)
+                    //afterVolume(it)
                 }
             }
             speakerStatus = "${app.label}:${state.sZone}"
@@ -1009,24 +1038,34 @@ def letsTalk(msg) {
 }
 
 def beforeVolume(it) {
-    if(logEnable) log.debug "In beforeVolume (${state.version})"
-    state.prevVolume = it.currentValue("volume")
-    if(it.hasCommand('setVolume')) {
-        it.setVolume(state.volume)
-        if(logEnable) log.debug "In beforeVolume - Setting volume to ${state.volume}"
-    } else {
-        if(logEnable) log.debug "In beforeVolume - Volume was not changed"
-    }
+    if(logEnable) log.debug "In beforeVolume (${state.version}) - it: ${it}"
+    try {
+        state.prevVolume = it.currentValue("volume")
+        if(it.hasCommand('setVolume')) {
+            if(state.volume == null) state.volume = state.prevVolume
+            it.setVolume(state.volume)           
+            if(logEnable) log.debug "In beforeVolume - Setting volume to ${state.volume}"
+        } else {
+            if(logEnable) log.debug "In beforeVolume - Volume was not changed"
+        }
+    } catch(e) {
+        // do nothing
+    }   
 }
     
 def afterVolume(it) {
-    if(logEnable) log.debug "In afterVolume (${state.version})"
-    if(it.hasCommand('setVolume')) {
-        it.setVolume(state.prevVolume)
-        if(logEnable) log.debug "In afterVolume - Setting volume to ${state.prevVolume}"
-    } else {
-        if(logEnable) log.debug "In afterVolume - Volume was not changed"
+    if(logEnable) log.debug "In afterVolume (${state.version}) - it: ${it}"
+    try {
+        if(it.hasCommand('setVolume')) {
+            it.setVolume(state.prevVolume) 
+            if(logEnable) log.debug "In afterVolume - Setting volume to ${state.prevVolume}"
+        } else {
+            if(logEnable) log.debug "In afterVolume - Volume was not changed"
+        }
+    } catch(e) {
+        // do nothing
     }
+        
 }
 
 def checkTime() {
@@ -1390,14 +1429,14 @@ def appButtonHandler(buttonPressed) {
 
 def clearTheQueue() {
     app?.updateSetting("clearQueue",[value:"false",type:"bool"])
-    if(logEnable) log.debug "In clearTheQueue (${state.version}) - Resetting the Queue"
+    if(logQueue) log.debug "In clearTheQueue (${state.version}) - Resetting the Queue"
     state.TTSQueue = []
 	atomicState.playingTTS = false
 }
 
 def showTheQueue() {
     app?.updateSetting("showQueue",[value:"false",type:"bool"])
-    if(logEnable) log.debug "In showTheQueue (${state.version})"	
+    if(logQueue) log.debug "In showTheQueue (${state.version})"	
 }
 
 def createDataChildDevice() {    
