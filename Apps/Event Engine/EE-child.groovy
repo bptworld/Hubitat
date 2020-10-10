@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.1 - 10/10/20 - Added color option to Permanent Dim
 *  2.0.0 - 10/08/20 - Added Virtual Contact Sensor to Actions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.0"
+    state.version = "2.0.1"
 }
 
 definition(
@@ -1223,13 +1224,22 @@ def pageConfig() {
                     if(permanentDim2) {
                         paragraph "Instead of turning off, lights will dim to a set level"
                         input "permanentDimLvl2", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                        input "pdColor2", "enum", title: "Color", required:false, multiple:false, options: [
+                            ["No Change":"Keep Current Color"],
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true  
                     } else {
                         app.removeSetting("permanentDimLvl2")
+                        app.removeSetting("pdColor2")
                     }
-                    if(permanentDim2) state.theCogActions += "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2}<br>"
+                    if(permanentDim2) state.theCogActions += "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2}<br>"
+                    state.theCogActions -= "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2}<br>"
                     app.removeSetting("permanentDimLvl2")
+                    app.removeSetting("pdColor2")
                     app?.updateSetting("permanentDim2",[value:"false",type:"bool"])
                 }
                 
@@ -1420,18 +1430,27 @@ def pageConfig() {
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
                     paragraph "<hr>"
-                    paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level instead!"
+                    paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!"
                     input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
                     if(permanentDim) {
                         paragraph "Instead of turning off, lights will dim to a set level"
                         input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
+                        input "pdColor", "enum", title: "Color", required:false, multiple:false, options: [
+                            ["No Change":"Keep Current Color"],
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
                     } else {
                         app.removeSetting("permanentDimLvl")
+                        app.removeSetting("pdColor")
                     }
-                    if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                    if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - PD Level: ${permanentDimLvl} - PD Color: ${pdColor}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl}<br>"
+                    state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl} - PD Color: ${pdColor}<br>"
                     app.removeSetting("permanentDimLvl")
+                    app.removeSetting("pdColor")
                     app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
@@ -1439,6 +1458,7 @@ def pageConfig() {
                 app.removeSetting("timeToReverse")
                 app?.updateSetting("timeReverse",[value:"false",type:"bool"])
                 app.removeSetting("permanentDimLvl")
+                app.removeSetting("pdColor")
                 app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                 app?.updateSetting("reverse",[value:"false",type:"bool"])
                 app.removeSetting("delayReverse")
@@ -2654,16 +2674,18 @@ def dimmerOnReverseActionHandler() {
 def permanentDimHandler() {
     if(switchesLCAction) {
         setOnLC.each { it ->
-            if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl}"
+            if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
             it.setLevel(permanentDimLvl)
+            if(it.hasCommand('setColor') && pdColor) it.setColor(pdColor)
         }
     }
 
     if(switchesOnAction) {
         switchesOnAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
                 it.setLevel(permanentDimLvl)
+                if(it.hasCommand('setColor') && pdColor) it.setColor(pdColor)
             }
         }
     }
@@ -2671,8 +2693,9 @@ def permanentDimHandler() {
     if(switchesOffAction) {
         switchesOffAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl2}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl2} - Color: ${pdColor2}"
                 it.setLevel(permanentDimLvl2)
+                if(it.hasCommand('setColor') && pdColor2) it.setColor(pdColor2)
             }
         }
     }
