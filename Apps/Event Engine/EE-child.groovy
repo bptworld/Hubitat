@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.3 - 10/10/20 - Reworked color and temp for Permanent Dim
 *  2.0.2 - 10/10/20 - Fixed messages, added color Temp to Permanent Dim
 *  2.0.1 - 10/10/20 - Added color option to Permanent Dim
 *  2.0.0 - 10/08/20 - Added Virtual Contact Sensor to Actions
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.2"
+    state.version = "2.0.3"
 }
 
 definition(
@@ -2693,29 +2694,18 @@ def dimmerOnReverseActionHandler() {
 
 def permanentDimHandler() {
     if(switchesLCAction) {
-        setOnLC.each { it ->
-            if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
-            it.setLevel(permanentDimLvl)
-            if(it.hasCommand('setColor')) {
-                if(pdColor) {
-                    if(pdColor) it.setColor(pdColor)
-                } else {
-                    if(pdTemp) it.setColorTemperature(pdTemp)
-                }
-            }
-        }
+        if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl} - Color: ${pdColor} - Temp: ${pdTemp}"
+        state.onLevel = permanentDimLvl
+        state.color = pdColor
+        state.fromWhere = "permanentDimHandler"
+        setLevelandColorHandler()
     }
 
     if(switchesOnAction) {
         switchesOnAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl}"
                 it.setLevel(permanentDimLvl)
-                if(pdColor) {
-                    if(pdColor) it.setColor(pdColor)
-                } else {
-                    if(pdTemp) it.setColorTemperature(pdTemp)
-                }
             }
         }
     }
@@ -2723,13 +2713,8 @@ def permanentDimHandler() {
     if(switchesOffAction) {
         switchesOffAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl2} - Color: ${pdColor2}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl2}"
                 it.setLevel(permanentDimLvl2)
-                if(pdColor2) {
-                    if(pdColor2) it.setColor(pdColor2)
-                } else {
-                    if(pdTemp2) it.setColorTemperature(pdTemp2)
-                }
             }
         }
     }
@@ -3391,6 +3376,22 @@ def setLevelandColorHandler() {
             } else {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
                 it.on()
+            }
+        }
+    }
+    
+    if(state.fromWhere == "permanentDimHandler") {
+        def value = [hue: hueColor, saturation: saturation, level: onLevel]
+        setOnLC.each {
+            if(pdColor) {
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor ($value)"
+                it.setColor(value)
+            } else if(pdTemp) {
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp ($pdTemp)"
+                it.setColorTemperature(pdTemp)
+            } else {
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel ($permanentDimLvl)"
+                it.setLevel(permanentDimLvl)
             }
         }
     }
