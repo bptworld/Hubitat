@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.2 - 10/10/20 - Fixed messages, added color Temp to Permanent Dim
 *  2.0.1 - 10/10/20 - Added color option to Permanent Dim
 *  2.0.0 - 10/08/20 - Added Virtual Contact Sensor to Actions
 *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.1"
+    state.version = "2.0.2"
 }
 
 definition(
@@ -1224,22 +1225,31 @@ def pageConfig() {
                     if(permanentDim2) {
                         paragraph "Instead of turning off, lights will dim to a set level"
                         input "permanentDimLvl2", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
-                        input "pdColor2", "enum", title: "Color", required:false, multiple:false, options: [
-                            ["No Change":"Keep Current Color"],
-                            ["Soft White":"Soft White - Default"],
-                            ["White":"White - Concentrate"],
-                            ["Daylight":"Daylight - Energize"],
-                            ["Warm White":"Warm White - Relax"],
-                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true  
+                        input "pdColorTemp2", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                        if(pdColorTemp2) {
+                            input "pdTemp2", "number", title: "Color Temperature", submitOnChange:true
+                            app.removeSetting("pdColor2")
+                        } else {
+                            input "pdColor2", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                            app.removeSetting("pdTemp2")
+                        }
                     } else {
                         app.removeSetting("permanentDimLvl2")
+                        app?.updateSetting("pdColorTemp2",[value:"false",type:"bool"])
                         app.removeSetting("pdColor2")
+                        app.removeSetting("pdTemp2")
                     }
-                    if(permanentDim2) state.theCogActions += "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2}<br>"
+                    if(permanentDim2) state.theCogActions += "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2} - Temp: ${pdTemp2}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2}<br>"
+                    state.theCogActions -= "<b>-</b> Use Permanent Dim instead of Off: ${permanentDim2} - Level: ${permanentDimLvl2} - color: ${pdColor2} - Temp: ${pdTemp2}<br>"
                     app.removeSetting("permanentDimLvl2")
                     app.removeSetting("pdColor2")
+                    app.removeSetting("pdTemp2")
                     app?.updateSetting("permanentDim2",[value:"false",type:"bool"])
                 }
                 
@@ -1435,23 +1445,32 @@ def pageConfig() {
                     if(permanentDim) {
                         paragraph "Instead of turning off, lights will dim to a set level"
                         input "permanentDimLvl", "number", title: "Permanent Dim Level (1 to 99)", range: '1..99'
-                        input "pdColor", "enum", title: "Color", required:false, multiple:false, options: [
-                            ["No Change":"Keep Current Color"],
-                            ["Soft White":"Soft White - Default"],
-                            ["White":"White - Concentrate"],
-                            ["Daylight":"Daylight - Energize"],
-                            ["Warm White":"Warm White - Relax"],
-                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                        input "pdColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                        if(pdColorTemp) {
+                            input "pdTemp", "number", title: "Color Temperature", submitOnChange:true
+                            app.removeSetting("pdColor")
+                        } else {
+                            input "pdColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
+                                ["Soft White":"Soft White - Default"],
+                                ["White":"White - Concentrate"],
+                                ["Daylight":"Daylight - Energize"],
+                                ["Warm White":"Warm White - Relax"],
+                                "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                            app.removeSetting("pdTemp")
+                        }
                     } else {
                         app.removeSetting("permanentDimLvl")
+                        app?.updateSetting("pdColorTemp",[value:"false",type:"bool"])
                         app.removeSetting("pdColor")
+                        app.removeSetting("pdTemp")
                     }
-                    if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - PD Level: ${permanentDimLvl} - PD Color: ${pdColor}<br>"
+                    if(permanentDim) state.theCogActions += "<b>-</b> Use Permanent Dim: ${permanentDim} - PD Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
                 } else {
-                    state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl} - PD Color: ${pdColor}<br>"
+                    state.theCogActions -= "<b>-</b> Use Permanent Dim: ${permanentDim} - Permanent Dim Level: ${permanentDimLvl} - PD Color: ${pdColor} - Temp: ${pdTemp}<br>"
                     app.removeSetting("permanentDimLvl")
                     app.removeSetting("pdColor")
                     app?.updateSetting("permanentDim",[value:"false",type:"bool"])
+                    app?.updateSetting("pdColorTemp",[value:"false",type:"bool"])
                 }
                 paragraph "<hr>"
             } else {
@@ -1459,6 +1478,7 @@ def pageConfig() {
                 app?.updateSetting("timeReverse",[value:"false",type:"bool"])
                 app.removeSetting("permanentDimLvl")
                 app.removeSetting("pdColor")
+                app?.updateSetting("pdColorTemp",[value:"false",type:"bool"])
                 app?.updateSetting("permanentDim",[value:"false",type:"bool"])
                 app?.updateSetting("reverse",[value:"false",type:"bool"])
                 app.removeSetting("delayReverse")
@@ -2676,8 +2696,12 @@ def permanentDimHandler() {
         setOnLC.each { it ->
             if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
             it.setLevel(permanentDimLvl)
-            if(it.hasCommand('setColor') && pdColor) {
-                if(pdColor != "No Change") it.setColor(pdColor)
+            if(it.hasCommand('setColor')) {
+                if(pdColor) {
+                    if(pdColor) it.setColor(pdColor)
+                } else {
+                    if(pdTemp) it.setColorTemperature(pdTemp)
+                }
             }
         }
     }
@@ -2687,8 +2711,10 @@ def permanentDimHandler() {
             if(it.hasCommand('setLevel')) {
                 if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
                 it.setLevel(permanentDimLvl)
-                if(it.hasCommand('setColor') && pdColor) {
-                    if(pdColor != "No Change") it.setColor(pdColor)
+                if(pdColor) {
+                    if(pdColor) it.setColor(pdColor)
+                } else {
+                    if(pdTemp) it.setColorTemperature(pdTemp)
                 }
             }
         }
@@ -2699,8 +2725,10 @@ def permanentDimHandler() {
             if(it.hasCommand('setLevel')) {
                 if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl2} - Color: ${pdColor2}"
                 it.setLevel(permanentDimLvl2)
-                if(it.hasCommand('setColor') && pdColor2) {
-                    if(pdColor2 != "No Change") it.setColor(pdColor2)
+                if(pdColor2) {
+                    if(pdColor2) it.setColor(pdColor2)
+                } else {
+                    if(pdTemp2) it.setColorTemperature(pdTemp2)
                 }
             }
         }
@@ -3033,16 +3061,17 @@ def messageHandler() {
             if(state.setpointHighOK == "no") theMessage = "${messageH}"
             if(state.setpointLowOK == "no") theMessage = "${messageL}"
         } else {
-            if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${message}"
-            def values = "${message}".split(";")
-            vSize = values.size()
-            count = vSize.toInteger()
-            def randomKey = new Random().nextInt(count)
-            theMessage = values[randomKey]
-            if(logEnable && logSize) log.debug "In messageHandler - Random - theMessage: ${theMessage}" 
+            theMessage = message
         }
+        if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${theMessage}"
+        def values = "${theMessage}".split(";")
+        vSize = values.size()
+        count = vSize.toInteger()
+        def randomKey = new Random().nextInt(count)
+        msg1 = values[randomKey]
+        if(logEnable && logSize) log.debug "In messageHandler - Random - msg1: ${msg1}" 
     }
-    state.message = theMessage
+    state.message = msg1
 
     if(state.message) { 
         if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
