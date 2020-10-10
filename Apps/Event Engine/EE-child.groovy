@@ -2676,7 +2676,9 @@ def permanentDimHandler() {
         setOnLC.each { it ->
             if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
             it.setLevel(permanentDimLvl)
-            if(it.hasCommand('setColor') && pdColor) it.setColor(pdColor)
+            if(it.hasCommand('setColor') && pdColor) {
+                if(pdColor != "No Change") it.setColor(pdColor)
+            }
         }
     }
 
@@ -2685,7 +2687,9 @@ def permanentDimHandler() {
             if(it.hasCommand('setLevel')) {
                 if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl} - Color: ${pdColor}"
                 it.setLevel(permanentDimLvl)
-                if(it.hasCommand('setColor') && pdColor) it.setColor(pdColor)
+                if(it.hasCommand('setColor') && pdColor) {
+                    if(pdColor != "No Change") it.setColor(pdColor)
+                }
             }
         }
     }
@@ -2695,7 +2699,9 @@ def permanentDimHandler() {
             if(it.hasCommand('setLevel')) {
                 if(logEnable) log.debug "In permanentDimHandler - Set Level on ${it} to ${permanentDimLvl2} - Color: ${pdColor2}"
                 it.setLevel(permanentDimLvl2)
-                if(it.hasCommand('setColor') && pdColor2) it.setColor(pdColor2)
+                if(it.hasCommand('setColor') && pdColor2) {
+                    if(pdColor2 != "No Change") it.setColor(pdColor2)
+                }
             }
         }
     }
