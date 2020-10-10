@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.4 - 10/10/20 - Added Color Temp option to Dimmers to Set
 *  2.0.3 - 10/10/20 - Reworked color and temp for Permanent Dim
 *  2.0.2 - 10/10/20 - Fixed messages, added color Temp to Permanent Dim
 *  2.0.1 - 10/10/20 - Added color option to Permanent Dim
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.3"
+    state.version = "2.0.4"
 }
 
 definition(
@@ -710,8 +711,8 @@ def pageConfig() {
                         app.removeSetting("peSetPointLow")
                     }
 
-                    if(peSetPointHigh) paragraph "You will receive notifications if Power reading is above ${peSetPointHigh}"
-                    if(peSetPointLow) paragraph "You will receive notifications if Power reading is below ${peSetPointLow}"
+                    if(setPEPointHigh) paragraph "You will receive notifications if Power reading is above ${peSetPointHigh}"
+                    if(setPEPointLow) paragraph "You will receive notifications if Power reading is below ${peSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh} ${peSetPointHigh}, setpoint Low: ${setPEPointLow} ${peSetPointLow}<br>"
@@ -1260,25 +1261,30 @@ def pageConfig() {
                 } else {
                     state.theCogActions -= "<b>-</b> Switches to Toggle: ${switchesToggleAction}<br>"
                 }
-                input "switchesLCAction", "bool", title: "Turn Light On, Set Level and/or Color", description: "Light OLC", defaultValue:false, submitOnChange:true
-                if(switchesLCAction) {
-                    input "setOnLC", "capability.switchLevel", title: "Select dimmer to set", required:false, multiple:true
+                paragraph "<hr>"
+                input "setOnLC", "capability.switchLevel", title: "Dimmer to set", required:false, multiple:true
+                if(setOnLC) {
                     input "levelLC", "number", title: "On Level (1 to 99)", required:false, multiple:false, defaultValue: 99, range: '1..99'
-                    input "colorLC", "enum", title: "Color", required:false, multiple:false, options: [
-                        ["No Change":"Keep Current Color"],
-                        ["Soft White":"Soft White - Default"],
-                        ["White":"White - Concentrate"],
-                        ["Daylight":"Daylight - Energize"],
-                        ["Warm White":"Warm White - Relax"],
-                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
-                    state.theCogActions += "<b>-</b> Turn Light On, Set Level and/or Color: ${switchesLCAction} - Dimmers: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC}<br>"   
+                    input "lcColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                    if(lcColorTemp) {
+                        input "tempLC", "number", title: "Color Temperature", submitOnChange:true
+                        app.removeSetting("colorLC")
+                    } else {
+                        input "colorLC", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
+                            ["Soft White":"Soft White - Default"],
+                            ["White":"White - Concentrate"],
+                            ["Daylight":"Daylight - Energize"],
+                            ["Warm White":"Warm White - Relax"],
+                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                        app.removeSetting("tempLC")
+                    }
+                    state.theCogActions += "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"   
                 } else {
                     state.theCogActions -= "<b>-</b> Switches to Toggle: ${switchesToggleAction}<br>"
-                    state.theCogActions -= "<b>-</b> Turn Light On, Set Level and/or Color: ${switchesLCAction} - Dimmers: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC}<br>"
+                    state.theCogActions -= "<b>-</b> Dimmers to Set: ${setOnLC} - On Level: ${levelLC} - Color: ${colorLC} - Temp: ${tempLC}<br>"
                     app.removeSetting("setOnLC")
                     app.removeSetting("levelLC")
                     app.removeSetting("colorLC")
-                    app?.updateSetting("switchesLCAction",[value:"false",type:"bool"])
                 }
                 input "switchedDimUpAction", "bool", defaultValue:false, title: "Slowly Dim Lighting UP", description: "Dim Up", submitOnChange:true, width:6
                 input "switchedDimDnAction", "bool", defaultValue:false, title: "Slowly Dim Lighting DOWN", description: "Dim Down", submitOnChange:true, width:6
@@ -1349,9 +1355,9 @@ def pageConfig() {
                 app.removeSetting("switchesOnAction")
                 app.removeSetting("switchesOffAction")
                 app.removeSetting("switchesToggleAction")
-                app.removeSetting("switchesLCAction")
                 app?.updateSetting("switchedDimUpAction",[value:"false",type:"bool"])
                 app?.updateSetting("switchedDimDnAction",[value:"false",type:"bool"])
+                app?.updateSetting("lcColorTemp",[value:"false",type:"bool"])
             }
 
             if(actionType.contains("aThermostat")) {
@@ -1401,7 +1407,7 @@ def pageConfig() {
             }      
         
             // Reverse Options
-            if(switchesOnAction || switchesOffAction || switchesLCAction || contactOpenAction) {
+            if(switchesOnAction || switchesOffAction || setOnLC || contactOpenAction) {
                 if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                     paragraph "<b><small>Please choose only ONE of the following:</b></small>"
                     input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
@@ -1439,7 +1445,7 @@ def pageConfig() {
                     state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
                     state.theCogActions -= "<b>-</b> Reverse: ${delayReverse} minute(s), after Conditions become false<br>"
                 }
-                if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || switchesLCAction)){
+                if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC)){
                     paragraph "<hr>"
                     paragraph "If a light has been turned on, Reversing it will turn it off. But with the Permanent Dim option, the light can be Dimmed to a set level and/or color instead!"
                     input "permanentDim", "bool", title: "Use Permanent Dim instead of Off", defaultValue:false, submitOnChange:true
@@ -1895,7 +1901,7 @@ def startTheProcess(evt) {
                             if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
                             if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
                             if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesLCAction) { dimmerOnActionHandler() }
+                            if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
                             if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
                             if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() } 
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
@@ -1936,8 +1942,8 @@ def startTheProcess(evt) {
                         if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesLCAction && permanentDim) { permanentDimHandler() }
-                        if(actionType.contains("aSwitch") && switchesLCAction && !permanentDim) { dimmerOnReverseActionHandler() }
+                        if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
+                        if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }
                         if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                             if(actionType.contains("aNotification")) { 
                                 messageHandler() 
@@ -2365,7 +2371,7 @@ def setpointHandler() {
             setpointRollingAverageHandler(maxReadingSize)
             if(state.theAverage >= 0) setpointValue = state.theAverage
         }
-        if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
+        //if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
         if(state.setpointHigh && state.setpointLow) {
             int setpointLow = state.setpointLow
             int setpointHigh = state.setpointHigh
@@ -2380,20 +2386,22 @@ def setpointHandler() {
         } else if(state.setpointHigh) {
             int setpointHigh = state.setpointHigh
             if(setpointValue >= setpointHigh) {  // bad
-                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh}"
+                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
                 state.setpointHighOK = "no"
                 state.setpointOK = true
             } else {
+                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
                 state.setpointHighOK = "yes"
                 state.setpointOK = false
             }
         } else if(state.setpointLow) {
             int setpointLow = state.setpointLow
             if(setpointValue < setpointLow) {  // bad
-                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow}"
+                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
                 state.setpointLowOK = "no"
                 state.setpointOK = true
             } else {
+                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
                 state.setpointHighOK = "yes"
                 state.setpointOK = false
             }
@@ -2630,7 +2638,7 @@ def dimmerOnActionHandler() {
 }
 
 def dimmerOnReverseActionHandler() {
-    if(switchesLCAction) {
+    if(setOnLC) {
         setOnLC.each { it ->
             currentONOFF = it.currentValue("switch")
             if(currentONOFF == "on") {
@@ -2693,7 +2701,7 @@ def dimmerOnReverseActionHandler() {
 }
 
 def permanentDimHandler() {
-    if(switchesLCAction) {
+    if(setOnLC) {
         if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl} - Color: ${pdColor} - Temp: ${pdTemp}"
         state.onLevel = permanentDimLvl
         state.color = pdColor
@@ -3065,11 +3073,9 @@ def messageHandler() {
         if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
         if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
         if(logEnable) log.debug "In messageHandler - message: ${state.message}"
-        msg = state.message
-        if(msg == "null" || msg == "") msg == null
-        if(msg) {
-            if(useSpeech) letsTalk(msg)
-            if(sendPushMessage) pushHandler(msg)
+        if(state.message && state.message != "null") {
+            if(useSpeech) letsTalk(state.message)
+            if(sendPushMessage) pushHandler(state.message)
         }
     }
 }
@@ -3328,8 +3334,14 @@ def setLevelandColorHandler() {
                     state.setOldMap = true
                     if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 }
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
-                it.setColor(value)
+                if(lcColorTemp) {
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - $it.displayName, setColorTemp($tempLC)"
+                    it.setLevel(onLevel as Integer ?: 99)
+                    it.setColorTemperature(tempLC)
+                } else {
+                    if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
+                    it.setColor(value)
+                }
             } else if (it.hasCommand('setLevel')) {
                 if(state.setOldMap == false) {
                     state.oldLevelMap = [:]
