@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 10/11/20 - Adjustments to Maint Time
  *  1.1.4 - 09/24/20 - Fixed enable/disable, 
  *  1.1.3 - 09/01/20 - Changes for only 40 data points
  *  1.1.2 - 08/30/20 - lots of cosmetic updates
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -288,21 +289,26 @@ def startTimeHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In startTimeHandler (${state.version})"
-        cStatus = watchDevice.currentValue("switch")
-        if(cStatus == "on") {
-            prevLastActivity = watchDevice.getLastActivity()
-            if(logEnable) log.debug "In startTimeHandler - prevLastActivity: ${prevLastActivity}" 
-            long unxPrev = prevLastActivity.getTime()
-            unxPrev = unxPrev
-            state.unxPrev = unxPrev
-            state.testInProgress = "yes"
+        maintHandler()
+        if(isMaintTime) {
+            if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
         } else {
-            if(logEnable) log.debug "In startTimeHandler - Device wasn't on! - device: ${cStatus}"
+            if(logEnable) log.debug "In startTimeHandler (${state.version})"
+            cStatus = watchDevice.currentValue("switch")
+            if(cStatus == "on") {
+                prevLastActivity = watchDevice.getLastActivity()
+                if(logEnable) log.debug "In startTimeHandler - prevLastActivity: ${prevLastActivity}" 
+                long unxPrev = prevLastActivity.getTime()
+                unxPrev = unxPrev
+                state.unxPrev = unxPrev
+                state.testInProgress = "yes"
+            } else {
+                if(logEnable) log.debug "In startTimeHandler - Device wasn't on! - device: ${cStatus}"
+            }
+            if(logEnable) log.debug "In startTimeHandler - Turning device off AFTER 5 seconds"
+            pauseExecution(5000)
+            watchDevice.off()
         }
-        if(logEnable) log.debug "In startTimeHandler - Turning device off AFTER 5 seconds"
-        pauseExecution(5000)
-        watchDevice.off()
     }
 }
     
@@ -311,18 +317,23 @@ def endTimeHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(logEnable) log.debug "In endTimeHandler (${state.version})"
-        cStatus = watchDevice.currentValue("switch")
-        if(cStatus == "off" && state.testInProgress == "yes") {
-            newLastActivity = watchDevice.getLastActivity()
-            if(logEnable) log.debug "In startTimeHandler - newLastActivity: ${newLastActivity}"  
-            long timeDiff
-            long unxNow = newLastActivity.getTime()
-            unxNow = unxNow
-            state.unxNow = unxNow
-            runIn(1, lookingAtData)
+        maintHandler()
+        if(isMaintTime) {
+            if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
         } else {
-            if(logEnable) log.debug "In endTimeHandler - Device wasn't off or testInProgress was no! - device: ${cStatus} - testInProgress: ${state.testInProgress}"
+            if(logEnable) log.debug "In endTimeHandler (${state.version})"
+            cStatus = watchDevice.currentValue("switch")
+            if(cStatus == "off" && state.testInProgress == "yes") {
+                newLastActivity = watchDevice.getLastActivity()
+                if(logEnable) log.debug "In startTimeHandler - newLastActivity: ${newLastActivity}"  
+                long timeDiff
+                long unxNow = newLastActivity.getTime()
+                unxNow = unxNow
+                state.unxNow = unxNow
+                runIn(1, lookingAtData)
+            } else {
+                if(logEnable) log.debug "In endTimeHandler - Device wasn't off or testInProgress was no! - device: ${cStatus} - testInProgress: ${state.testInProgress}"
+            }
         }
     }
 }
