@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.5 - 10/11/20 - Attempt to fix an error with PD
 *  2.0.4 - 10/10/20 - Added Color Temp option to Dimmers to Set
 *  2.0.3 - 10/10/20 - Reworked color and temp for Permanent Dim
 *  2.0.2 - 10/10/20 - Fixed messages, added color Temp to Permanent Dim
@@ -52,9 +53,13 @@ import hubitat.helper.RMUtils
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 
+import javax.mail.*
+import javax.mail.internet.*
+
+
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.4"
+    state.version = "2.0.5"
 }
 
 definition(
@@ -3393,12 +3398,12 @@ def setLevelandColorHandler() {
     }
     
     if(state.fromWhere == "permanentDimHandler") {
-        def value = [hue: hueColor, saturation: saturation, level: onLevel]
         setOnLC.each {
-            if(pdColor) {
+            if(pdColor && it.hasCommand('setColor')) {
+                def value = [hue: hueColor, saturation: saturation, level: onLevel]
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor ($value)"
                 it.setColor(value)
-            } else if(pdTemp) {
+            } else if(pdTemp && it.hasCommand('setColor')) {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp ($pdTemp)"
                 it.setColorTemperature(pdTemp)
             } else {
