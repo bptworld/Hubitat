@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.4 - 10/11/20 - Added vertical text-align
  *  2.4.3 - 10/06/20 - Adjustments
  *  2.4.2 - 09/28/20 - Adjustments
  *  2.4.1 - 07/30/20 - Fixed a typo, added todays Sunset/Sunrise to wildcards
@@ -47,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.3"
+	state.version = "2.4.4"
 }
 
 definition(
@@ -321,7 +322,8 @@ def pageConfig() {
                         overrideGlobal1 = app."overrideGlobal_$x"
                         if(!overrideGlobal1) {
                             input "align_$x", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
-                            input "color_$x", "text", title: "Text Color - ie. Default, Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true,width: 6
+                            input "vAlign_$x", "enum", title: "Vertical Alignment", required: true, multiple: false, options: ["Baseline","Top","Bottom"], defaultValue: "Baseline", submitOnChange: true, width: 6
+                            input "color_$x", "text", title: "Text Color - ie. Default, Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true,width: 12
                             input "fontSize_$x", "number", title: "Font Size (0 = Default)", required: true, defaultValue: "0", submitOnChange: true, width:4
                             input "italic_$x", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:4
                             input "bold_$x", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:4
@@ -534,7 +536,8 @@ def pageConfig() {
                         overrideGlobal1a = app."overrideGlobala_$x"
                         if(!overrideGlobal1a) {
                             input "aligna_$x", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
-                            input "colora_$x", "text", title: "Text Color - ie. Default, Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true, width: 6
+                            input "vAligna_$x", "enum", title: "Vertical Alignment", required: true, multiple: false, options: ["Baseline","Top","Bottom"], defaultValue: "Baseline", submitOnChange: true, width: 6
+                            input "colora_$x", "text", title: "Text Color - ie. Default, Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true, width: 12
                             input "fontSizea_$x", "number", title: "Font Size (0 = Default)", required: true, defaultValue: "0", submitOnChange: true, width:4
                             input "italica_$x", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:4
                             input "bolda_$x", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:4
@@ -745,7 +748,8 @@ def pageConfig() {
                         overrideGlobal1b = app."overrideGlobalb_$x"
                         if(!overrideGlobal1b) {
                             input "alignb_$x", "enum", title: "Alignment", required: true, multiple: false, options: ["Left","Center","Right"], defaultValue: "Left", submitOnChange: true, width: 6
-                            input "colorb_$x", "text", title: "Text Color - ie. Default, Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true, width: 6
+                            input "vAlignb_$x", "enum", title: "Vertical Alignment", required: true, multiple: false, options: ["Baseline","Top","Bottom"], defaultValue: "Baseline", submitOnChange: true, width: 6
+                            input "colorb_$x", "text", title: "Text Color - ie. Default, Black, Blue, Brown, Green, Orange, Red, Yellow, White", required: true, defaultValue: "Default", submitOnChange: true, width: 12
                             input "fontSizeb_$x", "number", title: "Font Size (0 = Default)", required: true, defaultValue: "0", submitOnChange: true, width:4
                             input "italicb_$x", "bool", defaultValue: "false", title: "Italic", description: "italic", submitOnChange: true, width:4
                             input "boldb_$x", "bool", defaultValue: "false", title: "Bold", description: "bold", submitOnChange: true, width:4
@@ -993,7 +997,7 @@ def doTheLineCopy() {
             if(name.contains("italic") || name.contains("bold") || name.contains("controlDevices") || name.contains("hideAttr") || name.contains("useBitly") || name.contains("useColors") || name.contains("textORnumber") || name.contains("valueOrCell") || name.contains("useColorsBEF") || name.contains("useColorsAFT")) { 
                 app.updateSetting("${newName}",[type:"bool",value:nameValue])
                 if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: bool"
-            } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align") || name.contains("ipORcloud")) {
+            } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align") || name.contains("vAlign") || name.contains("ipORcloud")) {
                 app.updateSetting("${newName}",[type:"enum",value:nameValue])
                 if(logEnable) log.info "In doTheLineCopy - newName: ${newName} - nameValue: ${nameValue} - type: enum"                 
             } else if(name.contains("device_") && !name.contains("tileDevice")) {
@@ -1065,7 +1069,8 @@ def removeExtraLines() {
             app.removeSetting("bControlUnLock_$d"); app.removeSetting("bControlUnLocka_$d"); app.removeSetting("bControlUnLockb_$d")
 
             app.removeSetting("overrideGlobal_$d"); app.removeSetting("overrideGlobala_$d"); app.removeSetting("overrideGlobalb_$d")        
-            app.removeSetting("align_$d"); app.removeSetting("aligna_$d"); app.removeSetting("alignb_$d")        
+            app.removeSetting("align_$d"); app.removeSetting("aligna_$d"); app.removeSetting("alignb_$d")  
+            app.removeSetting("vAlign_$d"); app.removeSetting("vAligna_$d"); app.removeSetting("vAlignb_$d")
             app.removeSetting("color_$d"); app.removeSetting("colora_$d"); app.removeSetting("colorb_$d")      
             app.removeSetting("fontSize_$d"); app.removeSetting("fontSizea_$d"); app.removeSetting("fontSizeb_$d")
             app.removeSetting("italic_$d"); app.removeSetting("italica_$d"); app.removeSetting("italicb_$d")
@@ -1129,7 +1134,7 @@ def doTheTileCopy(newSettings) {    // and finally the parent app send the setti
                 if(name.contains("italic") || name.contains("bold") || name.contains("controlDevices") || name.contains("hideAttr") || name.contains("useBitly") || name.contains("useColors") || name.contains("textORnumber") || name.contains("valueOrCell") || name.contains("useColorsBEF") || name.contains("useColorsAFT") || name.contains("secGlobal") || name.contains("overrideGlobal")) { 
                     app.updateSetting("${name}",[type:"bool",value:nameValue])
                     if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: bool"
-                } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align")) {
+                } else if(name.contains("useWhichIcon1") || name.contains("useWhichIcon2") || name.contains("useWhichIcon3") || name.contains("nSections") || name.contains("decoration") || name.contains("align") || name.contains("vAlign")) {
                     app.updateSetting("${name}",[type:"enum",value:nameValue])
                     if(logEnable) log.info "In doTheLineCopy - name: ${name} - nameValue: ${nameValue} - type: enum"
                 } else if(name.contains("howManyLines") || name.contains("secWidth")) {
@@ -1445,6 +1450,7 @@ def tileHandler(evt){
         styleGlobalb = app."overrideGlobalb_$y"
 
         align = app."align_$y"
+        vAlign = app."vAlign_$y"
         color = app."color_$y"
         fontSize = app."fontSize_$y"
         italic = app."italic_$y"
@@ -1468,6 +1474,7 @@ def tileHandler(evt){
         if(useBitly && deviceAtts == "lock") controlOff = app."bControlUnlock_$y"
         
         aligna = app."aligna_$y"
+        vAligna = app."vAligna_$y"
         colora = app."colora_$y"
         fontSizea = app."fontSizea_$y"
         italica = app."italica_$y"
@@ -1491,6 +1498,7 @@ def tileHandler(evt){
         if(useBitlya && deviceAttsa == "lock") controlOffa = app."bControlUnlocka_$y"
         
         alignb = app."alignb_$y"
+        vAlignb = app."vAlignb_$y"
         colorb = app."colorb_$y"
         fontSizeb = app."fontSizeb_$y"
         italicb = app."italicb_$y"
@@ -1525,6 +1533,7 @@ def tileHandler(evt){
         
         sec1Style = ""
         if(align) sec1Style += "text-align:${align};"
+        if(vAlign != "Baseline") sec1Style += "vertical-align:${vAlign};"
         if(color != "Default") sec1Style += "color:${color};"
         if(fontSize != 0) sec1Style += "font-size:${fontSize}px;"
         if(italic) sec1Style += "font-style:italic;"
@@ -1534,6 +1543,7 @@ def tileHandler(evt){
         
         sec2Style = ""
         if(aligna) sec2Style += "text-align:${aligna};"
+        if(vAligna != "Baseline") sec1Style += "vertical-align:${vAligna};"
         if(colora != "Default") sec2Style += "color:${colora};"
         if(fontSizea != 0) sec2Style += "font-size:${fontSizea}px;"
         if(italica) sec2Style += "font-style:italic;"
@@ -1543,6 +1553,7 @@ def tileHandler(evt){
         
         sec3Style = ""
         if(alignb) sec3Style += "text-align:${alignb};"
+        if(vAlignb != "Baseline") sec1Style += "vertical-align:${vAlignb};"
         if(colorb != "Default") sec3Style += "color:${colorb};"
         if(fontSizeb != 0) sec3Style += "font-size:${fontSizeb}px;"
         if(italicb) sec3Style += "font-style:italic;"
