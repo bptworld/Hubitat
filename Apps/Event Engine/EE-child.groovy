@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.6 - 10/11/20 - Fixed typo with setpoint Low
 *  2.0.5 - 10/11/20 - Attempt to fix an error with PD
 *  2.0.4 - 10/10/20 - Added Color Temp option to Dimmers to Set
 *  2.0.3 - 10/10/20 - Reworked color and temp for Permanent Dim
@@ -53,13 +54,9 @@ import hubitat.helper.RMUtils
 import groovy.time.TimeCategory
 import java.text.SimpleDateFormat
 
-import javax.mail.*
-import javax.mail.internet.*
-
-
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.5"
+    state.version = "2.0.6"
 }
 
 definition(
@@ -2407,7 +2404,7 @@ def setpointHandler() {
                 state.setpointOK = true
             } else {
                 if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
-                state.setpointHighOK = "yes"
+                state.setpointLowOK = "yes"
                 state.setpointOK = false
             }
         }
