@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.7 - 10/11/20 - Fix for CT bulbs
 *  2.0.6 - 10/11/20 - Fixed typo with setpoint Low
 *  2.0.5 - 10/11/20 - Attempt to fix an error with PD
 *  2.0.4 - 10/10/20 - Added Color Temp option to Dimmers to Set
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.6"
+    state.version = "2.0.7"
 }
 
 definition(
@@ -2676,15 +2677,32 @@ def dimmerOnReverseActionHandler() {
                     } catch(e) {
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Something went wrong"
                     }
+                } else if(it.hasCommand("setColorTemperature")) {
+                    name = (it.displayName).replace(" ","")
+                    try {
+                        data = state.oldLevelMap.get(name)
+                        def (oldStatus, oldLevel, oldTemp) = data.split("::")
+                        int level = oldLevel.toInteger()
+                        int cTemp = oldColorTemp.toInteger()
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp}"
+                        it.setLevel(level)
+                        it.setColorTemperature(cTemp)
+                        pauseExecution(1000)
+                        if(oldStatus == "off") {
+                            if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
+                            it.off()
+                        }
+                    } catch(e) {
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Something went wrong"
+                    }      
                 } else if(it.hasCommand("setLevel")) {
                     name = (it.displayName).replace(" ","")
                     try {
                         data = state.oldLevelMap.get(name)
                         def (oldStatus, oldLevel) = data.split("::")
                         int level = oldLevel.toInteger()
-                        def theValue = [level: level]
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
-                        it.setLevel(theValue)
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level}"
+                        it.setLevel(level)
                         pauseExecution(1000)
                         if(oldStatus == "off") {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
@@ -3336,14 +3354,20 @@ def setLevelandColorHandler() {
                     state.setOldMap = true
                     if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 }
-                if(lcColorTemp) {
-                    if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - $it.displayName, setColorTemp($tempLC)"
-                    it.setLevel(onLevel as Integer ?: 99)
-                    it.setColorTemperature(tempLC)
-                } else {
-                    if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
-                    it.setColor(value)
-                }
+                if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
+                it.setColor(value)
+            } else if(it.hasCommand('setColorTemperature')) {
+                state.oldLevelMap = [:]
+                oldLevel = it.currentValue("level")
+                oldColorTemp = it.currentValue("colorTemperature")
+                name = (it.displayName).replace(" ","")
+                status = it.currentValue("switch")
+                oldStatus = "${status}::${oldLevel}::${oldColorTemp}"
+                state.oldLevelMap.put(name,oldStatus)
+                state.setOldMap = true
+                if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - $it.displayName, setColorTemp($tempLC)"
+                it.setLevel(onLevel as Integer ?: 99)
+                it.setColorTemperature(tempLC)
             } else if (it.hasCommand('setLevel')) {
                 if(state.setOldMap == false) {
                     state.oldLevelMap = [:]
