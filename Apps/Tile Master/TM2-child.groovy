@@ -32,7 +32,7 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
- *
+ *  2.4.5 - 10/12/20 - Typio
  *  2.4.4 - 10/11/20 - Added vertical text-align
  *  2.4.3 - 10/06/20 - Adjustments
  *  2.4.2 - 09/28/20 - Adjustments
@@ -48,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.4"
+	state.version = "2.4.5"
 }
 
 definition(
@@ -1543,7 +1543,7 @@ def tileHandler(evt){
         
         sec2Style = ""
         if(aligna) sec2Style += "text-align:${aligna};"
-        if(vAligna != "Baseline") sec1Style += "vertical-align:${vAligna};"
+        if(vAligna != "Baseline") sec2Style += "vertical-align:${vAligna};"
         if(colora != "Default") sec2Style += "color:${colora};"
         if(fontSizea != 0) sec2Style += "font-size:${fontSizea}px;"
         if(italica) sec2Style += "font-style:italic;"
@@ -1553,7 +1553,7 @@ def tileHandler(evt){
         
         sec3Style = ""
         if(alignb) sec3Style += "text-align:${alignb};"
-        if(vAlignb != "Baseline") sec1Style += "vertical-align:${vAlignb};"
+        if(vAlignb != "Baseline") sec3Style += "vertical-align:${vAlignb};"
         if(colorb != "Default") sec3Style += "color:${colorb};"
         if(fontSizeb != 0) sec3Style += "font-size:${fontSizeb}px;"
         if(italicb) sec3Style += "font-style:italic;"
