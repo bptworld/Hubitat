@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.8 - 10/12/20 - Added Fan Control to Actions, Fixed typo in LockHandler
 *  2.0.7 - 10/11/20 - Fix for CT bulbs
 *  2.0.6 - 10/11/20 - Fixed typo with setpoint Low
 *  2.0.5 - 10/11/20 - Attempt to fix an error with PD
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.7"
+    state.version = "2.0.8"
 }
 
 definition(
@@ -1095,6 +1096,7 @@ def pageConfig() {
         state.theCogActions = "<b><u>Actions</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
             input "actionType", "enum", title: "Actions to Perform", options: [
+                ["aFan":"Fan Control"],
                 ["aGarageDoor":"Garage Doors"],
                 ["aHSM":"Hubitat Safety Monitor"],
                 ["aLock":"Locks"],
@@ -1102,13 +1104,26 @@ def pageConfig() {
                 ["aNotification":"Notifications (speech/push/flash)"], 
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
-                ["aSwitch":"Switch Devices"],
+                ["aSwitch":"Switches"],
                 ["aThermostat":"Thermostat"],
                 ["aValve":"Valves"],
                 ["aVirtualContact":"* Virtual Contact Sensor"]
             ], required:false, multiple:true, submitOnChange:true
             paragraph "<hr>"
             if(actionType == null) actionType = " "
+            
+            if(actionType.contains("aFan")) {
+                paragraph "<b>Fan Control</b>"
+                input "fanAction", "capability.fanControl", title: "Fan Devices", multiple:true, submitOnChange:true
+                input "fanSpeed", "enum", title: "Set Fan Speed", required:false, multiple:false, options: ["low","medium-low","medium","medium-high","high","on","off","auto"]
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Set Fan: ${fanAction} - speed: ${fanSpeed}<br>"
+            } else {
+                state.theCogActions -= "<b>-</b> Set Fan: ${fanAction} - speed: ${fanSpeed}<br>"
+                app.removeSetting("fanAction")
+                app.removeSetting("fanSpeed")
+            }
+
             if(actionType.contains("aGarageDoor")) {
                 paragraph "<b>Garage Door</b>"
                 input "garageDoorClosedAction", "capability.garageDoorControl", title: "Close Devices", multiple:true, submitOnChange:true
@@ -1410,7 +1425,7 @@ def pageConfig() {
             }      
         
             // Reverse Options
-            if(switchesOnAction || switchesOffAction || setOnLC || contactOpenAction) {
+            if(fanAction || switchesOnAction || switchesOffAction || setOnLC || contactOpenAction) {
                 if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                     paragraph "<b><small>Please choose only ONE of the following:</b></small>"
                     input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
@@ -1897,6 +1912,7 @@ def startTheProcess(evt) {
                         runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                     } else {
                         if(actionType) {
+                            if(actionType.contains("aFan")) { fanActionHandler() }
                             if(actionType.contains("aGarageDoor") && (garageDoorOpenAction || garageDoorClosedAction)) { garageDoorActionHandler() }
                             if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
                             if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
@@ -1941,6 +1957,7 @@ def startTheProcess(evt) {
                 } else {             
                     if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
                     if(actionType) {
+                        if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
@@ -2022,7 +2039,7 @@ def lockHandler() {
         state.type = lUnlockedLocked
         state.typeValue1 = "locked"
         state.typeValue2 = "unlocked"
-        state.typeAO = lockRANDOR
+        state.typeAO = lockANDOR
         devicesGoodHandler()
     }
 }
@@ -2091,31 +2108,9 @@ def devicesGoodHandler() {
     state.eventName.each { it ->
         theValue = it.currentValue("${state.eventType}").toString()
         if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
-
         if(theValue == state.typeValue1) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
-            if(state.eventType == "lock") {
-                if(!state.dText.contains("unlocked by")) {
-                    if(logEnable) log.trace "In devicesGoodHandler - Lock was manually locked, no notifications necessary"
-                } else {
-                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Lock"
-                    if(lockUser) {
-                        state.whoUnlocked = it.currentValue("lastCodeName")
-                        lockUser.each { us ->
-                            if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                            if(us == state.whoUnlocked) { 
-                                if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                                deviceTrue1 = deviceTrue1 + 1
-                            }
-                        }
-                    } else {
-                        deviceTrue1 = deviceTrue1 + 1
-                    }
-                }
-            } else {
-                if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 1"
-                deviceTrue1 = deviceTrue1 + 1
-            }
+            deviceTrue1 = deviceTrue1 + 1
         } else if(theValue == state.typeValue2) { 
             if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
@@ -2357,56 +2352,58 @@ def setpointHandler() {
     state.isThereSPDevices = true
     state.spName.each {
         spValue = it.currentValue("${state.spType}")
-        if(useWholeNumber) {
-            setpointValue = Math.round(spValue)
-        } else {
-            setpointValue = spValue.toDouble()
-        }
-        state.preSPV = setpointValue
-        int setpointValue = setpointValue
-        
-        if(setpointRollingAverage) {
-            if(state.readings == null) state.readings = []
-            state.readings.add(0,setpointValue)           
-            int maxReadingSize = state.spName.size() * numOfPoints
-            int readings = state.readings.size()            
-            if(readings > maxReadingSize) state.readings.removeAt(maxReadingSize)
-            setpointRollingAverageHandler(maxReadingSize)
-            if(state.theAverage >= 0) setpointValue = state.theAverage
-        }
-        //if(logEnable) log.debug "In setpointHandler - Working on: ${it} - setpointValue: ${setpointValue} - setpointLow: ${setpointLow} - setpointHigh: ${setpointHigh}"
-        if(state.setpointHigh && state.setpointLow) {
-            int setpointLow = state.setpointLow
-            int setpointHigh = state.setpointHigh
-            if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
-                if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
-                state.setpointBetweenOK = "no"
-                state.setpointOK = true
+        if(spValue) {
+            if(useWholeNumber) {
+                setpointValue = Math.round(spValue)
             } else {
-                state.setpointBetweenOK = "yes"
-                state.setpointOK = false
+                setpointValue = spValue.toDouble()
             }
-        } else if(state.setpointHigh) {
-            int setpointHigh = state.setpointHigh
-            if(setpointValue >= setpointHigh) {  // bad
-                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
-                state.setpointHighOK = "no"
-                state.setpointOK = true
-            } else {
-                if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
-                state.setpointHighOK = "yes"
-                state.setpointOK = false
+            state.preSPV = setpointValue
+            int setpointValue = setpointValue
+
+            if(setpointRollingAverage) {
+                if(state.readings == null) state.readings = []
+                state.readings.add(0,setpointValue)           
+                int maxReadingSize = state.spName.size() * numOfPoints
+                int readings = state.readings.size()            
+                if(readings > maxReadingSize) state.readings.removeAt(maxReadingSize)
+                setpointRollingAverageHandler(maxReadingSize)
+                if(state.theAverage >= 0) setpointValue = state.theAverage
             }
-        } else if(state.setpointLow) {
-            int setpointLow = state.setpointLow
-            if(setpointValue < setpointLow) {  // bad
-                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
-                state.setpointLowOK = "no"
-                state.setpointOK = true
-            } else {
-                if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
-                state.setpointLowOK = "yes"
-                state.setpointOK = false
+
+            if(state.setpointHigh && state.setpointLow) {
+                int setpointLow = state.setpointLow
+                int setpointHigh = state.setpointHigh
+                if(setpointValue <= setpointHigh && setpointValue > setpointLow) {
+                    if(logEnable) log.debug "In setpointHandler (Between) - Device: ${it}, Value: ${setpointValue} is BETWEEN setpointHigh: ${setpointHigh} and setpointLow: ${setpointLow}"
+                    state.setpointBetweenOK = "no"
+                    state.setpointOK = true
+                } else {
+                    state.setpointBetweenOK = "yes"
+                    state.setpointOK = false
+                }
+            } else if(state.setpointHigh) {
+                int setpointHigh = state.setpointHigh
+                if(setpointValue >= setpointHigh) {  // bad
+                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointHigh: ${setpointHigh} (Bad)"
+                    state.setpointHighOK = "no"
+                    state.setpointOK = true
+                } else {
+                    if(logEnable) log.debug "In setpointHandler (High) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointHigh: ${setpointHigh} (Good)"
+                    state.setpointHighOK = "yes"
+                    state.setpointOK = false
+                }
+            } else if(state.setpointLow) {
+                int setpointLow = state.setpointLow
+                if(setpointValue < setpointLow) {  // bad
+                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
+                    state.setpointLowOK = "no"
+                    state.setpointOK = true
+                } else {
+                    if(logEnable) log.debug "In setpointHandler (Low) - Device: ${it}, Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
+                    state.setpointLowOK = "yes"
+                    state.setpointOK = false
+                }
             }
         }
     }
@@ -2752,6 +2749,35 @@ def devicesToRefreshActionHandler() {
     devicesToRefresh.each { it ->
         if(logEnable) log.debug "In devicesToRefreshActionHandler - Refreshing ${it}"
         it.refresh()
+    }
+}
+
+def fanActionHandler() {
+    fanAction.each { it ->
+        if(logEnable) log.debug "In fanActionHandler - Changing ${it} to ${fanSpeed}"
+        if(state.setFanOldMap == false) {
+            state.oldFanMap = [:]
+            name = (it.displayName).replace(" ","")
+            status = it.currentValue("speed")
+            oldStatus = "${status}"
+            state.oldFanMap.put(name,oldStatus) 
+            state.setFanOldMap = true
+        }
+        log.warn "oldStatus: ${oldStatus}"
+        it.setSpeed(fanSpeed)
+    }
+}
+
+def fanReverseActionHandler() {
+    if(state.oldFanMap) {
+        fanAction.each { it ->
+            name = (it.displayName).replace(" ","")
+            data = state.oldFanMap.get(name)
+            def fanSpeed = data
+            if(logEnable) log.debug "In fanReverseActionHandler - Changing ${it} to ${fanSpeed}"
+            it.setSpeed(fanSpeed)
+            state.setFanOldMap = false
+        }
     }
 }
 
