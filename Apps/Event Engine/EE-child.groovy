@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.0.9 - 10/12/20 - Adjustments to Lock code
 *  2.0.8 - 10/12/20 - Added Fan Control to Actions, Fixed typo in LockHandler
 *  2.0.7 - 10/11/20 - Fix for CT bulbs
 *  2.0.6 - 10/11/20 - Fixed typo with setpoint Low
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.8"
+    state.version = "2.0.9"
 }
 
 definition(
@@ -135,8 +136,12 @@ def pageConfig() {
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
             if(triggerAndOr) {
                 paragraph "Cog will fire when <b>ANY</b> Condition is true"
+                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ALL</b> Condition are true<br>"
+                state.theCogTriggers += "<b>*</b> Cog will fire when <b>ANY</b> Condition is true<br>"
             } else {
                 paragraph "Cog will fire when <b>ALL</b> Conditions are true"
+                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ANY</b> Condition is true<br>"
+                state.theCogTriggers += "<b>*</b> Cog will fire when <b>ALL</b> Condition are true<br>"
             }
             paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
             paragraph "<hr>"
@@ -2109,14 +2114,12 @@ def devicesGoodHandler() {
         theValue = it.currentValue("${state.eventType}").toString()
         if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
         if(theValue == state.typeValue1) { 
-            if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
+            if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
             deviceTrue1 = deviceTrue1 + 1
         } else if(theValue == state.typeValue2) { 
-            if(logEnable && logSize) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
+            if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
             if(state.eventType == "lock") {
-                if(!state.dText.contains("unlocked by")) {
-                    if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
-                } else {
+                if(state.dText.contains("unlocked by")) {
                     if(lockUser) {
                         state.whoUnlocked = it.currentValue("lastCodeName")
                         lockUser.each { us ->
@@ -2127,8 +2130,12 @@ def devicesGoodHandler() {
                             }
                         }
                     } else {
+                        if(logEnable) log.trace "In devicesGoodHandler - No user selected, no notifications necessary"
                         deviceTrue2 = deviceTrue2 + 1
                     }
+                } else {
+                    if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
+                    deviceTrue2 = deviceTrue2 + 1
                 }
             } else {
                 if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
