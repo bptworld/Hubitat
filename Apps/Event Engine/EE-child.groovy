@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.1 - 10/14/20 - Adjustments to Thermostats
 *  2.1.0 - 10/14/20 - Typo
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.0"
+    state.version = "2.1.1"
 }
 
 definition(
@@ -863,10 +864,16 @@ def pageConfig() {
                 paragraph "<b>Thermostat</b>"
                 paragraph "Tracks the state of the thermostat. It will react if not in Idle. (ie. heating or cooling)"
                 input "thermoEvent", "capability.thermostat", title: "Thermostat to track", required:false, multiple:true, submitOnChange:true
+                input "thermoANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
+                if(thermoANDOR) {
+                    paragraph "Condition true when <b>any</b> Thermostat is true"
+                } else {
+                    paragraph "Condition true when <b>all</b> Thermostats are true"
+                }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Thermostat: ${thermoEvent}<br>"
+                state.theCogTriggers += "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Thermostat: ${thermoEvent}<br>"
+                state.theCogTriggers -= "<b>-</b> By Thermostat: ${thermoEvent} - ANDOR: ${thermoANDOR}<br>"
                 app.removeSetting("thermoEvent")
             }
 // -----------
@@ -2210,6 +2217,7 @@ def thermostatHandler() {
         state.otherName = thermoEvent
         state.otherType = "thermostat"
         state.otherValue = "thermostatOperatingState"
+        state.otherTypeAO = thermoANDOR
         otherHandler()
     }
     if(!state.isThereOthers) {  // Keep in LAST device
@@ -2223,27 +2231,42 @@ def thermostatHandler() {
 
 def otherHandler() {
     if(logEnable) log.debug "In otherHandler (${state.version})"
-    otherTrue = 0
+    state.otherTrue = 0
     state.isThereOthers = true
     try {
-        otherCount = state.otherName.size()
+        state.otherCount = state.otherName.size()
     } catch(e) {
-        otherCount = 1
+        state.otherCount = 1
     }
     state.otherName.each { other ->
         def otherName = other.displayName
         def otherStatus = other.currentValue(state.otherValue)
         if(otherStatus != "idle") {
-            otherTrue = otherTrue + 1
+            state.otherTrue = state.otherTrue + 1
             if(logEnable && logSize) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
         }
     }
-    if(otherTrue == otherCount) {
-        state.otherOK = true
-    } else {
-        state.otherOK = false
-    }
-    if(logEnable) log.debug "In otherHandler - ${state.otherType.toUpperCase()} - otherTrue: ${otherTrue} - otherCount: ${otherCount} - otherOK: ${state.otherOK}"
+    if(state.otherTypeAO) {  // OR (true)
+        if(state.otherTrue >= 1) {
+            if(logEnable) log.debug "In otherHandler - Using OR1"
+            state.otherOK = true
+            state.atLeastOneOtherOK = true
+        } else {
+            if(logEnable) log.debug "In otherHandler - Using OR2"
+            state.otherOK = false 
+        }
+    } else {  // AND (False)
+        if(state.otherTrue == state.otherCount) {
+            if(logEnable) log.debug "In otherHandler - Using AND1"
+            state.otherOK = true
+            state.atLeastOneOtherOK = true
+        } else {
+            if(logEnable) log.debug "In otherHandler - Using AND2"
+            state.otherOK = false 
+            if(state.otherTrue >= 1) state.atLeastOneOtherOK = true
+        }
+    }   
+    if(logEnable) log.debug "In otherHandler - ${state.otherType.toUpperCase()} - otherTrue: ${state.otherTrue} - otherCount: ${state.otherCount} - otherOK: ${state.otherOK}"
 }
 
 def ruleMachineHandler() {
@@ -2436,8 +2459,8 @@ def setpointRollingAverageHandler(data) {
 def checkingAndOr() {
     if(logEnable) log.debug "In checkingAndOr (${state.version})"  
     if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
-        if(state.atLeastOneDeviceOK || state.setpointOK || state.otherOK) {
+        if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - atLeastOneOtherOK: ${state.atLeastOneOtherOK}"
+        if(state.atLeastOneDeviceOK || state.atLeastOneOtherOK || state.setpointOK) {
             state.everythingOK = true
         } else {
             state.everythingOK = false
