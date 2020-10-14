@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.6 - 10/14/20 - More adjustments
  *  1.1.5 - 10/11/20 - Adjustments to Maint Time
  *  1.1.4 - 09/24/20 - Fixed enable/disable, 
  *  1.1.3 - 09/01/20 - Changes for only 40 data points
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Hub Watchdog"
-	state.version = "1.1.5"
+	state.version = "1.1.6"
 }
 
 definition(
@@ -261,16 +262,19 @@ def initialize() {
         if(triggerMode == "30_Min") runEvery30Minutes(testingDevice)
         if(triggerMode == "1_Hour") runEvery1Hour(testingDevice)
         if(triggerMode == "3_Hour") runEvery3Hours(testingDevice)
-    }
+        
+        maintHandler()
+        if(QfromTime) schedule(QfromTime, runAtTime1)
+        if(QtoTime) schedule(QtoTime, runAtTime2)
+    }   
 }
 
 def testingDevice() {  
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
-    } else {
-        maintHandler()
-        if(isMaintTime) {
+    } else {       
+        if(state.isMaintTime) {
             if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
         } else {
             if(logEnable) log.debug "In testingDevice (${state.version}) - Reseting device to off and waiting 5 seconds to continue"
@@ -289,8 +293,7 @@ def startTimeHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        maintHandler()
-        if(isMaintTime) {
+        if(state.isMaintTime) {
             if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
         } else {
             if(logEnable) log.debug "In startTimeHandler (${state.version})"
@@ -317,8 +320,7 @@ def endTimeHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        maintHandler()
-        if(isMaintTime) {
+        if(state.isMaintTime) {
             if(logEnable) log.debug "In testingDevice (${state.version}) - Maintenance Time - Testing will resume once outside this time window"
         } else {
             if(logEnable) log.debug "In endTimeHandler (${state.version})"
@@ -434,25 +436,36 @@ def pushNow(msg) {
 
 def maintHandler() {
 	if(logEnable) log.debug "In maintHandler (${state.version})"
-    isMaintTime = false
+    state.isMaintTime = false
     
 	if(QfromTime) {
         if(midnightCheckQ) {
             state.maintTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime)+1, new Date(), location.timeZone)
+            state.EndTime = (QtoTime)+1
         } else {
 		    state.maintTime = timeOfDayIsBetween(toDateTime(QfromTime), toDateTime(QtoTime), new Date(), location.timeZone)
+            state.EndTime = QtoTime
         }
     	if(state.maintTime) {
             if(logEnable) log.debug "In maintHandler - Time within range - Using Maint Time"
-    		isMaintTime = true
+    		state.isMaintTime = true
 		} else {
             if(logEnable) log.debug "In maintHandler - Time outside of range - Not using Maint Time"
-			isMaintTime = false
+			state.isMaintTime = false
 		}
 	} else {
         if(logEnable) log.debug "In maintHandler - NO Maint Time Specified"
 	}
-    return isMaintTime
+}
+
+def runAtTime1() {
+    if(logEnable) log.debug "In runAtTime1 (${state.version}) - ${app.label} - Start Time 1"
+    maintHandler()
+}
+
+def runAtTime2() {
+    if(logEnable) log.debug "In runAtTime2 (${state.version}) - ${app.label} - End Time 2"
+    maintHandler()
 }
 
 def appButtonHandler(buttonPressed) {
