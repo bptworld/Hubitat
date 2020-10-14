@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.2 - 10/14/20 - Another adjustment to Thermostats
 *  2.1.1 - 10/14/20 - Adjustments to Thermostats
 *  2.1.0 - 10/14/20 - Typo
 *  ---
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.1"
+    state.version = "2.1.2"
 }
 
 definition(
@@ -2233,6 +2234,7 @@ def otherHandler() {
     if(logEnable) log.debug "In otherHandler (${state.version})"
     state.otherTrue = 0
     state.isThereOthers = true
+    state.atLeastOneOtherOK = false
     try {
         state.otherCount = state.otherName.size()
     } catch(e) {
