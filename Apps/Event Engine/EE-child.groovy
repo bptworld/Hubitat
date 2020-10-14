@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.0.9 - 10/12/20 - Adjustments to Lock code
-*  2.0.8 - 10/12/20 - Added Fan Control to Actions, Fixed typo in LockHandler
-*  2.0.7 - 10/11/20 - Fix for CT bulbs
-*  2.0.6 - 10/11/20 - Fixed typo with setpoint Low
-*  2.0.5 - 10/11/20 - Attempt to fix an error with PD
-*  2.0.4 - 10/10/20 - Added Color Temp option to Dimmers to Set
-*  2.0.3 - 10/10/20 - Reworked color and temp for Permanent Dim
-*  2.0.2 - 10/10/20 - Fixed messages, added color Temp to Permanent Dim
-*  2.0.1 - 10/10/20 - Added color option to Permanent Dim
-*  2.0.0 - 10/08/20 - Added Virtual Contact Sensor to Actions
+*  2.1.0 - 10/14/20 - Typo
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.0.9"
+    state.version = "2.1.0"
 }
 
 definition(
@@ -2549,7 +2540,7 @@ def presenceRestrictionHandler() {
 }
 
 def switchRestrictionHandler() {
-    if(switchRestriction) {
+    if(switchRestrictionEvent) {
         state.rEventName = switchRestrictionEvent
         state.rEventType = "switch"
         state.rType = srOffOn
