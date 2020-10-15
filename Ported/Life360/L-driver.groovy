@@ -342,7 +342,7 @@ private extraInfo(address1, address2, battery, charge, distanceAway, endTimestam
         state.oldDistanceAway = distanceAway
         newAddress = address1
         oldAddress = device.currentValue('address1')
-        log.debug "oldAddress = $oldAddress | newAddress = $newAddress" 
+        if(logEnable) log.debug "oldAddress = $oldAddress | newAddress = $newAddress" 
         if(newAddress != oldAddress) {
             sendEvent(name: "address1prev", value: oldAddress)
             sendEvent(name: "address1", value: newAddress)
