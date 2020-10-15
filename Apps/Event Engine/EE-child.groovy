@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.3 - 10/14/20 - Code cleanup
 *  2.1.2 - 10/14/20 - Another adjustment to Thermostats
 *  2.1.1 - 10/14/20 - Adjustments to Thermostats
 *  2.1.0 - 10/14/20 - Typo
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.2"
+    state.version = "2.1.3"
 }
 
 definition(
@@ -1702,7 +1703,6 @@ def initialize() {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        setDefaults()
         if(startTime) schedule(startTime, startTheProcess)
         if(accelerationEvent) subscribe(accelerationEvent, "accelerationSensor", startTheProcess) 
         if(batteryEvent) subscribe(batteryEvent, "battery", startTheProcess)
@@ -1783,7 +1783,6 @@ def startTheProcess(evt) {
         state.restrictionMatch = 0
         state.isThereDevices = false
         state.isThereSPDevices = false
-        state.isThereOthers = false
         state.areRestrictions = false
         state.atLeastOneDeviceOK = false
         state.setpointLow = null
@@ -1844,10 +1843,8 @@ def startTheProcess(evt) {
                     if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
                     if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
                 }
-            }
-            
-            if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"
-            
+            }            
+            if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
             if(logEnable) log.debug "In startTheProcess - 1C - checkTime: ${state.betweenTime} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
             
             if(state.whatToDo == "stop" || skipToReverse) {
@@ -1860,6 +1857,7 @@ def startTheProcess(evt) {
                 motionHandler()
                 presenceHandler()
                 switchHandler()
+                thermostatHandler()
                 waterHandler()
 
                 batteryHandler()
@@ -1875,7 +1873,6 @@ def startTheProcess(evt) {
                 } else {
                     customDeviceHandler()
                 }
-                thermostatHandler()
                 
                 checkingAndOr()            
             }
@@ -1999,7 +1996,6 @@ def customDeviceHandler() {
         devicesGoodHandler()
     }
 }
-
 def accelerationHandler() {
     if(accelerationEvent) {
         state.eventName = accelerationEvent
@@ -2011,7 +2007,6 @@ def accelerationHandler() {
         devicesGoodHandler()
     }
 }
-
 def contactHandler() {
     if(contactEvent) {
         state.eventName = contactEvent
@@ -2023,7 +2018,6 @@ def contactHandler() {
         devicesGoodHandler()
     }
 }
-
 def garageDoorHandler() {
     if(garageDoorEvent) {
         state.eventName = garageDoorEvent
@@ -2035,7 +2029,6 @@ def garageDoorHandler() {
         devicesGoodHandler()
     }
 }
-
 def lockHandler() {
     if(lockEvent) {
         state.eventName = lockEvent
@@ -2047,7 +2040,6 @@ def lockHandler() {
         devicesGoodHandler()
     }
 }
-
 def motionHandler() {
     if(motionEvent) {
         state.eventName = motionEvent
@@ -2059,7 +2051,6 @@ def motionHandler() {
         devicesGoodHandler()
     }
 }
-
 def presenceHandler() {
     if(presenceEvent) {
         state.eventName = presenceEvent
@@ -2071,7 +2062,6 @@ def presenceHandler() {
         devicesGoodHandler()
     }
 }
-
 def switchHandler() {
     if(switchEvent) {
         state.eventName = switchEvent
@@ -2083,7 +2073,17 @@ def switchHandler() {
         devicesGoodHandler()
     }
 }
-
+def thermostatHandler() {
+    if(thermoEvent) {
+        state.eventName = thermoEvent
+        state.eventType = "thermostatOperatingState"
+        state.type = false
+        state.typeValue1 = "idle"
+        state.typeValue2 = "thermostatEvent"
+        state.typeAO = thermoANDOR
+        devicesGoodHandler()
+    }
+}
 def waterHandler() {
     if(waterEvent) {
         state.eventName = waterEvent
@@ -2104,9 +2104,7 @@ def devicesGoodHandler() {
     state.isThereDevices = true
     try {
         theCount = state.eventName.size()
-    } catch(e) {
-        theCount = 1
-    }
+    } catch(e) { theCount = 1 }
     state.count = state.count + theCount
     if(state.dText == null) state.dText = ""
     state.eventName.each { it ->
@@ -2141,7 +2139,14 @@ def devicesGoodHandler() {
                 deviceTrue2 = deviceTrue2 + 1
             }
         } else {
-            //log.warn "In devicesGoodHandler - Something Went Wrong - eventType: ${state.eventType} - theValue: ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
+            if(state.eventType == "thermostatOperatingState") {
+                if(theValue != "idle") {
+                    deviceTrue2 = deviceTrue2 + 1
+                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Thermostat - Working 2: Current Value: ${theValue}"
+                }
+            } else {
+                // next option
+            }
         }
     }
     if(state.type) {
@@ -2213,64 +2218,6 @@ def hsmStatusHandler(data) {
     if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus} - whatToDo: ${state.whatToDo}"
 }
 
-def thermostatHandler() {
-    if(thermoEvent) {
-        state.otherName = thermoEvent
-        state.otherType = "thermostat"
-        state.otherValue = "thermostatOperatingState"
-        state.otherTypeAO = thermoANDOR
-        otherHandler()
-    }
-    if(!state.isThereOthers) {  // Keep in LAST device
-        if(triggerAndOr) {
-            state.otherOK = false
-        } else {
-            state.otherOK = true
-        }
-    }
-}
-
-def otherHandler() {
-    if(logEnable) log.debug "In otherHandler (${state.version})"
-    state.otherTrue = 0
-    state.isThereOthers = true
-    state.atLeastOneOtherOK = false
-    try {
-        state.otherCount = state.otherName.size()
-    } catch(e) {
-        state.otherCount = 1
-    }
-    state.otherName.each { other ->
-        def otherName = other.displayName
-        def otherStatus = other.currentValue(state.otherValue)
-        if(otherStatus != "idle") {
-            state.otherTrue = state.otherTrue + 1
-            if(logEnable && logSize) log.debug "In otherHandler - Match Found - otherName: ${otherName} - otherStatus: ${otherStatus}"
-        }
-    }
-    if(state.otherTypeAO) {  // OR (true)
-        if(state.otherTrue >= 1) {
-            if(logEnable) log.debug "In otherHandler - Using OR1"
-            state.otherOK = true
-            state.atLeastOneOtherOK = true
-        } else {
-            if(logEnable) log.debug "In otherHandler - Using OR2"
-            state.otherOK = false 
-        }
-    } else {  // AND (False)
-        if(state.otherTrue == state.otherCount) {
-            if(logEnable) log.debug "In otherHandler - Using AND1"
-            state.otherOK = true
-            state.atLeastOneOtherOK = true
-        } else {
-            if(logEnable) log.debug "In otherHandler - Using AND2"
-            state.otherOK = false 
-            if(state.otherTrue >= 1) state.atLeastOneOtherOK = true
-        }
-    }   
-    if(logEnable) log.debug "In otherHandler - ${state.otherType.toUpperCase()} - otherTrue: ${state.otherTrue} - otherCount: ${state.otherCount} - otherOK: ${state.otherOK}"
-}
-
 def ruleMachineHandler() {
     if(logEnable) log.debug "In ruleMachineHandler - Rule: ${rmRule} - Action: ${rmAction}"
     RMUtils.sendAction(rmRule, rmAction, app.label)
@@ -2286,7 +2233,6 @@ def customSetpointHandler() {
         setpointHandler()
     }
 }
-
 def batteryHandler() {
     if(batteryEvent) {
         state.spName = batteryEvent
@@ -2296,7 +2242,6 @@ def batteryHandler() {
         setpointHandler()
     }
 }
-
 def energyHandler() {
     if(energyEvent) {
         state.spName = energyEvent
@@ -2306,7 +2251,6 @@ def energyHandler() {
         setpointHandler()
     }
 }
-
 def humidityHandler() {
     if(humidityEvent) {
         state.spName = humidityEvent
@@ -2316,7 +2260,6 @@ def humidityHandler() {
         setpointHandler()
     } 
 }
-
 def illuminanceHandler() {
     if(illuminanceEvent) {
         state.spName = illuminanceEvent
@@ -2326,7 +2269,6 @@ def illuminanceHandler() {
         setpointHandler()
     }
 }
-
 def powerHandler() {
     if(powerEvent) {
         state.spName = powerEvent
@@ -2336,7 +2278,6 @@ def powerHandler() {
         setpointHandler()
     }
 }
-
 def tempHandler() {
     if(tempEvent) {
         state.spName = tempEvent
@@ -2346,7 +2287,6 @@ def tempHandler() {
         setpointHandler()
     }
 }
-
 def voltageHandler() {
     if(voltageEvent) {
         state.spName = voltageEvent
@@ -2383,7 +2323,6 @@ def setpointHandler() {
             }
             state.preSPV = setpointValue
             int setpointValue = setpointValue
-
             if(setpointRollingAverage) {
                 if(state.readings == null) state.readings = []
                 state.readings.add(0,setpointValue)           
@@ -2393,7 +2332,6 @@ def setpointHandler() {
                 setpointRollingAverageHandler(maxReadingSize)
                 if(state.theAverage >= 0) setpointValue = state.theAverage
             }
-
             if(state.setpointHigh && state.setpointLow) {
                 int setpointLow = state.setpointLow
                 int setpointHigh = state.setpointHigh
@@ -2461,15 +2399,15 @@ def setpointRollingAverageHandler(data) {
 def checkingAndOr() {
     if(logEnable) log.debug "In checkingAndOr (${state.version})"  
     if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - atLeastOneOtherOK: ${state.atLeastOneOtherOK}"
-        if(state.atLeastOneDeviceOK || state.atLeastOneOtherOK || state.setpointOK) {
+        if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK}"
+        if(state.atLeastOneDeviceOK || state.setpointOK) {
             state.everythingOK = true
         } else {
             state.everythingOK = false
         }
     } else {
-        if(logEnable) log.debug "In checkingAndOr - USING AND - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - otherOK: ${state.otherOK}"
-        if(state.devicesOK && state.setpointOK && state.otherOK) {
+        if(logEnable) log.debug "In checkingAndOr - USING AND - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK}"
+        if(state.devicesOK && state.setpointOK) {
             state.everythingOK = true
         } else {
             state.everythingOK = false
@@ -2503,7 +2441,6 @@ def accelerationRestrictionHandler() {
         restrictionHandler()
     }
 }
-
 def contactRestrictionHandler() {
     if(contactRestrictionEvent) {
         state.rEventName = contactRestrictionEvent
@@ -2515,7 +2452,6 @@ def contactRestrictionHandler() {
         restrictionHandler()
     } 
 }
-
 def garageDoorRestrictionHandler() {
     if(garageDoorRestrictionEvent) {
         state.rEventName = garageDoorRestrictionEvent
@@ -2527,7 +2463,6 @@ def garageDoorRestrictionHandler() {
         restrictionHandler()
     } 
 }
-
 def lockRestrictionHandler() {
     if(lockRestrictionEvent) {
         state.rEventName = lockRestrictionEvent
@@ -2539,7 +2474,6 @@ def lockRestrictionHandler() {
         restrictionHandler()
     } 
 }
-
 def motionRestrictionHandler() {
     if(motionRestrictionEvent) {
         state.rEventName = motionRestrictionEvent
@@ -2551,7 +2485,6 @@ def motionRestrictionHandler() {
         restrictionHandler()
     }
 }
-
 def presenceRestrictionHandler() {
     if(presenceRestrictionEvent) {
         state.rEventName = presenceRestrictionEvent
@@ -2563,7 +2496,6 @@ def presenceRestrictionHandler() {
         restrictionHandler()
     }
 }
-
 def switchRestrictionHandler() {
     if(switchRestrictionEvent) {
         state.rEventName = switchRestrictionEvent
@@ -2575,7 +2507,6 @@ def switchRestrictionHandler() {
         restrictionHandler()
     }
 }
-
 def waterRestrictionHandler() {
     if(waterRestrictionEvent) {
         state.rEventName = waterRestrictionEvent
@@ -2748,7 +2679,6 @@ def permanentDimHandler() {
         state.fromWhere = "permanentDimHandler"
         setLevelandColorHandler()
     }
-
     if(switchesOnAction) {
         switchesOnAction.each { it ->
             if(it.hasCommand('setLevel')) {
@@ -2757,7 +2687,6 @@ def permanentDimHandler() {
             }
         }
     }
-
     if(switchesOffAction) {
         switchesOffAction.each { it ->
             if(it.hasCommand('setLevel')) {
@@ -3112,7 +3041,6 @@ def contactReverseActionHandler() {
         }
     }
 }
-
 // ********** End Actions **********
 
 def messageHandler() {
@@ -3134,7 +3062,6 @@ def messageHandler() {
         if(logEnable && logSize) log.debug "In messageHandler - Random - msg1: ${msg1}" 
     }
     state.message = msg1
-
     if(state.message) { 
         if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
         if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
@@ -3201,7 +3128,6 @@ def autoSunHandler() {
     if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
     if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
     if(logEnable && logSize) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
-    // check for new sunset/sunrise times every day at 12:05 pm
     schedule("0 5 12 ? * * *", autoSunHandler)
     schedule(state.timeSunset, runAtTime1)
     schedule(state.timeSunrise, runAtTime2)
@@ -3325,11 +3251,9 @@ def setLevelandColorHandler() {
         state.onLevel = state.highestLevel
     } else {
         state.onLevel = state.onLevel ?: 99
-    }
-    
+    }   
     if(state.color == null || state.color == "null" || state.color == "") state.color = "No Change"
     if(logEnable) log.debug "In setLevelandColorHandler - fromWhere: ${state.fromWhere}, color: ${state.color} - onLevel: ${state.onLevel}"
-
     switch(state.color) {
         case "No Change":
         hueColor = null
@@ -3376,7 +3300,6 @@ def setLevelandColorHandler() {
     int onLevel = state.onLevel
     if(saturation == null) saturation = 100
     if(logEnable && logSize) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
-
     if(state.fromWhere == "dimmerOn") {
         if(logEnable && logSize) log.debug "In setLevelandColorHandler - dimmerOn - setOnLC: ${setOnLC}"
         setOnLC.each {
@@ -3384,10 +3307,8 @@ def setLevelandColorHandler() {
                 hueColor = it.currentValue("hue")
                 saturation = it.currentValue("saturation")
             }
-
             def value = [hue: hueColor, saturation: saturation, level: onLevel] 
             if(logEnable && logSize) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel} - setOldMap: ${state.setOldMap}"
-
             if(it.hasCommand('setColor')) {
                 if(state.setOldMap == false) {
                     state.oldMap = [:]
@@ -3507,7 +3428,6 @@ def resetTruthHandler() {
 }
 
 // ********** Normal Stuff **********
-
 def logsOff() {
     log.info "${app.label} - Debug logging auto disabled"
     app?.updateSetting("logEnable",[value:"false",type:"bool"])
@@ -3523,10 +3443,6 @@ def checkEnableHandler() {
         }
         if(logEnable) log.debug "In checkEnableHandler - eSwitch: ${state.eSwitch}"
     }
-}
-
-def setDefaults(){
-    state.setOldMap = false
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -3575,7 +3491,6 @@ def display2() {
 def getHeaderAndFooter() {
     timeSinceNewHeaders()
     if(state.totalHours > 4) {
-        //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
         def params = [
             uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
             requestContentType: "application/json",
@@ -3610,5 +3525,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
