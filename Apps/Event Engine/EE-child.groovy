@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.5 - 10/19/20 - Cosmetic changes
 *  2.1.4 - 10/18/20 - Added Global Variables to Conditions and Actions
 *  2.1.3 - 10/14/20 - Code cleanup
 *  2.1.2 - 10/14/20 - Another adjustment to Thermostats
@@ -54,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.4"
+    state.version = "2.1.5"
 }
 
 definition(
@@ -542,7 +543,7 @@ def pageConfig() {
                         state.theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                     }
                 } else {
-                    paragraph "<b>In order to use the Global Variables, this Cog will need to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
+                    paragraph "<b>In order to use the Global Variables, please be sure to do the following</b><br>- Setup at least one Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
                 }
                 paragraph "<hr>"               
             } else {
@@ -1296,14 +1297,19 @@ def pageConfig() {
 
             if(actionType.contains("aGVar")) {
                 paragraph "<b>Set Global Variable</b>"
-                theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
-                theList2 = theList.split(",")              
-                input "setGVname", "enum", title: "Select Global Variable to Set", options: theList2, submitOnChange:true, width:6
-                if(setGVname) {
-                    input "setGVvalue", "text", title: "Value", required:false, submitOnChange:true, width:6
+                paragraph "<small>Be sure to setup a Global Variable in the parent app before trying to use this option.</small>"
+                if(state.gvMap) {
+                    theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
+                    theList2 = theList.split(",")              
+                    input "setGVname", "enum", title: "Select Global Variable to Set", options: theList2, submitOnChange:true, width:6
+                    if(setGVname) {
+                        input "setGVvalue", "text", title: "Value", required:false, submitOnChange:true, width:6
+                    }
+                    paragraph "<hr>"
+                    state.theCogActions += "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
+                } else {
+                    paragraph "<b>In order to use the Global Variables, please be sure to do the following</b><br>- Setup at least one Global Variable in the parent app.<br>- This Cog needs to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
                 }
-                paragraph "<hr>"
-                state.theCogActions += "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
             } else {
                 state.theCogActions -= "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
                 app.removeSetting("setGVname")
