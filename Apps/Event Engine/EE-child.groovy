@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.4 - 10/18/20 - Added Global Variables to Conditions and Actions
 *  2.1.3 - 10/14/20 - Code cleanup
 *  2.1.2 - 10/14/20 - Another adjustment to Thermostats
 *  2.1.1 - 10/14/20 - Adjustments to Thermostats
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.3"
+    state.version = "2.1.4"
 }
 
 definition(
@@ -91,6 +92,7 @@ def pageConfig() {
                 ["xContact":"Contact Sensors"],
                 ["xEnergy":"Energy Setpoint"],
                 ["xGarageDoor":"Garage Doors"],
+                ["xGVar":"Global Variables"],
                 ["xHSMAlert":"HSM Alerts *** not tested ***"],
                 ["xHSMStatus":"HSM Status *** not tested ***"],
                 ["xHumidity":"Humidity Setpoint"],
@@ -356,7 +358,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("beSetPointLow")
                     }
-                    if(beSetPointHigh) paragraph "You will receive notifications if Battery reading is above ${beSetPointHigh}"
+                    if(beSetPointHigh) paragraph "You will receive notifications if Battery reading is above or equal to ${beSetPointHigh}"
                     if(beSetPointLow) paragraph "You will receive notifications if Battery reading is below ${beSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -437,7 +439,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("eeSetPointLow")
                     }
-                    if(eeSetPointHigh) paragraph "You will receive notifications if Energy reading is above ${eeSetPointHigh}"
+                    if(eeSetPointHigh) paragraph "You will receive notifications if Energy reading is above or equal to ${eeSetPointHigh}"
                     if(eeSetPointLow) paragraph "You will receive notifications if Energy reading is below ${eeSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -502,6 +504,58 @@ def pageConfig() {
                 app.removeSetting("garageDoorRestrictionEvent")
             }
 // -----------
+            if(triggerType.contains("xGVar")) {
+                paragraph "<b>Global Variables</b>"
+                paragraph "<small>Be sure to setup a Global Variable in the parent app before trying to use this option.</small>"
+                if(state.gvMap) {
+                    theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
+                    theList2 = theList.split(",")              
+                    input "globalVariableEvent", "enum", title: "By Global Variable", options: theList2, submitOnChange:true
+                    input "gvStyle", "bool", title: "Use as Text (off) or Number (on)", defaultValue:false, submitOnChange:true
+                    if(gvStyle) {
+                        if(globalVariableEvent) {
+                            input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High?", description: "Variable High", submitOnChange:true
+                            if(setGVPointHigh) {
+                                input "gvSetPointHigh", "number", title: "Variable High Setpoint", required:true, submitOnChange:true
+                            } else {
+                                app.removeSetting("gvSetPointHigh")
+                            }
+                            input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low?", description: "Variable Low", submitOnChange:true
+                            if(setGVPointLow) {
+                                input "gvSetPointLow", "number", title: "Variable Low Setpoint", required:true, submitOnChange:true
+                            } else {
+                                app.removeSetting("gvSetPointLow")
+                            }
+                            if(gvSetPointHigh) paragraph "You will receive notifications if Variable reading is above or equal to ${gvSetPointHigh}"
+                            if(gvSetPointLow) paragraph "You will receive notifications if Variable reading is below ${gvSetPointLow}"
+                            app.removeSetting("gvValue")
+                            state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
+                            state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
+                        }
+                    } else {
+                        input "gvValue", "text", title: "Value", required:false, submitOnChange:true
+                        app.removeSetting("gvSetPointHigh")
+                        app.removeSetting("gvSetPointLow")
+                        app?.updateSetting("setGVPointHigh",[value:"false",type:"bool"])
+                        app?.updateSetting("setGVPointLow",[value:"false",type:"bool"])
+                        state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
+                        state.theCogTriggers += "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
+                    }
+                } else {
+                    paragraph "<b>In order to use the Global Variables, this Cog will need to be saved first. Please scroll down and hit 'Done' before continuing. Then open the Cog again.</b>"
+                }
+                paragraph "<hr>"               
+            } else {
+                state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
+                state.theCogTriggers -= "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
+                app.removeSetting("globalVariableEvent")
+                app.removeSetting("gvValue")
+                app.removeSetting("gvSetPointHigh")
+                app.removeSetting("gvSetPointLow")
+                app?.updateSetting("setGVPointHigh",[value:"false",type:"bool"])
+                app?.updateSetting("setGVPointLow",[value:"false",type:"bool"])
+            }
+// -----------
             if(triggerType.contains("xHSMAlert")) {
                 paragraph "<b>HSM Alert</b>"
                 paragraph "<b>Warning: This Condition has not been tested. Use at your own risk.</b>"
@@ -542,7 +596,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("heSetPointLow")
                     }
-                    if(heSetPointHigh) paragraph "You will receive notifications if Humidity reading is above ${heSetPointHigh}"
+                    if(heSetPointHigh) paragraph "You will receive notifications if Humidity reading is above or equal to ${heSetPointHigh}"
                     if(heSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${heSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -572,7 +626,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("ieSetPointLow")
                     }
-                    if(iSetPointHigh) paragraph "You will receive notifications if Humidity reading is above ${ieSetPointHigh}"
+                    if(iSetPointHigh) paragraph "You will receive notifications if Humidity reading is above or equal to ${ieSetPointHigh}"
                     if(iSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${ieSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -714,7 +768,7 @@ def pageConfig() {
                         app.removeSetting("peSetPointLow")
                     }
 
-                    if(setPEPointHigh) paragraph "You will receive notifications if Power reading is above ${peSetPointHigh}"
+                    if(setPEPointHigh) paragraph "You will receive notifications if Power reading is above or equal to ${peSetPointHigh}"
                     if(setPEPointLow) paragraph "You will receive notifications if Power reading is below ${peSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -848,7 +902,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("setTEPointLow")
                     }
-                    if(teSetPointHigh) paragraph "You will receive notifications if Temperature reading is above ${teSetPointHigh}"
+                    if(teSetPointHigh) paragraph "You will receive notifications if Temperature reading is above or equal to ${teSetPointHigh}"
                     if(teSetPointLow) paragraph "You will receive notifications if Temperature reading is below ${teSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -895,7 +949,7 @@ def pageConfig() {
                     } else {
                         app.removeSetting("veSetPointLow")
                     }
-                    if(veSetPointHigh) paragraph "You will receive notifications if Voltage reading is above ${veSetPointHigh}"
+                    if(veSetPointHigh) paragraph "You will receive notifications if Voltage reading is above or equal to ${veSetPointHigh}"
                     if(veSetPointLow) paragraph "You will receive notifications if Voltage reading is below ${veSetPointLow}"
                 }
                 paragraph "<hr>"
@@ -982,7 +1036,7 @@ def pageConfig() {
                         } else {
                             app.removeSetting("sdSetPointLow")
                         }
-                        if(sdSetPointHigh) paragraph "You will receive notifications if Custom reading is above ${sdSetPointHigh}"
+                        if(sdSetPointHigh) paragraph "You will receive notifications if Custom reading is above or equal to ${sdSetPointHigh}"
                         if(sdSetPointLow) paragraph "You will receive notifications if Custom reading is below ${sdSetPointLow}"
                         state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
@@ -1109,6 +1163,7 @@ def pageConfig() {
                 ["aNotification":"Notifications (speech/push/flash)"], 
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
+                ["aGVar":"Set Global Variable"],
                 ["aSwitch":"Switches"],
                 ["aThermostat":"Thermostat"],
                 ["aValve":"Valves"],
@@ -1239,6 +1294,22 @@ def pageConfig() {
                 app.removeSetting("rmRule")
             }
 
+            if(actionType.contains("aGVar")) {
+                paragraph "<b>Set Global Variable</b>"
+                theList = "${state.gvMap.keySet()}".replace("[","").replace("]","").replace(", ", ",")
+                theList2 = theList.split(",")              
+                input "setGVname", "enum", title: "Select Global Variable to Set", options: theList2, submitOnChange:true, width:6
+                if(setGVname) {
+                    input "setGVvalue", "text", title: "Value", required:false, submitOnChange:true, width:6
+                }
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
+            } else {
+                state.theCogActions -= "<b>-</b> Set Global Variable: ${setGVname} - To: ${setGVvalue}<br>"
+                app.removeSetting("setGVname")
+                app.removeSetting("setGVvalue")
+            }
+            
             if(actionType.contains("aSwitch")) {
                 paragraph "<b>Switch Devices</b>"
                 input "switchesOnAction", "capability.switch", title: "Switches to turn On", multiple:true, submitOnChange:true
@@ -1548,7 +1619,7 @@ def pageConfig() {
             if(logEnable) {
                 input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
-                input "resetTruth", "bool", title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", defaultValue:false, submitOnChange:true
+                //input "resetTruth", "bool", title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", defaultValue:false, submitOnChange:true
                 if(resetTruth) {
                     resetTruthHandler()
                     app?.updateSetting("resetTruth",[value:"false",type:"bool"])
@@ -1874,6 +1945,12 @@ def startTheProcess(evt) {
                     customDeviceHandler()
                 }
                 
+                if(gvStyle) { 
+                    globalVariablesNumberHandler()
+                } else {
+                    globalVariablesTextHandler() 
+                }
+                
                 checkingAndOr()            
             }
         }
@@ -1935,6 +2012,7 @@ def startTheProcess(evt) {
                         if(modeAction) modeChangeActionHandler()
                         if(devicesToRefresh) devicesToRefreshActionHandler()
                         if(rmRule) ruleMachineHandler()
+                        if(setGVname && setGVvalue) setGlobalVariableHandler()
                         state.hasntDelayedYet = true
                         if(timeReverse) {
                             theDelay = timeToReverse * 60
@@ -2029,6 +2107,17 @@ def garageDoorHandler() {
         devicesGoodHandler()
     }
 }
+def globalVariablesTextHandler() {
+    if(globalVariableEvent) {
+        state.eventName = globalVariableEvent
+        state.eventType = "globalVariable"
+        state.type = true
+        state.typeValue1 = gvValue
+        state.typeValue2 = "noData"
+        state.typeAO = false
+        devicesGoodHandler()
+    }
+}
 def lockHandler() {
     if(lockEvent) {
         state.eventName = lockEvent
@@ -2103,49 +2192,66 @@ def devicesGoodHandler() {
     deviceTrue2 = 0
     state.isThereDevices = true
     try {
-        theCount = state.eventName.size()
-    } catch(e) { theCount = 1 }
+        if(state.eventType == "globalVariable") {
+            theCount = 1
+            theList = []
+            theList << globalVariableEvent
+            state.eventName = theList 
+        } else {
+            theCount = state.eventName.size()
+        }
+    } catch(e) { 
+        theCount = 1
+        state.eventName = null
+    }
     state.count = state.count + theCount
     if(state.dText == null) state.dText = ""
-    state.eventName.each { it ->
-        theValue = it.currentValue("${state.eventType}").toString()
-        if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
-        if(theValue == state.typeValue1) { 
-            if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
-            deviceTrue1 = deviceTrue1 + 1
-        } else if(theValue == state.typeValue2) { 
-            if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
-            if(state.eventType == "lock") {
-                if(state.dText.contains("unlocked by")) {
-                    if(lockUser) {
-                        state.whoUnlocked = it.currentValue("lastCodeName")
-                        lockUser.each { us ->
-                            if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
-                            if(us == state.whoUnlocked) { 
-                                if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
-                                deviceTrue2 = deviceTrue2 + 1
+    if(state.eventName) {
+        state.eventName.each { it ->
+            if(state.eventType == "globalVariable") {
+                def theData = state.gvMap.get(globalVariableEvent)
+                theValue = theData.toString()
+            } else {
+                theValue = it.currentValue("${state.eventType}").toString()
+            }
+            if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
+            if(theValue == state.typeValue1) { 
+                if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
+                deviceTrue1 = deviceTrue1 + 1
+            } else if(theValue == state.typeValue2) { 
+                if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
+                if(state.eventType == "lock") {
+                    if(state.dText.contains("unlocked by")) {
+                        if(lockUser) {
+                            state.whoUnlocked = it.currentValue("lastCodeName")
+                            lockUser.each { us ->
+                                if(logEnable && logSize) log.debug "Checking lock names - $us vs $state.whoUnlocked"
+                                if(us == state.whoUnlocked) { 
+                                    if(logEnable && logSize) log.debug "MATCH: ${state.whoUnlocked}"
+                                    deviceTrue2 = deviceTrue2 + 1
+                                }
                             }
+                        } else {
+                            if(logEnable) log.trace "In devicesGoodHandler - No user selected, no notifications necessary"
+                            deviceTrue2 = deviceTrue2 + 1
                         }
                     } else {
-                        if(logEnable) log.trace "In devicesGoodHandler - No user selected, no notifications necessary"
+                        if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
                         deviceTrue2 = deviceTrue2 + 1
                     }
                 } else {
-                    if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
+                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
                     deviceTrue2 = deviceTrue2 + 1
                 }
             } else {
-                if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
-                deviceTrue2 = deviceTrue2 + 1
-            }
-        } else {
-            if(state.eventType == "thermostatOperatingState") {
-                if(theValue != "idle") {
-                    deviceTrue2 = deviceTrue2 + 1
-                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Thermostat - Working 2: Current Value: ${theValue}"
+                if(state.eventType == "thermostatOperatingState") {
+                    if(theValue != "idle") {
+                        deviceTrue2 = deviceTrue2 + 1
+                        if(logEnable && logSize) log.debug "In devicesGoodHandler - Thermostat - Working 2: Current Value: ${theValue}"
+                    }
+                } else {
+                    // next option
                 }
-            } else {
-                // next option
             }
         }
     }
@@ -2251,6 +2357,15 @@ def energyHandler() {
         setpointHandler()
     }
 }
+def globalVariablesNumberHandler() {
+    if(globalVariableEvent) {
+        state.spName = globalVariableEvent
+        state.spType = "globalVariable"
+        state.setpointHigh = gvSetPointHigh
+        state.setpointLow = gvSetPointLow
+        setpointHandler()
+    }
+}
 def humidityHandler() {
     if(humidityEvent) {
         state.spName = humidityEvent
@@ -2314,7 +2429,13 @@ def setpointHandler() {
     if(state.setpointBetweenOK == null) state.setpointBetweenOK = "yes"
     state.isThereSPDevices = true
     state.spName.each {
-        spValue = it.currentValue("${state.spType}")
+        if(state.spType == "globalVariable") {
+            def theData = state.gvMap.get(globalVariableEvent)
+            spValue = theData
+            if(logEnable) log.debug "In setpointHandler - theData: ${theData}"
+        } else {
+            spValue = it.currentValue("${state.spType}")
+        }
         if(spValue) {
             if(useWholeNumber) {
                 setpointValue = Math.round(spValue)
@@ -2807,6 +2928,12 @@ def lockUserActionHandler(evt) {
 def modeChangeActionHandler() {
     if(logEnable) log.debug "In modeChangeActionHandler - Changing mode to ${modeAction}"
     setLocationMode(modeAction)
+}
+
+def setGlobalVariableHandler() {
+    if(logEnable) log.debug "In setGlobalVariableHandler (${state.version}) - Setting to ${setGVname}"
+    data = "fromChild;${setGVname}:${setGVvalue}"
+    parent.gVariablesHandler(data)
 }
 
 def switchesOnActionHandler() {
@@ -3425,6 +3552,13 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 def resetTruthHandler() {
     if(logEnable) log.debug "In resetTruthHandler (${state.version})"
     state.clear()
+}
+
+def globalVariablesHandler(data) {
+    if(data) {
+        state.gvMap = data
+    }
+    if(globalVariableEvent) startTheProcess()
 }
 
 // ********** Normal Stuff **********
