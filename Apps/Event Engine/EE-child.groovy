@@ -2937,7 +2937,7 @@ def modeChangeActionHandler() {
 }
 
 def setGlobalVariableHandler() {
-    if(logEnable) log.debug "In setGlobalVariableHandler (${state.version}) - Setting to ${setGVname}"
+    if(logEnable) log.debug "In setGlobalVariableHandler (${state.version}) - Setting: ${setGVname} to ${setGVvalue}"
     data = "fromChild;${setGVname}:${setGVvalue}"
     parent.gVariablesHandler(data)
 }
