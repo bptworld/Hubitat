@@ -37,17 +37,8 @@
  *
  *  Changes:
  *
+ *  2.1.1 - 10/17/20 - Added 'Who's with me' options
  *  2.1.0 - 09/02/20 - Cosmetic changes
- *  2.0.9 - 06/22/20 - Changes to letsTalk
- *  2.0.8 - 06/19/20 - added The Flasher
- *  2.0.7 - 06/18/20 - Major Changes. Going at it a different way
- *  2.0.6 - 04/27/20 - Cosmetic changes
- *  2.0.5 - 12/10/19 - Minor bug fixes
- *  2.0.4 - 11/23/19 - More code adjustments
- *  2.0.3 - 11/03/19 - Code changes to remove some gremlins
- *  2.0.2 - 09/20/19 - History logging adjustments
- *  2.0.1 - 09/06/19 - Fixed bug with timeMove
- *  2.0.0 - 08/18/19 - Now App Watchdog compliant
  *  --
  *  1.0.0 - 07/01/19 - Initial release.
  *
@@ -58,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 Tracker"
-	state.version = "2.1.0"
+	state.version = "2.1.1"
 }
 
 definition(
@@ -228,6 +219,17 @@ def pageConfig() {
             href "alertsConfig", title: "Alerts", description: "Phone Battery - Places Not Allowed"
 		}
         
+        section(getFormat("header-green", "${getImage("Blank")}"+" Who's With Me")) {
+        paragraph "We all know it's annoying to get notifications about someone moving about when you are actually with that person. With this option, those notifications are a thing of the past!"
+            input "peopleWithMe", "capability.presenceSensor", title: "Choose other Life360 Device(s)", required:false, multiple:true, submitOnChange:true
+            if(peopleWithYou) {
+                input "peopleRadius", "number", title: "Radius to be considered with you", required:false, submitOnChange:true
+            } else {
+                
+            }
+            paragraph "<hr>"
+    }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
             input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
             if(pauseApp) {
@@ -375,7 +377,7 @@ def arrivedHandler(aPlace) {
             if(logEnable) log.debug "In arrivedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
             msg = "${messageAT}"
             where = "arrived"
-            messageHandler(where,msg,aPlace)
+            whosWithMeHandler(where,msg,aplace)
             if(isDataDevice) isDataDevice.on()
             state.sMove = null
         } else {  // ***  timeDiff is NOT GREATER THAN timeHere ***
@@ -399,7 +401,7 @@ def departedHandler(dPlace) {
         if(logEnable) log.debug "In departedHandler - ${friendlyName} has departed from ${dPlace}"
         where = "departed"
         msg = "${messageDEP}"
-        messageHandler(where,msg,dPlace)
+        whosWithMeHandler(where,msg,dPlace)
         if(isDataDevice) isDataDevice.off()
         if(logEnable) log.debug "********* In departedHandler - End *********"
     }
@@ -424,12 +426,12 @@ def movingHandler(mPlace) {
                 if(logEnable) log.debug "In movingHandler - ${friendlyName} has stopped near ${mPlace}"
                 msg = "${messageMOVEStopped}"
                 where = "moving"
-                messageHandler(where,msg,mPlace)
+                whosWithMeHandler(where,msg,mPlace)
                 state.movePrevPlace = mPlace
             } else {           
                 msg = "${messageMOVE}"
                 where = "moving"
-                messageHandler(where,msg,mPlace)
+                whosWithMeHandler(where,msg,mPlace)
                 if(logEnable) log.debug "In movingHandler - ${friendlyName} is near ${mPlace}"
             }
         } else {
@@ -452,7 +454,7 @@ def homeArrivedHandler(haPlace) {
         if(logEnable) log.debug "In homeArrivedHandler - Home Now - ${friendlyName} has arrived at ${haPlace}"
         msg = "${messageAT}"
         where = "HomeArrived"
-        messageHandler(where,msg,haPlace)
+        whosWithMeHandler(where,msg,haPlace)
         if(isDataDevice) isDataDevice.on()
     } else if(homeDelayed) {
         getTimeDiff()
@@ -460,7 +462,7 @@ def homeArrivedHandler(haPlace) {
             if(logEnable) log.debug "In homeArrivedHandler - Home Delay - ${friendlyName} has arrived at ${haPlace}"
             msg = "${messageAT}"
             where = "HomeArrived"
-            messageHandler(where,msg,haPlace)
+            whosWithMeHandler(where,msg,haPlace)
             if(isDataDevice) isDataDevice.on()
         } else {
             if(logEnable) log.debug "In homeArrivedHandler - ${friendlyName} arrived Home less than ${timeHere} minute(s) ago"
@@ -479,7 +481,7 @@ def homeDepartedHandler(daPlace) {
         if(logEnable) log.debug "In homeDepartedHandler - Home Departed - ${friendlyName} has departed from ${daPlace}"
         msg = "${messageDEP}"
         where = "HomeDeparted"
-        messageHandler(where,msg,daPlace)
+        whosWithMeHandler(where,msg,daPlace)
     } else if(homeDepartedDelayed) {
         getTimeMoving()      
         if(logEnable) log.debug "In homeDepartedHandler - movingDiff: ${movingDiff}"
@@ -487,7 +489,7 @@ def homeDepartedHandler(daPlace) {
             if(logEnable) log.debug "In homeDepartedHandler - ${friendlyName} has departed Home over 1 minute ago and is on the move near ${daPlace}"
             msg = "${messageDEP}"
             where = "HomeDeparted"
-            messageHandler(where,msg,daPlace)
+            whosWithMeHandler(where,msg,daPlace)
         } else {
             if(logEnable) log.debug "In homeDepartedHandler - ${friendlyName} departed Home less than 1 minute ago but is near ${daPlace}"
             runIn(30, homeDepartedHandler, [overwrite: false])
@@ -510,7 +512,7 @@ def placeNotAllowedHandler(naPlace) {
         if(logEnable) log.debug "In placeNotAllowedHandler - Time at Place: ${timeDiff} IS greater than: ${timeHere}"
         msg = "${messageAT2}"
         where = "aAT2"
-        messageHandler(where,msg,naPlace)  
+        whosWithMeHandler(where,msg,naPlace)
         if(isDataDevice) isDataDevice.on()
     } else {  // *** timeDiff is NOT GREATER THAN timeHere ***
         if(logEnable) log.debug "In placeNotAllowedHandler - Time at Place: ${timeDiff} IS NOT greater than: ${timeHere}"
@@ -534,7 +536,7 @@ def alertBattHandler() {
         state.alerts = "yes"
         state.alertBattRepeat = "yes"
         where = "battAlert"
-        messageHandler(where,msg,battPlace)
+        whosWithMeHandler(where,msg,battPlace)
     } else if((battery <= state.prevBatt) && (charge == "false")) {
         if(logEnable) log.debug "In alertBattHandler - battery (${battery}) needs charging! - Step 2 - battery: ${battery} <= Prev: ${state.prevBatt}"
         msg = "${messageAlertBatt}"
@@ -542,7 +544,7 @@ def alertBattHandler() {
         state.alertBattRepeat = "yes"
         state.alerts = "yes"
         where = "battAlert"
-        messageHandler(where,msg,battPlace)
+        whosWithMeHandler(where,msg,battPlace)
     } else if(charge == "true") {
         if(logEnable) log.debug "In alertBattHandler - battery (${battery}) is charging. - Step 3"
         state.alertBattRepeat = "no"
@@ -600,68 +602,71 @@ def messageHandler(where,msg,place) {
     def randomKey = new Random().nextInt(count)
 	state.message = values[randomKey]
     
-    if(logEnable) log.debug "In messageHandler - where: ${where} - place: ${place} - message: ${state.message}" 
-	if(state.message.contains("%name%")) {state.message = state.message.replace('%name%', friendlyName )}
-    
-    if(where != "HomeArrived" || where != "HomeDeparted") { 
-        if(state.message.contains("%place%")) state.message = state.message.replace('%place%', place) 
-        if(state.message.contains("%lastplace%")) state.message = state.message.replace('%lastplace%', place)
-    }
-    
-    if(where == "HomeArrived") {
-        if( state.message.contains("%lastplace%") || state.message.contains("%place%") ) {
-            state.message = state.message.replace('%lastplace%', 'home') 
-            state.message = state.message.replace('%place%', 'home')
-        }
-    }
-    
-    if(where == "HomeDeparted") { 
-        if(state.message.contains("%lastplace%") || state.message.contains("%place%")) {
-            state.message = state.message.replace('%lastplace%', 'home') 
-            state.message = state.message.replace('%place%', 'home')
-        }
-    }
-            
-    if(state.message.contains("%address1%")) {state.message = state.message.replace('%address1%', place) }
-    if(state.message.contains("%battery%")) {
-        String currBatt = presenceDevice.currentValue("battery")
-        state.message = state.message.replace('%battery%', currBatt)
-    }
-    
-    if(state.message.contains("%charge%")) {state.message = state.message.replace('%charge%', presenceDevice.currentValue("charge") )}
-    if(state.message.contains("%distanceKm%")) {state.message = state.message.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
-    if(state.message.contains("%distanceMetric%")) {state.message = state.message.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
-    if(state.message.contains("%distanceMiles%")) {state.message = state.message.replace('%distanceMiles%', presenceDevice.currentValue("distanceMiles") )}
-    if(state.message.contains("%inTransit%")) {state.message = state.message.replace('%inTransit%', presenceDevice.currentValue("inTransit") )}
-    if(state.message.contains("%isDriving%")) {state.message = state.message.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
-    if(state.message.contains("%lastCheckin%")) {
-        String currLastCheckin = presenceDevice.currentValue("lastCheckin")
-        state.message = state.message.replace('%lastCheckin%', currLastCheckin)    
-    }
-    if(state.message.contains("%latitude%")) {
-        String currLatitude = presenceDevice.currentValue("latitude")
-        state.message = state.message.replace('%latitude%', currLatitude)    
-    }
-    if(state.message.contains("%longitude%")) {
-        String currLongitude = presenceDevice.currentValue("longitude")
-        state.message = state.message.replace('%longitude%', currLongitude)    
-    }
-    if(state.message.contains("%powerSource%")) {state.message = state.message.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
-    if(state.message.contains("%presence%")) {state.message = state.message.replace('%presence%', state.presenceDevice.currentValue("presence") )}
-    if(state.message.contains("%speedKm%")) {state.message = state.message.replace('%speedKm%', state.presenceDevice.currentValue("speedKm") )}
-    if(state.message.contains("%speedMetric%")) {state.message = state.message.replace('%speedMetric%', state.presenceDevice.currentValue("speedMetric") )}
-    if(state.message.contains("%speedMiles%")) {state.message = state.message.replace('%speedMiles%', state.presenceDevice.currentValue("speedMiles") )}
-    if(state.message.contains("%wifiState%")) {state.message = state.message.replace('%wifiState%', state.presenceDevice.currentValue("wifiState") )}
-    if(state.message.contains("%display%")) {state.message = state.message.replace('%display%', state.presenceDevice.currentValue("display") )}
-    if(state.message.contains("%status%")) {state.message = state.message.replace('%status%', state.presenceDevice.currentValue("status") )}
-    if(state.message.contains("%lastLocationUpdate%")) {state.message = state.message.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
+    if(state.message) {
+        if(logEnable) log.debug "In messageHandler - where: ${where} - place: ${place} - message: ${state.message}" 
+        if(state.message.contains("%name%")) {state.message = state.message.replace('%name%', friendlyName )}
 
+        if(where != "HomeArrived" || where != "HomeDeparted") { 
+            if(state.message.contains("%place%")) state.message = state.message.replace('%place%', place) 
+            if(state.message.contains("%lastplace%")) state.message = state.message.replace('%lastplace%', place)
+        }
+
+        if(where == "HomeArrived") {
+            if( state.message.contains("%lastplace%") || state.message.contains("%place%") ) {
+                state.message = state.message.replace('%lastplace%', 'home') 
+                state.message = state.message.replace('%place%', 'home')
+            }
+        }
+
+        if(where == "HomeDeparted") { 
+            if(state.message.contains("%lastplace%") || state.message.contains("%place%")) {
+                state.message = state.message.replace('%lastplace%', 'home') 
+                state.message = state.message.replace('%place%', 'home')
+            }
+        }
+            
+        if(state.message.contains("%address1%")) {state.message = state.message.replace('%address1%', place) }
+        if(state.message.contains("%battery%")) {
+            String currBatt = presenceDevice.currentValue("battery")
+            state.message = state.message.replace('%battery%', currBatt)
+        }
+    
+        if(state.message.contains("%charge%")) {state.message = state.message.replace('%charge%', presenceDevice.currentValue("charge") )}
+        if(state.message.contains("%distanceKm%")) {state.message = state.message.replace('%distanceKm%', presenceDevice.currentValue("distanceKm") )}
+        if(state.message.contains("%distanceMetric%")) {state.message = state.message.replace('%distanceMetric%', presenceDevice.currentValue("distanceMetric") )}
+        if(state.message.contains("%distanceMiles%")) {state.message = state.message.replace('%distanceMiles%', presenceDevice.currentValue("distanceMiles") )}
+        if(state.message.contains("%inTransit%")) {state.message = state.message.replace('%inTransit%', presenceDevice.currentValue("inTransit") )}
+        if(state.message.contains("%isDriving%")) {state.message = state.message.replace('%isDriving%', state.presenceDevice.currentValue("isDriving") )}
+        if(state.message.contains("%lastCheckin%")) {
+            String currLastCheckin = presenceDevice.currentValue("lastCheckin")
+            state.message = state.message.replace('%lastCheckin%', currLastCheckin)    
+        }
+        if(state.message.contains("%latitude%")) {
+            String currLatitude = presenceDevice.currentValue("latitude")
+            state.message = state.message.replace('%latitude%', currLatitude)    
+        }
+        if(state.message.contains("%longitude%")) {
+            String currLongitude = presenceDevice.currentValue("longitude")
+            state.message = state.message.replace('%longitude%', currLongitude)    
+        }
+        if(state.message.contains("%powerSource%")) {state.message = state.message.replace('%powerSource%', state.presenceDevice.currentValue("powerSource") )}
+        if(state.message.contains("%presence%")) {state.message = state.message.replace('%presence%', state.presenceDevice.currentValue("presence") )}
+        if(state.message.contains("%speedKm%")) {state.message = state.message.replace('%speedKm%', state.presenceDevice.currentValue("speedKm") )}
+        if(state.message.contains("%speedMetric%")) {state.message = state.message.replace('%speedMetric%', state.presenceDevice.currentValue("speedMetric") )}
+        if(state.message.contains("%speedMiles%")) {state.message = state.message.replace('%speedMiles%', state.presenceDevice.currentValue("speedMiles") )}
+        if(state.message.contains("%wifiState%")) {state.message = state.message.replace('%wifiState%', state.presenceDevice.currentValue("wifiState") )}
+        if(state.message.contains("%display%")) {state.message = state.message.replace('%display%', state.presenceDevice.currentValue("display") )}
+        if(state.message.contains("%status%")) {state.message = state.message.replace('%status%', state.presenceDevice.currentValue("status") )}
+        if(state.message.contains("%lastLocationUpdate%")) {state.message = state.message.replace('%lastLocationUpdate%', state.presenceDevice.currentValue("lastLocationUpdate") )}
+    }
     theMap = "https://www.google.com/maps/search/?api=1&query=${presenceDevice.currentValue("latitude")},${presenceDevice.currentValue("longitude")}"
     theMapLink = "<a href='${theMap}' target='_blank'>Map</a>"
 	
     if(state.alerts == "yes") {
-        if(speakAlertsBatt && (speakerMP || speakerSS)) letsTalk(state.message)       
-        if(pushAlertsBatt && sendPushMessage) pushHandler(state.message)       
+        if(state.message) {
+            if(speakAlertsBatt && (speakerMP || speakerSS)) letsTalk(state.message)       
+            if(pushAlertsBatt && sendPushMessage) pushHandler(state.message)
+        }
         state.alerts = "no"
     } else {
         if(state.message == "No Data") {
@@ -744,6 +749,31 @@ def pushHandler(msg) {
 	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
     presenceDevice.sendTheMap(theMap)
+}
+
+def whosWithMeHandler(where,msg,place) { 
+    if(logEnable) log.debug "In whosWithMeHandler (${state.version})"
+    def memberLatitude = new Float (presenceDevice.currentValue("latitude"))
+    def memberLongitude = new Float (presenceDevice.currentValue("longitude"))
+    
+    if(peopleWithMe) {
+        peopleWithMe.each { it ->
+            def otherLatitude = new Float (it.currentValue("latitude"))
+            def otherLongitude = new Float (it.currentValue("longitude"))
+            def theRadius = new Float (peopleRadius)
+            def distanceAway = haversine(memberLatitude, memberLongitude, otherLatitude, otherLongitude)*1000 // in meters
+            state.areClose = (distanceAway <= theRadius)
+            if(logEnable) log.debug "In whosWithMeHandler - person: ${it.displayName} - Distance: ${distanceAway} - theRadius: ${theRadius} - areClose: ${state.areClose}"
+            if(state.areClose) {
+                if(logEnable) log.debug "In whosWithMeHandler - person: ${it.displayName} is too close, no notifications necessary."
+            } else {
+                messageHandler(where,msg,place)
+            }
+        }
+    } else {
+        state.areClose = false
+        messageHandler(where,msg,place)
+    }
 }
 
 def whereAmI(evt) { 
