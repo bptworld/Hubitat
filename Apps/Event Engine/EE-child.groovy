@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.7 - 10/21/20 - More adjustments
 *  2.1.6 - 10/21/20 - Adjustments to setColorTemperature
 *  2.1.5 - 10/19/20 - Cosmetic changes
 *  2.1.4 - 10/18/20 - Added Global Variables to Conditions and Actions
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.6"
+    state.version = "2.1.7"
 }
 
 definition(
@@ -3458,7 +3459,7 @@ def setLevelandColorHandler() {
                     state.setOldMap = true
                     if(logEnable) log.debug "In setLevelandColorHandler - setColor - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 }
-                if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
+                if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if(it.hasCommand('setColorTemperature') && lcColorTemp) {
                 state.oldLevelMap = [:]
@@ -3483,7 +3484,7 @@ def setLevelandColorHandler() {
                     state.setOldMap = true
                     if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - OLD STATUS - oldStatus: ${name} - ${oldStatus}"
                 }
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - setLevel - $it.displayName, setLevel: $value"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
@@ -3495,10 +3496,10 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOn") {
         slowDimmerUp.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
                 it.setLevel(onLevel as Integer ?: 99)
             } else {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
@@ -3510,10 +3511,10 @@ def setLevelandColorHandler() {
     if(state.fromWhere == "slowOff") {
         slowDimmerDn.each {
             if (it.hasCommand('setColor')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if (it.hasCommand('setLevel')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, setLevel: $value"
                 it.setLevel(level as Integer ?: 99)
             } else {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - $it.displayName, on()"
@@ -3526,13 +3527,14 @@ def setLevelandColorHandler() {
         setOnLC.each {
             if(pdColor && it.hasCommand('setColor')) {
                 def value = [hue: hueColor, saturation: saturation, level: onLevel]
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor ($value)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if(pdTemp && it.hasCommand('setColorTemperature')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp ($pdTemp)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl}"
+                it.setLevel(permanentDimLvl)
                 it.setColorTemperature(pdTemp)
             } else {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel ($permanentDimLvl)"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel: $permanentDimLvl"
                 it.setLevel(permanentDimLvl)
             }
         }
