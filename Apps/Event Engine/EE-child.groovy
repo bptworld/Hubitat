@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.6 - 10/21/20 - Adjustments to setColorTemperature
 *  2.1.5 - 10/19/20 - Cosmetic changes
 *  2.1.4 - 10/18/20 - Added Global Variables to Conditions and Actions
 *  2.1.3 - 10/14/20 - Code cleanup
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.5"
+    state.version = "2.1.6"
 }
 
 definition(
@@ -1362,7 +1363,7 @@ def pageConfig() {
                     state.theCogActions -= "<b>-</b> Switches to Toggle: ${switchesToggleAction}<br>"
                 }
                 paragraph "<hr>"
-                input "setOnLC", "capability.switchLevel", title: "Dimmer to set", required:false, multiple:true
+                input "setOnLC", "capability.switchLevel", title: "Dimmer to set", required:false, multiple:true, submitOnChange:true
                 if(setOnLC) {
                     input "levelLC", "number", title: "On Level (1 to 99)", required:false, multiple:false, defaultValue: 99, range: '1..99'
                     input "lcColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
@@ -2800,7 +2801,7 @@ def dimmerOnReverseActionHandler() {
 
 def permanentDimHandler() {
     if(setOnLC) {
-        if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl} - Color: ${pdColor} - Temp: ${pdTemp}"
+        if(logEnable) log.debug "In permanentDimHandler - Set Level Dim - Level: ${permanentDimLvl} - Color: ${pdColor} - Temp: ${pdTemp}"
         state.onLevel = permanentDimLvl
         state.color = pdColor
         state.fromWhere = "permanentDimHandler"
@@ -2809,7 +2810,7 @@ def permanentDimHandler() {
     if(switchesOnAction) {
         switchesOnAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim (on) - Level: ${permanentDimLvl}"
                 it.setLevel(permanentDimLvl)
             }
         }
@@ -2817,7 +2818,7 @@ def permanentDimHandler() {
     if(switchesOffAction) {
         switchesOffAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim ${it} to ${permanentDimLvl2}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim (off) - Level: ${permanentDimLvl2}"
                 it.setLevel(permanentDimLvl2)
             }
         }
@@ -3442,7 +3443,7 @@ def setLevelandColorHandler() {
             }
             def value = [hue: hueColor, saturation: saturation, level: onLevel] 
             if(logEnable && logSize) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel} - setOldMap: ${state.setOldMap}"
-            if(it.hasCommand('setColor')) {
+            if(it.hasCommand('setColor') && !lcColorTemp) {
                 if(state.setOldMap == false) {
                     state.oldMap = [:]
                     oldHueColor = it.currentValue("hue")
@@ -3459,7 +3460,7 @@ def setLevelandColorHandler() {
                 }
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor($value)"
                 it.setColor(value)
-            } else if(it.hasCommand('setColorTemperature')) {
+            } else if(it.hasCommand('setColorTemperature') && lcColorTemp) {
                 state.oldLevelMap = [:]
                 oldLevel = it.currentValue("level")
                 oldColorTemp = it.currentValue("colorTemperature")
@@ -3527,7 +3528,7 @@ def setLevelandColorHandler() {
                 def value = [hue: hueColor, saturation: saturation, level: onLevel]
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor ($value)"
                 it.setColor(value)
-            } else if(pdTemp && it.hasCommand('setColor')) {
+            } else if(pdTemp && it.hasCommand('setColorTemperature')) {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp ($pdTemp)"
                 it.setColorTemperature(pdTemp)
             } else {
