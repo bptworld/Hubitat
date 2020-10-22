@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.8 - 10/22/20 - Added Repeat options to Notifications
 *  2.1.7 - 10/21/20 - More adjustments
 *  2.1.6 - 10/21/20 - Adjustments to setColorTemperature
 *  2.1.5 - 10/19/20 - Cosmetic changes
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.7"
+    state.version = "2.1.8"
 }
 
 definition(
@@ -1730,6 +1731,37 @@ def notificationOptions(){
                     app.removeSetting("message")
                 }
             }
+                
+            section(getFormat("header-green", "${getImage("Blank")}"+" Repeat Notifications")) {
+                input "msgRepeat", "bool", title: "Repeat Notifications", description: "List View", defaultValue:false, submitOnChange:true
+                if(msgRepeat) {
+                    input "msgRepeatMinutes", "number", title: "Repeat every XX minutes", submitOnChange:true, width:6
+                    input "msgRepeatMax", "number", title: "Max number of repeats", submitOnChange:true, width:6
+                    
+                    if(msgRepeatMinutes && msgRepeatMax) {
+                    paragraph "Message will repeat every ${msgRepeatMinutes} minutes until one of the contacts/switches changes state <b>OR</b> the Max number of repeats is reached (${msgRepeatMax})"
+                        repeatTimeSeconds = ((msgRepeatMinutes * 60) * msgRepeatMax)
+                        int inputNow=repeatTimeSeconds
+                        int nDayNow = inputNow / 86400
+                        int nHrsNow = (inputNow % 86400 ) / 3600
+                        int nMinNow = ((inputNow % 86400 ) % 3600 ) / 60
+                        int nSecNow = ((inputNow % 86400 ) % 3600 ) % 60
+                        paragraph "In this case, it would take ${nHrsNow} Hours, ${nMinNow} Mins and ${nSecNow} Seconds to reach the max number of repeats (if nothing changes state)"
+                    }
+                    
+                    input "msgRepeatContact", "capability.contactSensor", title: "Contact to turn the Repeat Off", multiple:false, submitOnChange:true
+                    input "msgRepeatSwitch", "capability.switch", title: "Switch to turn the Repeat Off", multiple:false, submitOnChange:true 
+                    if(msgRepeatContact) { paragraph "<small>* Contact will turn off Repeat when changing to any state.</small>" }
+                    if(msgRepeatSwitch) { paragraph "<small>* Switch will turn off Repeat when changing to any state.</small>" }
+                    state.theCogNotifications += "<b>-</b> msgRepeat: ${msgRepeat} - msgRepeatMinutes: ${msgRepeatMinutes} - msgRepeatContact: ${msgRepeatContact} - msgRepeatSwitch: ${msgRepeatSwitch}<br>"
+                } else {
+                    state.theCogNotifications -= "<b>-</b> msgRepeat: ${msgRepeat} - msgRepeatMinutes: ${msgRepeatMinutes} - msgRepeatContact: ${msgRepeatContact} - msgRepeatSwitch: ${msgRepeatSwitch}<br>"
+                    app.removeSetting("msgRepeatMinutes")
+                    app.removeSetting("msgRepeatContact")
+                    app.removeSetting("msgRepeatSwitch")
+                    app.removeSetting("msgRepeatMax")
+                }
+            }
         } else {
             state.theCogNotifications -= "<b>-</b> Message when reading is too high: ${messageH}<br>"
             state.theCogNotifications -= "<b>-</b> Message when reading is too low: ${messageL}<br>"
@@ -1742,6 +1774,11 @@ def notificationOptions(){
             app?.updateSetting("useSpeech",[value:"false",type:"bool"])
             app.removeSetting("fmSpeaker")
             app.removeSetting("sendPushMessage")
+            app?.updateSetting("msgRepeat",[value:"false",type:"bool"])
+            app.removeSetting("msgRepeatMinutes")
+            app.removeSetting("msgRepeatContact")
+            app.removeSetting("msgRepeatSwitch")
+            app.removeSetting("msgRepeatMax")
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Flash Lights Options")) {
@@ -2011,6 +2048,7 @@ def startTheProcess(evt) {
                             if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() } 
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
                             if(actionType.contains("aNotification")) { 
+                                state.doMessage = true
                                 messageHandler() 
                                 if(useTheFlasher) theFlasherHandler()
                             }
@@ -2053,6 +2091,7 @@ def startTheProcess(evt) {
                         if(actionType.contains("aSwitch") && setOnLC && !permanentDim) { dimmerOnReverseActionHandler() }
                         if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                             if(actionType.contains("aNotification")) { 
+                                state.doMessage = true
                                 messageHandler() 
                                 if(useTheFlasher) theFlasherHandler()
                             }
@@ -3179,36 +3218,66 @@ def contactReverseActionHandler() {
 // ********** End Actions **********
 
 def messageHandler() {
-    if(logEnable) log.debug "In messageHandler (${state.version})"
-    if(triggerType) {
-        if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
-            if(logEnable && logSize) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
-            if(state.setpointHighOK == "no") theMessage = "${messageH}"
-            if(state.setpointLowOK == "no") theMessage = "${messageL}"
-        } else {
-            theMessage = message
-        }
-        if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${theMessage}"
-        def values = "${theMessage}".split(";")
-        vSize = values.size()
-        count = vSize.toInteger()
-        def randomKey = new Random().nextInt(count)
-        msg1 = values[randomKey]
-        if(logEnable && logSize) log.debug "In messageHandler - Random - msg1: ${msg1}" 
+    if(logEnable) log.debug "In messageHandler (${state.version}) - doMessage: ${state.doMessage}"
+    if(msgRepeatContact) { subscribe(msgRepeatContact, "contact", repeatCheck) }    
+    if(msgRepeatSwitch) { subscribe(msgRepeatSwitch, "switch", repeatCheck) }
+
+    if(msgRepeat) {
+        state.msgRepMax = msgRepeatMax ?: 2
+        if(state.repeatCount == null) state.repeatCount = 0
+        if(logEnable) log.debug "In messageHandler (${state.version}) - repeatCount: ${state.repeatCount} - msgRepeatMax: ${state.msgRepMax}"
+        if(state.repeatCount > state.msgRepMax) { state.doMessage = false }
+        state.repeatCount = state.repeatCount + 1
     }
-    state.message = msg1
-    if(state.message) { 
-        if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
-        if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
-        if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}
-        if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
-        if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
-        if(logEnable) log.debug "In messageHandler - message: ${state.message}"
-        if(state.message && state.message != "null") {
-            if(useSpeech) letsTalk(state.message)
-            if(sendPushMessage) pushHandler(state.message)
+    if(state.doMessage) {   
+        if(triggerType) {
+            if(triggerType.contains("xBattery") || triggerType.contains("xEnergy") || triggerType.contains("xHumidity") || triggerType.contains("xIlluminance") || triggerType.contains("xPower") || triggerType.contains("xTemp")) {
+                if(logEnable && logSize) log.debug "In messageHandler (setpoint) - setpointHighOK: ${state.setpointHighOK} - setpointLowOK: ${state.setpointLowOK}"
+                if(state.setpointHighOK == "no") theMessage = "${messageH}"
+                if(state.setpointLowOK == "no") theMessage = "${messageL}"
+            } else {
+                theMessage = message
+            }
+            if(logEnable && logSize) log.debug "In messageHandler - Random - raw message: ${theMessage}"
+            def values = "${theMessage}".split(";")
+            vSize = values.size()
+            count = vSize.toInteger()
+            def randomKey = new Random().nextInt(count)
+            msg1 = values[randomKey]
+            if(logEnable && logSize) log.debug "In messageHandler - Random - msg1: ${msg1}" 
         }
+        state.message = msg1
+        if(state.message) { 
+            if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
+            if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
+            if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}
+            if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
+            if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
+            if(logEnable) log.debug "In messageHandler - message: ${state.message}"
+            if(state.message && state.message != "null") {
+                if(useSpeech) letsTalk(state.message)
+                if(sendPushMessage) pushHandler(state.message)
+            }
+        }
+        if(msgRepeat) {
+            repeatSeconds = msgRepeatMinutes * 60
+            runIn(repeatSeconds, messageHandler)
+        }
+    } else {
+        if(logEnable) log.debug "In messageHandler - Repeat is now off"
+        unsubscribe(msgRepeatContact)
+        unsubscribe(msgRepeatSwitch)
+        state.repeatCount = 0
+        state.doMessage = false
     }
+}
+
+def repeatCheck(evt) {
+    if(logEnable) log.debug "In repeatCheck (${state.version}) - Repeat Check was triggered, Repeat Off"
+    unsubscribe(msgRepeatContact)
+    unsubscribe(msgRepeatSwitch)
+    state.repeatCount = 0
+    state.doMessage = false
 }
 
 def letsTalk(msg) {
