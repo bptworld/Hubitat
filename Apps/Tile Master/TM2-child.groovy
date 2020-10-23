@@ -32,6 +32,8 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
+ *
+ *  2.4.6 - 10/23/20 - Added 'door' control
  *  2.4.5 - 10/12/20 - Typio
  *  2.4.4 - 10/11/20 - Added vertical text-align
  *  2.4.3 - 10/06/20 - Adjustments
@@ -48,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.5"
+	state.version = "2.4.6"
 }
 
 definition(
@@ -247,7 +249,7 @@ def pageConfig() {
                         if(theDevice) {
                             def allAtts = [:]
                             allAtts = theDevice.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
-                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
                             input "deviceAtts_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAtts, defaultValue:state.theAtts_$x
                             deviceAtt = app."deviceAtts_$x"
                             
@@ -260,7 +262,7 @@ def pageConfig() {
                             if(deviceStatus && deviceAtt) paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
                             
                             if(controlDevices && deviceAtt && !hideAttr) {
-                                if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock") {
+                                if(deviceAtt.toLowerCase() == "switch" || deviceAtt.toLowerCase() == "lock" || deviceAtt.toLowerCase() == "door") {
                                     cDevID = theDevice.id
                                     //cDevCom = theDevice.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
@@ -289,6 +291,18 @@ def pageConfig() {
                                             input "controlLock_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLock"], submitOnChange:true
                                             input "controlUnlock_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlock"], submitOnChange:true
                                         }
+                                        if(deviceAtt.toLowerCase() == "door") {
+                                            input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            if(!ipORcloud) {
+                                                controlClose = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/close?access_token=${parent.accessToken}"
+                                                controlOpen = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/open?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlClose = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/close?access_token=${parent.accessToken}"
+                                                controlOpen = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/open?access_token=${parent.accessToken}"
+                                            }
+                                            input "controlClose_$x", "enum", title: "Select the Close Maker URL", multiple:false, options: ["$controlClose"], submitOnChange:true
+                                            input "controlOpen_$x", "enum", title: "Select the Open Maker URL", multiple:false, options: ["$controlOpen"], submitOnChange:true
+                                        }
                                     }
                                     
                                     paragraph "To save on character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>."
@@ -301,6 +315,8 @@ def pageConfig() {
                                         if(controlOff) paragraph "Off - ${controlOff}"
                                         if(controlLock) paragraph "Lock - ${controlLock}"
                                         if(controlUnlock) paragraph "Unlock - ${controlUnlock}"
+                                        if(controlClose) paragraph "Close - ${controlClose}"
+                                        if(controlOpen) paragraph "Open - ${controlOpen}"
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
@@ -311,6 +327,10 @@ def pageConfig() {
                                         if(deviceAtt.toLowerCase() == "lock") {
                                             input "bControlLock_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                             input "bControlUnlock_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+                                        if(deviceAtt.toLowerCase() == "door") {
+                                            input "bControlClose_$x", "text", title: "Control <b>Close</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlOpen_$x", "text", title: "Control <b>Open</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
                                     }
                                 }
@@ -461,7 +481,7 @@ def pageConfig() {
                         if(theDevicea) {
                             def allAttsa = [:]
                             allAttsa = theDevicea.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
-                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
                             input "deviceAttsa_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsa, defaultValue:state.theAttsa_$x
                             deviceAtta = app."deviceAttsa_$x"
                             
@@ -474,7 +494,7 @@ def pageConfig() {
                             if(deviceStatusa && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
                             
                             if(controlDevices && deviceAtta && !hideAttra) {
-                                if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock") {
+                                if(deviceAtta.toLowerCase() == "switch" || deviceAtta.toLowerCase() == "lock" || deviceAtta.toLowerCase() == "door") {
                                     cDevIDa = theDevicea.id
                                     //cDevComa = theDevicea.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
@@ -503,6 +523,19 @@ def pageConfig() {
                                             input "controlLocka_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLocka"], submitOnChange:true
                                             input "controlUnlocka_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlocka"], submitOnChange:true
                                         }
+                                        if(deviceAtta.toLowerCase() == "door") {
+                                            input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            if(!ipORclouda) {
+                                                controlClosea = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/close?access_token=${parent.accessToken}"
+                                                controlOpena = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/open?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlClosea = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/close?access_token=${parent.accessToken}"
+                                                controlOpena = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevIDa}/open?access_token=${parent.accessToken}"
+                                            }
+                                            input "controlClose_$x", "enum", title: "Select the Close Maker URL", multiple:false, options: ["$controlClosea"], submitOnChange:true
+                                            input "controlOpena_$x", "enum", title: "Select the Open Maker URL", multiple:false, options: ["$controlOpena"], submitOnChange:true
+                                        }
+
                                     }
                                     
                                     paragraph "To save on character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>."
@@ -515,6 +548,8 @@ def pageConfig() {
                                         if(controlOffa) paragraph "Off - ${controlOffa}"
                                         if(controlLocka) paragraph "Lock - ${controlLocka}"
                                         if(controlUnlocka) paragraph "Unlock - ${controlUnlocka}"
+                                        if(controlClosea) paragraph "Close - ${controlClosea}"
+                                        if(controlOpena) paragraph "Open - ${controlOpena}"                                        
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
@@ -525,6 +560,10 @@ def pageConfig() {
                                         if(deviceAtta.toLowerCase() == "lock") {
                                             input "bControlLocka_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                             input "bControlUnlocka_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+                                        if(deviceAtta.toLowerCase() == "door") {
+                                            input "bControlOpena_$x", "text", title: "Control <b>Open</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlClosea_$x", "text", title: "Control <b>Close</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
                                     }
                                 }
@@ -673,7 +712,7 @@ def pageConfig() {
                         if(theDeviceb) {
                             def allAttsb = [:]
                             allAttsb = theDeviceb.supportedAttributes.unique{ it.name }.collectEntries{ [(it):"${it.name}"] }
-                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch' and 'Lock'</b>"
+                            if(controlDevices) paragraph "<b>Controllable device attribute include 'Switch', 'Lock', and 'Door'</b>"
                             input "deviceAttsb_$x", "enum", title: "Attribute", required:true, multiple:false, submitOnChange:true, options:allAttsb, defaultValue:state.theAttsb_$x
                             deviceAttb = app."deviceAttsb_$x"
                                                                                                                               
@@ -686,7 +725,7 @@ def pageConfig() {
                             if(deviceStatusb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
                             
                             if(controlDevices && deviceAttb && !hideAttrb) {
-                                if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock") {
+                                if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock" || deviceAttb.toLowerCase() == "door") {
                                     cDevIDb = theDeviceb.id
                                     //cDevComb = theDeviceb.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
@@ -715,6 +754,18 @@ def pageConfig() {
                                             input "controlLockb_$x", "enum", title: "Select the Lock Maker URL", multiple:false, options: ["$controlLockb"], submitOnChange:true
                                             input "controlUnlockb_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlockb"], submitOnChange:true
                                         }
+                                        if(deviceAttb.toLowerCase() == "door") {
+                                            input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                            if(!ipORcloud) {
+                                                controlCloseb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/close?access_token=${parent.accessToken}"
+                                                controlOpenb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/open?access_token=${parent.accessToken}"
+                                            } else {
+                                                controlCloseb = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/close?access_token=${parent.accessToken}"
+                                                controlOpenb = "https://cloud.hubitat.com/api/${parent.cloudToken}/apps/${parent.makerID}/devices/${cDevID}/open?access_token=${parent.accessToken}"
+                                            }
+                                            input "controlCloseb_$x", "enum", title: "Select the Close Maker URL", multiple:false, options: ["$controlCloseb"], submitOnChange:true
+                                            input "controlOpenb_$x", "enum", title: "Select the Open Maker URL", multiple:false, options: ["$controlOpenb"], submitOnChange:true
+                                        }
                                     }
                                     
                                     paragraph "To save on character count, use a url shortener, like <a href='https://bitly.com/' target='_blank'>bitly.com</a>."
@@ -727,6 +778,8 @@ def pageConfig() {
                                         if(controlOffb) paragraph "Off - ${controlOffb}"
                                         if(controlLockb) paragraph "Lock - ${controlLockb}"
                                         if(controlUnlockb) paragraph "Unlock - ${controlUnlockb}"
+                                        if(controlCloseb) paragraph "Close - ${controlCloseb}"
+                                        if(controlOpenb) paragraph "Open - ${controlOpenb}"                                        
                                         paragraph "--------------------------------------------------------------------"
                                         
                                         paragraph "Be sure to put 'http://' in front of the Bitly address"
@@ -737,6 +790,10 @@ def pageConfig() {
                                         if(deviceAttb.toLowerCase() == "lock") {
                                             input "bControlLockb_$x", "text", title: "Control <b>Lock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                             input "bControlUnlockb_$x", "text", title: "Control <b>Unlock</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                        }
+                                        if(deviceAttb.toLowerCase() == "door") {
+                                            input "bControlCloseb_$x", "text", title: "Control <b>Close</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
+                                            input "bControlOpenb_$x", "text", title: "Control <b>Open</b> URL from Bitly", required:true, multiple:false, submitOnChange:true
                                         }
                                     }
                                 }
@@ -1062,11 +1119,16 @@ def removeExtraLines() {
             app.removeSetting("controlOff_$d"); app.removeSetting("controlOffa_$d"); app.removeSetting("controlOffb_$d")
             app.removeSetting("controlLock_$d"); app.removeSetting("controlLocka_$d"); app.removeSetting("controlLockb_$d")
             app.removeSetting("controlUnlock_$d"); app.removeSetting("controlUnlocka_$d"); app.removeSetting("controlUnlockb_$d")
+            app.removeSetting("controlClose_$d"); app.removeSetting("controlClosea_$d"); app.removeSetting("controlCloseb_$d")
+            app.removeSetting("controlOpen_$d"); app.removeSetting("controlOpena_$d"); app.removeSetting("controlOpenb_$d")
             app.removeSetting("useBitly_$d"); app.removeSetting("useBitlya_$d"); app.removeSetting("useBitlyb_$d")
             app.removeSetting("bControlOn_$d"); app.removeSetting("bControlOna_$d"); app.removeSetting("bControlOnb_$d")
             app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOff_$d"); app.removeSetting("bControlOffb_$d")
             app.removeSetting("bControlLock_$d"); app.removeSetting("bControlLocka_$d"); app.removeSetting("bControlLockb_$d")
             app.removeSetting("bControlUnLock_$d"); app.removeSetting("bControlUnLocka_$d"); app.removeSetting("bControlUnLockb_$d")
+            app.removeSetting("bControlClose_$d"); app.removeSetting("bControlClosea_$d"); app.removeSetting("bControlCloseb_$d")
+            app.removeSetting("bControlOpen_$d"); app.removeSetting("bControlOpena_$d"); app.removeSetting("bControlOpenb_$d")
+
 
             app.removeSetting("overrideGlobal_$d"); app.removeSetting("overrideGlobala_$d"); app.removeSetting("overrideGlobalb_$d")        
             app.removeSetting("align_$d"); app.removeSetting("aligna_$d"); app.removeSetting("alignb_$d")  
@@ -1473,6 +1535,11 @@ def tileHandler(evt){
         if(useBitly && deviceAtts == "lock") controlOn = app."bControlLock_$y"
         if(useBitly && deviceAtts == "lock") controlOff = app."bControlUnlock_$y"
         
+        if(!useBitly && deviceAtts == "door") controlOn = app."controlClose_$y"
+        if(!useBitly && deviceAtts == "door") controlOff = app."controlOpen_$y"
+        if(useBitly && deviceAtts == "door") controlOn = app."bControlClose_$y"
+        if(useBitly && deviceAtts == "door") controlOff = app."bControlOpen_$y"
+
         aligna = app."aligna_$y"
         vAligna = app."vAligna_$y"
         colora = app."colora_$y"
@@ -1497,6 +1564,11 @@ def tileHandler(evt){
         if(useBitlya && deviceAttsa == "lock") controlOna = app."bControlLocka_$y"
         if(useBitlya && deviceAttsa == "lock") controlOffa = app."bControlUnlocka_$y"
         
+        if(!useBitlya && deviceAttsa == "door") controlOna = app."controlClosea_$y"
+        if(!useBitlya && deviceAttsa == "door") controlOffa = app."controlOpena_$y"
+        if(useBitlya && deviceAttsa == "door") controlOna = app."bControlClosea_$y"
+        if(useBitlya && deviceAttsa == "door") controlOffa = app."bControlOpena_$y"
+
         alignb = app."alignb_$y"
         vAlignb = app."vAlignb_$y"
         colorb = app."colorb_$y"
@@ -1522,6 +1594,11 @@ def tileHandler(evt){
         if(useBitlyb && deviceAttsb == "lock") controlOnb = app."bControlLockb_$y"
         if(useBitlyb && deviceAttsb == "lock") controlOffb = app."bControlUnlockb_$y"
         
+        if(!useBitlyb && deviceAttsb == "door") controlOnb = app."controlCloseb_$y"
+        if(!useBitlyb && deviceAttsb == "door") controlOffb = app."controlOpenb_$y"
+        if(useBitlyb && deviceAttsb == "door") controlOnb = app."bControlCloseb_$y"
+        if(useBitlyb && deviceAttsb == "door") controlOffb = app."bControlOpenb_$y"
+
         theGlobalStyle = ""
         if(align_G) theGlobalStyle += "text-align:${align_G};"
         if(color_G != "Default") theGlobalStyle += "color:${color_G};"
@@ -1698,12 +1775,13 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
     newWords2 = ""
     
     if(!hideAttr) {
-        if(controlDevices && (deviceAtts == "switch" || deviceAtts == "lock")) { 
+        if(controlDevices && (deviceAtts == "switch" || deviceAtts == "lock" || deviceAtts == "door")) { 
             if(theDevice) {
                 if(deviceAtts == "switch") cStatus = theDevice.currentValue("switch")
                 if(deviceAtts == "lock") cStatus = theDevice.currentValue("lock")
-            
-                if(cStatus == "on" || cStatus == "locked") {
+                if(deviceAtts == "door") cStatus = theDevice.currentValue("door")            
+
+                if(cStatus == "on" || cStatus == "locked" || cStatus == "closed") {
                     controlLink = "<a href=${controlOff} target=a>$deviceStatus</a>"
                 } else {
                     controlLink = "<a href=${controlOn} target=a>$deviceStatus</a>"
