@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.7 - 10/23/20 - Fixed the 'cloud' toggle for non-lock devices
  *  2.4.6 - 10/23/20 - Added 'door' control
  *  2.4.5 - 10/12/20 - Typio
  *  2.4.4 - 10/11/20 - Added vertical text-align
@@ -266,9 +267,9 @@ def pageConfig() {
                                     cDevID = theDevice.id
                                     //cDevCom = theDevice.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
+                                        input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                        ipORcloud = app."ipORcloud_$x"
                                         if(deviceAtt.toLowerCase() == "switch") {
-                                            input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
-                                            ipORcloud = app."ipORcloud_$x"
                                             if(!ipORcloud) {
                                                 controlOn = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/on?access_token=${parent.accessToken}"
                                                 controlOff = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/off?access_token=${parent.accessToken}"
@@ -280,7 +281,6 @@ def pageConfig() {
                                             input "controlOff_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOff"], submitOnChange:true
                                         }
                                         if(deviceAtt.toLowerCase() == "lock") {
-                                            input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                             if(!ipORcloud) {
                                                 controlLock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/lock?access_token=${parent.accessToken}"
                                                 controlUnlock = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/unlock?access_token=${parent.accessToken}"
@@ -292,7 +292,6 @@ def pageConfig() {
                                             input "controlUnlock_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlock"], submitOnChange:true
                                         }
                                         if(deviceAtt.toLowerCase() == "door") {
-                                            input "ipORcloud_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                             if(!ipORcloud) {
                                                 controlClose = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/close?access_token=${parent.accessToken}"
                                                 controlOpen = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/open?access_token=${parent.accessToken}"
@@ -498,9 +497,9 @@ def pageConfig() {
                                     cDevIDa = theDevicea.id
                                     //cDevComa = theDevicea.getSupportedCommands()
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
+                                        input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                        ipORclouda = app."ipORclouda_$x"
                                         if(deviceAtta.toLowerCase() == "switch") {
-                                            input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
-                                            ipORclouda = app."ipORclouda_$x"
                                             if(!ipORclouda) {
                                                 controlOna = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/on?access_token=${parent.accessToken}"
                                                 controlOffa = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/off?access_token=${parent.accessToken}"
@@ -512,7 +511,6 @@ def pageConfig() {
                                             input "controlOffa_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOffa"], submitOnChange:true
                                         }
                                         if(deviceAtta.toLowerCase() == "lock") {
-                                            input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                             if(!ipORclouda) {
                                                 controlLocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/lock?access_token=${parent.accessToken}"
                                                 controlUnlocka = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/unlock?access_token=${parent.accessToken}"
@@ -524,7 +522,6 @@ def pageConfig() {
                                             input "controlUnlocka_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlocka"], submitOnChange:true
                                         }
                                         if(deviceAtta.toLowerCase() == "door") {
-                                            input "ipORclouda_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                             if(!ipORclouda) {
                                                 controlClosea = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/close?access_token=${parent.accessToken}"
                                                 controlOpena = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDa}/open?access_token=${parent.accessToken}"
@@ -728,10 +725,10 @@ def pageConfig() {
                                 if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock" || deviceAttb.toLowerCase() == "door") {
                                     cDevIDb = theDeviceb.id
                                     //cDevComb = theDeviceb.getSupportedCommands()
+                                    input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+                                    ipORcloudb = app."ipORcloudb_$x"
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
                                         if(deviceAttb.toLowerCase() == "switch") {
-                                            input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
-                                            ipORcloudb = app."ipORcloudb_$x"
                                             if(!ipORcloudb) {
                                                 controlOnb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
                                                 controlOffb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
@@ -743,7 +740,6 @@ def pageConfig() {
                                             input "controlOffb_$x", "enum", title: "Select the OFF Maker URL", multiple:false, options: ["$controlOffb"], submitOnChange:true
                                         }
                                         if(deviceAttb.toLowerCase() == "lock") {
-                                            input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                             if(!ipORcloudb) {
                                                 controlLockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/lock?access_token=${parent.accessToken}"
                                                 controlUnlockb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/unlock?access_token=${parent.accessToken}"
@@ -755,7 +751,6 @@ def pageConfig() {
                                             input "controlUnlockb_$x", "enum", title: "Select the Unlock Maker URL", multiple:false, options: ["$controlUnlockb"], submitOnChange:true
                                         }
                                         if(deviceAttb.toLowerCase() == "door") {
-                                            input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
                                             if(!ipORcloud) {
                                                 controlCloseb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/close?access_token=${parent.accessToken}"
                                                 controlOpenb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevID}/open?access_token=${parent.accessToken}"
