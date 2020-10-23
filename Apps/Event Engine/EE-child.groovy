@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.1.9 - 10/22/20 - Now supports multiple locks as Condition
 *  2.1.8 - 10/22/20 - Added Repeat options to Notifications
 *  2.1.7 - 10/21/20 - More adjustments
 *  2.1.6 - 10/21/20 - Adjustments to setColorTemperature
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.8"
+    state.version = "2.1.9"
 }
 
 definition(
@@ -646,7 +647,7 @@ def pageConfig() {
 // -----------
             if(triggerType.contains("xLock")) {
                 paragraph "<b>Lock</b>"
-                input "lockEvent", "capability.lock", title: "By Lock", required:false, multiple:false, submitOnChange:true
+                input "lockEvent", "capability.lock", title: "By Lock", required:false, multiple:true, submitOnChange:true
                 if(lockEvent) {
                     input "lUnlockedLocked", "bool", title: "Condition true when Unlocked (off) or Locked (on)", description: "Lock", defaultValue:false, submitOnChange:true
                     if(lUnlockedLocked) {
@@ -2249,7 +2250,6 @@ def devicesGoodHandler() {
         }
     } catch(e) { 
         theCount = 1
-        state.eventName = null
     }
     state.count = state.count + theCount
     if(state.dText == null) state.dText = ""
@@ -2261,7 +2261,7 @@ def devicesGoodHandler() {
             } else {
                 theValue = it.currentValue("${state.eventType}").toString()
             }
-            if(logEnable && logSize) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
+            if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
             if(theValue == state.typeValue1) { 
                 if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 deviceTrue1 = deviceTrue1 + 1
@@ -3611,8 +3611,14 @@ def setLevelandColorHandler() {
 }
 
 def getLockCodeNames(myDev) {  // Special thanks to Bruce @bravenel for this code
-    def list = [] + getLockCodesFromDevice(myDev).tokenize(",")
-    return list
+    def list = []
+    myDev.each {
+        log.warn "Working on Lock: ${it}"
+        list += getLockCodesFromDevice(it).tokenize(",")
+    }
+    lista = list.flatten().unique{ it }
+    listb = lista.sort { a, b -> a <=> b }
+    return listb
 }
 
 def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for this code
