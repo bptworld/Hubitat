@@ -725,10 +725,10 @@ def pageConfig() {
                                 if(deviceAttb.toLowerCase() == "switch" || deviceAttb.toLowerCase() == "lock" || deviceAttb.toLowerCase() == "door") {
                                     cDevIDb = theDeviceb.id
                                     //cDevComb = theDeviceb.getSupportedCommands()
-                                    input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
-                                    ipORcloudb = app."ipORcloudb_$x"
                                     if(parent.hubIP && parent.makerID && parent.accessToken) {
-                                        if(deviceAttb.toLowerCase() == "switch") {
+					    input "ipORcloudb_$x", "bool", title: "Use Local or Cloud control", defaultValue:false, description: "Ip or Cloud", submitOnChange:true
+					    ipORcloudb = app."ipORcloudb_$x"
+					    if(deviceAttb.toLowerCase() == "switch") {
                                             if(!ipORcloudb) {
                                                 controlOnb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/on?access_token=${parent.accessToken}"
                                                 controlOffb = "http://${parent.hubIP}/apps/api/${parent.makerID}/devices/${cDevIDb}/off?access_token=${parent.accessToken}"
