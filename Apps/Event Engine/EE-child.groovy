@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.1.9 - 10/22/20 - Now supports multiple locks as Condition
-*  2.1.8 - 10/22/20 - Added Repeat options to Notifications
-*  2.1.7 - 10/21/20 - More adjustments
-*  2.1.6 - 10/21/20 - Adjustments to setColorTemperature
-*  2.1.5 - 10/19/20 - Cosmetic changes
-*  2.1.4 - 10/18/20 - Added Global Variables to Conditions and Actions
-*  2.1.3 - 10/14/20 - Code cleanup
-*  2.1.2 - 10/14/20 - Another adjustment to Thermostats
-*  2.1.1 - 10/14/20 - Adjustments to Thermostats
-*  2.1.0 - 10/14/20 - Typo
+*  2.2.0 - 10/22/20 - Added Adjustable time delay between device Actions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -59,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.1.9"
+    state.version = "2.2.0"
 }
 
 definition(
@@ -149,10 +140,16 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
-                input "preMadePeriodic", "text", title: "Enter in a premade Periodic Cron Expression", required:false, submitOnChange:true
-                paragraph "Create your own Expressions using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
-                paragraph "<hr>"
+                input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression", required:false, submitOnChange:true
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
+                paragraph "Or create your own Expressions locally using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
+                paragraph "<hr>"
+                
+                
+                
+                
+                
+                
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Periodic - ${preMadePeriodic}<br>"
             } else {
@@ -1595,7 +1592,11 @@ def pageConfig() {
                 app.removeSetting("delayReverse")
                 app?.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
             }
+            
+            paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
+            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second)", defaultValue:1000, required:true, submitOnChange:true
         }
+                
         // ********** End Actions **********
 
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
@@ -2776,9 +2777,11 @@ def dimmerOnReverseActionHandler() {
                         def cMode = oldColorMode
                         if(cMode == "CT") {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level}"
+                            actionDelay2 = actionDelay ?: 1000
                             it.setColorTemperature(cTemp)
-                            it.setLevel(level)
-                            pauseExecution(1000)
+                            pauseExecution(actionDelay2)
+                            it.setLevel(level)                          
+                            pauseExecution(actionDelay2)
                             if(oldStatus == "off") {                            
                                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                                 it.off()
@@ -2786,8 +2789,9 @@ def dimmerOnReverseActionHandler() {
                         } else {
                             def theValue = [hue: hueColor, saturation: saturation, level: level]
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
+                            actionDelay2 = actionDelay ?: 1000
                             it.setColor(theValue)
-                            pauseExecution(1000)
+                            pauseExecution(actionDelay2)
                             if(oldStatus == "off") {
                                 if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning light off (${it})"
                                 it.off()
@@ -2804,9 +2808,11 @@ def dimmerOnReverseActionHandler() {
                         int level = oldLevel.toInteger()
                         int cTemp = oldColorTemp.toInteger()
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp}"
+                        actionDelay2 = actionDelay ?: 1000
                         it.setLevel(level)
+                        pauseExecution(actionDelay2)
                         it.setColorTemperature(cTemp)
-                        pauseExecution(1000)
+                        pauseExecution(actionDelay2)
                         if(oldStatus == "off") {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning light off (${it})"
                             it.off()
@@ -2821,8 +2827,9 @@ def dimmerOnReverseActionHandler() {
                         def (oldStatus, oldLevel) = data.split("::")
                         int level = oldLevel.toInteger()
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level}"
+                        actionDelay2 = actionDelay ?: 1000
                         it.setLevel(level)
-                        pauseExecution(1000)
+                        pauseExecution(actionDelay2)
                         if(oldStatus == "off") {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning light off (${it})"
                             it.off()
@@ -3151,17 +3158,20 @@ def thermostatActionHandler() {
             it.setThermostatFanMode(setThermostatFanMode)
         }
         if(setThermostatMode) {
-            pauseExecution(1000)
+            actionDelay2 = actionDelay ?: 1000
+            pauseExecution(actionDelay2)
             if(logEnable) log.debug "In thermostatActionHandler - Thermostat Mode - Setting ${it} to ${setThermostatMode}"
             it.setThermostatMode(setThermostatMode)
         }
         if(coolingSetpoint) {
-            pauseExecution(1000)
+            actionDelay2 = actionDelay ?: 1000
+            pauseExecution(actionDelay2)
             if(logEnable) log.debug "In thermostatActionHandler - Cooling Setpoint - Setting ${it} to ${coolingSetpoint}"
             it.setCoolingSetpoint(coolingSetpoint)
         }
         if(heatingSetpoint) {
-            pauseExecution(1000)
+            actionDelay2 = actionDelay ?: 1000
+            pauseExecution(actionDelay2)
             if(logEnable) log.debug "In thermostatActionHandler - Heating Setpoint - Setting ${it} to ${heatingSetpoint}"
             it.setHeatingSetpoint(heatingSetpoint)
         }
@@ -3540,7 +3550,9 @@ def setLevelandColorHandler() {
                 state.oldLevelMap.put(name,oldStatus)
                 state.setOldMap = true
                 if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - $it.displayName, setColorTemp($tempLC)"
+                actionDelay2 = actionDelay ?: 1000
                 it.setLevel(onLevel as Integer ?: 99)
+                pauseExecution(actionDelay2)
                 it.setColorTemperature(tempLC)
             } else if (it.hasCommand('setLevel')) {
                 if(state.setOldMap == false) {
@@ -3600,7 +3612,9 @@ def setLevelandColorHandler() {
                 it.setColor(value)
             } else if(pdTemp && it.hasCommand('setColorTemperature')) {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl}"
+                actionDelay2 = actionDelay ?: 1000
                 it.setLevel(permanentDimLvl)
+                pauseExecution(actionDelay2)
                 it.setColorTemperature(pdTemp)
             } else {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel: $permanentDimLvl"
@@ -3639,10 +3653,26 @@ def resetTruthHandler() {
 }
 
 def globalVariablesHandler(data) {
-    if(data) {
-        state.gvMap = data
-    }
+    if(data) { state.gvMap = data }
     if(globalVariableEvent) startTheProcess()
+}
+
+def versionIsGoodHandler(data) {
+    if(data) { state.verIsGood = data }
+}
+
+def cronExpressionsHandler(data) {
+    if(data) { state.ceMap = data }
+/*    
+    if(state.ceMap) {
+        def theData = "${state.ceMap}".split(",")
+        theData.each { it -> 
+            def (name, value) = it.split(":")
+            if(logEnable) log.debug "In resetTruthHandler - setting subscription for ${name}"
+            subscribe(value, setCronExpression)
+        }
+    }
+*/    
 }
 
 // ********** Normal Stuff **********
