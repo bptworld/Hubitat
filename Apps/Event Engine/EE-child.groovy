@@ -37,7 +37,8 @@
 *
 *  Changes:
 *
-*  2.2.0 - 10/22/20 - Added Adjustable time delay between device Actions
+*  2.2.1 - 10/25/20 - Adjustments Special Action Option
+*  2.2.0 - 10/25/20 - Added Adjustable time delay between device Actions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.0"
+    state.version = "2.2.1"
 }
 
 definition(
@@ -1594,7 +1595,7 @@ def pageConfig() {
             }
             
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
-            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second)", defaultValue:1000, required:true, submitOnChange:true
+            input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:250, required:true, submitOnChange:true
         }
                 
         // ********** End Actions **********
@@ -2777,7 +2778,7 @@ def dimmerOnReverseActionHandler() {
                         def cMode = oldColorMode
                         if(cMode == "CT") {
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - cTemp: ${ctemp} - level: ${level}"
-                            actionDelay2 = actionDelay ?: 1000
+                            actionDelay2 = actionDelay ?: 250
                             it.setColorTemperature(cTemp)
                             pauseExecution(actionDelay2)
                             it.setLevel(level)                          
@@ -2789,7 +2790,7 @@ def dimmerOnReverseActionHandler() {
                         } else {
                             def theValue = [hue: hueColor, saturation: saturation, level: level]
                             if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Reversing Light: ${it} - oldStatus: ${oldStatus} - theValue: ${theValue}"
-                            actionDelay2 = actionDelay ?: 1000
+                            actionDelay2 = actionDelay ?: 250
                             it.setColor(theValue)
                             pauseExecution(actionDelay2)
                             if(oldStatus == "off") {
@@ -2808,7 +2809,7 @@ def dimmerOnReverseActionHandler() {
                         int level = oldLevel.toInteger()
                         int cTemp = oldColorTemp.toInteger()
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level} - cTemp: ${cTemp}"
-                        actionDelay2 = actionDelay ?: 1000
+                        actionDelay2 = actionDelay ?: 250
                         it.setLevel(level)
                         pauseExecution(actionDelay2)
                         it.setColorTemperature(cTemp)
@@ -2827,7 +2828,7 @@ def dimmerOnReverseActionHandler() {
                         def (oldStatus, oldLevel) = data.split("::")
                         int level = oldLevel.toInteger()
                         if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Reversing Light: ${it} - oldStatus: ${oldStatus} - level: ${level}"
-                        actionDelay2 = actionDelay ?: 1000
+                        actionDelay2 = actionDelay ?: 250
                         it.setLevel(level)
                         pauseExecution(actionDelay2)
                         if(oldStatus == "off") {
@@ -3158,19 +3159,19 @@ def thermostatActionHandler() {
             it.setThermostatFanMode(setThermostatFanMode)
         }
         if(setThermostatMode) {
-            actionDelay2 = actionDelay ?: 1000
+            actionDelay2 = actionDelay ?: 250
             pauseExecution(actionDelay2)
             if(logEnable) log.debug "In thermostatActionHandler - Thermostat Mode - Setting ${it} to ${setThermostatMode}"
             it.setThermostatMode(setThermostatMode)
         }
         if(coolingSetpoint) {
-            actionDelay2 = actionDelay ?: 1000
+            actionDelay2 = actionDelay ?: 250
             pauseExecution(actionDelay2)
             if(logEnable) log.debug "In thermostatActionHandler - Cooling Setpoint - Setting ${it} to ${coolingSetpoint}"
             it.setCoolingSetpoint(coolingSetpoint)
         }
         if(heatingSetpoint) {
-            actionDelay2 = actionDelay ?: 1000
+            actionDelay2 = actionDelay ?: 250
             pauseExecution(actionDelay2)
             if(logEnable) log.debug "In thermostatActionHandler - Heating Setpoint - Setting ${it} to ${heatingSetpoint}"
             it.setHeatingSetpoint(heatingSetpoint)
@@ -3550,7 +3551,7 @@ def setLevelandColorHandler() {
                 state.oldLevelMap.put(name,oldStatus)
                 state.setOldMap = true
                 if(logEnable) log.debug "In setLevelandColorHandler - setColorTemp - $it.displayName, setColorTemp($tempLC)"
-                actionDelay2 = actionDelay ?: 1000
+                actionDelay2 = actionDelay ?: 250
                 it.setLevel(onLevel as Integer ?: 99)
                 pauseExecution(actionDelay2)
                 it.setColorTemperature(tempLC)
@@ -3612,7 +3613,7 @@ def setLevelandColorHandler() {
                 it.setColor(value)
             } else if(pdTemp && it.hasCommand('setColorTemperature')) {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl}"
-                actionDelay2 = actionDelay ?: 1000
+                actionDelay2 = actionDelay ?: 250
                 it.setLevel(permanentDimLvl)
                 pauseExecution(actionDelay2)
                 it.setColorTemperature(pdTemp)
