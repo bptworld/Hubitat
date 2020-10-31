@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.5 - 10/30/20 - Adjustments to Special Tracking
  *  2.3.4 - 09/02/20 - Cosmetic changes
  *  2.3.3 - 08/02/20 - Fixed typo with locks
  *  2.3.2 - 07/29/20 - Fixed typo with Battery
@@ -53,7 +54,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.4"
+	state.version = "2.3.5"
 }
 
 definition(
@@ -1438,11 +1439,11 @@ def specialTrackingHandler() {
         state.specialCount = 0
         state.specialMapPhoneS = ""
         specialMapPhone = "Special Tracking Report \n"
-        data = false
 
         theDevices = specialDevices1.sort { a, b -> a.displayName <=> b.displayName }    
 
         theDevices.each { it ->
+            data = false
             if(!it.isDisabled()) {
                 if(att1) att1Value = it.currentValue("${att1}")
                 if(att2) att2Value = it.currentValue("${att2}")
@@ -1527,10 +1528,10 @@ def specialTrackingHandler() {
             }
         }
 
-        for(x=tileCount;x<4;x++) {
+/*        for(x=tileCount;x<4;x++) {
             sending = "${x}::<div style='font-size:${fontSize}px'>Special Tracking Report - No Data</div>"
             watchdogTileDevice.sendWatchdogSpecialMap(sending)
-        }
+        }    */
 
         def rightNow = new Date()
         dateFormatHandler(rightNow)
