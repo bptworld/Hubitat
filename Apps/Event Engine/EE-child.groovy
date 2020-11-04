@@ -37,11 +37,17 @@
 *
 *  Changes:
 *
-*  2.2.1 - 10/25/20 - Adjustments Special Action Option
+*  2.2.2 - 11/03/20 - Fixed mode not reversing
+*  2.2.1 - 10/25/20 - Adjustments to Special Action Option
 *  2.2.0 - 10/25/20 - Added Adjustable time delay between device Actions
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
+*/
+
+/*
+- Working on Send HTTP to Actions - 1175
+- Working on Clone Cog
 */
 
 import groovy.json.*
@@ -51,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.1"
+    state.version = "2.2.2"
 }
 
 definition(
@@ -70,6 +76,7 @@ definition(
 preferences {
     page(name: "pageConfig")
     page name: "notificationOptions", title: "", install:false, uninstall:true, nextPage: "pageConfig"
+    page name: "copyCogOptions", title: "", install:false, uninstall:true, nextPage: "pageConfig"
 }
 
 def pageConfig() {
@@ -81,6 +88,12 @@ def pageConfig() {
             paragraph "Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!"
             paragraph "Please <a href='https://docs.google.com/document/d/1QtIsAKUb9vzAZ1RWTQR2SfxaZFvuLO3ePxDxmH-VU48/edit?usp=sharing' target='_blank'>visit this link</a> for a breakdown of all Event Engine Options. (Google Docs)"
         }
+        /* if(triggerType == null || triggerType == "") {
+            section() {
+                href "copyCogOptions", title: "Copy Cog Options", description: "Click here for options"
+            }
+        } */
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Conditions")) {
             input "triggerType", "enum", title: "Condition Type", options: [
                 ["tTimeDays":"Time/Days/Mode - Sub-Menu"],
@@ -104,7 +117,7 @@ def pageConfig() {
                 ["xVoltage":"Voltage Setpoint"],
                 ["xWater":"Water Sensor"],
                 ["xCustom":"** Custom Attribute **"]
-            ], required:true, multiple:true, submitOnChange:true, width:6
+            ], required:false, multiple:true, submitOnChange:true, width:6
 
             if(triggerType == null) triggerType = ""
             if(timeDaysType == null) timeDaysType = ""
@@ -144,13 +157,6 @@ def pageConfig() {
                 input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression", required:false, submitOnChange:true
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
                 paragraph "Or create your own Expressions locally using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
-                paragraph "<hr>"
-                
-                
-                
-                
-                
-                
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Periodic - ${preMadePeriodic}<br>"
             } else {
@@ -1166,6 +1172,7 @@ def pageConfig() {
                 ["aNotification":"Notifications (speech/push/flash)"], 
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
+                // ["aSendHTTP":"Send HTTP Request"],
                 ["aGVar":"Set Global Variable"],
                 ["aSwitch":"Switches"],
                 ["aThermostat":"Thermostat"],
@@ -1295,6 +1302,26 @@ def pageConfig() {
             } else {
                 state.theCogActions -= "<b>-</b> Rule: ${rmRule} - Action: ${rmAction}<br>"
                 app.removeSetting("rmRule")
+            }
+
+            if(actionType.contains("aSendHTTP")) {        // Based on code from Dan Ogorchock - @ogiewon - Thank you
+                paragraph "<b>Send HTTP Request</b>"
+                input "httpIP", "string", title:"Enter IP Address of your HTTP server", submitOnChange:true
+                input "httpPort", "string", title:"Enter Port of your HTTP server", defaultValue: "8080", submitOnChange:true
+                input "httpPath", "string", title:"The Rest of the URL, Starting with Forward Slash", submitOnChange:true
+                input "httpMethod", "enum", title: "Send", options: ["POST","GET","PUT"], defaultValue: "GET", submitOnChange:true, width:6          
+                input "httpContent", "enum", title: "Content-Type", options: ["application/x-www-form-urlencoded","application/json"], defaultValue: "application/x-www-form-urlencoded", submitOnChange:true, width:6
+                if(httpMethod == "POST" || httpMethod == "PUT") {
+                    input "httpBody", "string", title:"Body"
+                }
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Send HTTP: ${httpMethod} - URL: ${httpIP}:${httpPort}${httpPath} - Body: ${httpBody}<br>"
+            } else {
+                state.theCogActions -= "<b>-</b> Send HTTP: ${httpMethod} - URL: ${httpIP}:${httpPort}${httpPath} - Body: ${httpBody}<br>"
+                app.removeSetting("httpURL")
+                app.removeSetting("httpMethod")
+                app.removeSetting("httpContent")
+                app.removeSetting("httpBody")
             }
 
             if(actionType.contains("aGVar")) {
@@ -1638,6 +1665,7 @@ def pageConfig() {
                 }
             }
         }
+        
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
             paragraph "This will give a short description on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
@@ -1685,7 +1713,7 @@ def notificationOptions(){
             section("Instructions for Priority Message:", hideable:true, hidden:true) {
                 paragraph "Message Priority is a unique feature only found with 'Follow Me'! Simply place the option bracket in front of any message to be spoken and the Volume, Voice and/or Speaker will be adjusted accordingly."
                 paragraph "Format: [priority:sound:speaker]<br><small>Note: Any option not needed, replace with a 0 (zero).</small>"
-                paragraph "<b>Priority:</b><br>This can change the voice used and the color of the message displayed on the Dashboard Tile.<br>[F:0:0] - Fun<br>[R:0:0] - Random<br>[L:0:0] - Low<br>[N:0:0] - Normal<br>[H:0:0] - High"
+                paragraph "<b>Priority:</b><br>This can change the voice used and the color of the message displayed on the Dashboard Cog.<br>[F:0:0] - Fun<br>[R:0:0] - Random<br>[L:0:0] - Low<br>[N:0:0] - Normal<br>[H:0:0] - High"
                 paragraph "<b>Sound:</b><br>You can also specify a sound file to be played before a message!<br>[1] - [5] - Specify a files URL"
                 paragraph "<b>ie.</b> [L:0:0]Amy is home or [N:3:0]Window has been open too long or [H:0:0]Heat is on and window is open"
                 paragraph "If you JUST want a sound file played with NO speech after, use [L:1:0]. or [N:3:0]. etc. Notice the DOT after the [], that is the message and will not be spoken."
@@ -1800,6 +1828,27 @@ def notificationOptions(){
     }
 }
 
+def copyCogOptions() {
+    dynamicPage(name: "copyCogOptions", title: "", install:false, uninstall:false) {
+		display()
+        state.theMessage = ""        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Cog Options")) {
+            paragraph "<b>Copy another Cog to this Cog!</b><br>This will overwrite all settings on this Cog with the settings of the 'from' Cog."
+            paragraph "When the copy switch is turned on:<br> - It will only take a few seconds<br> - When complete the switch will turn off<br> - The app number will be blank<br> - At this point you can press 'Next'"
+            paragraph "<b>Note:</b> Devices will be carried over to the new Cog but the attribute will have to be re-selected. This may cause errors in the log, just remember to go into each line and make sure the device attribute is set to the correct attribute."
+        }
+        section() {
+            input "fromCog", "number", title: "Cog App Number to Copy <b>From</b>", submitOnChange:true, width:6
+            
+            if(fromCog) {
+                input "copyCog", "bool", defaultValue: "false", title: "Copy Cog Now", description: "Copy Cog Now", submitOnChange: true
+                if(copyCog) requestCogCopy()
+            }
+            paragraph "${state.theMessage}"
+        }
+    }
+}
+
 def installed() {
     log.debug "Installed with settings: ${settings}"
     initialize()
@@ -1903,6 +1952,7 @@ def startTheProcess(evt) {
         state.isThereDevices = false
         state.isThereSPDevices = false
         state.areRestrictions = false
+        state.devicesOK = false
         state.atLeastOneDeviceOK = false
         state.setpointLow = null
         state.setpointHigh = null
@@ -2050,6 +2100,8 @@ def startTheProcess(evt) {
                             if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
                             if(actionType.contains("aSwitch") && switchedDimUpAction) { slowOnHandler() } 
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
+                            //if(actionType.contains("aSendHTTP")) { sendHTTPActionHandler(httpPath, httpMethod) }
+                            if(actionType.contains("aSendHTTP")) { runCmd(httpPath, httpMethod) }
                             if(actionType.contains("aNotification")) { 
                                 state.doMessage = true
                                 messageHandler() 
@@ -2233,7 +2285,7 @@ def waterHandler() {
         state.typeAO = waterANDOR
         devicesGoodHandler()
     }     
-    if(!state.isThereDevices) { state.devicesOK = true }    // Keep in LAST device
+    //if(!state.isThereDevices) { state.devicesOK = true }    // Keep in LAST device
 }
 
 def devicesGoodHandler() {
@@ -2985,11 +3037,88 @@ def modeChangeActionHandler() {
     setLocationMode(modeAction)
 }
 
-def setGlobalVariableHandler() {
-    if(logEnable) log.debug "In setGlobalVariableHandler (${state.version}) - Setting: ${setGVname} to ${setGVvalue}"
-    data = "fromChild;${setGVname}:${setGVvalue}"
-    parent.gVariablesHandler(data)
+def sendHTTPActionHandler(String varCommand, String method) {
+    if(logEnable) log.debug "In sendHTTPActionHandler - Sending GET to URL: ${httpIP}:${httpPort}${varCommand}"
+    
+    def httpHost = "${httpIP}:${httpPort}"
+    def httpMethod = "GET"
+    def headers = [:] 
+    headers.put("HOST", "${httpIP}:${httpPort}")
+    headers.put("Content-Type", httpContent)
+    def httpRequest = [
+        method:		httpMethod,
+        path: 		varCommand,
+        headers:	headers
+    ]
+    def hubAction = new hubitat.device.HubAction(httpRequest)
+    if(logEnable) log.debug "In sendHTTPActionHandler - Action: $hubAction"
 }
+
+def runCmd(String varCommand, String method) {        // Based on code from Dan Ogorchock - @ogiewon - Thank you
+    if(logEnable) log.debug "In runCmd (${state.version})"
+    def path = varCommand 
+    def body = ""
+    if(httpBody) body = httpBody
+    def headers = [:] 
+    headers.put("HOST", "${httpIP}:${httpPort}")
+    headers.put("Content-Type", httpContent)
+    try {
+        def hubAction = new hubitat.device.HubAction(
+            method: method,
+            path: path,
+            body: body,
+            headers: headers
+            )
+        if(logEnable) log.debug "In runCmd - Action: $hubAction"
+        return hubAction
+    }
+    catch (Exception e) {
+        log.warn "In runCmd - runCmd hit exception ${e} on ${hubAction}"
+    }  
+}
+
+// ***** Start Cog Copy *****
+def requestCogCopy() {             // this is sent to the parent app
+    if(logEnable) log.info "In requestCogCopy (${state.version})"
+    toCog = app.id
+    parent.getCogSettings(fromCog,toCog)
+}
+
+def sendChildSettings() {           // this is then requested from the parent app
+    if(logEnable) log.info "In sendChildSettings (${state.version})"   
+    childAppSettings = settings
+}
+
+def doTheCogCopy(newSettings) {    // and finally the parent app sends the settings!
+    if(logEnable) log.info "In doTheCogCopy (${state.version})"
+    if(newSettings) {
+        if(logEnable) log.info "In doTheCogCopy - Received: ${newSettings}"
+        
+        newSettings.each { theOption ->
+            name = theOption.key
+            nameValue = theOption.value
+            
+            nValue = nameValue.toString()
+            if(nValue && (name != "cloneCog" && name != "copyCog" && name != "fromCog")) {
+                if(logEnable) log.info "In doTheCogCopy - Working on $name - value: $nameValue"
+                if(nValue.contains("[")) {
+                    app.updateSetting(name,[type:"enum",value:nameValue])
+                } else {
+                    app.updateSetting(name,nameValue)
+                }
+
+                //app.updateSetting(name,nameValue)
+            }     
+        }
+    }
+    if(logEnable) log.info "In doTheCogCopy - Finished"
+    app.updateSetting("copyCog",[value:"false",type:"bool"])
+    app.updateSetting("fromCog",[value:"",type:"number"])
+    app.updateSetting("cloneCog",[value:"false",type:"bool"])
+    if(logEnable) log.info "In doTheCogCopy - New settings: $settings"
+    state.copyFinished = true
+}
+// ***** End Cog Copy *****
 
 def switchesOnActionHandler() {
     switchesOnAction.each { it ->
@@ -3379,16 +3508,15 @@ def checkTimeSun() {
         if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
         state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
         if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
+        
         if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
-            //state.whatToDo = "run"
+            state.devicesOK = true
+            state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
-            if(reverse && !timeBetweenSunRestriction) {
-                state.whatToDo = "reverse"
-            } else {
-                state.whatToDo = "stop"
-            }
+            state.devicesOK = false
+            state.atLeastOneDeviceOK = false
         }
     } else {
         state.timeBetweenSun = true
@@ -3404,17 +3532,15 @@ def checkTime() {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
         } else {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
-        }
+        }      
         if(state.betweenTime) {
             if(logEnable) log.debug "In checkTime - Time within range"
-            //state.whatToDo = "run"
+            state.devicesOK = true
+            state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In checkTime - Time outside of range"
-            if(reverse) {
-                state.whatToDo = "reverse"
-            } else {
-                state.whatToDo = "stop"
-            }
+            state.devicesOK = false
+            state.atLeastOneDeviceOK = false
         }
     } else {
         if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
@@ -3435,8 +3561,12 @@ def dayOfTheWeekHandler() {
 
         if(dayCheck) {
             state.daysMatch = true
+            state.devicesOK = true
+            state.atLeastOneDeviceOK = true
         } else {
             state.daysMatch = false
+            state.devicesOK = false
+            state.atLeastOneDeviceOK = false
         }
     } else {
         state.daysMatch = true
@@ -3451,13 +3581,17 @@ def modeHandler() {
         def modeCheck = modeEvent.contains(theValue)
         if(modeCheck) {
             state.modeMatch = true
+            state.devicesOK = true
+            state.atLeastOneDeviceOK = true
         } else {
             state.modeMatch = false
+            state.devicesOK = false
+            state.atLeastOneDeviceOK = false
         }
     } else {
         state.modeMatch = true
     }
-    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo} - devicesOK: ${state.devicesOK} - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK}"
 }
 
 def setLevelandColorHandler() {
@@ -3651,6 +3785,12 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
 def resetTruthHandler() {
     if(logEnable) log.debug "In resetTruthHandler (${state.version})"
     state.clear()
+}
+
+def sendSettingsToParentHandler() {
+    if(logEnable) log.debug "In sendSettingsToParentHandler (${state.version})"
+    data = "${settings}"
+    parent.getSettingsFromChild(data)
 }
 
 def globalVariablesHandler(data) {
