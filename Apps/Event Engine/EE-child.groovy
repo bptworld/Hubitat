@@ -1,5 +1,5 @@
 /**
-*  **************** Event Engine Cog App ****************
+*  **************** Event Engine Cog ****************
 *
 *  Design Usage:
 *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.2.4 - 11/09/20 - Adjustments
 *  2.2.3 - 11/07/20 - Added Light levels per Mode
 *  2.2.2 - 11/03/20 - Fixed mode not reversing
 *  2.2.1 - 10/25/20 - Adjustments to Special Action Option
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.3"
+    state.version = "2.2.4"
 }
 
 definition(
@@ -2429,7 +2430,8 @@ def devicesGoodHandler() {
             state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In devicesGoodHandler - Using OR2"
-            state.devicesOK = false 
+            state.devicesOK = false
+            state.atLeastOneDeviceOK = false
         }
     } else {  // AND (False)
         if(state.deviceMatch == state.count) {
@@ -2438,7 +2440,8 @@ def devicesGoodHandler() {
             state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In devicesGoodHandler - Using AND2"
-            state.devicesOK = false 
+            state.devicesOK = false
+            state.atLeastOneDeviceOK = false
             if(state.deviceMatch >= 1) state.atLeastOneDeviceOK = true
         }
     }
