@@ -39,6 +39,7 @@
  *
  * Changes:
  *
+ *  2.0.5 - 11/08/20 - Adjustments
  *  2.0.4 - 08/28/20 - Added App Control options
  *  2.0.3 - 08/16/20 - Added Light Level to Fast_Color_Changing & Slow_Color_Changing, other changes
  *  2.0.2 - 04/27/20 - Cosmetic changes
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Lighting Effects"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -169,7 +170,7 @@ def pageConfig() {
             	input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly raise", required: true, multiple: true
     			input "minutes", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     			input "targetLevelHigh", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
-				tMode = "Slow_On"
+				state.tMode = "Slow_On"
 			}
    		}
         
@@ -178,7 +179,7 @@ def pageConfig() {
             	input "dimmers", "capability.switchLevel", title: "Select dimmer devices to slowly dim", required: true, multiple: true
     			input "minutes", "number", title: "Takes how many minutes to dim (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     			input "targetLevelLow", "number", title: "Target Level (1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-				tMode = "Slow_Off"
+				state.tMode = "Slow_Off"
         	}
    		}
         
@@ -188,7 +189,7 @@ def pageConfig() {
     			input "minutes", "number", title: "Takes how many minutes per dim or raise (1 to 60)", required: true, multiple: false, defaultValue:5, range: '1..60'
     			input "targetLevelHigh", "number", title: "Target Level - High(1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
             	input "targetLevelLow", "number", title: "Target Level - Low(1 to 99)", required: true, multiple: false, defaultValue: 1, range: '1..99'
-            	tMode = "Slow_Loop"
+            	state.tMode = "Slow_Loop"
        		}      
 		}
         
@@ -434,7 +435,7 @@ def slowonHandler(evt) {                // Modified code from @Bravenel
         seconds = minutes * 6
         state.dimStep = targetLevelHigh / seconds
         state.dimLevel = state.currentLevel
-        if(logEnable) log.debug "In slowonHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+        if(logEnable) log.debug "In slowonHandler - tMode: ${state.tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
         dimStepUp()	
     }
 }
@@ -451,15 +452,15 @@ def dimStepUp() {                        // Modified code from @Bravenel
                 if(state.dimLevel > targetLevelHigh) {state.dimLevel = targetLevelHigh}
                 state.currentLevel = state.dimLevel.toInteger()
                 dimmers.setLevel(state.currentLevel)
-                if(logEnable) log.debug "dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
+                if(logEnable) log.debug "dimStepUp - tMode: ${state.tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelHigh}"
                 runIn(10,dimStepUp)
             } else{
-                if(logEnable) log.debug "dimStepUp - tMode = ${tMode}"
-                if(tMode == "Slow_Loop") {
+                if(logEnable) log.debug "dimStepUp - tMode = ${state.tMode}"
+                if(state.tMode == "Slow_Loop") {
                     runIn(1,slowoffHandler)
                 } else{
                     switches.off()
-                    if(logEnable) log.debug "dimStepUp - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelHigh} - Target Level Reached"
+                    if(logEnable) log.debug "dimStepUp - tMode: ${state.tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelHigh} - Target Level Reached"
                 }
             }
         } else{
@@ -484,7 +485,7 @@ def slowoffHandler(evt) {                        // Modified code from @Bravenel
         seconds = minutes * 6
         state.dimStep1 = (targetLevelLow / seconds) * 100
         state.dimLevel = state.currentLevel
-        if(logEnable) log.debug "In slowoffHandler - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
+        if(logEnable) log.debug "In slowoffHandler - tMode: ${state.tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
         dimStepDown()
     }
 }
@@ -502,15 +503,15 @@ def dimStepDown() {                            // Modified code from @Bravenel
                 if(state.dimLevel < targetLevelLow) {state.dimLevel = targetLevelLow}
                 state.currentLevel = state.dimLevel.toInteger()
                 dimmers.setLevel(state.currentLevel)
-                if(logEnable) log.debug "In dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
+                if(logEnable) log.debug "In dimStepDown - tMode: ${state.tMode} - Current Level: ${state.currentLevel} - dimStep: ${state.dimStep} - targetLevel: ${targetLevelLow}"
                 runIn(10,dimStepDown)
             } else{
-                if(logEnable) log.debug "In dimStepDown - tMode = ${tMode}"
-                if(tMode == "Slow_Loop") {
+                if(logEnable) log.debug "In dimStepDown - tMode = ${state.tMode}"
+                if(state.tMode == "Slow_Loop") {
                     runIn(1,slowonHandler)
                 } else {
                     switches.off()
-                    if(logEnable) log.debug "In dimStepDown - tMode: ${tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelLow} - Target Level Reached"
+                    if(logEnable) log.debug "In dimStepDown - tMode: ${state.tMode} - Current Level: ${state.currentLevel} - targetLevel: ${targetLevelLow} - Target Level Reached"
                 }
             }    
         } else{
