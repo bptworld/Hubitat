@@ -1530,7 +1530,7 @@ def pageConfig() {
 // ***** Start Switches per Mode *****   
             if(actionType.contains("aSwitchesPerMode")) {
                 paragraph "<b>Switches Per Mode</b>"
-                input "setDimmersPerMode", "capability.switchLevel", title: "Switches to set Per Mode", required:false, multiple:true, submitOnChange:true
+                input "setDimmersPerMode", "capability.switchLevel", title: "Dimmers to set Per Mode", required:false, multiple:true, submitOnChange:true
                 if(setDimmersPerMode) {                    
                     paragraph "- <b>To add or edit Mode Lighting</b>, simply fill in the Name and Value below. Values will be added as soon as you click outside the value field.<br>- <b>To delete a variable</b>, enter in the Name and flip the Add/Edit Delete switch to on."
                     input "sdPerModeName", "mode", title: "Mode", required:false, width:6
