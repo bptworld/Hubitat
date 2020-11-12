@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.2.5 - 11/09/20 - Adjustments
 *  2.2.4 - 11/09/20 - Adjustments
 *  2.2.3 - 11/07/20 - Added Light levels per Mode
 *  2.2.2 - 11/03/20 - Fixed mode not reversing
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.4"
+    state.version = "2.2.5"
 }
 
 definition(
@@ -124,7 +125,16 @@ def pageConfig() {
 
             if(triggerType == null) triggerType = ""
             if(timeDaysType == null) timeDaysType = ""
-
+//state.mySettings = [:]
+            if(state.mySettings == null) state.mySettings = [:]
+            if(triggerType != "") {
+                theData = "enum;${triggerType}"
+                state.mySettings.put("triggerType",theData)
+            } else {
+                state.mySettings.remove("triggerType")
+            }
+            app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
+            
             if(triggerType.contains("tTimeDays")) {
                 input "timeDaysType", "enum", title: "Time/Days/Mode - Sub-Menu", options: [
                     ["tPeriodic":"Periodic Expression"],
@@ -142,18 +152,34 @@ def pageConfig() {
                 app.removeSetting("timeDaysType")
             }
 
+            if(timeDaysType != "") {
+                theData = "enum;${timeDaysType}"
+                state.mySettings.put("timeDaysType",theData)
+            } else {
+                state.mySettings.remove("timeDaysType")
+            }
+            app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
+            
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
             if(triggerAndOr) {
+                theData = "bool;${triggerAndOr}"
+                state.mySettings.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ANY</b> Condition is true"
                 state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ALL</b> Condition are true<br>"
                 state.theCogTriggers += "<b>*</b> Cog will fire when <b>ANY</b> Condition is true<br>"
             } else {
+                theData = "bool;${triggerAndOr}"
+                state.mySettings.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ALL</b> Conditions are true"
                 state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ANY</b> Condition is true<br>"
                 state.theCogTriggers += "<b>*</b> Cog will fire when <b>ALL</b> Condition are true<br>"
             }
             paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
             paragraph "<hr>"
+            
+            app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
+            log.info "mySettings: ${mySettings}"
+            
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
@@ -407,6 +433,14 @@ def pageConfig() {
                     app.updateSetting("csClosedOpen",[value:"false",type:"bool"])
                     app.updateSetting("contactANDOR",[value:"false",type:"bool"])
                 }
+                
+                if(contactEvent) {
+                    theData = "capability.contactSensor;${contactEvent};${csClosedOpen};${contactANDOR}"
+                    state.mySettings.put("contactEvent",theData)
+                } else {
+                    state.mySettings.remove("contactEvent")
+                }
+                app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
 
                 input "contactRestrictionEvent", "capability.contactSensor", title: "Restrict By Contact Sensor", required:false, multiple:true, submitOnChange:true
                 if(contactRestrictionEvent) {
@@ -1911,12 +1945,12 @@ def copyCogOptions() {
 }
 
 def installed() {
-    log.debug "Installed with settings: ${settings}"
+    //log.debug "Installed with settings: ${settings}"
     initialize()
 }
 
 def updated() {	
-    if(logEnable) log.debug "Updated with settings: ${settings}"
+    //if(logEnable) log.debug "Updated with settings: ${settings}"
     unschedule()
     unsubscribe()
     if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
@@ -3860,24 +3894,31 @@ def setLevelandColorHandler() {
         break;
         case "Blue":
         hueColor = 70
+        saturation = 100
         break;
         case "Green":
         hueColor = 39
+        saturation = 100
         break;
         case "Yellow":
         hueColor = 25
+        saturation = 100
         break;
         case "Orange":
         hueColor = 10
+        saturation = 100
         break;
         case "Purple":
         hueColor = 75
+        saturation = 100
         break;
         case "Pink":
         hueColor = 83
+        saturation = 100
         break;
         case "Red":
         hueColor = 100
+        saturation = 100
         break;
     }
     onLevel = state.onLevel.toInteger()
@@ -3888,7 +3929,7 @@ def setLevelandColorHandler() {
         theDevice = state.sPDM
         if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - switchesPerMode - Working on: ${theDevice}"
         def value = [hue: hueColor, saturation: saturation, level: onLevel]
-        if(theDevice.hasCommand('setColor') && state.onTemp == "NA") {
+        if(theDevice.hasCommand('setColor') && state.onTemp == "NA" && state.onColor != "No Change") {
             if(state.setOldMapPer == false) {
                 state.oldMapPer = [:]
                 oldHueColor = theDevice.currentValue("hue")
@@ -3906,7 +3947,7 @@ def setLevelandColorHandler() {
             }            
             if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - setColor - $theDevice.displayName, setColor: $value"
             theDevice.setColor(value)
-        } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA") {
+        } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA" && state.onColor != "No Change") {
             if(state.setOldMapPer == false) {
                 state.oldMapPer = [:]
                 oldLevel = theDevice.currentValue("level")
@@ -3947,7 +3988,7 @@ def setLevelandColorHandler() {
             if(logEnable) log.debug "In setLevelandColorHandler - Working on ${state.dimmerDevices}"
             def value = [hue: hueColor, saturation: saturation, level: onLevel] 
             if(logEnable && logSize) log.debug "In setLevelandColorHandler - 2 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel} - setOldMap: ${state.setOldMap}"
-            if(it.hasCommand('setColor')) {
+            if(it.hasCommand('setColor') && state.onColor != "No Change") {
                 if(state.setOldMap == false) {
                     state.oldMap = [:]
                     oldHueColor = it.currentValue("hue")
@@ -3964,7 +4005,7 @@ def setLevelandColorHandler() {
                 }
                 if(logEnable) log.debug "In setLevelandColorHandler - setColor - $it.displayName, setColor: $value"
                 it.setColor(value)
-            } else if(it.hasCommand('setColorTemperature')) {
+            } else if(it.hasCommand('setColorTemperature') && state.onColor != "No Change") {
                 if(state.setOldMap == false) {
                     state.oldMap = [:]
                     oldLevel = it.currentValue("level")
@@ -4099,8 +4140,7 @@ def resetTruthHandler() {
 
 def sendSettingsToParentHandler() {
     if(logEnable) log.debug "In sendSettingsToParentHandler (${state.version})"
-    data = "${settings}"
-    parent.getSettingsFromChild(data)
+    parent.getSettingsFromChild(mySettings)
 }
 
 def globalVariablesHandler(data) {
@@ -4114,16 +4154,6 @@ def versionIsGoodHandler(data) {
 
 def cronExpressionsHandler(data) {
     if(data) { state.ceMap = data }
-/*    
-    if(state.ceMap) {
-        def theData = "${state.ceMap}".split(",")
-        theData.each { it -> 
-            def (name, value) = it.split(":")
-            if(logEnable) log.debug "In resetTruthHandler - setting subscription for ${name}"
-            subscribe(value, setCronExpression)
-        }
-    }
-*/    
 }
 
 def sdPerModeHandler(data) {
@@ -4180,6 +4210,10 @@ def appButtonHandler(buttonPressed) {
         if(state.setOldLevelMap == null) state.setOldLevelMap = false
         if(state.setOldLevelMapPer == null) state.setOldLevelMapPer = false
     }
+}
+
+def newChildAppsHandler(data) {
+    // nothing to do
 }
 
 // ********** Normal Stuff **********
