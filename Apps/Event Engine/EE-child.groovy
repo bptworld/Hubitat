@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-*  2.2.5 - 11/09/20 - Adjustments
+*  2.2.5 - 11/11/20 - Adjustments
 *  2.2.4 - 11/09/20 - Adjustments
 *  2.2.3 - 11/07/20 - Added Light levels per Mode
 *  2.2.2 - 11/03/20 - Fixed mode not reversing
