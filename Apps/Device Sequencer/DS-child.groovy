@@ -33,15 +33,13 @@
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
+ *
+ *  2.0.4 - 11/14/20 - Add Reverse order on off option
  *  2.0.3 - 08/02/20 - Cosmetic changes
  *  2.0.2 - 06/11/20 - Bug fixes
  *  2.0.1 - 04/27/20 - Cosmetic changes
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
- *  1.0.5 - 04/16/19 - Fixed some code 
- *  1.0.4 - 04/15/19 - Code cleanup
- *  1.0.3 - 03/12/19 - Fixed pause
- *  1.0.2 - 01/15/19 - Updated footer with update check and links
- *  1.0.1 - 01/12/19 - Made the Control switch stand out more.
+ *  ---
  *  1.0.0 - 01/12/19 - Initial Release
  *
  */
@@ -51,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Sequencer"
-	state.version = "2.0.3"
+	state.version = "2.0.4"
 }
 
 definition(
@@ -79,23 +77,7 @@ def pageConfig() {
 			paragraph "* Select as many devices from each group as needed.<br>* All devices selected will turn on/off with the Control Switch.<br>* When executed, group 1 will run first, then group 2, group 3, group 4 and group 5.<br>* Each group can have a different pause between devices AND a different pause between groups."	
 		}
 
-		section(getFormat("header-green", "${getImage("Blank")}"+" Define Switch Groups")) {
- /*           
-            for(x=1;x < maxGroups;x++) {
-                paragraph "<b>Group $x</b>"
-                input "g1Switches_$x", "capability.switch", title: "Devices to control", required: false, multiple: true, submitOnChange: true
-                input "modes", "mode", title: "Change Mode to", multiple: false, required: false, submitOnChange: true
-                input "hsm", "enum", title: "Set HSM", multiple: false, options:
-                    ['armAway','armHome','disarm','armRules','disarmRules','disarmAll','armAll','cancelAlerts'],
-                    required: false, submitOnChange: true
-                
-                if(g1Switches) input "timeToPause1", "number", title: "Time to pause between devices (in seconds)", required: true, defaultValue: 1
-                if(g1Switches) input "timeToPause1a", "number", title: "<b>*</b> Extra Time to pause between actions(in seconds)", required: true, defaultValue: 0
-                
-                
-            }
-*/
-            
+		section(getFormat("header-green", "${getImage("Blank")}"+" Define Switch Groups")) { 
             paragraph "<b>Group 1</b>"
 			input "g1Switches", "capability.switch", title: "Group 1 - Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g1Switches) input "timeToPause1", "number", title: "Group 1 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
@@ -116,6 +98,11 @@ def pageConfig() {
 			input "g5Switches", "capability.switch", title: "Group 5 - Switches to control", required: false, multiple: true, submitOnChange: true
 			if(g5Switches) input "timeToPause5", "number", title: "Group 5 - Time to pause between devices (in seconds)", required: true, defaultValue: 1
 		}
+        
+        section(getFormat("header-green", "${getImage("Blank")}"+" Off Option")) { 
+            input "offReverse", "bool", title: "Run the Off sequence in reverse order", defaultValue:false, submitOnChange:true
+        }
+        
 		section(getFormat("header-green", "${getImage("Blank")}"+" Control Switch")) {
 			input "controlSwitch", "capability.switch", title: "Select the switch to control the sequence (on/off)", required: true, multiple: false 
 		} 
@@ -228,52 +215,103 @@ def deviceOffHandler(evt) {
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
-        if(g1Switches) { 
-            int delay1 = timeToPause1 * 1000
-            g1Switches.each { device ->
-                if(logEnable) log.debug "In deviceOnHandler 1...turning on ${device}"
-                device.off()
-                pauseExecution(delay1)
+        if(offReverse) {
+            if(g5Switches) { 
+                int delay5 = timeToPause5 * 1000
+                g5Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 5...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay5)
+                }
+                int delay5a = timeToPause5a * 1000
+                pauseExecution(delay5a)
             }
-            int delay1a = timeToPause1a * 1000
-            pauseExecution(delay1a)
-        }
-        if(g2Switches) { 
-            int delay2 = timeToPause2 * 1000	
-            g2Switches.each { device ->
-                if(logEnable) log.debug "In deviceOnHandler 2...turning off ${device}"
-                device.off()
-                pauseExecution(delay2)
+            if(g4Switches) { 
+                int delay4 = timeToPause4 * 1000	
+                g4Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 4...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay4)
+                }
+                int delay4a = timeToPause4a * 1000
+                pauseExecution(delay4a)
             }
-            int delay2a = timeToPause2a * 1000
-            pauseExecution(delay2a)
-        }
-        if(g3Switches) { 
-            int delay3 = timeToPause3 * 1000
-            g3Switches.each { device ->
-                if(logEnable) log.debug "In deviceOnHandler 3...turning off ${device}"
-                device.off()
-                pauseExecution(delay3)
+            if(g3Switches) { 
+                int delay3 = timeToPause3 * 1000
+                g3Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 3...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay3)
+                }
+                int delay3a = timeToPause3a * 1000
+                pauseExecution(delay3a)
             }
-            int delay3a = timeToPause3a * 1000
-            pauseExecution(delay3a)
-        }
-        if(g4Switches) { 
-            int delay4 = timeToPause4 * 1000
-            g4Switches.each { device ->
-                if(logEnable) log.debug "In deviceOnHandler 4...turning off ${device}"
-                device.off()
-                pauseExecution(delay4)
+            if(g2Switches) { 
+                int delay2 = timeToPause2 * 1000
+                g2Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 2...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay2)
+                }
+                int delay2a = timeToPause2a * 1000
+                pauseExecution(delay2a)
             }
-            int delay4a = timeToPause4a * 1000
-            pauseExecution(delay4a)
-        }
-        if(g5Switches) { 
-            int delay5 = timeToPause5 * 1000
-            g5Switches.each { device ->
-                if(logEnable) log.debug "In deviceOnHandler 5...turning off ${device}"
-                device.off()
-                pauseExecution(delay5)
+            if(g1Switches) { 
+                int delay1 = timeToPause1 * 1000
+                g1Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 1...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay1)
+                }
+            }
+        } else {
+            if(g1Switches) { 
+                int delay1 = timeToPause1 * 1000
+                g1Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 1...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay1)
+                }
+                int delay1a = timeToPause1a * 1000
+                pauseExecution(delay1a)
+            }
+            if(g2Switches) { 
+                int delay2 = timeToPause2 * 1000	
+                g2Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 2...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay2)
+                }
+                int delay2a = timeToPause2a * 1000
+                pauseExecution(delay2a)
+            }
+            if(g3Switches) { 
+                int delay3 = timeToPause3 * 1000
+                g3Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 3...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay3)
+                }
+                int delay3a = timeToPause3a * 1000
+                pauseExecution(delay3a)
+            }
+            if(g4Switches) { 
+                int delay4 = timeToPause4 * 1000
+                g4Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 4...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay4)
+                }
+                int delay4a = timeToPause4a * 1000
+                pauseExecution(delay4a)
+            }
+            if(g5Switches) { 
+                int delay5 = timeToPause5 * 1000
+                g5Switches.each { device ->
+                    if(logEnable) log.debug "In deviceOffHandler 5...turning off ${device}"
+                    device.off()
+                    pauseExecution(delay5)
+                }
             }
         }
     }
