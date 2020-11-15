@@ -275,7 +275,7 @@ def pageConfig() {
                     paragraph "Sunrise"
                     input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunrise", "number", title: "Offset(minutes)", width:6
-                    paragraph "<small>* Be sure offsets doesn't cause the time to cross over midnight or this won't work as expected.</small>"
+                    paragraph "<small>* Be sure offsets don't cause the time to cross over midnight or this won't work as expected.</small>"
                     paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                     input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
                     paragraph "<hr>"
