@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.2.6 - 11/15/20 - Adjustments, clean up
 *  2.2.5 - 11/11/20 - Adjustments
 *  2.2.4 - 11/09/20 - Adjustments
 *  2.2.3 - 11/07/20 - Added Light levels per Mode
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.5"
+    state.version = "2.2.6"
 }
 
 definition(
@@ -178,7 +179,7 @@ def pageConfig() {
             paragraph "<hr>"
             
             app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
-            log.info "mySettings: ${mySettings}"
+            if(testLogEnable) log.info "mySettings: ${mySettings}"
             
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
@@ -274,6 +275,7 @@ def pageConfig() {
                     paragraph "Sunrise"
                     input "riseBeforeAfter", "bool", title: "Before (off) or After (on) Sunrise", defaultValue:false, submitOnChange:true, width:6
                     input "offsetSunrise", "number", title: "Offset(minutes)", width:6
+                    paragraph "<small>* Be sure offsets doesn't cause the time to cross over midnight or this won't work as expected.</small>"
                     paragraph "Sunset to Sunrise can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                     input "timeBetweenSunRestriction", "bool", defaultValue:false, title: "Sunset to Sunrise as Restriction", description: "Sunset to Sunrise Restriction", submitOnChange:true
                     paragraph "<hr>"
@@ -435,7 +437,14 @@ def pageConfig() {
                 }
                 
                 if(contactEvent) {
-                    theData = "capability.contactSensor;${contactEvent};${csClosedOpen};${contactANDOR}"
+                    theList = []
+                    contactEvent.each { ids ->
+                        if(testLogEnable) log.info "Working on $contactEvent"
+                        theId = ids.id
+                        theList << theId
+                    }
+                    theData = "capability;${theList};${csClosedOpen};${contactANDOR}"
+                    if(testLogEnable) log.info "theData: $theData"
                     state.mySettings.put("contactEvent",theData)
                 } else {
                     state.mySettings.remove("contactEvent")
@@ -1752,12 +1761,15 @@ def pageConfig() {
             if(logEnable) {
                 input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
-                //input "resetTruth", "bool", title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", defaultValue:false, submitOnChange:true
+            }
+            //input "testLogEnable", "bool", title: "Enable TESTING Debug Options", description: "Test Log Options", defaultValue:false, submitOnChange:true
+            if(testLogEnable) {
+                input "resetTruth", "bool", title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", defaultValue:false, submitOnChange:true
                 if(resetTruth) {
                     resetTruthHandler()
                     app.updateSetting("resetTruth",[value:"false",type:"bool"])
                 }
-                //input "resetMaps", "button", title: "Reset Maps", width: 3
+                input "resetMaps", "button", title: "Reset Maps", width: 3
             }
         }
         
@@ -2716,7 +2728,9 @@ def setpointRollingAverageHandler(data) {
 }
 
 def checkingAndOr() {
-    if(logEnable) log.debug "In checkingAndOr (${state.version})"  
+    if(logEnable) log.debug "In checkingAndOr (${state.version})"
+    if(state.atLeastOneDeviceOK == null) state.atLeastOneDeviceOK = true
+    if(state.deviceOK == null) state.deviceOK = true
     if(triggerAndOr) {
         if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK}"
         if(state.atLeastOneDeviceOK || state.setpointOK) {
@@ -2930,7 +2944,7 @@ def switchesPerModeActionHandler() {
 def switchesPerModeReverseActionHandler() {
     if(setDimmersPerMode) {
         setDimmersPerMode.each { it ->
-            if(logEnable)log.info "In switchesPerModeReverseActionHandler - Working on $it"
+            if(logEnable) log.debug "In switchesPerModeReverseActionHandler - Working on $it"
             def theData = "${state.sdPerModeMap}".split(",")
             theData.each { itTwo -> 
                 def (theMode, theDevice, theLevel, theTemp, theColor) = itTwo.split(":")
@@ -2946,7 +2960,6 @@ def switchesPerModeReverseActionHandler() {
                         if(currentONOFF == "on") {
                             if(it.hasCommand("setColor") && theTemp == "NA") {
                                 name = (it.displayName).replace(" ","")
-                                log.info "name: $name"
                                 try {
                                     data = state.oldMapPer.get(name)
                                     def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
@@ -3135,7 +3148,7 @@ def permanentDimHandler() {
     if(setDimmersPerMode) {
         currentMode = location.mode
         setDimmersPerMode.each { it ->
-            if(logEnable)log.info "In permanentDimHandler - Working on $it"
+            if(logEnable) log.debug "In permanentDimHandler - Working on $it"
             def theData = "${state.sdPerModeMap}".split(",")
             theData.each { itTwo -> 
                 def (theMode, theDevice, theLevel, theTemp, theColor) = itTwo.split(":")
@@ -3335,20 +3348,20 @@ def runCmd(String varCommand, String method) {        // Based on code from Dan 
 
 // ***** Start Cog Copy *****
 def requestCogCopy() {             // this is sent to the parent app
-    if(logEnable) log.info "In requestCogCopy (${state.version})"
+    if(testLogEnable) log.info "In requestCogCopy (${state.version})"
     toCog = app.id
     parent.getCogSettings(fromCog,toCog)
 }
 
 def sendChildSettings() {           // this is then requested from the parent app
-    if(logEnable) log.info "In sendChildSettings (${state.version})"   
+    if(testLogEnable) log.info "In sendChildSettings (${state.version})"   
     childAppSettings = settings
 }
 
 def doTheCogCopy(newSettings) {    // and finally the parent app sends the settings!
-    if(logEnable) log.info "In doTheCogCopy (${state.version})"
+    if(testLogEnable) log.info "In doTheCogCopy (${state.version})"
     if(newSettings) {
-        if(logEnable) log.info "In doTheCogCopy - Received: ${newSettings}"
+        if(testLogEnable) log.info "In doTheCogCopy - Received: ${newSettings}"
         
         newSettings.each { theOption ->
             name = theOption.key
@@ -3356,7 +3369,7 @@ def doTheCogCopy(newSettings) {    // and finally the parent app sends the setti
             
             nValue = nameValue.toString()
             if(nValue && (name != "cloneCog" && name != "copyCog" && name != "fromCog")) {
-                if(logEnable) log.info "In doTheCogCopy - Working on $name - value: $nameValue"
+                if(testLogEnable) log.info "In doTheCogCopy - Working on $name - value: $nameValue"
                 if(nValue.contains("[")) {
                     app.updateSetting(name,[type:"enum",value:nameValue])
                 } else {
@@ -3367,11 +3380,11 @@ def doTheCogCopy(newSettings) {    // and finally the parent app sends the setti
             }     
         }
     }
-    if(logEnable) log.info "In doTheCogCopy - Finished"
+    if(testLogEnable) log.info "In doTheCogCopy - Finished"
     app.updateSetting("copyCog",[value:"false",type:"bool"])
     app.updateSetting("fromCog",[value:"",type:"number"])
     app.updateSetting("cloneCog",[value:"false",type:"bool"])
-    if(logEnable) log.info "In doTheCogCopy - New settings: $settings"
+    if(testLogEnable) log.info "In doTheCogCopy - New settings: $settings"
     state.copyFinished = true
 }
 // ***** End Cog Copy *****
@@ -3925,7 +3938,6 @@ def setLevelandColorHandler() {
     if(logEnable) log.debug "In setLevelandColorHandler - 1 - hue: ${hueColor} - saturation: ${saturation} - onLevel: ${onLevel}"
 
     if(state.fromWhere == "switchesPerMode") {
-        // Day:[Test Zwave Bulb - Inovelli Multi Color on Home]:99:null:null]
         theDevice = state.sPDM
         if(logEnable) log.debug "In setLevelandColorHandler - switchesPerMode - switchesPerMode - Working on: ${theDevice}"
         def value = [hue: hueColor, saturation: saturation, level: onLevel]
@@ -3939,7 +3951,6 @@ def setLevelandColorHandler() {
                 oldColorMode = theDevice.currentValue("colorMode")
                 name = (theDevice.displayName).replace(" ","")
                 status = theDevice.currentValue("switch")
-                log.info "putting name: $name"
                 oldStatus = "${status}::${oldHueColor}::${oldSaturation}::${oldLevel}::${oldColorTemp}::${oldColorMode}"
                 state.oldMapPer.put(name,oldStatus) 
                 state.setOldMapPer = true
