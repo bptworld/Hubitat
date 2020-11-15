@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.5 - 11/14/20 - Adjustment
  *  2.0.4 - 11/14/20 - Add Reverse order on off option
  *  2.0.3 - 08/02/20 - Cosmetic changes
  *  2.0.2 - 06/11/20 - Bug fixes
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Sequencer"
-	state.version = "2.0.4"
+	state.version = "2.0.5"
 }
 
 definition(
@@ -223,8 +224,8 @@ def deviceOffHandler(evt) {
                     device.off()
                     pauseExecution(delay5)
                 }
-                int delay5a = timeToPause5a * 1000
-                pauseExecution(delay5a)
+                int delay4a = timeToPause4a * 1000
+                pauseExecution(delay4a)
             }
             if(g4Switches) { 
                 int delay4 = timeToPause4 * 1000	
@@ -233,8 +234,8 @@ def deviceOffHandler(evt) {
                     device.off()
                     pauseExecution(delay4)
                 }
-                int delay4a = timeToPause4a * 1000
-                pauseExecution(delay4a)
+                int delay3a = timeToPause3a * 1000
+                pauseExecution(delay3a)
             }
             if(g3Switches) { 
                 int delay3 = timeToPause3 * 1000
@@ -243,8 +244,8 @@ def deviceOffHandler(evt) {
                     device.off()
                     pauseExecution(delay3)
                 }
-                int delay3a = timeToPause3a * 1000
-                pauseExecution(delay3a)
+                int delay2a = timeToPause2a * 1000
+                pauseExecution(delay2a)
             }
             if(g2Switches) { 
                 int delay2 = timeToPause2 * 1000
@@ -253,8 +254,8 @@ def deviceOffHandler(evt) {
                     device.off()
                     pauseExecution(delay2)
                 }
-                int delay2a = timeToPause2a * 1000
-                pauseExecution(delay2a)
+                int delay1a = timeToPause1a * 1000
+                pauseExecution(delay1a)
             }
             if(g1Switches) { 
                 int delay1 = timeToPause1 * 1000
