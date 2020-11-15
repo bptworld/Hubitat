@@ -102,7 +102,7 @@ def pageConfig() {
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Arrival Options")) {
             paragraph "Advanced Arrival Options give you a second set of arrival Triggers to choose from.<br>ie. if sensor1 = present -> Present 'else' if sensor2 and sensor3 = present -> Present"
-            input "useAdvancedArr", "bool", title: "Used Adanced Arrival Options", description: "Advanced Arrival", required:false, submitOnChange:true
+            input "useAdvancedArr", "bool", title: "Use Advanced Arrival Options", description: "Advanced Arrival", required:false, submitOnChange:true
             if(useAdvancedArr) {
                 input "ArrTriggerType2", "bool", title: "Trigger Option: Use 'or' or 'and' ('or' = off, 'and' = on)", description: "type", required:false, submitOnChange:true
                 if(ArrTriggerType2) paragraph "<b>using 'AND'</b>"
