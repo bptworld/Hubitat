@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.2.7 - 11/15/20 - Fixed typo
 *  2.2.6 - 11/15/20 - Adjustments, clean up
 *  2.2.5 - 11/11/20 - Adjustments
 *  2.2.4 - 11/09/20 - Adjustments
@@ -52,7 +53,8 @@
 /*
 - Working on Send HTTP in Actions - 1175
 - Working on Clone Cog - 92
-- Working on making json from Cog
+- Working on making map of settings
+- Working on digital vs physical switch
 */
 
 import groovy.json.*
@@ -62,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.6"
+    state.version = "2.2.7"
 }
 
 definition(
@@ -895,6 +897,7 @@ def pageConfig() {
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
                     input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
+                    //input "seType", "bool", defaultValue:false, title: "Only when Physically pushed?", description: "Switch Type", submitOnChange:true
                     if(seOffOn) {
                         paragraph "Condition true when Sensor(s) becomes On"
                     } else {
@@ -906,9 +909,9 @@ def pageConfig() {
                     } else {
                         paragraph "Condition true when <b>all</b> Switches are true"
                     }
-                    state.theCogTriggers += "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}<br>"
+                    state.theCogTriggers += "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}, Physical: ${seType}<br>"
                 } else {
-                    state.theCogTriggers -= "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}<br>"
+                    state.theCogTriggers -= "<b>-</b> By Switch: ${switchEvent} - OffOn: ${seOffOn}, ANDOR: ${switchANDOR}, Physical: ${seType}<br>"
                     app.removeSetting("switchEvent")
                     app.updateSetting("seOffOn",[value:"false",type:"bool"])
                     app.updateSetting("switchANDOR",[value:"false",type:"bool"])
@@ -2061,7 +2064,7 @@ def startTheProcess(evt) {
         state.areRestrictions = false
         state.setpointLow = null
         state.setpointHigh = null
-        state.dText = ""
+        state.whoText = ""
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
@@ -2074,14 +2077,19 @@ def startTheProcess(evt) {
                 try {
                     state.whoHappened = evt.displayName
                     state.whatHappened = evt.value
-                    state.dText = evt.descriptionText
+                    state.whoText = evt.descriptionText
                 } catch(e) {
-                    // Do nothing
+                    if(logEnable) log.debug "In startTheProcess - Whoops!"
                 }
-                if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - dText: ${state.dText}"
+                if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
             }
+        } else {
+            state.whoHappened = ""
+            state.whatHappened = ""
+            state.whoText = ""
+            state.whoType = ""
         }
         accelerationRestrictionHandler()
         contactRestrictionHandler()
@@ -2413,7 +2421,7 @@ def devicesGoodHandler() {
         theCount = 1
     }
     state.count = state.count + theCount
-    if(state.dText == null) state.dText = ""
+    if(state.whoText == null) state.whoText = ""
     if(state.eventName) {
         state.eventName.each { it ->
             if(state.eventType == "globalVariable") {
@@ -2423,13 +2431,24 @@ def devicesGoodHandler() {
                 theValue = it.currentValue("${state.eventType}").toString()
             }
             if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
-            if(theValue == state.typeValue1) { 
+            if(theValue == state.typeValue1) {
                 if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
-                deviceTrue1 = deviceTrue1 + 1
+                if(state.eventType == "switch") {
+                    if(seType) {
+                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Only Physical"
+                        if(seType == "physical") { deviceTrue1 = deviceTrue1 + 1 }
+                    } else {
+                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Digital and Physical"
+                        deviceTrue1 = deviceTrue1 + 1
+                    }  
+                } else {
+                    if(logEnable) log.debug "In devicesGoodHandler - Everything Else 1"
+                    deviceTrue1 = deviceTrue1 + 1
+                }
             } else if(theValue == state.typeValue2) { 
                 if(logEnable) log.debug "In devicesGoodHandler - Working 2: ${state.typeValue2} and Current Value: ${theValue}"
                 if(state.eventType == "lock") {
-                    if(state.dText.contains("unlocked by")) {
+                    if(state.whoText.contains("unlocked by")) {
                         if(lockUser) {
                             state.whoUnlocked = it.currentValue("lastCodeName")
                             lockUser.each { us ->
@@ -2447,8 +2466,16 @@ def devicesGoodHandler() {
                         if(logEnable) log.trace "In devicesGoodHandler - Lock was manually unlocked, no notifications necessary"
                         deviceTrue2 = deviceTrue2 + 1
                     }
+                } else if(state.eventType == "switch") {
+                    if(seType) {
+                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Only Physical"
+                        if(seType == "physical") { deviceTrue2 = deviceTrue2 + 1 }
+                    } else {
+                        if(logEnable) log.trace "In devicesGoodHandler - Switch - Digital and Physical"
+                        deviceTrue2 = deviceTrue2 + 1
+                    }  
                 } else {
-                    if(logEnable && logSize) log.debug "In devicesGoodHandler - Everything Else 2"
+                    if(logEnable) log.debug "In devicesGoodHandler - Everything Else 2"
                     deviceTrue2 = deviceTrue2 + 1
                 }
             } else {
@@ -2730,7 +2757,7 @@ def setpointRollingAverageHandler(data) {
 def checkingAndOr() {
     if(logEnable) log.debug "In checkingAndOr (${state.version})"
     if(state.atLeastOneDeviceOK == null) state.atLeastOneDeviceOK = true
-    if(state.deviceOK == null) state.deviceOK = true
+    if(state.devicesOK == null) state.devicesOK = true
     if(triggerAndOr) {
         if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK}"
         if(state.atLeastOneDeviceOK || state.setpointOK) {
@@ -3868,7 +3895,7 @@ def modeHandler() {
     } else {
         state.modeMatch = true
     }
-    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo} - devicesOK: ${state.devicesOK} - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK}"
+    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
 }
 // *****  End Time Handlers *****
 
