@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.2.8 - 11/15/20 - Cogs will no longer run automatically when saving. New option to 'Run Cog when Saving'
 *  2.2.7 - 11/15/20 - Fixed typo
 *  2.2.6 - 11/15/20 - Adjustments, clean up
 *  2.2.5 - 11/11/20 - Adjustments
@@ -64,7 +65,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.7"
+    state.version = "2.2.8"
 }
 
 definition(
@@ -1760,6 +1761,7 @@ def pageConfig() {
             } else {
                 label title: "Enter a name for this automation", required:false
             }
+            input "runNow", "bool", title: "Run Cog when Saving", description: "Run Now", defaultValue:false, submitOnChange:true
             input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logEnable) {
                 input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
@@ -2043,7 +2045,7 @@ def initialize() {
         } else {
             state.betweenTime = true
         }
-        startTheProcess()
+        if(runNow) startTheProcess()
     }
 }
 
@@ -2068,12 +2070,17 @@ def startTheProcess(evt) {
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
+            //log.info "evt: ${evt.data}"
             if(evt == "runAfterDelay") {
                 state.whoHappened = "NA"
                 state.whatHappened = "NA"
             } else if(evt == "timeReverse") {
                 skipToReverse = true
             } else {
+                //def eData = new groovy.json.JsonSlurper().parseText(evt.data)
+                //assert eData instanceof Map
+                //log.info "eData: ${eData}"
+                
                 try {
                     state.whoHappened = evt.displayName
                     state.whatHappened = evt.value
