@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.2.9 - 11/18/20 - Code clean up, added option for Only physical switch actions.
 *  2.2.8 - 11/15/20 - Cogs will no longer run automatically when saving. New option to 'Run Cog when Saving'
 *  2.2.7 - 11/15/20 - Fixed typo
 *  2.2.6 - 11/15/20 - Adjustments, clean up
@@ -55,7 +56,6 @@
 - Working on Send HTTP in Actions - 1175
 - Working on Clone Cog - 92
 - Working on making map of settings
-- Working on digital vs physical switch
 */
 
 import groovy.json.*
@@ -65,7 +65,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.8"
+    state.version = "2.2.9"
 }
 
 definition(
@@ -898,7 +898,8 @@ def pageConfig() {
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
                     input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
-                    //input "seType", "bool", defaultValue:false, title: "Only when Physically pushed?", description: "Switch Type", submitOnChange:true
+                    input "seType", "bool", defaultValue:false, title: "Only when Physically pushed?", description: "Switch Type", submitOnChange:true
+                    if(seType) { paragraph "<small>* Event 'Description Text' must contain '[physical]' for this to work. HE stock drivers do, others may vary.</small>" }
                     if(seOffOn) {
                         paragraph "Condition true when Sensor(s) becomes On"
                     } else {
@@ -2025,27 +2026,20 @@ def initialize() {
                 if(logEnable) log.debug "In initialize - repeat - Not repeating"
             }
         }       
+
         if(timeDaysType) {
             if(timeDaysType.contains("tPeriodic")) { 
                 if(logEnable) log.debug "In initialize - tPeriodic - Starting! - (${preMadePeriodic})"
                 schedule(preMadePeriodic, startTheProcess)
             }
-            if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunset") || timeDaysType.contains("tSunrise")) { 
-                autoSunHandler()
-                if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
-                if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
-            } else {
-                state.sunRiseTosunSet = true
-            }
         }
-        if(fromTime && toTime) { 
-            checkTime()
-            schedule(fromTime, runAtTime1)
-            schedule(toTime, runAtTime2)
-        } else {
-            state.betweenTime = true
+        autoSunHandler()
+        checkTimeBetween()
+
+        if(runNow) {
+            app.updateSetting("runNow",[value:"false",type:"bool"])
+            startTheProcess()
         }
-        if(runNow) startTheProcess()
     }
 }
 
@@ -2070,17 +2064,12 @@ def startTheProcess(evt) {
         if(preMadePeriodic) state.whatToDo = "run"
 
         if(evt) {
-            //log.info "evt: ${evt.data}"
             if(evt == "runAfterDelay") {
                 state.whoHappened = "NA"
                 state.whatHappened = "NA"
             } else if(evt == "timeReverse") {
                 skipToReverse = true
             } else {
-                //def eData = new groovy.json.JsonSlurper().parseText(evt.data)
-                //assert eData instanceof Map
-                //log.info "eData: ${eData}"
-                
                 try {
                     state.whoHappened = evt.displayName
                     state.whatHappened = evt.value
@@ -2120,7 +2109,7 @@ def startTheProcess(evt) {
                 if(skipToReverse) {
                     // Skipping
                 } else {
-                    checkTime()
+                    checkTimeBetween()
                     checkTimeSun()
                     dayOfTheWeekHandler()
                     modeHandler()
@@ -2168,7 +2157,6 @@ def startTheProcess(evt) {
                 } else {
                     globalVariablesTextHandler() 
                 }
-                
                 checkingAndOr()            
             }
         }
@@ -2443,7 +2431,7 @@ def devicesGoodHandler() {
                 if(state.eventType == "switch") {
                     if(seType) {
                         if(logEnable) log.trace "In devicesGoodHandler - Switch - Only Physical"
-                        if(seType == "physical") { deviceTrue1 = deviceTrue1 + 1 }
+                        if(state.whoText.contains("[physical]")) { deviceTrue1 = deviceTrue1 + 1 }
                     } else {
                         if(logEnable) log.trace "In devicesGoodHandler - Switch - Digital and Physical"
                         deviceTrue1 = deviceTrue1 + 1
@@ -2476,7 +2464,7 @@ def devicesGoodHandler() {
                 } else if(state.eventType == "switch") {
                     if(seType) {
                         if(logEnable) log.trace "In devicesGoodHandler - Switch - Only Physical"
-                        if(seType == "physical") { deviceTrue2 = deviceTrue2 + 1 }
+                        if(state.whoText.contains("[physical]")) { deviceTrue2 = deviceTrue2 + 1 }
                     } else {
                         if(logEnable) log.trace "In devicesGoodHandler - Switch - Digital and Physical"
                         deviceTrue2 = deviceTrue2 + 1
@@ -3759,26 +3747,30 @@ def currentDateTime() {
 // *****  Start Time Handlers *****
 def autoSunHandler() {
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    def sunriseTime = getSunriseAndSunset().sunrise
-    def sunsetTime = getSunriseAndSunset().sunset
-    int theOffsetSunset = offsetSunset ?: 1
-    if(setBeforeAfter) {
-        state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
-    } else {
-        state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+    if(sunriseTime || sunsetTime) {
+        def sunriseTime = getSunriseAndSunset().sunrise
+        def sunsetTime = getSunriseAndSunset().sunset
+        int theOffsetSunset = offsetSunset ?: 1
+        if(setBeforeAfter) {
+            state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+        } else {
+            state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+        }
+        int theOffsetSunrise = offsetSunrise ?: 1
+        if(riseBeforeAfter) {
+            state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+        } else {
+            state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+        }
+       if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+       if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+       if(logEnable && logSize) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+       schedule("0 5 12 ? * * *", autoSunHandler)
+       schedule(state.timeSunset, runAtTime1)
+       schedule(state.timeSunrise, runAtTime2)
     }
-    int theOffsetSunrise = offsetSunrise ?: 1
-    if(riseBeforeAfter) {
-        state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
-    } else {
-        state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-    }
-    if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-    if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-    if(logEnable && logSize) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
-    schedule("0 5 12 ? * * *", autoSunHandler)
-    schedule(state.timeSunset, runAtTime1)
-    schedule(state.timeSunrise, runAtTime2)
+    if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
+    if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
 }
 
 def runAtTime1() {
@@ -3828,7 +3820,7 @@ def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - whatToDo: ${state.whatToDo}"
 }
 
-def checkTime() {
+def checkTimeBetween() {
     if(logEnable) log.debug "In checkTime (${state.version})"
     if(fromTime && toTime) {
         if(logEnable && logSize) log.debug "In checkTime - ${fromTime} - ${toTime}"
@@ -3869,7 +3861,6 @@ def dayOfTheWeekHandler() {
         df.setTimeZone(location.timeZone)
         def day = df.format(new Date())
         def dayCheck = days.contains(day)
-
         if(dayCheck) {
             state.daysMatch = true
             state.devicesOK = true
