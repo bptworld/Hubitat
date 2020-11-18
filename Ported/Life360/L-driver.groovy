@@ -39,15 +39,8 @@
  *
  *  Changes:
  *
- *  1.0.9 - 10/15/20 - Fixed one log entry
- *  1.0.8 - 10/07/20 - Attempting fix for jumping GPS
- *  1.0.7 - 10/01/20 - Added code adjustments from @napalmcsr
- *  1.0.6 - 06/17/20 - Added code for address1prev, other adjustments
- *  1.0.5 - 05/31/20 - Adjustments
- *  1.0.4 - 05/30/20 - Fix for History
- *  1.0.3 - 05/30/20 - Cosmetic Change - Recommended to delete device and recreate.
- *  1.0.2 - 05/29/20 - Adjusted placement of date/time stamp, made tile 'smartly' friendly
- *  1.0.1 - 04/12/20 - Added last updated date/time to StatusTile1, other small adjustments
+ *  1.1.0 - 11/18/20 - Changed boolean to bool
+ *  ---
  *  1.0.0 - 01/18/20 - Initial release
  */
 
@@ -69,13 +62,13 @@ metadata {
         attribute "avatar", "string"
         attribute "avatarHtml", "string"
   	    attribute "battery", "number"
-   	    attribute "charge", "boolean" //boolean
+   	    attribute "charge", "bool"
 	    attribute "distanceMetric", "Number"
    	    attribute "distanceKm", "number"
 	    attribute "distanceMiles", "Number"
 	    attribute "bpt-history", "string"
-       	attribute "inTransit", "string" //boolean
-   	    attribute "isDriving", "string" //boolean
+       	attribute "inTransit", "string"
+   	    attribute "isDriving", "string"
         attribute "lastLogMessage", "string"
         attribute "lastMap", "string"
         attribute "lastUpdated", "string"
@@ -89,11 +82,11 @@ metadata {
         attribute "speedKm", "number"
         attribute "status", "string"
         attribute "bpt-statusTile1", "string"
-   	    attribute "wifiState", "boolean" //boolean
+   	    attribute "wifiState", "bool"
         
         // **** Life360 ****
 	    command "refresh"
-        command "setBattery",["number","boolean"]
+        command "setBattery",["number","bool"]
         command "sendHistory", ["string"]
         command "sendTheMap", ["string"]
         command "historyClearData"
