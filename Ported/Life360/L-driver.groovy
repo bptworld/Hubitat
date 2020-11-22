@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.1 - 11/22/20 - Fix by Avi (@9369292f1992a7d0e654). Thank you!
  *  1.1.0 - 11/18/20 - Changed boolean to bool
  *  ---
  *  1.0.0 - 01/18/20 - Initial release
@@ -347,43 +348,42 @@ private extraInfo(address1, address2, battery, charge, distanceAway, endTimestam
         if(prevAddress == null) {
             sendEvent(name: "address1prev", value: "Lost")
         }
-
-        if(battery != device.currentValue('battery')) { sendEvent(name: "battery", value: battery) }    
-        if(charge != device.currentValue('charge')) { sendEvent(name: "charge", value: charge) }
-
-        if(inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
-
-        def curDriving = device.currentValue('isDriving') 
-        if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
-
-        def curlat = device.currentValue('latitude').toString()
-        latitude = latitude.toString()
-        if(latitude != curlat) { sendEvent(name: "latitude", value: latitude) }
-
-        def curlong = device.currentValue('longitude').toString()
-        longitude = longitude.toString()
-        if(longitude != curlong) { sendEvent(name: "longitude", value: longitude) }
-
-        if(speedMetric != device.currentValue('speedMetric')) { sendEvent(name: "speedMetric", value: speedMetric) }
-
-        if(speedMiles != device.currentValue('speedMiles')) { sendEvent(name: "speedMiles", value: speedMiles) }
-
-        if(speedKm != device.currentValue('speedKm')) { sendEvent(name: "speedKm", value: speedKm) }
-
-        if(wifiState != device.currentValue('wifiState')) { sendEvent(name: "wifiState", value: wifiState) }
-
-        setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
-
-        sendEvent(name: "savedPlaces", value: xplaces)
-
-        sendEvent(name: "avatar", value: avatar)
-
-        sendEvent(name: "avatarHtml", value: avatarHtml)
-
-        sendEvent(name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a"))
-
-        sendStatusTile1()
     }
+    if(battery != device.currentValue('battery')) { sendEvent(name: "battery", value: battery) }    
+    if(charge != device.currentValue('charge')) { sendEvent(name: "charge", value: charge) }
+
+    if(inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
+
+    def curDriving = device.currentValue('isDriving') 
+    if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
+
+    def curlat = device.currentValue('latitude').toString()
+    latitude = latitude.toString()
+    if(latitude != curlat) { sendEvent(name: "latitude", value: latitude) }
+
+    def curlong = device.currentValue('longitude').toString()
+    longitude = longitude.toString()
+    if(longitude != curlong) { sendEvent(name: "longitude", value: longitude) }
+
+    if(speedMetric != device.currentValue('speedMetric')) { sendEvent(name: "speedMetric", value: speedMetric) }
+
+    if(speedMiles != device.currentValue('speedMiles')) { sendEvent(name: "speedMiles", value: speedMiles) }
+
+    if(speedKm != device.currentValue('speedKm')) { sendEvent(name: "speedKm", value: speedKm) }
+
+    if(wifiState != device.currentValue('wifiState')) { sendEvent(name: "wifiState", value: wifiState) }
+
+    setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+
+    sendEvent(name: "savedPlaces", value: xplaces)
+
+    sendEvent(name: "avatar", value: avatar)
+
+    sendEvent(name: "avatarHtml", value: avatarHtml)
+
+    sendEvent(name: "lastUpdated", value: lastUpdated.format("MM-dd - h:mm:ss a"))
+
+    sendStatusTile1()
 }
 
 def setMemberId(String memberId) {
