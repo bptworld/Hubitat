@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.2.9 - 11/18/20 - Code clean up, added option for Only physical switch actions.
-*  2.2.8 - 11/15/20 - Cogs will no longer run automatically when saving. New option to 'Run Cog when Saving'
-*  2.2.7 - 11/15/20 - Fixed typo
-*  2.2.6 - 11/15/20 - Adjustments, clean up
-*  2.2.5 - 11/11/20 - Adjustments
-*  2.2.4 - 11/09/20 - Adjustments
-*  2.2.3 - 11/07/20 - Added Light levels per Mode
-*  2.2.2 - 11/03/20 - Fixed mode not reversing
-*  2.2.1 - 10/25/20 - Adjustments to Special Action Option
-*  2.2.0 - 10/25/20 - Added Adjustable time delay between device Actions
+*  2.3.0 - 11/22/20 - From Time is NOT spelled fromtTime! Many other adjustments
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 *
@@ -65,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.2.9"
+    state.version = "2.3.0"
 }
 
 definition(
@@ -2085,7 +2076,6 @@ def startTheProcess(evt) {
             state.whoHappened = ""
             state.whatHappened = ""
             state.whoText = ""
-            state.whoType = ""
         }
         accelerationRestrictionHandler()
         contactRestrictionHandler()
@@ -2115,7 +2105,7 @@ def startTheProcess(evt) {
                     modeHandler()
                     hsmAlertHandler(state.whatHappened)
                     hsmStatusHandler(state.whatHappened)
-                    if(logEnable) log.debug "In startTheProcess - 1A - checkTime: ${state.betweenTime} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+                    if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
                     if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
                     if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
                     if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
@@ -2123,7 +2113,7 @@ def startTheProcess(evt) {
                 }
             }            
             if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
-            if(logEnable) log.debug "In startTheProcess - 1C - checkTime: ${state.betweenTime} - checkTimeSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+            if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
             
             if(state.whatToDo == "stop" || skipToReverse) {
                 if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
@@ -2157,7 +2147,7 @@ def startTheProcess(evt) {
                 } else {
                     globalVariablesTextHandler() 
                 }
-                checkingAndOr()            
+                checkingWhatToDo()            
             }
         }
 
@@ -2535,7 +2525,7 @@ def hsmAlertHandler(data) {
     } else {
         state.hsmAlertStatus = true
     }
-    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus}"
 }
 
 def hsmStatusHandler(data) {
@@ -2553,7 +2543,7 @@ def hsmStatusHandler(data) {
     } else {
         state.hsmStatus = true
     }
-    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus}"
 }
 
 def ruleMachineHandler() {
@@ -2747,41 +2737,6 @@ def setpointRollingAverageHandler(data) {
         }
     }
     if(logEnable) log.debug "In setpointRollingAverageHandler - theAverage: ${state.theAverage} - readingSize: ${readingsSize} - readings: ${readings}"
-}
-
-def checkingAndOr() {
-    if(logEnable) log.debug "In checkingAndOr (${state.version})"
-    if(state.atLeastOneDeviceOK == null) state.atLeastOneDeviceOK = true
-    if(state.devicesOK == null) state.devicesOK = true
-    if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingAndOr - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK}"
-        if(state.atLeastOneDeviceOK || state.setpointOK) {
-            state.everythingOK = true
-        } else {
-            state.everythingOK = false
-        }
-    } else {
-        if(logEnable) log.debug "In checkingAndOr - USING AND - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK}"
-        if(state.devicesOK && state.setpointOK) {
-            state.everythingOK = true
-        } else {
-            state.everythingOK = false
-        }
-    }
-    if(logEnable) log.debug "In checkingAndOr - 1 - everythingOK: ${state.everythingOK} - whatToDo: ${state.whatToDo}"
-    if(state.everythingOK) {
-            state.whatToDo = "run"
-            if(logEnable) log.debug "In checkingAndOr - Using A - Run"
-    } else {
-        if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
-            state.whatToDo = "reverse"
-            if(logEnable) log.debug "In checkingAndOr - Using B - Reverse"
-        } else {
-            state.whatToDo = "stop"
-            if(logEnable) log.debug "In checkingAndOr - Using C - Stop"
-        }
-    }   
-    if(logEnable) log.debug "In checkingAndOr - 2 - everythingOK: ${state.everythingOK} - whatToDo: ${state.whatToDo}"
 }
 
 // ********** Start Restrictions **********
@@ -3807,44 +3762,37 @@ def checkTimeSun() {
         
         if(state.timeBetweenSun) {
             if(logEnable) log.debug "In checkTimeSun - Time within range"
-            state.devicesOK = true
-            state.atLeastOneDeviceOK = true
         } else {
             if(logEnable) log.debug "In checkTimeSun - Time outside of range"
-            state.devicesOK = false
-            state.atLeastOneDeviceOK = false
         }
     } else {
         state.timeBetweenSun = true
     }
-    if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
 }
 
 def checkTimeBetween() {
-    if(logEnable) log.debug "In checkTime (${state.version})"
+    if(logEnable) log.debug "In checkTimeBetween (${state.version})"
     if(fromTime && toTime) {
-        if(logEnable && logSize) log.debug "In checkTime - ${fromTime} - ${toTime}"
+        if(logEnable && logSize) log.debug "In checkTimeBetween - ${fromTime} - ${toTime}"
         if(midnightCheckR) {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime)+1, new Date(), location.timeZone)
         } else {
             state.betweenTime = timeOfDayIsBetween(toDateTime(fromTime), toDateTime(toTime), new Date(), location.timeZone)
         }      
         if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTime - Time within range"
-            state.devicesOK = true
-            state.atLeastOneDeviceOK = true
+            if(logEnable) log.debug "In checkTimeBetween - Time within range"
+
         } else {
-            if(logEnable) log.debug "In checkTime - Time outside of range"
-            state.devicesOK = false
-            state.atLeastOneDeviceOK = false
+            if(logEnable) log.debug "In checkTimeBetween - Time outside of range"
         }
     } else {
-        if(logEnable) log.debug "In checkTime - NO Time Restriction Specified"
+        if(logEnable) log.debug "In checkTimeBetween - NO Time Restriction Specified"
         state.betweenTime = true
     }    
-    if(fromtTime) { schedule(fromTime, runAtTime1) }
+    if(fromTime) { schedule(fromTime, runAtTime1) }
     if(toTime) { schedule(toTime, runAtTime2) }
-    if(logEnable) log.debug "In checkTime - betweenTime: ${state.betweenTime} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In checkTimeBetween - betweenTime: ${state.betweenTime}"
 }
 
 def certainTime() {
@@ -3863,17 +3811,13 @@ def dayOfTheWeekHandler() {
         def dayCheck = days.contains(day)
         if(dayCheck) {
             state.daysMatch = true
-            state.devicesOK = true
-            state.atLeastOneDeviceOK = true
         } else {
             state.daysMatch = false
-            state.devicesOK = false
-            state.atLeastOneDeviceOK = false
         }
     } else {
         state.daysMatch = true
     }
-    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
 }
 
 def modeHandler() {
@@ -3883,19 +3827,55 @@ def modeHandler() {
         def modeCheck = modeEvent.contains(theValue)
         if(modeCheck) {
             state.modeMatch = true
-            state.devicesOK = true
-            state.atLeastOneDeviceOK = true
         } else {
             state.modeMatch = false
-            state.devicesOK = false
-            state.atLeastOneDeviceOK = false
         }
     } else {
         state.modeMatch = true
     }
-    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch} - whatToDo: ${state.whatToDo}"
+    if(logEnable) log.debug "In modeHandler - modeMatch: ${state.modeMatch}"
 }
 // *****  End Time Handlers *****
+
+def checkingWhatToDo() {
+    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
+    if(state.atLeastOneDeviceOK == null) state.atLeastOneDeviceOK = true
+    if(state.devicesOK == null) state.devicesOK = true
+    if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
+        state.timeOK = true
+    } else {
+        state.timeOK = false
+    }
+    if(triggerAndOr) {
+        if(logEnable) log.debug "In checkingWhatToDo - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if(state.atLeastOneDeviceOK || state.setpointOK || state.timeOK) {
+            state.everythingOK = true
+        } else {
+            state.everythingOK = false
+        }
+    } else {
+        if(logEnable) log.debug "In checkingWhatToDo - USING AND - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if(state.devicesOK && state.setpointOK && state.timeOK) {
+            state.everythingOK = true
+        } else {
+            state.everythingOK = false
+        }
+    }
+    if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
+    if(state.everythingOK) {
+            state.whatToDo = "run"
+            if(logEnable) log.debug "In checkingWhatToDo - Using A - Run"
+    } else {
+        if(reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) {
+            state.whatToDo = "reverse"
+            if(logEnable) log.debug "In checkingWhatToDo - Using B - Reverse"
+        } else {
+            state.whatToDo = "stop"
+            if(logEnable) log.debug "In checkingWhatToDo - Using C - Stop"
+        }
+    }   
+    if(logEnable) log.debug "In checkingWhatToDo - **********  whatToDo: ${state.whatToDo}  **********"
+}
 
 def setLevelandColorHandler() {
     if(state.setOldMap == null) state.setOldMap = false
