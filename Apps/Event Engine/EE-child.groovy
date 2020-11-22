@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.2 - 11/22/20 - More adjustments
 *  2.3.1 - 11/22/20 - Progress with Sunset/Sunrise stuff
 *  2.3.0 - 11/22/20 - From Time is NOT spelled fromtTime! Many other adjustments
 *  ---
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.1"
+    state.version = "2.3.2"
 }
 
 definition(
@@ -3702,69 +3703,75 @@ def currentDateTime() {
 
 // *****  Start Time Handlers *****
 def autoSunHandler() {
-    if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
-        def sunriseTime = getSunriseAndSunset().sunrise
-        def sunsetTime = getSunriseAndSunset().sunset
-        int theOffsetSunset = offsetSunset ?: 1
-        if(setBeforeAfter) {
-            state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
-        } else {
-            state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+    if(logEnable) log.debug "In autoSunHandler (${state.version})"
+    if(triggerType.contains("tTimeDays")) {
+        if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
+            def sunriseTime = getSunriseAndSunset().sunrise
+            def sunsetTime = getSunriseAndSunset().sunset
+            int theOffsetSunset = offsetSunset ?: 1
+            if(setBeforeAfter) {
+                state.timeSunset = new Date(sunsetTime.time + (theOffsetSunset * 60 * 1000))
+            } else {
+                state.timeSunset = new Date(sunsetTime.time - (theOffsetSunset * 60 * 1000))
+            }
+            int theOffsetSunrise = offsetSunrise ?: 1
+            if(riseBeforeAfter) {
+                state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
+            } else {
+                state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
+            }
+            if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
+            if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
+            if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
+            schedule("0 5 12 ? * * *", autoSunHandler)
+            schedule(state.timeSunset, runAtTime1)
+            schedule(state.timeSunrise, runAtTime2)
         }
-        int theOffsetSunrise = offsetSunrise ?: 1
-        if(riseBeforeAfter) {
-            state.timeSunrise = new Date(sunriseTime.time + (theOffsetSunrise * 60 * 1000))
-        } else {
-            state.timeSunrise = new Date(sunriseTime.time - (theOffsetSunrise * 60 * 1000))
-        }
-       if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
-       if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-       if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
-       schedule("0 5 12 ? * * *", autoSunHandler)
-       schedule(state.timeSunset, runAtTime1)
-       schedule(state.timeSunrise, runAtTime2)
     }
     if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
     if(sunsetEndTime) schedule(sunsetEndTime, runAtTime2)
 }
 
 def runAtTime1() {
-    if(logEnable) log.debug "In runAtTime1 (${state.version}) - ${app.label} - Starting"
+    if(logEnable) log.debug "In runAtTime1 (${state.version}) - Starting"
     startTheProcess()
 }
 
 def runAtTime2() {
-    if(logEnable) log.debug "In runAtTime2 (${state.version}) - ${app.label} - Starting"
+    if(logEnable) log.debug "In runAtTime2 (${state.version}) - Starting"
     startTheProcess()
 }
 
 def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun (${state.version})"
-    if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
-        def nextSunrise = (getSunriseAndSunset().sunrise)+1
-        def nextSunset = getSunriseAndSunset().sunset
-        int theOffsetSunset = offsetSunset ?: 1
-        if(setBeforeAfter) {
-            use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
+    if(triggerType.contains("tTimeDays")) {
+        if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
+            def nextSunrise = (getSunriseAndSunset().sunrise)+1
+            def nextSunset = getSunriseAndSunset().sunset
+            int theOffsetSunset = offsetSunset ?: 1
+            if(setBeforeAfter) {
+                use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
+            } else {
+                use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
+            }
+            int theOffsetSunrise = offsetSunrise ?: 1
+            if(riseBeforeAfter) {
+                use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
+            } else {
+                use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
+            } 
+            if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
+            if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
+            state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
+            if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
+
+            if(state.timeBetweenSun) {
+                if(logEnable) log.debug "In checkTimeSun - Time within range"
+            } else {
+                if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+            }
         } else {
-            use( TimeCategory ) { nextSunsetOffset = nextSunset - theOffsetSunset.minutes }
-        }
-        int theOffsetSunrise = offsetSunrise ?: 1
-        if(riseBeforeAfter) {
-            use( TimeCategory ) { nextSunriseOffset = nextSunrise + theOffsetSunrise.minutes }
-        } else {
-            use( TimeCategory ) { nextSunriseOffset = nextSunrise - theOffsetSunrise.minutes }
-        } 
-        if(logEnable) log.debug "In checkTimeSun - nextSunset: ${nextSunset} - nextSunsetOffset: ${nextSunsetOffset}"
-        if(logEnable) log.debug "In checkTimeSun - nextSunrise: ${nextSunrise} - nextSunriseOffset: ${nextSunriseOffset}"
-        state.timeBetweenSun = timeOfDayIsBetween(nextSunsetOffset, nextSunrise, new Date(), location.timeZone)
-        if(logEnable) log.debug "In checkTimeSun - nextSunsetOffset: ${nextSunsetOffset} - nextSunriseOffset: ${nextSunriseOffset}"
-        
-        if(state.timeBetweenSun) {
-            if(logEnable) log.debug "In checkTimeSun - Time within range"
-        } else {
-            if(logEnable) log.debug "In checkTimeSun - Time outside of range"
+            state.timeBetweenSun = true
         }
     } else {
         state.timeBetweenSun = true
