@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.1 - 11/22/20 - Progress with Sunset/Sunrise stuff
 *  2.3.0 - 11/22/20 - From Time is NOT spelled fromtTime! Many other adjustments
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.0"
+    state.version = "2.3.1"
 }
 
 definition(
@@ -3702,7 +3703,7 @@ def currentDateTime() {
 // *****  Start Time Handlers *****
 def autoSunHandler() {
     if(logEnable) log.debug "In autoSunHandler (${state.version}) - ${app.label}"
-    if(sunriseTime || sunsetTime) {
+    if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
         def sunriseTime = getSunriseAndSunset().sunrise
         def sunsetTime = getSunriseAndSunset().sunset
         int theOffsetSunset = offsetSunset ?: 1
@@ -3719,7 +3720,7 @@ def autoSunHandler() {
         }
        if(logEnable && logSize) log.debug "In autoSunHandler - sunsetTime: ${sunsetTime} - theOffsetSunset: ${theOffsetSunset} - setBeforeAfter: ${setBeforeAfter}"
        if(logEnable && logSize) log.debug "In autoSunHandler - sunriseTime: ${sunriseTime} - theOffsetSunrise: ${theOffsetSunrise} - riseBeforeAfter: ${riseBeforeAfter}"
-       if(logEnable && logSize) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeAfterSunrise: ${state.timeSunrise}"
+       if(logEnable) log.debug "In autoSunHandler - ${app.label} - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
        schedule("0 5 12 ? * * *", autoSunHandler)
        schedule(state.timeSunset, runAtTime1)
        schedule(state.timeSunrise, runAtTime2)
@@ -3740,7 +3741,7 @@ def runAtTime2() {
 
 def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun (${state.version})"
-    if(tSunsetSunrise) {
+    if(timeDaysType.contains("tSunsetSunrise") || timeDaysType.contains("tSunrise") || timeDaysType.contains("tSunset")) {
         def nextSunrise = (getSunriseAndSunset().sunrise)+1
         def nextSunset = getSunriseAndSunset().sunset
         int theOffsetSunset = offsetSunset ?: 1
