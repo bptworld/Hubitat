@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.4 - 11/23/20 - Adjustments to OR
 *  2.3.3 - 11/22/20 - Adjustments to Permanent Dim
 *  2.3.2 - 11/22/20 - More adjustments
 *  2.3.1 - 11/22/20 - Progress with Sunset/Sunrise stuff
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.3"
+    state.version = "2.3.4"
 }
 
 definition(
@@ -3850,15 +3851,21 @@ def checkingWhatToDo() {
     if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
     if(state.atLeastOneDeviceOK == null) state.atLeastOneDeviceOK = true
     if(state.devicesOK == null) state.devicesOK = true
+    
     if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
         state.timeOK = true
     } else {
         state.timeOK = false
     }
+    
     if(triggerAndOr) {
         if(logEnable) log.debug "In checkingWhatToDo - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
-        if(state.atLeastOneDeviceOK || state.setpointOK || state.timeOK) {
-            state.everythingOK = true
+        if(state.timeOK) {
+            if(state.atLeastOneDeviceOK || state.setpointOK) {
+                state.everythingOK = true
+            } else {
+                state.everythingOK = false
+            }
         } else {
             state.everythingOK = false
         }
@@ -3870,6 +3877,7 @@ def checkingWhatToDo() {
             state.everythingOK = false
         }
     }
+    
     if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
     if(state.everythingOK) {
             state.whatToDo = "run"
