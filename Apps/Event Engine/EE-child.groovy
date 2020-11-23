@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.3 - 11/22/20 - Adjustments to Permanent Dim
 *  2.3.2 - 11/22/20 - More adjustments
 *  2.3.1 - 11/22/20 - Progress with Sunset/Sunrise stuff
 *  2.3.0 - 11/22/20 - From Time is NOT spelled fromtTime! Many other adjustments
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.2"
+    state.version = "2.3.3"
 }
 
 definition(
@@ -2193,8 +2194,8 @@ def startTheProcess(evt) {
                             if(actionType.contains("aLock") && (lockAction || unlockAction)) { lockActionHandler() }
                             if(actionType.contains("aValve") && (valveOpenAction || valveClosedAction)) { valveActionHandler() }
                             if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnActionHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim) { permanentDimHandler() }
-                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim) { switchesOffActionHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
+                            if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffActionHandler() }
                             if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
                             if(actionType.contains("aSwitch") && setOnLC) { dimmerOnActionHandler() }
                             if(actionType.contains("aSwitch") && switchedDimDnAction) { slowOffHandler() }
@@ -2240,7 +2241,7 @@ def startTheProcess(evt) {
                     if(actionType) {
                         if(actionType.contains("aFan")) { fanReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesOnAction) { switchesOnReverseActionHandler() }
-                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDimLvl2) { permanentDimHandler() }
+                        if(actionType.contains("aSwitch") && switchesOffAction && permanentDim2) { permanentDimHandler() }
                         if(actionType.contains("aSwitch") && switchesOffAction && !permanentDim2) { switchesOffReverseActionHandler() }
                         if(actionType.contains("aSwitch") && switchesToggleAction) { switchesToggleActionHandler() }
                         if(actionType.contains("aSwitch") && setOnLC && permanentDim) { permanentDimHandler() }
