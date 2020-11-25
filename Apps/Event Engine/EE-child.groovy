@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-*  2.3.6 - 11/24/20 - Reworked device and/or logic
+*  2.3.6 - 11/25/20 - Reworked device and/or logic
 *  2.3.5 - 11/23/20 - Adjustments to sunset/sunrise and Time Between
 *  2.3.4 - 11/23/20 - Adjustments to OR
 *  2.3.3 - 11/22/20 - Adjustments to Permanent Dim
