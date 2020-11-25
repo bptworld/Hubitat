@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.6 - 11/24/20 - Reworked device and/or logic
 *  2.3.5 - 11/23/20 - Adjustments to sunset/sunrise and Time Between
 *  2.3.4 - 11/23/20 - Adjustments to OR
 *  2.3.3 - 11/22/20 - Adjustments to Permanent Dim
@@ -61,7 +62,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.5"
+    state.version = "2.3.6"
 }
 
 definition(
@@ -2047,9 +2048,9 @@ def startTheProcess(evt) {
         if(logEnable) log.trace "*"
         if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.whatToDo = "run"
-        state.count = 0
+        state.totalMatch = 0
+        state.totalConditions = 0
         state.rCount = 0
-        state.deviceMatch = 0
         state.restrictionMatch = 0
         state.isThereDevices = false
         state.isThereSPDevices = false
@@ -2057,7 +2058,10 @@ def startTheProcess(evt) {
         state.setpointLow = null
         state.setpointHigh = null
         state.whoText = ""
-        if(preMadePeriodic) state.whatToDo = "run"
+        if(startTime || preMadePeriodic) {
+            state.totalMatch = 1
+            state.totalConditions = 1
+        }
 
         if(evt) {
             if(evt == "runAfterDelay") {
@@ -2395,22 +2399,24 @@ def waterHandler() {
 
 def devicesGoodHandler() {
     if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}"
+    state.deviceMatch = 0
+    state.count = 0
     deviceTrue1 = 0
     deviceTrue2 = 0
     state.isThereDevices = true
+    state.totalConditions = state.totalConditions + 1
     try {
         if(state.eventType == "globalVariable") {
-            theCount = 1
             theList = []
             theList << globalVariableEvent
-            state.eventName = theList 
+            state.eventName = theList
+            state.theCount = state.eventName.size()
         } else {
-            theCount = state.eventName.size()
+            state.theCount = state.eventName.size()
         }
     } catch(e) { 
-        theCount = 1
+        state.theCount = 1
     }
-    state.count = state.count + theCount
     if(state.whoText == null) state.whoText = ""
     if(state.eventName) {
         state.eventName.each { it ->
@@ -2420,7 +2426,7 @@ def devicesGoodHandler() {
             } else {
                 theValue = it.currentValue("${state.eventType}").toString()
             }
-            if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue} vs 1: ${state.typeValue1} or 2: ${state.typeValue2}"
+            if(logEnable) log.debug "In devicesGoodHandler - Checking: ${it.displayName} - ${state.eventType} - Testing Current Value - ${theValue}"
             if(theValue == state.typeValue1) {
                 if(logEnable) log.debug "In devicesGoodHandler - Working 1: ${state.typeValue1} and Current Value: ${theValue}"
                 if(state.eventType == "switch") {
@@ -2432,7 +2438,6 @@ def devicesGoodHandler() {
                         deviceTrue1 = deviceTrue1 + 1
                     }  
                 } else {
-                    if(logEnable) log.debug "In devicesGoodHandler - Everything Else 1"
                     deviceTrue1 = deviceTrue1 + 1
                 }
             } else if(theValue == state.typeValue2) { 
@@ -2465,7 +2470,6 @@ def devicesGoodHandler() {
                         deviceTrue2 = deviceTrue2 + 1
                     }  
                 } else {
-                    if(logEnable) log.debug "In devicesGoodHandler - Everything Else 2"
                     deviceTrue2 = deviceTrue2 + 1
                 }
             } else {
@@ -2485,33 +2489,22 @@ def devicesGoodHandler() {
     } else {
         state.deviceMatch = state.deviceMatch + deviceTrue2
     }
-    if(logEnable && logSize) log.debug "In devicesGoodHandler - deviceMatch: ${state.deviceMatch} - theCount: ${theCount} - type: ${state.typeAO}" 
+    if(logEnable) log.debug "In devicesGoodHandler - deviceMatch: ${state.deviceMatch} - theCount: ${state.theCount} - type: ${state.typeAO}" 
     if(state.typeAO) {  // OR (true)
         if(state.deviceMatch >= 1) {
             if(logEnable) log.debug "In devicesGoodHandler - Using OR1"
-            state.devicesOK = true
-            state.atLeastOneDeviceOK = true
-        } else {
-            if(logEnable) log.debug "In devicesGoodHandler - Using OR2"
-            state.devicesOK = false
-            state.atLeastOneDeviceOK = false
+            state.totalMatch = state.totalMatch + 1
         }
     } else {  // AND (False)
-        if(state.deviceMatch == state.count) {
+        if(state.deviceMatch == state.theCount) {
             if(logEnable) log.debug "In devicesGoodHandler - Using AND1"
-            state.devicesOK = true
-            state.atLeastOneDeviceOK = true
-        } else {
-            if(logEnable) log.debug "In devicesGoodHandler - Using AND2"
-            state.devicesOK = false
-            state.atLeastOneDeviceOK = false
-            if(state.deviceMatch >= 1) state.atLeastOneDeviceOK = true
+            state.totalMatch = state.totalMatch + 1
         }
     }
     if(state.typeAO) {
-        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - OR - deviceMatch: ${state.deviceMatch} - count: ${state.count} - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK}"
+        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - OR - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
     } else {
-        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - deviceMatch: ${state.deviceMatch} - count: ${state.count} - devicesOK: ${state.devicesOK}"
+        if(logEnable) log.debug "In devicesGoodHandler - ${state.eventType.toUpperCase()} - AND - count: ${state.theCount} - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions}"
     }
 }
 
@@ -2888,10 +2881,10 @@ def restrictionHandler() {
     if(state.rTypeAO) {  // OR (true)
         if(state.restrictionMatch >= 1) {
             state.areRestrictions = true
-        } else {  // AND (False)
-            if(state.restrictionMatch == state.rCount) {
-                state.areRestrictions = true
-            }
+        } 
+    } else {  // AND (False)
+        if(state.restrictionMatch == state.rCount) {
+            state.areRestrictions = true
         }
     }
     if(logEnable) log.debug "In restrictionHandler - ${state.rEventType.toUpperCase()} - areRestrictions: ${state.areRestrictions}"
@@ -3812,9 +3805,7 @@ def checkTimeBetween() {
 }
 
 def certainTime() {
-    if(logEnable) log.debug "In certainTime (${state.version})"
-    state.devicesOK = true
-    state.atLeastOneDeviceOK = true
+    if(logEnable) log.debug "In certainTime (${state.version})"  
     startTheProcess()
 }
 
@@ -3854,20 +3845,17 @@ def modeHandler() {
 // *****  End Time Handlers *****
 
 def checkingWhatToDo() {
-    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"
-    if(state.atLeastOneDeviceOK == null) state.atLeastOneDeviceOK = true
-    if(state.devicesOK == null) state.devicesOK = true
-    
+    if(logEnable) log.debug "In checkingWhatToDo (${state.version})"    
     if(state.betweenTime && state.timeBetweenSun && state.modeMatch && state.daysMatch) {
         state.timeOK = true
     } else {
         state.timeOK = false
     }
-    
+
     if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingWhatToDo - USING OR - atLeastOneDeviceOK: ${state.atLeastOneDeviceOK} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
         if(state.timeOK) {
-            if(state.atLeastOneDeviceOK || state.setpointOK) {
+            if((state.totalMatch >= 1) || state.setpointOK) {
                 state.everythingOK = true
             } else {
                 state.everythingOK = false
@@ -3876,8 +3864,8 @@ def checkingWhatToDo() {
             state.everythingOK = false
         }
     } else {
-        if(logEnable) log.debug "In checkingWhatToDo - USING AND - devicesOK: ${state.devicesOK} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
-        if(state.devicesOK && state.setpointOK && state.timeOK) {
+        if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if((state.totalMatch == state.totalConditions) && state.setpointOK && state.timeOK) {
             state.everythingOK = true
         } else {
             state.everythingOK = false
