@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.7 - 11/26/20 - Adjustments
 *  2.3.6 - 11/25/20 - Reworked device and/or logic
 *  2.3.5 - 11/23/20 - Adjustments to sunset/sunrise and Time Between
 *  2.3.4 - 11/23/20 - Adjustments to OR
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.6"
+    state.version = "2.3.7"
 }
 
 definition(
@@ -2062,6 +2063,13 @@ def startTheProcess(evt) {
             state.totalMatch = 1
             state.totalConditions = 1
         }
+        
+        if(sunriseEndTime || sunsetEndTime) {
+            state.totalMatch = 0
+            state.totalConditions = 0
+            skipToReverse = true
+            state.whatToDo = "reverse"
+        }
 
         if(evt) {
             if(evt == "runAfterDelay") {
@@ -2511,17 +2519,14 @@ def devicesGoodHandler() {
 def hsmAlertHandler(data) {
     if(hsmAlertEvent) {
         if(logEnable) log.debug "In hsmAlertHandler (${state.version})"
-        state.hsmAlertStatus = false
         String theValue = data
         hsmAlertEvent.each { it ->
             if(logEnable && logSize) log.debug "In hsmAlertHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
-                state.hsmAlertStatus = true
-                state.whatToDo = "run"
+                state.totalMatch = 1
+                state.totalConditions = 1
             }
         }
-    } else {
-        state.hsmAlertStatus = true
     }
     if(logEnable) log.debug "In hsmAlertHandler - hsmAlertStatus: ${state.hsmAlertStatus}"
 }
@@ -2529,17 +2534,14 @@ def hsmAlertHandler(data) {
 def hsmStatusHandler(data) {
     if(hsmStatusEvent) {
         if(logEnable) log.debug "In hsmStatusHandler (${state.version})"
-        state.hsmStatus = false
         String theValue = data
         hsmStatusEvent.each { it ->
             if(logEnable && logSize) log.debug "In hsmStatusHandler - Checking: ${it} - value: ${theValue}"
             if(theValue == it){
-                state.hsmStatus = true
-                state.whatToDo = "run"
+                state.totalMatch = 1
+                state.totalConditions = 1
             }
         }
-    } else {
-        state.hsmStatus = true
     }
     if(logEnable) log.debug "In hsmStatusHandler - hsmStatus: ${state.hsmStatus}"
 }
