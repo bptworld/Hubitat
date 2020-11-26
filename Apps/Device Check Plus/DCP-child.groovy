@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.1.9 - 11/24/20 - Added more logging
  *  1.1.8 - 08/30/20 - Fixed a typo, other changes
  *  1.1.7 - 08/23/20 - No wrong state device Notification is now optional
  *  1.1.6 - 06/22/20 - Changes to letsTalk
@@ -46,15 +47,7 @@
  *  1.1.2 - 06/07/20 - More options added to 'Actions'
  *  1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other minor changes
  *  1.1.0 - 04/27/20 - Cosmetic changes
- *  1.0.9 - 04/04/20 - Fixed a typo
- *  1.0.8 - 04/01/20 - Added a 'No devices found' message
- *  1.0.7 - 03/31/20 - Add ability for DCP to try and fix devices in the wrong state. Now automaticaly creates device for On Demand Option.
- *  1.0.6 - 01/27/20 - Found typo, added flash lights to actions
- *  1.0.5 - 01/26/20 - Added Power, Humidity and Temp triggers. Added more device actions based on trigger.
- *  1.0.4 - 12/07/19 - Fixed some minor bugs
- *  1.0.3 - 11/17/19 - Removed speech queue, now only available with Follow Me!
- *  1.0.2 - 10/16/19 - More cosmetic changes, added Device Time in State trigger
- *  1.0.1 - 10/13/19 - Cosmetic changes. 
+ *  ***
  *  1.0.0 - 10/13/19 - Initial release.
  *
  */
@@ -64,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.8"
+	state.version = "1.1.9"
 }
 
 definition(
@@ -1029,6 +1022,13 @@ def messageHandler() {
 	
 	    state.theMsg = "${state.preMsgR}, "
     
+        if(logEnable) log.debug "---------- Start - Devices in the Wrong State ----------"
+        if(logEnable && state.wrongSwitchesMSG) log.debug "wrongSwitchesMSG - ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}"
+        if(logEnable && state.wrongDevicesMSG) log.debug "wrongDevicesMSG - ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}"
+        if(logEnable && state.wrongContactsMSG) log.debug "wrongContactsMSG - ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}"
+        if(logEnable && state.wrongLocksMSG) log.debug "wrongLocksMSG - ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}"
+        if(logEnable && state.setPointMSG) log.debug "setPointMSG - ${state.setPointMSG.substring(0, state.setPointMSG.length() - 2)}"
+        if(logEnable) log.debug "---------- End - Devices in the Wrong State ----------"
         if(state.wrongSwitchesMSG) { state.theMsg += " Switches: ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}." }
         if(state.wrongDevicesMSG) { state.theMsg += " Devices: ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}." }
         if(state.wrongContactsMSG) { state.theMsg += " Contacts: ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}." }
