@@ -34,7 +34,7 @@
 			"namespace": "BPTWorld",
 			"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/FM-driver.groovy",
 			"required": true,
-			"version": "2.2.3"
+			"version": "2.2.5"
 		}
 	]
 }
