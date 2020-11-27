@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.8 - 11/27/20 - Cosmetic
  *  2.4.7 - 10/23/20 - Fixed the 'cloud' toggle for non-lock devices
  *  2.4.6 - 10/23/20 - Added 'door' control
  *  2.4.5 - 10/12/20 - Typio
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.6"
+	state.version = "2.4.8"
 }
 
 definition(
@@ -1011,6 +1012,9 @@ def copyLineHandler() {
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Tile Options")) {
+            paragraph "<hr>"
+            paragraph "<b>This option has always had problems... sometimes it works, sometimes it doesn't! Working on a different way of doing this but no eta at this time. Thanks!</b>"
+            paragraph "<hr>"
             paragraph "<b>Copy another tile to this tile!</b><br>This will overwrite all settings on this tile with the settings of the 'from' tile."
             paragraph "When the copy switch is turned on:<br> - It will only take a few seconds<br> - When complete the switch will turn off<br> - The app number will be blank<br> - At this point you can press 'Next'"
             paragraph "<b>Note:</b> Devices will be carried over to the new tile but the attribute will have to be re-selected. This may cause errors in the log, just remember to go into each line and make sure the device attribute is set to the correct attribute."
@@ -1177,7 +1181,7 @@ def sendChildSettings() {           // this is then requested from the parent ap
     childAppSettings = settings
 }
 
-def doTheTileCopy(newSettings) {    // and finally the parent app send the settings!
+def doTheTileCopy(newSettings) {    // and finally the parent app sends the settings!
     if(logEnable) log.info "In doTheTileCopy (${state.version})"
     if(copyTile) {
         if(logEnable) log.info "In doTheTileCopy - Received: ${newSettings}"
