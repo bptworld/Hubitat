@@ -34,16 +34,12 @@
  *
  *  Changes:
  *
+ *  2.3.6 - 11/27/20 - Adjustments and added features
  *  2.3.5 - 10/30/20 - Adjustments to Special Tracking
  *  2.3.4 - 09/02/20 - Cosmetic changes
  *  2.3.3 - 08/02/20 - Fixed typo with locks
  *  2.3.2 - 07/29/20 - Fixed typo with Battery
  *  2.3.1 - 07/29/20 - Disabled devices will no longer show in reports, other adjustments
- *  2.3.0 - 07/26/20 - Add push notifications to special tracking
- *  2.2.9 - 07/09/20 - Fixed reports again...
- *  2.2.8 - 07/09/20 - Fixed reports
- *  2.2.7 - 05/20/20 - Typo!
- *  2.2.6 - 05/20/20 - Gremlins!
  *  ---
  *  1.0.0 - 12/21/18 - Initial release.
  *
@@ -54,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.5"
+	state.version = "2.3.6"
 }
 
 definition(
@@ -401,11 +397,22 @@ def specialTrackingConfig() {
                     paragraph "<b>Please only choose 4 Attributes.</b>"
                 }
 
-                if(stAtt1) input "stAttTValue1", "text", title: "Trigger Value for attribute - ${stAtt1.capitalize()}", submitOnChange:true
-                if(stAtt2) input "stAttTValue2", "text", title: "Trigger Value for attribute - ${stAtt2.capitalize()}", submitOnChange:true
-                if(stAtt3) input "stAttTValue3", "text", title: "Trigger Value for attribute - ${stAtt3.capitalize()}", submitOnChange:true
-                if(stAtt4) input "stAttTValue4", "text", title: "Trigger Value for attribute - ${stAtt4.capitalize()}", submitOnChange:true
-
+                if(stAtt1) {
+                    input "stAttTValue1", "text", title: "<b>${stAtt1.capitalize()}</b> - Trigger Value for attribute", submitOnChange:true, width:6
+                    input "stAttTValue1a", "text", title: "2nd Trigger Value (optional)", submitOnChange:true, width:6
+                }
+                if(stAtt2) {
+                    input "stAttTValue2", "text", title: "<b>${stAtt2.capitalize()}</b> - Trigger Value for attribute", submitOnChange:true, width:6
+                    input "stAttTValue2a", "text", title: "2nd Trigger Value (optional)", submitOnChange:true, width:6
+                }
+                if(stAtt3) {
+                    input "stAttTValue3", "text", title: "<b>${stAtt3.capitalize()}</b> - Trigger Value for attribute", submitOnChange:true, width:6
+                    input "stAttTValue3a", "text", title: "2nd Trigger Value (optional)", submitOnChange:true, width:6
+                }
+                if(stAtt4) {
+                    input "stAttTValue4", "text", title: "<b>${stAtt4.capitalize()}</b> - Trigger Value for attribute", submitOnChange:true, width:6
+                    input "stAttTValue4a", "text", title: "2nd Trigger Value (optional)", submitOnChange:true, width:6
+                }
             } 
         }
         
@@ -847,10 +854,10 @@ def myActivityHandler() {
                     }
 
                     theName = it.displayName              
-                    if(filter1) { theName = theName.replace("${aFilter1}", "") }
-                    if(filter2) { theName = theName.replace("${aFilter2}", "") }
-                    if(filter3) { theName = theName.replace("${aFilter3}", "") }
-                    if(filter4) { theName = theName.replace("${aFilter4}", "") }
+                    if(aFilter1) { theName = theName.replace("${aFilter1}", "") }
+                    if(aFilter2) { theName = theName.replace("${aFilter2}", "") }
+                    if(aFilter3) { theName = theName.replace("${aFilter3}", "") }
+                    if(aFilter4) { theName = theName.replace("${aFilter4}", "") }
 
                     line = "<tr><td>${theName}<td>${lastAct}"
                     activityMapPhone += "${theName} - ${lastAct} \n"
@@ -958,10 +965,10 @@ def myBatteryHandler() {
                     }
 
                     theName = it.displayName              
-                    if(filter1) { theName = theName.replace("${bFilter1}", "") }
-                    if(filter2) { theName = theName.replace("${bFilter2}", "") }
-                    if(filter3) { theName = theName.replace("${bFilter3}", "") }
-                    if(filter4) { theName = theName.replace("${bFilter4}", "") }
+                    if(bFilter1) { theName = theName.replace("${bFilter1}", "") }
+                    if(bFilter2) { theName = theName.replace("${bFilter2}", "") }
+                    if(bFilter3) { theName = theName.replace("${bFilter3}", "") }
+                    if(bFilter4) { theName = theName.replace("${bFilter4}", "") }
 
                     line = "<tr><td>${theName}<td>${cv}<td>${newDate}"
                     batteryMapPhone += "${theName} - ${cv} - ${newDate}\n"
@@ -1230,10 +1237,10 @@ def myStatusHandler() {
                 state.statusCount = state.statusCount + 1
 
                 theName = it.displayName              
-                if(filter1) { theName = theName.replace("${sFilter1}", "") }
-                if(filter2) { theName = theName.replace("${sFilter2}", "") }
-                if(filter3) { theName = theName.replace("${sFilter3}", "") }
-                if(filter4) { theName = theName.replace("${sFilter4}", "") }
+                if(sFilter1) { theName = theName.replace("${sFilter1}", "") }
+                if(sFilter2) { theName = theName.replace("${sFilter2}", "") }
+                if(sFilter3) { theName = theName.replace("${sFilter3}", "") }
+                if(sFilter4) { theName = theName.replace("${sFilter4}", "") }
 
                 line = "<tr><td>${theName}<td>${dStatus}<td>${newDate}"
                 statusMapPhone += "${theName} \n"
@@ -1459,19 +1466,35 @@ def specialTrackingHandler() {
                     if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att1.capitalize()} EQUALS ${stAttTValue1}"
                     data = true
                 }
+                if(att1 && att1Value == stAttTValue1a) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att1.capitalize()} EQUALS ${stAttTValue1a}"
+                    data = true
+                }
 
                 if(att2 && att2Value == stAttTValue2) { 
                     if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att2.capitalize()} EQUALS ${stAttTValue2}"
                     data = true
                 }
-
+                if(att2 && att2Value == stAttTValue2a) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att2.capitalize()} EQUALS ${stAttTValue2a}"
+                    data = true
+                }
+                
                 if(att3 && att3Value == stAttTValue3) { 
                     if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att3.capitalize()} EQUALS ${stAttTValue3}"
                     data = true
                 }
-
+                if(att3 && att3Value == stAttTValue3a) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att3.capitalize()} EQUALS ${stAttTValue3a}"
+                    data = true
+                }
+                
                 if(att4 && att4Value == stAttTValue4) { 
                     if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att4.capitalize()} EQUALS ${stAttTValue4}"
+                    data = true
+                }
+                if(att4 && att4Value == stAttTValue4a) { 
+                    if(logEnable) log.debug "In specialTrackingHandler - ${it.displayName} - Attribute ${att4.capitalize()} EQUALS ${stAttTValue4a}"
                     data = true
                 }
 
@@ -1528,11 +1551,6 @@ def specialTrackingHandler() {
             }
         }
 
-/*        for(x=tileCount;x<4;x++) {
-            sending = "${x}::<div style='font-size:${fontSize}px'>Special Tracking Report - No Data</div>"
-            watchdogTileDevice.sendWatchdogSpecialMap(sending)
-        }    */
-
         def rightNow = new Date()
         dateFormatHandler(rightNow)
         state.specialMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
@@ -1571,10 +1589,8 @@ def getTimeDiff(aDevice) {
     if(logEnable) log.debug "In getTimeDiff (${state.version}) - working on ${aDevice}"
     try {
 	    state.since = aDevice.getLastActivity()
-        def prev = Date.parse("yyy-MM-dd HH:mm:ss","${state.since}".replace("+00:00","+0000"))   
-    
+        def prev = Date.parse("yyy-MM-dd HH:mm:ssZ","${state.since}".replace("+00:00","+0000"))
         def now = new Date()
-
         use(TimeCategory) {       
             state.dur = now - prev
             state.days = state.dur.days
@@ -1763,8 +1779,6 @@ def checkEnableHandler() {
 
 def setDefaults(){
 	setupNewStuff()
-	if(logEnable == null){logEnable = false}
-	if(pushAll == null){pushAll = false}
 }
 
 def getImage(type) {					// Modified from @Stephack Code
@@ -1842,5 +1856,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
