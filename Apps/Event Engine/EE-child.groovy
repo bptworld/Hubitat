@@ -37,7 +37,8 @@
 *
 *  Changes:
 *
-*  2.3.7 - 11/26/20 - Adjustments
+*  2.3.8 - 11/27/20 - Cosmetic adjustments and other enhancements
+*  2.3.7 - 11/26/20 - Adjustments to setpoints, code cleanup
 *  2.3.6 - 11/25/20 - Reworked device and/or logic
 *  2.3.5 - 11/23/20 - Adjustments to sunset/sunrise and Time Between
 *  2.3.4 - 11/23/20 - Adjustments to OR
@@ -63,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.7"
+    state.version = "2.3.8"
 }
 
 definition(
@@ -139,14 +140,14 @@ def pageConfig() {
             
             if(triggerType.contains("tTimeDays")) {
                 input "timeDaysType", "enum", title: "Time/Days/Mode - Sub-Menu", options: [
-                    ["tPeriodic":"Periodic Expression"],
+                    ["tBetween":"Between Two Times"],
                     ["tMode":"By Mode"],
                     ["tDays":"By Days"],
                     ["tTime":"Certain Time"],
-                    ["tBetween":"Between Two Times"],
-                    ["tSunsetSunrise":"Sunset to Sunrise"],
                     ["tSunrise":"Just Sunrise"],
                     ["tSunset":"Just Sunset"],
+                    ["tPeriodic":"Periodic Expression"],
+                    ["tSunsetSunrise":"Sunset to Sunrise"]
                 ], required:true, multiple:true, submitOnChange:true, width:6
                 paragraph "<hr>"
             } else {
@@ -224,7 +225,7 @@ def pageConfig() {
             if(timeDaysType.contains("tTime")) {
                 paragraph "<b>Certain Time</b>"
                 input "startTime", "time", title: "Time to activate", description: "Time", required:false, width:12
-                input "repeat", "bool", title: "Repeat?", description: "Repeat", defaultValue:false, submitOnChange:true
+                input "repeat", "bool", title: "Repeat", description: "Repeat", defaultValue:false, submitOnChange:true
                 if(repeat) {
                     input "repeatType", "enum", title: "Repeat schedule", options: [
                         ["r1min":"1 Minute"],
@@ -237,9 +238,10 @@ def pageConfig() {
                     ], required:true, multiple:true, submitOnChange:true
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> Certain Time - ${startTime} - Repeat: ${repeat} - Schedule: ${repeatType}<br>"
+                if(startTime) theDate = toDateTime(startTime)
+                state.theCogTriggers += "<b>-</b> Certain Time - ${theDate} - Repeat: ${repeat} - Schedule: ${repeatType}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Certain Time - ${startTime} - Repeat: ${repeat} - Schedule: ${repeatType}<br>"
+                state.theCogTriggers -= "<b>-</b> Certain Time - ${theDate} - Repeat: ${repeat} - Schedule: ${repeatType}<br>"
                 app.removeSetting("startTime")
                 app.removeSetting("repeat")
                 app.removeSetting("repeatType")
@@ -254,9 +256,15 @@ def pageConfig() {
                 paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                 input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> Between two times - From: ${fromTime} - To: ${toTime} - Midnight: ${midnightCheckR} - as Restriction: ${timeBetweenRestriction}<br>"
+                if(fromTime) theDate1 = toDateTime(fromTime)
+                if(midnightCheckR) {
+                    if(toTime) theDate2 = toDateTime(toTime)+1
+                } else {
+                    if(toTime) theDate2 = toDateTime(toTime)
+                }
+                state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${theDate2} - Midnight: ${midnightCheckR} - as Restriction: ${timeBetweenRestriction}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Between two times - From: ${fromTime} - To: ${toTime} - Midnight: ${midnightCheckR} - as Restriction: ${timeBetweenRestriction}<br>"
+                state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${theDate2} - Midnight: ${midnightCheckR} - as Restriction: ${timeBetweenRestriction}<br>"
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
                 app.updateSetting("midnightCheckR",[value:"false",type:"bool"])
@@ -305,9 +313,10 @@ def pageConfig() {
                     app.removeSetting("sunriseEndTime")
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${sunriseEndTime}<br>"
+                if(sunriseEndTime) theDate = toDateTime(sunriseEndTime)
+                state.theCogTriggers += "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${theDate}<br>"
             } else if(timeDaysType.contains("tSunset")) {
-                state.theCogTriggers -= "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${sunriseEndTime}<br>"
+                state.theCogTriggers -= "<b>-</b> Just Sunrise - Sunrise Offset: ${offsetSunrise}, BeforeAfter: ${riseBeforeAfter} - Time to End: ${theDate}<br>"
                 paragraph "<b>Just Sunset</b>"
                 input "setBeforeAfter", "bool", title: "Before (off) or After (on) Sunset", defaultValue:false, submitOnChange:true, width:6
                 input "offsetSunset", "number", title: "Offset (minutes)", width:6
@@ -319,9 +328,10 @@ def pageConfig() {
                     app.removeSetting("sunsetEndTime")
                 }
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${sunsetEndTime}<br>"
+                if(sunsetEndTime) theDate = toDateTime(sunsetEndTime)
+                state.theCogTriggers += "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${theDate}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${sunsetEndTime}<br>"
+                state.theCogTriggers -= "<b>-</b> Just Sunset - Sunset Offset: ${offsetSunset}, BeforeAfter: ${setBeforeAfter} - Time to End: ${theDate}<br>"
                 app.removeSetting("sunsetEndTime")
             }
 
@@ -387,20 +397,20 @@ def pageConfig() {
                 paragraph "<b>Battery</b>"
                 input "batteryEvent", "capability.battery", title: "By Battery Setpoints", required:false, multiple:true, submitOnChange:true
                 if(batteryEvent) {
-                    input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High?", description: "Battery High", submitOnChange:true
+                    input "setBEPointHigh", "bool", defaultValue:false, title: "Condition true when Battery is too High", description: "Battery High", submitOnChange:true
                     if(setBEPointHigh) {
                         input "beSetPointHigh", "number", title: "Battery High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("beSetPointHigh")
                     }
-                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low?", description: "Battery Low", submitOnChange:true
+                    input "setBEPointLow", "bool", defaultValue:false, title: "Condition true when Battery is too Low", description: "Battery Low", submitOnChange:true
                     if(setBEPointLow) {
                         input "beSetPointLow", "number", title: "Battery Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("beSetPointLow")
                     }
-                    if(beSetPointHigh) paragraph "You will receive notifications if Battery reading is above or equal to ${beSetPointHigh}"
-                    if(beSetPointLow) paragraph "You will receive notifications if Battery reading is below ${beSetPointLow}"
+                    if(beSetPointHigh) paragraph "Cog Will trigger when Battery reading is above or equal to ${beSetPointHigh}"
+                    if(beSetPointLow) paragraph "Cog will trigger when Battery reading is below ${beSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Battery Setpoints: ${batteryEvent} - setpoint High: ${setBEPointHigh} ${beSetPointHigh}, setpoint Low: ${setBEPointLow} ${beSetPointLow}<br>"
@@ -483,20 +493,20 @@ def pageConfig() {
                 paragraph "<b>Energy</b>"
                 input "energyEvent", "capability.powerMeter", title: "By Energy Setpoints", required:false, multiple:true, submitOnChange:true
                 if(energyEvent) {
-                    input "setEEPointHigh", "bool", defaultValue: "false", title: "Condition true when Energy is too High?", description: "Energy High", submitOnChange:true
+                    input "setEEPointHigh", "bool", defaultValue: "false", title: "Condition true when Energy is too High", description: "Energy High", submitOnChange:true
                     if(setEEPointHigh) {
                         input "eeSetPointHigh", "number", title: "Energy High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("eeSetPointHigh")
                     }
-                    input "setEEPointLow", "bool", defaultValue:false, title: "Condition true when Energy is too Low?", description: "Energy Low", submitOnChange:true
+                    input "setEEPointLow", "bool", defaultValue:false, title: "Condition true when Energy is too Low", description: "Energy Low", submitOnChange:true
                     if(setEEPointLow) {
                         input "eeSetPointLow", "number", title: "Energy Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("eeSetPointLow")
                     }
-                    if(eeSetPointHigh) paragraph "You will receive notifications if Energy reading is above or equal to ${eeSetPointHigh}"
-                    if(eeSetPointLow) paragraph "You will receive notifications if Energy reading is below ${eeSetPointLow}"
+                    if(eeSetPointHigh) paragraph "Cog will trigger when Energy reading is above or equal to ${eeSetPointHigh}"
+                    if(eeSetPointLow) paragraph "Cog will trigger when Energy reading is below ${eeSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Energy Setpoints: ${energyEvent} - setpoint High: ${setEEPointHigh} ${eeSetPointHigh}, setpoint Low: ${setEEPointLow} ${eeSetPointLow}<br>"
@@ -570,20 +580,20 @@ def pageConfig() {
                     input "gvStyle", "bool", title: "Use as Text (off) or Number (on)", defaultValue:false, submitOnChange:true
                     if(gvStyle) {
                         if(globalVariableEvent) {
-                            input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High?", description: "Variable High", submitOnChange:true
+                            input "setGVPointHigh", "bool", defaultValue:false, title: "Condition true when Variable is too High", description: "Variable High", submitOnChange:true
                             if(setGVPointHigh) {
                                 input "gvSetPointHigh", "number", title: "Variable High Setpoint", required:true, submitOnChange:true
                             } else {
                                 app.removeSetting("gvSetPointHigh")
                             }
-                            input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low?", description: "Variable Low", submitOnChange:true
+                            input "setGVPointLow", "bool", defaultValue:false, title: "Condition true when Variable is too Low", description: "Variable Low", submitOnChange:true
                             if(setGVPointLow) {
                                 input "gvSetPointLow", "number", title: "Variable Low Setpoint", required:true, submitOnChange:true
                             } else {
                                 app.removeSetting("gvSetPointLow")
                             }
-                            if(gvSetPointHigh) paragraph "You will receive notifications if Variable reading is above or equal to ${gvSetPointHigh}"
-                            if(gvSetPointLow) paragraph "You will receive notifications if Variable reading is below ${gvSetPointLow}"
+                            if(gvSetPointHigh) paragraph "Cog will trigger when Variable reading is above or equal to ${gvSetPointHigh}"
+                            if(gvSetPointLow) paragraph "Cog will trigger when Variable reading is below ${gvSetPointLow}"
                             app.removeSetting("gvValue")
                             state.theCogTriggers -= "<b>-</b> By Global Variable: ${globalVariableEvent} - Value: ${gvValue}<br>"
                             state.theCogTriggers += "<b>-</b> By Global Variable Setpoints: ${globalVariableEvent} - setpoint High: ${setGVPointHigh} ${gvSetPointHigh}, setpoint Low: ${setGVPointLow} ${gvSetPointLow}<br>"
@@ -616,7 +626,7 @@ def pageConfig() {
                 paragraph "<b>HSM Alert</b>"
                 paragraph "<b>Warning: This Condition has not been tested. Use at your own risk.</b>"
                 input "hsmAlertEvent", "enum", title: "By HSM Alert", options: ["arming", "armingHome", "armingNight", "cancel", "cancelRuleAlerts", "intrusion", "intrusion-delay", "intrusion-home", "intrusion-home-delay", "intrusion-night", "intrusion-night-delay", "rule", "smoke", "water"], multiple:true, submitOnChange:true
-                if(hsmAlertEvent) paragraph "You will receive notifications if <b>any</b> of the HSM Alerts are active."
+                if(hsmAlertEvent) paragraph "Cog will trigger when <b>any</b> of the HSM Alerts are active."
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By HSM Alert: ${hsmAlertEvent}<br>"
             } else {
@@ -628,7 +638,7 @@ def pageConfig() {
                 paragraph "<b>HSM Status</b>"
                 paragraph "<b>Warning: This Condition has not been tested. Use at your own risk.</b>"
                 input "hsmStatusEvent", "enum", title: "By HSM Status", options: ["All Disarmed", "Armed Away", "Armed Home", "Armed Night", "Delayed Armed Away", "Delayed Armed Home", "Delayed Armed Night", "Disarmed"], multiple:true, submitOnChange:true
-                if(hsmStatusEvent) paragraph "You will receive notifications if <b>any</b> of the HSM Status are active."
+                if(hsmStatusEvent) paragraph "Cog will trigger when <b>any</b> of the HSM Status are active."
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By HSM Status: ${hsmStatusEvent}<br>"
             } else {
@@ -640,20 +650,20 @@ def pageConfig() {
                 paragraph "<b>Humidity</b>"
                 input "humidityEvent", "capability.relativeHumidityMeasurement", title: "By Humidity Setpoints", required:false, multiple:true, submitOnChange:true
                 if(humidityEvent) {
-                    input "setHEPointHigh", "bool", defaultValue:false, title: "Condition true when Humidity is too High?", description: "Humidity High", submitOnChange:true
+                    input "setHEPointHigh", "bool", defaultValue:false, title: "Condition true when Humidity is too High", description: "Humidity High", submitOnChange:true
                     if(setHEPointHigh) {
                         input "heSetPointHigh", "number", title: "Humidity High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("heSetPointHigh")
                     }
-                    input "setHEPointLow", "bool", defaultValue:false, title: "Condition true when Humidity is too Low?", description: "Humidity Low", submitOnChange:true
+                    input "setHEPointLow", "bool", defaultValue:false, title: "Condition true when Humidity is too Low", description: "Humidity Low", submitOnChange:true
                     if(setHEPointLow) {
                         input "heSetPointLow", "number", title: "Humidity Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("heSetPointLow")
                     }
-                    if(heSetPointHigh) paragraph "You will receive notifications if Humidity reading is above or equal to ${heSetPointHigh}"
-                    if(heSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${heSetPointLow}"
+                    if(heSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${heSetPointHigh}"
+                    if(heSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${heSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Humidity Setpoints: ${humidityEvent} - setpoint High: ${setHEPointHigh} ${seSetPointHigh}, setpoint Low: ${setHEPointLow} ${seSetPointLow}<br>"
@@ -670,20 +680,20 @@ def pageConfig() {
                 paragraph "<b>Illuminance</b>"
                 input "illuminanceEvent", "capability.illuminanceMeasurement", title: "By Illuminance Setpoints", required:false, multiple:true, submitOnChange:true
                 if(illuminanceEvent) {
-                    input "setIEPointHigh", "bool", defaultValue:false, title: "Condition true when Illuminance is too High?", description: "High", submitOnChange:true
+                    input "setIEPointHigh", "bool", defaultValue:false, title: "Condition true when Illuminance is too High", description: "High", submitOnChange:true
                     if(setIEPointHigh) {
                         input "ieSetPointHigh", "number", title: "Illuminance High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("ieSetPointHigh")
                     }
-                    input "setIEPointLow", "bool", defaultValue:false, title: "Condition true when Illuminance is too Low?", description: "Low", submitOnChange:true
+                    input "setIEPointLow", "bool", defaultValue:false, title: "Condition true when Illuminance is too Low", description: "Low", submitOnChange:true
                     if(setIEPointLow) {
                         input "ieSetPointLow", "number", title: "Illuminance Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("ieSetPointLow")
                     }
-                    if(iSetPointHigh) paragraph "You will receive notifications if Humidity reading is above or equal to ${ieSetPointHigh}"
-                    if(iSetPointLow) paragraph "You will receive notifications if Humidity reading is below ${ieSetPointLow}"
+                    if(iSetPointHigh) paragraph "Cog will trigger when Humidity reading is above or equal to ${ieSetPointHigh}"
+                    if(iSetPointLow) paragraph "Cog will trigger when Humidity reading is below ${ieSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Illuminance Setpoints: ${illuminanceEvent} - setpoint High: ${setIEPointHigh} ${ieSetPointHigh}, setpoint Low: ${setIEPointLow} ${ieSetPointLow}<br>"
@@ -759,7 +769,7 @@ def pageConfig() {
                 paragraph "<b>Motion</b>"
                 input "motionEvent", "capability.motionSensor", title: "By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionEvent) {
-                    input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
+                    input "meInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)", description: "Motion", submitOnChange:true
                     if(meInactiveActive) {
                         paragraph "Condition true when Sensor(s) becomes Active"
                     } else {
@@ -781,7 +791,7 @@ def pageConfig() {
 
                 input "motionRestrictionEvent", "capability.motionSensor", title: "Restrict By Motion Sensor", required:false, multiple:true, submitOnChange:true
                 if(motionRestrictionEvent) {
-                    input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)?", description: "Motion", submitOnChange:true
+                    input "mrInactiveActive", "bool", defaultValue:false, title: "Motion Inactive (off) or Active (on)", description: "Motion", submitOnChange:true
                     if(mrInactiveActive) {
                         paragraph "Restrict when Sensor(s) becomes Active"
                     } else {
@@ -810,22 +820,22 @@ def pageConfig() {
                 paragraph "<b>Power</b>"
                 input "powerEvent", "capability.powerMeter", title: "By Power Setpoints", required:false, multiple:true, submitOnChange:true
                 if(powerEvent) {
-                    input "setPEPointHigh", "bool", defaultValue: "false", title: "Condition true when Power is too High?", description: "Power High", submitOnChange:true
+                    input "setPEPointHigh", "bool", defaultValue: "false", title: "Condition true when Power is too High", description: "Power High", submitOnChange:true
                     if(setPEPointHigh) {
                         input "peSetPointHigh", "number", title: "Power High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("peSetPointHigh")
                     }
 
-                    input "setPEPointLow", "bool", defaultValue:false, title: "Condition true when Power is too Low?", description: "Power Low", submitOnChange:true
+                    input "setPEPointLow", "bool", defaultValue:false, title: "Condition true when Power is too Low", description: "Power Low", submitOnChange:true
                     if(setPEPointLow) {
                         input "peSetPointLow", "number", title: "Power Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("peSetPointLow")
                     }
 
-                    if(setPEPointHigh) paragraph "You will receive notifications if Power reading is above or equal to ${peSetPointHigh}"
-                    if(setPEPointLow) paragraph "You will receive notifications if Power reading is below ${peSetPointLow}"
+                    if(setPEPointHigh) paragraph "Cog will trigger when Power reading is above or equal to ${peSetPointHigh}"
+                    if(setPEPointLow) paragraph "Cog will trigger when Power reading is below ${peSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Power Setpoints: ${powerEvent} - setpoint High: ${setPEPointHigh} ${peSetPointHigh}, setpoint Low: ${setPEPointLow} ${peSetPointLow}<br>"
@@ -895,14 +905,14 @@ def pageConfig() {
                 paragraph "<b>Switch</b>"
                 input "switchEvent", "capability.switch", title: "By Switch", required:false, multiple:true, submitOnChange:true
                 if(switchEvent) {
-                    input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
-                    input "seType", "bool", defaultValue:false, title: "Only when Physically pushed?", description: "Switch Type", submitOnChange:true
-                    if(seType) { paragraph "<small>* Event 'Description Text' must contain '[physical]' for this to work. HE stock drivers do, others may vary.</small>" }
+                    input "seOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)", description: "Switch", submitOnChange:true
+                    input "seType", "bool", defaultValue:false, title: "Only when Physically pushed", description: "Switch Type", submitOnChange:true
                     if(seOffOn) {
                         paragraph "Condition true when Sensor(s) becomes On"
                     } else {
                         paragraph "Condition true when Sensor(s) becomes Off"
                     }
+                    if(seType) { paragraph "<small>* Event 'Description Text' must contain '[physical]' for this to work. HE stock drivers do, others may vary.</small>" }
                     input "switchANDOR", "bool", title: "Use 'AND' (off) or 'OR' (on)", description: "And Or", defaultValue:false, submitOnChange:true
                     if(switchANDOR) {
                         paragraph "Condition true when <b>any</b> Switch is true"
@@ -915,11 +925,13 @@ def pageConfig() {
                     app.removeSetting("switchEvent")
                     app.updateSetting("seOffOn",[value:"false",type:"bool"])
                     app.updateSetting("switchANDOR",[value:"false",type:"bool"])
+                    app.removeSetting("seStateMin")
+                    app.updateSetting("seInState",[value:"false",type:"bool"])
                 }
 // -----------
                 input "switchRestrictionEvent", "capability.switch", title: "Restrict by Switch", required:false, multiple:true, submitOnChange:true
                 if(switchRestrictionEvent) {
-                    input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)?", description: "Switch", submitOnChange:true
+                    input "srOffOn", "bool", defaultValue:false, title: "Switch Off (off) or On (on)", description: "Switch", submitOnChange:true
                     if(srOffOn) {
                         paragraph "Restrict when Switch(es) are On"
                     } else {
@@ -948,20 +960,20 @@ def pageConfig() {
                 paragraph "<b>Temperature</b>"
                 input "tempEvent", "capability.temperatureMeasurement", title: "By Temperature Setpoints", required:false, multiple:true, submitOnChange:true
                 if(tempEvent) {
-                    input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High?", description: "Temp High", submitOnChange:true
+                    input "setTEPointHigh", "bool", defaultValue:false, title: "Condition true when Temperature is too High", description: "Temp High", submitOnChange:true
                     if(setTEPointHigh) {
                         input "teSetPointHigh", "number", title: "Temperature High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("setTEPointHigh")
                     }
-                    input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low?", description: "Temp Low", submitOnChange:true
+                    input "setTEPointLow", "bool", defaultValue:false, title: "Condition true when Temperature is too Low", description: "Temp Low", submitOnChange:true
                     if(setTEPointLow) {
                         input "teSetPointLow", "number", title: "Temperature Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("setTEPointLow")
                     }
-                    if(teSetPointHigh) paragraph "You will receive notifications if Temperature reading is above or equal to ${teSetPointHigh}"
-                    if(teSetPointLow) paragraph "You will receive notifications if Temperature reading is below ${teSetPointLow}"
+                    if(teSetPointHigh) paragraph "Cog will trigger when Temperature reading is above or equal to ${teSetPointHigh}"
+                    if(teSetPointLow) paragraph "Cog will trigger when Temperature reading is below ${teSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Temperature Setpoints: ${tempEvent} - setpoint High: ${setTEPointHigh} ${teSetPointHigh}, setpoint Low: ${setTEPointLow} ${teSetPointLow}<br>"
@@ -995,20 +1007,20 @@ def pageConfig() {
                 paragraph "<b>Voltage</b>"
                 input "voltageEvent", "capability.voltageMeasurement", title: "By Voltage Setpoints", required:false, multiple:true, submitOnChange:true
                 if(voltageEvent) {
-                    input "setVEPointHigh", "bool", defaultValue:false, title: "Condition true when Voltage is too High?", description: "Voltage High", submitOnChange:true
+                    input "setVEPointHigh", "bool", defaultValue:false, title: "Condition true when Voltage is too High", description: "Voltage High", submitOnChange:true
                     if(setVEPointHigh) {
                         input "veSetPointHigh", "number", title: "Voltage High Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("veSetPointHigh")
                     }
-                    input "setVEPointLow", "bool", defaultValue:false, title: "Condition true when Voltage is too Low?", description: "Voltage Low", submitOnChange:true
+                    input "setVEPointLow", "bool", defaultValue:false, title: "Condition true when Voltage is too Low", description: "Voltage Low", submitOnChange:true
                     if(setVEPointLow) {
                         input "veSetPointLow", "number", title: "Voltage Low Setpoint", required:true, submitOnChange:true
                     } else {
                         app.removeSetting("veSetPointLow")
                     }
-                    if(veSetPointHigh) paragraph "You will receive notifications if Voltage reading is above or equal to ${veSetPointHigh}"
-                    if(veSetPointLow) paragraph "You will receive notifications if Voltage reading is below ${veSetPointLow}"
+                    if(veSetPointHigh) paragraph "Cog will trigger when Voltage reading is above or equal to ${veSetPointHigh}"
+                    if(veSetPointLow) paragraph "Cog will trigger when Voltage reading is below ${veSetPointLow}"
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Voltage Setpoints: ${voltageEvent} - setpoint High: ${setVEPointHigh} ${veSetPointHigh}, setpoint Low: ${setVEPointLow} ${veSetPointLow}<br>"
@@ -1082,20 +1094,20 @@ def pageConfig() {
                     input "specialAtt", "enum", title: "Attribute to track", options: allAttrs1a, required:true, multiple:false, submitOnChange:true
                     input "deviceORsetpoint", "bool", defaultValue:false, title: "Device (off) or Setpoint (on)", description: "Whole", submitOnChange:true
                     if(deviceORsetpoint) {
-                        input "setSDPointHigh", "bool", defaultValue:false, title: "Condition true when Custom is too High?", description: "Custom High", submitOnChange:true
+                        input "setSDPointHigh", "bool", defaultValue:false, title: "Condition true when Custom is too High", description: "Custom High", submitOnChange:true
                         if(setSDPointHigh) {
                             input "sdSetPointHigh", "number", title: "Custom High Setpoint", required:true, submitOnChange:true
                         } else {
                             app.removeSetting("sdSetPointHigh")
                         }
-                        input "setSDPointLow", "bool", defaultValue:false, title: "Condition true when Custom is too Low?", description: "Custom Low", submitOnChange:true
+                        input "setSDPointLow", "bool", defaultValue:false, title: "Condition true when Custom is too Low", description: "Custom Low", submitOnChange:true
                         if(setSDPointLow) {
                             input "sdSetPointLow", "number", title: "Custom Low Setpoint", required:true, submitOnChange:true
                         } else {
                             app.removeSetting("sdSetPointLow")
                         }
-                        if(sdSetPointHigh) paragraph "You will receive notifications if Custom reading is above or equal to ${sdSetPointHigh}"
-                        if(sdSetPointLow) paragraph "You will receive notifications if Custom reading is below ${sdSetPointLow}"
+                        if(sdSetPointHigh) paragraph "Cog will trigger when Custom reading is above or equal to ${sdSetPointHigh}"
+                        if(sdSetPointLow) paragraph "Cog will trigger when Custom reading is below ${sdSetPointLow}"
                         state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
                         
@@ -1168,14 +1180,14 @@ def pageConfig() {
             }
 
             if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
-                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay?</b>", description: "Delay Time", submitOnChange:true, width:6
-                input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay?</b>", description: "Random Delay", submitOnChange:true, width:6
+                input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay</b>", description: "Delay Time", submitOnChange:true, width:6
+                input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay</b>", description: "Random Delay", submitOnChange:true, width:6
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
                 if(setDelay) {
-                    paragraph "Delay the notifications until all devices have been in state for XX minutes."
+                    paragraph "Delay the actions until all devices have been in state for XX minutes."
                     input "notifyDelay", "number", title: "Delay (1 to 60)", required:true, multiple:false, range: '1..60', width:6
                     input "minSec", "bool", title: "Use Minutes (off) or Seconds (on)", description: "minSec", defaultValue:false, submitOnChange:true, width:6
-                    paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the notifications will be cancelled.</small>"
+                    paragraph "<small>* All devices have to stay in state for the duration of the delay. If any device changes state, the actions will be cancelled.</small>"
                     if(minSec) {
                         minSecValue = "Second(s)"
                     } else {
@@ -1188,7 +1200,7 @@ def pageConfig() {
                     app.updateSetting("setDelay",[value:"false",type:"bool"])
                 }
                 if(randomDelay) {
-                    paragraph "Delay the notifications until all devices have been in state for XX minutes."
+                    paragraph "Delay the actions until all devices have been in state for XX minutes."
                     input "delayLow", "number", title: "Delay Low Limit (1 to 60)", required:true, multiple:false, range: '1..60', submitOnChange:true
                     input "delayHigh", "number", title: "Delay High Limit (1 to 60)", required:true, multiple:false, range: '1..60', submitOnChange:true
                     if(delayHigh <= delayLow) paragraph "<b>Delay High must be greater than Delay Low.</b>"
@@ -1508,7 +1520,7 @@ def pageConfig() {
                     }
 
                     input "targetLevelLow", "number", title: "Target Level (5 to 99)", required:true, multiple:false, defaultValue: 5, range: '5..99'
-                    input "dimDnOff", "bool", defaultValue:false, title: "<b>Turn dimmer off after target is reached?</b>", description: "Dim Off Options", submitOnChange:true
+                    input "dimDnOff", "bool", defaultValue:false, title: "<b>Turn dimmer off after target is reached</b>", description: "Dim Off Options", submitOnChange:true
                     input "colorDn", "enum", title: "Color", required:true, multiple:false, options: [
                         ["Soft White":"Soft White - Default"],
                         ["White":"White - Concentrate"],
@@ -1647,9 +1659,9 @@ def pageConfig() {
             if(fanAction || switchesOnAction || switchesOffAction || setOnLC || contactOpenAction || setDimmersPerMode) {
                 if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
                     paragraph "<b><small>Please choose only ONE of the following:</b></small>"
-                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High?", defaultValue:false, submitOnChange:true
-                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low?", defaultValue:false, submitOnChange:true
-                    input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between?", defaultValue:false, submitOnChange:true
+                    input "reverseWhenHigh", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is High", defaultValue:false, submitOnChange:true
+                    input "reverseWhenLow", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Low", defaultValue:false, submitOnChange:true
+                    input "reverseWhenBetween", "bool", title: "Reverse actions when conditions are no longer true - Setpoint is Between", defaultValue:false, submitOnChange:true
                     app.updateSetting("reverse",[value:"false",type:"bool"])
                 } else {
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
@@ -1766,15 +1778,6 @@ def pageConfig() {
                 input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
                 input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
             }
-            //input "testLogEnable", "bool", title: "Enable TESTING Debug Options", description: "Test Log Options", defaultValue:false, submitOnChange:true
-            if(testLogEnable) {
-                input "resetTruth", "bool", title: "Reset Cog States <small>(This will happen immediately)</small>", description: "Truth", defaultValue:false, submitOnChange:true
-                if(resetTruth) {
-                    resetTruthHandler()
-                    app.updateSetting("resetTruth",[value:"false",type:"bool"])
-                }
-                input "resetMaps", "button", title: "Reset Maps", width: 3
-            }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
@@ -1811,7 +1814,7 @@ def notificationOptions(){
         }
 
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
-            input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
+            input "sendPushMessage", "capability.notification", title: "Send a Push notification", multiple:true, required:false, submitOnChange:true
             if(sendPushMessage) {
                 state.theCogNotifications += "<b>-</b> Send Push: ${sendPushMessage}<br>"
             } else {
@@ -1860,7 +1863,7 @@ def notificationOptions(){
                 if(!triggerType.contains("xBattery") || !triggerType.contains("xEnergy") || !triggerType.contains("xHumidity") && !triggerType.contains("xIlluminance") && !triggerType.contains("xPower") && !triggerType.contains("xTemp")) {
                     paragraph "<b>Random Message Options</b>"
                     input "message", "text", title: "Message to be spoken/pushed - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
-                    input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages?", description: "List View", submitOnChange:true
+                    input "msgList", "bool", defaultValue:false, title: "Show a list view of the messages", description: "List View", submitOnChange:true
                     if(message) state.theCogNotifications += "<b>-</b> Message: ${message}<br>"
                     if(msgList) {
                         def values = "${message}".split(";")
@@ -2001,7 +2004,6 @@ def initialize() {
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
         if(thermoEvent) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
-        if(spResetTime) schedule(spResetTime, resetTruthHandler)
         if(repeat) {
             startTheProcess()
             def rT = repeatType.toString().replace("[", "").replace("]", "")
@@ -2048,7 +2050,6 @@ def startTheProcess(evt) {
     } else {
         if(logEnable) log.trace "*"
         if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
-        state.whatToDo = "run"
         state.totalMatch = 0
         state.totalConditions = 0
         state.rCount = 0
@@ -2077,6 +2078,10 @@ def startTheProcess(evt) {
                 state.whatHappened = "NA"
             } else if(evt == "timeReverse") {
                 skipToReverse = true
+            } else if(evt == "run") {
+                state.whatToDo = "run"
+            } else if(evt == "reverse") {
+                state.whatToDo = "reverse"
             } else {
                 try {
                     state.whoHappened = evt.displayName
@@ -2090,6 +2095,7 @@ def startTheProcess(evt) {
                 state.hasntDelayedReverseYet = true
             }
         } else {
+            state.whatToDo = "run"
             state.whoHappened = ""
             state.whatHappened = ""
             state.whoText = ""
@@ -2658,6 +2664,7 @@ def setpointHandler() {
         } else {
             spValue = it.currentValue("${state.spType}")
         }
+        if(logEnable) log.debug "In setpointHandler - spValue: ${spValue}"
         if(spValue) {
             if(useWholeNumber) {
                 setpointValue = Math.round(spValue)
@@ -2708,6 +2715,17 @@ def setpointHandler() {
                     state.setpointLowOK = "yes"
                     state.setpointOK = false
                 }
+            }
+        } else {
+            if(state.setpointHigh && state.setpointLow) {
+                state.setpointBetweenOK = "no"
+                state.setpointOK = true
+            } else if(state.setpointHigh) {
+                state.setpointHighOK = "no"
+                state.setpointOK = true
+            } else if(state.setpointLow) {  
+                state.setpointLowOK = "no"
+                state.setpointOK = true
             }
         }
     }
@@ -3733,12 +3751,12 @@ def autoSunHandler() {
 
 def runAtTime1() {
     if(logEnable) log.debug "In runAtTime1 (${state.version}) - Starting"
-    startTheProcess()
+    startTheProcess("run")
 }
 
 def runAtTime2() {
     if(logEnable) log.debug "In runAtTime2 (${state.version}) - Starting"
-    startTheProcess()
+    startTheProcess("reverse")
 }
 
 def checkTimeSun() {
@@ -3748,7 +3766,6 @@ def checkTimeSun() {
             def riseAndSet = getSunriseAndSunset()
             def nextSunrise = (riseAndSet.sunrise)+1
             def nextSunset = riseAndSet.sunset
-
             int theOffsetSunset = offsetSunset ?: 1
             if(setBeforeAfter) {
                 use( TimeCategory ) { nextSunsetOffset = nextSunset + theOffsetSunset.minutes }
@@ -3853,7 +3870,6 @@ def checkingWhatToDo() {
     } else {
         state.timeOK = false
     }
-
     if(triggerAndOr) {
         if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
         if(state.timeOK) {
@@ -3872,8 +3888,7 @@ def checkingWhatToDo() {
         } else {
             state.everythingOK = false
         }
-    }
-    
+    }   
     if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
     if(state.everythingOK) {
             state.whatToDo = "run"
@@ -4162,11 +4177,6 @@ def getLockCodesFromDevice(device) {  // Special thanks to Bruce @bravenel for t
     return result ? result[0..-2] : ""
 }
 
-def resetTruthHandler() {
-    if(logEnable) log.debug "In resetTruthHandler (${state.version})"
-    state.clear()
-}
-
 def sendSettingsToParentHandler() {
     if(logEnable) log.debug "In sendSettingsToParentHandler (${state.version})"
     parent.getSettingsFromChild(mySettings)
@@ -4193,8 +4203,7 @@ def sdPerModeHandler(data) {
     if(theType == "add") {
         if(sdPerModeLevel == null) sdPerModeLevel = "NA"
         if(sdPerModeTemp == null) sdPerModeTemp = "NA"
-        if(sdPerModeColor == null) sdPerModeColor = "NA"
-        
+        if(sdPerModeColor == null) sdPerModeColor = "NA"        
         theValue = "${setDimmersPerMode}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}"
         state.sdPerModeMap.put(theName,theValue)
     } else if(theType == "del") {
@@ -4239,10 +4248,6 @@ def appButtonHandler(buttonPressed) {
         if(state.setOldLevelMap == null) state.setOldLevelMap = false
         if(state.setOldLevelMapPer == null) state.setOldLevelMapPer = false
     }
-}
-
-def newChildAppsHandler(data) {
-    // nothing to do
 }
 
 // ********** Normal Stuff **********
