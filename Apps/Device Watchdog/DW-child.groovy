@@ -1559,7 +1559,6 @@ def specialTrackingHandler() {
         state.specialMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
         specialMapPhone += "Report generated: ${newDate} \n"
         state.specialMapPhoneS = specialMapPhone
-        if(sendPushMessage) pushNow()
         if(logEnable) log.debug "     - - - - - End (Special Tracking) - - - - -     "
     }
 }
