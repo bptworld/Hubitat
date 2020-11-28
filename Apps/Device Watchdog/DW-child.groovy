@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.3.7 - 11/28/20 - Push adjustments, other tweaks
  *  2.3.6 - 11/27/20 - Adjustments and added features
  *  2.3.5 - 10/30/20 - Adjustments to Special Tracking
  *  2.3.4 - 09/02/20 - Cosmetic changes
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Watchdog"
-	state.version = "2.3.6"
+	state.version = "2.3.7"
 }
 
 definition(
@@ -468,9 +469,9 @@ def reportHandler() {
                     activityCount2 = watchdogTileDevice.currentValue("watchdogActivityCount2")
                     activityCount3 = watchdogTileDevice.currentValue("watchdogActivityCount3")
 
-                    a1 = activityCount1.toInteger()
-                    a2 = activityCount2.toInteger()
-                    a3 = activityCount3.toInteger()
+                    if(activityCount1) a1 = activityCount1.toInteger()
+                    if(activityCount2) a2 = activityCount2.toInteger()
+                    if(activityCount3) a3 = activityCount3.toInteger()
 
                     if(logEnable) log.debug "In reportHandler - a1: ${a1} - a2: ${a2} - a3: ${a3}"
 
@@ -515,9 +516,9 @@ def reportHandler() {
                     batteryCount2 = watchdogTileDevice.currentValue("watchdogBatteryCount2")
                     batteryCount3 = watchdogTileDevice.currentValue("watchdogBatteryCount3")
 
-                    bc1 = batteryCount1.toInteger()
-                    bc2 = batteryCount2.toInteger()
-                    bc3 = batteryCount3.toInteger()
+                    if(batteryCount1) bc1 = batteryCount1.toInteger()
+                    if(batteryCount2) bc2 = batteryCount2.toInteger()
+                    if(batteryCount3) bc3 = batteryCount3.toInteger()
 
                     if(logEnable) log.debug "In reportHandler - bc1: ${bc1} - bc2: ${bc2} - bc3: ${bc3}"
 
@@ -562,9 +563,9 @@ def reportHandler() {
                     statusCount2 = watchdogTileDevice.currentValue("watchdogStatusCount2")
                     statusCount3 = watchdogTileDevice.currentValue("watchdogStatusCount3")
 
-                    s1 = statusCount1.toInteger()
-                    s2 = statusCount2.toInteger()
-                    s3 = statusCount3.toInteger()
+                    if(statusCount1) s1 = statusCount1.toInteger()
+                    if(statusCount2) s2 = statusCount2.toInteger()
+                    if(statusCount3) s3 = statusCount3.toInteger()
 
                     if(logEnable) log.debug "In reportHandler - s1: ${s1} - s2: ${s2} - s3: ${s3}"
 
@@ -609,9 +610,9 @@ def reportHandler() {
                     activityAttCount2 = watchdogTileDevice.currentValue("watchdogActivityAttCount2")
                     activityAttCount3 = watchdogTileDevice.currentValue("watchdogActivityAttCount3")
 
-                    aa1 = activityAttCount1.toInteger()
-                    aa2 = activityAttCount2.toInteger()
-                    aa3 = activityAttCount3.toInteger()
+                    if(activityAttCount1) aa1 = activityAttCount1.toInteger()
+                    if(activityAttCount2) aa2 = activityAttCount2.toInteger()
+                    if(activityAttCount3) aa3 = activityAttCount3.toInteger()
 
                     if(logEnable) log.debug "In reportHandler - aa1: ${aa1} - a2: ${aa2} - a3: ${aa3}"
 
@@ -656,9 +657,9 @@ def reportHandler() {
                     specialCount2 = watchdogTileDevice.currentValue("watchdogSpecialCount2")
                     specialCount3 = watchdogTileDevice.currentValue("watchdogSpecialCount3")
 
-                    st1 = specialCount1.toInteger()
-                    st2 = specialCount2.toInteger()
-                    st3 = specialCount3.toInteger()
+                    if(specialCount1) st1 = specialCount1.toInteger()
+                    if(specialCount2) st2 = specialCount2.toInteger()
+                    if(specialCount3) st3 = specialCount3.toInteger()
 
                     if(logEnable) log.debug "In reportHandler - st1: ${st1} - st2: ${st2} - st3: ${st3}"
 
@@ -701,7 +702,7 @@ def reportHandler() {
                     activityMap1 = watchdogTileDevice.currentValue("bpt-watchdogActivity1")
                         
                     batteryCount1 = watchdogTileDevice.currentValue("watchdogBatteryCount1")
-                    bc1 = batteryCount1.toInteger()
+                    if(batteryCount1) bc1 = batteryCount1.toInteger()
                     
                     combo = "<div style='overflow:auto;height:90%'>"
                     combo += "${activityMap1}<br>${batteryMap1}"
@@ -844,6 +845,7 @@ def myActivityHandler() {
                 } 
 
                 if(data) {
+                    state.activityCount = state.activityCount + 1
                     if(!laDisplay) {
                         getTimeDiff(it)
                         lastAct = state.theDuration
@@ -1413,7 +1415,7 @@ def myActivityAttHandler() {
 def specialTrackingHandler() {
     if(specialDevices1 && specialOptions1) {   
         if(logEnable) log.debug "     - - - - - Start (Special Tracking) - - - - -     "
-        if(logEnable) log.debug "In specialTrackingHandler ${state.version}"
+        if(logEnable) log.debug "In specialTrackingHandler (${state.version})"
 
         String result1 = specialOptions1.join(",")
         def theOptions = result1.split(",")               
@@ -1499,6 +1501,7 @@ def specialTrackingHandler() {
                 }
 
                 if(data) {
+                    state.specialCount = state.specialCount + 1
                     theName = it.displayName              
                     if(stFilter1) { theName = theName.replace("${stFilter1}", "") }
                     if(stFilter2) { theName = theName.replace("${stFilter2}", "") }
@@ -1556,6 +1559,7 @@ def specialTrackingHandler() {
         state.specialMapGen = "<table width='100%'><tr><td colspan='2'>Report generated: ${newDate}</table>"
         specialMapPhone += "Report generated: ${newDate} \n"
         state.specialMapPhoneS = specialMapPhone
+        if(sendPushMessage) pushNow()
         if(logEnable) log.debug "     - - - - - End (Special Tracking) - - - - -     "
     }
 }
@@ -1674,7 +1678,7 @@ def pushNow(){
             if(logEnable) log.debug "In pushNow - Sending message: ${activityPhone}"
             sendPushMessage.deviceNotification(activityPhone)
         } else {
-            if(pushAll == true) {
+            if(pushAll) {
                 if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
             } else {
                 emptyMapPhone = "Nothing to report."
@@ -1691,7 +1695,7 @@ def pushNow(){
             if(logEnable) log.debug "In pushNow - Sending message: ${batteryPhone}"
             sendPushMessage.deviceNotification(batteryPhone)
         } else {
-            if(pushAll == true) {
+            if(pushAll) {
                 if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
             } else {
                 emptyBatteryPhone = "Nothing to report."
@@ -1708,7 +1712,7 @@ def pushNow(){
             if(logEnable) log.debug "In pushNow - Sending message: ${statusPhone}"
             sendPushMessage.deviceNotification(statusPhone)
         } else {
-            if(pushAll == true) {
+            if(pushAll) {
                 if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
             } else {
                 emptyStatusPhone = "Nothing to report."
@@ -1725,7 +1729,7 @@ def pushNow(){
             if(logEnable) log.debug "In pushNow - Sending message: ${specialPhone}"
             sendPushMessage.deviceNotification(specialPhone)
         } else {
-            if(pushAll == true) {
+            if(pushAll) {
                 if(logEnable) log.debug "${app.label} - No push needed - Nothing to report."
             } else {
                 emptySpecialPhone = "Nothing to report."
