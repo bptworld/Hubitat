@@ -320,6 +320,7 @@ def createCircleSubscription() {
 
     if (result.data?.hookUrl) {
     	    if(logEnable) log.debug "Webhook creation successful."
+        log.info "Subscribed to Cirlce Notifications, Confirmation: ${result.data?.hookUrl}"
     	}
     }
 
@@ -492,6 +493,8 @@ def haversine(lat1, lon1, lat2, lon2) {
 def placeEventHandler() {
 	if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
 
+/* Avi commented temporarily - let's see how it behaves when a push causes an updatemembers() invocation which will get the right data to the presence event....
+
     def circleId = params?.circleId
     def placeId = params?.placeId
     def userId = params?.userId
@@ -514,6 +517,11 @@ def placeEventHandler() {
     		log.warn "Life360 couldn't find child device associated with inbound Life360 event."
     	}
     }
+    
+*/ 
+// Avi added:
+updateMembers()
+// Avi done
 }
 
 def refresh() {
@@ -570,12 +578,12 @@ def cmdHandler(resp, data) {
                 }
 
                 if(member.location.address1 == null || member.location.address1 == "")
-                address1 = "No Data"
+                    address1 = "No Data"
                 else
                     address1 = member.location.address1
 
                 if(member.location.address2 == null || member.location.address2 == "")
-                address2 = "No Data"
+                    address2 = "No Data"
                 else
                     address2 = member.location.address2
 
@@ -609,7 +617,7 @@ def cmdHandler(resp, data) {
                 def longitude = member.location.longitude.toFloat()
 
                 def place = state.places.find{it.id==settings.place}
-                if(place) {
+// Avi commented:                  if(place) {
                     def memberLatitude = new Float (member.location.latitude)
                     def memberLongitude = new Float (member.location.longitude)
                     def memberAddress1 = member.location.address1
@@ -621,16 +629,22 @@ def cmdHandler(resp, data) {
 
                     boolean isPresent = (distanceAway <= placeRadius)
 
+// Avi added: Set address1 to 'Home' if indeed we are within the radius of home otherwise Location Name (or should it be address 1?)
+                    address1 = (isPresent) ? "Home" : memberLocationName
+// Avi end additions                
                     if(logEnable) log.info "Life360 Update member ($member.firstName): ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
 
-                    deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
+                  
                     
                     //log.trace "2 - distanceAway: ${distanceAway}"
                     
                     deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedMetric, speedMiles, speedKm, wifi, xplaces, avatar, avatarHtml, lastUpdated)
-                } else {
-                    deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedMetric, speedMiles, speedKm, wifi, xplaces, avatar, avatarHtml, lastUpdated)
-                }
+    
+                    deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
+                
+ // Avi commented:                 } else {
+ // Avi commented:                     deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedMetric, speedMiles, speedKm, wifi, xplaces, avatar, avatarHtml, lastUpdated)
+ // Avi commented:                 }
             } catch(e) {
                 if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
                 if(logEnable) log.debug e
