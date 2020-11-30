@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.3.9 - 11/30/20 - Bug fixes
 *  2.3.8 - 11/27/20 - Cosmetic adjustments and other enhancements
 *  2.3.7 - 11/26/20 - Adjustments to setpoints, code cleanup
 *  2.3.6 - 11/25/20 - Reworked device and/or logic
@@ -64,7 +65,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.3.8"
+    state.version = "2.3.9"
 }
 
 definition(
@@ -2065,23 +2066,14 @@ def startTheProcess(evt) {
             state.totalConditions = 1
         }
         
-        if(sunriseEndTime || sunsetEndTime) {
-            state.totalMatch = 0
-            state.totalConditions = 0
-            skipToReverse = true
-            state.whatToDo = "reverse"
-        }
-
         if(evt) {
             if(evt == "runAfterDelay") {
                 state.whoHappened = "NA"
                 state.whatHappened = "NA"
-            } else if(evt == "timeReverse") {
-                skipToReverse = true
+            } else if(evt == "timeReverse" || evt == "reverse") {
+                state.whatToDo = "skipToReverse"
             } else if(evt == "run") {
                 state.whatToDo = "run"
-            } else if(evt == "reverse") {
-                state.whatToDo = "reverse"
             } else {
                 try {
                     state.whoHappened = evt.displayName
@@ -2093,6 +2085,7 @@ def startTheProcess(evt) {
                 if(logEnable) log.debug "In startTheProcess - whoHappened: ${state.whoHappened} - whatHappened: ${state.whatHappened} - whoText: ${state.whoText}"
                 state.hasntDelayedYet = true
                 state.hasntDelayedReverseYet = true
+                state.whatToDo = "run"
             }
         } else {
             state.whatToDo = "run"
@@ -2113,33 +2106,26 @@ def startTheProcess(evt) {
             if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Restrictions are true, skipping"
             state.whatToDo = "stop"
         } else {
-            if(state.whatToDo == "stop") {
-                if(logEnable) log.debug "In startTheProcess - whatToDo: ${state.whatToDo} - Skipping Time checks"
+            if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
+                if(logEnable) log.debug "In startTheProcess - Skipping Time checks - whatToDo: ${state.whatToDo}"
             } else {
-                if(triggerType && tTimeDays) {
-                    if(triggerType.contains("tTimeDays")) { state.whatToDo = "run" }
-                }
-                if(skipToReverse) {
-                    // Skipping
-                } else {
-                    checkTimeBetween()
-                    checkTimeSun()
-                    dayOfTheWeekHandler()
-                    modeHandler()
-                    hsmAlertHandler(state.whatHappened)
-                    hsmStatusHandler(state.whatHappened)
-                    if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
-                    if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
-                    if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
-                    if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
-                    if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
-                }
-            }            
+                checkTimeBetween()
+                checkTimeSun()
+                dayOfTheWeekHandler()
+                modeHandler()
+                hsmAlertHandler(state.whatHappened)
+                hsmStatusHandler(state.whatHappened)
+                if(logEnable) log.debug "In startTheProcess - 1A - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
+                if(daysMatchRestriction && !state.daysMatch) { state.whatToDo = "stop" }
+                if(timeBetweenRestriction && !state.betweenTime) { state.whatToDo = "stop" }
+                if(timeBetweenSunRestriction && !state.timeBetweenSun) { state.whatToDo = "stop" } 
+                if(modeMatchRestriction && !state.modeMatch) { state.whatToDo = "stop" }
+            }           
             if(logEnable) log.debug "In startTheProcess - 1B - daysMatchRestic: ${daysMatchRestriction} - timeBetweenRestric: ${timeBetweenRestriction} - timeBetweenSunRestric: ${timeBetweenSunRestriction} - modeMatchRestric: ${modeMatchRestriction}"          
             if(logEnable) log.debug "In startTheProcess - 1C - betweenTime: ${state.betweenTime} - timeBetweenSun: ${state.timeBetweenSun} - daysMatch: ${state.daysMatch} - modeMatch: ${state.modeMatch}"
             
-            if(state.whatToDo == "stop" || skipToReverse) {
-                if(logEnable) log.debug "In startTheProcess - Skipping Device checks"
+            if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
+                if(logEnable) log.debug "In startTheProcess - Skipping Device checks - whatToDo: ${state.whatToDo}"
             } else {
                 accelerationHandler()
                 contactHandler()
@@ -2175,12 +2161,11 @@ def startTheProcess(evt) {
         }
 
         if(state.whatToDo == "stop") {
-            if(logEnable) log.debug "In startTheProcess - Nothing to do - STOPING"
+            if(logEnable) log.debug "In startTheProcess - Nothing to do - STOPING - whatToDo: ${state.whatToDo}"
         } else {
-            if(skipToReverse) state.whatToDo = "reverse"
             if(state.whatToDo == "run") {
                 if(state.modeMatch && state.daysMatch && state.betweenTime && state.timeBetweenSun && state.modeMatch) {
-                    if(logEnable) log.debug "In startTheProcess - HERE WE GO!"
+                    if(logEnable) log.debug "In startTheProcess - HERE WE GO! - whatToDo: ${state.whatToDo}"
                     if(state.hasntDelayedYet == null) state.hasntDelayedYet = false
                     if((notifyDelay || randomDelay || targetDelay) && state.hasntDelayedYet) {
                         if(notifyDelay && minSec) {
@@ -2246,7 +2231,7 @@ def startTheProcess(evt) {
                 } else {
                     if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
                 }
-            } else if(state.whatToDo == "reverse") {
+            } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
                     if(reverseWithDelay) {
                         theDelay = timeToReverse * 60
@@ -3304,18 +3289,19 @@ def modeChangeActionHandler() {
 def sendHTTPActionHandler(String varCommand, String method) {
     if(logEnable) log.debug "In sendHTTPActionHandler - Sending GET to URL: ${httpIP}:${httpPort}${varCommand}"
     
-    def httpHost = "${httpIP}:${httpPort}"
-    def httpMethod = "GET"
-    def headers = [:] 
-    headers.put("HOST", "${httpIP}:${httpPort}")
-    headers.put("Content-Type", httpContent)
-    def httpRequest = [
-        method:		httpMethod,
-        path: 		varCommand,
-        headers:	headers
-    ]
-    def hubAction = new hubitat.device.HubAction(httpRequest)
-    if(logEnable) log.debug "In sendHTTPActionHandler - Action: $hubAction"
+    httpPost(
+        [
+            uri: "http://${httpIP}:${httpPort}",
+            path: varCommand,
+            headers:
+            [
+                "Cookie": cookie
+            ]
+        ]
+    ) 
+    {
+        resp ->
+    }  
 }
 
 def runCmd(String varCommand, String method) {        // Based on code from Dan Ogorchock - @ogiewon - Thank you
