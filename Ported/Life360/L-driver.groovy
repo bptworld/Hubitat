@@ -51,7 +51,7 @@
 import java.text.SimpleDateFormat
 
 metadata {
-  definition (name: "Location Tracker User Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "") {
+  definition (name: "Location Tracker User Driver", namespace: "BPTWorld", author: "Bryan Turcotte", importUrl: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Ported/Life360/L-driver.groovy") {
         capability "Actuator"
 
         // **** Life360 ****
