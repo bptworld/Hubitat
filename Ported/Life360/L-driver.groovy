@@ -38,6 +38,7 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
+ *  1.2.1 - 12/01/20 - Avi cleaning up code and applying a more wholesome compare to v 1.1.1 functionality
  *  1.2.0 - 12/01/20 - Avi cleaning up code that I preliminary deem unnecessary (pre-testing)
  *  a.v.i - 11/29/20 - Avi modifications to include capabilities for SharpTools and changes to update logic for main attributes
  *
@@ -60,7 +61,7 @@ metadata {
         capability "Battery"
         capability "Power Source"
 
-// Avi - added capabilities to support Hero tile active attributes functionality in Sharptools.io
+// Avi - added capabilities to support Sharptools.io Hero tile active attributes functionality
         capability "Switch"
         capability "Contact Sensor"
         capability "Acceleration Sensor"
@@ -94,7 +95,7 @@ metadata {
         attribute "bpt-statusTile1", "string"
    	    attribute "wifiState", "bool"
 
-// Avi - added attributes for additional capabilities added above
+// Avi - added attributes to support capabilities added above for Sharptools.io tile formatting
         attribute "contact", "string"
         attribute "acceleration", "string"
         attribute "temperature", "number"
@@ -108,7 +109,7 @@ metadata {
         command "sendTheMap", ["string"]
         command "historyClearData"
 
-// Avi - add as a trigger to force renew / revalidate webhook subscription to Life360 notifications
+// Avi - added as a trigger to force renew / revalidate webhook subscription to Life360 notifications
         command "refreshCirclePush"
 // Avi - end adds
 
@@ -117,8 +118,8 @@ metadata {
 
 preferences {
     input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
-		// Avi - commented out for now.  Info is in the extraInfo function
-		//       this may be restored if consolidated logic proves to be unreliable
+		// Avi - commented out the MaxGPS preference field for now.  Code is commented out in the extraInfo function
+		//       this may be restored if the currently applied consolidated logic proves to be unreliable
 		// input "maxGPSJump", "number", title: "Max GPS Jump", description: "If you are getting a lot of false readings, raise this value", required: true, defaultValue: 25
 	  input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
@@ -291,6 +292,8 @@ def generatePresenceEvent(boolean present, homeDistance) {
 
 	  if(logEnable) log.debug "In generatePresenceEvent - present: $present - homeDistance: $homeDistance"
 
+// To be honest, I am not sure what do linkText, descriptionText and handlerName are used for and where
+// but I kept them intact and maintained values to remain consistent with the original implementation
 	  def linkText = getLinkText(device)
 	  def descriptionText = formatDescriptionText(linkText, present)
 	  def handlerName = getState(present)
@@ -309,15 +312,15 @@ def generatePresenceEvent(boolean present, homeDistance) {
 	  sendEvent (results)
 }
 
-private extraInfo(address1, address2, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric ,speedMiles, speedKm, wifiState, xplaces, avatar, avatarHtml, lastUpdated) {
-    if(logEnable) log.debug "in extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
+private extraInfo(address1, address2, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, xplaces, avatar, avatarHtml) {
+    if(logEnable) log.debug "in extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | Wifi = $wifiState"
 
-// Avi - While this piece of code is great to avoid 'jitter' issues, I am not sure yet that it is necessary
-//       Jitter issues may have been caused by discrepanccies between the differing code logic between
-//       generateInitialEvent, generatePresenceEvent and extraInfo functions in addition to code invocation
-//       by parent app.  I tried the best I could to consolidate all to single places and so far have not experienced
-//       jitter in location and location notifications.  If jitter returns, it should be easy enough to reintroduce the below
-//       code snippet
+// Avi - While the MaxGPS logic below may be the right approach to avoid 'jitter' issues, I am not sure yet that it is necessary
+// Jitter issues may have been caused by discrepanccies between the differing code logic between
+// generateInitialEvent, generatePresenceEvent and extraInfo functions in addition to code invocation
+// by parent app.  I tried the best I could to consolidate all to single places and so far have not experienced
+// jitter in location and location notifications.  If jitter returns, it should be easy enough to reintroduce the below
+// code snippet
 
 /*  if(state.oldDistanceAway == null) state.oldDistanceAway = distanceAway
     if(distanceAway == null) distanceAway = 0
@@ -343,92 +346,88 @@ private extraInfo(address1, address2, battery, charge, distanceAway, endTimestam
     }
 */
 		// Update old and current address1
-		def prevAddress = (device.currentValue('address1') != null) ? address1 : "Lost"
+		def prevAddress = (device.currentValue('address1')) ? device.currentValue('address1') : "Lost"
 
 		if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = address1"
 
-		sendEvent(name: "address1prev", value: prevAddress)
-		sendEvent(name: "address1", value: address1)
-		sendEvent(name: "since", value: since)
+		sendEvent( name: "address1prev", value: prevAddress )
+		sendEvent( name: "address1", value: address1 )
+		sendEvent( name: "since", value: since )
 
-		// Update distance in km, miles and metric
+		// Update distance & speed in km, miles and metric
+		// also seems that Kilometers is the default unit if none selected
+		// should we change the default to be Miles instead??
 		if(units == "Kilometers" || units == null || units == "") {
 				def km = (distanceAway / 1000).toDouble().round(2)
 				def sStatus = sprintf("%.2f", km) + " km from Home"
 				sendEvent( name: "distanceKm", value: km )
 				sendEvent( name: "status", value: sStatus )
+
+				def speedKm = (speedMetric * 3.6).round(2)
+				sendEvent( name: "speedKm", value: speedKm )
+				sendEvent( name: "temperature", value: speedKm )
 			}
 	  else {
 				def miles = ((distanceAway / 1000) / 1.609344).toDouble().round(2)
 				def sStatus = sprintf("%.2f", miles) + " miles from Home"
-				sendEvent( name: "distanceMiles", value: miles)
+				sendEvent( name: "distanceMiles", value: miles )
 				sendEvent( name: "status", value: sStatus )
-				}
+
+				def speedMiles = (speedMetric * 2.23694).round(2)
+				sendEvent( name: "speedMiles", value: speedMiles )
+				sendEvent( name: "temperature", value: speedMiles )
+			}
+
+		// Avi - Sharptools.io tile attribute - if moving (speedMetric > 0)  then set switch to on and temperature to actual speed to invoke color rules in Sharptools
+		def sSwitch = (speedMetric > 0) ? "on" : "off"
+		sendEvent(name: "switch", value: sSwitch)
+
+		// Finally set the speedMetric attribute and update the status state
+		sendEvent( name: "speedMetric", value: speedMetric )
 		state.status = status
 
 		state.oldDistanceAway = device.currentValue('distanceMetric')
 		sendEvent( name: "distanceMetric", value: distanceAway.toDouble().round(2) )
 
-		// Avi - how is our battery doing?
+		// How is our battery doing?
     setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
 		sendEvent( name: "battery", value: battery )
 
-		// Avi - Sharptools.io tile attribute: If Battery is charging set contact sensor to open.  closed if not charging
+		// Sharptools.io tile attribute: If Battery is charging set contact sensor to open.  closed if not charging
 		def cContact = charge.toBoolean() ? "open" : "closed"
     sendEvent ( name: "contact", value: cContact )
 
-		// Avi - and of course, update the default charge event
-    sendEvent(name: "charge", value: charge)
+		// Update other attributes
 
-   	// if (inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
+    sendEvent( name: "charge", value: charge )
 
-    // if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
+   	sendEvent( name: "inTransit", value: inTransit )
 
- 		sendEvent(name: "inTransit", value: inTransit)
+		sendEvent( name: "isDriving", value: isDriving )
 
-		sendEvent(name: "isDriving", value: isDriving)
+  	sendEvent( name: "latitude", value: latitude )
 
-    // lLatitude = latitude.toString()
-    // if(latitude != device.currentValue('latitude')) { sendEvent(name: "latitude", value: latitude) }
-		sendEvent(name: "latitude", value: latitude)
-
-    // lLongitude = longitude.toString()
-    // if(longitude != device.currentValue('longtitude')) { sendEvent(name: "longitude", value: longitude) }
-		sendEvent(name: "longitude", value: longitude)
-
-    if(units == "Kilometers" || units == null || units == ""){
-        sendEvent(name: "speedKm", value: speedKm)
-
-				// Avi - Sharptools.io temperature tile attribute to support multi-color based on speed ranges
-				sendEvent(name: "temperature", value: speedMetric)
-    }
-    else {
-        sendEvent(name: "speedMiles", value: speedMiles)
-
-				// Avi - Sharptools.io temperature tile attribute to support multi-color based on speed ranges
-				sendEvent(name: "temperature", value: speedMiles)
-    }
-		sendEvent(name: "speedMetric", value: speedMetric)
-
-		// Avi - Sharptools.io tile attribute - if moving then set switch to on and temperature to actual speed to invoke color rules in Sharptools
-		def sSwitch = (speedMiles > 0 || speedMetric >0 || speedKm > 0) ? "on" : "off"
-    sendEvent(name: "switch", value: sSwitch)
+  	sendEvent( name: "longitude", value: longitude )
 
 		// Avi - Sharptools.io tile attribute - Set acceleration to active if wifi is on, inactive if off - to trigger style change in SharpTools Hero Attribute Tile
 		sAcceleration = wifiState.toBoolean() ? "active" : "inactive"
-		sendEvent(name: "wifiState", value: wifiState)
-		sendEvent(name: "acceleration", value: sAcceleration)
+		sendEvent( name: "wifiState", value: wifiState )
+		sendEvent( name: "acceleration", value: sAcceleration )
 
 		// Avi - remaining attributes and lastUpdated timestamp go here
-		sendEvent(name: "savedPlaces", value: xplaces)
-		sendEvent(name: "avatar", value: avatar)
-		sendEvent(name: "avatarHtml", value: avatarHtml)
+		sendEvent( name: "savedPlaces", value: xplaces )
+		sendEvent( name: "avatar", value: avatar )
+		sendEvent( name: "avatarHtml", value: avatarHtml )
 
-		def lLastUpdate = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
-		sendEvent (name: "lastUpdated", value: lLastUpdate)
-		sendEvent( name: "lastLocationUpdate", value: lLastUpdate )
+		def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
+		sendEvent (name: "lastUpdated", value: lastUpdated)
+		sendEvent( name: "lastLocationUpdate", value: lastUpdated )
 
 		state.update = true
+
+		// Lastly update the status tile
+		// Avi - I didn't go through the sendStatusTile1 code and hope nothing broke
+		// as a result of these recent changes 
 		sendStatusTile1()
 }
 

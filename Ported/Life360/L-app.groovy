@@ -45,6 +45,7 @@
  *  This would not be possible without his work.
  *
  *  Changes:
+ *  2.1.1 - 12/01/20 - Applied a more wholesome compare to v 2.0.9 and fixed all the issues resulting
  *  2.1.0 - 12/01/20 - Made a bunch of changes primarily to consolidate multiple functions logic and ensure attributes are in sync
  *  a.v.i -          - Multiple changes begin here as part of a potential pull request
  *  2.0.9 - 10/07/20 - Attempting fix for jumping GPS
@@ -378,13 +379,11 @@ def updated() {
 }
 
 def generateInitialEvent (member, childDevice) {
-  // Avi - I basically took out the entire function in favor of consolidating it with the same logic
-  //       under generatePresenceEvent, updateMembers and extraInfo functions
-  //       This seemed redundant and not in sync with changes that were made in other places
     if(logEnable) log.debug "In generateInitialEvent - (${state.version})"
-    updateMembers() // Perform an update for the first time
-    runEvery1Minute(updateMembers) // Schedule to update every minute - this is just in case and may need to be removed
 
+    updateMembers() // Perform an update for the first time
+
+    runEvery1Minute(updateMembers) // Schedule to update every minute - this is just in case and may need to be removed
 }
 
 def initialize() {
@@ -409,7 +408,6 @@ def placeEventHandler() {
 	if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
 
 /* Avi commented out - let's see how it behaves when a push causes an updatemembers() invocation which will get the right data to the presence event....
-
     def circleId = params?.circleId
     def placeId = params?.placeId
     def userId = params?.userId
@@ -432,14 +430,12 @@ def placeEventHandler() {
     		log.warn "Life360 couldn't find child device associated with inbound Life360 event."
     	}
     }
-
 */
 
-// Avi - all we need in a push event is to force an update of life360 attributes
-// Given traveling with other circle members, why not force an update of all members as part of the
-// push event instead of just generate a presence event for the actually pushed devices?
-// of course this is less efficient and may have nominal payload implication on highly utilized hubs but
-// the benefits of having everyone always up to date outweigh that risk IMO
+// Avi - all we need in a push event is to force an update of life360 attributes for all circle members
+//       to ensure we are all up to date
+// (Hey - we already got a full payload with the push message so why not take full advantage of all that fine data?)
+
   updateMembers()
 
 }
@@ -464,6 +460,9 @@ def sendCmd(url, result){
 }
 
 def cmdHandler(resp, data) {
+// Avi - this is a consolidation of several pieces of logic in 2.0.9 as well as moving out km and miles conversion math to
+//       the driver level for consistency applying local unit conversions at the local level.
+
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
         result = resp.getJson()
     def members = result.members
@@ -480,28 +479,18 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def deviceWrapper = getChildDevice("${externalId}")
 
                 // Define all variables required for event and extraInfo
-                def address1
-                def address2
-                def speed
-                def speedMetric
-                def speedMiles
-                def speedKm
-                def xplaces
-                def lastUpdated
+                def address1 = member.location.address1
+                def address2 = member.location.address2
+                def avatar
+                def avatarHtml
+                def speed = member.location.speed.toFloat()
 
-// Avi start changes below
+                // Below includes a check for iPhone sometime reporting speed of -1 and set to 0
+                def speedMetric = (speed == -1) ? new Double (0) : speed.toDouble().round(2)
+                def xplaces = state.places.name
                 def battery = Math.round(member.location.battery.toDouble())
-                def latitude = member.location.latitude.toFloat()
-                def longitude = member.location.longitude.toFloat()
-                def place = state.places.find{it.id==settings.place}
-                def memberLatitude = new Float (member.location.latitude)
-                def memberLongitude = new Float (member.location.longitude)
-// not needed   def memberAddress1 = member.location.address1
-// not needed   def memberLocationName = member.location.name
-                def placeLatitude = new Float (place.latitude)
-                def placeLongitude = new Float (place.longitude)
-                def placeRadius = new Float (place.radius)
-                def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude)*1000 // in meters
+                def since = member.location.Since
+                def endTimestamp = member.location.endTimestamp
 
                 // Convert 0 1 to false true
                 def charging = member.location.charge == "0" ? "false" : "true"
@@ -509,9 +498,20 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def driving = member.location.isDriving == "0" ? "false" : "true"
                 def wifi = member.location.wifiState == "0" ? "false" : "true"
 
-                thePlaces = state.places.sort { a, b -> a.name <=> b.name }
-                lastUpdated = new Date()
+                // Location Variables and values instantiation
+                def place = state.places.find{it.id==settings.place}
+                def memberLatitude = member.location.latitude.toFloat()
+                def memberLongitude = member.location.longitude.toFloat()
+                def placeLatitude = place.latitude.toFloat()
+                def placeLongitude = place.longitude.toFloat()
+                def placeRadius = place.radius.toFloat()
+                def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude) * 1000 // in meters
 
+                // seems like thePlaces is not being used given that place variable directly looks for home?
+                // OK to remove then?
+                // thePlaces = state.places.sort { a, b -> a.name <=> b.name }
+
+                // Avatar Variables
                 if (member.avatar != null){
                     avatar = member.avatar
                     avatarHtml =  "<img src= \"${avatar}\">"
@@ -531,47 +531,30 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 else
                     address2 = member.location.address2
 
-                // Make sure we are getting location name if returned.  Otherwise use address information
-                if(member.location.name != null) {
-                    if(member.location.name != member.location.address1) {
-                        log.warn "Life360 with States - Caught the issue, changing address1 to place " + member.location.name
-                        address1 = member.location.name
-                        address2 = "No Data"
-                    }
+                // Make sure we are getting location name if returned.  Otherwise use address1 information
+                if(member.location.name != member.location.address1) {
+                    log.warn "Life360 with States - Caught the issue, changing address1 to place " + member.location.name
+                    address1 = member.location.name
+                    address2 = "No Data"
                 }
 
-                //Fix Iphone -1 speed
-                if(member.location.speed.toFloat() == -1){
-                    speed = 0
-                    speed = speed.toFloat()}
-                else
-                    speed = member.location.speed.toFloat()
 
-                if(speed > 0 ) {
-                    speedMetric = speed.toDouble().round(2)
-                    speedMiles = speedMetric.toFloat() * 2.23694
-                    speedMiles = speedMiles.toDouble().round(2)
-                    speedKm = speedMetric.toFloat() * 3.6
-                    speedKm = speedKm.toDouble().round(2)
-                } else {
-                    speedMetric = 0
-                    speedMiles = 0
-                    speedKm = 0
-                }
-
-                // Set presence flag (isPresent) based on current distance being within Home radius perimeter
+                // We are home (present) if our current distance is less than home radius perimeter
+                // not present otherwise
                 boolean isPresent = (distanceAway <= placeRadius)
 
-                // Avi - Force address1 to 'Home' if indeed we are within the radius of home to ensure more timely notifications based on push events
-                if (isPresent) { address1 = "Home" }
+                // Set address1 to 'Home' if we are indeed within the radius of home...
+                if (isPresent) address1 = "Home"
 
                 if(logEnable) log.info "Life360 Update member ($member.firstName), address1: ($address1), location: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
 
                 // Generate Presence Event first
                 deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
 
-                // Add supplemental info to device second
-                deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, member.location.endTimestamp, moving, driving, latitude, longitude, member.location.since, speedMetric, speedMiles, speedKm, wifi, xplaces, avatar, avatarHtml, lastUpdated)
+                // Send all supplemental info to device for event and status processing
+                // Avi - removed lastUpdated, speedKm and speedMiles from teh parameters as I ported the conversion logic
+                //       from here to the driver code for consistency
+                deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, endTimestamp, moving, driving, latitude, longitude, since, speedMetric, wifi, xplaces, avatar, avatarHtml)
 
             } catch(e) {
                 if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
