@@ -38,8 +38,8 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
- *
- *  a.v.i - 11/29/20 - Avi Kalderon modifications to include capabilities for SharpTools and changes to update logic for main attributes
+ *  1.1.2 - 12/01/20 - Avi cleaning up code that I preliminary deem unnecessary (pre-testing)
+ *  a.v.i - 11/29/20 - Avi modifications to include capabilities for SharpTools and changes to update logic for main attributes
  *
  *  1.1.1 - 11/22/20 - Fix by Avi (@9369292f1992a7d0e654). Thank you!
  *  1.1.0 - 11/18/20 - Changed boolean to bool
@@ -54,17 +54,18 @@ metadata {
         capability "Actuator"
 
         // **** Life360 ****
-	    capability "Presence Sensor"
-	    capability "Sensor"
+	      capability "Presence Sensor"
+	      capability "Sensor"
         capability "Refresh"
         capability "Battery"
         capability "Power Source"
-// Avi
+
+// Avi - added capabilities to support Hero tile active attributes functionality in Sharptools.io
         capability "Switch"
         capability "Contact Sensor"
         capability "Acceleration Sensor"
         capability "Temperature Measurement"
-// * Avi
+// Avi - end adds
 
         attribute "address1", "string"
         attribute "address1prev", "string"
@@ -72,10 +73,10 @@ metadata {
         attribute "avatarHtml", "string"
   	    attribute "battery", "number"
    	    attribute "charge", "bool"
-	    attribute "distanceMetric", "Number"
+	      attribute "distanceMetric", "Number"
    	    attribute "distanceKm", "number"
-	    attribute "distanceMiles", "Number"
-	    attribute "bpt-history", "string"
+	      attribute "distanceMiles", "Number"
+	      attribute "bpt-history", "string"
        	attribute "inTransit", "string"
    	    attribute "isDriving", "string"
         attribute "lastLogMessage", "string"
@@ -92,29 +93,34 @@ metadata {
         attribute "status", "string"
         attribute "bpt-statusTile1", "string"
    	    attribute "wifiState", "bool"
-// Avi
+
+// Avi - added attributes for additional capabilities added above
         attribute "contact", "string"
         attribute "acceleration", "string"
         attribute "temperature", "number"
         attribute "switch", "enum", ["on", "off"]
-
-// * Avi
+// Avi - end adds
 
         // **** Life360 ****
-	    command "refresh"
+	      command "refresh"
         command "setBattery",["number","bool"]
         command "sendHistory", ["string"]
         command "sendTheMap", ["string"]
         command "historyClearData"
-// Avi
+
+// Avi - add as a trigger to force renew / revalidate webhook subscription to Life360 notifications
         command "refreshCirclePush"
+// Avi - end adds
+
 	}
 }
 
 preferences {
     input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
-    input "maxGPSJump", "number", title: "Max GPS Jump", description: "If you are getting a lot of false readings, raise this value", required: true, defaultValue: 25
-	input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
+		// Avi - commented out for now.  Info is in the extraInfo function
+		//       this may be restored if consolidated logic proves to be unreliable
+		// input "maxGPSJump", "number", title: "Max GPS Jump", description: "If you are getting a lot of false readings, raise this value", required: true, defaultValue: 25
+	  input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
     input "historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15"
@@ -123,7 +129,8 @@ preferences {
 }
 
 def refreshCirclePush() {
-    log.info "Attempting to resubscribe to circle notifications"
+    // Avi - manually ensure that Life360 notifications subscription is in order / valid
+		log.info "Attempting to resubscribe to circle notifications"
     parent.createCircleSubscription()
 }
 
@@ -175,7 +182,7 @@ def sendStatusTile1() {
 
     theMap = "https://www.google.com/maps/search/?api=1&query=${device.currentValue('latitude')},${device.currentValue('longitude')}"
 
-	tileMap = "<div style='overflow:auto;height:90%'><table width='100%'>"
+	  tileMap = "<div style='overflow:auto;height:90%'><table width='100%'>"
     tileMap += "<tr><td width='25%' align=center><img src='${avat}' height='${avatarSize}%'>"
     tileMap += "<td width='75%'><p style='font-size:${avatarFontSize}px'>"
     tileMap += "At: <a href='${theMap}' target='_blank'>${add1}</a><br>"
@@ -185,16 +192,16 @@ def sendStatusTile1() {
     if(units == "Miles") tileMap += "${binTransita} - ${bSpeedMiles} MPH<br>"
 
     tileMap += "Phone Lvl: ${bLevel} - ${bCharge} - ${bWifiS}</p>"
-    tileMap += "<p style='width:100%'>${lUpdated}</p>"
+		tileMap += "<p style='width:100%'>${lUpdated}</p>" //Avi - cleaned up formatting (cosmetic / personal preference only)
     tileMap += "</table></div>"
 
-	tileDevice1Count = tileMap.length()
-	if(tileDevice1Count <= 1000) {
+	  tileDevice1Count = tileMap.length()
+	  if(tileDevice1Count <= 1000) {
 		if(logEnable) log.debug "tileMap - has ${tileDevice1Count} Characters<br>${tileMap}"
-	} else {
-		log.warn "In sendStatusTile1 - Too many characters to display on Dashboard (${tileDevice1Count})"
-	}
-	sendEvent(name: "bpt-statusTile1", value: tileMap, displayed: true)
+	  } else {
+		  log.warn "In sendStatusTile1 - Too many characters to display on Dashboard (${tileDevice1Count})"
+	  }
+	  sendEvent(name: "bpt-statusTile1", value: tileMap, displayed: true)
 }
 
 def sendHistory(msgValue) {
@@ -265,42 +272,52 @@ def getDateTime() {
 	def date = new Date()
 	if(historyHourType == false) newDate=date.format("E HH:mm")
 	if(historyHourType == true) newDate=date.format("E hh:mm a")
-    return newDate
+  return newDate
 }
 
 def historyClearData() {
-	if(logEnable) log.debug "In historyClearData - Clearing the data"
+	  if(logEnable) log.debug "In historyClearData - Clearing the data"
     msgValue = "-"
     logCharCount = "0"
     state.list1 = []
-	historyLog = "Waiting for Data..."
+	  historyLog = "Waiting for Data..."
     sendEvent(name: "bpt-history", value: historyLog, displayed: true)
     sendEvent(name: "numOfCharacters1", value: logCharCount1, displayed: true)
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
 }
 
 def generatePresenceEvent(boolean present, homeDistance) {
-    if(logEnable) log.debug "In generatePresenceEvent - present: $present - homeDistance: $homeDistance"
+	  // Avi - cleaned up this function to (hopefully) streamline behavior
 
-    def linkText = getLinkText(device)
-    def descriptionText = formatDescriptionText(linkText, present)
-    def handlerName = getState(present)
-		def pPresence = (handlerName == "arrived") ? "present" : "not present"
+	  if(logEnable) log.debug "In generatePresenceEvent - present: $present - homeDistance: $homeDistance"
 
-		def results = [
-				name: "presence",
-				value: pPresence,
-				linkText: linkText,
-				descriptionText: descriptionText,
-				handlerName: handlerName
-		]
+	  def linkText = getLinkText(device)
+	  def descriptionText = formatDescriptionText(linkText, present)
+	  def handlerName = getState(present)
+	  def pPresence = (handlerName == "arrived") ? "present" : "not present"
 
-		state.presence = pPresence
-		sendEvent (results) // This sets the presence event with above results as an enum attribute
+	  def results = [
+		  name: "presence",
+		  value: pPresence,
+		  linkText: linkText,
+		  descriptionText: descriptionText,
+		  handlerName: handlerName
+	  ]
+
+		// Avi - This sets the presence event with above results as an enum attribute
+	  state.presence = pPresence
+	  sendEvent (results)
 }
 
 private extraInfo(address1, address2, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric ,speedMiles, speedKm, wifiState, xplaces, avatar, avatarHtml, lastUpdated) {
     if(logEnable) log.debug "in extrainfo = Address 1 = $address1 | Address 2 = $address2 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmeters = $speedMetric | SpeedMPH = $speedMiles | SpeedKPH = $speedKm | Wifi = $wifiState"
+
+// Avi - While this piece of code is great to avoid 'jitter' issues, I am not sure yet that it is necessary
+//       Jitter issues may have been caused by discrepanccies between the differing code logic between
+//       generateInitialEvent, generatePresenceEvent and extraInfo functions in addition to code invocation
+//       by parent app.  I tried the best I could to consolidate all to single places and so far have not experienced
+//       jitter in location and location notifications.  If jitter returns, it should be easy enough to reintroduce the below
+//       code snippet
 
 /*  if(state.oldDistanceAway == null) state.oldDistanceAway = distanceAway
     if(distanceAway == null) distanceAway = 0
@@ -352,50 +369,57 @@ private extraInfo(address1, address2, battery, charge, distanceAway, endTimestam
 		state.oldDistanceAway = device.currentValue('distanceMetric')
 		sendEvent( name: "distanceMetric", value: distanceAway.toDouble().round(2) )
 
-		// how is our battery doing?
+		// Avi - how is our battery doing?
     setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
 		sendEvent( name: "battery", value: battery )
 
-		// If Battery is charging set contact sensor to open.  closed if not charging
+		// Avi - Sharptools.io tile attribute: If Battery is charging set contact sensor to open.  closed if not charging
 		def cContact = charge.toBoolean() ? "open" : "closed"
-    log.info "charge = ${charge}  cContact = ${cContact}"
     sendEvent ( name: "contact", value: cContact )
 
-		// and of course, update the default charge event
+		// Avi - and of course, update the default charge event
     sendEvent(name: "charge", value: charge)
 
-   	if (inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
+   	// if (inTransit != device.currentValue('inTransit')) { sendEvent(name: "inTransit", value: inTransit) }
 
-    if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
+    // if(isDriving != device.currentValue('isDriving')) { sendEvent(name: "isDriving", value: isDriving) }
+
+ 		sendEvent(name: "inTransit", value: inTransit)
+
+		sendEvent(name: "isDriving", value: isDriving)
 
     // lLatitude = latitude.toString()
-    if(latitude != device.currentValue('latitude')) { sendEvent(name: "latitude", value: latitude) }
+    // if(latitude != device.currentValue('latitude')) { sendEvent(name: "latitude", value: latitude) }
+		sendEvent(name: "latitude", value: latitude)
 
     // lLongitude = longitude.toString()
-    if(longitude != device.currentValue('longtitude')) { sendEvent(name: "longitude", value: longitude) }
+    // if(longitude != device.currentValue('longtitude')) { sendEvent(name: "longitude", value: longitude) }
+		sendEvent(name: "longitude", value: longitude)
 
     if(units == "Kilometers" || units == null || units == ""){
         sendEvent(name: "speedKm", value: speedKm)
-        sendEvent(name: "temperature", value: speedMetric)
+
+				// Avi - Sharptools.io temperature tile attribute to support multi-color based on speed ranges
+				sendEvent(name: "temperature", value: speedMetric)
     }
     else {
         sendEvent(name: "speedMiles", value: speedMiles)
-        sendEvent(name: "temperature", value: speedMiles)
+
+				// Avi - Sharptools.io temperature tile attribute to support multi-color based on speed ranges
+				sendEvent(name: "temperature", value: speedMiles)
     }
 		sendEvent(name: "speedMetric", value: speedMetric)
 
-		// if moving then set switch to on and temperature to actual speed to invoke color rules in Sharptools
-		def sSwitch = (speedMiles > 0 || speedMetric >0 || speedKm>0) ? "on" : "off"
-		log.info "sSwitch = ${sSwitch}"
+		// Avi - Sharptools.io tile attribute - if moving then set switch to on and temperature to actual speed to invoke color rules in Sharptools
+		def sSwitch = (speedMiles > 0 || speedMetric >0 || speedKm > 0) ? "on" : "off"
     sendEvent(name: "switch", value: sSwitch)
 
-		// Set acceleration to active if wifi is on, inactive if off - to trigger style change in SharpTools Hero Attribute Tile
+		// Avi - Sharptools.io tile attribute - Set acceleration to active if wifi is on, inactive if off - to trigger style change in SharpTools Hero Attribute Tile
 		sAcceleration = wifiState.toBoolean() ? "active" : "inactive"
-		log.info "wifiState = ${wifiState}. sAcceleration = ${sAcceleration}"
 		sendEvent(name: "wifiState", value: wifiState)
 		sendEvent(name: "acceleration", value: sAcceleration)
 
-		// remaining attributes and lastUpdated timestamp go here
+		// Avi - remaining attributes and lastUpdated timestamp go here
 		sendEvent(name: "savedPlaces", value: xplaces)
 		sendEvent(name: "avatar", value: avatar)
 		sendEvent(name: "avatarHtml", value: avatarHtml)

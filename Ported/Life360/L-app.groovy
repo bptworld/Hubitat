@@ -45,7 +45,8 @@
  *  This would not be possible without his work.
  *
  *  Changes:
- *
+ *  2.1.0 - 12/01/20 - Made a bunch of changes primarily to consolidate multiple functions logic and ensure attributes are in sync
+ *  a.v.i -          - Multiple changes begin here as part of a potential pull request
  *  2.0.9 - 10/07/20 - Attempting fix for jumping GPS
  *  2.0.8 - 09/26/20 - Testing Fix by @jpoeppelman1
  *  2.0.7 - 08/25/20 - Added more error catching
@@ -63,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-	state.version = "2.0.9"
+	state.version = "2.1.0"
 }
 
 definition(
@@ -372,14 +373,17 @@ def updated() {
             if (member) state.members.remove(member)
         }
     }
-    // if we updated the device, make sure we reschedule the updateMembers function
+    // Avi - if we updated the app, make sure we reschedule the updateMembers function
     runEvery1Minute(updateMembers)
 }
 
 def generateInitialEvent (member, childDevice) {
+  // Avi - I basically took out the entire function in favor of consolidating it with the same logic
+  //       under generatePresenceEvent, updateMembers and extraInfo functions
+  //       This seemed redundant and not in sync with changes that were made in other places
     if(logEnable) log.debug "In generateInitialEvent - (${state.version})"
     updateMembers() // Perform an update for the first time
-    runEvery1Minute(updateMembers) // Schedule to update every minute
+    runEvery1Minute(updateMembers) // Schedule to update every minute - this is just in case and may need to be removed
 
 }
 
@@ -430,13 +434,14 @@ def placeEventHandler() {
     }
 
 */
-// Avi added - all we need in a push event is to force an update of life360 attributes
+
+// Avi - all we need in a push event is to force an update of life360 attributes
 // Given traveling with other circle members, why not force an update of all members as part of the
-// push event instead of just generate a presence event for the actually pushed devices
-// of course this may have a performance implication on highly utilized hubs but in most cases
-// payload should be nominal.  Especially if debug is turned off for the application and the child devices
-updateMembers()
-// Avi done
+// push event instead of just generate a presence event for the actually pushed devices?
+// of course this is less efficient and may have nominal payload implication on highly utilized hubs but
+// the benefits of having everyone always up to date outweigh that risk IMO
+  updateMembers()
+
 }
 
 def refresh() {
@@ -446,7 +451,7 @@ def refresh() {
 
 def updateMembers(){
     if(logEnable) log.debug "In updateMembers - (${state.version})"
-	if (!state?.circle) state.circle = settings.circle
+	  if (!state?.circle) state.circle = settings.circle
 
     def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
     def result = null
@@ -461,8 +466,8 @@ def sendCmd(url, result){
 def cmdHandler(resp, data) {
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
         result = resp.getJson()
-    	def members = result.members
-    	state.members = members
+    def members = result.members
+    state.members = members
 
 if (logEnable) log.debug result // If in debug then might as well examine the entire payload...
 
@@ -483,6 +488,7 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def speedKm
                 def xplaces
                 def lastUpdated
+
 // Avi start changes below
                 def battery = Math.round(member.location.battery.toDouble())
                 def latitude = member.location.latitude.toFloat()
@@ -490,8 +496,8 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def place = state.places.find{it.id==settings.place}
                 def memberLatitude = new Float (member.location.latitude)
                 def memberLongitude = new Float (member.location.longitude)
-// no need?     def memberAddress1 = member.location.address1
-// no need?     def memberLocationName = member.location.name
+// not needed   def memberAddress1 = member.location.address1
+// not needed   def memberLocationName = member.location.name
                 def placeLatitude = new Float (place.latitude)
                 def placeLongitude = new Float (place.longitude)
                 def placeRadius = new Float (place.radius)
@@ -556,7 +562,7 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 // Set presence flag (isPresent) based on current distance being within Home radius perimeter
                 boolean isPresent = (distanceAway <= placeRadius)
 
-                // Avi: Force address1 to 'Home' if indeed we are within the radius of home to ensure more timely notifications based on push events
+                // Avi - Force address1 to 'Home' if indeed we are within the radius of home to ensure more timely notifications based on push events
                 if (isPresent) { address1 = "Home" }
 
                 if(logEnable) log.info "Life360 Update member ($member.firstName), address1: ($address1), location: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
