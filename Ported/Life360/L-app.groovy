@@ -45,6 +45,8 @@
  *  This would not be possible without his work.
  *
  *  Changes:
+ *  2.1.3 - 12/01/20 - Bug fixes, moved stuff around and cleaned up some more cruft
+ *  2.1.2 - 12/01/20 - Merged generatePresenceEvent and extraInfo calls
  *  2.1.1 - 12/01/20 - Applied a more wholesome compare to v 2.0.9 and fixed all the issues resulting
  *  2.1.0 - 12/01/20 - Made a bunch of changes primarily to consolidate multiple functions logic and ensure attributes are in sync
  *  a.v.i -          - Multiple changes begin here as part of a potential pull request
@@ -479,17 +481,22 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def deviceWrapper = getChildDevice("${externalId}")
 
                 // Define all variables required for event and extraInfo
-                def address1 = member.location.address1
-                def address2 = member.location.address2
+
+                def address1 = (member.location.name) ? member.location.name : member.location.address1
+                // if we are on the free version then address1 may return null so set to "No Data"
+                if (!address1) address1 = "No Data"
+                // not used - def address2 = (member.location.address2) ? member.location.address2 : "No Data"
+
                 def avatar
                 def avatarHtml
                 def speed = member.location.speed.toFloat()
 
                 // Below includes a check for iPhone sometime reporting speed of -1 and set to 0
                 def speedMetric = (speed == -1) ? new Double (0) : speed.toDouble().round(2)
+
                 def xplaces = state.places.name
                 def battery = Math.round(member.location.battery.toDouble())
-                def since = member.location.Since
+                def since = member.location.since
                 def endTimestamp = member.location.endTimestamp
 
                 // Convert 0 1 to false true
@@ -498,8 +505,10 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def driving = member.location.isDriving == "0" ? "false" : "true"
                 def wifi = member.location.wifiState == "0" ? "false" : "true"
 
-                // Location Variables and values instantiation
+                // Location Variables and values instantiation for figuring out where we are in the universe...
                 def place = state.places.find{it.id==settings.place}
+                if (logEnable) log.info "place = $place"
+
                 def memberLatitude = member.location.latitude.toFloat()
                 def memberLongitude = member.location.longitude.toFloat()
                 def placeLatitude = place.latitude.toFloat()
@@ -507,9 +516,13 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def placeRadius = place.radius.toFloat()
                 def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude) * 1000 // in meters
 
-                // seems like thePlaces is not being used given that place variable directly looks for home?
-                // OK to remove then?
-                // thePlaces = state.places.sort { a, b -> a.name <=> b.name }
+                // We are home (present) if our current distance is less than home radius perimeter
+                boolean isPresent = (distanceAway <= placeRadius)
+
+                // Default location name = "Home" if we are indeed within the radius of home...
+                if (isPresent) address1 = "Home"
+
+                if(logEnable) log.info "Life360 Update member ($member.firstName), address1: ($address1), location: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: ($placeRadius), dist: ($distanceAway), present: ($isPresent)"
 
                 // Avatar Variables
                 if (member.avatar != null){
@@ -520,41 +533,8 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                     avatarHtml = "not set"
                 }
 
-                // Check if we are on Life360 free version (address1, address2 = null) and set to "No Data"
-                if(member.location.address1 == null || member.location.address1 == "")
-                    address1 = "No Data"
-                else
-                    address1 = member.location.address1
-
-                if(member.location.address2 == null || member.location.address2 == "")
-                    address2 = "No Data"
-                else
-                    address2 = member.location.address2
-
-                // Make sure we are getting location name if returned.  Otherwise use address1 information
-                if(member.location.name != member.location.address1) {
-                    log.warn "Life360 with States - Caught the issue, changing address1 to place " + member.location.name
-                    address1 = member.location.name
-                    address2 = "No Data"
-                }
-
-
-                // We are home (present) if our current distance is less than home radius perimeter
-                // not present otherwise
-                boolean isPresent = (distanceAway <= placeRadius)
-
-                // Set address1 to 'Home' if we are indeed within the radius of home...
-                if (isPresent) address1 = "Home"
-
-                if(logEnable) log.info "Life360 Update member ($member.firstName), address1: ($address1), location: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: $placeRadius, dist: $distanceAway, present: $isPresent"
-
-                // Generate Presence Event first
-                deviceWrapper.generatePresenceEvent(isPresent, distanceAway)
-
-                // Send all supplemental info to device for event and status processing
-                // Avi - removed lastUpdated, speedKm and speedMiles from teh parameters as I ported the conversion logic
-                //       from here to the driver code for consistency
-                deviceWrapper.extraInfo(address1, address2, battery, charging, distanceAway, endTimestamp, moving, driving, latitude, longitude, since, speedMetric, wifi, xplaces, avatar, avatarHtml)
+                // Send entire payload to corresponding life360 tracker device
+                deviceWrapper.generatePresenceEvent(isPresent, address1, battery, charging, distanceAway, endTimestamp, moving, driving, memberLatitude, memberLongitude, since, speedMetric, wifi, xplaces, avatar, avatarHtml)
 
             } catch(e) {
                 if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
