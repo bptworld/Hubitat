@@ -38,6 +38,7 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
+ *  1.2.4 - 12/01/20 - Fix wifi status not updating on bpt-StatusTile1
  *  1.2.3 - 12/01/20 - Bug fixes and some winter cleaning
  *  1.2.2 - 12/01/20 - Updated supporting sharptools attributes and merged generatePresenceEvent with extraInfo calls
  *  1.2.1 - 12/01/20 - Avi cleaning up code and applying a more wholesome compare to v 1.1.1 functionality
@@ -416,7 +417,7 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
     def sSwitch = wifiState.toBoolean() ? "on" : "off"
-    sendEvent( name: "wifiState", value: sSwitch )
+    sendEvent( name: "wifiState", value: wifiState )
     sendEvent( name: "switch", value: sSwitch )
 
     // *** All others ***
