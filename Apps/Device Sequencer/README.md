@@ -1,4 +1,4 @@
-# Device Sequencer
+# Device Sequencer - Depreciated
 <b>Design Usage:</b><br>
 Turn on/off several devices in a row, with a user defined pause in between each.
 
