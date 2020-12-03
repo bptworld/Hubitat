@@ -81,13 +81,6 @@
          "tags": [ "Automations & Groups", "Lights & Switches", "Monitoring", "Notifications", "Safety & Security", "Tools & Utilities" ]
    	},
       {
-   		"name": "Event Watchdog",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Event%20Watchdog/packageManifest.json",
-   		"description": "Keep an eye on what's important in the Event log.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
-   	},
-      {
    		"name": "Follow Me",
    		"category": "Notifications",
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Follow%20Me/packageManifest.json",
@@ -135,13 +128,6 @@
    		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Lighting%20Effects/packageManifest.json",
    		"description": "Designed to make static holiday lights dim or flicker randomly. Can also randomly change colors on color change bulbs, completely seperate or all together. Creating a spooky, sparkly or party effect.",
          "tags": [ "Lights & Switches", "Tools & Utilities" ]
-   	},
-      {
-   		"name": "Log Watchdog",
-   		"category": "Utility",
-   		"location": "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Log%20Watchdog/packageManifest.json",
-   		"description": "Keep an eye on what's important in the log.",
-         "tags": [ "Dashboards", "Monitoring", "Notifications", "Tools & Utilities" ]
    	},
       {
    		"name": "Magic Cube",
