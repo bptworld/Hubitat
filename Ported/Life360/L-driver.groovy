@@ -38,7 +38,8 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
- *  1.2.4 - 12/01/20 - Fix wifi status not updating on bpt-StatusTile1
+ *  1.2.5 - 12/02/20 - Prelim fix for address1prev and address1 eventing to allow for Life360 Tracker to keep track of departures / arrivals
+ *  1.2.4 - 12/02/20 - Fix wifi status not updating on bpt-StatusTile1
  *  1.2.3 - 12/01/20 - Bug fixes and some winter cleaning
  *  1.2.2 - 12/01/20 - Updated supporting sharptools attributes and merged generatePresenceEvent with extraInfo calls
  *  1.2.1 - 12/01/20 - Avi cleaning up code and applying a more wholesome compare to v 1.1.1 functionality
@@ -252,8 +253,8 @@ def sendHistory(msgValue) {
             }
 
           sendEvent(name: "bpt-history", value: theData1, displayed: true)
-            sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
-            sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
+          sendEvent(name: "numOfCharacters", value: dataCharCount1, displayed: true)
+          sendEvent(name: "lastLogMessage", value: msgValue, displayed: true)
         }
         catch(e1) {
             log.warn "In sendHistory - Something went wrong<br>${e1}"
@@ -305,6 +306,8 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
     def handlerName = getState(present)
     def pPresence = formatValue(present)
 
+    if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, pPresence = $pPresence"
+
     def results = [
       name: "presence",
       value: pPresence,
@@ -348,15 +351,32 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
         }
     }
 */
+// *** Timestamp it ***
+    def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
+    sendEvent ( name: "lastUpdated", value: lastUpdated )
+
     // *** Address ***
     // Update old and current address1
-    def prevAddress = (device.currentValue('address1') != null) ? device.currentValue('address1') : "Lost"
+    def prevAddress = (device.currentValue('address1prev') != null) ? device.currentValue('address1') : "Lost"
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
+    if (prevAddress != address1) {
+        sendEvent( name: "address1prev", value: prevAddress )
+        sendEvent( name: "address1", value: address1 )
+        sendEvent( name: "longitude", value: longitude.toString())
+        sendEvent( name: "latitude", value: latitude.toString())
+        sendEvent( name: "since", value: since )
+        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
+    }
 
-    sendEvent( name: "address1prev", value: prevAddress )
-    sendEvent( name: "address1", value: address1 )
-    sendEvent( name: "since", value: since )
+    // *** Lon/Lat attributes update as used by Location Tracker App ***
+    // def curlat = device.currentValue('latitude').toString()
+    // latitude = latitude.toString()
+    // if(latitude != curlat) { sendEvent(name: "latitude", value: latitude) }
+
+    // def curlong = device.currentValue('longitude').toString()
+    // longitude = longitude.toString()
+    // if(longitude != curlong) { sendEvent(name: "longitude", value: longitude) }
 
     // *** Distance & Speed ***
     // Update distance & speed in km, miles and metric
@@ -384,13 +404,14 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
     sendEvent( name: "distanceMiles", value: miles )
 
     // Update status line and temerature attribute with right unit scale
+    def sStatus
     if(units == "Kilometers" || units == null || units == "") {
-      def sStatus = sprintf("%.2f", km) + " km from Home"
+      sStatus = sprintf("%.2f", km) + " km from Home"
       sendEvent( name: "status", value: sStatus )
       sendEvent( name: "temperature", value: speedKm )
     }
     else {
-      def sStatus = sprintf("%.2f", miles) + " miles from Home"
+      sStatus = sprintf("%.2f", miles) + " miles from Home"
       sendEvent( name: "status", value: sStatus )
       sendEvent( name: "temperature", value: speedMiles )
     }
@@ -412,7 +433,7 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
     // Sharptools.io tile attribute: If Battery is charging set contact sensor to open.  closed if not charging
     def cContact = charge.toBoolean() ? "open" : "closed"
     sendEvent( name: "charge", value: charge )
-    sendEvent ( name: "contact", value: cContact )
+    sendEvent( name: "contact", value: cContact )
 
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
@@ -429,11 +450,6 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
     sendEvent( name: "savedPlaces", value: xplaces )
     sendEvent( name: "avatar", value: avatar )
     sendEvent( name: "avatarHtml", value: avatarHtml )
-
-    // *** Timestamp it ***
-    def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
-    sendEvent ( name: "lastUpdated", value: lastUpdated )
-    sendEvent( name: "lastLocationUpdate", value: lastUpdated )
 
     state.update = true
 
@@ -476,6 +492,7 @@ private getState(boolean present) {
 
 def refresh() {
   parent.refresh()
+  parent.updateMembers()
     //return null
 }
 
