@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.4.9 - 12/02/20 - Added current mode wildcard
  *  2.4.8 - 11/27/20 - Cosmetic
  *  2.4.7 - 10/23/20 - Fixed the 'cloud' toggle for non-lock devices
  *  2.4.6 - 10/23/20 - Added 'door' control
@@ -52,7 +53,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.8"
+	state.version = "2.4.9"
 }
 
 definition(
@@ -219,6 +220,7 @@ def pageConfig() {
                         wildcards += "- %sunset% = Display todays sunset time<br>"
                         wildcards += "- %sunrise% = Display todays sunrise time<br>"
                         wildcards += "- %wLink% = Displays a clickable web link<br>"
+                        wildcards += "- %mode% = Displays the current Mode<br>"
                         
                         paragraph "${wildcards}"
                         input "wordsBEF_$x", "text", title: "Text BEFORE Device Status", required: false, submitOnChange: true, width:6
@@ -1900,6 +1902,16 @@ def makeTileLine(theDevice, wordsBEF, linkBEF, linkBEFL, wordsAFT, linkAFT, link
 
                 if(logEnable) log.debug "In makeTileLine - srDate: ${srDate}"
                 if(srDate) {words = words.replace("%sunrise%","${srDate}")}
+            } catch (e) {
+                log.error e
+            }
+        }
+        
+        if(words.toLowerCase().contains("%mode%")) {
+            try {
+                if(logEnable) log.debug "In makeTileLine - mode: ${location.mode}"
+                def cMode = location.mode
+                if(cMode) {words = words.replace("%mode%","${cMode}")}
             } catch (e) {
                 log.error e
             }
