@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.3 - 12/04/20 - Removed spacing in message
  *  1.2.2 - 12/04/20 - Adjustments
  *  1.2.1 - 12/04/20 - Pre and Post messages are now optional, new option to include App name in push, new option to include device status in message
  *  1.2.0 - 12/03/20 - Bug fixes
@@ -50,7 +51,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.2"
+	state.version = "1.2.3"
 }
 
 definition(
@@ -1090,7 +1091,7 @@ def messageHandler() {
             def randomKeyPre = new Random().nextInt(countPre)
             state.preMsgR = valuesPre[randomKeyPre]
             if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizePre}, randomKey: ${randomKeyPre}, Pre Msg: ${state.preMsgR}"
-            state.theMsg = "${state.preMsgR}, "
+            state.theMsg = "${state.preMsgR}"
         } else {
             state.preMsgR = ""
             state.theMsg = ""
@@ -1114,13 +1115,13 @@ def messageHandler() {
         if(logEnable && state.wrongLocksMSG) log.debug "wrongLocksMSG - ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}"
         if(logEnable && state.setPointMSG) log.debug "setPointMSG - ${state.setPointMSG.substring(0, state.setPointMSG.length() - 2)}"
         if(logEnable) log.debug "---------- End - Devices in the Wrong State ----------"
-        if(state.wrongSwitchesMSG) { state.theMsg += " Switches: ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}." }
-        if(state.wrongDevicesMSG) { state.theMsg += " Devices: ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}." }
-        if(state.wrongContactsMSG) { state.theMsg += " Contacts: ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}." }
-        if(state.wrongLocksMSG) { state.theMsg += " Locks: ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}." }
+        if(state.wrongSwitchesMSG) { state.theMsg += "Switches: ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}." }
+        if(state.wrongDevicesMSG) { state.theMsg += "Devices: ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}." }
+        if(state.wrongContactsMSG) { state.theMsg += "Contacts: ${state.wrongContactsMSG.substring(0, state.wrongContactsMSG.length() - 2)}." }
+        if(state.wrongLocksMSG) { state.theMsg += "Locks: ${state.wrongLocksMSG.substring(0, state.wrongLocksMSG.length() - 2)}." }
         if(state.setPointMSG && speakDevice) { state.theMsg += " ${state.setPointMSG.substring(0, state.setPointMSG.length() - 2)}." }
     
-	    state.theMsg += " ${state.postMsgR}"
+	    state.theMsg += "${state.postMsgR}"
     }
     if(logEnable) log.debug "In messageHandler - theMsg: ${state.theMsg}"
  
