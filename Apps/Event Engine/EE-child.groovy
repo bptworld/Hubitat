@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.1 - 12/03/20 - Minor changes
 *  2.4.0 - 12/03/20 - Code cleanup, added 'Switches In Sequence' Action
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.0"
+    state.version = "2.4.1"
 }
 
 definition(
@@ -1754,7 +1755,11 @@ def pageConfig() {
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
             input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:true, submitOnChange:true
-            if(actionDelay == null || actionDelay == "") app.updateSetting("actionDelay",[value:"100",type:"number"])
+            state.theCogActions += "<b>-</b> Delay: ${actionDelay}<br>"
+            if(actionDelay == null || actionDelay == "") {
+                state.theCogActions -= "<b>-</b> Delay: ${actionDelay}<br>"
+                app.updateSetting("actionDelay",[value:"100",type:"number"])
+            }
         }                
         // ********** End Actions **********
 
@@ -4254,7 +4259,7 @@ def setLevelandColorHandler() {
 def getLockCodeNames(myDev) {  // Special thanks to Bruce @bravenel for this code
     def list = []
     myDev.each {
-        log.warn "Working on Lock: ${it}"
+        //log.warn "Working on Lock: ${it}"
         list += getLockCodesFromDevice(it).tokenize(",")
     }
     lista = list.flatten().unique{ it }
