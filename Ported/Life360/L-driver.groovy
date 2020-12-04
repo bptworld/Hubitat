@@ -38,6 +38,7 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
+*   1.2.6 - 12/03/20 - Exterminating bugs
  *  1.2.5 - 12/02/20 - Prelim fix for address1prev and address1 eventing to allow for Life360 Tracker to keep track of departures / arrivals
  *  1.2.4 - 12/02/20 - Fix wifi status not updating on bpt-StatusTile1
  *  1.2.3 - 12/01/20 - Bug fixes and some winter cleaning
@@ -146,7 +147,7 @@ def sendTheMap(theMap) {
 
 def sendStatusTile1() {
     if(logEnable) log.debug "In sendStatusTile1 - Making the Avatar Tile"
-    def avat = device.currentValue('avatar')
+    def avat = device.currentValue("avatar")
     if(avat == null || avat == "") avat = avatarURL
     def add1 = device.currentValue('address1')
     def bLevel = device.currentValue('battery')
@@ -291,139 +292,114 @@ def historyClearData() {
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
 }
 
-def generatePresenceEvent(boolean present, address1, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, xplaces, avatar, avatarHtml) {
+def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, xplaces, avatar, avatarHtml) {
     // Avi - cleaned up this function to (hopefully) streamline behavior
 
-    if(logEnable) log.debug "In generatePresenceEvent = present: $present"
-    if(logEnable) log.debug "in generatePresenceEvent = Address 1 = $address1 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmetric = $speedMetric | Wifi = $wifiState"
+    if(logEnable) log.debug "In generatePresenceEvent = memberPresence = $memberPresence | Address 1 = $address1 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmetric = $speedMetric | Wifi = $wifiState"
 
-// To be honest, I am not sure what do linkText, descriptionText and handlerName are used for and where
-// but I kept them intact and maintained values to remain consistent with the original implementation
-
-    // *** Presence ***
-    def linkText = getLinkText(device)
-    def descriptionText = formatDescriptionText(linkText, present)
-    def handlerName = getState(present)
-    def pPresence = formatValue(present)
-
-    if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, pPresence = $pPresence"
-
-    def results = [
-      name: "presence",
-      value: pPresence,
-      linkText: linkText,
-      descriptionText: descriptionText,
-      handlerName: handlerName
-    ]
-    // Avi - This sets the presence event with above results as an enum attribute
-    state.presence = pPresence
-    sendEvent (results)
-
-// old extraInfo function merged hereon
-
-// Avi - While the MaxGPS logic below may be the right approach to avoid 'jitter' issues, I am not sure yet that it is necessary
-// Jitter issues may have been caused by discrepanccies between the differing code logic between
-// generateInitialEvent, generatePresenceEvent and extraInfo functions in addition to code invocation
-// by parent app.  I tried the best I could to consolidate all to single places and so far have not experienced
-// jitter in location and location notifications.  If jitter returns, it should be easy enough to reintroduce the below
-// code snippet
-
-/*  if(state.oldDistanceAway == null) state.oldDistanceAway = distanceAway
-    if(distanceAway == null) distanceAway = 0
-    int newDistance = Math.abs(state.oldDistanceAway - distanceAway)
-    if(logEnable) log.trace "oldDistanceAway: ${state.oldDistanceAway} - distanceAway: ${distanceAway} = newDistance: ${newDistance}"
-    int theJump = maxGPSJump ?: 25
-    if(newDistance >= theJump) {
-        if(logEnable) log.trace "newDistance (${newDistance}) is greater than maxGPSJump (${theJump}) - Updating Data"
-        state.oldDistanceAway = distanceAway
-        newAddress = address1
-        oldAddress = device.currentValue('address1')
-        if(logEnable) log.debug "oldAddress = $oldAddress | newAddress = $newAddress"
-        if(newAddress != oldAddress) {
-            sendEvent(name: "address1prev", value: oldAddress)
-            sendEvent(name: "address1", value: newAddress)
-            sendEvent(name: "since", value: since)
-        }
-
-        prevAddress = device.currentValue('address1prev')
-        if(prevAddress == null) {
-            sendEvent(name: "address1prev", value: "Lost")
-        }
-    }
-*/
-// *** Timestamp it ***
-    def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
-    sendEvent ( name: "lastUpdated", value: lastUpdated )
-
-    // *** Address ***
-    // Update old and current address1
-    def prevAddress = (device.currentValue('address1prev') != null) ? device.currentValue('address1') : "Lost"
+    def prevAddress = (device.currentValue('address1prev')) ? device.currentValue('address1') : "Lost"
+    // def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
+    def lastUpdated = new Date()
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
-    if (prevAddress != address1) {
-        sendEvent( name: "address1prev", value: prevAddress )
+
+    // Avi - If our address changed (not just lon / lat coordinates but actually we changed locations)
+    // then we should update all movement related attributes and events otherwise, they really don't matter as much
+    // if this doesn't address the arrived / departed notifications then we can get more granular
+
+    if (address1 != prevAddress) {
+
+      // *** Presence ***
+      // def linkText = getLinkText(device)
+      // def descriptionText = formatDescriptionText(linkText, present)
+      // def handlerName = getState(present)
+      // def pPresence = formatValue(present)
+      def linkText = getLinkText(device)
+      def handlerName = (memberPresence == "present") ? "arrived" : "left"
+      def descriptionText = "Life360 member" + linkText + " has " + handlerName
+
+      if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, pPresence = $pPresence"
+
+        def results = [
+          name: "presence",
+          value: memberPresence,
+          linkText: linkText,
+          descriptionText: descriptionText,
+          handlerName: handlerName
+        ]
+
+        sendEvent (results)
+        state.presence = memberPresence
+
+        if (logEnable) log.info "results = $results"
+
+        // *** Address ***
+        // Update old and current address1 and associated coordinates
+        sendEvent( name: "address1prev", value: prevAddress)
         sendEvent( name: "address1", value: address1 )
-        sendEvent( name: "longitude", value: longitude.toString())
-        sendEvent( name: "latitude", value: latitude.toString())
+        sendEvent( name: "longitude", value: longitude )
+        sendEvent( name: "latitude", value: latitude )
         sendEvent( name: "since", value: since )
         sendEvent( name: "lastLocationUpdate", value: lastUpdated )
+
+        // *** Speed ***
+        // Update speed in metric, km and miles
+
+        // Speed in Metrics
+        sendEvent( name: "speedMetric", value: speedMetric )
+
+        // Speed in km
+        speedKm = (speedMetric * 3.6).toDouble().round(2)
+        sendEvent( name: "speedKm", value: speedKm )
+
+        // Speed in miles
+        speedMiles = (speedMetric * 2.23694).toDouble().round(2)
+        sendEvent( name: "speedMiles", value: speedMiles )
+
+        // *** Distance ***
+        // Update distance in metric, km and miles
+
+        // Distance in metric
+        sendEvent( name: "distanceMetric", value: distanceAway.toDouble().round(2) )
+
+        // Distance in km
+        distanceKm = (distanceAway / 1000).toDouble().round(2)
+        sendEvent( name: "distanceKm", value: distanceKm )
+
+        // Distance in miles
+        distanceMiles = ((distanceAway / 1000) / 1.609344).toDouble().round(2)
+        sendEvent( name: "distanceMiles", value: distanceMiles )
+
+        // Avi - Sharptools.io attribute for distance tile - Set acceleration to
+        // active state only if we are *not* home...
+        sAcceleration = (device.currentValue("presence") == "not present") ? "active" : "inactive"
+        sendEvent( name: "acceleration", value: sAcceleration )
+
+        // Update state variables and display on device page
+        state.oldDistanceAway = device.currentValue("distanceMetric")
+
+        // Update status attribute with appropriate distance units
+        // and update temperature attribute with appropriate speed units
+        // as chosen by users in device preferences
+        def sStatus
+        if(units == "Kilometers" || units == null || units == "") {
+          sStatus = sprintf("%.2f", distanceKm) + "  km from Home"
+          sendEvent( name: "status", value: sStatus )
+          state.status = sStatus
+
+          sendEvent( name: "temperature", value: speedKm )
+        }
+        else {
+          sStatus = sprintf("%.2f", distanceMiles) + " miles from Home"
+          sendEvent( name: "status", value: sStatus )
+          state.status = sStatus
+
+          sendEvent( name: "temperature", value: speedMiles )
+        }
     }
 
-    // *** Lon/Lat attributes update as used by Location Tracker App ***
-    // def curlat = device.currentValue('latitude').toString()
-    // latitude = latitude.toString()
-    // if(latitude != curlat) { sendEvent(name: "latitude", value: latitude) }
-
-    // def curlong = device.currentValue('longitude').toString()
-    // longitude = longitude.toString()
-    // if(longitude != curlong) { sendEvent(name: "longitude", value: longitude) }
-
-    // *** Distance & Speed ***
-    // Update distance & speed in km, miles and metric
-    // also seems that Kilometers is the default unit if none selected
-    // should we change the default to be Miles instead??
-    // send temperature events for Sharptools.io temperature tile rules engine
-
-    // Speed in Metrics
-    sendEvent( name: "speedMetric", value: speedMetric )
-
-    // Speed in km
-    def speedKm = (speedMetric * 3.6).toDouble().round(2)
-    sendEvent( name: "speedKm", value: speedKm )
-
-    // Distance in km
-    def km = (distanceAway / 1000).toDouble().round(2)
-    sendEvent( name: "distanceKm", value: km )
-
-    // Speed in miles
-    def speedMiles = (speedMetric * 2.23694).toDouble().round(2)
-    sendEvent( name: "speedMiles", value: speedMiles )
-
-    // Distance in miles
-    def miles = ((distanceAway / 1000) / 1.609344).toDouble().round(2)
-    sendEvent( name: "distanceMiles", value: miles )
-
-    // Update status line and temerature attribute with right unit scale
-    def sStatus
-    if(units == "Kilometers" || units == null || units == "") {
-      sStatus = sprintf("%.2f", km) + " km from Home"
-      sendEvent( name: "status", value: sStatus )
-      sendEvent( name: "temperature", value: speedKm )
-    }
-    else {
-      sStatus = sprintf("%.2f", miles) + " miles from Home"
-      sendEvent( name: "status", value: sStatus )
-      sendEvent( name: "temperature", value: speedMiles )
-    }
-
-    state.status = sStatus
-
-    state.oldDistanceAway = device.currentValue('distanceMetric')
-    sendEvent( name: "distanceMetric", value: distanceAway.toDouble().round(2) )
-
-    // Avi - Sharptools.io tile attribute - Set acceleration to active only if we are *not* home...
-    sAcceleration = (device.currentValue('presence') == "not present") ? "active" : "inactive"
-    sendEvent( name: "acceleration", value: sAcceleration )
+    sendEvent( name: "inTransit", value: inTransit )
+    sendEvent( name: "isDriving", value: isDriving )
 
     // *** Battery ***
     // How is our battery doing?
@@ -442,20 +418,15 @@ def generatePresenceEvent(boolean present, address1, battery, charge, distanceAw
     sendEvent( name: "switch", value: sSwitch )
 
     // *** All others ***
-    // Update other attributes
-    sendEvent( name: "inTransit", value: inTransit )
-    sendEvent( name: "isDriving", value: isDriving )
-    sendEvent( name: "latitude", value: latitude )
-    sendEvent( name: "longitude", value: longitude )
     sendEvent( name: "savedPlaces", value: xplaces )
     sendEvent( name: "avatar", value: avatar )
     sendEvent( name: "avatarHtml", value: avatarHtml )
 
+    // *** Timestamp last update ***
+    sendEvent ( name: "lastUpdated", value: lastUpdated )
     state.update = true
 
     // Lastly update the status tile
-    // Avi - I didn't go through the sendStatusTile1 code and hope nothing broke
-    // as a result of these recent changes
     sendStatusTile1()
 }
 
@@ -489,6 +460,7 @@ private getState(boolean present) {
   else
   return "left"
 }
+
 
 def refresh() {
   parent.refresh()
