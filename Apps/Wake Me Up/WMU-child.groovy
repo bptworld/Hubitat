@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  1.1.3 - 12/04/20 - Updates by @Mavrrick58
  *  1.1.2 - 08/27/20 - Adjusted sunset/sunrise triggers
  *  1.1.1 - 08/25/20 - Added a staggered dim where it will start with the highest value and then each light will join in as its level is reached.
  *  1.1.0 - 08/22/20 - Added sunRestrictions and onDemand to Triggers, other adjustments
@@ -46,7 +47,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Wake Me Up"
-	state.version = "1.1.2"
+	state.version = "1.1.3"
 }
 
 definition(
@@ -293,7 +294,7 @@ def initialize() {
         if(snoozeSwitch) subscribe(snoozeSwitch, "switch", snoozeHandler)
         if(startTime) schedule(startTime, magicHappensHandler)
         if(sunRestriction) autoSunHandler()
-        if(onDemand) subscribe(onDemand, "switch.on", magicHappensHandler)
+        if(onDemand) subscribe(onDemand, "switch.on", eventHandler)
     }
 }
 
@@ -367,6 +368,11 @@ def snoozeHandler(evt) {
     } else {
         state.snoozeSwitch = "off"
     }   
+}
+
+def eventHandler(evt) {
+    if(logEnable) log.debug "Triggered event initiated passing to magicHappensHandler"
+    magicHappensHandler()
 }
 
 def magicHappensHandler() {
