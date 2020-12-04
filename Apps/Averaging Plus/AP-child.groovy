@@ -37,17 +37,10 @@
  *
  *  Changes:
  *
+ *  1.1.2 - 12/04/20 - Added one decimal point to average
  *  1.1.1 - 07/18/20 - Added 'Off' options to setpoints, cosmetic changes
  *  1.1.0 - 07/09/20 - Fixed Disable switch
- *  1.0.9 - 07/05/20 - Adjustments
- *  1.0.8 - 06/25/20 - Added App Control options
- *  1.0.7 - 06/22/20 - Changes to letsTalk
- *  1.0.6 - 06/21/20 - Minor changes
- *  1.0.5 - 06/16/20 - Changes by @rvrolyk, thanks!
- *  1.0.4 - 06/13/20 - Fixed letsTalk typo
- *  1.0.3 - 06/11/20 - All speech now goes through Follow Me
- *  1.0.2 - 06/10/20 - Attribute average now save under same attribute name when possible, app will only display attributres that are numbers, added weekly high/low.
- *  1.0.1 - 06/07/20 - Added more options and some error trapping
+ *  ---
  *  1.0.0 - 05/25/20 - Initial release.
  *
  */
@@ -57,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Averaging Plus"
-	state.version = "1.1.1"
+	state.version = "1.1.2"
 }
 
 definition(
@@ -361,8 +354,9 @@ def averageHandler(evt) {
             } else {
                 state.theAverage = floatingPoint
                 ? (totalNum / numOfDev).toDouble().round(1)
-                : (totalNum / numOfDev).toDouble().round()
+                : (totalNum / numOfDev).toDouble().round(1)
             }
+            if(logEnable) log.debug "In averageHandler - theAverage: ${state.theAverage}"
 
             todaysHigh = dataDevice.currentValue("todaysHigh")
             todaysLow = dataDevice.currentValue("todaysLow")
