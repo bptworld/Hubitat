@@ -33,7 +33,7 @@
  *
  *  Changes:
  *
- *  1.1.3 - 12/04/20 - Updates by @Mavrrick
+ *  1.1.3 - 12/04/20 - Updates by @Mavrrick58
  *  1.1.2 - 08/27/20 - Adjusted sunset/sunrise triggers
  *  1.1.1 - 08/25/20 - Added a staggered dim where it will start with the highest value and then each light will join in as its level is reached.
  *  1.1.0 - 08/22/20 - Added sunRestrictions and onDemand to Triggers, other adjustments
