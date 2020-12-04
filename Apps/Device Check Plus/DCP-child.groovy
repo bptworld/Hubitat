@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.1 - 12/04/20 - Pre and Post messages are now optional, new option to include App name in push, new option to include device status in message
  *  1.2.0 - 12/03/20 - Bug fixes
  *  ---
  *  1.0.0 - 10/13/19 - Initial release.
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.0"
+	state.version = "1.2.1"
 }
 
 definition(
@@ -109,15 +110,15 @@ def pageConfig() {
             }
             
             if(isDataDevice || preMsg || postMsg) {
-                href "notificationOptions", title:"${getImage("optionsGreen")} Select Notifications", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("optionsGreen")} Select Message Options", description:"Click here for Options"
             } else {
-                href "notificationOptions", title:"${getImage("optionsRed")} Select Notifications", description:"Click here for Options"
+                href "notificationOptions", title:"${getImage("optionsRed")} Select Message Options", description:"Click here for Options"
             }
             
             if(fmSpeaker) {
-                href "speechOptions", title:"${getImage("optionsGreen")} Select Speech options", description:"Click here for Options"
+                href "speechOptions", title:"${getImage("optionsGreen")} Select Notification Options", description:"Click here for Options"
             } else {
-                href "speechOptions", title:"${getImage("optionsRed")} Select Speech options", description:"Click here for Options"
+                href "speechOptions", title:"${getImage("optionsRed")} Select Notification Options", description:"Click here for Options"
             }
         }
         
@@ -335,12 +336,12 @@ def actionConfig() {
 def notificationOptions() {
     dynamicPage(name: "notificationOptions", title: "", install:false, uninstall:false) {
         display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Devices Found Notification Options")) {
+		section(getFormat("header-green", "${getImage("Blank")}"+" Devices Found Message Options")) {
             input "isDataDevice", "capability.switch", title: "Turn this device on if there are devices to report", submitOnChange:true, required:false, multiple:false
 			paragraph "<hr>"
-            paragraph "Receive device notifications with voice and push options. Each of the following messages will only be spoken if necessary."
+            paragraph "Receive device notifications with voice and push options. Each of the following messages will only be spoken if necessary. Both Pre and Post messages are Optional (leave blank for no message)"
 			
-			input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)", required:true, submitOnChange:true
+			input "preMsg", "text", title: "Random Pre Message - Separate each message with <b>;</b> (semicolon)", required:false, submitOnChange:true
 			input "oPreList", "bool", defaultValue:false, title: "Show a list view of the random pre messages?", description: "List View", submitOnChange:true
 			if(oPreList) {
 				def valuesPre = "${preMsg}".split(";")
@@ -361,8 +362,10 @@ def notificationOptions() {
                 }
             }
             
+            input "includeStatus", "bool", title: "Include Device Status in Message", defaultValue:false, submitOnChange:true
+            
             paragraph "<hr>"
-			input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)", required: true, submitOnChange:true
+			input "postMsg", "text", title: "Random Post Message - Separate each message with <b>;</b> (semicolon)", required: false, submitOnChange:true
 			input "oPostList", "bool", defaultValue:false, title: "Show a list view of the random post messages?", description: "List View", submitOnChange:true
 			if(oPostList) {
 				def valuesPost = "${postMsg}".split(";")
@@ -392,7 +395,7 @@ def notificationOptions() {
 def speechOptions() {
     dynamicPage(name: "speechOptions", title: "", install:false, uninstall:false) {
         display()
-		section(getFormat("header-green", "${getImage("Blank")}"+" Speech Options")) { 
+		section(getFormat("header-green", "${getImage("Blank")}"+" Notification Options")) { 
             paragraph "All BPTWorld Apps use <a href='https://community.hubitat.com/t/release-follow-me-speaker-control-with-priority-messaging-volume-controls-voices-and-sound-files/12139' target=_blank>Follow Me</a> to process Notifications.  Please be sure to have Follow Me installed before trying to send any notifications."
             input "useSpeech", "bool", title: "Use Speech through Follow Me", defaultValue:false, submitOnChange:true
             if(useSpeech) input "fmSpeaker", "capability.speechSynthesis", title: "Select your Follow Me device", required: true, submitOnChange:true
@@ -400,6 +403,9 @@ def speechOptions() {
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Push Messages")) {
             input "sendPushMessage", "capability.notification", title: "Send a Push notification?", multiple:true, required:false, submitOnChange:true
+            if(sendPushMessage) {
+                input "includeAppName", "bool", title: "Include App name in Push", defaultValue:false, submitOnChange:true
+            }
     	}
     }
 }
@@ -642,13 +648,18 @@ def checkTimeInState(evt) {
     state.wrongLocksMSG = ""
     if(contactsClosed) {
         contactsClosed.each { it ->
-            if(it.currentValue("contact") == "open") {
+            theStatus = it.currentValue("contact")
+            if(theStatus == "open") {
                 if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Working on: $it"
                 getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    state.wrongContactsMSG = "${it.displayName}, "
+                    if(includeStatus) {
+                        state.wrongContactsMSG += "${it.displayName} - ${theStatus}, "
+                    } else {
+                        state.wrongContactsMSG += "${it.displayName}, "
+                    }
                     if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -661,13 +672,18 @@ def checkTimeInState(evt) {
     
     if(contactsOpen) {
         contactsOpen.each { it ->
-            if(it.currentValue("contact") == "closed") {
+            theStatus = it.currentValue("contact")
+            if(theStatus == "closed") {
                 if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Working on: $it"
                 getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    state.wrongContactsMSG = "${it.displayName}, "
+                    if(includeStatus) {
+                        state.wrongContactsMSG += "${it.displayName} - ${theStatus}, "
+                    } else {
+                        state.wrongContactsMSG += "${it.displayName}, "
+                    }
                     if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -680,13 +696,18 @@ def checkTimeInState(evt) {
     
     if(switchesOn) {
         switchesOn.each { it ->
-            if(it.currentValue("switch") == "off") {
+            theStatus = it.currentValue("switch")
+            if(theStatus == "off") {
                 if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Working on: $it"
                 getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    state.wrongSwitchesMSG = "${it.displayName}, "
+                    if(includeStatus) {
+                        state.wrongSwitchesMSG += "${it.displayName} - ${theStatus}, "
+                    } else {
+                        state.wrongSwitchesMSG += "${it.displayName}, "
+                    }
                     if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -699,13 +720,18 @@ def checkTimeInState(evt) {
     
     if(switchesOff) {
         switchesOff.each { it ->
-            if(it.currentValue("switch") == "on") {
+            theStatus = it.currentValue("switch")
+            if(theStatus == "on") {
                 if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Working on: $it"
                 getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    state.wrongSwitchesMSG = "${it.displayName}, "
+                    if(includeStatus) {
+                        state.wrongSwitchesMSG += "${it.displayName} - ${theStatus}, "
+                    } else {
+                        state.wrongSwitchesMSG += "${it.displayName}, "
+                    }
                     if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -718,13 +744,18 @@ def checkTimeInState(evt) {
     
     if(locksLocked) {
         locksLocked.each { it ->
-            if(it.currentValue("switch") == "unlocked") {
+            theStatus = it.currentValue("lock")
+            if(theStatus == "unlocked") {
                 if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Working on: $it"
                 getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    state.wrongLocksMSG = "${it.displayName}, "
+                    if(includeStatus) {
+                        state.wrongLocksMSG += "${it.displayName} - ${theStatus}, "
+                    } else {
+                        state.wrongLocksMSG += "${it.displayName}, "
+                    }
                     if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -737,13 +768,18 @@ def checkTimeInState(evt) {
     
     if(locksUnlocked) {
         locksUnlocked.each { it ->
-            if(it.currentValue("switch") == "locked") {
+            theStatus = it.currentValue("lock")
+            if(theStatus == "locked") {
                 if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Working on: $it"
                 getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    state.wrongLocksMSG = "${it.displayName}, "
+                    if(includeStatus) {
+                        state.wrongLocksMSG += "${it.displayName} - ${theStatus}, "
+                    } else {
+                        state.wrongLocksMSG += "${it.displayName}, "
+                    }
                     if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -888,7 +924,11 @@ def setPointHandler(evt) {
                     if(logEnable) log.debug "In setPointHandler (Hgh) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
                     state.setPointHighOK = "no"
                     state.isData = "yes"
-                    state.setPointMSG += "${state.setPointDevice}, "
+                    if(includeStatus) {
+                        state.setPointMSG += "${state.setPointDevice} - ${setPointValue1}, "
+                    } else {
+                        state.setPointMSG += "${state.setPointDevice}, "
+                    }
                 } else {
                     if(logEnable) log.debug "In setPointHandler (High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
                 }
@@ -910,7 +950,11 @@ def setPointHandler(evt) {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
                     state.setPointLowOK = "no"
                     state.isData = "yes"
-                    state.setPointMSG += "${state.setPointDevice}, "
+                    if(includeStatus) {
+                        state.setPointMSG += "${state.setPointDevice} - ${setPointValue1}, "
+                    } else {
+                        state.setPointMSG += "${state.setPointDevice}, "
+                    }
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
                 }
@@ -932,7 +976,11 @@ def setPointHandler(evt) {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is GREATER THAN setPointHigh: ${setPointHigh}"
                     state.setPointHighOK = "no"
                     state.isData = "yes"
-                    state.setPointMSG += "${state.setPointDevice}, "
+                    if(includeStatus) {
+                        state.setPointMSG += "${state.setPointDevice} - ${setPointValue1}, "
+                    } else {
+                        state.setPointMSG += "${state.setPointDevice}, "
+                    }
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-High) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
                 }
@@ -942,7 +990,11 @@ def setPointHandler(evt) {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, (Low) - Actual value: ${setPointValue1} is LESS THAN setPointLow: ${setPointLow}"
                     state.setPointLowOK = "no"
                     state.isData = "yes"
-                    state.setPointMSG += "${state.setPointDevice}, "
+                    if(includeStatus) {
+                        state.setPointMSG += "${state.setPointDevice} - ${setPointValue1}, "
+                    } else {
+                        state.setPointMSG += "${state.setPointDevice}, "
+                    }
                 } else {
                     if(logEnable) log.debug "In setPointHandler (Both-Low) - Device: ${state.setPointDevice}, Actual value: ${setPointValue1} is good.  Nothing to do."
                 }
@@ -994,22 +1046,30 @@ def messageHandler() {
     }
       
     if(state.isData == "yes") {
-	    def valuesPre = "${preMsg}".split(";")
-	    vSizePre = valuesPre.size()
-		countPre = vSizePre.toInteger()
-    	def randomKeyPre = new Random().nextInt(countPre)
-		state.preMsgR = valuesPre[randomKeyPre]
-		if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizePre}, randomKey: ${randomKeyPre}, Pre Msg: ${state.preMsgR}"
-	   
-	    def valuesPost = "${postMsg}".split(";")
-	    vSizePost = valuesPost.size()
-		countPost = vSizePost.toInteger()
-        def randomKeyPost = new Random().nextInt(countPost)
-		state.postMsgR = valuesPost[randomKeyPost]
-		if(logEnable) log.debug "In messageHandler - Random Post - vSize: ${vSizePost}, randomKey: ${randomKeyPost}, Msg: ${state.postMsgR}"
-	
-	    state.theMsg = "${state.preMsgR}, "
-    
+        if(preMsg) {
+            def valuesPre = "${preMsg}".split(";")
+            vSizePre = valuesPre.size()
+            countPre = vSizePre.toInteger()
+            def randomKeyPre = new Random().nextInt(countPre)
+            state.preMsgR = valuesPre[randomKeyPre]
+            if(logEnable) log.debug "In messageHandler - Random Pre - vSize: ${vSizePre}, randomKey: ${randomKeyPre}, Pre Msg: ${state.preMsgR}"
+            state.theMsg = "${state.preMsgR}, "
+        } else {
+            state.preMsgR = ""
+            state.theMsg = ""
+        }
+        
+        if(postMsg) {
+            def valuesPost = "${postMsg}".split(";")
+            vSizePost = valuesPost.size()
+            countPost = vSizePost.toInteger()
+            def randomKeyPost = new Random().nextInt(countPost)
+            state.postMsgR = valuesPost[randomKeyPost]
+            if(logEnable) log.debug "In messageHandler - Random Post - vSize: ${vSizePost}, randomKey: ${randomKeyPost}, Msg: ${state.postMsgR}"
+        } else {
+            state.postMsgR = ""
+        }
+          
         if(logEnable) log.debug "---------- Start - Devices in the Wrong State ----------"
         if(logEnable && state.wrongSwitchesMSG) log.debug "wrongSwitchesMSG - ${state.wrongSwitchesMSG.substring(0, state.wrongSwitchesMSG.length() - 2)}"
         if(logEnable && state.wrongDevicesMSG) log.debug "wrongDevicesMSG - ${state.wrongDevicesMSG.substring(0, state.wrongDevicesMSG.length() - 2)}"
@@ -1035,7 +1095,11 @@ def messageHandler() {
 
 def pushHandler() {
 	if(logEnable) log.debug "In pushNow (${state.version})"
-	theMessage = "${app.label} - ${state.theMsg}"
+    if(includeAppName) {
+        theMessage = "${app.label} - ${state.theMsg}"
+    } else {
+        theMessage = "${state.theMsg}"
+    }
 	if(logEnable) log.debug "In pushNow - Sending message: ${theMessage}"
    	sendPushMessage.deviceNotification(theMessage)
 	state.theMsg = ""
@@ -1139,8 +1203,6 @@ def checkEnableHandler() {
 }
 
 def setDefaults(){
-	if(logEnable == null){logEnable = false}
-	if(state.msg == null){state.msg = ""}
     if(state.lastActivated == null){state.lastActivated == now()}
 }
 
@@ -1218,5 +1280,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
