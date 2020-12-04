@@ -45,7 +45,8 @@
  *  This would not be possible without his work.
  *
  *  Changes:
- *  2.1.3 - 12/01/20 - Bug fixes, moved stuff around and cleaned up some more cruft
+*   2.1.4 - 12/03/20 - Cleanup and more bug extermination
+ *  2.1.3 - 12/02/20 - Bug fixes, moved stuff around and cleaned up some more cruft
  *  2.1.2 - 12/01/20 - Merged generatePresenceEvent and extraInfo calls
  *  2.1.1 - 12/01/20 - Applied a more wholesome compare to v 2.0.9 and fixed all the issues resulting
  *  2.1.0 - 12/01/20 - Made a bunch of changes primarily to consolidate multiple functions logic and ensure attributes are in sync
@@ -322,10 +323,14 @@ def createCircleSubscription() {
         log.debug (e)
     }
 
+
     if (result.data?.hookUrl) {
           if(logEnable) log.debug "Webhook creation successful."
-        log.info "Subscribed to Cirlce Notifications, Confirmation: ${result.data?.hookUrl}"
+        log.info "Subscribed to Circle Notifications, Confirmation: ${result.data?.hookUrl}"
+
+        runEvery1Minute(updateMembers)
       }
+
     }
 
 def updated() {
@@ -356,13 +361,13 @@ def updated() {
 
           if (childDevice) {
             if(logEnable) log.debug "Child Device Successfully Created"
-         generateInitialEvent (member, childDevice)
+            generateInitialEvent (member, childDevice)
            }
       }
         else {
             // if(logEnable) log.debug "Find by Member Id = ${memberId}"
         def member = state.members.find{it.id==memberId}
-          generateInitialEvent (member, deviceWrapper)
+            generateInitialEvent (member, deviceWrapper)
         }
     }
 
@@ -377,7 +382,7 @@ def updated() {
         }
     }
     // Avi - if we updated the app, make sure we reschedule the updateMembers function
-    runEvery1Minute(updateMembers)
+    // runEvery1Minute(updateMembers)
 }
 
 def generateInitialEvent (member, childDevice) {
@@ -444,7 +449,7 @@ def placeEventHandler() {
 
 def refresh() {
     listCircles()
-    updated()
+    updateMembers()
 }
 
 def updateMembers(){
@@ -483,7 +488,7 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 // Define all variables required for event and extraInfo
 
                 def address1 = (member.location.name) ? member.location.name : member.location.address1
-                // if we are on the free version then address1 may return null so set to "No Data"
+                // if we are on the free version then both name and address1 may return null so set to "No Data"
                 if (!address1) address1 = "No Data"
                 // not used - def address2 = (member.location.address2) ? member.location.address2 : "No Data"
 
@@ -497,7 +502,7 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def xplaces = state.places.name
                 def battery = Math.round(member.location.battery.toDouble())
                 def since = member.location.since
-                def endTimestamp = member.location.endTimestamp
+                // not used? - def endTimestamp = member.location.endTimestamp
 
                 // Convert 0 1 to false true
                 def charging = member.location.charge == "0" ? "false" : "true"
@@ -506,21 +511,26 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 def wifi = member.location.wifiState == "0" ? "false" : "true"
 
                 // Location Variables and values instantiation for figuring out where we are in the universe...
-                def place = state.places.find{it.id==settings.place}
-                if (logEnable) log.info "place = $place"
+                // get Home location from user selection of place in Life360 places
+                def home = state.places.find{it.id==settings.place}
+                if (logEnable) log.info "home = $home"
 
-                def memberLatitude = member.location.latitude.toFloat()
-                def memberLongitude = member.location.longitude.toFloat()
-                def placeLatitude = place.latitude.toFloat()
-                def placeLongitude = place.longitude.toFloat()
-                def placeRadius = place.radius.toFloat()
-                def distanceAway = haversine(memberLatitude, memberLongitude, placeLatitude, placeLongitude) * 1000 // in meters
+                def latitude = member.location.latitude.toFloat() // current member latitude
+                def longitude = member.location.longitude.toFloat() // current member longitude
+                def homeLatitude = home.latitude.toFloat()
+                def homeLongitude = home.longitude.toFloat()
+                def homeRadius = home.radius.toFloat()
+                def distanceAway = haversine(latitude, longitude, homeLatitude, homeLongitude) * 1000 // in meters
 
-                // We are home (present) if our current distance is less than home radius perimeter
-                boolean isPresent = (distanceAway <= placeRadius)
+                // We are home (isPresent = true) if our current distance is less than our home radius perimeter
+                memberPresence = (distanceAway < homeRadius) ? "present" : "not present"
 
-                // Default location name = "Home" if we are indeed within the radius of home...
-                if (isPresent) address1 = "Home"
+                // force location name and coordinates to "Home" if we are indeed within the radius of home...
+                if (memberPresence == "present") {
+                  address1 = "Home"
+                  latitude = homeLatitude
+                  longitude = homeLongitude
+                }
 
                 if(logEnable) log.info "Life360 Update member ($member.firstName), address1: ($address1), location: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: ($placeRadius), dist: ($distanceAway), present: ($isPresent)"
 
@@ -533,8 +543,8 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                     avatarHtml = "not set"
                 }
 
-                // Send entire payload to corresponding life360 tracker device
-                deviceWrapper.generatePresenceEvent(isPresent, address1, battery, charging, distanceAway, endTimestamp, moving, driving, memberLatitude, memberLongitude, since, speedMetric, wifi, xplaces, avatar, avatarHtml)
+        // Send entire payload to corresponding life360 tracker device
+                deviceWrapper.generatePresenceEvent(memberPresence, address1, battery, charging, distanceAway, endTimestamp, moving, driving, latitude, longitude, since, speedMetric, wifi, xplaces, avatar, avatarHtml)
 
             } catch(e) {
                 if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
@@ -546,6 +556,8 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
 
 def uninstalled() {
   removeChildDevices(getChildDevices())
+  unschedule()
+  unsubscribe()
 }
 
 private removeChildDevices(delete) {
