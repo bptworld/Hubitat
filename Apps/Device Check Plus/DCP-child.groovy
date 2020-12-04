@@ -37,17 +37,8 @@
  *
  *  Changes:
  *
- *  1.1.9 - 11/24/20 - Added more logging
- *  1.1.8 - 08/30/20 - Fixed a typo, other changes
- *  1.1.7 - 08/23/20 - No wrong state device Notification is now optional
- *  1.1.6 - 06/22/20 - Changes to letsTalk
- *  1.1.5 - 06/13/20 - Fixed letsTalk typo
- *  1.1.4 - 06/13/20 - Cosmetic changes
- *  1.1.3 - 06/11/20 - All speech now goes through Follow Me
- *  1.1.2 - 06/07/20 - More options added to 'Actions'
- *  1.1.1 - 06/05/20 - Fixed deviceNotTriggeredHandler, other minor changes
- *  1.1.0 - 04/27/20 - Cosmetic changes
- *  ***
+ *  1.2.0 - 12/03/20 - Bug fixes
+ *  ---
  *  1.0.0 - 10/13/19 - Initial release.
  *
  */
@@ -57,7 +48,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.1.9"
+	state.version = "1.2.0"
 }
 
 definition(
@@ -646,17 +637,18 @@ def deviceNotTriggeredHandler() {
 def checkTimeInState(evt) {
     if(logEnable) log.debug "In checkTimeInState (${state.version})"
     state.isData = "no"
-    
+    state.wrongContactsMSG = ""
+    state.wrongSwitchesMSG = ""
+    state.wrongLocksMSG = ""
     if(contactsClosed) {
         contactsClosed.each { it ->
             if(it.currentValue("contact") == "open") {
                 if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Working on: $it"
-                state.lastActivity = it.getLastActivity()
-                getTimeDiff()
+                getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    messageHandler()
+                    state.wrongContactsMSG = "${it.displayName}, "
                     if(logEnable) log.debug "In checkTimeInState - Contacts Open should be Closed - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -671,12 +663,11 @@ def checkTimeInState(evt) {
         contactsOpen.each { it ->
             if(it.currentValue("contact") == "closed") {
                 if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Working on: $it"
-                state.lastActivity = it.getLastActivity()
-                getTimeDiff()
+                getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    messageHandler()
+                    state.wrongContactsMSG = "${it.displayName}, "
                     if(logEnable) log.debug "In checkTimeInState - Contacts Closed should be Open - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -691,12 +682,11 @@ def checkTimeInState(evt) {
         switchesOn.each { it ->
             if(it.currentValue("switch") == "off") {
                 if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Working on: $it"
-                state.lastActivity = it.getLastActivity()
-                getTimeDiff()
+                getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    messageHandler()
+                    state.wrongSwitchesMSG = "${it.displayName}, "
                     if(logEnable) log.debug "In checkTimeInState - Switches Off should be On - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -711,12 +701,11 @@ def checkTimeInState(evt) {
         switchesOff.each { it ->
             if(it.currentValue("switch") == "on") {
                 if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Working on: $it"
-                state.lastActivity = it.getLastActivity()
-                getTimeDiff()
+                getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    messageHandler()
+                    state.wrongSwitchesMSG = "${it.displayName}, "
                     if(logEnable) log.debug "In checkTimeInState - Switches On should be Off - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -731,12 +720,11 @@ def checkTimeInState(evt) {
         locksLocked.each { it ->
             if(it.currentValue("switch") == "unlocked") {
                 if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Working on: $it"
-                state.lastActivity = it.getLastActivity()
-                getTimeDiff()
+                getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    messageHandler()
+                    state.wrongLocksMSG = "${it.displayName}, "
                     if(logEnable) log.debug "In checkTimeInState - Locks Unlocked should be Locked - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -751,12 +739,11 @@ def checkTimeInState(evt) {
         locksUnlocked.each { it ->
             if(it.currentValue("switch") == "locked") {
                 if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Working on: $it"
-                state.lastActivity = it.getLastActivity()
-                getTimeDiff()
+                getTimeDiff(it)
                 if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - timeDiff: ${state.timeDiff} vs. timeInState: ${timeInState}"
                 if(state.timeDiff >= timeInState) {
                     state.isData = "yes"
-                    messageHandler()
+                    state.wrongLocksMSG = "${it.displayName}, "
                     if(logEnable) log.debug "In checkTimeInState - Locks Locked should be Unlocked - Running again in 2 minutes"
                     runIn(120,checkTimeInState)
                 } else {
@@ -766,6 +753,7 @@ def checkTimeInState(evt) {
             }
         }
     }
+    if(state.isData == "yes") messageHandler()
 }
 
 def letsTalk(msg) {
@@ -1053,12 +1041,12 @@ def pushHandler() {
 	state.theMsg = ""
 }
 
-def getTimeDiff() {
+def getTimeDiff(data) {
     if(logEnable) log.debug "In getTimeDiff (${state.version})"
-    
+    lastActivity = data.getLastActivity()
     long timeDiff
    	def now = new Date()
-    def prev = Date.parse("yyy-MM-dd HH:mm:ss","${state.lastActivity}".replace("+00:00","+0000"))
+    def prev = Date.parse("yyy-MM-dd HH:mm:ssZ","${lastActivity}".replace("+00:00","+0000"))
 
     long unxNow = now.getTime()
     long unxPrev = prev.getTime()
@@ -1066,6 +1054,7 @@ def getTimeDiff() {
     unxPrev = unxPrev/1000
     state.timeDiffSecs = Math.abs(unxNow-unxPrev)         // Seconds
     state.timeDiff = Math.round(state.timeDiffSecs/60)    // Minutes
+    if(logEnable) log.debug "In getTimeDiff - device: ${data.displayName} - timeDiff: ${state.timeDiff}"
 }
 
 private flashLights() {    // Modified from ST documents
