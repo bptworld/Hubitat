@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  1.2.2 - 12/04/20 - Adjustments
  *  1.2.1 - 12/04/20 - Pre and Post messages are now optional, new option to include App name in push, new option to include device status in message
  *  1.2.0 - 12/03/20 - Bug fixes
  *  ---
@@ -49,7 +50,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Device Check Plus"
-	state.version = "1.2.1"
+	state.version = "1.2.2"
 }
 
 definition(
@@ -483,7 +484,13 @@ def checkDeviceHandler(evt) {
                 switchStatus = sOn.currentValue("switch")
                 if(logEnable) log.debug "In checkDeviceHandler - Switch On - CHECKING - ${switchName} - ${switchStatus}"
                 if(switchStatus == "off") {
-                    if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
+                    if(x == maxCheck) {
+                        if(includeStatus) {
+                            state.wrongSwitchesMSG += "${switchName} - ${switchStatus}, "
+                        } else {
+                            state.wrongSwitchesMSG += "${switchName}, "
+                        }
+                    }
                     if(x < maxCheck && tryToFix) {
                         sOn.on()
                         somethingWrong = true
@@ -501,7 +508,13 @@ def checkDeviceHandler(evt) {
                 switchStatus = sOff.currentValue("switch")
                 if(logEnable) log.debug "In checkDeviceHandler - Switch Off - ${switchName} - ${switchStatus}"
                 if(switchStatus == "on") {
-                    if(x == maxCheck) state.wrongSwitchesMSG += "${switchName}, "
+                    if(x == maxCheck) {
+                        if(includeStatus) {
+                            state.wrongSwitchesMSG += "${switchName} - ${switchStatus}, "
+                        } else {
+                            state.wrongSwitchesMSG += "${switchName}, "
+                        }
+                    }
                     if(x < maxCheck && tryToFix) {
                         sOff.off()
                         somethingWrong = true
@@ -519,7 +532,13 @@ def checkDeviceHandler(evt) {
                 def lockStatus = lUnlocked.currentValue("lock")
                 if(logEnable) log.debug "In checkDeviceHandler - Locks Unlocked - ${lockName} - ${lockStatus}"
                 if(lockStatus == "locked") {
-                    if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
+                    if(x == maxCheck) {
+                        if(includeStatus) {
+                            state.wrongLocksMSG += "${lockName} - ${lockStatus}, "
+                        } else {
+                            state.wrongLocksMSG += "${lockName}, "
+                        }
+                    }
                     if(x <= maxCheck && tryToFix) {
                         lUnlocked.unlock()
                         somethingWrong = true
@@ -535,7 +554,13 @@ def checkDeviceHandler(evt) {
                 def lockStatus = lLocked.currentValue("lock")
                 if(logEnable) log.debug "In checkDeviceHandler - Locks Locked - ${lockName} - ${lockStatus}"
                 if(lockStatus == "unlocked") {
-                    if(x == maxCheck) state.wrongLocksMSG += "${lockName}, "
+                    if(x == maxCheck) {
+                        if(includeStatus) {
+                            state.wrongLocksMSG += "${lockName} - ${lockStatus}, "
+                        } else {
+                            state.wrongLocksMSG += "${lockName}, "
+                        }
+                    }
                     if(x <= maxCheck && tryToFix) {
                         lLocked.lock()
                         somethingWrong = true
@@ -570,7 +595,13 @@ def checkContactHandler() {
                 def contactName = cOpen.displayName
                 def contactStatus = cOpen.currentValue("contact")
                 if(logEnable) log.debug "In checkContactHandler - Contact Open - ${contactName} - ${contactStatus}"
-                if(contactStatus == "closed") state.wrongContactsMSG += "${contactName}, "
+                if(contactStatus == "closed") {
+                    if(includeStatus) {
+                        state.wrongContactsMSG += "${contactName} - ${contactStatus}, "
+                    } else {
+                        state.wrongContactsMSG += "${contactName}, "
+                    }
+                }
             }
         }
         if(contactsClosed) {
@@ -578,7 +609,13 @@ def checkContactHandler() {
                 def contactName = cClosed.displayName
                 def contactStatus = cClosed.currentValue("contact")
                 if(logEnable) log.debug "In checkContactHandler - Contact Closed - ${contactName} - ${contactStatus}"
-                if(contactStatus == "open") state.wrongContactsMSG += "${contactName}, "
+                if(contactStatus == "open") {
+                    if(includeStatus) {
+                        state.wrongContactsMSG += "${contactName} - ${contactStatus}, "
+                    } else {
+                        state.wrongContactsMSG += "${contactName}, "
+                    }
+                }
             }
         }
 
