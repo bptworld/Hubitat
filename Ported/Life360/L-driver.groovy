@@ -38,7 +38,8 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
-*   1.2.6 - 12/03/20 - Exterminating bugs
+ *  1.3.0 = 12/04/20 - Fixed condition to trigger presence & address changes 
+ *  1.2.6 - 12/03/20 - Exterminating bugs
  *  1.2.5 - 12/02/20 - Prelim fix for address1prev and address1 eventing to allow for Life360 Tracker to keep track of departures / arrivals
  *  1.2.4 - 12/02/20 - Fix wifi status not updating on bpt-StatusTile1
  *  1.2.3 - 12/01/20 - Bug fixes and some winter cleaning
@@ -292,34 +293,29 @@ def historyClearData() {
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
 }
 
-def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, xplaces, avatar, avatarHtml) {
+def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, thePlaces, avatar, avatarHtml) {
     // Avi - cleaned up this function to (hopefully) streamline behavior
 
     if(logEnable) log.debug "In generatePresenceEvent = memberPresence = $memberPresence | Address 1 = $address1 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmetric = $speedMetric | Wifi = $wifiState"
 
-    def prevAddress = (device.currentValue('address1prev')) ? device.currentValue('address1') : "Lost"
+    def prevAddress = (device.currentValue('address1') != null) ? device.currentValue('address1') : "Lost"
     // def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
     def lastUpdated = new Date()
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
 
-    // Avi - If our address changed (not just lon / lat coordinates but actually we changed locations)
-    // then we should update all movement related attributes and events otherwise, they really don't matter as much
-    // if this doesn't address the arrived / departed notifications then we can get more granular
+    // Avi - If our address changed
 
     if (address1 != prevAddress) {
 
-      // *** Presence ***
-      // def linkText = getLinkText(device)
-      // def descriptionText = formatDescriptionText(linkText, present)
-      // def handlerName = getState(present)
-      // def pPresence = formatValue(present)
+      // *** Update address & presence ***
       def linkText = getLinkText(device)
       def handlerName = (memberPresence == "present") ? "arrived" : "left"
       def descriptionText = "Life360 member" + linkText + " has " + handlerName
 
-      if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, pPresence = $pPresence"
+      if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
 
+        // *** Presence ***
         def results = [
           name: "presence",
           value: memberPresence,
@@ -334,13 +330,15 @@ def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAwa
         if (logEnable) log.info "results = $results"
 
         // *** Address ***
-        // Update old and current address1 and associated coordinates
+        // Update old and current address attributes
         sendEvent( name: "address1prev", value: prevAddress)
         sendEvent( name: "address1", value: address1 )
+        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
+        sendEvent( name: "since", value: since )
+      }
+
         sendEvent( name: "longitude", value: longitude )
         sendEvent( name: "latitude", value: latitude )
-        sendEvent( name: "since", value: since )
-        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
 
         // *** Speed ***
         // Update speed in metric, km and miles
@@ -372,7 +370,7 @@ def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAwa
 
         // Avi - Sharptools.io attribute for distance tile - Set acceleration to
         // active state only if we are *not* home...
-        sAcceleration = (device.currentValue("presence") == "not present") ? "active" : "inactive"
+        sAcceleration = (memberPresence == "not present") ? "active" : "inactive"
         sendEvent( name: "acceleration", value: sAcceleration )
 
         // Update state variables and display on device page
@@ -396,7 +394,7 @@ def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAwa
 
           sendEvent( name: "temperature", value: speedMiles )
         }
-    }
+
 
     sendEvent( name: "inTransit", value: inTransit )
     sendEvent( name: "isDriving", value: isDriving )
@@ -418,7 +416,7 @@ def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAwa
     sendEvent( name: "switch", value: sSwitch )
 
     // *** All others ***
-    sendEvent( name: "savedPlaces", value: xplaces )
+    sendEvent( name: "savedPlaces", value: thePlaces )
     sendEvent( name: "avatar", value: avatar )
     sendEvent( name: "avatarHtml", value: avatarHtml )
 
