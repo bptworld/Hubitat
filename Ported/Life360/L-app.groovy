@@ -45,7 +45,8 @@
  *  This would not be possible without his work.
  *
  *  Changes:
-*   2.1.4 - 12/03/20 - Cleanup and more bug extermination
+ *  2.2.0 - 12/04/20 - bug fixes and sorted places list added back in
+ *  2.1.4 - 12/03/20 - Cleanup and more bug extermination
  *  2.1.3 - 12/02/20 - Bug fixes, moved stuff around and cleaned up some more cruft
  *  2.1.2 - 12/01/20 - Merged generatePresenceEvent and extraInfo calls
  *  2.1.1 - 12/01/20 - Applied a more wholesome compare to v 2.0.9 and fixed all the issues resulting
@@ -475,7 +476,7 @@ def cmdHandler(resp, data) {
     def members = result.members
     state.members = members
 
-if (logEnable) log.debug result // If in debug then might as well examine the entire payload...
+    if (logEnable) log.info result // If in debug then might as well examine the entire payload...
 
       settings.users.each {memberId->
           def externalId = "${app.id}.${memberId}"
@@ -499,7 +500,9 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 // Below includes a check for iPhone sometime reporting speed of -1 and set to 0
                 def speedMetric = (speed == -1) ? new Double (0) : speed.toDouble().round(2)
 
-                def xplaces = state.places.name
+                // Get a *** sorted *** list of places for easier navigation
+                def thePlaces = state.places.sort { a, b -> a.name <=> b.name }.name
+
                 def battery = Math.round(member.location.battery.toDouble())
                 def since = member.location.since
                 // not used? - def endTimestamp = member.location.endTimestamp
@@ -528,11 +531,12 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 // force location name and coordinates to "Home" if we are indeed within the radius of home...
                 if (memberPresence == "present") {
                   address1 = "Home"
-                  latitude = homeLatitude
-                  longitude = homeLongitude
+                  // latitude = homeLatitude
+                  // longitude = homeLongitude
                 }
 
-                if(logEnable) log.info "Life360 Update member ($member.firstName), address1: ($address1), location: ($memberLatitude, $memberLongitude), place: ($placeLatitude, $placeLongitude), radius: ($placeRadius), dist: ($distanceAway), present: ($isPresent)"
+                if(logEnable) log.info "Life360 Update members ($member.firstName), address1: ($address1), location: ($latitude, $longitude), place: ($homeLatitude, $homeLongitude), radius: ($homeRadius), dist: ($distanceAway), present: ($memberPresence)"
+
 
                 // Avatar Variables
                 if (member.avatar != null){
@@ -544,7 +548,7 @@ if (logEnable) log.debug result // If in debug then might as well examine the en
                 }
 
         // Send entire payload to corresponding life360 tracker device
-                deviceWrapper.generatePresenceEvent(memberPresence, address1, battery, charging, distanceAway, endTimestamp, moving, driving, latitude, longitude, since, speedMetric, wifi, xplaces, avatar, avatarHtml)
+                deviceWrapper.generatePresenceEvent(memberPresence, address1, battery, charging, distanceAway, endTimestamp, moving, driving, latitude, longitude, since, speedMetric, wifi, thePlaces, avatar, avatarHtml)
 
             } catch(e) {
                 if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
