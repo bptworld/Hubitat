@@ -293,7 +293,7 @@ def initialize() {
         if(snoozeSwitch) subscribe(snoozeSwitch, "switch", snoozeHandler)
         if(startTime) schedule(startTime, magicHappensHandler)
         if(sunRestriction) autoSunHandler()
-        if(onDemand) subscribe(onDemand, "switch.on", magicHappensHandler)
+        if(onDemand) subscribe(onDemand, "switch.on", eventHandler)
     }
 }
 
@@ -367,6 +367,11 @@ def snoozeHandler(evt) {
     } else {
         state.snoozeSwitch = "off"
     }   
+}
+
+def eventHandler(evt) {
+    if(logEnable) log.debug "Triggered event initiated passing to magicHappensHandler"
+    magicHappensHandler()
 }
 
 def magicHappensHandler() {
