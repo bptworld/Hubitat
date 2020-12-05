@@ -37,7 +37,7 @@
 *
 *  Changes:
 *
-*  2.4.1 - 12/03/20 - Minor changes
+*  2.4.1 - 12/04/20 - Minor changes
 *  2.4.0 - 12/03/20 - Code cleanup, added 'Switches In Sequence' Action
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
@@ -160,14 +160,14 @@ def pageConfig() {
                 theData = "bool;${triggerAndOr}"
                 state.mySettings.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ANY</b> Condition is true"
-                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ALL</b> Condition are true<br>"
-                state.theCogTriggers += "<b>*</b> Cog will fire when <b>ANY</b> Condition is true<br>"
+                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ALL</b> Condition are true (Using AND)<br>"
+                state.theCogTriggers += "<b>*</b> Cog will fire when <b>ANY</b> Condition is true (Using OR)<br>"
             } else {
                 theData = "bool;${triggerAndOr}"
                 state.mySettings.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ALL</b> Conditions are true"
-                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ANY</b> Condition is true<br>"
-                state.theCogTriggers += "<b>*</b> Cog will fire when <b>ALL</b> Condition are true<br>"
+                state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ANY</b> Condition is true (Using OR)<br>"
+                state.theCogTriggers += "<b>*</b> Cog will fire when <b>ALL</b> Condition are true (Using AND)<br>"
             }
             paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
             paragraph "<hr>"
