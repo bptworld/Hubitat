@@ -33,16 +33,7 @@
  *
  *  Changes:
  *
- *  2.4.9 - 12/02/20 - Added current mode wildcard
- *  2.4.8 - 11/27/20 - Cosmetic
- *  2.4.7 - 10/23/20 - Fixed the 'cloud' toggle for non-lock devices
- *  2.4.6 - 10/23/20 - Added 'door' control
- *  2.4.5 - 10/12/20 - Typio
- *  2.4.4 - 10/11/20 - Added vertical text-align
- *  2.4.3 - 10/06/20 - Adjustments
- *  2.4.2 - 09/28/20 - Adjustments
- *  2.4.1 - 07/30/20 - Fixed a typo, added todays Sunset/Sunrise to wildcards
- *  2.4.0 - 05/21/20 - Fixed a typo
+ *  2.5.0 - 12/06/20 - Added more error catching
  *  ---
  *  1.0.0 - 02/16/19 - Initially started working on this concept.
  *
@@ -53,7 +44,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.4.9"
+	state.version = "2.5.0"
 }
 
 definition(
@@ -2117,21 +2108,28 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
             }
             state.numError = ""
         } catch (e) {
-            state.numError = "Something went wrong with status number colors (useIcon)"
+            state.numError = "Something went wrong with status number colors (useIcon) - Check option 'Is device value Text or Numbers'"
             if(logEnable) log.debug "${state.numError}"
+            log.error e
         }
     }
   
     if(!textORnumber && useIcons) {
-        if(icon1Name && iconLink1 && deviceStatus) {
-            if(deviceStatus.toLowerCase() == icon1Name.toLowerCase()) {
-                deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
+        try {
+            if(icon1Name && iconLink1 && deviceStatus) {
+                if(deviceStatus.toLowerCase() == icon1Name.toLowerCase()) {
+                    deviceStatus1 = "<img src='${iconLink1}' style='height:${iconSize}px'>"
+                }
             }
-        }
-        if(icon2Name && iconLink2 && deviceStatus) {
-            if(deviceStatus.toLowerCase() == icon2Name.toLowerCase()) {
-                deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
+            if(icon2Name && iconLink2 && deviceStatus) {
+                if(deviceStatus.toLowerCase() == icon2Name.toLowerCase()) {
+                    deviceStatus1 = "<img src='${iconLink2}' style='height:${iconSize}px'>"
+                }
             }
+        } catch (e) {
+            state.numError = "Something went wrong with status text colors (useIcon) - Check option 'Is device value Text or Numbers'"
+            if(logEnable) log.debug "${state.numError}"
+            log.error e
         }
     }
     
