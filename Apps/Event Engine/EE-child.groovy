@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.2 - 12/05/20 - Added a second 'Reverse' cron option
 *  2.4.1 - 12/04/20 - Minor changes
 *  2.4.0 - 12/03/20 - Code cleanup, added 'Switches In Sequence' Action
 *  ---
@@ -56,7 +57,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.1"
+    state.version = "2.4.2"
 }
 
 definition(
@@ -178,13 +179,15 @@ def pageConfig() {
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
-                input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression", required:false, submitOnChange:true
+                input "preMadePeriodic", "text", title: "Enter in a Periodic Cron Expression to 'Run the Cog'", required:false, submitOnChange:true
+                paragraph "In addtion to setting up an Expression to start the Cog, you can enter in a second Expression to 'Reverse the Cog'. ie. When the Cog is first run, it turns on a light.  When the second expression is triggered, it will turn the light off."
+                input "preMadePeriodic2", "text", title: "Enter in a Periodic Cron Expression to 'Reverse the Cog' (optional)", required:false, submitOnChange:true
                 paragraph "Premade cron expressions can be found at <a href='https://www.freeformatter.com/cron-expression-generator-quartz.html#' target='_blank'>this link</a>. Remember, Format and spacing is critical."
                 paragraph "Or create your own Expressions locally using the 'Periodic Expressions' app found in Hubitat Package Manager or on <a href='https://github.com/bptworld/Hubitat/' target='_blank'>my GitHub</a>."
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Periodic - ${preMadePeriodic}<br>"
+                state.theCogTriggers += "<b>-</b> By Periodic - Run: ${preMadePeriodic} - Reverse: ${preMadePeriodic2}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Periodic - ${preMadePeriodic}<br>"
+                state.theCogTriggers -= "<b>-</b> By Periodic - Run: ${preMadePeriodic} - Reverse: ${preMadePeriodic2}<br>"
                 app.removeSetting("preMadePeriodic")
             }
 // -----------
@@ -2047,8 +2050,9 @@ def initialize() {
 
         if(timeDaysType) {
             if(timeDaysType.contains("tPeriodic")) { 
-                if(logEnable) log.debug "In initialize - tPeriodic - Starting! - (${preMadePeriodic})"
-                schedule(preMadePeriodic, startTheProcess)
+                if(logEnable) log.debug "In initialize - tPeriodic - Creating Cron Jobs"
+                if(preMadePeriodic) { schedule(preMadePeriodic, runAtTime1) }
+                if(preMadePeriodic2) { schedule(preMadePeriodic2, runAtTime2) }
             }
         }
         autoSunHandler()
