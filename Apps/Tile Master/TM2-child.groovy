@@ -2109,7 +2109,7 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
             state.numError = ""
         } catch (e) {
             state.numError = "Something went wrong with status number colors (useIcon) - Check option 'Is device value Text or Numbers'"
-            if(logEnable) log.debug "${state.numError}"
+            log.debug "${state.numError}"
             log.error e
         }
     }
@@ -2128,7 +2128,7 @@ def getStatusColors(theDevice, deviceStatus, deviceAtts, useColors, textORnumber
             }
         } catch (e) {
             state.numError = "Something went wrong with status text colors (useIcon) - Check option 'Is device value Text or Numbers'"
-            if(logEnable) log.debug "${state.numError}"
+            log.debug "${state.numError}"
             log.error e
         }
     }
