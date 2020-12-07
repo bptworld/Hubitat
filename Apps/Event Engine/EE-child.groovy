@@ -200,11 +200,12 @@ def pageConfig() {
                 input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction", description: "By Mode Restriction", submitOnChange:true
                 input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
-                state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction}<br>"
+                state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction}<br>"
+                state.theCogTriggers -= "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction} - just Condition: ${modeMatchConditionOnly}<br>"
                 app.removeSetting("modeEvent")
                 app.updateSetting("modeMatchRestriction",[value:"false",type:"bool"])
+                app.updateSetting("modeMatchConditionOnly",[value:"false",type:"bool"])
             }
 // -----------
             if(timeDaysType.contains("tDays")) {
@@ -1106,7 +1107,7 @@ def pageConfig() {
                         }
                         if(sdSetPointHigh) paragraph "Cog will trigger when Custom reading is above or equal to ${sdSetPointHigh}"
                         if(sdSetPointLow) paragraph "Cog will trigger when Custom reading is below ${sdSetPointLow}"
-                        state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
+                        state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         state.theCogTriggers += "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
                         
                         app.removeSetting("custom1")
@@ -1131,7 +1132,7 @@ def pageConfig() {
                             paragraph "Condition true when <b>all</b> Custom are true"
                         }
                         state.theCogTriggers -= "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
-                        state.theCogTriggers += "<b>-</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
+                        state.theCogTriggers += "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                         app.removeSetting("sdSetPointHigh")
                         app.removeSetting("sdSetPointLow")
                         app.updateSetting("setSDPointHigh",[value:"false",type:"bool"])
@@ -1140,7 +1141,7 @@ def pageConfig() {
                 }
             } else {
                 state.theCogTriggers -= "<b>-</b> By Custom Setpoints: ${customEvent} - setpoint High: ${setSDPointHigh} ${sdSetPointHigh}, setpoint Low: ${setSDPointLow} ${sdSetPointLow}<br>"
-                state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
+                state.theCogTriggers -= "<b>-</b> By Custom: ${customEvent} - custom1: ${custom1} - custom2: ${custom2} - value1or2: ${sdCustom1Custom2}, ANDOR: ${customANDOR}<br>"
                 app.removeSetting("customEvent")
                 app.removeSetting("specialAtt")
                 app.removeSetting("custom1")
