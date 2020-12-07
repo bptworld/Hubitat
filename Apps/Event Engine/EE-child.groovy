@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.4 - 12/06/20 - Added new option to Mode - Use Mode as a Condition but NOT as a Trigger
 *  2.4.3 - 12/06/20 - Added 'Condition Helpers', added a 'Dim Warning option' to 'Reverse with Delay', fix for %time%
 *  2.4.2 - 12/05/20 - Added a second 'Reverse' cron option
 *  2.4.1 - 12/04/20 - Minor changes
@@ -58,7 +59,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.3"
+    state.version = "2.4.4"
 }
 
 definition(
@@ -197,6 +198,7 @@ def pageConfig() {
                 input "modeEvent", "mode", title: "By Mode", multiple:true, submitOnChange:true
                 paragraph "By Mode can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                 input "modeMatchRestriction", "bool", defaultValue:false, title: "By Mode as Restriction", description: "By Mode Restriction", submitOnChange:true
+                input "modeMatchConditionOnly", "bool", defaultValue:false, title: "Use Mode as a Condition but NOT as a Trigger", description: "Cond Only", submitOnChange:true
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> By Mode - ${modeEvent} - as Restriction: ${modeMatchRestriction}<br>"
             } else {
@@ -2091,7 +2093,7 @@ def initialize() {
         if(humidityEvent) subscribe(humidityEvent, "humidity", startTheProcess)
         if(illuminanceEvent) subscribe(illuminanceEvent, "illuminance", startTheProcess)
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
-        if(modeEvent) subscribe(location, "mode", startTheProcess)
+        if(modeEvent && modeMatchConditionOnly == false) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
         if(powerEvent) subscribe(powerEvent, "power", startTheProcess)
         if(presenceEvent) subscribe(presenceEvent, "presence", startTheProcess)
