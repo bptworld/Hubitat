@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.3 - 12/06/20 - Added 'Condition Helpers', added a 'Dim Warning option' to 'Reverse with Delay', fix for %time%
 *  2.4.2 - 12/05/20 - Added a second 'Reverse' cron option
 *  2.4.1 - 12/04/20 - Minor changes
 *  2.4.0 - 12/03/20 - Code cleanup, added 'Switches In Sequence' Action
@@ -57,7 +58,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.2"
+    state.version = "2.4.3"
 }
 
 definition(
@@ -1215,7 +1216,69 @@ def pageConfig() {
                 app.updateSetting("randomDelay",[value:"false",type:"bool"])
             }
         }
-
+// ***** Condition Helper Start *****
+        section(getFormat("header-green", "${getImage("Blank")}"+" Condition Helper (optional)")) {
+            paragraph "This will help the conditions stay true but not trigger the conditions on its own. Examples below!"
+            input "useHelper", "bool", title: "Use Condition Helper", defaultValue:false, submitOnChange:true
+            if(useHelper) {
+                input "myContacts2", "capability.contactSensor", title: "Select the Contact sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
+                if(myContacts2) input "contactOption2", "enum", title: "Select contact option - If (option), conditions are true", options: ["Open","Closed"], required:true
+                input "myMotion2", "capability.motionSensor", title: "Select the Motion sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
+                if(myMotion2) input "motionOption2", "enum", title: "Select motion option - If (option), conditions are true", options: ["active","inactive"], required:true
+                input "myPresence2", "capability.presenceSensor", title: "Select the Presence Sensor(s) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
+                if(myPresence2) input "presenceOption2", "enum", title: "Select presence option - If (option), conditions are true", options: ["present","not present"], required:true
+                input "mySwitches2", "capability.switch", title: "Select Switch(es) to help keep the conditions true", required:false, multiple:true, submitOnChange:true
+                if(mySwitches2) input "switchesOption2", "enum", title: "Select switch option - If (option), conditions are true", options: ["on","off"], required:true
+                paragraph "<small>* All helpers are considered 'OR'</small>"
+                if(myContacts2) {
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
+                } else {
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
+                }
+                if(myMotion2) {
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Motion: ${myMotion2} - Option: ${motionOption2}<br>"
+                } else {
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Motion: ${myMotion2} - Option: ${motionOption2}<br>"
+                }
+                if(myPresence2) {
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Presence: ${myPresence2} - Option: ${presenceOption2}<br>"
+                } else {
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Presence: ${myPresence2} - Option: ${presenceOption2}<br>"
+                }
+                if(mySwitches2) {
+                    state.theCogTriggers += "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Option: ${switchesOption2}<br>"
+                } else {
+                    state.theCogTriggers -= "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Option: ${switchesOption2}<br>"
+                }
+            } else {
+                state.theCogTriggers -= "<b>-</b> Condition Helper - Contacts: ${myContacts2} - Option: ${contactOption2}<br>"
+                state.theCogTriggers -= "<b>-</b> Condition Helper - Motion: ${myMotion2} - Option: ${motionOption2}<br>"
+                state.theCogTriggers -= "<b>-</b> Condition Helper - Presence: ${myPresence2} - Option: ${presenceOption2}<br>"
+                state.theCogTriggers -= "<b>-</b> Condition Helper - Switches: ${mySwitches2} - Option: ${switchesOption2}<br>"
+                app.removeSetting("myContacts2")
+                app.removeSetting("myMotion2")
+                app.removeSetting("myPresence2")
+                app.removeSetting("mySwitches2")
+                app.updateSetting("contactOption2",[value:"false",type:"bool"])
+                app.updateSetting("motionOption2",[value:"false",type:"bool"])
+                app.updateSetting("presenceOption2",[value:"false",type:"bool"])
+                app.updateSetting("switchesOption2",[value:"false",type:"bool"])
+            }  
+        }
+        section("${getImage('instructions')} Condition Helper Examples", hideable: true, hidden: true) {
+            paragraph "Examples of Primary and Secondary Condition use"
+            paragraph "<b>Bathroom</b><br>Walk into bathroom and trigger the 'Ceiling Motions Sensor' (primary), lights come on. Stay still too long and lights will turn off."
+            paragraph "Close the door to trigger the 'contact sensor' (secondary). Even if the motion becomes inactive, (it can't see you when in the shower), the lights will not turn off until that door is opened and the motion is inactive."
+            paragraph "<hr>"
+            paragraph "<b>Kitchen</b><br>Lights are off - 'Kitchen Ceiling Motion Sensor' (primary) triggers room to be occupied, lights come on.  'Motion sensor under table' (secondary) helps lights to stay on even if 'Kitchen Ceiling Motion Sensor' becomes inactive."
+            paragraph "Dog walks under table and triggers the 'Motion sensor under table' (secondary) but the lights were off, lights stay off."
+            paragraph "<hr>"
+            paragraph "<b>Living Room</b><br>Walk into the room and trigger the 'Ceiling Motion Sensor' (primary), lights come on. If sensor becomes inactive, lights will turn off"
+            paragraph "Place phone on 'charger' (secondary). Lights will stay on even if 'Ceiling Motion Sensor' becomes inactive."
+            paragraph "<hr>"
+            paragraph "<i>Have something neat that you do with primary and secondary triggers? Please post it on the forums and I just might add it here! Thanks</i>"
+        }
+// ***** Condition Helper End *****        
         // ********** Start Actions **********
         state.theCogActions = "<b><u>Actions</u></b><br>"
         section(getFormat("header-green", "${getImage("Blank")}"+" Select Actions")) {
@@ -1682,6 +1745,17 @@ def pageConfig() {
                 } else {
                     input "reverse", "bool", title: "Reverse actions when conditions are no longer true (immediately)", defaultValue:false, submitOnChange:true
                     input "reverseWithDelay", "bool", title: "Reverse actions when conditions are no longer true (with delay)", defaultValue:false, submitOnChange:true
+                    if(reverseWithDelay) {
+                        paragraph "<hr>"
+                        input "dimWhileDelayed", "bool", title: "Dim lights during delay as a warning", defaultValue:false, submitOnChange:true, width:11
+                        if(dimWhileDelayed) { 
+                            input "warningDimLvl", "number", title: "Warning Dim Level (1 to 99)", range: '1..99'
+                            paragraph "<small>* This level will override the Permanent Dim option below.</small>"
+                        }
+                        paragraph "<hr>"
+                    } else {
+                        app.removeSetting("warningDimLvl")
+                    }
                     input "timeReverse", "bool", title: "Reverse actions after a set number of minutes (even if Conditions are still true)", defaultValue:false, submitOnChange:true
                     if(reverseWithDelay || timeReverse) {
                         input "timeToReverse", "number", title: "Time to Reverse (in minutes)", submitOnChange:true
@@ -1702,13 +1776,13 @@ def pageConfig() {
                     } else if(timeReverse) {
                         state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
                     } else if(reverseWithDelay) {
-                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false<br>"
+                        state.theCogActions += "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed}<br>"
                     }
                 } else {
                     state.theCogActions -= "<b>-</b> Reverse: ${reverse}<br>"
                     state.theCogActions -= "<b>-</b> Reverse High: ${reverseWhenHigh} - Reverse Low: ${reverseWhenLow} - Reverse Between: ${reverseWhenBetween}<br>"
                     state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), even if Conditions are still true<br>"
-                    state.theCogActions -= "<b>-</b> Reverse: ${delayReverse} minute(s), after Conditions become false<br>"
+                    state.theCogActions -= "<b>-</b> Reverse: ${timeToReverse} minute(s), after Conditions become false - Dim While Delayed: ${dimWhileDelayed}<br>"
                 }
                 if((reverse || reverseWithDelay || reverseWhenHigh || reverseWhenLow || reverseWhenBetween) && (switchesOnAction || setOnLC || setDimmersPerMode)){
                     paragraph "<hr>"
@@ -1753,8 +1827,8 @@ def pageConfig() {
                 app.updateSetting("pdColorTemp",[value:"false",type:"bool"])
                 app.updateSetting("permanentDim",[value:"false",type:"bool"])
                 app.updateSetting("reverse",[value:"false",type:"bool"])
-                app.removeSetting("delayReverse")
                 app.updateSetting("reverseWithDelay",[value:"false",type:"bool"])
+                app.removeSetting("warningDimLvl")
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
             input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:true, submitOnChange:true
@@ -2019,12 +2093,19 @@ def initialize() {
         if(lockEvent) subscribe(lockEvent, "lock", startTheProcess)
         if(modeEvent) subscribe(location, "mode", startTheProcess)
         if(motionEvent) subscribe(motionEvent, "motion", startTheProcess)
-        if(powerEvent) subscribe(powerEvent, "power", startTheProcess) 
+        if(powerEvent) subscribe(powerEvent, "power", startTheProcess)
+        if(presenceEvent) subscribe(presenceEvent, "presence", startTheProcess)
         if(switchEvent) subscribe(switchEvent, "switch", startTheProcess)
         if(voltageEvent) subscribe(voltageEvent, "voltage", startTheProcess) 
         if(tempEvent) subscribe(tempEvent, "temperature", startTheProcess)
         if(thermoEvent) subscribe(thermoEvent, "thermostatOperatingState", startTheProcess) 
         if(customEvent) subscribe(customEvent, specialAtt, startTheProcess)
+        
+        if(myContacts2) subscribe(myContacts2, "contact.closed", startTheProcess)
+        if(myMotion2) subscribe(myMotion2, "motion.inactive", startTheProcess)
+        if(myPresence2) subscribe(myPresence2, "presence.not present", startTheProcess)
+        if(mySwitches2) subscribe(mySwitches2, "switch.off", startTheProcess)
+        
         if(repeat) {
             startTheProcess()
             def rT = repeatType.toString().replace("[", "").replace("]", "")
@@ -2073,6 +2154,7 @@ def startTheProcess(evt) {
         if(logEnable) log.trace "*"
         if(logEnable) log.trace "******************** Start - startTheProcess (${state.version}) - ${app.label} ********************"
         state.totalMatch = 0
+        state.totalMatchHelper = 0
         state.totalConditions = 0
         state.rCount = 0
         state.restrictionMatch = 0
@@ -2150,11 +2232,15 @@ def startTheProcess(evt) {
             } else {
                 accelerationHandler()
                 contactHandler()
+                contact2Handler()
                 garageDoorHandler()
                 lockHandler()
                 motionHandler()
+                motion2Handler()
                 presenceHandler()
+                presence2Handler()
                 switchHandler()
+                switch2Handler()
                 thermostatHandler()
                 waterHandler()
 
@@ -2250,18 +2336,21 @@ def startTheProcess(evt) {
                             runIn(theDelay, startTheProcess, [data: "timeReverse"])
                         }
                     }
+                    state.appStatus = "active"
                 } else {
                     if(logEnable) log.debug "In startTheProcess - One of the Time Conditions didn't match - Stopping"
                 }
             } else if(state.whatToDo == "reverse" || state.whatToDo == "skipToReverse") {
                 if(reverseWithDelay && state.hasntDelayedReverseYet) {
                     if(reverseWithDelay) {
+                        timeToReverse = timeToReverse ?: 1
                         theDelay = timeToReverse * 60
                         if(logEnable) log.debug "In startTheProcess - Reverse - Delay is set for ${timeToReverse} minute(s)"
                     } else {
                         if(logEnable) log.warn "In startTheProcess - Reverse - Something went wrong"
                     }
                     state.hasntDelayedReverseYet = false
+                    if(dimWhileDelayed && (state.appStatus == "active")) { permanentDimHandler() }
                     runIn(theDelay, startTheProcess, [data: "runAfterDelay"])
                 } else {             
                     if(logEnable) log.debug "In startTheProcess - GOING IN REVERSE"
@@ -2287,6 +2376,7 @@ def startTheProcess(evt) {
                     }
                     state.hasntDelayedReverseYet = true
                 }
+                state.appStatus = "inactive"
             } else {
                 if(logEnable) log.debug "In startTheProcess - Something isn't right - STOPING"
             }
@@ -2297,6 +2387,9 @@ def startTheProcess(evt) {
 }
 
 // ********** Start Conditions **********
+/* add
+app.removeSetting("myPresence2")
+*/
 def customDeviceHandler() {
     if(customEvent) {
         state.eventName = customEvent
@@ -2305,7 +2398,7 @@ def customDeviceHandler() {
         state.typeValue1 = custom1
         state.typeValue2 = custom2
         state.typeAO = customANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 def accelerationHandler() {
@@ -2316,7 +2409,7 @@ def accelerationHandler() {
         state.typeValue1 = "active"
         state.typeValue2 = "inactive"
         state.typeAO = accelerationANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 def contactHandler() {
@@ -2327,7 +2420,18 @@ def contactHandler() {
         state.typeValue1 = "open"
         state.typeValue2 = "closed"
         state.typeAO = contactANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
+    }
+}
+def contact2Handler() {
+    if(myContacts2) {
+        state.eventName = myContacts2
+        state.eventType = "contact"
+        state.type = contactOption2
+        state.typeValue1 = "open"
+        state.typeValue2 = "closed"
+        state.typeAO = true
+        devicesGoodHandler("helper")
     }
 }
 def garageDoorHandler() {
@@ -2338,7 +2442,7 @@ def garageDoorHandler() {
         state.typeValue1 = "open"
         state.typeValue2 = "closed"
         state.typeAO = garageDoorANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 def globalVariablesTextHandler() {
@@ -2349,7 +2453,7 @@ def globalVariablesTextHandler() {
         state.typeValue1 = gvValue
         state.typeValue2 = "noData"
         state.typeAO = false
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 def lockHandler() {
@@ -2360,7 +2464,7 @@ def lockHandler() {
         state.typeValue1 = "locked"
         state.typeValue2 = "unlocked"
         state.typeAO = lockANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 def motionHandler() {
@@ -2371,7 +2475,18 @@ def motionHandler() {
         state.typeValue1 = "active"
         state.typeValue2 = "inactive"
         state.typeAO = motionANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
+    }
+}
+def motion2Handler() {
+    if(myMotion2) {
+        state.eventName = myMotion2
+        state.eventType = "motion"
+        state.type = motionOption2
+        state.typeValue1 = "active"
+        state.typeValue2 = "inactive"
+        state.typeAO = true
+        devicesGoodHandler("helper")
     }
 }
 def presenceHandler() {
@@ -2382,7 +2497,18 @@ def presenceHandler() {
         state.typeValue1 = "not present"
         state.typeValue2 = "present"
         state.typeAO = presenceANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
+    }
+}
+def presence2Handler() {
+    if(myPresence2) {
+        state.eventName = myPresence2
+        state.eventType = "presence"
+        state.type = presenceOption2
+        state.typeValue1 = "not present"
+        state.typeValue2 = "present"
+        state.typeAO = true
+        devicesGoodHandler("helper")
     }
 }
 def switchHandler() {
@@ -2393,7 +2519,18 @@ def switchHandler() {
         state.typeValue1 = "on"
         state.typeValue2 = "off"
         state.typeAO = switchANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
+    }
+}
+def switch2Handler() {
+    if(mySwitches2) {
+        state.eventName = mySwitches2
+        state.eventType = "switch"
+        state.type = switchesOption2
+        state.typeValue1 = "on"
+        state.typeValue2 = "off"
+        state.typeAO = true
+        devicesGoodHandler("helper")
     }
 }
 def thermostatHandler() {
@@ -2404,7 +2541,7 @@ def thermostatHandler() {
         state.typeValue1 = "idle"
         state.typeValue2 = "thermostatEvent"
         state.typeAO = thermoANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 def waterHandler() {
@@ -2415,18 +2552,18 @@ def waterHandler() {
         state.typeValue1 = "Wet"
         state.typeValue2 = "Dry"
         state.typeAO = waterANDOR
-        devicesGoodHandler()
+        devicesGoodHandler("condition")
     }
 }
 
-def devicesGoodHandler() {
-    if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()}"
+def devicesGoodHandler(data) {
+    if(logEnable) log.debug "In devicesGoodHandler (${state.version}) - ${state.eventType.toUpperCase()} - data: ${data}"
     state.deviceMatch = 0
     state.count = 0
     deviceTrue1 = 0
     deviceTrue2 = 0
     state.isThereDevices = true
-    state.totalConditions = state.totalConditions + 1
+    if(data == "condition") { state.totalConditions = state.totalConditions + 1 }
     try {
         if(state.eventType == "globalVariable") {
             theList = []
@@ -2515,12 +2652,14 @@ def devicesGoodHandler() {
     if(state.typeAO) {  // OR (true)
         if(state.deviceMatch >= 1) {
             if(logEnable) log.debug "In devicesGoodHandler - Using OR1"
-            state.totalMatch = state.totalMatch + 1
+            if(data == "condition") { state.totalMatch = state.totalMatch + 1 }
+            if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }
         }
     } else {  // AND (False)
         if(state.deviceMatch == state.theCount) {
             if(logEnable) log.debug "In devicesGoodHandler - Using AND1"
-            state.totalMatch = state.totalMatch + 1
+            if(data == "condition") { state.totalMatch = state.totalMatch + 1 }
+            if(data == "helper") { state.totalMatchHelper = state.totalMatchHelper + 1 }
         }
     }
     if(state.typeAO) {
@@ -2994,8 +3133,9 @@ def switchesPerModeReverseActionHandler() {
                                         }
                                     }
                                 } catch(e) {
-                                    log.error e
-                                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Something went wrong"
+                                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColor - Turning Off (${it})"
+                                    pauseExecution(actionDelay)
+                                    it.off()
                                 }
                             } else if(it.hasCommand("setColorTemperature") && theColor == "NA") {
                                 name = (it.displayName).replace(" ","")
@@ -3015,8 +3155,9 @@ def switchesPerModeReverseActionHandler() {
                                         it.off()
                                     }
                                 } catch(e) {
-                                    log.error e
-                                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Something went wrong"
+                                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setColorTemp - Turning Off (${it})"
+                                    pauseExecution(actionDelay)
+                                    it.off()
                                 }      
                             } else if(it.hasCommand("setLevel")) {
                                 name = (it.displayName).replace(" ","")
@@ -3033,8 +3174,9 @@ def switchesPerModeReverseActionHandler() {
                                         it.off()
                                     }
                                 } catch(e) {
-                                    log.error e
-                                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Something went wrong"
+                                    if(logEnable) log.debug "In switchesPerModeReverseActionHandler - setLevel - Turning Off (${it})"
+                                    pauseExecution(actionDelay)
+                                    it.off()
                                 }
                             }
                         } else {
@@ -3136,6 +3278,7 @@ def dimmerOnReverseActionHandler() {
                     name = (it.displayName).replace(" ","")
                     try {
                         data = state.oldMap.get(name)
+                        log.trace "I'm here now - data: ${data}"
                         def (oldStatus, oldHueColor, oldSaturation, oldLevel, oldColorTemp, oldColorMode) = data.split("::")
                         int hueColor = oldHueColor.toInteger()
                         int saturation = oldSaturation.toInteger()
@@ -3165,7 +3308,9 @@ def dimmerOnReverseActionHandler() {
                             }
                         }
                     } catch(e) {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Something went wrong"
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColor - Turning Off (${it})"
+                        pauseExecution(actionDelay)
+                        it.off()
                     }
                 } else if(it.hasCommand("setColorTemperature")) {
                     name = (it.displayName).replace(" ","")
@@ -3185,7 +3330,9 @@ def dimmerOnReverseActionHandler() {
                             it.off()
                         }
                     } catch(e) {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Something went wrong"
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setColorTemp - Turning Off (${it})"
+                        pauseExecution(actionDelay)
+                        it.off()
                     }      
                 } else if(it.hasCommand("setLevel")) {
                     name = (it.displayName).replace(" ","")
@@ -3202,7 +3349,9 @@ def dimmerOnReverseActionHandler() {
                             it.off()
                         }
                     } catch(e) {
-                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Something went wrong"
+                        if(logEnable) log.debug "In dimmerOnReverseActionHandler - setLevel - Turning Off (${it})"
+                        pauseExecution(actionDelay)
+                        it.off()
                     }
                 }
             } else {
@@ -3231,7 +3380,8 @@ def permanentDimHandler() {
                         state.fromWhere = "permanentDimPerHandler"
                         state.dimmerDevices = it
                         state.onColor = theColor
-                        state.onLevel = permanentDimLvl
+                        if(permanentDimLvl) state.onLevel = permanentDimLvl
+                        if(warningDimLvl) state.onLevel = warningDimLvl
                         state.onTemp = theTemp
                         setLevelandColorHandler()
                     }
@@ -3240,27 +3390,30 @@ def permanentDimHandler() {
         }
     }
     if(setOnLC) {
-        if(logEnable) log.debug "In permanentDimHandler - Set Level Dim - Level: ${permanentDimLvl} - Color: ${pdColor} - Temp: ${pdTemp}"
+        if(logEnable) log.debug "In permanentDimHandler - Set Level Dim - Permanent Dim Level: ${permanentDimLvl} - Waring Dim Level: ${warningDimLvl} - Color: ${pdColor} - Temp: ${pdTemp}"
         state.fromWhere = "permanentDimHandler"
-        state.onLevel = permanentDimLvl
+        if(permanentDimLvl) state.onLevel = permanentDimLvl
+        if(warningDimLvl) state.onLevel = warningDimLvl
         state.onColor = pdColor
         setLevelandColorHandler()
     }
     if(switchesOnAction) {
         switchesOnAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim (on) - Level: ${permanentDimLvl}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim (on) - Permanent Dim Level: ${permanentDimLvl} - Waring Dim Level: ${warningDimLvl}"
                 pauseExecution(actionDelay)
-                it.setLevel(permanentDimLvl)
+                if(permanentDimLvl) it.setLevel(permanentDimLvl)
+                if(warningDimLvl) it.setLevel(warningDimLvl)
             }
         }
     }
     if(switchesOffAction) {
         switchesOffAction.each { it ->
             if(it.hasCommand('setLevel')) {
-                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim (off) - Level: ${permanentDimLvl2}"
+                if(logEnable) log.debug "In permanentDimHandler - Set Level Dim (off) - Permanent Dim Level2: ${permanentDimLvl2} - Waring Dim Level: ${warningDimLvl}"
                 pauseExecution(actionDelay)
-                it.setLevel(permanentDimLvl2)
+                if(permanentDimLvl2) it.setLevel(permanentDimLvl2)
+                if(warningDimLvl) it.setLevel(warningDimLvl)
             }
         }
     }
@@ -3752,8 +3905,14 @@ def messageHandler() {
             if (state.message.contains("%whatHappened%")) {state.message = state.message.replace('%whatHappened%', state.whatHappened)}
             if (state.message.contains("%whoHappened%")) {state.message = state.message.replace('%whoHappened%', state.whoHappened)}
             if (state.message.contains("%whoUnlocked%")) {state.message = state.message.replace('%whoUnlocked%', state.whoUnlocked)}
-            if (state.message.contains("%time%")) {state.message = state.message.replace('%time%', state.theTime)}
-            if (state.message.contains("%time1%")) {state.message = state.message.replace('%time1%', state.theTime1)}
+            if (state.message.contains("%time%")) {
+                currentDateTime()
+                state.message = state.message.replace('%time%', state.theTime)
+            }
+            if (state.message.contains("%time1%")) {
+                currentDateTime()
+                state.message = state.message.replace('%time1%', state.theTime1)
+            }
             if(logEnable) log.debug "In messageHandler - message: ${state.message}"
             if(state.message && state.message != "null") {
                 if(useSpeech) letsTalk(state.message)
@@ -3968,22 +4127,30 @@ def checkingWhatToDo() {
         state.timeOK = false
     }
     if(triggerAndOr) {
-        if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if(logEnable) log.debug "In checkingWhatToDo - USING OR - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
         if(state.timeOK) {
             if((state.totalMatch >= 1) || state.setpointOK) {
                 state.everythingOK = true
             } else {
-                state.everythingOK = false
+                if(state.totalMatchHelper >= 1) {
+                    state.everythingOK = true
+                } else {
+                    state.everythingOK = false
+                }
             }
         } else {
             state.everythingOK = false
         }
     } else {
-        if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
+        if(logEnable) log.debug "In checkingWhatToDo - USING AND - totalMatch: ${state.totalMatch} - totalMatchHelper: ${state.totalMatchHelper} - totalConditions: ${state.totalConditions} - setpointOK: ${state.setpointOK} - timeOK: ${state.timeOK}"
         if((state.totalMatch == state.totalConditions) && state.setpointOK && state.timeOK) {
             state.everythingOK = true
         } else {
-            state.everythingOK = false
+            if(state.totalMatchHelper >= 1) {
+                state.everythingOK = true
+            } else {
+                state.everythingOK = false
+            }
         }
     }   
     if(logEnable) log.debug "In checkingWhatToDo - everythingOK: ${state.everythingOK}"
@@ -4225,15 +4392,17 @@ def setLevelandColorHandler() {
                 if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColor: $value"
                 it.setColor(value)
             } else if(pdTemp && it.hasCommand('setColorTemperature')) {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl}"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
                 pauseExecution(actionDelay)
-                it.setLevel(permanentDimLvl)
+                if(permanentDimLvl) { it.setLevel(permanentDimLvl) }
+                if(warningDimLvl) { it.setLevel(warningDimLvl) }
                 pauseExecution(actionDelay)
                 it.setColorTemperature(pdTemp)
             } else {
-                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel: $permanentDimLvl"
+                if(logEnable && logSize) log.debug "In setLevelandColorHandler - PD - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
                 pauseExecution(actionDelay)
-                it.setLevel(permanentDimLvl)
+                if(permanentDimLvl) { it.setLevel(permanentDimLvl) }
+                if(warningDimLvl) { it.setLevel(warningDimLvl) }
             }
         }
     }
@@ -4247,15 +4416,17 @@ def setLevelandColorHandler() {
             pauseExecution(actionDelay)
             theDevice.setColor(value)
         } else if(theDevice.hasCommand('setColorTemperature') && state.onColor == "NA") { 
-            if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl}"
+            if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setColorTemp: $pdTemp, level: ${permanentDimLvl} (or warningLvl: ${warningDimLvl})"
             pauseExecution(actionDelay)
-            theDevice.setLevel(permanentDimLvl)
+            if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
+            if(warningDimLvl) { theDevice.setLevel(warningDimLvl) }
             pauseExecution(actionDelay)
             theDevice.setColorTemperature(pdTemp)
         } else {
-            if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setLevel: $permanentDimLvl"
+            if(logEnable && logSize) log.debug "In setLevelandColorHandler - switchesPerMode - $it.displayName, setLevel: $permanentDimLvl (or warningLvl: ${warningDimLvl})"
             pauseExecution(actionDelay)
-            theDevice.setLevel(permanentDimLvl)
+            if(permanentDimLvl) { theDevice.setLevel(permanentDimLvl) }
+            if(warningDimLvl) { theDevice.setLevel(warningDimLvl) }
         }
     }
 }
