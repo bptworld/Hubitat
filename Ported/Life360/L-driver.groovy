@@ -38,7 +38,15 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
- *  1.3.0 = 12/04/20 - Fixed condition to trigger presence & address changes 
+ *  1.5.0 - 12/06/20 - Moved all location functionality to child driver from parent app -and-
+                       Added:
+                         - Minimum Transit Speed Preference - use to set a custom speed threshold
+                           for inTransit to become true (follows Km or Miles unit preference)
+                         - Minimum Driving Speed Prederence - use to set a custom speed threshold
+                           for isDriving to become true (follows Km or Miles unit preference)
+                         - memberName attribute - First Name + Last Name from Life360 member info
+                         - memberFriendlyName driver preference and attribute
+ *  1.3.0 - 12/04/20 - Fixed condition to trigger presence & address changes
  *  1.2.6 - 12/03/20 - Exterminating bugs
  *  1.2.5 - 12/02/20 - Prelim fix for address1prev and address1 eventing to allow for Life360 Tracker to keep track of departures / arrivals
  *  1.2.4 - 12/02/20 - Fix wifi status not updating on bpt-StatusTile1
@@ -100,7 +108,8 @@ metadata {
         attribute "status", "string"
         attribute "bpt-statusTile1", "string"
         attribute "wifiState", "bool"
-
+        attribute "memberName", "string"
+        attribute "memberFriendlyName", "string"
 // Avi - added attributes to support capabilities added above for Sharptools.io tile formatting
         attribute "contact", "string"
         attribute "acceleration", "string"
@@ -128,6 +137,11 @@ preferences {
     //       this may be restored if the currently applied consolidated logic proves to be unreliable
     // input "maxGPSJump", "number", title: "Max GPS Jump", description: "If you are getting a lot of false readings, raise this value", required: true, defaultValue: 25
     input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
+// Avi add block starts here
+    input "memberFriendlyName", "text", title: "Member Friendly Name", description: "(for use in Rules etc.)", defaultValue: "Mr. Roboto"
+    input "transitThreshold", "text", title: "Minimum 'Transit' Speed", description: "Set minimum speed for inTransit to be true\n(leave as 0 to use Life360 data)", required: true, defaultValue: "0"
+    input "drivingThreshold", "text", title: "Minimum 'Driving' Speed", description: "Set minimum speed for isDriving to be true\n(leave as 0 to use Life360 data)", required: true, defaultValue: "0"
+// Avi add block ends here
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
     input "historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15"
@@ -293,27 +307,79 @@ def historyClearData() {
     sendEvent(name: "lastLogMessage1", value: msgValue, displayed: true)
 }
 
-def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, thePlaces, avatar, avatarHtml) {
-    // Avi - cleaned up this function to (hopefully) streamline behavior
+def generatePresenceEvent(member, thePlaces, home) {
+// memberPresence, address1, battery, charge, istanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, thePlaces, avatar, avatarHtml) {
 
-    if(logEnable) log.debug "In generatePresenceEvent = memberPresence = $memberPresence | Address 1 = $address1 | Battery = $battery | Charging = $charge | distanceAway: $distanceAway | Last Checkin = $endTimestamp | Moving = $inTransit | Driving = $isDriving | Latitude = $latitude | Longitude = $longitude | Since = $since | Speedmetric = $speedMetric | Wifi = $wifiState"
-
-    def prevAddress = (device.currentValue('address1') != null) ? device.currentValue('address1') : "Lost"
-    // def lastUpdated = formatLocalTime("MM/dd/yyyy @ h:mm:ss a")
+    // Define all variables required upfront and initialize where applicable
     def lastUpdated = new Date()
+
+    // *** Member Name ***
+    def memberFirstName = (member.firstName) ? member.firstName : ""
+    def memberLastName = (member.lastName) ? member.lastName :""
+    if (logEnable) log.info "$memberFirstName $memberLastName"
+    def memberFullName = memberFirstName + " " + memberLastName
+    sendEvent( name: "memberName", value: memberFullName )
+    sendEvent( name: "memberFriendlyName", value: memberFriendlyName )
+
+    // *** Places List ***
+    sendEvent( name: "savedPlaces", value: thePlaces )
+
+    // *** Avatar ***
+    def avatar
+    def avatarHtml
+    if (member.avatar != null){
+        avatar = member.avatar
+        avatarHtml =  "<img src= \"${avatar}\">"
+    } else {
+        avatar = "not set"
+        avatarHtml = "not set"
+    }
+    sendEvent( name: "avatar", value: avatar )
+    sendEvent( name: "avatarHtml", value: avatarHtml )
+
+
+    // *** Location ***
+    def latitude = member.location.latitude.toFloat() // current latitude
+    def longitude = member.location.longitude.toFloat() // current longitude
+    def homeLatitude = home.latitude.toFloat() // home latitude
+    def homeLongitude = home.longitude.toFloat() // home longitude
+    def homeRadius = home.radius.toFloat() // home radius
+    def distanceAway = haversine(latitude, longitude, homeLatitude, homeLongitude) * 1000 // in meters
+
+    // Where we think we are now is either at a named place or at address1
+    def address1 = (member.location.name) ? member.location.name : member.location.address1
+    // or perhaps we are on the free version of Life360 (address1  = null)
+    if (address1 == null || address1 == "") address1 = "No Data"
+
+    def address2 = (member.location.address2) ? member.location.address2 : member.location.shortaddress
+    if (address2 == null || address2 == "") address2 = "No Data"
+
+    // *** Presence ***
+    // It is safe to assume that if we are within home radius then we are
+    // both present and at home (to address any potential radius jitter)
+    def memberPresence = (distanceAway <= homeRadius) ? "present" : "not present"
+    if (memberPresence == "present") address1 = "Home"
+
+    // *** Block For Testing Purposes Only ***
+    //    distanceAway = 20000
+    //    address1 = "Target"
+    //    memberPresence = "not present"
+    // ** End Block for Testing Purposes Only ***
+
+    // *** On the move ***
+    // if we changed from present --> not present then we are departing from home
+    def prevAddress = (departing) ? "Home" : device.currentValue('address1')
+    if (prevAddress == null) prevAddress = "Lost"
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
 
-    // Avi - If our address changed
-
     if (address1 != prevAddress) {
+        // *** Update address & presence ***
+        def linkText = getLinkText(device)
+        def handlerName = (departing) ? "left" : "arrived"
+        def descriptionText = "Life360 member " + linkText + " has " + handlerName
 
-      // *** Update address & presence ***
-      def linkText = getLinkText(device)
-      def handlerName = (memberPresence == "present") ? "arrived" : "left"
-      def descriptionText = "Life360 member" + linkText + " has " + handlerName
-
-      if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
+        if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
 
         // *** Presence ***
         def results = [
@@ -334,93 +400,141 @@ def generatePresenceEvent(memberPresence, address1, battery, charge, distanceAwa
         sendEvent( name: "address1prev", value: prevAddress)
         sendEvent( name: "address1", value: address1 )
         sendEvent( name: "lastLocationUpdate", value: lastUpdated )
-        sendEvent( name: "since", value: since )
-      }
+        sendEvent( name: "since", value: member.location.since )
+    }
 
-        sendEvent( name: "longitude", value: longitude )
-        sendEvent( name: "latitude", value: latitude )
+    // *** Coordinates ***
+    sendEvent( name: "longitude", value: longitude )
+    sendEvent( name: "latitude", value: latitude )
 
-        // *** Speed ***
-        // Update speed in metric, km and miles
+    // *** Speed ***
+    def speed = member.location.speed.toFloat()
 
-        // Speed in Metrics
-        sendEvent( name: "speedMetric", value: speedMetric )
+    // Below includes a check for iPhone sometime reporting speed of -1 and set to 0
+    def speedMetric = (speed == -1) ? new Double (0) : speed.toDouble().round(2)
 
-        // Speed in km
-        speedKm = (speedMetric * 3.6).toDouble().round(2)
-        sendEvent( name: "speedKm", value: speedKm )
+    // Speed in Metrics
+    sendEvent( name: "speedMetric", value: speedMetric )
 
-        // Speed in miles
-        speedMiles = (speedMetric * 2.23694).toDouble().round(2)
-        sendEvent( name: "speedMiles", value: speedMiles )
+    // Speed in km
+    speedKm = (speedMetric * 3.6).toDouble().round(2)
+    sendEvent( name: "speedKm", value: speedKm )
 
-        // *** Distance ***
-        // Update distance in metric, km and miles
+    // Speed in miles
+    speedMiles = (speedMetric * 2.23694).toDouble().round(2)
+    sendEvent( name: "speedMiles", value: speedMiles )
 
-        // Distance in metric
-        sendEvent( name: "distanceMetric", value: distanceAway.toDouble().round(2) )
+    // *** Distance ***
 
-        // Distance in km
-        distanceKm = (distanceAway / 1000).toDouble().round(2)
-        sendEvent( name: "distanceKm", value: distanceKm )
+    // Distance in metric
+    sendEvent( name: "distanceMetric", value: distanceAway.toDouble().round(2) )
 
-        // Distance in miles
-        distanceMiles = ((distanceAway / 1000) / 1.609344).toDouble().round(2)
-        sendEvent( name: "distanceMiles", value: distanceMiles )
+    // Distance in km
+    def distanceKm = (distanceAway / 1000).toDouble().round(2)
+    sendEvent( name: "distanceKm", value: distanceKm )
 
-        // Avi - Sharptools.io attribute for distance tile - Set acceleration to
-        // active state only if we are *not* home...
-        sAcceleration = (memberPresence == "not present") ? "active" : "inactive"
-        sendEvent( name: "acceleration", value: sAcceleration )
+    // Distance in miles
+    def distanceMiles = ((distanceAway / 1000) / 1.609344).toDouble().round(2)
+    sendEvent( name: "distanceMiles", value: distanceMiles )
 
-        // Update state variables and display on device page
-        state.oldDistanceAway = device.currentValue("distanceMetric")
+    // Update state variables and display on device page
+    state.oldDistanceAway = device.currentValue("distanceMetric")
 
-        // Update status attribute with appropriate distance units
-        // and update temperature attribute with appropriate speed units
-        // as chosen by users in device preferences
-        def sStatus
-        if(units == "Kilometers" || units == null || units == "") {
-          sStatus = sprintf("%.2f", distanceKm) + "  km from Home"
-          sendEvent( name: "status", value: sStatus )
-          state.status = sStatus
+    // Update status attribute with appropriate distance units
+    // and update temperature attribute with appropriate speed units
+    // as chosen by users in device preferences
+    def sStatus
+    if (transitThreshold == null) transitThreshold = "0"
+    def movethreshold = transitThreshold.toDouble().round(2)
+    if (drivingThreshold == null) drivingThreshold = "0"
+    def drivethreshold = drivingThreshold.toDouble().round(2)
 
-          sendEvent( name: "temperature", value: speedKm )
-        }
-        else {
-          sStatus = sprintf("%.2f", distanceMiles) + " miles from Home"
-          sendEvent( name: "status", value: sStatus )
-          state.status = sStatus
+    if(units == "Kilometers" || units == null || units == "") {
+        sStatus = sprintf("%.2f", distanceKm) + "  km from Home"
+        sendEvent( name: "status", value: sStatus )
+        state.status = sStatus
 
-          sendEvent( name: "temperature", value: speedMiles )
-        }
+        sendEvent( name: "temperature", value: speedKm )
 
+        // if transit threshold (in Km) specified in preferences then use it
+        // else, use info provided by Life360
+        if (movethreshold > 0) {
+            inTransit = (speedKm > movethreshold) ? "true" : "false"
+          }
+          else {
+            inTransit = (member.location.inTransit == "0") ? "false" : "true"
+          }
+
+        // if driving threshold (in Km) specified in preferences then use it
+        // else, use info provided by Life360
+        if (drivethreshold > 0) {
+            isDriving = (speedKm > drivethreshold) ? "true" : "false"
+          }
+          else {
+            isDriving = (member.location.isDriving == "0") ? "false" : "true"
+          }
+    }
+    else {
+        sStatus = sprintf("%.2f", distanceMiles) + " miles from Home"
+        sendEvent( name: "status", value: sStatus )
+        state.status = sStatus
+
+        sendEvent( name: "temperature", value: speedMiles )
+
+        // if transit threshold (in Miles) specified in preferences then use it
+        // else, use info provided by Life360
+        if (movethreshold > 0) {
+            inTransit = (speedMiles > movethreshold) ? "true" : "false"
+          }
+          else {
+            inTransit = (member.location.inTransit == "0") ? "false" : "true"
+          }
+
+        // if driving threshold (in Miles) specified in preferences then use it
+        // else, use info provided by Life360
+        if (drivethreshold > 0) {
+            isDriving = (speedMiles > drivethreshold) ? "true" : "false"
+          }
+          else {
+            isDriving = (member.location.isDriving == "0") ? "false" : "true"
+          }
+    }
+
+    // *** On the move ***
+    if (logEnable) log.info "speedKm = $speedKm  speedMiles = $speedMiles moverthreshold = $movethreshold inTransit = $inTransit drivethreshold = $drivethreshold isDriving = $isDriving"
 
     sendEvent( name: "inTransit", value: inTransit )
     sendEvent( name: "isDriving", value: isDriving )
 
-    // *** Battery ***
-    // How is our battery doing?
-    setBattery(battery.toInteger(), charge.toBoolean(), charge.toString())
+    // Avi - Sharptools.io attribute for distance tile - Set acceleration to
+    // active state if we are either moving
+    // or if we are anywhere outside home radius
+    def sAcceleration = (inTransit == "true" || isDriving == "true" || memberPresence == "not present") ? "active" : "inactive"
+    if (logEnable) log.info "inTransit: $inTransit  isDriving: $isDriving  memberPresence: $memberPresence  sAcceleration: $sAcceleration"
+
+    sendEvent( name: "acceleration", value: sAcceleration )
+
+    // *** Battery Level ***
+    def battery = Math.round(member.location.battery.toDouble())
     sendEvent( name: "battery", value: battery )
 
-    // Sharptools.io tile attribute: If Battery is charging set contact sensor to open.  closed if not charging
-    def cContact = charge.toBoolean() ? "open" : "closed"
+    // *** Charging State ***
+    def charge = (member.location.charge == "0") ? "false" : "true"
     sendEvent( name: "charge", value: charge )
+    sendEvent( name: "powerSource", value: (charge ? "DC":"BTRY"))
+
+    // Sharptools.io active tile attribute: if charging set contact sensor to open
+    def cContact = (charge.toBoolean()) ? "open" : "closed"
     sendEvent( name: "contact", value: cContact )
 
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
+    def wifiState = member.location.wifiState == "0" ? "false" : "true"
     def sSwitch = wifiState.toBoolean() ? "on" : "off"
     sendEvent( name: "wifiState", value: wifiState )
     sendEvent( name: "switch", value: sSwitch )
 
-    // *** All others ***
-    sendEvent( name: "savedPlaces", value: thePlaces )
-    sendEvent( name: "avatar", value: avatar )
-    sendEvent( name: "avatarHtml", value: avatarHtml )
-
-    // *** Timestamp last update ***
+    // *** Timestamp ***
     sendEvent ( name: "lastUpdated", value: lastUpdated )
     state.update = true
 
@@ -433,44 +547,42 @@ def setMemberId(String memberId) {
    state.life360MemberId = memberId
 }
 
-private String formatValue(boolean present) {
-  if (present)
-  return "present"
-  else
-  return "not present"
-}
-
-private formatDescriptionText(String linkText, boolean present) {
-  if (present)
-    return "Life360 User $linkText has arrived"
-  else
-      return "Life360 User $linkText has left"
-}
-
 def getMemberId() {
   if(logEnable) log.debug "MemberId = ${state.life360MemberId}"
     return(state.life360MemberId)
 }
 
-private getState(boolean present) {
-  if (present)
-    return "arrived"
-  else
-  return "left"
+def haversine(lat1, lon1, lat2, lon2) {
+    def R = 6372.8
+    // In kilometers
+    def dLat = Math.toRadians(lat2 - lat1)
+    def dLon = Math.toRadians(lon2 - lon1)
+    lat1 = Math.toRadians(lat1)
+    lat2 = Math.toRadians(lat2)
+
+    def a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
+    def c = 2 * Math.asin(Math.sqrt(a))
+    def d = R * c
+    return(d)
 }
 
+private arriving() {
+  if (device.currentValue('presence') == "not present" && memberPresence == "present")
+    return true
+  else
+    return false
+}
+
+private departing() {
+  if (device.currentValue('presence') == "present" && memberPresence == "not present")
+    return true
+  else
+    return false
+}
 
 def refresh() {
   parent.refresh()
   parent.updateMembers()
-    //return null
-}
-
-def setBattery(int percent, boolean charging, charge) {
-    if(percent != device.currentValue("battery")) { sendEvent(name: "battery", value: percent) }
-
-    def ps = device.currentValue("powerSource") == "BTRY" ? "false" : "true"
-    if(charge != ps) { sendEvent(name: "powerSource", value: (charging ? "DC":"BTRY")) }
 }
 
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {

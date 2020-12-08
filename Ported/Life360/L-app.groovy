@@ -45,6 +45,8 @@
  *  This would not be possible without his work.
  *
  *  Changes:
+ *  2.5.0 - 12/06/20 - Moved all member location functionality to Location Tracker child Driver
+                       Keeping only Circle level functionality at parent app level
  *  2.2.0 - 12/04/20 - bug fixes and sorted places list added back in
  *  2.1.4 - 12/03/20 - Cleanup and more bug extermination
  *  2.1.3 - 12/02/20 - Bug fixes, moved stuff around and cleaned up some more cruft
@@ -69,7 +71,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-  state.version = "2.1.0"
+  state.version = "2.5.0"
 }
 
 definition(
@@ -286,7 +288,6 @@ def installed() {
             if (childDevice)
           {
             if(logEnable) log.debug "Child Device Successfully Created"
-           generateInitialEvent (member, childDevice)
            }
       }
     }
@@ -324,12 +325,11 @@ def createCircleSubscription() {
         log.debug (e)
     }
 
-
     if (result.data?.hookUrl) {
           if(logEnable) log.debug "Webhook creation successful."
         log.info "Subscribed to Circle Notifications, Confirmation: ${result.data?.hookUrl}"
 
-        runEvery1Minute(updateMembers)
+        scheduleUpdates()
       }
 
     }
@@ -362,14 +362,9 @@ def updated() {
 
           if (childDevice) {
             if(logEnable) log.debug "Child Device Successfully Created"
-            generateInitialEvent (member, childDevice)
+            scheduleUpdates()
            }
       }
-        else {
-            // if(logEnable) log.debug "Find by Member Id = ${memberId}"
-        def member = state.members.find{it.id==memberId}
-            generateInitialEvent (member, deviceWrapper)
-        }
     }
 
     def childDevices = childList()
@@ -382,75 +377,30 @@ def updated() {
             if (member) state.members.remove(member)
         }
     }
-    // Avi - if we updated the app, make sure we reschedule the updateMembers function
-    // runEvery1Minute(updateMembers)
-}
-
-def generateInitialEvent (member, childDevice) {
-    if(logEnable) log.debug "In generateInitialEvent - (${state.version})"
-
-    updateMembers() // Perform an update for the first time
-
-    runEvery1Minute(updateMembers) // Schedule to update every minute - this is just in case and may need to be removed
+    //if we updated the app, make sure we reschedule the updateMembers function
+    scheduleUpdates()
 }
 
 def initialize() {
   // TODO: subscribe to attributes, devices, locations, etc.
 }
 
-def haversine(lat1, lon1, lat2, lon2) {
-    def R = 6372.8
-    // In kilometers
-    def dLat = Math.toRadians(lat2 - lat1)
-    def dLon = Math.toRadians(lon2 - lon1)
-    lat1 = Math.toRadians(lat1)
-    lat2 = Math.toRadians(lat2)
-
-    def a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2)
-    def c = 2 * Math.asin(Math.sqrt(a))
-    def d = R * c
-    return(d)
-}
-
 def placeEventHandler() {
   if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
 
-/* Avi commented out - let's see how it behaves when a push causes an updatemembers() invocation which will get the right data to the presence event....
-    def circleId = params?.circleId
-    def placeId = params?.placeId
-    def userId = params?.userId
-    def direction = params?.direction
-    def timestamp = params?.timestamp
-
-    if (placeId == settings.place) {
-    def presenceState = (direction=="in")
-    def externalId = "${app.id}.${userId}"
-
-    // find the appropriate child device based on my app id and the device network id
-    def deviceWrapper = getChildDevice("${externalId}")
-
-    // invoke the generatePresenceEvent method on the child device
-    if (deviceWrapper) {
-      deviceWrapper.generatePresenceEvent(presenceState, 0)
-        if(logEnable) log.debug "Life360 event raised on child device: ${externalId}"
-    }
-       else {
-        log.warn "Life360 couldn't find child device associated with inbound Life360 event."
-      }
-    }
-*/
-
-// Avi - all we need in a push event is to force an update of life360 attributes for all circle members
-//       to ensure we are all up to date
-// (Hey - we already got a full payload with the push message so why not take full advantage of all that fine data?)
-
+  // we got a PUSH EVENT from Life360 - better update everything...
   updateMembers()
-
 }
+
 
 def refresh() {
     listCircles()
+    scheduleUpdates()
+}
+
+def scheduleUpdates() {
     updateMembers()
+    runEvery1Minute(updateMembers)
 }
 
 def updateMembers(){
@@ -468,94 +418,38 @@ def sendCmd(url, result){
 }
 
 def cmdHandler(resp, data) {
-// Avi - this is a consolidation of several pieces of logic in 2.0.9 as well as moving out km and miles conversion math to
-//       the driver level for consistency applying local unit conversions at the local level.
+// Avi - pushed all data straight down to child device for self-containment
 
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
         result = resp.getJson()
     def members = result.members
     state.members = members
 
-    if (logEnable) log.info result // If in debug then might as well examine the entire payload...
+    // If in debug then might as well examine the entire payload received from Life360...
+    if (logEnable) log.info result
+
+    // Get a *** sorted *** list of places for easier navigation
+    def thePlaces = state.places.sort { a, b -> a.name <=> b.name }.name
+    def home = state.places.find{it.id==settings.place}
+
+    // Iterate through each member and trigger an update from payload
 
       settings.users.each {memberId->
           def externalId = "${app.id}.${memberId}"
-             def member = state.members.find{it.id==memberId}
+          def member = state.members.find{it.id==memberId}
+          try {
+              // find the appropriate child device based on app id and the device network id
+              def deviceWrapper = getChildDevice("${externalId}")
 
-            try {
-                // find the appropriate child device based on my app id and the device network id
-                def deviceWrapper = getChildDevice("${externalId}")
+              // send circle places and home to individual children
+              deviceWrapper.generatePresenceEvent(member, thePlaces, home)
 
-                // Define all variables required for event and extraInfo
-
-                def address1 = (member.location.name) ? member.location.name : member.location.address1
-                // if we are on the free version then both name and address1 may return null so set to "No Data"
-                if (!address1) address1 = "No Data"
-                // not used - def address2 = (member.location.address2) ? member.location.address2 : "No Data"
-
-                def avatar
-                def avatarHtml
-                def speed = member.location.speed.toFloat()
-
-                // Below includes a check for iPhone sometime reporting speed of -1 and set to 0
-                def speedMetric = (speed == -1) ? new Double (0) : speed.toDouble().round(2)
-
-                // Get a *** sorted *** list of places for easier navigation
-                def thePlaces = state.places.sort { a, b -> a.name <=> b.name }.name
-
-                def battery = Math.round(member.location.battery.toDouble())
-                def since = member.location.since
-                // not used? - def endTimestamp = member.location.endTimestamp
-
-                // Convert 0 1 to false true
-                def charging = member.location.charge == "0" ? "false" : "true"
-                def moving = member.location.inTransit == "0" ? "false" : "true"
-                def driving = member.location.isDriving == "0" ? "false" : "true"
-                def wifi = member.location.wifiState == "0" ? "false" : "true"
-
-                // Location Variables and values instantiation for figuring out where we are in the universe...
-                // get Home location from user selection of place in Life360 places
-                def home = state.places.find{it.id==settings.place}
-                if (logEnable) log.info "home = $home"
-
-                def latitude = member.location.latitude.toFloat() // current member latitude
-                def longitude = member.location.longitude.toFloat() // current member longitude
-                def homeLatitude = home.latitude.toFloat()
-                def homeLongitude = home.longitude.toFloat()
-                def homeRadius = home.radius.toFloat()
-                def distanceAway = haversine(latitude, longitude, homeLatitude, homeLongitude) * 1000 // in meters
-
-                // We are home (isPresent = true) if our current distance is less than our home radius perimeter
-                memberPresence = (distanceAway < homeRadius) ? "present" : "not present"
-
-                // force location name and coordinates to "Home" if we are indeed within the radius of home...
-                if (memberPresence == "present") {
-                  address1 = "Home"
-                  // latitude = homeLatitude
-                  // longitude = homeLongitude
-                }
-
-                if(logEnable) log.info "Life360 Update members ($member.firstName), address1: ($address1), location: ($latitude, $longitude), place: ($homeLatitude, $homeLongitude), radius: ($homeRadius), dist: ($distanceAway), present: ($memberPresence)"
-
-
-                // Avatar Variables
-                if (member.avatar != null){
-                    avatar = member.avatar
-                    avatarHtml =  "<img src= \"${avatar}\">"
-                } else {
-                    avatar = "not set"
-                    avatarHtml = "not set"
-                }
-
-        // Send entire payload to corresponding life360 tracker device
-                deviceWrapper.generatePresenceEvent(memberPresence, address1, battery, charging, distanceAway, endTimestamp, moving, driving, latitude, longitude, since, speedMetric, wifi, thePlaces, avatar, avatarHtml)
-
-            } catch(e) {
-                if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
-                if(logEnable) log.debug e
-            }
-        }
-    }
+          } catch(e) {
+              if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
+              if(logEnable) log.debug e
+          }
+      }
+  }
 }
 
 def uninstalled() {
