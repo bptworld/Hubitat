@@ -38,6 +38,7 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
  *
  *  Changes:
+*   1.5.1 - 12/08/20 - Added initialization code for additional attributes / preferences
  *  1.5.0 - 12/06/20 - Moved all location functionality to child driver from parent app -and-
                        Added:
                          - Minimum Transit Speed Preference - use to set a custom speed threshold
@@ -126,6 +127,7 @@ metadata {
 
 // Avi - added as a trigger to force renew / revalidate webhook subscription to Life360 notifications
         command "refreshCirclePush"
+        command "testConnector"
 // Avi - end adds
 
   }
@@ -147,8 +149,12 @@ preferences {
     input "historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15"
     input "historyHourType", "bool", title: "Time Selection for History Tile (Off for 24h, On for 12h)", required: false, defaultValue: false
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
+
 }
 
+def testConnector() {
+//  subscribe
+}
 def refreshCirclePush() {
     // Avi - manually ensure that Life360 notifications subscription is in order / valid
     log.info "Attempting to resubscribe to circle notifications"
@@ -282,7 +288,19 @@ def sendHistory(msgValue) {
 
 def installed() {
     log.info "Location Tracker User Driver Installed"
+
     historyClearData()
+
+    if (logEnable) log.info "Setting attributes to initial values"
+
+      // Set prefernces to initial values as a means to prevent run-time errors
+
+      updateSetting ( name: "inTransitThreshold", value: "0" )
+      updateSetting ( name: "isDrivingThreshold", value: "0")
+      updateSetting ( name: "memberFriendlyName", value: "Mr. Roboto" )
+
+      address1prev = "No Data"
+      sendEvent ( name: address1prev, value: address1prev )
 }
 
 def updated() {
@@ -582,7 +600,7 @@ private departing() {
 
 def refresh() {
   parent.refresh()
-  parent.updateMembers()
+  // parent.updateMembers()
 }
 
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {
