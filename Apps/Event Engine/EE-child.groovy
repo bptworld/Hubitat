@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.5 - 12/10/20 - Adjustments to time restrictions
 *  2.4.4 - 12/06/20 - Added new option to Mode - Use Mode as a Condition but NOT as a Trigger
 *  2.4.3 - 12/06/20 - Added 'Condition Helpers', added a 'Dim Warning option' to 'Reverse with Delay', fix for %time%
 *  2.4.2 - 12/05/20 - Added a second 'Reverse' cron option
@@ -59,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.4"
+    state.version = "2.4.5"
 }
 
 definition(
@@ -83,7 +84,10 @@ preferences {
 
 def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
-        display() 
+        display()
+        testLogEnable = true
+        if(testLogEnable) log.info "---------------------------------------------------------------------------------------------"
+        if(state.conditionsMap == null) { state.conditionsMap = [:] }
         state.theCogTriggers = "<b><u>Conditions</u></b><br>"
         section("Instructions:", hideable:true, hidden:true) {
             paragraph "<b>Notes:</b>"
@@ -110,7 +114,7 @@ def pageConfig() {
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
                 ["xLock":"Locks"],
-                ["xMotion":"Motion Sensors"], 
+                ["xMotion":"Motion Sensors"],
                 ["xPower":"Power Setpoint"],
                 ["xPresence":"Presence Sensor"],
                 ["xSwitch":"Switches"],
@@ -123,16 +127,15 @@ def pageConfig() {
 
             if(triggerType == null) triggerType = ""
             if(timeDaysType == null) timeDaysType = ""
-//state.mySettings = [:]
-            if(state.mySettings == null) state.mySettings = [:]
+
             if(triggerType != "") {
-                theData = "enum;${triggerType}"
-                state.mySettings.put("triggerType",theData)
+                theData = "${triggerType}"
+                state.conditionsMap.put("triggerType",theData)
+                if(testLogEnable) log.info "In triggerType - ${theData}"
             } else {
-                state.mySettings.remove("triggerType")
+                state.conditionsMap.remove("triggerType")
             }
-            app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
-            
+
             if(triggerType.contains("tTimeDays")) {
                 input "timeDaysType", "enum", title: "Time/Days/Mode - Sub-Menu", options: [
                     ["tBetween":"Between Two Times"],
@@ -151,33 +154,32 @@ def pageConfig() {
             }
 
             if(timeDaysType != "") {
-                theData = "enum;${timeDaysType}"
-                state.mySettings.put("timeDaysType",theData)
+                theData = "${timeDaysType}"
+                state.conditionsMap.put("timeDaysType",theData)
+                if(testLogEnable) log.info "In timeDaysType - ${theData}"
             } else {
-                state.mySettings.remove("timeDaysType")
+                state.conditionsMap.remove("timeDaysType")
             }
-            app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
-            
+          
             input "triggerAndOr", "bool", title: "Use 'AND' or 'OR' between Condition types", description: "andOr", defaultValue:false, submitOnChange:true, width:12
             if(triggerAndOr) {
-                theData = "bool;${triggerAndOr}"
-                state.mySettings.put("triggerAndOr",theData)
+                theData = "${triggerAndOr}"
+                state.conditionsMap.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ANY</b> Condition is true"
                 state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ALL</b> Condition are true (Using AND)<br>"
                 state.theCogTriggers += "<b>*</b> Cog will fire when <b>ANY</b> Condition is true (Using OR)<br>"
             } else {
-                theData = "bool;${triggerAndOr}"
-                state.mySettings.put("triggerAndOr",theData)
+                theData = "${triggerAndOr}"
+                state.conditionsMap.put("triggerAndOr",theData)
                 paragraph "Cog will fire when <b>ALL</b> Conditions are true"
                 state.theCogTriggers -= "<b>*</b> Cog will fire when <b>ANY</b> Condition is true (Using OR)<br>"
                 state.theCogTriggers += "<b>*</b> Cog will fire when <b>ALL</b> Condition are true (Using AND)<br>"
             }
             paragraph "<small>* Excluding any Time/Days/Mode selections.</small>"
             paragraph "<hr>"
-            
-            app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
-            if(testLogEnable) log.info "mySettings: ${mySettings}"
-            
+            theData = "${triggerAndOr}"
+            state.conditionsMap.put("triggerAndOr",theData)
+            if(testLogEnable) log.info "In triggerAndOr - ${theData}"
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
@@ -449,17 +451,15 @@ def pageConfig() {
                 if(contactEvent) {
                     theList = []
                     contactEvent.each { ids ->
-                        if(testLogEnable) log.info "Working on $contactEvent"
                         theId = ids.id
                         theList << theId
                     }
-                    theData = "capability;${theList};${csClosedOpen};${contactANDOR}"
-                    if(testLogEnable) log.info "theData: $theData"
-                    state.mySettings.put("contactEvent",theData)
+                    theData = "${theList};${csClosedOpen};${contactANDOR}"
+                    state.conditionsMap.put("contactEvent",theData)
+                    if(testLogEnable) log.info "In contactEvent - ${theData}"
                 } else {
-                    state.mySettings.remove("contactEvent")
+                    state.conditionsMap.remove("contactEvent")
                 }
-                app.updateSetting("mySettings",[value:"${state.mySettings}",type:"text"])
 
                 input "contactRestrictionEvent", "capability.contactSensor", title: "Restrict By Contact Sensor", required:false, multiple:true, submitOnChange:true
                 if(contactRestrictionEvent) {
@@ -1636,49 +1636,40 @@ def pageConfig() {
 // ***** Start Switches per Mode *****   
             if(actionType.contains("aSwitchesPerMode")) {
                 paragraph "<b>Switches Per Mode</b>"
+                paragraph "- <b>To add or edit</b>, fill in the Mode, Device and Values below. Then press the Add/Edit button<br>- <b>To delete a variable</b>, fill in the Mode. Then press the Delete button.<br><small>* Remember to click outside all fields before pressing a button.</small>"
+                input "sdPerModeName", "mode", title: "Mode", required:false, width:6                 
                 input "setDimmersPerMode", "capability.switchLevel", title: "Dimmers to set Per Mode", required:false, multiple:true, submitOnChange:true
-                if(setDimmersPerMode) {                    
-                    paragraph "- <b>To add or edit Mode Lighting</b>, simply fill in the Name and Value below. Values will be added as soon as you click outside the value field.<br>- <b>To delete a variable</b>, enter in the Name and flip the Add/Edit Delete switch to on."
-                    input "sdPerModeName", "mode", title: "Mode", required:false, width:6
-                    input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, defaultValue: 99, range: '1..99'
-                    input "sdPerModeColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
-                    if(sdPerModeColorTemp) {
-                        input "sdPerModeTemp", "number", title: "Color Temperature", submitOnChange:true
-                        app.removeSetting("sdPerModeColor")
-                    } else {
-                        input "sdPerModeColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
-                            ["Soft White":"Soft White - Default"],
-                            ["White":"White - Concentrate"],
-                            ["Daylight":"Daylight - Energize"],
-                            ["Warm White":"Warm White - Relax"],
-                            "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
-                        app.removeSetting("sdPerModeTemp")
-                    }
-                    input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
-                    input "sdPerModeDel", "button", title: "Delete Mode", width: 3
-                    input "sdPerModeRefresh", "button", title: "Refresh Table", width: 3
-                    input "sdPerModeClear", "button", title: "Clear Table", width: 3
-                    paragraph "<small>* Each action will happen immediately after pressing button.</small>"
-                    paragraph "<hr>"
-                    if(state.thePerModeMap == null) {
-                        theMap = "No devices are setup"
-                    } else {
-                        theMap = state.thePerModeMap
-                    }
-                    paragraph "${theMap}"
-                    paragraph "<hr>"
-                    
-                    state.theCogActions += "<b>-</b> Switches Per Mode: ${setDimmersPerMode}<br>${state.thePerModeMap}<br>"   
-                } else {
-                    state.theCogActions -= "<b>-</b> Switches Per Mode: ${setDimmersPerMode}<br>${state.thePerModeMap}<br>"
-                    app.removeSetting("setDimmersPerMode")
-                    app.removeSetting("sdPerModeName")
-                    app.removeSetting("sdPerModeLevel")
-                    app.removeSetting("sdPerModeTemp")
+                input "sdPerModeLevel", "number", title: "On Level (1 to 99)", required:false, multiple:false, defaultValue: 99, range: '1..99'
+                input "sdPerModeColorTemp", "bool", title: "Use Color (off) or Temperature (on)", defaultValue:false, submitOnChange:true
+                if(sdPerModeColorTemp) {
+                    input "sdPerModeTemp", "number", title: "Color Temperature", submitOnChange:true
                     app.removeSetting("sdPerModeColor")
-                    state.sdPerModeMap = [:]
-                    state.thePerModeMap = null
+                } else {
+                    input "sdPerModeColor", "enum", title: "Color (leave blank for no change)", required:false, multiple:false, options: [
+                        ["Soft White":"Soft White - Default"],
+                        ["White":"White - Concentrate"],
+                        ["Daylight":"Daylight - Energize"],
+                        ["Warm White":"Warm White - Relax"],
+                        "Red","Green","Blue","Yellow","Orange","Purple","Pink"], submitOnChange:true
+                    app.removeSetting("sdPerModeTemp")
                 }
+                // *** Start Mode Map ***
+                input "sdPerModeAdd", "button", title: "Add/Edit Mode", width: 3
+                input "sdPerModeDel", "button", title: "Delete Mode", width: 3
+                input "sdPerModeRefresh", "button", title: "Refresh Table", width: 3
+                input "sdPerModeClear", "button", title: "Clear Table", width: 3
+                paragraph "<small>* Remember to click outside all fields before pressing a button.</small>"
+                paragraph "<hr>"
+                if(state.thePerModeMap == null) {
+                    theMap = "No devices are setup"
+                } else {
+                    theMap = state.thePerModeMap
+                }
+                paragraph "${theMap}"
+                // *** End Mode Map ***
+                paragraph "<hr>"
+
+                state.theCogActions += "<b>-</b> Switches Per Mode: ${setDimmersPerMode}<br>${state.thePerModeMap}<br>"   
             } else {
                 state.theCogActions -= "<b>-</b> Switches Per Mode: ${setDimmersPerMode}<br>${state.thePerModeMap}<br>"
                 app.removeSetting("setDimmersPerMode")
@@ -1835,9 +1826,9 @@ def pageConfig() {
             }        
             paragraph "<b>Special Action Option</b><br>Sometimes devices can miss commands due to HE's speed. This option will allow you to adjust the time between commands being sent."
             input "actionDelay", "number", title: "Delay (in milliseconds - 1000 = 1 second, 3 sec max)", range: '1..3000', defaultValue:100, required:true, submitOnChange:true
-            state.theCogActions += "<b>-</b> Delay: ${actionDelay}<br>"
+            state.theCogActions += "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
             if(actionDelay == null || actionDelay == "") {
-                state.theCogActions -= "<b>-</b> Delay: ${actionDelay}<br>"
+                state.theCogActions -= "<b>-</b> Delay Between Actions: ${actionDelay}<br>"
                 app.updateSetting("actionDelay",[value:"100",type:"number"])
             }
         }                
@@ -2204,6 +2195,7 @@ def startTheProcess(evt) {
         garageDoorRestrictionHandler()
         lockRestrictionHandler()
         motionRestrictionHandler()
+        motionRestrictionHandler2()
         presenceRestrictionHandler()
         switchRestrictionHandler()
         waterRestrictionHandler()
@@ -2960,6 +2952,17 @@ def motionRestrictionHandler() {
         state.rTypeValue1 = "active"
         state.rTypeValue2 = "inactive"
         state.rTypeAO = motionRANDOR
+        restrictionHandler()
+    }
+}
+def motionRestrictionHandler2() {
+    if(motionRestrictionEvent2) {
+        state.rEventName = motionRestrictionEvent2
+        state.rEventType = "motion"
+        state.rType = mrInactiveActive2
+        state.rTypeValue1 = "active"
+        state.rTypeValue2 = "inactive"
+        state.rTypeAO = motionRANDOR2
         restrictionHandler()
     }
 }
@@ -4001,7 +4004,7 @@ def autoSunHandler() {
             if(logEnable) log.debug "In autoSunHandler - timeSunset: ${state.timeSunset} - timeSunrise: ${state.timeSunrise}"
             schedule("0 5 12 ? * * *", autoSunHandler)
             schedule(state.timeSunset, runAtTime1)
-            schedule(state.timeSunrise, runAtTime2)
+            if(!timeBetweenSunRestriction) schedule(state.timeSunrise, runAtTime2)
         }
     }
     if(sunriseEndTime) schedule(sunriseEndTime, runAtTime2)
@@ -4078,7 +4081,7 @@ def checkTimeBetween() {
         state.betweenTime = true
     }    
     if(fromTime) { schedule(fromTime, runAtTime1) }
-    if(toTime) { schedule(toTime, runAtTime2) }
+    if(toTime && !timeBetweenRestriction) { schedule(toTime, runAtTime2) }
     if(logEnable) log.debug "In checkTimeBetween - betweenTime: ${state.betweenTime}"
 }
 
@@ -4479,24 +4482,57 @@ def sdPerModeHandler(data) {
     if(logEnable) log.debug "In sdPerModeHandler (${state.version}) - data: ${data}"
     def (theType, newData) = data.split(";")
     if(state.sdPerModeMap == null) state.sdPerModeMap = [:]
-    theName = sdPerModeName.toString()
+    theMode = sdPerModeName.toString()
     if(theType == "add") {
         if(sdPerModeLevel == null) sdPerModeLevel = "NA"
         if(sdPerModeTemp == null) sdPerModeTemp = "NA"
         if(sdPerModeColor == null) sdPerModeColor = "NA"        
         theValue = "${setDimmersPerMode}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}"
-        state.sdPerModeMap.put(theName,theValue)
+        state.sdPerModeMap.put(theMode,theValue)
     } else if(theType == "del") {
-        state.sdPerModeMap.remove(theName)
+        state.sdPerModeMap.remove(theMode)
     }      
     if(state.sdPerModeMap) {
         thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b>"
         def theData = "${state.sdPerModeMap}".split(",")
         theData.each { it -> 
-            def (name, theDevices, theLevel, theTemp, theColor) = it.split(":")
-            if(name.startsWith(" ") || name.startsWith("[")) name = name.substring(1)
+            def (tMode, theDevices, theLevel, theTemp, theColor) = it.split(":")
+            if(tMode.startsWith(" ") || name.startsWith("[")) name = name.substring(1)
             theColor = theColor.replace("]","")
-            thePerModeMap += "<tr><td>${name}<td>${theDevices}<td>${theLevel}<td>${theTemp}<td>${theColor}"
+            thePerModeMap += "<tr><td>${tMode}<td>${theDevices}<td>${theLevel}<td>${theTemp}<td>${theColor}"
+        }                
+        thePerModeMap += "</table>"
+    }
+    state.thePerModeMap = thePerModeMap    
+    app.removeSetting("setDimmersPerMode")
+    app.removeSetting("sdPerModeName")
+    app.removeSetting("sdPerModeLevel")
+    app.removeSetting("sdPerModeTemp")
+    app.removeSetting("sdPerModeColor")
+}
+
+def conditionsMapHandler(data) {
+    if(logEnable) log.debug "In conditionsMapHandler (${state.version}) - data: ${data}"
+    def (theType, newData) = data.split(";")
+    if(state.sdPerModeMap == null) state.sdPerModeMap = [:]
+    theMode = sdPerModeName.toString()
+    if(theType == "add") {
+        if(sdPerModeLevel == null) sdPerModeLevel = "NA"
+        if(sdPerModeTemp == null) sdPerModeTemp = "NA"
+        if(sdPerModeColor == null) sdPerModeColor = "NA"        
+        theValue = "${setDimmersPerMode}:${sdPerModeLevel}:${sdPerModeTemp}:${sdPerModeColor}"
+        state.sdPerModeMap.put(theMode,theValue)
+    } else if(theType == "del") {
+        state.sdPerModeMap.remove(theMode)
+    }      
+    if(state.sdPerModeMap) {
+        thePerModeMap =  "<table width=90% align=center><tr><td><b><u>Mode</u></b><td><b><u>Devices</u></b><td><b><u>Level</u></b><td><b><u>Temp</u></b><td><b><u>Color</u></b>"
+        def theData = "${state.sdPerModeMap}".split(",")
+        theData.each { it -> 
+            def (tMode, theDevices, theLevel, theTemp, theColor) = it.split(":")
+            if(tMode.startsWith(" ") || name.startsWith("[")) name = name.substring(1)
+            theColor = theColor.replace("]","")
+            thePerModeMap += "<tr><td>${tMode}<td>${theDevices}<td>${theLevel}<td>${theTemp}<td>${theColor}"
         }                
         thePerModeMap += "</table>"
     }
@@ -4512,6 +4548,9 @@ def appButtonHandler(buttonPressed) {
     state.whichButton = buttonPressed
     if(logEnable) log.debug "In testButtonHandler (${state.version}) - Button Pressed: ${state.whichButton}"
     if(sdPerModeName && state.whichButton == "sdPerModeDel"){
+        if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
+        sdPerModeHandler("del;nothing")
+    } else if(sdPerModeName && state.whichButton == "sdPerModeDel"){
         if(logEnable) log.debug "In appButtonHandler - Working on: ${state.whichButton}"
         sdPerModeHandler("del;nothing")
     } else if(sdPerModeName && state.whichButton == "sdPerModeAdd"){
