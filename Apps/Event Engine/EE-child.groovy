@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.6 - 12/13/20 - Adjustments to between two times
 *  2.4.5 - 12/10/20 - Adjustments to time restrictions
 *  2.4.4 - 12/06/20 - Added new option to Mode - Use Mode as a Condition but NOT as a Trigger
 *  2.4.3 - 12/06/20 - Added 'Condition Helpers', added a 'Dim Warning option' to 'Reverse with Delay', fix for %time%
@@ -60,7 +61,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.5"
+    state.version = "2.4.6"
 }
 
 definition(
@@ -253,22 +254,16 @@ def pageConfig() {
                 paragraph "<b>Between two times</b>"
                 input "fromTime", "time", title: "From", required:false, width: 6, submitOnChange:true
                 input "toTime", "time", title: "To", required:false, width: 6
-                input "midnightCheckR", "bool", title: "Does this time frame cross over midnight", defaultValue:false, submitOnChange:true
                 paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                 input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
                 paragraph "<hr>"
                 if(fromTime) theDate1 = toDateTime(fromTime)
-                if(midnightCheckR) {
-                    if(toTime) theDate2 = toDateTime(toTime)+1
-                } else {
-                    if(toTime) theDate2 = toDateTime(toTime)
-                }
-                state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${theDate2} - Midnight: ${midnightCheckR} - as Restriction: ${timeBetweenRestriction}<br>"
+                if(toTime) theDate2 = toDateTime(toTime)
+                state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${theDate2} - as Restriction: ${timeBetweenRestriction}<br>"
             } else {
-                state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${theDate2} - Midnight: ${midnightCheckR} - as Restriction: ${timeBetweenRestriction}<br>"
+                state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${theDate2} - as Restriction: ${timeBetweenRestriction}<br>"
                 app.removeSetting("fromTime")
                 app.removeSetting("toTime")
-                app.updateSetting("midnightCheckR",[value:"false",type:"bool"])
                 app.updateSetting("timeBetweenRestriction",[value:"false",type:"bool"])
             }
 // -----------
@@ -2131,7 +2126,8 @@ def initialize() {
             }
         }
         autoSunHandler()
-        checkTimeBetween()
+        if(fromTime) { schedule(fromTime, startTimeBetween) }
+        if(toTime) { schedule(toTime, endTimeBetween) }
 
         if(runNow) {
             app.updateSetting("runNow",[value:"false",type:"bool"])
@@ -2207,7 +2203,6 @@ def startTheProcess(evt) {
             if(state.whatToDo == "stop" || state.whatToDo == "skipToReverse") {
                 if(logEnable) log.debug "In startTheProcess - Skipping Time checks - whatToDo: ${state.whatToDo}"
             } else {
-                checkTimeBetween()
                 checkTimeSun()
                 dayOfTheWeekHandler()
                 modeHandler()
@@ -4059,30 +4054,16 @@ def checkTimeSun() {
     if(logEnable) log.debug "In checkTimeSun - timeBetweenSun: ${state.timeBetweenSun}"
 }
 
-def checkTimeBetween() {
-    if(logEnable) log.debug "In checkTimeBetween (${state.version})"
-    if(fromTime && toTime) {
-        startTime = toDateTime(fromTime)
-        if(midnightCheckR) {
-            endTime = toDateTime(toTime)+1
-        } else {
-            endTime = toDateTime(toTime)
-        }
-        state.betweenTime = timeOfDayIsBetween(startTime, endTime, new Date(), location.timeZone)
-        if(logEnable) log.debug "In checkTimeBetween - ${startTime} - ${endTime}"
-        if(state.betweenTime) {
-            if(logEnable) log.debug "In checkTimeBetween - Time within range"
+def startTimeBetween() {
+    if(logEnable) log.debug "In startTimeBetween (${state.version}) - Start"
+    state.betweenTime = true
+    runAtTime1()
+}
 
-        } else {
-            if(logEnable) log.debug "In checkTimeBetween - Time outside of range"
-        }
-    } else {
-        if(logEnable) log.debug "In checkTimeBetween - NO Time Restriction Specified"
-        state.betweenTime = true
-    }    
-    if(fromTime) { schedule(fromTime, runAtTime1) }
-    if(toTime && !timeBetweenRestriction) { schedule(toTime, runAtTime2) }
-    if(logEnable) log.debug "In checkTimeBetween - betweenTime: ${state.betweenTime}"
+def endTimeBetween() {
+    if(logEnable) log.debug "In endTimeBetween (${state.version}) - End"
+    state.betweenTime = false
+    if(timeBetweenRestriction == false) { runAtTime2() }
 }
 
 def certainTime() {
