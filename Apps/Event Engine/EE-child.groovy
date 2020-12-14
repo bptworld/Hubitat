@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.8 - 12/14/20 - Adjustments
 *  2.4.7 - 12/13/20 - More adjustments to between two times
 *  2.4.6 - 12/13/20 - Adjustments to between two times
 *  2.4.5 - 12/10/20 - Adjustments to time restrictions
@@ -62,7 +63,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.7"
+    state.version = "2.4.8"
 }
 
 definition(
@@ -258,17 +259,18 @@ def pageConfig() {
                 paragraph "Between two times can also be used as a Restriction. If used as a Restriction, Reverse and Permanent Dim will not run while this Condition is false."
                 input "timeBetweenRestriction", "bool", defaultValue:false, title: "Between two times as Restriction", description: "Between two times Restriction", submitOnChange:true
                 paragraph "<hr>"
-                if(fromTime) theDate1 = toDateTime(fromTime)
-                if(toTime) theDate2 = toDateTime(toTime)            
-                toValue = theDate2.compareTo(theDate1)
-                if(toValue > 0) {
-                    nextToDate = theDate2
-                } else {
-                    nextToDate = theDate2.next()
+                if(fromTime && toTime) {
+                    theDate1 = toDateTime(fromTime)
+                    theDate2 = toDateTime(toTime)            
+                    toValue = theDate2.compareTo(theDate1)
+                    if(toValue > 0) {
+                        nextToDate = theDate2
+                    } else {
+                        nextToDate = theDate2.next()
+                    }
+                    state.betweenTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
+                    paragraph "From: ${theDate1} - To: ${nextToDate}<br>Currently, Between equals ${state.betweenTime}"
                 }
-                state.betweenTime = timeOfDayIsBetween(theDate1, nextToDate, new Date(), location.timeZone)
-                paragraph "From: ${theDate1} - To: ${nextToDate}<br>Between = ${state.betweenTime}"
-                
                 state.theCogTriggers += "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction}<br>"
             } else {
                 state.theCogTriggers -= "<b>-</b> Between two times - From: ${theDate1} - To: ${nextToDate} - as Restriction: ${timeBetweenRestriction}<br>"
@@ -2153,7 +2155,9 @@ def initialize() {
         } else {
             state.betweenTime = true
         }
-        
+        if(fromTime && toTime) {
+            if(logEnable) { log.debug "In initialize - betweenTime: ${state.betweenTime}" }
+        }
         if(runNow) {
             app.updateSetting("runNow",[value:"false",type:"bool"])
             startTheProcess()
