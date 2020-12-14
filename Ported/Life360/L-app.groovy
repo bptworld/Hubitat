@@ -45,6 +45,7 @@
  *  This would not be possible without his work.
  *
  *  Changes:
+ *  2.5.1 - 12/11/20 - Resubscribe to notifications on Update() event
  *  2.5.0 - 12/06/20 - Moved all member location functionality to Location Tracker child Driver
                        Keeping only Circle level functionality at parent app level
  *  2.2.0 - 12/04/20 - bug fixes and sorted places list added back in
@@ -362,6 +363,7 @@ def updated() {
 
           if (childDevice) {
             if(logEnable) log.debug "Child Device Successfully Created"
+            createCircleSubscription()
             scheduleUpdates()
            }
       }
@@ -387,7 +389,7 @@ def initialize() {
 
 def placeEventHandler() {
   if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
-
+  log.info "Life360 with States - Received Life360 Push Event - Updating Members Location Status..."
   // we got a PUSH EVENT from Life360 - better update everything...
   updateMembers()
 }

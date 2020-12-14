@@ -127,7 +127,7 @@ metadata {
 
 // Avi - added as a trigger to force renew / revalidate webhook subscription to Life360 notifications
         command "refreshCirclePush"
-        command "testConnector"
+//        command "testConnector"
 // Avi - end adds
 
   }
@@ -337,7 +337,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     if (logEnable) log.info "$memberFirstName $memberLastName"
     def memberFullName = memberFirstName + " " + memberLastName
     sendEvent( name: "memberName", value: memberFullName )
-    sendEvent( name: "memberFriendlyName", value: memberFriendlyName )
+//    sendEvent( name: "memberFriendlyName", value: memberFriendlyName )
 
     // *** Places List ***
     sendEvent( name: "savedPlaces", value: thePlaces )
@@ -387,7 +387,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     // *** On the move ***
     // if we changed from present --> not present then we are departing from home
     def prevAddress = (departing) ? "Home" : device.currentValue('address1')
-    if (prevAddress == null) prevAddress = "Lost"
+    if (prevAddress == null || prevAddress == "") prevAddress = "Between Places"
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
 
