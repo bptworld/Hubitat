@@ -386,20 +386,30 @@ def generatePresenceEvent(member, thePlaces, home) {
 
     // *** On the move ***
     // if we changed from present --> not present then we are departing from home
-    def prevAddress = (departing) ? "Home" : device.currentValue('address1')
-    if (prevAddress == null || prevAddress == "") prevAddress = "Between Places"
+    // def prevAddress = (departing) ? "Home" : device.currentValue('address1')
+       def prevAddress = device.currentValue('address1')
+    if (prevAddress == null || prevAddress == "") prevAddress = "No Data"
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
 
+    // *** Address ***
     if (address1 != prevAddress) {
-        // *** Update address & presence ***
+        // Update old and current address attributes
+        sendEvent( name: "address1prev", value: prevAddress)
+        sendEvent( name: "address1", value: address1 )
+        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
+        sendEvent( name: "since", value: member.location.since )
+
+    }
+
+    // *** Presence ***
+    if (arrived || departed) {
         def linkText = getLinkText(device)
-        def handlerName = (departing) ? "left" : "arrived"
+        def handlerName = (departing) ? "departed" : "arrived"
         def descriptionText = "Life360 member " + linkText + " has " + handlerName
 
         if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
 
-        // *** Presence ***
         def results = [
           name: "presence",
           value: memberPresence,
@@ -407,18 +417,10 @@ def generatePresenceEvent(member, thePlaces, home) {
           descriptionText: descriptionText,
           handlerName: handlerName
         ]
+        if (logEnable) log.info "results = $results"
 
         sendEvent (results)
         state.presence = memberPresence
-
-        if (logEnable) log.info "results = $results"
-
-        // *** Address ***
-        // Update old and current address attributes
-        sendEvent( name: "address1prev", value: prevAddress)
-        sendEvent( name: "address1", value: address1 )
-        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
-        sendEvent( name: "since", value: member.location.since )
     }
 
     // *** Coordinates ***
@@ -548,7 +550,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
     def wifiState = member.location.wifiState == "0" ? "false" : "true"
-    def sSwitch = wifiState.toBoolean() ? "on" : "off"
+    def sSwitch = (wifiState=="true") ? "on" : "off"
     sendEvent( name: "wifiState", value: wifiState )
     sendEvent( name: "switch", value: sSwitch )
 
