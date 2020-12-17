@@ -45,25 +45,11 @@
  *  This would not be possible without his work.
  *
  *  Changes:
+ *  2.5.2 - 12/17/20 - 30 second refresh intervals 
+                       To-Do: Provide a user preference field in app for refresh intervals
  *  2.5.1 - 12/11/20 - Resubscribe to notifications on Update() event
  *  2.5.0 - 12/06/20 - Moved all member location functionality to Location Tracker child Driver
                        Keeping only Circle level functionality at parent app level
- *  2.2.0 - 12/04/20 - bug fixes and sorted places list added back in
- *  2.1.4 - 12/03/20 - Cleanup and more bug extermination
- *  2.1.3 - 12/02/20 - Bug fixes, moved stuff around and cleaned up some more cruft
- *  2.1.2 - 12/01/20 - Merged generatePresenceEvent and extraInfo calls
- *  2.1.1 - 12/01/20 - Applied a more wholesome compare to v 2.0.9 and fixed all the issues resulting
- *  2.1.0 - 12/01/20 - Made a bunch of changes primarily to consolidate multiple functions logic and ensure attributes are in sync
- *  a.v.i -          - Multiple changes begin here as part of a potential pull request
- *  2.0.9 - 10/07/20 - Attempting fix for jumping GPS
- *  2.0.8 - 09/26/20 - Testing Fix by @jpoeppelman1
- *  2.0.7 - 08/25/20 - Added more error catching
- *  2.0.6 - 06/01/20 - Added code to remove devices if app is uninstalled
- *  2.0.5 - 04/27/20 - Cosmetic changes
- *  2.0.4 - 04/15/20 - Code adjustments, container driver no longer used. New devices need to be created.
- *  2.0.3 - 04/01/20 - Added a timeout to get http commands
- *  2.0.2 - 01/21/20 - Adjusted app to work with new driver
- *  2.0.1 - 01/03/20 - Adjusted logging to not show sensitive data
  *  ---
  *  v1.0.0 - 06/30/19 - Initial port of ST app (cwwilson08) (bptworld)
  */
@@ -402,7 +388,7 @@ def refresh() {
 }
 
 def scheduleUpdates() {
-    log.info "In scheduleUpdates..."
+    if (logEnable) log.info "In scheduleUpdates..."
     schedule("0/30 * * * * ? *", updateMembers)
     updateMembers()
 //  runEvery1Minute(updateMembers)
@@ -432,9 +418,6 @@ def cmdHandler(resp, data) {
         result = resp.getJson()
     def members = result.members
     state.members = members
-
-    // If in debug then might as well examine the entire payload received from Life360...
-    if (logEnable) log.info result
 
     // Get a *** sorted *** list of places for easier navigation
     def thePlaces = state.places.sort { a, b -> a.name <=> b.name }.name
