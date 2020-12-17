@@ -397,16 +397,22 @@ def placeEventHandler() {
 
 def refresh() {
     listCircles()
+    unschedule()
     scheduleUpdates()
 }
 
 def scheduleUpdates() {
+    log.info "In scheduleUpdates..."
+    schedule("0/30 * * * * ? *", updateMembers)
     updateMembers()
-    runEvery1Minute(updateMembers)
+//  runEvery1Minute(updateMembers)
+
 }
 
 def updateMembers(){
     if(logEnable) log.debug "In updateMembers - (${state.version})"
+
+    log.info "in updateMembers... Check if it is 30 sec. intervals..."
     if (!state?.circle) state.circle = settings.circle
 
     def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
