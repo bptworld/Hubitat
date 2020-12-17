@@ -115,7 +115,7 @@ metadata {
         attribute "contact", "string"
         attribute "acceleration", "string"
         attribute "temperature", "number"
-        attribute "switch", "enum", ["on", "off"]
+        attribute "switch", "string"
 // Avi - end adds
 
         // **** Life360 ****
@@ -127,7 +127,6 @@ metadata {
 
 // Avi - added as a trigger to force renew / revalidate webhook subscription to Life360 notifications
         command "refreshCirclePush"
-//        command "testConnector"
 // Avi - end adds
 
   }
@@ -152,9 +151,19 @@ preferences {
 
 }
 
-def testConnector() {
-//  subscribe
+def off() {
+
 }
+
+def on() {
+
+}
+
+def refresh() {
+  parent.refresh()
+}
+
+
 def refreshCirclePush() {
     // Avi - manually ensure that Life360 notifications subscription is in order / valid
     log.info "Attempting to resubscribe to circle notifications"
@@ -378,48 +387,50 @@ def generatePresenceEvent(member, thePlaces, home) {
     def memberPresence = (distanceAway <= homeRadius) ? "present" : "not present"
     if (memberPresence == "present") address1 = "Home"
 
-    // *** Block For Testing Purposes Only ***
-    //    distanceAway = 20000
-    //    address1 = "Target"
-    //    memberPresence = "not present"
-    // ** End Block for Testing Purposes Only ***
+// *** Block For Testing Purposes Only ***
+//    distanceAway = 20000
+//    address1 = "Target"
+//    memberPresence = "not present"
+// ** End Block for Testing Purposes Only ***
 
-    // *** On the move ***
-    // if we changed from present --> not present then we are departing from home
-    def prevAddress = (departing) ? "Home" : device.currentValue('address1')
-    if (prevAddress == null || prevAddress == "") prevAddress = "Between Places"
+    def linkText = getLinkText(device)
+    def handlerName = ( departing() ) ? "departed" : "arrived"
+    def descriptionText = "Life360 member " + linkText + " has " + handlerName
+
+    if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
+
+    def results = [
+      name: "presence",
+      value: memberPresence,
+      linkText: linkText,
+      descriptionText: descriptionText,
+      handlerName: handlerName
+    ]
+
+
+    if (logEnable) log.info "results = $results"
+
+    sendEvent (results)
+//    sendEvent (name: "presence", value: memberPresence)
+    state.presence = memberPresence
+
+
+    // *** Address ***
+    // def prevAddress = (departing) ? "Home" : device.currentValue('address1')
+       def prevAddress = device.currentValue('address1')
+    if (prevAddress == null || prevAddress == "") prevAddress = "No Data"
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
 
     if (address1 != prevAddress) {
-        // *** Update address & presence ***
-        def linkText = getLinkText(device)
-        def handlerName = (departing) ? "left" : "arrived"
-        def descriptionText = "Life360 member " + linkText + " has " + handlerName
-
-        if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
-
-        // *** Presence ***
-        def results = [
-          name: "presence",
-          value: memberPresence,
-          linkText: linkText,
-          descriptionText: descriptionText,
-          handlerName: handlerName
-        ]
-
-        sendEvent (results)
-        state.presence = memberPresence
-
-        if (logEnable) log.info "results = $results"
-
-        // *** Address ***
         // Update old and current address attributes
         sendEvent( name: "address1prev", value: prevAddress)
         sendEvent( name: "address1", value: address1 )
         sendEvent( name: "lastLocationUpdate", value: lastUpdated )
         sendEvent( name: "since", value: member.location.since )
     }
+
+
 
     // *** Coordinates ***
     sendEvent( name: "longitude", value: longitude )
@@ -548,7 +559,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
     def wifiState = member.location.wifiState == "0" ? "false" : "true"
-    def sSwitch = wifiState.toBoolean() ? "on" : "off"
+    def sSwitch = (wifiState=="true") ? "on" : "off"
     sendEvent( name: "wifiState", value: wifiState )
     sendEvent( name: "switch", value: sSwitch )
 
@@ -596,11 +607,6 @@ private departing() {
     return true
   else
     return false
-}
-
-def refresh() {
-  parent.refresh()
-  // parent.updateMembers()
 }
 
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {
