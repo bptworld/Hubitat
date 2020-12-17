@@ -38,7 +38,8 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for his work on the Life360 ST driver
  *
  *  Changes:
- *
+ *  1.5.2 - 12/17/20 - Added initialization code for additional attributes / preferences
+                     - Fixed Switch capability errors
  *  1.5.1 - 12/17/20 - Adjustments to work with Life360 Tracker
  *  1.5.0 - 12/06/20 - Moved all location functionality to child driver from parent app -and-
                        Added:
@@ -66,12 +67,12 @@ metadata {
         capability "Battery"
         capability "Power Source"
 
-// Avi - added capabilities to support Sharptools.io Hero tile active attributes functionality
+// Avi - Capabilities to support Sharptools.io Hero tile active attributes functionality
         capability "Switch" // for Sharptools Wifi Active Attribute (Hero Tile)
         capability "Contact Sensor" // for Sharptools Charging Active Attribute (Hero Tile)
         capability "Acceleration Sensor" // for Sharptools Distance Active Attribute (Hero Tile)
         capability "Temperature Measurement" // for Sharptools Speed Active / Rules Attribute (Hero Tile)
-// Avi - end adds
+// Avi - end
 
         attribute "address1", "string"
         attribute "address1prev", "string"
@@ -101,12 +102,13 @@ metadata {
         attribute "wifiState", "bool"
         attribute "memberName", "string"
         attribute "memberFriendlyName", "string"
-// Avi - added attributes to support capabilities added above for Sharptools.io tile formatting
+
+// Avi - Attributes to support capabilities added above for Sharptools.io tile formatting
         attribute "contact", "string"
         attribute "acceleration", "string"
         attribute "temperature", "number"
-        attribute "switch", "enum", ["on", "off"]
-// Avi - end adds
+        attribute "switch", "string"
+// Avi - end
 
         // **** Life360 ****
         command "refresh"
@@ -115,10 +117,9 @@ metadata {
         command "sendTheMap", ["string"]
         command "historyClearData"
 
-// Avi - added as a trigger to force renew / revalidate webhook subscription to Life360 notifications
+// Avi - Trigger to force renew / revalidate webhook subscription to Life360 notifications
         command "refreshCirclePush"
-// Avi - end adds
-
+// Avi - end
   }
 }
 
@@ -128,11 +129,9 @@ preferences {
     //       this may be restored if the currently applied consolidated logic proves to be unreliable
     // input "maxGPSJump", "number", title: "Max GPS Jump", description: "If you are getting a lot of false readings, raise this value", required: true, defaultValue: 25
     input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
-// Avi add block starts here
     input "memberFriendlyName", "text", title: "Member Friendly Name", description: "(for use in Rules etc.)", defaultValue: "Mr. Roboto"
     input "transitThreshold", "text", title: "Minimum 'Transit' Speed", description: "Set minimum speed for inTransit to be true\n(leave as 0 to use Life360 data)", required: true, defaultValue: "0"
     input "drivingThreshold", "text", title: "Minimum 'Driving' Speed", description: "Set minimum speed for isDriving to be true\n(leave as 0 to use Life360 data)", required: true, defaultValue: "0"
-// Avi add block ends here
     input "avatarFontSize", "text", title: "Avatar Font Size", required: true, defaultValue: "15"
     input "avatarSize", "text", title: "Avatar Size by Percentage", required: true, defaultValue: "75"
     input "historyFontSize", "text", title: "History Font Size", required: true, defaultValue: "15"
@@ -140,8 +139,21 @@ preferences {
     input "logEnable", "bool", title: "Enable logging", required: true, defaultValue: false
 }
 
+def off() {
+  // empty stub needed for actuator not to throw errors
+}
+
+def on() {
+  // empty stub needed for actuator not to throw errors
+}
+
+def refresh() {
+  parent.refresh()
+}
+
+
 def refreshCirclePush() {
-    // Avi - manually ensure that Life360 notifications subscription is in order / valid
+    // Manually ensure that Life360 notifications subscription is current / valid
     log.info "Attempting to resubscribe to circle notifications"
     parent.createCircleSubscription()
 }
@@ -273,7 +285,18 @@ def sendHistory(msgValue) {
 
 def installed() {
     log.info "Location Tracker User Driver Installed"
+
     historyClearData()
+
+    if (logEnable) log.info "Setting attributes to initial values"
+
+    // Set preferences to initial values as a means to prevent run-time errors
+    updateSetting ( name: "inTransitThreshold", value: "0" )
+    updateSetting ( name: "isDrivingThreshold", value: "0" )
+    updateSetting ( name: "memberFriendlyName", value: "Mr. Roboto" )
+
+    address1prev = "No Data"
+    sendEvent ( name: address1prev, value: address1prev )
 }
 
 def updated() {
@@ -299,18 +322,15 @@ def historyClearData() {
 }
 
 def generatePresenceEvent(member, thePlaces, home) {
-// memberPresence, address1, battery, charge, istanceAway, endTimestamp, inTransit, isDriving, latitude , longitude, since, speedMetric, wifiState, thePlaces, avatar, avatarHtml) {
 
     // Define all variables required upfront and initialize where applicable
     def lastUpdated = new Date()
 
     // *** Member Name ***
     def memberFirstName = (member.firstName) ? member.firstName : ""
-    def memberLastName = (member.lastName) ? member.lastName :""
-    if (logEnable) log.info "$memberFirstName $memberLastName"
+    def memberLastName = (member.lastName) ? member.lastName : ""
     def memberFullName = memberFirstName + " " + memberLastName
     sendEvent( name: "memberName", value: memberFullName )
-    sendEvent( name: "memberFriendlyName", value: memberFriendlyName )
 
     // *** Places List ***
     sendEvent( name: "savedPlaces", value: thePlaces )
@@ -367,7 +387,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     if (address1 != prevAddress) {
         // *** Update address & presence ***
         def linkText = getLinkText(device)
-        def handlerName = (departing) ? "left" : "arrived"
+        def handlerName = ( departing() ) ? "left" : "arrived"
         def descriptionText = "Life360 member " + linkText + " has " + handlerName
 
         if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
@@ -522,7 +542,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
     def wifiState = member.location.wifiState == "0" ? "false" : "true"
-    def sSwitch = wifiState.toBoolean() ? "on" : "off"
+    def sSwitch = (wifiState=="true") ? "on" : "off"
     sendEvent( name: "wifiState", value: wifiState )
     sendEvent( name: "switch", value: sSwitch )
 
@@ -570,11 +590,6 @@ private departing() {
     return true
   else
     return false
-}
-
-def refresh() {
-  parent.refresh()
-  parent.updateMembers()
 }
 
 private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) {
