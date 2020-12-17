@@ -38,9 +38,9 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for his work on the Life360 ST driver
  *
  *  Changes:
-*   1.5.2 - 12/17/20 - Added initialization code for additional attributes / preferences
+ *  1.5.2 - 12/17/20 - Added initialization code for additional attributes / preferences
                      - Fixed Switch capability errors
-*   1.5.1 - 12/17/20 - Adjustments to work with Life360 Tracker
+ *  1.5.1 - 12/17/20 - Adjustments to work with Life360 Tracker
  *  1.5.0 - 12/06/20 - Moved all location functionality to child driver from parent app -and-
                        Added:
                          - Minimum Transit Speed Preference - use to set a custom speed threshold
