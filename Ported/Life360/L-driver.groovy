@@ -35,9 +35,11 @@
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
- *  Special thanks to namespace: "tmleafs", author: "tmleafs" for the work on the Life360 ST driver
+ *  Special thanks to namespace: "tmleafs", author: "tmleafs" for his work on the Life360 ST driver
  *
  *  Changes:
+ *
+ *  1.5.1 - 12/17/20 - Adjustments to work with Life360 Tracker
  *  1.5.0 - 12/06/20 - Moved all location functionality to child driver from parent app -and-
                        Added:
                          - Minimum Transit Speed Preference - use to set a custom speed threshold
@@ -47,17 +49,6 @@
                          - memberName attribute - First Name + Last Name from Life360 member info
                          - memberFriendlyName driver preference and attribute
  *  1.3.0 - 12/04/20 - Fixed condition to trigger presence & address changes
- *  1.2.6 - 12/03/20 - Exterminating bugs
- *  1.2.5 - 12/02/20 - Prelim fix for address1prev and address1 eventing to allow for Life360 Tracker to keep track of departures / arrivals
- *  1.2.4 - 12/02/20 - Fix wifi status not updating on bpt-StatusTile1
- *  1.2.3 - 12/01/20 - Bug fixes and some winter cleaning
- *  1.2.2 - 12/01/20 - Updated supporting sharptools attributes and merged generatePresenceEvent with extraInfo calls
- *  1.2.1 - 12/01/20 - Avi cleaning up code and applying a more wholesome compare to v 1.1.1 functionality
- *  1.2.0 - 12/01/20 - Avi cleaning up code that I preliminary deem unnecessary (pre-testing)
- *  a.v.i - 11/29/20 - Avi modifications to include capabilities for SharpTools and changes to update logic for main attributes
- *
- *  1.1.1 - 11/22/20 - Fix by Avi (@9369292f1992a7d0e654). Thank you!
- *  1.1.0 - 11/18/20 - Changed boolean to bool
  *  ---
  *  1.0.0 - 01/18/20 - Initial release
  */
@@ -398,7 +389,7 @@ def generatePresenceEvent(member, thePlaces, home) {
         // *** Address ***
         // Update old and current address attributes
         sendEvent( name: "address1prev", value: prevAddress)
-        sendEvent( name: "address1", value: address1 )
+        sendEvent( name: "address1", value: address1, isStateChange: true )
         sendEvent( name: "lastLocationUpdate", value: lastUpdated )
         sendEvent( name: "since", value: member.location.since )
     }
