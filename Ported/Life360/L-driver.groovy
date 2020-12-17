@@ -378,7 +378,8 @@ def generatePresenceEvent(member, thePlaces, home) {
           value: memberPresence,
           linkText: linkText,
           descriptionText: descriptionText,
-          handlerName: handlerName
+          handlerName: handlerName,
+            isStateChange: true
         ]
 
         sendEvent (results)
