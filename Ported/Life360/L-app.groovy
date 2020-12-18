@@ -45,6 +45,8 @@
  *  This would not be possible without his work.
  *
  *  Changes:
+ *
+ *  2.5.3 - 12/17/20 - Fixed a logging issue
  *  2.5.2 - 12/17/20 - 30 second refresh intervals 
                        To-Do: Provide a user preference field in app for refresh intervals
  *  2.5.1 - 12/11/20 - Resubscribe to notifications on Update() event
@@ -58,7 +60,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-  state.version = "2.5.0"
+    state.version = "2.5.3"
 }
 
 definition(
@@ -252,12 +254,12 @@ def listCircles() {
 
 def installed() {
     if(logEnable) log.debug "In installed - (${state.version})"
-  if(!state?.circle) state.circle = settings.circle
+    if(!state?.circle) state.circle = settings.circle
 
     settings.users.each {memberId->
-      def member = state.members.find{it.id==memberId}
+        def member = state.members.find{it.id==memberId}
         if(member) {
-          // Modified from @Stephack
+            // Modified from @Stephack
             def childDevice = childList()
             if(childDevice.find{it.data.vcId == "${member}"}){
                 if(logEnable) log.debug "${member.firstName} already exists...skipping"
@@ -270,13 +272,12 @@ def installed() {
                     log.error "Child device creation failed with error = ${e}"
                 }
             }
-          // end mod
+            // end mod
 
-            if (childDevice)
-          {
-            if(logEnable) log.debug "Child Device Successfully Created"
-           }
-      }
+            if (childDevice) {
+                if(logEnable) log.debug "Child Device Successfully Created"
+            }
+        }
     }
     createCircleSubscription()
 }
@@ -288,13 +289,12 @@ def createCircleSubscription() {
     def deleteUrl = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
     try { // ignore any errors - there many not be any existing webhooks
 
-      httpDelete (uri: deleteUrl, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response ->
-         result = response}
-        }
+        httpDelete (uri: deleteUrl, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response ->
+            result = response}
+    }
 
     catch (e) {
-
-      log.debug (e)
+        log.debug (e)
     }
 
     // subscribe to the life360 webhook to get push notifications on place events within this circle
@@ -306,20 +306,19 @@ def createCircleSubscription() {
     def postBody =  "url=${hookUrl}"
     def result = null
     try {
-       httpPost(uri: url, body: postBody, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response ->
-       result = response}
+        httpPost(uri: url, body: postBody, headers: ["Authorization": "Bearer ${state.life360AccessToken}" ]) {response ->
+            result = response}
     } catch (e) {
         log.debug (e)
     }
 
     if (result.data?.hookUrl) {
-          if(logEnable) log.debug "Webhook creation successful."
-        log.info "Subscribed to Circle Notifications, Confirmation: ${result.data?.hookUrl}"
-
+        if(logEnable) log.debug "Webhook creation successful."
+        if(logEnable) log.info "Subscribed to Circle Notifications, Confirmation: ${result.data?.hookUrl}"
         scheduleUpdates()
-      }
-
     }
+
+}
 
 def updated() {
     if(logEnable) log.debug "In updated - (${state.version})"
@@ -327,12 +326,12 @@ def updated() {
     if(logEnable) log.debug "In updated() method."
 
     settings.users.each {memberId->
-    def externalId = "${app.id}.${memberId}"
-    def deviceWrapper = getChildDevice("${externalId}")
+        def externalId = "${app.id}.${memberId}"
+        def deviceWrapper = getChildDevice("${externalId}")
 
-    if (!deviceWrapper) { // device isn't there - so we need to create
-        member = state.members.find{it.id==memberId}
-         // Modified from @Stephack
+        if (!deviceWrapper) { // device isn't there - so we need to create
+            member = state.members.find{it.id==memberId}
+            // Modified from @Stephack
             def childDevice = childList()
             if(childDevice.find{it.data.vcId == "${member}"}){
                 if(logEnable) log.debug "${member.firstName} already exists...skipping"
@@ -345,14 +344,14 @@ def updated() {
                     log.error "Child device creation failed with error = ${e}"
                 }
             }
-        // end mod
+            // end mod
 
-          if (childDevice) {
-            if(logEnable) log.debug "Child Device Successfully Created"
-            createCircleSubscription()
-            scheduleUpdates()
-           }
-      }
+            if (childDevice) {
+                if(logEnable) log.debug "Child Device Successfully Created"
+                createCircleSubscription()
+                scheduleUpdates()
+            }
+        }
     }
 
     def childDevices = childList()
@@ -370,14 +369,14 @@ def updated() {
 }
 
 def initialize() {
-  // TODO: subscribe to attributes, devices, locations, etc.
+    // TODO: subscribe to attributes, devices, locations, etc.
 }
 
 def placeEventHandler() {
-  if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
-  log.info "Life360 with States - Received Life360 Push Event - Updating Members Location Status..."
-  // we got a PUSH EVENT from Life360 - better update everything...
-  updateMembers()
+    if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
+    log.info "Life360 with States - Received Life360 Push Event - Updating Members Location Status..."
+    // we got a PUSH EVENT from Life360 - better update everything...
+    updateMembers()
 }
 
 
@@ -391,14 +390,14 @@ def scheduleUpdates() {
     if (logEnable) log.info "In scheduleUpdates..."
     schedule("0/30 * * * * ? *", updateMembers)
     updateMembers()
-//  runEvery1Minute(updateMembers)
+    //  runEvery1Minute(updateMembers)
 
 }
 
 def updateMembers(){
     if(logEnable) log.debug "In updateMembers - (${state.version})"
 
-    log.info "in updateMembers... Check if it is 30 sec. intervals..."
+    if (logEnable) log.info "in updateMembers... Check if it is 30 sec. intervals..."
     if (!state?.circle) state.circle = settings.circle
 
     def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
@@ -412,51 +411,51 @@ def sendCmd(url, result){
 }
 
 def cmdHandler(resp, data) {
-// Avi - pushed all data straight down to child device for self-containment
+    // Avi - pushed all data straight down to child device for self-containment
 
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
         result = resp.getJson()
-    def members = result.members
-    state.members = members
+        def members = result.members
+        state.members = members
 
-    // Get a *** sorted *** list of places for easier navigation
-    def thePlaces = state.places.sort { a, b -> a.name <=> b.name }.name
-    def home = state.places.find{it.id==settings.place}
+        // Get a *** sorted *** list of places for easier navigation
+        def thePlaces = state.places.sort { a, b -> a.name <=> b.name }.name
+        def home = state.places.find{it.id==settings.place}
 
-    // Iterate through each member and trigger an update from payload
+        // Iterate through each member and trigger an update from payload
 
-      settings.users.each {memberId->
-          def externalId = "${app.id}.${memberId}"
-          def member = state.members.find{it.id==memberId}
-          try {
-              // find the appropriate child device based on app id and the device network id
-              def deviceWrapper = getChildDevice("${externalId}")
+        settings.users.each {memberId->
+            def externalId = "${app.id}.${memberId}"
+            def member = state.members.find{it.id==memberId}
+            try {
+                // find the appropriate child device based on app id and the device network id
+                def deviceWrapper = getChildDevice("${externalId}")
 
-              // send circle places and home to individual children
-              deviceWrapper.generatePresenceEvent(member, thePlaces, home)
+                // send circle places and home to individual children
+                deviceWrapper.generatePresenceEvent(member, thePlaces, home)
 
-          } catch(e) {
-              if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
-              if(logEnable) log.debug e
-          }
-      }
-  }
+            } catch(e) {
+                if(logEnable) log.debug "In cmdHandler - catch - member: ${member}"
+                if(logEnable) log.debug e
+            }
+        }
+    }
 }
 
 def uninstalled() {
-  removeChildDevices(getChildDevices())
-  unschedule()
-  unsubscribe()
+    removeChildDevices(getChildDevices())
+    unschedule()
+    unsubscribe()
 }
 
 private removeChildDevices(delete) {
-  delete.each {deleteChildDevice(it.deviceNetworkId)}
+    delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
 def childList() {
-  def children = getChildDevices()
+    def children = getChildDevices()
     if(logEnable) log.debug "In childList - children: ${children}"
-  return children
+    return children
 }
 
 // ********** Normal Stuff **********
@@ -472,7 +471,7 @@ def getImage(type) {          // Modified from @Stephack Code
 }
 
 def getFormat(type, myText="") {      // Modified from @Stephack Code
-  if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
     if(type == "line") return "<hr style='background-color:#1A77C9; height: 1px; border: 0;'>"
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
@@ -484,26 +483,25 @@ def display() {
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-    paragraph getFormat("line")
-  }
+        paragraph getFormat("line")
+    }
 }
 
 def display2() {
-  section() {
-    paragraph getFormat("line")
-    paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
+    section() {
+        paragraph getFormat("line")
+        paragraph "<div style='color:#1A77C9;text-align:center;font-size:20px;font-weight:bold'>${state.name} - ${state.version}</div>"
         paragraph "${state.footerMessage}"
-  }
+    }
 }
 
 def getHeaderAndFooter() {
-    //if(logEnable) log.debug "In getHeaderAndFooter (${state.version})"
     def params = [
-      uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
-    requestContentType: "application/json",
-    contentType: "application/json",
-    timeout: 30
-  ]
+        uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/info.json",
+        requestContentType: "application/json",
+        contentType: "application/json",
+        timeout: 30
+    ]
 
     try {
         def result = null
@@ -511,8 +509,6 @@ def getHeaderAndFooter() {
             state.headerMessage = resp.data.headerMessage
             state.footerMessage = resp.data.footerMessage
         }
-        //if(logEnable) log.debug "In getHeaderAndFooter - headerMessage: ${state.headerMessage}"
-        //if(logEnable) log.debug "In getHeaderAndFooter - footerMessage: ${state.footerMessage}"
     }
     catch (e) {
         state.headerMessage = "<div style='color:#1A77C9'><a href='https://github.com/bptworld/Hubitat' target='_blank'>BPTWorld Apps and Drivers</a></div>"
