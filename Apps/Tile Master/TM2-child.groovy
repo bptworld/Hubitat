@@ -33,6 +33,7 @@
  *
  *  Changes:
  *
+ *  2.5.1 - 12/20/20 - Adjustments to device value
  *  2.5.0 - 12/06/20 - Added more error catching
  *  ---
  *  1.0.0 - 02/16/19 - Initially started working on this concept.
@@ -44,7 +45,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Tile Master 2"
-	state.version = "2.5.0"
+	state.version = "2.5.1"
 }
 
 definition(
@@ -251,7 +252,7 @@ def pageConfig() {
                             input "hideAttr_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttr = app."hideAttr_$x"
                             
-                            try{ deviceStatus = theDevice.currentValue("${deviceAtt}") }
+                            try{ deviceStatus = theDevice.currentValue("${deviceAtt}").replace(",",".") }
                             catch (e) {}
                             if(deviceStatus == null) deviceStatus = "No Data"
                             if(deviceStatus && deviceAtt) paragraph "Current Status of Device Attribute: ${theDevice} - ${deviceAtt} - ${deviceStatus}"
@@ -481,7 +482,7 @@ def pageConfig() {
                             input "hideAttra_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttra = app."hideAttra_$x"
                             
-                            try{ deviceStatusa = theDevicea.currentValue("${deviceAtta}") }
+                            try{ deviceStatusa = theDevicea.currentValue("${deviceAtta}").replace(",",".") }
                             catch (e) {}
                             if(deviceStatusa == null) deviceStatusa = "No Data"
                             if(deviceStatusa && deviceAtta) paragraph "Current Status of Device Attribute: ${theDevicea} - ${deviceAtta} - ${deviceStatusa}"
@@ -710,7 +711,7 @@ def pageConfig() {
                             input "hideAttrb_$x", "bool", title: "Hide Attribute value<br>", defaultValue: false, description: "Attribute", submitOnChange: true
                             hideAttrb = app."hideAttrb_$x"
                             
-                            try { deviceStatusb = theDeviceb.currentValue("${deviceAttb}") }
+                            try { deviceStatusb = theDeviceb.currentValue("${deviceAttb}").replace(",",".") }
                             catch (e) {}
                             if(deviceStatusb == null) deviceStatusb = "No Data"
                             if(deviceStatusb && deviceAttb) paragraph "Current Status of Device Attribute: ${theDeviceb} - ${deviceAttb} - ${deviceStatusb}"
