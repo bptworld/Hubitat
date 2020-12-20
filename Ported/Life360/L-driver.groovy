@@ -533,7 +533,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     // *** Charging State ***
     def charge = (member.location.charge == "0") ? "false" : "true"
     sendEvent( name: "charge", value: charge )
-    sendEvent( name: "powerSource", value: (charge ? "DC":"BTRY"))
+    sendEvent( name: "powerSource", value: (charge == "true"? "DC" : "BTRY"))
 
     // Sharptools.io active tile attribute: if charging set contact sensor to open
     def cContact = (charge.toBoolean()) ? "open" : "closed"
