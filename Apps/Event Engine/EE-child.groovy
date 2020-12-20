@@ -37,6 +37,7 @@
 *
 *  Changes:
 *
+*  2.4.9 - 12/20/20 - Adjustment to Setpoints
 *  2.4.8 - 12/14/20 - Adjustments
 *  2.4.7 - 12/13/20 - More adjustments to between two times
 *  2.4.6 - 12/13/20 - Adjustments to between two times
@@ -63,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.8"
+    state.version = "2.4.9"
 }
 
 definition(
@@ -114,6 +115,7 @@ def pageConfig() {
                 ["xGVar":"Global Variables"],
                 ["xHSMAlert":"HSM Alerts *** not tested ***"],
                 ["xHSMStatus":"HSM Status *** not tested ***"],
+                ["xHubCheck":"Hub Check"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
                 ["xLock":"Locks"],
@@ -651,6 +653,30 @@ def pageConfig() {
                 state.theCogTriggers -= "<b>-</b> By HSM Status: ${hsmStatusEvent}<br>"
                 app.removeSetting("hsmStatusEvent")
             }
+// -----------            
+            if(triggerType.contains("xHubCheck")) {
+                paragraph "<b>Hub Check</b><br>This can be used to check any hub on your network."
+                input "xhttpIP", "string", title: "Enter the IP Address of the Hub (ie. http://192.168.86.81)", defaultValue: "http://", submitOnChange:true
+                input "xhttpCommand", "enum", title: "Choose Command", options: [
+                    ["/hub/advanced/freeOSMemory":"Check Free OS Memory"]
+                ], submitOnChange:true
+                input "xhubSecurity", "bool", title: "Hub Security Enabled", submitOnChange:true
+                if(xhubSecurity) {
+                    input "xhubUsername", "string", title: "Hub Username", required:true
+                    input "xhubPassword", "password", title: "Hub Password", required:true
+                } else {
+                    app.removeSetting("xhubUsername")
+                    app.removeSetting("xhubPassword")
+                }
+                paragraph "<hr>"
+                state.theCogActions += "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
+            } else {
+                state.theCogActions -= "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
+                app.removeSetting("xhttpIP")
+                app.removeSetting("xhttpCommand")
+                app.removeSetting("xhubUsername")
+                app.removeSetting("xhubPassword")
+            }
 // -----------
             if(triggerType.contains("xHumidity")) {
                 paragraph "<b>Humidity</b>"
@@ -1161,7 +1187,7 @@ def pageConfig() {
                 app.updateSetting("setSDPointLow",[value:"false",type:"bool"])
             }
 
-            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || (customEvent && deviceORsetpoint)) {
+            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || xhttpCommand || (customEvent && deviceORsetpoint)) {
                 input "setpointRollingAverage", "bool", title: "Use a rolling Average", description: "average", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) {
                     paragraph "<small>*All values are rounded for this option</small>"
@@ -1301,7 +1327,7 @@ def pageConfig() {
                 ["aNotification":"Notifications (speech/push/flash)"], 
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
-                // ["aSendHTTP":"Send HTTP Request"],
+                //["aSendHTTP":"Send HTTP Command"],
                 ["aGVar":"Set Global Variable"],
                 ["aSwitch":"Switches"],
                 ["aSwitchSequence":"Switches In Sequence"],
@@ -1434,25 +1460,30 @@ def pageConfig() {
                 state.theCogActions -= "<b>-</b> Rule: ${rmRule} - Action: ${rmAction}<br>"
                 app.removeSetting("rmRule")
             }
-
-            if(actionType.contains("aSendHTTP")) {        // Based on code from Dan Ogorchock - @ogiewon - Thank you
-                paragraph "<b>Send HTTP Request</b>"
-                input "httpIP", "string", title:"Enter IP Address of your HTTP server", submitOnChange:true
-                input "httpPort", "string", title:"Enter Port of your HTTP server", defaultValue: "8080", submitOnChange:true
-                input "httpPath", "string", title:"The Rest of the URL, Starting with Forward Slash", submitOnChange:true
-                input "httpMethod", "enum", title: "Send", options: ["POST","GET","PUT"], defaultValue: "GET", submitOnChange:true, width:6          
-                input "httpContent", "enum", title: "Content-Type", options: ["application/x-www-form-urlencoded","application/json"], defaultValue: "application/x-www-form-urlencoded", submitOnChange:true, width:6
-                if(httpMethod == "POST" || httpMethod == "PUT") {
-                    input "httpBody", "string", title:"Body"
+            if(actionType.contains("aSendHTTP")) {
+                paragraph "<b>Send HTTP Command</b><br>This can be used to send a http command to any hub on your network."
+                input "httpIP", "string", title: "Enter the IP Address of the Hub (ie. http://192.168.86.81)", defaultValue: "http://", submitOnChange:true
+                input "httpCommand", "enum", title: "Choose Command", options: [
+                    ["/hub/reboot":"Reboot Hub"],
+                    ["/hub/restart":"Restart Hub"],
+                    ["/hub/zwaveRepair":"Zwave Repair"]
+                ], submitOnChange:true
+                input "hubSecurity", "bool", title: "Hub Security Enabled", submitOnChange:true
+                if(hubSecurity) {
+                    input "hubUsername", "string", title: "Hub Username", required:true
+                    input "hubPassword", "password", title: "Hub Password", required:true
+                } else {
+                    app.removeSetting("hubUsername")
+                    app.removeSetting("hubPassword")
                 }
                 paragraph "<hr>"
-                state.theCogActions += "<b>-</b> Send HTTP: ${httpMethod} - URL: ${httpIP}:${httpPort}${httpPath} - Body: ${httpBody}<br>"
+                state.theCogActions += "<b>-</b> Send HTTP: ${httpIP}:8080${httpCommand}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Send HTTP: ${httpMethod} - URL: ${httpIP}:${httpPort}${httpPath} - Body: ${httpBody}<br>"
-                app.removeSetting("httpURL")
-                app.removeSetting("httpMethod")
-                app.removeSetting("httpContent")
-                app.removeSetting("httpBody")
+                state.theCogActions -= "<b>-</b> Send HTTP: ${httpIP}:8080${httpCommand}<br>"
+                app.removeSetting("httpIP")
+                app.removeSetting("httpCommand")
+                app.removeSetting("hubUsername")
+                app.removeSetting("hubPassword")
             }
 
             if(actionType.contains("aGVar")) {
@@ -2282,6 +2313,9 @@ def startTheProcess(evt) {
                 } else {
                     globalVariablesTextHandler() 
                 }
+                
+                if(triggerType.contains("xHubCheck")) { sendHttpHandler() }
+                
                 checkingWhatToDo()            
             }
         }
@@ -2334,8 +2368,7 @@ def startTheProcess(evt) {
                             if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
                             if(actionType.contains("aSwitchesPerMode") && setDimmersPerMode) { switchesPerModeActionHandler() }
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                            //if(actionType.contains("aSendHTTP")) { sendHTTPActionHandler(httpPath, httpMethod) }
-                            if(actionType.contains("aSendHTTP")) { runCmd(httpPath, httpMethod) }
+                            if(actionType.contains("aSendHTTP")) { sendHttpHandler() }
                             if(actionType.contains("aNotification")) { 
                                 state.doMessage = true
                                 messageHandler() 
@@ -2831,7 +2864,8 @@ def setpointHandler() {
             spValue = it.currentValue("${state.spType}")
         }
         if(logEnable) log.debug "In setpointHandler - spValue: ${spValue}"
-        if(spValue) {
+        if(spValue || spValue == 0) {
+            if(logEnable) log.debug "In setpointHandler - spValue: ${spValue} - Just because."
             if(useWholeNumber) {
                 setpointValue = Math.round(spValue)
             } else {
@@ -3570,45 +3604,77 @@ def modeChangeActionHandler() {
     setLocationMode(modeAction)
 }
 
-def sendHTTPActionHandler(String varCommand, String method) {
-    if(logEnable) log.debug "In sendHTTPActionHandler - Sending GET to URL: ${httpIP}:${httpPort}${varCommand}"
-    
-    httpPost(
-        [
-            uri: "http://${httpIP}:${httpPort}",
-            path: varCommand,
-            headers:
-            [
-                "Cookie": cookie
-            ]
-        ]
-    ) 
-    {
-        resp ->
-    }  
-}
-
-def runCmd(String varCommand, String method) {        // Based on code from Dan Ogorchock - @ogiewon - Thank you
-    if(logEnable) log.debug "In runCmd (${state.version})"
-    def path = varCommand 
-    def body = ""
-    if(httpBody) body = httpBody
-    def headers = [:] 
-    headers.put("HOST", "${httpIP}:${httpPort}")
-    headers.put("Content-Type", httpContent)
-    try {
-        def hubAction = new hubitat.device.HubAction(
-            method: method,
-            path: path,
-            body: body,
-            headers: headers
-            )
-        if(logEnable) log.debug "In runCmd - Action: $hubAction"
-        return hubAction
+def sendHttpHandler() {        // Based on code from @dman2306. Thank you!
+    cookie = ""
+    state.theIP = ""
+    state.theCommand = ""
+    state.theUser = ""
+    state.thePass = ""
+    if(logEnable) log.debug "In sendHttpHandler - httpCommand: ${httpCommand} - xhttpCommand: ${xhttpCommand}"
+    if(xhttpCommand != null) {
+        log.info "In sendHttpHandler - Using xhttp stuff - ${xhttpIP}:8080${xhttpCommand}"
+        state.theIP = xhttpIP
+        state.theCommand = xhttpCommand
+        state.theUser = xhubUsername
+        state.thePass = xhubPassword
+    } else {
+        log.info "In sendHttpHandler - Using http stuff"
+        state.theIP = httpIP
+        state.theCommand = httpCommand
+        state.theUser = hubUsername
+        state.thePass = hubPassword
     }
-    catch (Exception e) {
-        log.warn "In runCmd - runCmd hit exception ${e} on ${hubAction}"
-    }  
+    if(logEnable) log.debug "In sendHttpHandler - Sending Command to URL: ${state.theIP}:8080${state.theCommand}"
+    if(hubSecurity || xhubSecurity) {
+        httpGet(
+            [
+                uri: "${state.theIP}:8080",
+                path: "/login", query: [loginRedirect: "/"],
+                body: [
+                    username: state.theUser,
+                    password: state.thePass,
+                    submit: "Login"
+                ]
+            ]) {
+            resp -> 
+            cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
+        }
+    }
+    if(state.theCommand.contains("freeOSMemory")) {
+        httpGet(
+            [
+                uri: "${state.theIP}:8080",
+                path: state.theCommand,
+                headers: ["Cookie": cookie]
+            ]
+        ) {
+            resp ->
+            state.theData = resp.data
+            if(logEnable) log.debug "In sendHttpHandler - theCommand: ${state.theCommand} - theData: ${state.theData}"
+        }
+    } else {
+        httpPost(
+            [
+                uri: "${state.theIP}:8080",
+                path: state.theCommand,
+                headers: ["Cookie": cookie]
+            ]
+        ) {
+            resp ->
+        }
+    }
+    
+    if(state.theCommand == "/hub/freeOSMemory") {           
+        if(setpointRollingAverage) {
+            if(state.readings == null) state.readings = []
+            state.readings.add(0,state.theData)           
+            int maxReadingSize = state.spName.size() * numOfPoints
+            int readings = state.readings.size()            
+            if(readings > maxReadingSize) state.readings.removeAt(maxReadingSize)
+            setpointRollingAverageHandler(maxReadingSize)
+            if(state.theAverage >= 0) setpointValue = state.theAverage
+        }
+    }
 }
 
 // ***** Start Cog Copy *****
