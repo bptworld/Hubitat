@@ -37,16 +37,7 @@
 *
 *  Changes:
 *
-*  2.4.9 - 12/20/20 - Adjustment to Setpoints
-*  2.4.8 - 12/14/20 - Adjustments
-*  2.4.7 - 12/13/20 - More adjustments to between two times
-*  2.4.6 - 12/13/20 - Adjustments to between two times
-*  2.4.5 - 12/10/20 - Adjustments to time restrictions
-*  2.4.4 - 12/06/20 - Added new option to Mode - Use Mode as a Condition but NOT as a Trigger
-*  2.4.3 - 12/06/20 - Added 'Condition Helpers', added a 'Dim Warning option' to 'Reverse with Delay', fix for %time%
-*  2.4.2 - 12/05/20 - Added a second 'Reverse' cron option
-*  2.4.1 - 12/04/20 - Minor changes
-*  2.4.0 - 12/03/20 - Code cleanup, added 'Switches In Sequence' Action
+*  2.5.0 - 12/21/20 - Fixed a typo
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
@@ -64,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.4.9"
+    state.version = "2.5.0"
 }
 
 definition(
@@ -669,9 +660,9 @@ def pageConfig() {
                     app.removeSetting("xhubPassword")
                 }
                 paragraph "<hr>"
-                state.theCogActions += "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
+                state.theCogTriggers += "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
             } else {
-                state.theCogActions -= "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
+                state.theCogTriggers -= "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
                 app.removeSetting("xhttpIP")
                 app.removeSetting("xhttpCommand")
                 app.removeSetting("xhubUsername")
