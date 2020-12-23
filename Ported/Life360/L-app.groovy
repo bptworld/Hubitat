@@ -46,8 +46,12 @@
  *
  *  Changes:
  *
+ *  2.5.5 - 12/20/20 - Reliability Improvements:
+                     - Added a 1 sec delay after push event to let data packet catch-up
+                     - Cleaned up Scheduling
+                     - Cleaned up Logging
  *  2.5.3 - 12/17/20 - Fixed a logging issue
- *  2.5.2 - 12/17/20 - 30 second refresh intervals 
+ *  2.5.2 - 12/17/20 - 30 second refresh intervals
                        To-Do: Provide a user preference field in app for refresh intervals
  *  2.5.1 - 12/11/20 - Resubscribe to notifications on Update() event
  *  2.5.0 - 12/06/20 - Moved all member location functionality to Location Tracker child Driver
@@ -60,7 +64,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-    state.version = "2.5.3"
+    state.version = "2.5.5"
 }
 
 definition(
@@ -199,7 +203,7 @@ def listCircles() {
         }
 
         if(circle) {
-            if(logEnable) log.debug "In listPlaces - (${state.version})"
+            if(logEnable) log.trace "In listPlaces - (${state.version})"
             if (app.installationState == "COMPLETE") uninstallOption = true
 
             if (!state?.circle) state.circle = settings.circle
@@ -224,7 +228,7 @@ def listCircles() {
         }
 
         if(place && circle) {
-            if(logEnable) log.debug "In listUsers - (${state.version})"
+            if(logEnable) log.trace "In listUsers - (${state.version})"
             if (app.installationState == "COMPLETE") uninstallOption = true
             if (!state?.circle) state.circle = settings.circle
 
@@ -253,7 +257,7 @@ def listCircles() {
 }
 
 def installed() {
-    if(logEnable) log.debug "In installed - (${state.version})"
+    if(logEnable) log.trace "In installed - (${state.version})"
     if(!state?.circle) state.circle = settings.circle
 
     settings.users.each {memberId->
@@ -262,9 +266,9 @@ def installed() {
             // Modified from @Stephack
             def childDevice = childList()
             if(childDevice.find{it.data.vcId == "${member}"}){
-                if(logEnable) log.debug "${member.firstName} already exists...skipping"
+                if(logEnable) log.info "${member.firstName} already exists...skipping"
             } else {
-                if(logEnable) log.debug "Creating Life360 Device: " + member
+                if(logEnable) log.info "Creating Life360 Device: " + member
                 try{
                     addChildDevice("BPTWorld", "Location Tracker User Driver", "${app.id}.${member.id}", 1234, ["name": "Life360 - ${member.firstName}", isComponent: false])
                 }
@@ -275,7 +279,7 @@ def installed() {
             // end mod
 
             if (childDevice) {
-                if(logEnable) log.debug "Child Device Successfully Created"
+                if(logEnable) log.info "Child Device Successfully Created"
             }
         }
     }
@@ -283,8 +287,8 @@ def installed() {
 }
 
 def createCircleSubscription() {
-    if(logEnable) log.debug "In createCircleSubscription - (${state.version})"
-    if(logEnable) log.debug "Remove any existing Life360 Webhooks for this Circle."
+    if(logEnable) log.trace "In createCircleSubscription - (${state.version})"
+    if(logEnable) log.info "Remove any existing Life360 Webhooks for this Circle."
 
     def deleteUrl = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
     try { // ignore any errors - there many not be any existing webhooks
@@ -299,7 +303,7 @@ def createCircleSubscription() {
 
     // subscribe to the life360 webhook to get push notifications on place events within this circle
 
-    if(logEnable) log.debug "Create a new Life360 Webhooks for this Circle."
+    if(logEnable) log.info "Create a new Life360 Webhooks for this Circle."
     createAccessToken() // create our own OAUTH access token to use in webhook url
     def hookUrl = "${getApiServerUrl()}/${hubUID}/apps/${app.id}/placecallback?access_token=${state.accessToken}"
     def url = "https://api.life360.com/v3/circles/${state.circle}/webhook.json"
@@ -313,17 +317,17 @@ def createCircleSubscription() {
     }
 
     if (result.data?.hookUrl) {
-        if(logEnable) log.debug "Webhook creation successful."
-        if(logEnable) log.info "Subscribed to Circle Notifications, Confirmation: ${result.data?.hookUrl}"
+        log.info "Successfully subscribed to Life360 circle push events"
+        if(logEnable) log.debug "Confirmation: ${result.data?.hookUrl}"
+        updateMembers()
         scheduleUpdates()
     }
 
 }
 
 def updated() {
-    if(logEnable) log.debug "In updated - (${state.version})"
+    if(logEnable) log.trace "In updated - (${state.version})"
     if (!state?.circle) { state.circle = settings.circle }
-    if(logEnable) log.debug "In updated() method."
 
     settings.users.each {memberId->
         def externalId = "${app.id}.${memberId}"
@@ -334,9 +338,9 @@ def updated() {
             // Modified from @Stephack
             def childDevice = childList()
             if(childDevice.find{it.data.vcId == "${member}"}){
-                if(logEnable) log.debug "${member.firstName} already exists...skipping"
+                if(logEnable) log.info "${member.firstName} already exists...skipping"
             } else {
-                if(logEnable) log.debug "Creating Life360 Device: " + member
+                if(logEnable) log.info "Creating Life360 Device: " + member
                 try{
                     addChildDevice("BPTWorld", "Location Tracker User Driver", "${app.id}.${member.id}", 1234, ["name": "Life360 - ${member.firstName}", isComponent: false])
                 }
@@ -347,9 +351,8 @@ def updated() {
             // end mod
 
             if (childDevice) {
-                if(logEnable) log.debug "Child Device Successfully Created"
+                if(logEnable) log.info "Child Device Successfully Created"
                 createCircleSubscription()
-                scheduleUpdates()
             }
         }
     }
@@ -364,7 +367,8 @@ def updated() {
             if (member) state.members.remove(member)
         }
     }
-    //if we updated the app, make sure we reschedule the updateMembers function
+    updateMembers()
+    // Since we updated the app, make sure we also reschedule the updateMembers function
     scheduleUpdates()
 }
 
@@ -373,34 +377,32 @@ def initialize() {
 }
 
 def placeEventHandler() {
-    if(logEnable) log.warn "Life360 placeEventHandler: params= THIS IS THE LINE I'M LOOKING FOR"
-    log.info "Life360 with States - Received Life360 Push Event - Updating Members Location Status..."
-    // we got a PUSH EVENT from Life360 - better update everything...
-    updateMembers()
+    if(logEnable) log.debug "Life360 placeEventHandler: Received Life360 Push Event - Updating Members Location Status..."
+
+    // we got a PUSH EVENT from Life360 - better update everything by pulling a fresh data packet
+    // But first, wait a second to let packet catch-up with push event
+    runIn(1, updateMembers)
 }
 
 
 def refresh() {
     listCircles()
-    unschedule()
+    updateMembers()
     scheduleUpdates()
 }
 
 def scheduleUpdates() {
-    if (logEnable) log.info "In scheduleUpdates..."
+    if (logEnable) log.trace "In scheduleUpdates..."
+    // Continue to update Info for all members every 30 seconds
     schedule("0/30 * * * * ? *", updateMembers)
-    updateMembers()
-    //  runEvery1Minute(updateMembers)
-
 }
 
 def updateMembers(){
-    if(logEnable) log.debug "In updateMembers - (${state.version})"
+    if(logEnable) log.trace "In updateMembers - (${state.version})"
 
-    if (logEnable) log.info "in updateMembers... Check if it is 30 sec. intervals..."
     if (!state?.circle) state.circle = settings.circle
 
-    def url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
+    url = "https://api.life360.com/v3/circles/${state.circle}/members.json"
     def result = null
     sendCmd(url, result)
 }
@@ -411,6 +413,7 @@ def sendCmd(url, result){
 }
 
 def cmdHandler(resp, data) {
+    if(logEnable) log.trace "In cmdHandler..."
     // Avi - pushed all data straight down to child device for self-containment
 
     if(resp.getStatus() == 200 || resp.getStatus() == 207) {
@@ -423,7 +426,6 @@ def cmdHandler(resp, data) {
         def home = state.places.find{it.id==settings.place}
 
         // Iterate through each member and trigger an update from payload
-
         settings.users.each {memberId->
             def externalId = "${app.id}.${memberId}"
             def member = state.members.find{it.id==memberId}
