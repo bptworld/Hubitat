@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  2.1.9 - 12/29/20 - More Adjustments
  *  2.1.8 - 12/29/20 - Adjustments
  *  2.1.7 - 08/26/20 - Cosmetic changes
  *  2.1.6 - 08/25/20 - Added notifications when website is available again, other enhancements
@@ -55,7 +56,7 @@ import java.text.SimpleDateFormat
 
 def setVersion() {
     state.name = "Web Pinger"
-	state.version = "2.1.8"
+	state.version = "2.1.9"
 }
 
 definition(
@@ -178,8 +179,8 @@ def updated() {
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
     } else {
         if(validateURL()) {
             state.downHost = false
@@ -436,10 +437,10 @@ def logsOff() {
 def checkEnableHandler() {
     state.eSwitch = false
     if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
             if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
         }
     }
 }
@@ -518,5 +519,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }
