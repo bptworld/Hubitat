@@ -4,7 +4,7 @@
  *  Design Usage:
  *  This driver opens a webSocket to capture Event info.
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -39,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.0.9 - 01/02/21 - Major changes
  *  1.0.8 - 08/06/20 - Still chasing the null
  *  1.0.7 - 08/06/20 - Added more logging
  *  1.0.6 - 08/06/20 - More changes
@@ -154,19 +155,12 @@ def keywordInfo(keys) {
 
         state.keySetType = keySetType.toLowerCase()
         state.keyword = keyword1.toLowerCase()
-        if(skeyword1) state.skeyword1 = skeyword1.toLowerCase()
-        if(skeyword2) state.skeyword2 = skeyword2.toLowerCase()
-        if(skeyword3) state.skeyword3 = skeyword3.toLowerCase()
-        if(skeyword4) state.skeyword4 = skeyword4.toLowerCase()
-        if(nkeyword1) state.nkeyword1 = nkeyword1.toLowerCase()
-        if(nkeyword2) state.nkeyword2 = nkeyword2.toLowerCase()
-
-        if(state.sKeyword1 == "-") state.sKeyword1 = null
-        if(state.sKeyword2 == "-") state.sKeyword2 = null
-        if(state.sKeyword3 == "-") state.sKeyword3 = null
-        if(state.sKeyword4 == "-") state.sKeyword4 = null
-        if(state.nKeyword1 == "-") state.nKeyword1 = null
-        if(state.nKeyword2 == "-") state.nKeyword2 = null
+        if(sKeyword1) state.sKeyword1 = sKeyword1.toLowerCase()
+        if(sKeyword2) state.sKeyword2 = sKeyword2.toLowerCase()
+        if(sKeyword3) state.sKeyword3 = sKeyword3.toLowerCase()
+        if(sKeyword4) state.sKeyword4 = sKeyword4.toLowerCase()
+        if(nKeyword1) state.nKeyword1 = nKeyword1.toLowerCase()
+        if(nKeyword2) state.nKeyword2 = nKeyword2.toLowerCase()
     }
 }
 
@@ -178,7 +172,7 @@ def parse(String description) {
         // This is what the incoming data looks like
         //{"source":"DEVICE","name":"contact","displayName":"Kitchen Freezer Door Sensor","value":"open","unit":null,"deviceId":157,"hubId":null,"locationId":null,"installedAppId":null,"descriptionText":"Kitchen Freezer Door Sensor was opened"}
 
-        def message =  new JsonSlurper().parseText(theData)
+        def message = new JsonSlurper().parseText(theData)
         
         // source, name, displayName,value, unit, deviceID, HubID, locationId, installedAppId, descriptionText
         
@@ -187,16 +181,7 @@ def parse(String description) {
                 displayName = message.displayName
                 nameV = message.name.toLowerCase()
                 sourceV = message.source.toLowerCase()
-                //log.info "sourceV: ${sourceV}"
-
-                if(sourceV == "device") {
-                    displayName = message.displayName
-                    nameV = message.name.toLowerCase()
-                    //log.info "nameV: ${nameV} - keySetType: ${keySetType}"
-                    if(nameV == state.keyword) log.warn "YES"
-                } else {
-                    nameV = "-"
-                }
+                msgCheckD = message.descriptionText.toLowerCase()
             }
 
             if(state.keySetType == "d" || state.keySetType == "k") {
@@ -204,81 +189,78 @@ def parse(String description) {
                     msgCheck = message.descriptionText.toLowerCase()
                 }
             } else if(state.keySetType == "e") {
-                msgCheck = nameV.toLowerCase()
+                msgCheck = nameV.toLowerCase()               
             }
-            if(msgCheck == null) msgCheck = "-----"
         }    
         
-        if(msgCheck != null) {            
-            //log.debug "msgCheck: ${msgCheck} - keyword: ${state.keyword}"
-
-            state.kCheck1 = false
-            state.kCheck2 = true
-            state.match = false
-
+        if((msgCheck != null && msgCheck != "null") && (msgCheckD != null && msgCheckD != "null")) {
             try {
-                readyToGo = false
                 if(msgCheck.contains("${state.keyword}")) {
                     if(traceEnable) {
                         keyword1a = state.keyword.replace("a","@").replace("e","3").replace("i","1").replace("o","0",).replace("u","^")
+                        if(traceEnable) log.trace "-----------------------------------------------------------------------------------"
                         log.trace "In keyword (${state.version}) - Found msgCheck: ${keyword1a}"
                     }
                     readyToGo = true
+                } else {
+                    readyToGo = false
                 }
 
                 if(readyToGo) {
-                    if(state.sKeyword1 || state.sKeyword2 || state.sKeyword3 || state.sKeyword4) {
-                        if(msgCheck.contains("${state.sKeyword1}")) {
+                    if(traceEnable) log.trace "Message to Check - msgCheckD: ${msgCheckD}"
+                    if((state.sKeyword1 || state.sKeyword2 || state.sKeyword3 || state.sKeyword4) && msgCheckD != "null") {
+                        if(traceEnable) log.trace "In Secondary Keywords - Checking for ${state.sKeyword1} - ${state.sKeyword2} - ${state.sKeyword3} - ${state.sKeyword4}"
+                        if(msgCheckD.contains("${state.sKeyword1}") && (state.sKeyword1 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword1 - ${state.sKeyword1} Found! That's GOOD!"
                             state.kCheck1 = true
-                        } else if(msgCheck.contains("${state.sKeyword2}")) {
+                        } else if(msgCheckD.contains("${state.sKeyword2}") && (state.sKeyword2 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword2 - ${state.sKeyword2} Found! That's GOOD!"
                             state.kCheck1 = true
-                        } else if(msgCheck.contains("${state.sKeyword3}")) {
+                        } else if(msgCheckD.contains("${state.sKeyword3}") && (state.sKeyword3 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword1 - ${state.sKeyword3} Found! That's GOOD!"
                             state.kCheck1 = true
-                        } else if(msgCheck.contains("${state.sKeyword4}")) {
+                        } else if(msgCheckD.contains("${state.sKeyword4}") && (state.sKeyword4 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword4 - ${state.sKeyword4} Found! That's GOOD!"
                             state.kCheck1 = true
-                        }       
+                        } else {
+                            if(traceEnable) log.trace "In Secondary Keyword4 - None Found! That's BAD!"
+                            state.kCheck1 = false
+                        }
                     } else {
                         state.kCheck1 = true
                     }
 
-                    if(state.nKeyword1 || state.nKeyword2) {  
-                        if(msgCheck.contains("${state.nKeyword1}")) {
+                    if((state.nKeyword1 || state.nKeyword2) && msgCheckD != "null") { 
+                        if(traceEnable) log.trace "In Secondary NOT Keywords - Checking for ${state.nKeyword1} - ${state.nKeyword2}" 
+                        if(msgCheckD.contains("${state.nKeyword1}") && (state.nKeyword1 != "-")) {
                             if(traceEnable) log.trace "In Not Keyword1 - ${state.nKeyword1} found! That's BAD!"
                             state.kCheck2 = false
-                        } else if(msgCheck.contains("${state.nKeyword2}")) {
+                        } else if(msgCheckD.contains("${state.nKeyword2}") && (state.nKeyword2 != "-")) {
                             if(traceEnable) log.trace "In Not Keyword2 - ${state.nKeyword2} found! That's BAD!"
                             state.kCheck2 = false
-                        }
-                    }
-
-                    if(traceEnable) log.trace "In keyword - ${keyword1a} - kCheck1: ${state.kCheck1} - kCheck2: ${state.kCheck2}"
-                    if(state.kCheck1 && state.kCheck2) {
-                        state.match = true
-                    } else {
-                        state.match = false
-                    }
-                }
-
-                if(state.match) {
-                    if(traceEnable) log.trace "In keyword (${state.version}) - ${keyword1a} - Everything Passed!"
-
-                    if(msgCheck == null || msgCheck == "null") {
-                        if(traceEnable) log.warn "In keyword - Can't send msgV, description is null"
-                    } else {
-                        if(traceEnable) {
-                            log.warn "In keyword - displayName: ${message.displayName} - descriptionText: ${message.descriptionText}"
-                            log.warn "In keyword - Sending: ${message.descriptionText}"
-                        }
-                        if(message.descriptionText.contains("${displayName}")) {
-                            newText = message.descriptionText
                         } else {
-                            newText = "${displayName} - ${message.descriptionText}"
+                            if(traceEnable) log.trace "In Not Keyword1 - None found - That's GOOD!"
+                            state.kCheck2 = true
                         }
-                        if(message.descriptionText != "null" && message.descriptionText != null) makeList(newText)
+                    } else {
+                        state.kCheck2 = true
+                    }
+                    if(traceEnable) log.trace "In keyword - ${keyword1a} - kCheck1: ${state.kCheck1} - kCheck2: ${state.kCheck2}"
+
+                    if(state.kCheck1 && state.kCheck2) {
+                        if(traceEnable) log.trace "In keyword (${state.version}) - ${keyword1a} - Everything Passed!"
+                        if(msgCheckD.contains("${nameV}")) {
+                            newText = "${msgCheckD}"
+                        } else {
+                            newText = "${nameV} - ${msgCheckD}"
+                        }
+
+                        if(newText == state.oldText) {
+                            // Skipping
+                        } else {
+                            if(message.descriptionText != "null" && message.descriptionText != null) makeList(newText)
+                            state.oldText = newText
+                        }
                     }
                 }
             } catch (e) {
@@ -292,7 +274,6 @@ def parse(String description) {
 def makeList(data) {
     def msgValue = data
     if(traceEnable) log.trace "In makeList (${state.version}) - working on - ${msgValue}"
-
     try {
         if(state.list == null) state.list = []
 
@@ -356,6 +337,9 @@ def clearData(){
 	
     sendEvent(name: "bpt-lastEventMessage", value: msgValue, isStateChange: true)
     sendEvent(name: "numOfCharacters", value: logCharCount, displayed: true)
+    
+    state.list = []
+    sendEvent(name: "bpt-eventData", value: state.list, displayed: true)
 }
 
 def getDateTime() {
