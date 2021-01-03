@@ -39,16 +39,7 @@
  *
  *  Changes:
  *
- *  1.0.9 - 01/02/21 - Major changes
- *  1.0.8 - 08/06/20 - Still chasing the null
- *  1.0.7 - 08/06/20 - Added more logging
- *  1.0.6 - 08/06/20 - More changes
- *  1.0.5 - 08/05/20 - Lots of changes
- *  1.0.4 - 07/20/20 - Adjustments
- *  1.0.3 - 07/09/20 - Error trapping
- *  1.0.2 - 06/29/20 - Code improvements
- *  1.0.1 - 06/29/20 - Learned some new things
- *  1.0.0 - 06/28/20 - Initial release
+ *  1.1.0 - 01/03/21 - adjustments, added 'Device Name' toggle
  *
  */
 
@@ -75,6 +66,7 @@ metadata {
         section(){
             input name: "about", type: "paragraph", element: "paragraph", title: "<b>Log Watchdog Driver</b>", description: "ONLY click 'Clear Data' to clear the event data."
             input("disableConnection", "bool", title: "Disable Connection", required: true, defaultValue: false)
+            input("displayNameMessage", "bool", title: "Display Device Name in Message", required: true, defaultValue: false)
             input("fontSize", "text", title: "Font Size", required: true, defaultValue: "15")
 			input("hourType", "bool", title: "Time Selection (Off for 24h, On for 12h)", required: false, defaultValue: false)
             input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: false)
@@ -96,6 +88,7 @@ def updated() {
 
 def initialize() {
     log.info "In initialize"
+    state.version = "1.1.0"
     if(disableConnection) {
         log.info "Event Watchdog Driver - webSocket Connection is Disabled by the Device"
     } else {
@@ -114,7 +107,6 @@ def close() {
 }
 
 def webSocketStatus(String socketStatus) {
-    state.version = "1.0.8"
     if(logEnabled) log.debug "In webSocketStatus - socketStatus: ${socketStatus}"
 	if(socketStatus.startsWith("status: open")) {
 		log.warn "Event Watchdog Driver - Connected - (${state.version})"
@@ -181,7 +173,7 @@ def parse(String description) {
                 displayName = message.displayName
                 nameV = message.name.toLowerCase()
                 sourceV = message.source.toLowerCase()
-                msgCheckD = message.descriptionText.toLowerCase()
+                msgCheckD = message.descriptionText
             }
 
             if(state.keySetType == "d" || state.keySetType == "k") {
@@ -207,40 +199,60 @@ def parse(String description) {
                 }
 
                 if(readyToGo) {
-                    if(traceEnable) log.trace "Message to Check - msgCheckD: ${msgCheckD}"
-                    if((state.sKeyword1 || state.sKeyword2 || state.sKeyword3 || state.sKeyword4) && msgCheckD != "null") {
+                    if(displayNameMessage) {
+                        newText = "${displayName} - ${msgCheckD}"
+                        textToTest = newText.toLowerCase()
+                    } else {
+                        newText = "${msgCheckD}"
+                    }
+                    
+                    if(traceEnable) log.trace "Message to Check - textToTest: ${textToTest}"
+                    if(state.sKeyword1 || state.sKeyword2 || state.sKeyword3 || state.sKeyword4) {
+                        state.kCheck1Count = 0
                         if(traceEnable) log.trace "In Secondary Keywords - Checking for ${state.sKeyword1} - ${state.sKeyword2} - ${state.sKeyword3} - ${state.sKeyword4}"
-                        if(msgCheckD.contains("${state.sKeyword1}") && (state.sKeyword1 != "-")) {
+                        if(textToTest.contains("${state.sKeyword1}") && (state.sKeyword1 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword1 - ${state.sKeyword1} Found! That's GOOD!"
-                            state.kCheck1 = true
-                        } else if(msgCheckD.contains("${state.sKeyword2}") && (state.sKeyword2 != "-")) {
+                            state.kCheck1Count += 1
+                        }
+                        if(textToTest.contains("${state.sKeyword2}") && (state.sKeyword2 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword2 - ${state.sKeyword2} Found! That's GOOD!"
-                            state.kCheck1 = true
-                        } else if(msgCheckD.contains("${state.sKeyword3}") && (state.sKeyword3 != "-")) {
+                            state.kCheck1Count += 1
+                        }
+                        if(textToTest.contains("${state.sKeyword3}") && (state.sKeyword3 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword1 - ${state.sKeyword3} Found! That's GOOD!"
-                            state.kCheck1 = true
-                        } else if(msgCheckD.contains("${state.sKeyword4}") && (state.sKeyword4 != "-")) {
+                            state.kCheck1Count += 1
+                        }
+                        if(textToTest.contains("${state.sKeyword4}") && (state.sKeyword4 != "-")) {
                             if(traceEnable) log.trace "In Secondary Keyword4 - ${state.sKeyword4} Found! That's GOOD!"
-                            state.kCheck1 = true
-                        } else {
-                            if(traceEnable) log.trace "In Secondary Keyword4 - None Found! That's BAD!"
+                            state.kCheck1Count += 1
+                        }
+                        if(state.kCheck1Count == 0) {
+                            if(traceEnable) log.trace "In Secondary Keyword4 - None Found! That's BAD! - Moving on."
                             state.kCheck1 = false
+                        } else {
+                            state.kCheck1 = true
                         }
                     } else {
                         state.kCheck1 = true
                     }
 
-                    if((state.nKeyword1 || state.nKeyword2) && msgCheckD != "null") { 
-                        if(traceEnable) log.trace "In Secondary NOT Keywords - Checking for ${state.nKeyword1} - ${state.nKeyword2}" 
-                        if(msgCheckD.contains("${state.nKeyword1}") && (state.nKeyword1 != "-")) {
-                            if(traceEnable) log.trace "In Not Keyword1 - ${state.nKeyword1} found! That's BAD!"
-                            state.kCheck2 = false
-                        } else if(msgCheckD.contains("${state.nKeyword2}") && (state.nKeyword2 != "-")) {
-                            if(traceEnable) log.trace "In Not Keyword2 - ${state.nKeyword2} found! That's BAD!"
-                            state.kCheck2 = false
-                        } else {
+                    if(state.nKeyword1 || state.nKeyword2) { 
+                        state.kCheck2Count = 0
+                        if(traceEnable) log.trace "In Secondary NOT Keywords - Checking for ${state.nKeyword1}" 
+                        if(textToTest.contains("${state.nKeyword1}") && (state.nKeyword1 != "-")) {
+                            if(traceEnable) log.trace "In Not Keyword1 - ${state.nKeyword1} found! That's BAD! - Moving on."
+                            state.kCheck2Count += 1
+                        }
+                        if(traceEnable) log.trace "In Secondary NOT Keywords - Checking for ${state.nKeyword2}"
+                        if(textToTest.contains("${state.nKeyword2}") && (state.nKeyword2 != "-")) {
+                            if(traceEnable) log.trace "In Not Keyword2 - ${state.nKeyword2} found! That's BAD! - Moving on."
+                            state.kCheck2Count += 1 
+                        }
+                        if(state.kCheck2Count == 0) {
                             if(traceEnable) log.trace "In Not Keyword1 - None found - That's GOOD!"
                             state.kCheck2 = true
+                        } else {
+                            state.kCheck2 = false
                         }
                     } else {
                         state.kCheck2 = true
@@ -249,16 +261,10 @@ def parse(String description) {
 
                     if(state.kCheck1 && state.kCheck2) {
                         if(traceEnable) log.trace "In keyword (${state.version}) - ${keyword1a} - Everything Passed!"
-                        if(msgCheckD.contains("${nameV}")) {
-                            newText = "${msgCheckD}"
-                        } else {
-                            newText = "${nameV} - ${msgCheckD}"
-                        }
-
                         if(newText == state.oldText) {
                             // Skipping
                         } else {
-                            if(message.descriptionText != "null" && message.descriptionText != null) makeList(newText)
+                            makeList(newText)
                             state.oldText = newText
                         }
                     }
