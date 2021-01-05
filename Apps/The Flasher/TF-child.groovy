@@ -36,6 +36,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 01/05/21 - Fixed an error
  *  1.1.4 - 01/05/21 - Adjustments
  *  1.1.3 - 07/31/20 - Adding level to setColor, other adjustments
  *  1.1.2 - 06/20/20 - Fixed Preset 1
@@ -51,7 +52,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "The Flasher"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -764,7 +765,6 @@ def dayOfTheWeekHandler() {
         state.daysMatch = true
     }
     if(logEnable) log.debug "In dayOfTheWeekHandler - daysMatch: ${state.daysMatch}"
-    if(state.daysMatch) magicHappensHandler()
 }
 
 def createDataChildDevice() {    
