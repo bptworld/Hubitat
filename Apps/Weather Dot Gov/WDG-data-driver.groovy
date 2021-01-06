@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Making the Weather.gov data usable with Hubitat.
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
  *  
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -37,11 +37,7 @@
  *
  *  Changes:
  *
- *  1.1.9 - 09/18/20 - Adjustments
- *  1.1.8 - 08/21/20 - Each section now tries 3 times to get data
- *  1.1.7 - 07/19/20 - Changed up Alerts to remove from app as Weather.gov removes them from their website
- *  1.1.6 - 06/13/20 - Changed 'No Data' to 0 for current weather values as requested
- *  1.1.5 - 06/11/20 - Last Updated can be 24h or 12h
+ *  1.2.0 - 12/06/21 - Adjustment to wind speed
  *  ---
  *  1.0.0 - 04/07/20 - Initial release
  */
@@ -491,7 +487,7 @@ def getWeatherData() {
                 def xwindSpeed = response.data.properties.windSpeed.value
                 if(xwindSpeed) {
                     if(unitFormat1 == "Imperial") {
-                        mpsTOmph(xwindSpeed)
+                        kphTOmph(xwindSpeed)
                         windSpeed = theUnit
                     } else {
                         unitI = xwindSpeed.toFloat()
