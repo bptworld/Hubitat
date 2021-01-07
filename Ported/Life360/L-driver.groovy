@@ -38,6 +38,7 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for his work on the Life360 ST driver
  *
  *  Changes:
+ *  1.6.0 - 01/07/21 - Interim release 
  *  1.5.5 - 12/20/20 - Reliability Improvements + Cleaned up Logging
  *  1.5.2 - 12/17/20 - Added initialization code for additional attributes / preferences
                      - Fixed Switch capability errors
@@ -524,8 +525,10 @@ def generatePresenceEvent(member, thePlaces, home) {
     sendEvent( name: "acceleration", value: sAcceleration )
 
     // *** Battery Level ***
+    // For whatever reason, this value generates an event no matter what
+    // so we need to make it less noisy...
     def battery = Math.round(member.location.battery.toDouble())
-    sendEvent( name: "battery", value: battery )
+    if (device.currentValue('battery') != battery) sendEvent( name: "battery", value: battery )
 
     // *** Charging State ***
     def charge = (member.location.charge == "0") ? "false" : "true"

@@ -46,7 +46,8 @@
  *
  *  Changes:
  *
- *  2.5.5 - 12/20/20 - Reliability Improvements:
+ *  2.6.0 - 01/07/21 - Interim release reintegrating push notifications with a new POST request
+                       to force location name update from real-time servers *  2.5.5 - 12/20/20 - Reliability Improvements:
                      - Added a 1 sec delay after push event to let data packet catch-up
                      - Cleaned up Scheduling
                      - Cleaned up Logging
@@ -64,7 +65,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Life360 with States"
-    state.version = "2.5.5"
+    state.version = "2.6.0"
 }
 
 definition(
@@ -377,11 +378,73 @@ def initialize() {
 }
 
 def placeEventHandler() {
-    if(logEnable) log.debug "Life360 placeEventHandler: Received Life360 Push Event - Updating Members Location Status..."
+  if(logEnable) log.debug "Life360 placeEventHandler: Received Life360 Push Event - Updating Members Location Status..."
 
-    // we got a PUSH EVENT from Life360 - better update everything by pulling a fresh data packet
-    // But first, wait a second to let packet catch-up with push event
-    runIn(1, updateMembers)
+  def circleId = params?.circleId
+  def placeId = params?.placeId
+  def memberId = params?.userId
+  def direction = params?.direction
+  def timestamp = params?.timestamp
+  def requestId = null
+  def requestResult = null
+  def isPollable = null
+
+  def externalId = "${app.id}.${memberId}"
+  def deviceWrapper = getChildDevice("${externalId}")
+
+// Following commented code is still work in progress and has not been completed yet...
+/*
+  if (deviceWrapper) {
+    deviceWrapper.updateMemberPresence(params)
+      if(logEnable) log.debug "Life360 place presence event raised on child device: ${externalId}"
+  }
+    else {
+      log.warn "Life360 couldn't find child device associated with inbound Life360 event."
+    }
+*/
+
+  if(logEnable) log.trace "In placeHandler - about to post request update..."
+  def postUrl = "https://api.life360.com/v3/circles/${circleId}/members/${memberId}/request.json"
+  requestResult = null
+
+  // once a push event is received, we can force a real-time update of location data via issuing the following
+  // post request against the member for which the push event was received
+      try {
+
+           httpPost(uri: postUrl, body: ["type": "location"], headers: ["Authorization": "Bearer ${state.life360AccessToken}"]) {response ->
+               requestResult = response
+           }
+               requestId = requestResult.data?.requestId
+               isPollable = requestResult.data?.isPollable
+               if(logEnable) log.debug "PlaceHandler Post response = ${requestResult.data}  params direction = $direction"
+               if(logEnable) log.debug "PlaceHandler Post requestId = ${requestId} isPollable = $isPollable"
+
+// Following commented code is still work in progress and has not been completed yet...
+/*
+          if (isPollable = "1") {
+              def getUrl = "https://api.life360.com/v3/circles/members/request/${requestId}"
+              if(logEnable) log.debug "httpGet for request is = $getUrl"
+
+              requestResult = null
+
+              httpGet(uri: url, headers: ["Authorization": "Bearer ${state.life360AccessToken}", timeout: 30 ]) {response ->
+                 requestResult = response
+          }
+              if(logEnable) log.debug "after httpGet = result = $requestResult  location should be = ${requestResult.data.location}"
+                  def location = result.data.location
+
+                  if(logEnable) log.debug "PlaceHandler get response = ${location}  params.direction = $direction"
+
+          }
+*/
+  }
+      catch (e) {
+             log.error "Life360 request post / get, error: $e"
+      }
+
+  // we got a PUSH EVENT from Life360 - better update everything by pulling a fresh data packet
+  // But first, wait a second to let packet catch-up with push event
+  updateMembers()
 }
 
 
