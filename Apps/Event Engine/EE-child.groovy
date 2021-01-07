@@ -4,7 +4,7 @@
 *  Design Usage:
 *  Automate your world with easy to use Cogs. Rev up complex automations with just a few clicks!
 *
-*  Copyright 2020 Bryan Turcotte (@bptworld)
+*  Copyright 2020-2021 Bryan Turcotte (@bptworld)
 * 
 *  This App is free. If you like and use this app, please be sure to mention it on the Hubitat forums! Thanks.
 *
@@ -37,13 +37,13 @@
 *
 *  Changes:
 *
+*  2.5.1 - 01/03/21 - Cosmetic changes, added option to keep logs on all the time, added options Check Free OS Memory, Hub Stats. Added Actions for Hub Reboot, Hub Restart, Zwave Repair
 *  2.5.0 - 12/21/20 - Fixed a typo
 *  ---
 *  1.0.0 - 09/05/20 - Initial release.
 */
 
 /*
-- Working on Send HTTP in Actions - 1175
 - Working on Clone Cog - 92
 - Working on making map of settings
 */
@@ -55,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "Event Engine"
-    state.version = "2.5.0"
+    state.version = "2.5.1"
 }
 
 definition(
@@ -80,8 +80,7 @@ preferences {
 def pageConfig() {
     dynamicPage(name: "", title: "", install:true, uninstall:true, refreshInterval:0) {
         display()
-        testLogEnable = true
-        if(testLogEnable) log.info "---------------------------------------------------------------------------------------------"
+        testLogEnable = false
         if(state.conditionsMap == null) { state.conditionsMap = [:] }
         state.theCogTriggers = "<b><u>Conditions</u></b><br>"
         section("Instructions:", hideable:true, hidden:true) {
@@ -106,7 +105,7 @@ def pageConfig() {
                 ["xGVar":"Global Variables"],
                 ["xHSMAlert":"HSM Alerts *** not tested ***"],
                 ["xHSMStatus":"HSM Status *** not tested ***"],
-                ["xHubCheck":"Hub Check"],
+                ["xHubCheck":"Hub Check Options"],
                 ["xHumidity":"Humidity Setpoint"],
                 ["xIlluminance":"Illuminance Setpoint"],
                 ["xLock":"Locks"],
@@ -127,7 +126,6 @@ def pageConfig() {
             if(triggerType != "") {
                 theData = "${triggerType}"
                 state.conditionsMap.put("triggerType",theData)
-                if(testLogEnable) log.info "In triggerType - ${theData}"
             } else {
                 state.conditionsMap.remove("triggerType")
             }
@@ -152,7 +150,6 @@ def pageConfig() {
             if(timeDaysType != "") {
                 theData = "${timeDaysType}"
                 state.conditionsMap.put("timeDaysType",theData)
-                if(testLogEnable) log.info "In timeDaysType - ${theData}"
             } else {
                 state.conditionsMap.remove("timeDaysType")
             }
@@ -175,7 +172,6 @@ def pageConfig() {
             paragraph "<hr>"
             theData = "${triggerAndOr}"
             state.conditionsMap.put("triggerAndOr",theData)
-            if(testLogEnable) log.info "In triggerAndOr - ${theData}"
 // -----------
             if(timeDaysType.contains("tPeriodic")) {
                 paragraph "<b>By Periodic</b>"
@@ -456,7 +452,6 @@ def pageConfig() {
                     }
                     theData = "${theList};${csClosedOpen};${contactANDOR}"
                     state.conditionsMap.put("contactEvent",theData)
-                    if(testLogEnable) log.info "In contactEvent - ${theData}"
                 } else {
                     state.conditionsMap.remove("contactEvent")
                 }
@@ -646,18 +641,28 @@ def pageConfig() {
             }
 // -----------            
             if(triggerType.contains("xHubCheck")) {
-                paragraph "<b>Hub Check</b><br>This can be used to check any hub on your network."
+                paragraph "<b>Hub Check Options</b><br>This can be used to check any hub on your network."
                 input "xhttpIP", "string", title: "Enter the IP Address of the Hub (ie. http://192.168.86.81)", defaultValue: "http://", submitOnChange:true
                 input "xhttpCommand", "enum", title: "Choose Command", options: [
-                    ["/hub/advanced/freeOSMemory":"Check Free OS Memory"]
+                    ["/hub/advanced/freeOSMemory":"Check Free OS Memory"],
+                    ["/hub/enableStats":"Enable Stats"]
                 ], submitOnChange:true
-                input "xhubSecurity", "bool", title: "Hub Security Enabled", submitOnChange:true
+                input "xhubSecurity", "bool", title: "Hub Security Enabled", defaultValue:false, submitOnChange:true
                 if(xhubSecurity) {
                     input "xhubUsername", "string", title: "Hub Username", required:true
                     input "xhubPassword", "password", title: "Hub Password", required:true
                 } else {
                     app.removeSetting("xhubUsername")
                     app.removeSetting("xhubPassword")
+                }
+                if(xhttpCommand) {
+                    if(xhttpCommand.contains("freeOSMemory")) {
+                        input "xMinMemory", "number", title: "Minimum amount of Memory Available Set Point", defaultValue:40000, submitOnChange:true
+                        input "xfreeOSMemLog", "bool", title: "Show Free OS Memory in Log with each check", defaultValue:false, submitOnChange:true
+                        state.useRollingAverage = true
+                    } else {
+                        state.useRollingAverage = false
+                    }
                 }
                 paragraph "<hr>"
                 state.theCogTriggers += "<b>-</b> Send HTTP: ${xhttpIP}:8080${xhttpCommand}<br>"
@@ -1178,7 +1183,7 @@ def pageConfig() {
                 app.updateSetting("setSDPointLow",[value:"false",type:"bool"])
             }
 
-            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || xhttpCommand || (customEvent && deviceORsetpoint)) {
+            if(batteryEvent || humidityEvent || illuminanceEvent || powerEvent || tempEvent || state.useRollingAverage || (customEvent && deviceORsetpoint)) {
                 input "setpointRollingAverage", "bool", title: "Use a rolling Average", description: "average", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) {
                     paragraph "<small>*All values are rounded for this option</small>"
@@ -1186,7 +1191,6 @@ def pageConfig() {
                     app.updateSetting("useWholeNumber",[value:"true",type:"bool"])
                 } else {
                     app.removeSetting("numOfPoints")
-                    state.readings = []
                 }
                 input "useWholeNumber", "bool", title: "Only use Whole Numbers (round each number)", description: "Whole", defaultValue:false, submitOnChange:true
                 if(setpointRollingAverage) paragraph "<b>When using a Rolling Average, use Whole Numbers MUST also be true.</b>"
@@ -1199,10 +1203,9 @@ def pageConfig() {
                 app.removeSetting("spResetTime")
                 app.updateSetting("useWholeNumber",[value:"false",type:"bool"])
                 app.updateSetting("setpointRollingAverage",[value:"false",type:"bool"])
-                state.readings = []
             }
 
-            if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent) {
+            if(accelerationEvent || batteryEvent || contactEvent || humidityEvent || hsmAlertEvent || hsmStatusEvent || illuminanceEvent || modeEvent || motionEvent || powerEvent || presenceEvent || switchEvent || tempEvent || waterEvent || xhttpIP) {
                 input "setDelay", "bool", defaultValue:false, title: "<b>Set Delay</b>", description: "Delay Time", submitOnChange:true, width:6
                 input "randomDelay", "bool", defaultValue:false, title: "<b>Set Random Delay</b>", description: "Random Delay", submitOnChange:true, width:6
                 if(setDelay && randomDelay) paragraph "<b>Warning: Please don't select BOTH Set Delay and Random Delay.</b>"
@@ -1318,7 +1321,7 @@ def pageConfig() {
                 ["aNotification":"Notifications (speech/push/flash)"], 
                 ["aRefresh":"Refresh"],
                 ["aRule":"Rule Machine"],
-                //["aSendHTTP":"Send HTTP Command"],
+                ["aSendHTTP":"Send Hub Command"],
                 ["aGVar":"Set Global Variable"],
                 ["aSwitch":"Switches"],
                 ["aSwitchSequence":"Switches In Sequence"],
@@ -1455,6 +1458,7 @@ def pageConfig() {
                 paragraph "<b>Send HTTP Command</b><br>This can be used to send a http command to any hub on your network."
                 input "httpIP", "string", title: "Enter the IP Address of the Hub (ie. http://192.168.86.81)", defaultValue: "http://", submitOnChange:true
                 input "httpCommand", "enum", title: "Choose Command", options: [
+                    ["/hub/disableStats":"Disable Stats"],
                     ["/hub/reboot":"Reboot Hub"],
                     ["/hub/restart":"Restart Hub"],
                     ["/hub/zwaveRepair":"Zwave Repair"]
@@ -1466,6 +1470,17 @@ def pageConfig() {
                 } else {
                     app.removeSetting("hubUsername")
                     app.removeSetting("hubPassword")
+                }
+                if(httpCommand) {
+                    if(httpCommand.contains("disableStats")) {
+                        paragraph "<b>* Remember to look in the log for the Stats, once the app has finished.</b>"
+                    } else if(httpCommand.contains("reboot") || httpCommand.contains("restart")) {
+                        paragraph "<b>* Once triggered, this will happen without warnings or other messages.</b>"    
+                    } else if(httpCommand.contains("zwaveRepair")) {
+                        paragraph "<b>* Remember to look in the log for updates and for the completion message.</b>"
+                    } else {
+                        paragraph ""
+                    }
                 }
                 paragraph "<hr>"
                 state.theCogActions += "<b>-</b> Send HTTP: ${httpIP}:8080${httpCommand}<br>"
@@ -1894,14 +1909,22 @@ def pageConfig() {
             input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
             if(logEnable) {
                 input "logSize", "bool", title: "Use Short Logs (off) or Long Logs (On) - Please only post long logs if the Developer asks for it", description: "log size", defaultValue:false, submitOnChange:true
-                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours"]
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
+            if(setpointRollingAverage) {
+                input "clearRollingAverage", "bool", title: "Clear Rolling Average right now", description: "Clear Average", defaultValue:false, submitOnChange:true
+                if(clearRollingAverage) {
+                    state.readings = null
+                    app.updateSetting("clearRollingAverage",[value:"false",type:"bool"])
+                }
+                paragraph "<small>* Rolling Average will be cleared immediately and the switch will turned back off.<br>Current Rolling Average: ${state.readings}</small>"
             }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" The Cog Description")) {
             paragraph "This will give a short description on how the Cog will operate. This is also an easy way to share how to do things. Just copy the text below and post it on the HE forums!"
             paragraph "<hr>"
-            paragraph "<b>Event Engine Cog - ver. ${state.version}</b>"
+            paragraph "<b>Event Engine Cog (${state.version}) - ${app.label}</b>"
             if(state.theCogTriggers) paragraph state.theCogTriggers.replaceAll("null","NA")
             if(state.theCogActions) paragraph state.theCogActions.replaceAll("null","NA")
             if(state.theCogNotifications) paragraph state.theCogNotifications.replaceAll("null","NA")
@@ -2095,6 +2118,7 @@ def updated() {
     if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
     if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
     initialize()
 }
 
@@ -2359,7 +2383,7 @@ def startTheProcess(evt) {
                             if(actionType.contains("aSwitchSequence")) { switchesInSequenceHandler() }
                             if(actionType.contains("aSwitchesPerMode") && setDimmersPerMode) { switchesPerModeActionHandler() }
                             if(actionType.contains("aThermostat")) { thermostatActionHandler() }
-                            if(actionType.contains("aSendHTTP")) { sendHttpHandler() }
+                            if(actionType.contains("aSendHTTP")) { actionHttpHandler() }
                             if(actionType.contains("aNotification")) { 
                                 state.doMessage = true
                                 messageHandler() 
@@ -2864,12 +2888,14 @@ def setpointHandler() {
             }
             state.preSPV = setpointValue
             int setpointValue = setpointValue
-            if(setpointRollingAverage) {
-                if(state.readings == null) state.readings = []
-                state.readings.add(0,setpointValue)           
-                int maxReadingSize = state.spName.size() * numOfPoints
-                int readings = state.readings.size()            
-                if(readings > maxReadingSize) state.readings.removeAt(maxReadingSize)
+            if(setpointRollingAverage && setpointValue) {
+                theReadings = state.readings
+                if(theReadings == null) theReadings = []
+                theReadings.add(0,setpointValue)        
+                int maxReadingSize = numOfPoints
+                int readings = theReadings.size()
+                if(readings > maxReadingSize) theReadings.removeAt(maxReadingSize)
+                state.readings = theReadings
                 setpointRollingAverageHandler(maxReadingSize)
                 if(state.theAverage >= 0) setpointValue = state.theAverage
             }
@@ -2928,17 +2954,24 @@ def setpointRollingAverageHandler(data) {
     int totalNum = 0
     int maxReadingSize = data    
     floatingPoint = false
-    if(logEnable && logSize) log.debug "In setpointRollingAverageHandler  - state.readings: ${state.readings}"
-    String readings = state.readings
+    if(logEnable) log.debug "In setpointRollingAverageHandler  - state.readings: ${state.readings}"
+    String reading = state.readings
+    readings = reading.replace("[","").replace("]","")
     def theNumbers = readings.split(",")
     int readingsSize = theNumbers.size()
     if(readingsSize > 1) {       
         for(x=0;x<readingsSize;x++) {
-            int theNumber = theNumbers[x].replace("[","").replace("]","").toInteger()
-            if(logEnable && logSize) log.debug "In setpointRollingAverageHandler - ${x} - ${theNumber}"
-            totalNum = totalNum + theNumber        
+            try {
+                int theNumber = theNumbers[x].toInteger()
+                if(logEnable) log.debug "In setpointRollingAverageHandler - ${x} - ${theNumber}"
+                totalNum = totalNum + theNumber  
+            } catch (e) {
+                theReadings.removeAt(x)
+                readingsSize = readingsSize - 1
+                if(logEnable) log.debug "In setpointRollingAverageHandler - Removed some bad data."
+            }      
         }       
-        if(logEnable && logSize) log.debug "In setpointRollingAverageHandler - totalNum: ${totalNum} - readingsSize: ${readingsSize}"
+        if(logEnable) log.debug "In setpointRollingAverageHandler - totalNum: ${totalNum} - readingsSize: ${readingsSize}"
         if(totalNum == 0 || totalNum == null) {
             state.theAverage = 0
         } else {
@@ -3595,35 +3628,18 @@ def modeChangeActionHandler() {
     setLocationMode(modeAction)
 }
 
-def sendHttpHandler() {        // Based on code from @dman2306. Thank you!
+def sendHttpHandler() {
     cookie = ""
-    state.theIP = ""
-    state.theCommand = ""
-    state.theUser = ""
-    state.thePass = ""
-    if(logEnable) log.debug "In sendHttpHandler - httpCommand: ${httpCommand} - xhttpCommand: ${xhttpCommand}"
-    if(xhttpCommand != null) {
-        log.info "In sendHttpHandler - Using xhttp stuff - ${xhttpIP}:8080${xhttpCommand}"
-        state.theIP = xhttpIP
-        state.theCommand = xhttpCommand
-        state.theUser = xhubUsername
-        state.thePass = xhubPassword
-    } else {
-        log.info "In sendHttpHandler - Using http stuff"
-        state.theIP = httpIP
-        state.theCommand = httpCommand
-        state.theUser = hubUsername
-        state.thePass = hubPassword
-    }
-    if(logEnable) log.debug "In sendHttpHandler - Sending Command to URL: ${state.theIP}:8080${state.theCommand}"
-    if(hubSecurity || xhubSecurity) {
-        httpGet(
+    if(state.httpRAN == null) state.httpRAN = false
+    if(logEnable) log.debug "In sendHttpHandler - Sending Command to URL: ${xhttpIP}:8080${xhttpCommand}"
+    if(xhubSecurity) {
+        httpGet(        // Based on code from @dman2306. Thank you!
             [
-                uri: "${state.theIP}:8080",
+                uri: "${xhttpIP}:8080",
                 path: "/login", query: [loginRedirect: "/"],
                 body: [
-                    username: state.theUser,
-                    password: state.thePass,
+                    username: xhubUsername,
+                    password: xhubPassword,
                     submit: "Login"
                 ]
             ]) {
@@ -3631,41 +3647,113 @@ def sendHttpHandler() {        // Based on code from @dman2306. Thank you!
             cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
         }
     }
-    if(state.theCommand.contains("freeOSMemory")) {
-        httpGet(
-            [
-                uri: "${state.theIP}:8080",
-                path: state.theCommand,
-                headers: ["Cookie": cookie]
-            ]
-        ) {
-            resp ->
-            state.theData = resp.data
-            if(logEnable) log.debug "In sendHttpHandler - theCommand: ${state.theCommand} - theData: ${state.theData}"
+    
+    def params = [
+        uri: "${xhttpIP}:8080",
+        path: xhttpCommand,
+        headers: ["Cookie": cookie]
+    ]
+
+    theData = ""
+    if(xhttpCommand.contains("freeOSMemory")) {       
+        httpGet(params) { resp ->
+            if(resp.data != null) {
+                theData += resp.data
+            }
         }
-    } else {
-        httpPost(
-            [
-                uri: "${state.theIP}:8080",
-                path: state.theCommand,
-                headers: ["Cookie": cookie]
-            ]
-        ) {
-            resp ->
+        state.theData = theData
+        if(logEnable) log.debug "In sendHttpHandler (freeOSMemory) - theCommand: ${xhttpCommand} - theData: ${state.theData}"
+    } else if(state.theCommand.contains("enableStats")) {
+        if(state.httpRAN == false) {
+            theData += "----------------------------------------<br>"
+            httpGet(params) { resp ->
+                if(resp.data != null) {
+                    theData += "${resp.data}<br>"
+                }
+            }
+            theData += "----------------------------------------"
+            state.theData = theData
+            if(logEnable) log.debug "In sendHttpHandler (enableStats) - theCommand: ${xhttpCommand} - theData:<br>${state.theData}"
+            state.httpRAN = true
+        } else {
+            if(logEnable) log.debug "In sendHttpHandler (enableStats) - theCommand: ${xhttpCommand} - Already started, so skipping"
         }
     }
     
-    if(state.theCommand == "/hub/freeOSMemory") {           
-        if(setpointRollingAverage) {
-            if(state.readings == null) state.readings = []
-            state.readings.add(0,state.theData)           
-            int maxReadingSize = state.spName.size() * numOfPoints
-            int readings = state.readings.size()            
-            if(readings > maxReadingSize) state.readings.removeAt(maxReadingSize)
+    if(xhttpCommand.contains("freeOSMemory")) {        
+        if(setpointRollingAverage && theData) {
+            theReadings = state.readings
+            if(theReadings == null) theReadings = []
+            theReadings.add(0,theData)        
+            int maxReadingSize = numOfPoints
+            int readings = theReadings.size()
+            if(readings > maxReadingSize) theReadings.removeAt(maxReadingSize)
+            state.readings = theReadings
             setpointRollingAverageHandler(maxReadingSize)
-            if(state.theAverage >= 0) setpointValue = state.theAverage
+            if(state.theAverage >= 0) setpointValue = state.theAverage           
+            int setpointLow = xMinMemory
+            if(setpointValue < setpointLow) {  // Bad
+                if(logEnable) log.debug "In sendHttpHandler (freeOSMemory) - Value: ${setpointValue} is LESS THAN setpointLow: ${setpointLow} (Bad)"
+                state.setpointLowOK = "no"
+                state.setpointOK = true
+            } else {  // Good
+                if(logEnable) log.debug "In sendHttpHandler (freeOSMemory) - Value: ${setpointValue} is GREATER THAN setpointLow: ${setpointLow} (Good)"
+                state.setpointLowOK = "yes"
+                state.setpointOK = false
+            }
+            if(xfreeOSMemLog) log.info "$app.label - Free OS Memory: ${state.theData} - Average: ${setpointValue}"
+        } else {
+            if(xfreeOSMemLog) log.info "$app.label - Free OS Memory: ${theData}"
         }
     }
+}
+
+def actionHttpHandler() {
+    cookie = ""
+    state.httpRAN = false
+    if(logEnable) log.debug "In actionHttpHandler - Sending Command to URL: ${httpIP}:8080${httpCommand}"
+    if(hubSecurity) {
+        httpGet(        // Based on code from @dman2306. Thank you!
+            [
+                uri: "${httpIP}:8080",
+                path: "/login", query: [loginRedirect: "/"],
+                body: [
+                    username: hubUsername,
+                    password: hubPassword,
+                    submit: "Login"
+                ]
+            ]) {
+            resp -> 
+            cookie = resp?.headers?.'Set-Cookie'?.split(';')?.getAt(0)
+        }
+    }
+    
+    def params = [
+        uri: "${httpIP}:8080",
+        path: httpCommand,
+        headers: ["Cookie": cookie]
+    ]
+
+    theData = ""
+    if(httpCommand.contains("disableStats") || httpCommand.contains("zwaveRepair")) {
+        theData = "----------------------------------------<br>"
+        httpGet(params) { resp ->
+            if(resp.data != null) {
+                theData += "${resp.data}<br>"
+            }
+        }
+        theData += "----------------------------------------"
+        state.actionData = theData
+        if(logEnable) log.debug "In actionHttpHandler (get) - theCommand: ${httpCommand} - actionData:<br>${state.actionData}"
+    }
+    
+    if(httpCommand.contains("reboot") || httpCommand.contains("restart")) {
+        httpPost(params) { resp ->
+            if(logEnable) log.debug "In actionHttpHandler (post) - theCommand: ${httpCommand} - actionData:<br>${state.actionData}"
+        }
+    }
+
+    if(httpCommand.contains("disableStats")) log.info "$app.label - actionData:<br>${state.actionData}"
 }
 
 // ***** Start Cog Copy *****
