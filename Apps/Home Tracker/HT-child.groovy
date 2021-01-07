@@ -4,7 +4,7 @@
  *  Design Usage:
  *  Track the coming and going of house members with announcements and push messages. Including a 'Welcome Home' message after entering the home!
  *
- *  Copyright 2019-2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2019-2021 Bryan Turcotte (@bptworld)
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -34,26 +34,9 @@
  *
  *  Changes:
  *
+ *  2.4.1 - 01/01/21 - Adjustment to disable switch
  *  2.4.0 - 08/02/20 - Cosmetic changes
- *  2.3.9 - 06/29/20 - Changed how greetings are handled
- *  2.3.8 - 06/22/20 - Changes to letsTalk
- *  2.3.7 - 06/19/20 - Removed internal Flash Lights and added The Flasher
- *  2.3.6 - 06/14/20 - Chasing bugs
- *  2.3.5 - 06/13/20 - Fixed letsTalk typo... again
- *  2.3.4 - 06/13/20 - Fixed letsTalk typo
- *  2.3.3 - 06/11/20 - All speech now goes through Follow Me
- *  2.3.2 - 04/27/20 - Cosmetic changes
- *  2.3.1 - 02/27/20 - Changes to flash when message is delayed
- *  2.3.0 - 02/10/20 - More code changes to home tracking
- *  2.2.9 - 02/10/20 - Minor tweaks to who's home tracking
- *  2.2.8 - 01/14/20 - Tweaks to see who's home for announcements
- *  2.2.7 - 01/11/20 - Trying to fix a problem with nameCount
- *  2.2.6 - 01/11/20 - Delayed Welcome Home is now optional
- *  2.2.5 - 01/11/20 - Lots of tweaks
- *  2.2.4 - 01/10/20 - Working on locks code
- *  2.2.3 - 01/09/20 - More changes
- *  2.2.2 - 12/31/19 - Added flashing lights Notification options, Happy New Year!
- *  2.2.1 - 12/28/19 - Bug fixes
+ *  ---
  *  2.2.0 - 12/17/19 - All New code!
  *
  */
@@ -64,7 +47,7 @@ import hubitat.helper.RMUtils
 
 def setVersion(){
     state.name = "Home Tracker 2"
-	state.version = "2.4.0"
+	state.version = "2.4.1"
 }
 
 definition(
@@ -131,26 +114,37 @@ def pageConfig() {
 		}
         
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains(" (Paused)")) {
-                        app.updateLabel(app.label + " (Paused)")
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label - " (Paused)")
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
                 }
             }
+        }
+        section() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
         }
-        
-		section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
-            label title: "Enter a name for this automation", required: false
-            input "logEnable", "bool", defaultValue: true, title: "Enable Debug Logging", description: "Enable extra logging"
-		}
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required:false
+            }
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
+        }
 		display2()
 	}
 }
@@ -385,13 +379,18 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
     unsubscribe()
 	unschedule()
-    if(logEnable) runIn(3600, logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
+    if(pauseApp) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         setDefaults()
@@ -896,17 +895,16 @@ def logsOff() {
 def checkEnableHandler() {
     state.eSwitch = false
     if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
             eSwitch = it.currentValue("switch")
             if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
         }
     }
 }
 
 def setDefaults(){
 	clearPresenceMap()
-	if(settings.logEnable == null){settings.logEnable = false}
     if(settings.speakerProxy == null){settings.speakerProxy = false}
     if(settings.homeNow == null){settings.homeNow = false}
     if(settings.departedNow == null){settings.departedNow = false}
@@ -930,15 +928,23 @@ def getFormat(type, myText="") {			// Modified from @Stephack Code
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+    }
 }
 
 def display2() {
@@ -988,5 +994,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }

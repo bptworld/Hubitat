@@ -112,11 +112,15 @@ def pageConfig() {
                 paragraph "<b>Turn Light On, Set Level and Color</b>"
                 input "setOnLC", "capability.switchLevel", title: "Select dimmers to turn on", required: true, multiple: true
                 input "levelLC", "number", title: "On Level (1 to 99)", required: true, multiple: false, defaultValue: 99, range: '1..99'
-                input "colorLC", "enum", title: "Color", required: true, multiple:false, options: [
+                input "colorLC", "enum", title: "Color or Temp", required: true, multiple:false, options: [
                     ["Soft White":"Soft White - Default"],
+                    ["Soft White Temp":"Soft White (2700K)"],
                     ["White":"White - Concentrate"],
                     ["Daylight":"Daylight - Energize"],
+                    ["Daylight Temp":"Daylight (4400K)"],
                     ["Warm White":"Warm White - Relax"],
+                    ["Warm White Temp":"Warm White (3500K)"],
+                    ["Cool White Temp":"Warm White (6000K)"],
                     "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
             } else {
                 app.removeSetting("setOnLC")
@@ -131,11 +135,15 @@ def pageConfig() {
                 input "minutesUp", "number", title: "Takes how many minutes to raise (1 to 60)", required: true, multiple: false, defaultValue:15, range: '1..60'
                 input "startLevelHigh", "number", title: "Starting Level (5 to 99)", required: true, multiple: false, defaultValue: 1, range: '5..99'
                 input "targetLevelHigh", "number", title: "Target Level (5 to 99)", required: true, multiple: false, defaultValue: 99, range: '5..99'
-                input "colorUp", "enum", title: "Color", required: true, multiple:false, options: [
+                input "colorUp", "enum", title: "Color or Temp", required: true, multiple:false, options: [
                     ["Soft White":"Soft White - Default"],
+                    ["Soft White Temp":"Soft White (2700K)"],
                     ["White":"White - Concentrate"],
                     ["Daylight":"Daylight - Energize"],
+                    ["Daylight Temp":"Daylight (4400K)"],
                     ["Warm White":"Warm White - Relax"],
+                    ["Warm White Temp":"Warm White (3500K)"],
+                    ["Cool White Temp":"Warm White (6000K)"],
                     "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
                 paragraph "Slowly raising a light level is a great way to wake up in the morning. If you want everything to delay happening until the light reaches its target level, turn this switch on."
                 input "oDelay", "bool", defaultValue: false, title: "<b>Delay Until Finished</b>", description: "Future Options", submitOnChange: true
@@ -163,11 +171,15 @@ def pageConfig() {
                 
                 input "targetLevelLow", "number", title: "Target Level (5 to 99)", required: true, multiple: false, defaultValue: 0, range: '5..99'
                 input "dimDnOff", "bool", defaultValue: false, title: "<b>Turn dimmer off after target is reached?</b>", description: "Dim Off Options", submitOnChange: true
-                input "colorDn", "enum", title: "Color", required: true, multiple:false, options: [
+                input "colorDn", "enum", title: "Color or Temp", required: true, multiple:false, options: [
                     ["Soft White":"Soft White - Default"],
+                    ["Soft White Temp":"Soft White (2700K)"],
                     ["White":"White - Concentrate"],
                     ["Daylight":"Daylight - Energize"],
+                    ["Daylight Temp":"Daylight (4400K)"],
                     ["Warm White":"Warm White - Relax"],
+                    ["Warm White Temp":"Warm White (3500K)"],
+                    ["Cool White Temp":"Warm White (6000K)"],
                     "Red","Green","Blue","Yellow","Orange","Purple","Pink"]
             } else {
                 app.removeSetting("slowDimmerDn")
@@ -660,7 +672,7 @@ def setLevelandColorHandler() {
     
     theColor = state.color
     switch(theColor) {
-            case "White":
+        case "White":
             hueColor = 52
             saturation = 19
             break;
@@ -668,13 +680,25 @@ def setLevelandColorHandler() {
             hueColor = 53
             saturation = 91
             break;
+        case "Daylight Temp":
+            colorTemp = 4400
+            break;
         case "Soft White":
             hueColor = 23
             saturation = 56
             break;
+        case "Soft White Temp":
+            colorTemp = 2700
+            break;
         case "Warm White":
             hueColor = 20
             saturation = 80
+            break;
+        case "Warm White Temp":
+            colorTemp=3500
+            break;
+        case "Cool White Temp":
+            colorTemp=6000
             break;
         case "Blue":
             hueColor = 70
@@ -705,7 +729,11 @@ def setLevelandColorHandler() {
 	if(state.fromWhere == "dimmerOn") {
         state.onLevel = levelLC ?: 99
     	setOnLC.each {
-        	if (it.hasCommand('setColor')) {
+            if (it.hasCommand('setColorTemperature')&& hueColor == null){
+                value = colorTemp
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName - setColorTemperature: $value"
+                it.setColorTemperature(value)
+            } else if (it.hasCommand('setColor')) {
                 value = [hue: hueColor, saturation: saturation, level: state.onLevel]
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName - setColor: $value"
             	it.setColor(value)
@@ -723,7 +751,11 @@ def setLevelandColorHandler() {
         if(logEnable) log.debug "In setLevelandColorHandler - slowOn"
         state.onLevel = startLevelHigh ?: 5
     	slowDimmerUp.each {
-        	if (it.hasCommand('setColor')) {
+            if (it.hasCommand('setColorTemperature') && hueColor == null){
+                value = colorTemp
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName - setColorTemperature: $value"
+                it.setColorTemperature(value)
+            } else if (it.hasCommand('setColor')) {
             	value = [hue: hueColor, saturation: saturation, level: state.onLevel]
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName - setColor: $value"
             	it.setColor(value)
@@ -746,7 +778,11 @@ def setLevelandColorHandler() {
                 state.onLevel = startLevelLow ?: 99
             }
             
-        	if (it.hasCommand('setColor')) {                
+            if (it.hasCommand('setColorTemperature') && hueColor == null){
+                value = colorTemp
+                if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName - setColorTemperature: $value"
+                it.setColorTemperature(value)
+            } else if (it.hasCommand('setColor')) {                
                 value = [hue: hueColor, saturation: saturation, level: state.onLevel]
             	if(logEnable) log.debug "In setLevelandColorHandler - $it.displayName - setColor: $value"
             	it.setColor(value)

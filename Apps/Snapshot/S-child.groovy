@@ -34,6 +34,7 @@
  *
  *  Changes:
  *
+ *  2.0.3 - 01/03/21 - Fix real-time handler names
  *  2.0.2 - 04/27/20 - Cosmetic changes
  *  2.0.1 - 09/01/19 - Added custom color options
  *  2.0.0 - 08/18/19 - Now App Watchdog compliant
@@ -279,11 +280,11 @@ def initialize() {
     if(triggerMode == "Every X minutes") subscribe(repeatSwitch, "switch", repeatSwitchHandler)
 	if(triggerMode == "Real Time" && reportMode == "Regular") {
 		if(switches) subscribe(switches, "switch", switchMapHandler)
-		if(contacts) subscribe(contacts, "contact", contactHandler)
-		if(water) subscribe(water, "water", waterHandler)
-		if(locks) subscribe(locks, "lock", lockHandler)
-		if(presence) subscribe(presence, "presence", presenceHandler)
-		if(temps) subscribe(temps, "temperature", temperatureHandler)
+		if(contacts) subscribe(contacts, "contact", contactMapHandler)
+		if(water) subscribe(water, "water", waterMapHandler)
+		if(locks) subscribe(locks, "lock", lockMapHandler)
+		if(presence) subscribe(presence, "presence", presenceMapHandler)
+		if(temps) subscribe(temps, "temperature", tempMapHandler)
 	}
     if(triggerMode == "Real Time" && reportMode == "Priority") {
         if(switchesOn) subscribe(switchesOn, "switch", priorityHandler)

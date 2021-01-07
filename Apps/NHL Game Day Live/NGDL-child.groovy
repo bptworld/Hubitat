@@ -4,7 +4,9 @@
  *  Design Usage:
  *  Follow your favorite NHL teams Game Day Live, put a Scoreboard right on your Dashboard!
  *
- *  Copyright 2020 Bryan Turcotte (@bptworld)
+ *  Copyright 2020-2021 Bryan Turcotte (@bptworld)
+ *
+ *  Modified from code by Eric Luttmann. Thank you.
  * 
  *  This App is free.  If you like and use this app, please be sure to mention it on the Hubitat forums!  Thanks.
  *
@@ -37,6 +39,7 @@
  *
  *  Changes:
  *
+ *  1.1.5 - 01/04/21 - Tons of adjustments
  *  1.1.4 - 08/31/20 - Minor updates
  *  1.1.3 - 08/29/20 - Fixed another typo
  *  1.1.2 - 08/28/20 - Fixed a typo
@@ -52,7 +55,7 @@ import java.text.SimpleDateFormat
 
 def setVersion(){
     state.name = "NHL Game Day Live"
-	state.version = "1.1.4"
+	state.version = "1.1.5"
 }
 
 definition(
@@ -111,27 +114,41 @@ def pageConfig() {
         }
     
         section(getFormat("header-green", "${getImage("Blank")}"+" App Control")) {
-            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true            
+            input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
             if(pauseApp) {
                 if(app.label) {
-                    if(!app.label.contains(" (Paused)")) {
-                        app.updateLabel(app.label + " (Paused)")
+                    if(!app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label + " <span style='color:red'>(Paused)</span>")
                     }
                 }
             } else {
                 if(app.label) {
-                    app.updateLabel(app.label - " (Paused)")
+                    if(app.label.contains("(Paused)")) {
+                        app.updateLabel(app.label - " <span style='color:red'>(Paused)</span>")
+                    }
                 }
             }
+        }
+        section() {
             paragraph "This app can be enabled/disabled by using a switch. The switch can also be used to enable/disable several apps at the same time."
             input "disableSwitch", "capability.switch", title: "Switch Device(s) to Enable / Disable this app", submitOnChange:true, required:false, multiple:true
+        }
+
+        section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+            if(pauseApp) { 
+                paragraph app.label
+            } else {
+                label title: "Enter a name for this automation", required:false
+            }
+            input "logEnable", "bool", title: "Enable Debug Options", description: "Log Options", defaultValue:false, submitOnChange:true
+            if(logEnable) {
+                input "logOffTime", "enum", title: "Logs Off Time", required:false, multiple:false, options: ["1 Hour", "2 Hours", "3 Hours", "4 Hours", "5 Hours", "Keep On"]
+            }
         }
         
         section(getFormat("header-green", "${getImage("Blank")}"+" Maintenance")) {
             input "serviceStartTime", "time", title: "Check for Games Daily at", required: false
             input "serviceStartTime2", "time", title: "Update the Schedule Daily at", required: false
-            label title: "Enter a name for this automation", required:false, submitOnChange:true
-            input "logEnable","bool", title: "Enable Debug Logging and Test Buttons", description: "Debugging", defaultValue: false, submitOnChange: true
             if(logEnable) {
                 input "testOtherScore", "button", title: "Test otherTeam Score", width:4
                 input "testMyTeamScore", "button", title: "Test myTeam Score", width:4
@@ -288,14 +305,19 @@ def updated() {
     if(logEnable) log.debug "Updated with settings: ${settings}"
 	unschedule()
     unsubscribe()
-    if(logEnable) runIn(3600, logsOff)
+    if(logEnable && logOffTime == "1 Hour") runIn(3600, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "2 Hours") runIn(7200, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "3 Hours") runIn(10800, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "4 Hours") runIn(14400, logsOff, [overwrite:false])
+    if(logEnable && logOffTime == "5 Hours") runIn(18000, logsOff, [overwrite:false])
+    if(logEnagle && logOffTime == "Keep On") unschedule(logsOff)
 	initialize()
 }
 
 def initialize() {
     checkEnableHandler()
-    if(pauseApp || state.eSwitch) {
-        log.info "${app.label} is Paused or Disabled"
+    if(pauseApp) {
+        log.info "${app.label} is Paused"
     } else {
         setDefaults()
         urlSetup()
@@ -316,9 +338,8 @@ private removeChildDevices(delete) {
 	delete.each {deleteChildDevice(it.deviceNetworkId)}
 }
 
-def urlSetup() {  // Modified from code by Eric Luttmann
+def urlSetup() {
     if(logEnable) log.debug "Initialize static states"
-
     state.MLB_URL = "http://statsapi.web.nhl.com"
     state.MLB_API = "/api/v1"
     state.MLB_API_URL = "${state.MLB_URL}${state.MLB_API}"
@@ -327,7 +348,7 @@ def urlSetup() {  // Modified from code by Eric Luttmann
     // http://statsapi.web.nhl.com/api/v1/schedule?teamId=6&date=2020-07-30
 }
 
-def getTeamList() {  // Modified from code by Eric Luttmann
+def getTeamList() {
     try {
 	    def teams = []
         def params = [
@@ -365,7 +386,7 @@ def getTeamList() {  // Modified from code by Eric Luttmann
     return state.teamList.sort()
 }
 
-def getTeamInfo() {  // Modified from code by Eric Luttmann
+def getTeamInfo() {
     if(logEnable) log.debug "In getTeamInfo - Setup for team ${settings.mlbTeam}"
     def found = false
     def params = [
@@ -397,14 +418,14 @@ def getTeamInfo() {  // Modified from code by Eric Luttmann
     }
 }
 
-def startGameDay() {  // Modified from code by Eric Luttmann
+def startGameDay() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
     } else {
         if(logEnable) log.debug "In startGameDay (${state.version})"
         if(checkIfGameDay()) {
-            gameStart = Date.parse("yyyy-MM-dd'T'HH:mm:ssX", state.gameDate)
+            gameStart = Date.parse("yyyy-MM-dd'T'HH:mm:ssXXX", state.gameDate)
 
             if(gameStart) {
                 def now = new Date()
@@ -428,7 +449,7 @@ def startGameDay() {  // Modified from code by Eric Luttmann
     }
 }
 
-def checkIfGameDay() {  // Modified from code by Eric Luttmann
+def checkIfGameDay() {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
@@ -455,7 +476,7 @@ def checkIfGameDay() {  // Modified from code by Eric Luttmann
     }
 }
 
-def checkIfGameDayHandler(resp,gDate) {  // Modified from code by Eric Luttmann
+def checkIfGameDayHandler(resp,gDate) {
     checkEnableHandler()
     if(pauseApp || state.eSwitch) {
         log.info "${app.label} is Paused or Disabled"
@@ -699,10 +720,10 @@ def checkLiveGameStatsHandler(resp, data) {
                 if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - Pregame"
             } else {
                 //if(logEnable) log.debug "In checkLiveGameStatsHandler - Checking Scores - away: ${state.awayScore} VS ${state.totalAwayScore} - home: ${state.homeScore} VS ${state.totalHomeScore}"
-                
-                if(state.awayScore != state.totalAwayScore) {
+                def awayScore = state.awayScore.toInteger()
+                def totalAwayScore = state.totalAwayScore.toInterger()
+                if(awayScore < totalAwayScore) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Away Team Scores!"
-                    state.awayScores = state.totalAwayScore
                     if (state.myTeamIs == "away") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
@@ -721,9 +742,10 @@ def checkLiveGameStatsHandler(resp, data) {
                     }
                 }
 
-                if(state.homeScores != state.totalHomeScore) {
+                def homeScore = state.homeScore.toInteger()
+                def totalHomeScore = state.totalHomeScore.toInterger()
+                if(homeScore < totalHomeScore) {
                     if(logEnable) log.debug "In checkLiveGameStatsHandler - Home Team Scores!"
-                    state.homeScores = state.totalHomeScore
                     if (state.myTeamIs == "home") {
                         messageHandler(myTeamScore)
                         data = "myTeam;live"
@@ -740,10 +762,10 @@ def checkLiveGameStatsHandler(resp, data) {
                         flashData = "Preset::${flashOtherTeamScorePreset}"
                         theFlasherDevice.sendPreset(flashData)
                     }
-                }   
+                }
             }
 
-            //update Scores
+            //update Score
             state.awayScore = state.totalAwayScore
             state.homeScore = state.totalHomeScore
         }
@@ -823,7 +845,7 @@ def notificationHandler(data) {
     
     if(useTheFlasher && state.gameStatus == "Final") {
         if(state.myTeamIs == "away") {
-            if(state.awayScores > state.homeScores) {
+            if(state.awayScore > state.homeScore) {
                 flashData = "Preset::${flashMyTeamWinsPreset}"
             } else {
                 flashData = "Preset::${flashOtherTeamWinsPreset}"
@@ -831,7 +853,7 @@ def notificationHandler(data) {
         }
         
         if(state.myTeamIs == "home") {
-            if(state.homeScores > state.awayScores) {
+            if(state.homeScore > state.awayScore) {
                 flashData = "Preset::${flashMyTeamWinsPreset}"
             } else {
                 flashData = "Preset::${flashOtherTeamWinsPreset}"
@@ -967,9 +989,8 @@ def getScheduleHandler(resp, data) {
         
         state.list1 = []
         for(x=0;x < howManyGames;x++) {
-
             theDate = result.dates[x].games[0].gameDate
-            gameStartTime = Date.parse("yyyy-MM-dd'T'HH:mm:ssX", theDate)
+            gameStartTime = Date.parse("yyyy-MM-dd'T'HH:mm:ssXXX", theDate)
             
             def nTime = gameStartTime.format('h:mm a', location.timeZone)
             def nDate = gameStartTime.format('MM/dd', location.timeZone)
@@ -1129,10 +1150,10 @@ def logsOff() {
 def checkEnableHandler() {
     state.eSwitch = false
     if(disableSwitch) { 
-        if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch}"
         disableSwitch.each { it ->
-            theSwitch = it.currentValue("switch")
-            if(theSwitch == "on") { state.eSwitch = true }
+            eSwitch = it.currentValue("switch")
+            if(eSwitch == "on") { state.eSwitch = true }
+            if(logEnable) log.debug "In checkEnableHandler - disableSwitch: ${disableSwitch} - ${eSwitch}"
         }
     }
 }
@@ -1158,15 +1179,23 @@ def getFormat(type, myText="") {			// Modified from @Stephack Code
     if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
 }
 
-def display() {
+def display(data) {
+    if(data == null) data = ""
     setVersion()
     getHeaderAndFooter()
-    theName = app.label
+    if(app.label) {
+        if(app.label.contains("(Paused)")) {
+            theName = app.label - " <span style='color:red'>(Paused)</span>"
+        } else {
+            theName = app.label
+        }
+    }
     if(theName == null || theName == "") theName = "New Child App"
     section (getFormat("title", "${getImage("logo")}" + " ${state.name} - ${theName}")) {
         paragraph "${state.headerMessage}"
-		paragraph getFormat("line")
-	}
+        paragraph getFormat("line")
+        input "pauseApp", "bool", title: "Pause App", defaultValue:false, submitOnChange:true
+    }
 }
 
 def display2() {
@@ -1216,5 +1245,4 @@ def timeSinceNewHeaders() {
         state.totalHours = (state.days * 24) + state.hours
     }
     state.previous = now
-    //if(logEnable) log.warn "In checkHoursSince - totalHours: ${state.totalHours}"
 }

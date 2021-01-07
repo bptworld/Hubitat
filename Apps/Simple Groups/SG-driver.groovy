@@ -37,6 +37,7 @@
  *
  *  Changes:
  *
+ *  V1.0.2 - 12/31/20 - Added windowShade
  *  V1.0.1 - 05/21/20 - Added more stuff
  *  V1.0.0 - 05/20/20 - Initial release
  */
@@ -49,6 +50,7 @@ metadata {
         capability "Motion Sensor"
         capability "Switch"
         capability "Water Sensor"
+        capability "WindowShade"
         
         command "virtualContact", ["string"]
         command "virtualGroup1", ["string"]
@@ -56,6 +58,7 @@ metadata {
         command "virtualGroup3", ["string"]
         command "virtualLock", ["string"]
         command "virtualMotion", ["string"]
+        command "virtualShade", ["string"]
         command "virtualSwitch", ["string"]
         command "virtualWater", ["string"]
         
@@ -65,15 +68,32 @@ metadata {
         attribute "group3", "string"
         attribute "lock", "string"
         attribute "motion", "string"
+        attribute "windowShade", "string"
         attribute "switch", "string"
         attribute "water", "string"
 	}
 	preferences() {    	
         section(){
-            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Simple Groups</b>", description: "This device was created by Simple Groups<br>"
+            input name: "about", type: "paragraph", element: "paragraph", title: "<b>Simple Groups</b>", description: "This device was created by Simple Groups<br><br>The buttons above don't do anything, so please don't try to use them."
             input("logEnable", "bool", title: "Enable logging", required: false, defaultValue: false)
         }
     }
+}
+
+def on() {
+    virtualSwitch("on")
+}
+
+def off() {
+    virtualSwitch("off")
+}
+
+def lock() {
+    virtualLock("locked")
+}
+
+def unlock() {
+    virtualLock("unlocked")
 }
 
 def virtualContact(data) {
@@ -153,6 +173,20 @@ def virtualMotion(data) {
         sendEvent(name: "motion", value: "inactive", isStateChange: true)
     }
 } 
+
+def virtualShade(data) {
+    if(logEnable) log.info "In Simple Groups Driver - Shade"
+    if(data == "open") {
+        if(logEnable) log.info "In Simple Groups Driver - Turning Shade open"
+        sendEvent(name: "windowShade", value: "open", isStateChange: true)
+    }
+
+    if(data == "closed") {
+        if(logEnable) log.info "In Simple Groups Driver - Turning Shade closed"
+        sendEvent(name: "windowShade", value: "closed", isStateChange: true)
+    }
+}
+
 
 def virtualSwitch(data) {
     if(logEnable) log.info "In Simple Groups Driver - Switch"
