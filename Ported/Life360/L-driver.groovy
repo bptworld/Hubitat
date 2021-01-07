@@ -38,6 +38,8 @@
  *  Special thanks to namespace: "tmleafs", author: "tmleafs" for his work on the Life360 ST driver
  *
  *  Changes:
+ *  1.6.0 - 01/07/21 - Interim release 
+ *  1.5.5 - 12/20/20 - Reliability Improvements + Cleaned up Logging
  *  1.5.2 - 12/17/20 - Added initialization code for additional attributes / preferences
                      - Fixed Switch capability errors
  *  1.5.1 - 12/17/20 - Adjustments to work with Life360 Tracker
@@ -67,12 +69,12 @@ metadata {
         capability "Battery"
         capability "Power Source"
 
-// Avi - Capabilities to support Sharptools.io Hero tile active attributes functionality
+        // Capabilities to support Sharptools.io Hero tile active attributes functionality
         capability "Switch" // for Sharptools Wifi Active Attribute (Hero Tile)
         capability "Contact Sensor" // for Sharptools Charging Active Attribute (Hero Tile)
         capability "Acceleration Sensor" // for Sharptools Distance Active Attribute (Hero Tile)
         capability "Temperature Measurement" // for Sharptools Speed Active / Rules Attribute (Hero Tile)
-// Avi - end
+        // Sharptools.io capabilities end
 
         attribute "address1", "string"
         attribute "address1prev", "string"
@@ -103,12 +105,12 @@ metadata {
         attribute "memberName", "string"
         attribute "memberFriendlyName", "string"
 
-// Avi - Attributes to support capabilities added above for Sharptools.io tile formatting
+        // Attributes to support capabilities added above for Sharptools.io tile formatting
         attribute "contact", "string"
         attribute "acceleration", "string"
         attribute "temperature", "number"
         attribute "switch", "string"
-// Avi - end
+        // Sharptools.io attributes end
 
         // **** Life360 ****
         command "refresh"
@@ -117,17 +119,13 @@ metadata {
         command "sendTheMap", ["string"]
         command "historyClearData"
 
-// Avi - Trigger to force renew / revalidate webhook subscription to Life360 notifications
+        // Trigger to manually force subscribe to / revalidate webhook to Life360 push notifications
         command "refreshCirclePush"
-// Avi - end
   }
 }
 
 preferences {
     input title:"<b>Location Tracker User</b>", description:"Note: Any changes will take effect only on the NEXT update or forced refresh.", type:"paragraph", element:"paragraph"
-    // Avi - commented out the MaxGPS preference field for now.  Code is commented out in the extraInfo function
-    //       this may be restored if the currently applied consolidated logic proves to be unreliable
-    // input "maxGPSJump", "number", title: "Max GPS Jump", description: "If you are getting a lot of false readings, raise this value", required: true, defaultValue: 25
     input "units", "enum", title: "Distance Units", description: "Miles or Kilometers", required: false, options:["Kilometers","Miles"]
     input "memberFriendlyName", "text", title: "Member Friendly Name", description: "(for use in Rules etc.)", defaultValue: "Mr. Roboto"
     input "transitThreshold", "text", title: "Minimum 'Transit' Speed", description: "Set minimum speed for inTransit to be true\n(leave as 0 to use Life360 data)", required: true, defaultValue: "0"
@@ -140,11 +138,11 @@ preferences {
 }
 
 def off() {
-  // empty stub needed for actuator not to throw errors
+  // empty stub needed for switch capability not to throw errors
 }
 
 def on() {
-  // empty stub needed for actuator not to throw errors
+  // empty stub needed for switch capability not to throw errors
 }
 
 def refresh() {
@@ -164,7 +162,7 @@ def sendTheMap(theMap) {
 }
 
 def sendStatusTile1() {
-    if(logEnable) log.debug "In sendStatusTile1 - Making the Avatar Tile"
+    if(logEnable) log.trace "In sendStatusTile1 - Making the Avatar Tile"
     def avat = device.currentValue("avatar")
     if(avat == null || avat == "") avat = avatarURL
     def add1 = device.currentValue('address1')
@@ -284,11 +282,11 @@ def sendHistory(msgValue) {
 }
 
 def installed() {
-    log.info "Location Tracker User Driver Installed"
+    log.trace "Location Tracker User Driver Installed"
 
     historyClearData()
 
-    if (logEnable) log.info "Setting attributes to initial values"
+    if(logEnable) log.debug "Setting attributes to initial values"
 
     // Set preferences to initial values as a means to prevent run-time errors
     updateSetting ( name: "inTransitThreshold", value: "0" )
@@ -301,6 +299,7 @@ def installed() {
 
 def updated() {
     log.info "Location Tracker User Driver has been Updated"
+    refresh()
 }
 
 def getDateTime() {
@@ -311,10 +310,11 @@ def getDateTime() {
 }
 
 def historyClearData() {
-    if(logEnable) log.debug "In historyClearData - Clearing the data"
+    if(logEnable) log.trace "In historyClearData"
     msgValue = "-"
     logCharCount = "0"
     state.list1 = []
+    if(logEnable) log.info "Clearing the data"
     historyLog = "Waiting for Data..."
     sendEvent(name: "bpt-history", value: historyLog, displayed: true)
     sendEvent(name: "numOfCharacters1", value: logCharCount1, displayed: true)
@@ -322,6 +322,8 @@ def historyClearData() {
 }
 
 def generatePresenceEvent(member, thePlaces, home) {
+
+    if(logEnable) log.trace "In generatePresenceEvent..."
 
     // Define all variables required upfront and initialize where applicable
     def lastUpdated = new Date()
@@ -356,6 +358,9 @@ def generatePresenceEvent(member, thePlaces, home) {
     def homeLongitude = home.longitude.toFloat() // home longitude
     def homeRadius = home.radius.toFloat() // home radius
     def distanceAway = haversine(latitude, longitude, homeLatitude, homeLongitude) * 1000 // in meters
+    // It is safe to assume that if we are within home radius then we are
+    // both present and at home (to address any potential radius jitter)
+    def memberPresence = (distanceAway <= homeRadius) ? "present" : "not present"
 
     // Where we think we are now is either at a named place or at address1
     def address1 = (member.location.name) ? member.location.name : member.location.address1
@@ -365,55 +370,47 @@ def generatePresenceEvent(member, thePlaces, home) {
     def address2 = (member.location.address2) ? member.location.address2 : member.location.shortaddress
     if (address2 == null || address2 == "") address2 = "No Data"
 
-    // *** Presence ***
-    // It is safe to assume that if we are within home radius then we are
-    // both present and at home (to address any potential radius jitter)
-    def memberPresence = (distanceAway <= homeRadius) ? "present" : "not present"
-    if (memberPresence == "present") address1 = "Home"
-
     // *** Block For Testing Purposes Only ***
     //    distanceAway = 20000
     //    address1 = "Target"
     //    memberPresence = "not present"
     // ** End Block for Testing Purposes Only ***
 
-    // *** On the move ***
-    // if we changed from present --> not present then we are departing from home
-    def prevAddress = (departing) ? "Home" : device.currentValue('address1')
-    if (prevAddress == null) prevAddress = "Lost"
+    // *** Address ***
+    // If we are present then we are Home...
+    address1 = (memberPresence == "present") ? "Home" : address1
+
+    def prevAddress = device.currentValue('address1')
 
     if(logEnable) log.debug "prevAddress = $prevAddress | newAddress = $address1"
 
     if (address1 != prevAddress) {
-        // *** Update address & presence ***
-        def linkText = getLinkText(device)
-        def handlerName = ( departing() ) ? "left" : "arrived"
-        def descriptionText = "Life360 member " + linkText + " has " + handlerName
+        // Update old and current address information and trigger events
+        sendEvent( name: "address1prev", value: prevAddress)
+        sendEvent( name: "address1", value: address1 )
+        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
+        sendEvent( name: "since", value: member.location.since )
+    }
 
-        if (logEnable) log.info "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
+    // *** Presence ***
+    def linkText = getLinkText(device)
+    def handlerName = ( memberPresence == "present" ) ? "arrived" : "left"
+    def descriptionText = "Life360 member " + linkText + " has " + handlerName
 
-        // *** Presence ***
-        def results = [
+    if(logEnable) log.debug "linkText = $linkText, descriptionText = $descriptionText, handlerName = $handlerName, memberPresence = $memberPresence"
+
+    def results = [
           name: "presence",
           value: memberPresence,
           linkText: linkText,
           descriptionText: descriptionText,
-          handlerName: handlerName,
-            isStateChange: true
-        ]
+          handlerName: handlerName
+    ]
 
-        sendEvent (results)
-        state.presence = memberPresence
+    sendEvent (results)
+    state.presence = memberPresence
 
-        if (logEnable) log.info "results = $results"
-
-        // *** Address ***
-        // Update old and current address attributes
-        sendEvent( name: "address1prev", value: prevAddress)
-        sendEvent( name: "address1", value: address1, isStateChange: true )
-        sendEvent( name: "lastLocationUpdate", value: lastUpdated )
-        sendEvent( name: "since", value: member.location.since )
-    }
+    if(logEnable) log.debug "results = $results"
 
     // *** Coordinates ***
     sendEvent( name: "longitude", value: longitude )
@@ -458,6 +455,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     def sStatus
     if (transitThreshold == null) transitThreshold = "0"
     def movethreshold = transitThreshold.toDouble().round(2)
+
     if (drivingThreshold == null) drivingThreshold = "0"
     def drivethreshold = drivingThreshold.toDouble().round(2)
 
@@ -513,7 +511,7 @@ def generatePresenceEvent(member, thePlaces, home) {
     }
 
     // *** On the move ***
-    if (logEnable) log.info "speedKm = $speedKm  speedMiles = $speedMiles moverthreshold = $movethreshold inTransit = $inTransit drivethreshold = $drivethreshold isDriving = $isDriving"
+    if(logEnable) log.debug "speedKm = $speedKm  speedMiles = $speedMiles moverthreshold = $movethreshold inTransit = $inTransit drivethreshold = $drivethreshold isDriving = $isDriving"
 
     sendEvent( name: "inTransit", value: inTransit )
     sendEvent( name: "isDriving", value: isDriving )
@@ -521,14 +519,16 @@ def generatePresenceEvent(member, thePlaces, home) {
     // Avi - Sharptools.io attribute for distance tile - Set acceleration to
     // active state if we are either moving
     // or if we are anywhere outside home radius
-    def sAcceleration = (inTransit == "true" || isDriving == "true" || memberPresence == "not present") ? "active" : "inactive"
-    if (logEnable) log.info "inTransit: $inTransit  isDriving: $isDriving  memberPresence: $memberPresence  sAcceleration: $sAcceleration"
+    def sAcceleration = (inTransit == "true" || isDriving == "true" || memberPresence == "not present" ) ? "active" : "inactive"
+    if(logEnable) log.debug "inTransit: $inTransit  isDriving: $isDriving  memberPresence: $memberPresence  sAcceleration: $sAcceleration"
 
     sendEvent( name: "acceleration", value: sAcceleration )
 
     // *** Battery Level ***
+    // For whatever reason, this value generates an event no matter what
+    // so we need to make it less noisy...
     def battery = Math.round(member.location.battery.toDouble())
-    sendEvent( name: "battery", value: battery )
+    if (device.currentValue('battery') != battery) sendEvent( name: "battery", value: battery )
 
     // *** Charging State ***
     def charge = (member.location.charge == "0") ? "false" : "true"
@@ -536,13 +536,13 @@ def generatePresenceEvent(member, thePlaces, home) {
     sendEvent( name: "powerSource", value: (charge == "true"? "DC" : "BTRY"))
 
     // Sharptools.io active tile attribute: if charging set contact sensor to open
-    def cContact = (charge.toBoolean()) ? "open" : "closed"
+    def cContact = (charge == "true" ) ? "open" : "closed"
     sendEvent( name: "contact", value: cContact )
 
     // *** Wifi ***
     // Sharptools.io tile attribute - if wifi on then set switch to on
-    def wifiState = member.location.wifiState == "0" ? "false" : "true"
-    def sSwitch = (wifiState=="true") ? "on" : "off"
+    def wifiState = ( member.location.wifiState == "0" ) ? "false" : "true"
+    def sSwitch = ( wifiState == "true" ) ? "on" : "off"
     sendEvent( name: "wifiState", value: wifiState )
     sendEvent( name: "switch", value: sSwitch )
 
